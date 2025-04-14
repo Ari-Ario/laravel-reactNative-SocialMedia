@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Current Date</title>
+</head>
+<body>
+    <div id="date"></div>
+    <script src="script.js"></script>
+</body>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+    const dateElement = document.getElementById('date');
+    const currentDate = new Date();
+    dateElement.textContent = currentDate.toDateString();
+});
+
+</script>
+</html>

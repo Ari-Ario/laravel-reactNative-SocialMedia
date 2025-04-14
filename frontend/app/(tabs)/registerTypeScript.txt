@@ -1,0 +1,72 @@
+import React, { useState } from 'react';
+import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
+import axios from 'axios';
+
+interface User {
+  name: string;
+  email: string;
+  password: string;
+}
+
+const RegisterUser: React.FC = () => {
+  const [user, setUser] = useState<User>({ name: '', email: '', password: '' });
+  const [message, setMessage] = useState<string>('');
+
+  const handleInputChange = (field: keyof User, value: string) => {
+    setUser({ ...user, [field]: value });
+  };
+
+  const register = async () => {
+    try {
+      const response = await axios.post('https://your-laravel-backend.com/api/register', user);
+      setMessage(response.data.message);
+    } catch (error) {
+      setMessage('Registration failed');
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <TextInput
+        style={styles.input}
+        placeholder="Name"
+        value={user.name}
+        onChangeText={(value) => handleInputChange('name', value)}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Email"
+        value={user.email}
+        onChangeText={(value) => handleInputChange('email', value)}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Password"
+        value={user.password}
+        onChangeText={(value) => handleInputChange('password', value)}
+        secureTextEntry
+      />
+      <Button title="Register" onPress={register} />
+      {message ? <Text>{message}</Text> : null}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  input: {
+    width: '100%',
+    padding: 8,
+    marginVertical: 8,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 4,
+  },
+});
+
+export default RegisterUser;
