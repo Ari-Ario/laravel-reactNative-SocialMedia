@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -31,11 +32,9 @@ Route::group(["middleware" => ["auth:sanctum"]], function() {
     });
 });
 
+Route::post('/forgot-password', [PasswordResetLinkController::class, 'store']);
 
 // Route::post('/login', [AuthenticatedSessionController::class, 'login']);
-// Route::post('/register', [AuthenticatedSessionController::class, 'create']);
-
-
 
 Route::post('/login', function(Request $request){
     $request->validate([

@@ -5,31 +5,22 @@ import FormTextField from "@/components/FormTextField";
 import { login, loadUser } from "@/services/AuthService";
 import { Link, router } from 'expo-router';
 import AuthContext from "@/context/AuthContext";
-import ForgotPasswordScreen from "./ForgotPasswordScreen";
+import { sendPasswordResetLink } from "@/services/AuthService";
 
 export default function () {
-    const { setUser } = useContext(AuthContext);
 
     const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
     const [errors, setErrors] = useState("");
+    const [resetStatus, setResetStatus] = useState("");
 
-    async function handleLogin() {
-
+    async function handleForgotPassword() {
+        setErrors({});
+        setResetStatus("");
         try {
-            await login({
-                    email,
-                    password,
-                    device_name: `${Platform.OS} ${Platform.Version}`,
-                });
-            console.log('here at Login')
+            const status = await sendPasswordResetLink(email);
+            setResetStatus(status);
+            console.log('here at ResetPage: ', status)
 
-            const user = await loadUser();
-            console.log('user:', user);
-            setUser(user);
-            console.log("send it to TABS");
-            
-            router.push('/(tabs)');
         } catch (e) {
             if (e.response?.status === 422) {
                 setErrors(e.response.data.errors)
@@ -40,15 +31,15 @@ export default function () {
     return (
         <SafeAreaView style={styles.wrapper}>
             <View>
-                <Link href={'/'} asChild>
+                <Link href={'/LoginScreen'} >
                     <TouchableOpacity style={styles.button}>
-                        <Text style={styles.buttonText}>◀ Back to Homescreen</Text>
+                        <Text style={styles.buttonText}>◀ Back to Login</Text>
                     </TouchableOpacity>
                 </Link>
             </View>
             
             <View style={styles.container}>
-
+                { resetStatus && <Text style={styles.resetStatus}> {resetStatus} </Text>}
                 <FormTextField label="Email address:" 
                 value={email} 
                 onChangeText={(text) => setEmail(text)} 
@@ -56,20 +47,8 @@ export default function () {
                 errors={errors.email}
                 />
 
-                <FormTextField label="Password:" 
-                secureTextEntry={true} 
-                value={password} 
-                onChangeText={(text) => setPassword(text)} 
-                keyboardType="password" 
-                errors={errors.password}
-                />
-
-                <Button title="login" onPress={handleLogin} />
-
-                <Link href={'/ForgotPasswordScreen'} >
-                    <Text style={styles.buttonText}>Forgot Password</Text>
-                </Link>
-
+                <Button title="Setpassword" onPress={handleForgotPassword} />
+                        
             </View>
         </ SafeAreaView>
     )
@@ -92,14 +71,16 @@ const styles = StyleSheet.create({
         top: 0,
         left: 0,
         width: '100%',
-        textAlign: 'left',
-        marginBottom: 20,
+        // alignItems: 'left',
+        marginBottom: 0,
       },
       buttonText: {
-        textAlign: "center",
         color: "blue",
         fontSize: 22,
         fontWeight: '500',
       },
-
+      resetStatus: {
+        color: "green",
+        marginBottom: 10,
+      }
   });

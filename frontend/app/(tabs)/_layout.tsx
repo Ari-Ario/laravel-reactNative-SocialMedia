@@ -61,6 +61,13 @@ export default function TabLayout() {
         }}
       />
       {/* <Tabs.Screen
+        name="chatbot"
+        options={{
+          title: 'Chatbot',
+          tabBarIcon: ({ color }) => <FontAwesome size={28} name="comments" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',

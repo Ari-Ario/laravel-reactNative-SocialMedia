@@ -1,8 +1,9 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack, useRouter, Redirect } from 'expo-router';
+import { useRouter, Redirect, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
+import {NavigationContainer} from '@react-navigation/native';
+import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 import AuthContext from '@/context/AuthContext';
@@ -11,6 +12,7 @@ import { ActivityIndicator, View, Text } from 'react-native';
 import { loadUser } from '@/services/AuthService';
 import { getToken } from '@/services/TokenService';
 import LoginScreen from './LoginScreen';
+import RegisterScreen from './RegisterScreen';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -77,8 +79,36 @@ export default function RootLayout() {
 
   return (
     <AuthContext.Provider value={{ user, setUser }}>
+      {/* <NavigationContainer>
+        <Stack.Navigator>
+          <Stack.Screen
+            name="Login"
+            component={LoginScreen}
+            options={{
+              transitionSpec: {
+                open: config,
+                close: config,
+              },
+            }}
+          />
+          
+          <Stack.Screen 
+          name="Register" 
+          component={RegisterScreen} 
+          options={{
+            transitionSpec: {
+              open: config,
+              close: config,
+            },
+          }}
+          />
+        </Stack.Navigator>
+      </NavigationContainer> */}
+
       {/* Empty stack since we're handling redirects via router */}
       <Stack screenOptions={{ headerShown: false }} />
+
+
     </AuthContext.Provider>
   );
 }

@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
         top: 0,
         left: 0,
         width: '100%',
-        alignItems: 'center',
+        alignItems: 'left',
         marginBottom: 20,
       },
       buttonText: {

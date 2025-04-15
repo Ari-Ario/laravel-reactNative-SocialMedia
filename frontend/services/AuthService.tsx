@@ -71,20 +71,16 @@ export async function loadUser() {
   }
 }
 
-// export async function logout() {
-//   const token = await getToken();
-//   const API_BASE = getApiBase();
-//   const url = (API_BASE === '/api') ? '/register' : `${API_BASE}/register`;
-//   const { data } = await axios.post(`${API_BASE}/logout`, {}, {
-//     headers: {
-//       'Authorization': `Bearer ${token}`,
-//       'Accept': 'application/json'
-//     }
-//   });
-//   console.log("Loged out"); 
-//   await setToken(null);
-
-// }
+export async function sendPasswordResetLink(email) {
+  try {
+    const API_BASE = getApiBase();
+    const { data } = await axios.post(`${API_BASE}/forgot-password`, { email })
+    console.log(data);
+    return data.status;
+  } catch (error) {
+    console.error('Reset Password failed:', error);
+  }
+}
 
 export async function logout() {
   try {
