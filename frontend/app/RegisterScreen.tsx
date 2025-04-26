@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { SafeAreaView ,View, Text, StyleSheet, Button, TouchableOpacity, Platform } from 'react-native';
 // import axios from "../../services/axios";
 import axios from "@/services/axios";
@@ -6,6 +6,7 @@ import FormTextField from "@/components/FormTextField";
 import { register, loadUser } from "@/services/AuthService";
 // import { Platform } from "react-native";
 import { Link, router } from 'expo-router';
+import AuthContext from "@/context/AuthContext";
 
 
 interface User {
@@ -17,6 +18,7 @@ interface User {
 const RegisterUser: React.FC = () => {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
+    const { setUser } = useContext(AuthContext);
 
     const [password, setPassword] = useState("");
     const [passwordConfirmation, setPasswordConfirmation] = useState("");
@@ -35,6 +37,7 @@ const RegisterUser: React.FC = () => {
             });
 
             const user = await loadUser();
+            setUser(user);
             
             console.log(user);
             router.push('/(tabs)');
@@ -105,7 +108,7 @@ const styles = StyleSheet.create({
         top: 0,
         left: 0,
         width: '100%',
-        alignItems: 'left',
+        alignItems: 'center',
         marginBottom: 20,
       },
       buttonText: {

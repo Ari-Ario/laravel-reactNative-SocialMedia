@@ -5,6 +5,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\ChatbotController;
+use App\Http\Controllers\ChatbotTrainingController;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -22,7 +24,7 @@ Route::group(["middleware" => ["auth:sanctum"]], function() {
     // Route::get('/user', function (Request $request) {
     //     return $request->user();
     // })->middleware('auth:sanctum');
-
+    Route::post('/chat', [ChatbotController::class, 'handleMessage']);
     Route::post('/test-csrf', fn () => [1, 2, 3]);
 
     Route::post('/logout', function (Request $request) {
@@ -30,11 +32,26 @@ Route::group(["middleware" => ["auth:sanctum"]], function() {
         $request->user()->currentAccessToken()->delete();
         return response()->noContent();
     });
+
+
+    // Training endpoints
+    Route::prefix('chatbot-training')->group(function() {
+        Route::get('/', [ChatbotTrainingController::class, 'index']);
+        Route::post('/', [ChatbotTrainingController::class, 'store']);
+        Route::put('/{id}', [ChatbotTrainingController::class, 'update']);
+        Route::post('/bulk-approve', [ChatbotTrainingController::class, 'bulkApprove']);
+        Route::get('/needs-review', [ChatbotTrainingController::class, 'needsReview']);
+        Route::get('/categories', [ChatbotTrainingController::class, 'categories']);
+    });
 });
 
 Route::post('/forgot-password', [PasswordResetLinkController::class, 'store']);
+// Route::get('/reset-password/{token}', [PasswordResetController::class, 'showResetForm'])->name('password.reset');
 
 // Route::post('/login', [AuthenticatedSessionController::class, 'login']);
+// routes/web.php
+Route::get('/admin/chatbot/train', [ChatbotTrainingController::class, 'show']);
+Route::post('/admin/chatbot/train', [ChatbotTrainingController::class, 'store']);
 
 Route::post('/login', function(Request $request){
     $request->validate([

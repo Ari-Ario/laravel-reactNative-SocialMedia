@@ -60,18 +60,25 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <FontAwesome size={28} name="search" color={color} />,
         }}
       />
-      {/* <Tabs.Screen
+      <Tabs.Screen
         name="chatbot"
         options={{
           title: 'Chatbot',
-          tabBarIcon: ({ color }) => <FontAwesome size={28} name="comments" color={color} />,
+          tabBarIcon: ({ color }) => <FontAwesome size={28} name="android" color={color} />,
         }}
       />
       <Tabs.Screen
-        name="settings"
+        name="chatbotTraining"
         options={{
-          title: 'Settings',
-          tabBarIcon: ({ color }) => <FontAwesome size={28} name="search" color={color} />,
+          title: 'Chatbot Training',
+          tabBarIcon: ({ color }) => <FontAwesome size={28} name="server" color={color} />,
+        }}
+      />
+      {/* <Tabs.Screen
+        name="chat"
+        options={{
+          title: 'Chat',
+          tabBarIcon: ({ color }) => <FontAwesome size={28} name="comments" color={color} />,
         }}
       /> */}
     </Tabs>
