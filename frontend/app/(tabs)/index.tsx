@@ -28,7 +28,7 @@ const HomePage = () => {
     useEffect(() => {
         if (!user || (user === null)) {
           router.replace('/LoginScreen');
-        }
+        } else { console.log("asking Authentication from Index")}
     }, [user]);
 
     return (

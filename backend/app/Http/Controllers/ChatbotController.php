@@ -43,7 +43,9 @@ class ChatbotController extends Controller
         // 1. Check exact matches
         $exactResponses = [
             'hello' => 'Hi! How can I help?',
-            'help' => 'I can assist with account and payment questions.',
+            'hi' => 'Hi! How can I help?',
+            'hey' => 'Hi! How can I help?',
+            'help' => 'I can assist with account, payment, and technical questions.',
             'password' => 'You can reset your password at Settings > Security',
             'email' => 'Check your spam folder or request a new verification email',
             'refund' => 'Our refund policy allows returns within 30 days',
@@ -104,24 +106,6 @@ class ChatbotController extends Controller
         // return response()->json(['response' => $aiResponse]);
     }
 
-    // Option 2: Directly using an AI 
-    private function getAIResponse(string $message): string
-    {
-        $apiKey = config('services.openai.key');
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $apiKey,
-            'Content-Type' => 'application/json'
-        ])->post('https://api.openai.com/v1/chat/completions', [
-            'model' => 'gpt-3.5-turbo',
-            'messages' => [
-                ['role' => 'user', 'content' => $message]
-            ],
-            'temperature' => 0.7
-        ]);
-
-        return $response->json()['choices'][0]['message']['content'] ?? 'Sorry, I encountered an error.';
-    }
-
 
     // Decision Tree
     private function handleAccountQuestions(string $message): string
@@ -152,20 +136,31 @@ class ChatbotController extends Controller
 
 
     // Learning Capability
-    private function learnResponse(string $message, string $response = ''): void
+    private function learnResponse(string $message, string $response = '', string $category = null): void
     {
         if (empty($response)) {
             $this->notifyAdmins($message);
         }
 
-        $analysis = $this->analyzeMessage($message);
+        // Check for existing similar entries
+        $existing = ChatbotTraining::where('trigger', 'like', "%$message%")
+            ->when($category, fn($q) => $q->where('category', $category))
+            ->exists();
+            
+        if ($existing) {
+            \Log::info("Similar training entry exists", ['message' => $message]);
+            return;
+        }
         
+        $analysis = $this->analyzeMessage($message);
+        $category = $category ?? $this->detectCategories($message)[0] ?? 'general';
+
         ChatbotTraining::create([
             'trigger' => $message,
             'response' => $response,
             'keywords' => $analysis['keywords'],
             // 'category' => $this->detectCategory($message),
-            // 'category' => $category($message),
+            'category' => $category,
             'needs_review' => empty($response),
             'trained_by' => auth()->id() ?? null
         ]);
@@ -271,7 +266,7 @@ class ChatbotController extends Controller
         $message = strtolower(trim($message));
         $words = preg_split('/\s+/', preg_replace('/[^a-z0-9\s]/', '', $message));
         
-        $stopWords = ['the', 'a', 'an', 'is', 'are', 'i', 'you', 'we', 'to', 'my'];
+        $stopWords = ['the', 'a', 'an', 'is', 'are', 'i', 'you', 'we', 'to', 'my', 'can'];
         $words = array_diff($words, $stopWords);
         
         return array_values(array_unique(array_filter($words)));
@@ -324,66 +319,44 @@ class ChatbotController extends Controller
     {
         $patterns = [
             [
-                'keywords' => ['hello', 'hi', 'hey', 'greetings'],
+                'keywords' => ['hello', 'hi', 'hey', 'greetings', 'good morning'],
                 'response' => 'Hello there! How can I help you today?',
                 'priority' => 1
             ],
             [
-                'keywords' => ['conto', 'profile'],
-                'response' => 'For account issues, go to Settings > Account',
-                'priority' => 2
+                'keywords' => ['account', 'profile', 'login', 'sign in', 'register'],
+                'response' => 'For account help: go to Settings > Account or ask about login, password, or profile',
+                'priority' => 3
             ],
             [
-                'keywords' => ['payment', 'bill', 'invoice'],
-                'response' => 'For payment questions, visit Settings > Billing',
-                'priority' => 2
+                'keywords' => ['payment', 'bill', 'invoice', 'refund', 'charge'],
+                'response' => 'Payment support: visit Settings > Billing or ask about invoices, refunds, or charges',
+                'priority' => 3
             ],
             [
-                'keywords' => ['thank', 'thanks', 'appreciate'],
-                'response' => 'You\'re very welcome!',
+                'keywords' => ['thank', 'thanks', 'appreciate', 'grateful'],
+                'response' => 'You\'re very welcome! Let me know if you need anything else.',
                 'priority' => 1
             ],
-            // Add more patterns
+            [
+                'keywords' => ['bug', 'error', 'crash', 'not working'],
+                'response' => 'Technical support: please describe your issue including device model and app version',
+                'priority' => 4
+            ]
         ];
-    
+
         // Sort by priority (highest first)
         usort($patterns, fn($a, $b) => $b['priority'] <=> $a['priority']);
-    
+
         foreach ($patterns as $pattern) {
             foreach ($keywords as $keyword) {
                 if (in_array($keyword, $pattern['keywords'])) {
+                    \Log::debug("Keyword pattern matched", [
+                        'keyword' => $keyword,
+                        'pattern' => $pattern['keywords'],
+                        'response' => $pattern['response']
+                    ]);
                     return $pattern['response'];
-                }
-            }
-        }
-    
-        return null;
-    }
-
-    private function checkKeywordPatterns2(array $keywords): ?string
-    {
-        // Define keyword groups and their responses
-        $keywordGroups = [
-            'greetings' => [
-                'keywords' => ['hello', 'hi', 'hey', 'greetings'],
-                'response' => 'Hello there! How can I help you today?'
-            ],
-            'thanks' => [
-                'keywords' => ['thank', 'thanks', 'appreciate'],
-                'response' => 'You\'re very welcome!'
-            ],
-            'account' => [
-                'keywords' => ['account', 'profile', 'login'],
-                'response' => '2-For account issues, go to Settings > Account'
-            ],
-            // Add more groups as needed
-        ];
-
-        // Check each keyword against all groups
-        foreach ($keywords as $keyword) {
-            foreach ($keywordGroups as $group) {
-                if (in_array($keyword, $group['keywords'])) {
-                    return $group['response'];
                 }
             }
         }
@@ -408,7 +381,7 @@ class ChatbotController extends Controller
             'account' => ['account', 'profile', 'login', 'sign in', 'register'],
             'payment' => ['payment', 'invoice', 'bill', 'credit', 'charge'],
             'technical' => ['bug', 'crash', 'error', 'not working', 'problem'],
-            'feature' => ['feature', 'how to', 'guide', 'tutorial', 'use']
+            'feature' => ['feature', 'how to use', 'guide', 'tutorial', 'use']
         ];
         
         foreach ($contextTriggers as $context => $triggers) {
@@ -470,6 +443,43 @@ class ChatbotController extends Controller
         return null;
     }
 
+
+
+
+    /////////// Extra Functions or similar functions but other form ////////////////
+
+    private function checkKeywordPatterns2(array $keywords): ?string
+    {
+        // Define keyword groups and their responses
+        $keywordGroups = [
+            'greetings' => [
+                'keywords' => ['hello', 'hi', 'hey', 'greetings'],
+                'response' => 'Hello there! How can I help you today?'
+            ],
+            'thanks' => [
+                'keywords' => ['thank', 'thanks', 'appreciate'],
+                'response' => 'You\'re very welcome!'
+            ],
+            'account' => [
+                'keywords' => ['account', 'profile', 'login'],
+                'response' => '2-For account issues, go to Settings > Account'
+            ],
+            // Add more groups as needed
+        ];
+
+        // Check each keyword against all groups
+        foreach ($keywords as $keyword) {
+            foreach ($keywordGroups as $group) {
+                if (in_array($keyword, $group['keywords'])) {
+                    return $group['response'];
+                }
+            }
+        }
+
+        return null;
+    }
+
+
     private function cleanOldContext(): void
     {
         // Keep only last 10 messages
@@ -482,6 +492,24 @@ class ChatbotController extends Controller
             $this->conversationContext = [];
             $this->currentContext = null;
         }
+    }
+
+    // Option 2: Directly using or Fallback to an open AI 
+    private function getAIResponse(string $message): string
+    {
+        $apiKey = config('services.openai.key');
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $apiKey,
+            'Content-Type' => 'application/json'
+        ])->post('https://api.openai.com/v1/chat/completions', [
+            'model' => 'gpt-3.5-turbo',
+            'messages' => [
+                ['role' => 'user', 'content' => $message]
+            ],
+            'temperature' => 0.7
+        ]);
+
+        return $response->json()['choices'][0]['message']['content'] ?? 'Sorry, I encountered an error.';
     }
 
 }

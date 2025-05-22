@@ -107,7 +107,7 @@ export default function ChatbotScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#fff",
+    // backgroundColor: "#fff",
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',  

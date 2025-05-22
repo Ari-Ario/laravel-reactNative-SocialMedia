@@ -165,7 +165,7 @@ return (
         <Text>Pending Review: {needsReviewCount}</Text>
 
         {/* Add New Training Form - unchanged */}
-        <View style={styles.form}>
+        <View style={styles.head}>
             <TextInput
                 placeholder="User message (trigger)"
                 value={newTraining.trigger}
@@ -236,6 +236,7 @@ return (
                         style={styles.approve}
                         />
                     )}
+                    
                 </View>
             )}
         />
@@ -248,11 +249,22 @@ const styles = StyleSheet.create({
 container: {
     flex: 1,
     padding: 20,
+    // backgroundColor: "#fff",
+    justifyContent: 'center',
+    // alignItems: 'center',  
 },
 title: {
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 10,
+},
+head: {
+    marginBottom: 20,
+    padding: 15,
+    borderWidth: 2,
+    borderColor: '#ddd',
+    borderRadius: 5,
+    // width: "500px",
 },
 form: {
     marginBottom: 20,
@@ -260,6 +272,7 @@ form: {
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 5,
+    // width: "400px"
 },
 input: {
     borderWidth: 1,
