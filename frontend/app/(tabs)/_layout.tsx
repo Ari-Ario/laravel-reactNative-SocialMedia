@@ -8,13 +8,6 @@ import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import LoginScreen from '../LoginScreen';
-// import { HapticTab } from '@/components/HapticTab';
-// import TabBarBackground from '@/components/ui/TabBarBackground';
-// import { SafeAreaView } from 'react-native-safe-area-context';
-// import { getToken } from '@/services/TokenService';
-// import { loadUser } from '@/services/AuthService';
-// import { ActivityIndicator, View } from 'react-native';
-
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -32,64 +25,57 @@ export default function TabLayout() {
     {user ? (
       <>
       <Tabs
-        screenOptions={{
-          tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-          headerShown: false,
-          tabBarStyle: Platform.select({
-            ios: { position: 'absolute' },
-            default: {},
-          }),
+      screenOptions={{
+        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        headerShown: false,
+        tabBarStyle: Platform.select({
+          ios: { position: 'absolute' },
+          default: {},
+        }),
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Home',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
         }}
-      >
-        <Tabs.Screen 
-          name="index"
-          options={{
-            title: 'Home',
-            tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
-          }}
-        />
-        <Tabs.Screen
-          name="explore"
-          options={{
-            title: 'Explore',
-            tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
-          }}
-        />
-        <Tabs.Screen
-          name="tab1"
-          options={{
-            title: 'Screen-size',
-            tabBarIcon: ({ color }) => <FontAwesome size={28} name="tablet" color={color} />,
-          }}
-        />
-        <Tabs.Screen
-          name="tab3"
-          options={{
-            title: 'Search',
-            tabBarIcon: ({ color }) => <FontAwesome size={28} name="search" color={color} />,
-          }}
-        />
-        <Tabs.Screen
-          name="chatbot"
-          options={{
-            title: 'Chatbot',
-            tabBarIcon: ({ color }) => <FontAwesome size={28} name="android" color={color} />,
-          }}
-        />
-        <Tabs.Screen
-          name="chatbotTraining"
-          options={{
-            title: 'Chatbot Training',
-            tabBarIcon: ({ color }) => <FontAwesome size={28} name="server" color={color} />,
-          }}
-        />
-        {/* <Tabs.Screen
-          name="chat"
-          options={{
-            title: 'Chat',
-            tabBarIcon: ({ color }) => <FontAwesome size={28} name="comments" color={color} />,
-          }}
-        /> */}
+      />
+      <Tabs.Screen
+        name="chats"
+        options={{
+          title: 'Chats',
+          tabBarIcon: ({ color }) => <FontAwesome size={28} name="comments" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="calls"
+        options={{
+          title: 'Calls',
+          tabBarIcon: ({ color }) => <FontAwesome size={28} name="phone" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="chatbot"
+        options={{
+          title: 'Chatbot',
+          tabBarIcon: ({ color }) => <FontAwesome size={28} name="android" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="chatbotTraining"
+        options={{
+          title: 'Chatbot Training',
+          tabBarIcon: ({ color }) => <FontAwesome size={28} name="server" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ color }) => <FontAwesome size={28} name="gear" color={color} />,
+        }}
+      />
       </Tabs>
       </>
     ) : (

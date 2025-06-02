@@ -4,6 +4,7 @@ import AuthContext from '@/context/AuthContext';
 import axios from '@/services/axios';
 import getApiBase from '@/services/getApiBase';
 import { getToken, setToken } from '@/services/TokenService';
+import { useResponsiveLayout } from "@/hooks/ResponsiveLayout";
 
 const ChatbotTrainingScreen = () => {
     const { user } = useContext(AuthContext);
@@ -19,6 +20,7 @@ const ChatbotTrainingScreen = () => {
     const [needsReviewCount, setNeedsReviewCount] = useState(0);
     const [categories, setCategories] = useState([]);
     const API_BASE = getApiBase();
+    const { layoutStyle } = useResponsiveLayout();
     
     useEffect(() => {
         fetchTrainings();
@@ -49,6 +51,7 @@ const ChatbotTrainingScreen = () => {
             const initialEditingState = {};
             data.data.forEach(item => {
                 initialEditingState[item.id] = {
+                    trigger: item.trigger,
                     response: item.response,
                     category: item.category,
                     is_active: item.is_active
@@ -149,6 +152,33 @@ const ChatbotTrainingScreen = () => {
     }
 };
 
+// TODO in BACKEND end Destroy here
+ const handleDeleteTraining = async (id) => {
+    try {
+        const token = await getToken();
+        const updates = editingItems[id];
+        
+        console.log('Deleting the Item:', updates);
+        
+        const { data } = await axios.delete(`${API_BASE}/chatbot-training/delete/${id}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+
+        console.log('Delete response:', data);
+        
+        fetchTrainings();
+    } catch (error) {
+        console.error('Full error:', error.response?.data || error.message);
+        Alert.alert('Error', error.response?.data?.message || 'Failed to delete training');
+        // Refresh from server to ensure consistency
+        fetchTrainings();
+    }
+};
+
 const handleEditChange = (id, field, value) => {
     setEditingItems(prev => ({
         ...prev,
@@ -160,12 +190,13 @@ const handleEditChange = (id, field, value) => {
 };
 
 return (
-    <View style={styles.container}>
-        <Text style={styles.title}>Chatbot Training</Text>
-        <Text>Pending Review: {needsReviewCount}</Text>
+
+    <View style={[styles.container, layoutStyle === 'row' ? styles.webRow : styles.mobileColumn]}>
 
         {/* Add New Training Form - unchanged */}
         <View style={styles.head}>
+        <Text style={styles.title}>Chatbot Training</Text>
+        <Text>Pending Review: {needsReviewCount}</Text> 
             <TextInput
                 placeholder="User message (trigger)"
                 value={newTraining.trigger}
@@ -195,7 +226,14 @@ return (
             renderItem={({ item }) => (
                 <View style={styles.form}>
                     <Text style={styles.trigger}>Trigger Message:</Text>
-                    <Text style={styles.input}>{item.trigger}</Text>
+                    {/* <Text style={styles.input}>{item.trigger}</Text> */}
+                    <TextInput
+                        placeholder="Question"
+                        value={editingItems[item.id]?.trigger || ''}
+                        onChangeText={text => handleEditChange(item.id, 'trigger', text)}
+                        style={styles.input}
+                        multiline
+                    />
                     
                     <Text style={styles.label}>Bot Response:</Text>
                     <TextInput
@@ -221,21 +259,30 @@ return (
                             onValueChange={value => handleEditChange(item.id, 'is_active', value)}
                         />
                     </View>
-                    
-                    {!item.needs_review && (
-                        <Button 
-                            title="Save Changes" 
-                            onPress={() => handleUpdateTraining(item.id)}
-                        />
-                    )}
-                    
-                    {item.needs_review && (
-                        <Button
-                        title="Approve" 
-                        onPress={() => handleUpdateTraining(item.id, { needs_review: false })}
-                        style={styles.approve}
-                        />
-                    )}
+
+                    <View style={styles.buttonContsainer}>
+                        {!item.needs_review && (
+                            <Button 
+                                title="Save Changes" 
+                                onPress={() => handleUpdateTraining(item.id)}
+                            />
+                        )}
+                        
+                        {item.needs_review && (
+                            <Button
+                            title="Approve" 
+                            onPress={() => handleUpdateTraining(item.id, { needs_review: false })}
+                            style={styles.approve}
+                            />
+                        )}
+                        {(
+                            <Button
+                            title="Delete" 
+                            onPress={() => handleDeleteTraining(item.id, { needs_review: false })}
+                            style={styles.deleteBut}
+                            />
+                        )}
+                    </View>
                     
                 </View>
             )}
@@ -249,9 +296,18 @@ const styles = StyleSheet.create({
 container: {
     flex: 1,
     padding: 20,
+    // maxWidth: '60%',
     // backgroundColor: "#fff",
     justifyContent: 'center',
     // alignItems: 'center',  
+    // textAlign: 'center',
+},
+webRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+},
+mobileColumn: {
+    flexDirection: 'column',
 },
 title: {
     fontSize: 20,
@@ -264,7 +320,7 @@ head: {
     borderWidth: 2,
     borderColor: '#ddd',
     borderRadius: 5,
-    // width: "500px",
+    width: "50%",
 },
 form: {
     marginBottom: 20,
@@ -272,7 +328,7 @@ form: {
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 5,
-    // width: "400px"
+    // width: "100%"
 },
 input: {
     borderWidth: 1,
@@ -296,6 +352,14 @@ switchContainer: {
 },
 approve: {
     backgroundColor: '#000',
+},
+buttonContsainer: {
+    gap: '10px'
+},
+deleteBut: {
+    // backgroundColor: '#B03A2E',
+    backgroundColor: 'red',
+    color: '#B03A2E',
 },
 });
 

@@ -95,7 +95,7 @@ export default function ChatbotScreen() {
         user={{
           _id: user?.id || 1,
           name: user?.name || 'User',
-          avatar: user?.avatar || 'https://placeimg.com/140/140/any',
+          avatar: user?.avatar || 'https://s3.amazonaws.com/uifaces/faces/twitter/ladylexy/128.jpg',
         }}
         placeholder="Type your message here..."
         showUserAvatar

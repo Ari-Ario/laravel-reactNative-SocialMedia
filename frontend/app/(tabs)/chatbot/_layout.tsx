@@ -1,8 +1,7 @@
-// app/(tabs)/tab_3/_layout.tsx
 import { Stack } from 'expo-router'
 
 const StackLayout = () => {
-    return <Stack />
+    return <Stack screenOptions={{ headerShown: false }} />
 }
 
 export default StackLayout

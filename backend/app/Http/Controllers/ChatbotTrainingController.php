@@ -39,11 +39,22 @@ class ChatbotTrainingController extends Controller
         return response()->json($training, 201);
     }
 
+    public function destroy($id)
+    {
+
+        $training = ChatbotTraining::findOrFail($id);
+        $training->forceDelete();
+
+        return response()->json(['success' => true]);
+    }
+
+
     public function update(Request $request, $id)
     {
         \Log::info('Update Request Data:', $request->all());
         
         $validated = $request->validate([
+            'trigger' => 'sometimes|string',
             'response' => 'sometimes|string',
             'category' => 'nullable|string|max:50',
             'is_active' => 'sometimes|boolean'
@@ -57,6 +68,7 @@ class ChatbotTrainingController extends Controller
             
             // Update the record
             $training->update([
+                'trigger' => $validated['trigger'] ?? $training->trigger,
                 'response' => $validated['response'] ?? $training->response,
                 'category' => $validated['category'] ?? $training->category,
                 'is_active' => $validated['is_active'] ?? $training->is_active,

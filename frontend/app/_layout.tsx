@@ -26,9 +26,9 @@ export default function RootLayout() {
   const router = useRouter();
 
   useEffect(() => {
-    let isMounted = true; // Track mounted state
+    let isMounted = true;
 
-    async function runEffct() {
+    async function initialize() {
       try {
         const token = await getToken();
         if (!isMounted) return;
@@ -36,29 +36,26 @@ export default function RootLayout() {
         if (token) {
           const userData = await loadUser();
           if (isMounted) setUser(userData);
-        } else {
-          if (isMounted) setUser(null);
         }
       } catch (error) {
-        if (isMounted) {
-          setUser(null);
-          console.log("Initial auth check failed:", error);
-        }
+        console.log("Initial auth check failed:", error);
       } finally {
         if (isMounted) {
           setIsReady(true);
-          SplashScreen.hideAsync();
+          await SplashScreen.hideAsync();
         }
       }
     }
 
-    runEffct();
-    
+    initialize();
+
+    return () => { isMounted = false };
   }, []);
 
   useEffect(() => {
     if (isReady) {
       if (user) {
+        console.log("leading to tabs, If user exists!")
         router.replace('/(tabs)');
       } else if (!user || user === null) {
         router.replace('/');
@@ -67,7 +64,7 @@ export default function RootLayout() {
         router.replace('/');
       }
     }
-  }, []); // Add  here
+  }, [isReady, user]); // Add  here
 
   if (!isReady) {
     return (
@@ -79,35 +76,8 @@ export default function RootLayout() {
 
   return (
     <AuthContext.Provider value={{ user, setUser }}>
-      {/* <NavigationContainer>
-        <Stack.Navigator>
-          <Stack.Screen
-            name="Login"
-            component={LoginScreen}
-            options={{
-              transitionSpec: {
-                open: config,
-                close: config,
-              },
-            }}
-          />
-          
-          <Stack.Screen 
-          name="Register" 
-          component={RegisterScreen} 
-          options={{
-            transitionSpec: {
-              open: config,
-              close: config,
-            },
-          }}
-          />
-        </Stack.Navigator>
-      </NavigationContainer> */}
 
-      {/* Empty stack since we're handling redirects via router */}
       <Stack screenOptions={{ headerShown: false }} />
-
 
     </AuthContext.Provider>
   );

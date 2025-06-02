@@ -42,6 +42,7 @@ Route::group(["middleware" => ["auth:sanctum"]], function() {
         Route::post('/bulk-approve', [ChatbotTrainingController::class, 'bulkApprove']);
         Route::get('/needs-review', [ChatbotTrainingController::class, 'needsReview']);
         Route::get('/categories', [ChatbotTrainingController::class, 'categories']);
+        Route::delete('/delete/{id}', [ChatbotTrainingController::class, 'destroy']);
     });
 });
 
