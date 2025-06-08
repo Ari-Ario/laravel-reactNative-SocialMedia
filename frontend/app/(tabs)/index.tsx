@@ -165,7 +165,7 @@ const HomePage = () => {
           />
           
           <FloatingActionButton onPress={() => {
-            router.setParams({}); // Clear any edit params
+            router.setParams({ postId: null }); // Clear any edit params
             setIsCreateModalVisible(true);
           }} />
 

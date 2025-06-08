@@ -17,8 +17,7 @@ import ReportPost from './ReportPost';
 import { deletePost } from '@/services/PostService';
 import AuthContext from '@/context/AuthContext';
 import { router } from 'expo-router';
-import { Alert } from 'react-native';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 
 interface Comment {
   id: number;
@@ -108,30 +107,50 @@ const { user, setUser } = useContext(AuthContext);
 const isOwner = user?.id === post.user.id;
 
 const handleDelete = async () => {
-    Alert.alert(
-        "Delete Post",
-        "Are you sure you want to delete this post?",
-        [
-            {
-                text: "Cancel",
-                style: "cancel",
-                onPress: () => setMenuVisible(false)
-            },
-            {
-                text: "Delete",
-                style: "destructive",
-                onPress: async () => {
-                    try {
-                        await deletePost(post.id);
-                        // You might want to add a callback to refresh the posts
-                        setMenuVisible(false);
-                    } catch (error) {
-                        console.error('Error deleting post:', error);
-                    }
-                }
-            }
-        ]
-    );
+    try {
+        const confirmMessage = Platform.OS === 'web' 
+            ? window.confirm("Are you sure you want to delete this post?")
+            : await new Promise((resolve) => {
+                Alert.alert(
+                    "Delete Post",
+                    "Are you sure you want to delete this post?",
+                    [
+                        { text: "Cancel", onPress: () => resolve(false) },
+                        { text: "Delete", onPress: () => resolve(true) }
+                    ]
+                );
+            });
+
+        if (!confirmMessage) {
+            setMenuVisible(false);
+            return;
+        }
+
+        await deletePost(post.id);
+        setMenuVisible(false);
+        
+        if (Platform.OS === 'web') {
+            alert("Post deleted successfully");
+        } else {
+            Alert.alert("Success", "Post deleted successfully");
+        }
+        
+        // Refresh posts list
+        // if (onPostDeleted) {
+        //     onPostDeleted();
+        // }
+        setMenuVisible(false);
+
+    } catch (error) {
+        console.error('Delete error:', error);
+        const errorMessage = error.message || "Could not delete post. Please try again.";
+        
+        if (Platform.OS === 'web') {
+            alert(errorMessage);
+        } else {
+            Alert.alert("Error", errorMessage);
+        }
+    }
 };
 
 const handleEdit = () => {
@@ -280,10 +299,11 @@ const renderComment = ({ item }: { item: Comment }) => (
         </View>
       )}
 
+      <View style={styles.head}>
       {/* Post header */}
       <View style={styles.header}>
         <Image
-          source={{ uri: post.user.avatar_url || 'https://via.placeholder.com/48' }}
+          source={{ uri: post.user.avatar_url || '@/assets/favicon.png' }}
           style={styles.avatar}
         />
         <Text style={styles.username}>{post.user.name}</Text>
@@ -299,6 +319,7 @@ const renderComment = ({ item }: { item: Comment }) => (
         >
             <Ionicons name="ellipsis-horizontal" size={20} />
         </TouchableOpacity>
+      </View>
       </View>
 
       {/* Post media */}
@@ -460,6 +481,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
+  head: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -470,6 +496,12 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     marginRight: 10,
+  },
+  menuContainer: {
+    flexDirection: 'row',
+    width: '80%',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   username: {
     fontWeight: 'bold',
@@ -628,9 +660,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
-  },
-  menuContainer: {
-    flexDirection: 'row'
   },
   menuButton: {
     marginLeft: 'auto',

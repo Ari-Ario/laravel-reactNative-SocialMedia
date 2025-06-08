@@ -37,7 +37,18 @@ export async function createPost(formData) {
   return response.data;
 }
 
-// services/PostService.tsx
+export async function deletePostMedia(postId: number, mediaId: number) {
+    const token = await getToken();
+    const API_BASE = getApiBase();
+    
+    const response = await axios.delete(`${API_BASE}/posts/${postId}/media/${mediaId}`, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+    
+    return response.data;
+}
 
 export async function updatePost(postId: number, formData: FormData) {
     const token = await getToken();
@@ -59,12 +70,27 @@ export async function updatePost(postId: number, formData: FormData) {
 export async function deletePost(postId: number) {
     const token = await getToken();
     const API_BASE = getApiBase();
-    const response = await axios.delete(`${API_BASE}/posts/${postId}`, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    });
-    return response.data;
+    
+    try {
+        const response = await axios.delete(`${API_BASE}/posts/${postId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+            },
+        });
+        return response.data;
+    } catch (error) {
+        // Simple error handling that works universally
+        const errorMessage = error.response?.data?.message || 
+                           error.message || 
+                           'Failed to delete post';
+        console.error('Delete post error:', {
+            status: error.response?.status,
+            message: errorMessage,
+            error: error
+        });
+        throw new Error(errorMessage);
+    }
 }
 
 export async function fetchPost(postId: number) {

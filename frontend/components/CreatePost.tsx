@@ -17,6 +17,8 @@ import { Camera, CameraType } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { createPost, updatePost } from '@/services/PostService';
 import { useLocalSearchParams, router } from 'expo-router';
+import getApiBaseImage from '@/services/getApiBaseImage';
+import { deletePostMedia } from '@/services/PostService';
 
 interface CreatePostProps {
   visible: boolean;
@@ -35,6 +37,7 @@ export default function CreatePost({ visible, onClose, onPostCreated }: CreatePo
   const [cameraVisible, setCameraVisible] = useState(false);
   const [cameraType, setCameraType] = useState<CameraType>(CameraType?.back || CameraType?.front);
   const cameraRef = useRef(null);
+  const [deleteStatus, setDeleteStatus] = useState<{visible: boolean, message: string}>({visible: false, message: ''});
 
   // Initialize with edit data if available
     useEffect(() => {
@@ -98,13 +101,39 @@ export default function CreatePost({ visible, onClose, onPostCreated }: CreatePo
     }
   };
 
-  const removeMedia = (index: number) => {
-    const newMedia = [...media];
-    newMedia.splice(index, 1);
-    setMedia(newMedia);
+
+  const removeMedia = async (index: number) => {
+    const item = media[index];
+    
+    // If this is existing media (has an ID)
+    if (item.id && isEditing) {
+      try {
+        await deletePostMedia(Number(params.postId), item.id);
+        
+        // Show success message
+        setDeleteStatus({visible: true, message: 'Media deleted successfully'});
+        
+        // Hide after 3 seconds
+        setTimeout(() => setDeleteStatus({visible: false, message: ''}), 3000);
+        
+        // Remove from local state
+        const newMedia = [...media];
+        newMedia.splice(index, 1);
+        setMedia(newMedia);
+        
+      } catch (error) {
+        Alert.alert('Error', 'Failed to delete media');
+        console.error('Media deletion error:', error);
+      }
+    } else {
+      // For new uploads, just remove from array
+      const newMedia = [...media];
+      newMedia.splice(index, 1);
+      setMedia(newMedia);
+    }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async () => {  // Make sure this is marked async
     if (!caption.trim() && media.length === 0) {
       Alert.alert('Error', 'Please add a caption or media');
       return;
@@ -117,43 +146,50 @@ export default function CreatePost({ visible, onClose, onPostCreated }: CreatePo
 
       if (isEditing) {
         formData.append('_method', 'PUT');
-      }
-
-      // Append each media file
-      await Promise.all(media.map(async (item, index) => {
-        // Skip if this is existing media (has an ID)
-        if (item.id) return;
-
-        let file;
         
-        if (Platform.OS === 'web') {
-          const response = await fetch(item.uri);
-          const blob = await response.blob();
-          file = new File([blob], `media-${index}.${item.uri.split('.').pop()}`, {
-            type: item.type || 'image/jpeg',
-          });
-        } else {
-          const fileType = item.uri.split('.').pop();
-          const fileName = item.fileName || `media-${Date.now()}.${fileType}`;
-          
-          file = {
-            uri: item.uri,
-            name: fileName,
-            type: item.type || `image/${fileType}`,
-          };
-        }
-
-        formData.append(`media[${index}]`, file);
-      }));
-
-      if (isEditing && params.postId) {
-        await updatePost(Number(params.postId), formData);
-      } else {
-        await createPost(formData);
+        // Handle media to delete (marked with _deleted)
+        media.forEach(item => {
+          if (item._deleted && item.id) {
+            formData.append('delete_media[]', item.id.toString());
+          }
+        });
       }
+
+      // Handle new media uploads
+      const uploadPromises = media
+        .filter(item => !item.id && !item._deleted)
+        .map(async (item, index) => {
+          let file;
+          
+          if (Platform.OS === 'web') {
+            const response = await fetch(item.uri);
+            const blob = await response.blob();
+            file = new File([blob], `media-${index}.${item.uri.split('.').pop()}`, {
+              type: item.type || 'image/jpeg',
+            });
+          } else {
+            const fileType = item.uri.split('.').pop();
+            const fileName = item.fileName || `media-${Date.now()}.${fileType}`;
+            
+            file = {
+              uri: item.uri,
+              name: fileName,
+              type: item.type || `image/${fileType}`,
+            };
+          }
+
+          formData.append(`media[${index}]`, file);
+        });
+
+      await Promise.all(uploadPromises);
+
+      // Make the API call
+      const response = isEditing && params.postId
+        ? await updatePost(Number(params.postId), formData)
+        : await createPost(formData);
 
       onPostCreated();
-      onClose();
+      handleClose();
     } catch (error) {
       console.error('Error creating/updating post:', error);
       Alert.alert('Error', `Failed to ${isEditing ? 'update' : 'create'} post`);
@@ -161,6 +197,17 @@ export default function CreatePost({ visible, onClose, onPostCreated }: CreatePo
       setIsUploading(false);
     }
   };
+
+const handleClose = () => {
+  setCaption('');
+  setMedia([]);
+  router.setParams({
+    postId: null,
+    caption: '',
+    media: null
+  });
+  onClose(); // Call the original onClose prop
+};
 
   if (cameraVisible) {
     return (
@@ -202,11 +249,17 @@ export default function CreatePost({ visible, onClose, onPostCreated }: CreatePo
       visible={visible}
       animationType="slide"
       transparent={false}
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
     >
       <View style={styles.container}>
+        {/* Status message */}
+        {deleteStatus.visible && (
+          <View style={styles.deleteStatus}>
+            <Text style={styles.deleteStatusText}>{deleteStatus.message}</Text>
+          </View>
+        )}
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose}>
+          <TouchableOpacity onPress={handleClose}>
             <Ionicons name="close" size={24} color="black" />
           </TouchableOpacity>
           <Text style={styles.title}>{isEditing ? 'Edit Post' : 'New Post'}</Text>
@@ -239,7 +292,7 @@ export default function CreatePost({ visible, onClose, onPostCreated }: CreatePo
               {media.map((item, index) => (
                 <View key={index} style={styles.mediaItem}>
                   <Image
-                    source={{ uri: item.file_path ? `http://127.0.0.1:8000/storage/${item.file_path}` : item.uri }}
+                    source={{ uri: item.file_path ? `${getApiBaseImage()}/storage/${item.file_path}` : item.uri }}
                     style={styles.mediaPreview}
                     resizeMode="contain"
                   />
@@ -247,7 +300,7 @@ export default function CreatePost({ visible, onClose, onPostCreated }: CreatePo
                     style={styles.removeMediaButton}
                     onPress={() => removeMedia(index)}
                   >
-                    <Ionicons name="close-circle" size={24} color="white" />
+                    <Ionicons name="trash" size={24} color="white" />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -357,8 +410,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 12,
+    backgroundColor: 'rgba(255,0,0,0.7)',
+    borderRadius: 15,
+    padding: 4,
   },
   mediaButtons: {
     flexDirection: 'row',
@@ -376,4 +430,18 @@ const styles = StyleSheet.create({
     color: '#1DA1F2',
     marginTop: 5,
   },
+deleteStatus: {
+  position: 'absolute',
+  top: 10,
+  left: 0,
+  right: 0,
+  backgroundColor: 'rgba(0,0,0,0.7)',
+  padding: 10,
+  zIndex: 100,
+  alignItems: 'center'
+},
+deleteStatusText: {
+  color: 'white',
+  fontWeight: 'bold'
+},
 });

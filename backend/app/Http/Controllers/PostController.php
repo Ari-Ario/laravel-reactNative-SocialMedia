@@ -7,11 +7,15 @@ use App\Models\Reaction;
 use App\Models\Comment;
 use App\Models\Repost;
 use App\Models\Bookmark;
+use App\Models\Media;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\Controller;
 
 class PostController extends Controller
 {
@@ -73,31 +77,35 @@ class PostController extends Controller
 
     public function update(Request $request, Post $post)
     {
+        // Verify ownership
+        if ($post->user_id !== Auth::id()) {
+            abort(403, 'Unauthorized action.');
+        }
+
         $request->validate([
             'caption' => 'nullable|string|max:500',
             'media' => 'sometimes|array|max:10',
             'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,avi,mp3,wav,pdf,doc,docx|max:20480',
-            'deleted_media' => 'sometimes|array',
-            'deleted_media.*' => 'exists:media,id'
+            'delete_media' => 'sometimes|array',
+            'delete_media.*' => 'exists:media,id'
         ]);
 
-        // Update caption
-        $post->update(['caption' => $request->caption]);
+        // Update caption if changed
+        if ($request->has('caption')) {
+            $post->caption = $request->caption;
+            $post->save();
+        }
 
-        // Handle deleted media
-        if ($request->has('deleted_media')) {
-            $mediaToDelete = Media::whereIn('id', $request->deleted_media)
-                ->where('model_id', $post->id)
-                ->where('model_type', Post::class)
-                ->get();
-
-            foreach ($mediaToDelete as $media) {
+        // Handle media deletions
+        if ($request->has('delete_media')) {
+            foreach ($request->delete_media as $mediaId) {
+                $media = Media::find($mediaId);
                 Storage::disk('public')->delete($media->file_path);
                 $media->delete();
             }
         }
 
-        // Handle new media
+        // Handle new media uploads
         if ($request->hasFile('media')) {
             foreach ($request->file('media') as $file) {
                 $type = $this->getMediaType($file->getMimeType());
@@ -114,22 +122,78 @@ class PostController extends Controller
             }
         }
 
-        return response()->json($post->load('user', 'media'));
+        return response()->json($post->fresh()->load('user', 'media'));
     }
-        
-    public function destroy(Post $post)
-    {
-        $this->authorize('delete', $post);
 
-        // Delete all associated media files from storage
-        foreach ($post->media as $media) {
-            Storage::disk('public')->delete($media->file_path);
-            $media->delete();
+    public function deleteMedia(Post $post, Media $media)
+    {
+        // Verify user owns the post
+        if ($post->user_id !== Auth::id()) {
+            abort(403, 'Unauthorized action.');
         }
 
-        $post->delete();
+        // Verify media belongs to post
+        // if ($media->post_id !== $post->id) {
+        //     abort(400, 'Media does not belong to this post');
+        // }
 
-        return response()->json(['message' => 'Post deleted successfully']);
+        // Delete file from storage
+        Storage::disk('public')->delete($media->file_path);
+
+        // Delete record from database
+        $media->delete();
+
+        return response()->json([
+            'message' => 'Media deleted successfully',
+            'remaining_media' => $post->media()->count()
+        ]);
+    }
+        
+
+    public function destroy(Post $post)
+    {
+        // Manual authorization check
+        if (auth()->id() !== $post->user_id) {
+            return response()->json([
+                'message' => 'Unauthorized: You can only delete your own posts'
+            ], 403);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Delete media files
+            foreach ($post->media as $media) {
+                // Skip if file doesn't exist
+                if (!Storage::disk('public')->exists($media->file_path)) {
+                    continue;
+                }
+                
+                // Delete file and database record
+                Storage::disk('public')->delete($media->file_path);
+                $media->delete();
+            }
+
+            // Delete the post
+            $post->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Post deleted successfully',
+                'deleted_media_count' => $post->media()->count()
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            \Log::error('Post deletion failed: ' . $e->getMessage());
+            
+            return response()->json([
+                'message' => 'Failed to delete post',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
 
