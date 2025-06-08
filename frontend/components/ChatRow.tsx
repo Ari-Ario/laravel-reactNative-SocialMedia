@@ -19,7 +19,7 @@ const ChatRow: FC<ChatRowProps> = ({ id, from, date, img, msg, read, unreadCount
   return (
     <Swipeable>
       <Link href={`/(tabs)/chats/${id}`} asChild>
-        <TouchableHighlight activeOpacity={0.8} underlayColor={Colors.lightGray}>
+        <TouchableHighlight activeOpacity={0.8} underlayColor={'grey'}>
           <View
             style={{
               flexDirection: 'row',

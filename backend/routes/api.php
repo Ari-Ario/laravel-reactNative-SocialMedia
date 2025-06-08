@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\ChatbotTrainingController;
+use App\Http\Controllers\PostController;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -44,6 +45,21 @@ Route::group(["middleware" => ["auth:sanctum"]], function() {
         Route::get('/categories', [ChatbotTrainingController::class, 'categories']);
         Route::delete('/delete/{id}', [ChatbotTrainingController::class, 'destroy']);
     });
+
+    // Posts
+    Route::get('/posts', [PostController::class, 'index']);
+    Route::post('/posts', [PostController::class, 'store']);
+    Route::post('/posts/{post}', [PostController::class, 'update']);
+    Route::delete('/posts/{post}', [PostController::class, 'destroy']);
+
+    Route::post('/posts/{post}/repost', [PostController::class, 'repost']);
+    Route::post('/posts/{post}/share', [PostController::class, 'share']);
+    Route::post('/posts/{post}/bookmark', [PostController::class, 'bookmark']);
+    // Reactions
+    Route::post('/posts/{post}/react', [PostController::class, 'react']);
+    
+    // Comments
+    Route::post('/posts/{post}/comment', [PostController::class, 'comment']);
 });
 
 Route::post('/forgot-password', [PasswordResetLinkController::class, 'store']);

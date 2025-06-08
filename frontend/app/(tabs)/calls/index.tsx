@@ -185,7 +185,6 @@ const styles = StyleSheet.create({
   },
   item: {
     flex: 1,
-    paddingLeft: 20,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,

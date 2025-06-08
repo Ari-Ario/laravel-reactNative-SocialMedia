@@ -31,24 +31,3 @@ export async function getToken() {
         console.error('SecureStore error:', error);
     }
 }
-
-// export async function getToken() {
-//   try {
-//     // First check in-memory cache
-//     if (token) {
-//       console.log("Token exists already: ", token);
-//       return token;
-//     }
-  
-//     // Then check SecureStore
-//     const storedToken = await SecureStore.getItemAsync("token");
-//     if (storedToken) {
-//       token = storedToken;
-//       return token;
-//     }
-//     return null;
-//   } catch (error) {
-//     console.error('Token read error:', error);
-//     return null;
-//   }
-// }

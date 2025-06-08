@@ -196,7 +196,6 @@ return (
         {/* Add New Training Form - unchanged */}
         <View style={styles.head}>
         <Text style={styles.title}>Chatbot Training</Text>
-        <Text>Pending Review: {needsReviewCount}</Text> 
             <TextInput
                 placeholder="User message (trigger)"
                 value={newTraining.trigger}
@@ -216,7 +215,11 @@ return (
                 onChangeText={text => setNewTraining({...newTraining, category: text})}
                 style={styles.input}
             />
-            <Button title="Add Training" onPress={handleAddTraining} />
+            <Button title="Add Training" color={'#075E54'} onPress={handleAddTraining} />
+            { needsReviewCount ? (
+                <Text style={styles.review}>▼ Pending Review: {needsReviewCount} ▼</Text> 
+
+            ) : ( <></>)}
         </View>
 
         {/* Training List - now with save buttons */}
@@ -272,6 +275,7 @@ return (
                             <Button
                             title="Approve" 
                             onPress={() => handleUpdateTraining(item.id, { needs_review: false })}
+                            color={'#2B2D42'}
                             style={styles.approve}
                             />
                         )}
@@ -279,6 +283,7 @@ return (
                             <Button
                             title="Delete" 
                             onPress={() => handleDeleteTraining(item.id, { needs_review: false })}
+                            color={'#FF5733'}
                             style={styles.deleteBut}
                             />
                         )}
@@ -296,31 +301,38 @@ const styles = StyleSheet.create({
 container: {
     flex: 1,
     padding: 20,
-    // maxWidth: '60%',
+    width: '100%',
+    maxWidth: 500,
     // backgroundColor: "#fff",
     justifyContent: 'center',
-    // alignItems: 'center',  
+    alignSelf: 'center',  
     // textAlign: 'center',
 },
-webRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-},
-mobileColumn: {
-    flexDirection: 'column',
-},
+// webRow: {
+//     flexDirection: 'row',
+//     justifyContent: 'space-between',
+// },
+// mobileColumn: {
+//     flexDirection: 'column',
+// },
 title: {
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 10,
+    alignSelf: 'center',
 },
 head: {
     marginBottom: 20,
     padding: 15,
     borderWidth: 2,
-    borderColor: '#ddd',
+    borderColor: 'black',
     borderRadius: 5,
-    width: "50%",
+    width: "100%",
+},
+review: {
+    marginTop: 20,
+    textAlign: 'center',
+    color: 'red'
 },
 form: {
     marginBottom: 20,
@@ -328,7 +340,9 @@ form: {
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 5,
-    // width: "100%"
+    backgroundColor: '#FAF9F6',
+    shadowRadius: 1,
+    shadowColor: 'black',
 },
 input: {
     borderWidth: 1,
@@ -336,6 +350,7 @@ input: {
     padding: 10,
     marginBottom: 10,
     borderRadius: 5,
+    backgroundColor: '#fff',
 },
 label: {
     marginBottom: 5,
