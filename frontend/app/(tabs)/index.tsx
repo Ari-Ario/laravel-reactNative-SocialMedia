@@ -1,4 +1,4 @@
-import { View, Text, Pressable, StyleSheet, Button, ActivityIndicator, ScrollView, FlatList, TextInput, TouchableOpacity } from "react-native";
+import { View, Text, Pressable, StyleSheet, Button, ActivityIndicator, ScrollView, FlatList, Image, TouchableOpacity } from "react-native";
 import { Link, router, Stack } from 'expo-router';
 import { useState, useEffect } from "react";
 import AuthContext from "@/context/AuthContext";
@@ -9,10 +9,12 @@ import PostListItem from '@/components/PostListItem';
 import { Alert } from 'react-native';
 import EmojiPicker from 'rn-emoji-keyboard';
 import FloatingActionButton from '@/components/FloatingActionButton';
-import getApiBase from "@/services/getApiBase";
+import getApiBaseImage from "@/services/getApiBaseImage";
 import { getToken } from "@/services/TokenService";
 import { fetchPosts, bookmarkPost, repostPost, sharePost, commentOnPost, reactToPost } from "@/services/PostService";
 import CreatePost from "@/components/CreatePost";
+import { Ionicons } from "@expo/vector-icons";
+
 const HomePage = () => {
     const { user, setUser } = useContext(AuthContext);
     const [posts, setPosts] = useState<any[]>([]);
@@ -106,14 +108,13 @@ const HomePage = () => {
         }
     }, [user]);
 
-
     useEffect(() => {
-        if (!user || (user === null)) {
-          router.replace('/LoginScreen');
-        } else { 
-          console.log("asking for Authentication from Index");
-        }
+      if (user === undefined) return; // still loading, don't redirect
+      if (user === null) {
+        router.replace('/LoginScreen');
+      }
     }, [user]);
+
 
     if (!user) {
       return (
@@ -131,12 +132,42 @@ const HomePage = () => {
       );
     }
 
+  const renderProfilePhoto = () => {
+    if (user?.profile_photo) {
+      return (
+        <Image 
+          source={{ uri: `${getApiBaseImage()}/storage/${user.profile_photo}` }}
+          style={styles.profilePhoto}
+        />
+      );
+    } else {
+      const initials = `${user?.name?.charAt(0) || ''}${user?.last_name?.charAt(0) || ''}`;
+      return (
+        <View style={[styles.profilePhoto, styles.initialsContainer]}>
+          <Text style={styles.initials}>{initials}</Text>
+        </View>
+      );
+    }
+  };
+
     return (
       <AuthContext.Provider value={{ user, setUser }}>
         <View style={styles.container}>
           {/* Header with welcome message and logout button */}
           <View style={styles.header}>
-            <Text style={styles.welcomeText}>Welcome, {user.name}</Text>
+
+            <View style={styles.profilePhoto}>
+              <TouchableOpacity onPress={() => setShowPhotoOptions(true)}>
+                <View style={styles.photoContainer}>
+                  {renderProfilePhoto()}
+                  <View style={styles.addIconContainer}>
+                    <Ionicons name="add" size={10} color="white" />
+                  </View>
+                </View>
+              </TouchableOpacity>
+              
+              <Text style={styles.userName}>{user?.name}</Text>
+            </View>
             <Button title="Logout" onPress={handleLogout} />
           </View>
 
@@ -191,14 +222,44 @@ const styles = StyleSheet.create({
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: 15,
+      padding: 5,
       backgroundColor: '#f8f8f8',
       borderBottomWidth: 1,
       borderBottomColor: '#eee',
     },
-    welcomeText: {
-      fontSize: 16,
-      fontWeight: '500',
+    photoContainer: {
+      position: 'relative',
+      marginBottom: 0,
+      display: 'flex',
+    },
+    profilePhoto: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      width: 60,
+      height: 60,
+      borderRadius: 60,
+      backgroundColor: '#e1e1e1',
+    },
+    userName: {
+      paddingLeft: 10,
+    },
+    initials: {
+      fontSize: 40,
+      fontWeight: 'bold',
+      color: '#555',
+    },
+    initialsContainer: {
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    addIconContainer: {
+      position: 'absolute',
+      right: 0,
+      bottom: 0,
+      backgroundColor: '#25D366',
+      borderRadius: 20,
+      padding: 5,
     },
     listContent: {
       gap: 10,

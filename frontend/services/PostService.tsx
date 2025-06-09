@@ -37,19 +37,6 @@ export async function createPost(formData) {
   return response.data;
 }
 
-export async function deletePostMedia(postId: number, mediaId: number) {
-    const token = await getToken();
-    const API_BASE = getApiBase();
-    
-    const response = await axios.delete(`${API_BASE}/posts/${postId}/media/${mediaId}`, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    });
-    
-    return response.data;
-}
-
 export async function updatePost(postId: number, formData: FormData) {
     const token = await getToken();
     const API_BASE = getApiBase();
@@ -66,6 +53,21 @@ export async function updatePost(postId: number, formData: FormData) {
     
     return response.data;
 }
+
+
+export async function deletePostMedia(postId: number, mediaId: number) {
+    const token = await getToken();
+    const API_BASE = getApiBase();
+    
+    const response = await axios.delete(`${API_BASE}/posts/${postId}/media/${mediaId}`, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+    
+    return response.data;
+}
+
 
 export async function deletePost(postId: number) {
     const token = await getToken();

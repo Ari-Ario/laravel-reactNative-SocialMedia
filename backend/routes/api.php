@@ -8,6 +8,7 @@ use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\ChatbotTrainingController;
 use App\Http\Controllers\PostController;
+use App\Http\Controllers\ProfileController;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -44,6 +45,11 @@ Route::group(["middleware" => ["auth:sanctum"]], function() {
         Route::get('/needs-review', [ChatbotTrainingController::class, 'needsReview']);
         Route::get('/categories', [ChatbotTrainingController::class, 'categories']);
         Route::delete('/delete/{id}', [ChatbotTrainingController::class, 'destroy']);
+    });
+
+    Route::prefix('profile')->group(function () {
+        Route::post('/photo', [ProfileController::class, 'uploadPhoto']);
+        Route::delete('/photo', [ProfileController::class, 'deletePhoto']);
     });
 
     // Posts

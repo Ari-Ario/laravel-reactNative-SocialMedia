@@ -14,11 +14,11 @@ import { useState, useContext } from 'react';
 import EmojiPicker from 'rn-emoji-keyboard';
 import PostMenu from './PostMenu';
 import ReportPost from './ReportPost';
-import { deletePost } from '@/services/PostService';
+import { deletePost, fetchPosts } from '@/services/PostService';
 import AuthContext from '@/context/AuthContext';
 import { router } from 'expo-router';
 import { Platform, Alert } from 'react-native';
-
+import getApiBaseImage from '@/services/getApiBaseImage';
 interface Comment {
   id: number;
   content: string;
@@ -139,6 +139,7 @@ const handleDelete = async () => {
         // if (onPostDeleted) {
         //     onPostDeleted();
         // }
+        fetchPosts();
         setMenuVisible(false);
 
     } catch (error) {
@@ -174,25 +175,6 @@ const handleReport = () => {
 const handleReportSubmitted = () => {
     Alert.alert("Report Submitted", "Thank you for your report. We'll review it shortly.");
 };
-const getApiBaseImage = () => {
-    const isWeb = Platform.OS === 'web';
-  
-    if (Platform.OS === 'android') {
-      console.log("platform is Android");
-  
-      return 'http://10.0.2.2:8000'; // Android emulator
-    }
-    if (Platform.OS === 'ios') {
-      return 'http://localhost:8000'; // iOS simulator
-    } 
-    if (Platform.OS === 'web') {
-      console.log("platform is WEB");
-  
-      return 'http://127.0.0.1:8000';
-    } else {
-      console.log("Platform is unknown. Use Web, Android or IOS!")
-    }
-  };
 
 
   // Default emojis to show if no reactions exist
@@ -214,77 +196,77 @@ const getApiBaseImage = () => {
     setIsEmojiPickerOpen(false);
   };
 
-const renderComment = ({ item }: { item: Comment }) => (
-  <View style={styles.commentContainer}>
-    {/* Comment header */}
-    <View style={styles.commentHeader}>
-      <Image
-        source={{ uri: item.user.avatar_url || 'https://via.placeholder.com/32' }}
-        style={styles.commentAvatar}
-      />
-      <Text style={styles.commentUsername}>{item.user.name}</Text>
-    {/* Comment content */}
-    <Text style={styles.commentContent}>{item.content}</Text>
-    </View>
-    
-    
-      <View style={styles.commentButtons} >
-
-      {/* Reply button - MOVED ABOVE REACTIONS */}
-      <TouchableOpacity
-        style={styles.replyButton}
-        onPress={() => {
-          setReplyingTo(item.id);
-          setCommentText(`@${item.user.name} `);
-        }}
-      >
-        <Text style={styles.replyButtonText}>Reply</Text>
-      </TouchableOpacity>
-      
-      {/* Comment reactions - MOVED BELOW REPLY */}
-      <View style={styles.commentReactions}>
-        {item.reaction_counts?.length > 0 ? (
-          <TouchableOpacity
-            style={styles.reactionBar}
-            onPress={() => {
-              setCurrentReactingItem({ postId: post.id, commentId: item.id });
-              setIsEmojiPickerOpen(true);
-            }}
-          >
-            {item.reaction_counts.map((reaction, idx) => (
-              <View key={idx} style={styles.reactionItem}>
-                <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
-                <Text style={styles.reactionCount}>{reaction.count}</Text>
-              </View>
-            ))}
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={styles.addReactionButton}
-            onPress={() => {
-              setCurrentReactingItem({ postId: post.id, commentId: item.id });
-              setIsEmojiPickerOpen(true);
-            }}
-          >
-            <Text style={styles.addReactionText}>Add reaction</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-    </View>
-    
-    {/* Nested replies */}
-    {item.replies?.length > 0 && (
-      <View style={styles.repliesContainer}>
-        <FlatList
-          data={item.replies}
-          renderItem={renderComment}
-          keyExtractor={(reply) => reply.id.toString()}
+  const renderComment = ({ item }: { item: Comment }) => (
+    <View style={styles.commentContainer}>
+      {/* Comment header */}
+      <View style={styles.commentHeader}>
+        <Image
+          source={{ uri: item.user.avatar_url || 'https://via.placeholder.com/32' }}
+          style={styles.commentAvatar}
         />
+        <Text style={styles.commentUsername}>{item.user.name}</Text>
+      {/* Comment content */}
+      <Text style={styles.commentContent}>{item.content}</Text>
       </View>
-    )}
-  </View>
-);
+      
+      
+        <View style={styles.commentButtons} >
+
+        {/* Reply button - MOVED ABOVE REACTIONS */}
+        <TouchableOpacity
+          style={styles.replyButton}
+          onPress={() => {
+            setReplyingTo(item.id);
+            setCommentText(`@${item.user.name} `);
+          }}
+        >
+          <Text style={styles.replyButtonText}>Reply</Text>
+        </TouchableOpacity>
+        
+        {/* Comment reactions - MOVED BELOW REPLY */}
+        <View style={styles.commentReactions}>
+          {item.reaction_counts?.length > 0 ? (
+            <TouchableOpacity
+              style={styles.reactionBar}
+              onPress={() => {
+                setCurrentReactingItem({ postId: post.id, commentId: item.id });
+                setIsEmojiPickerOpen(true);
+              }}
+            >
+              {item.reaction_counts.map((reaction, idx) => (
+                <View key={idx} style={styles.reactionItem}>
+                  <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
+                  <Text style={styles.reactionCount}>{reaction.count}</Text>
+                </View>
+              ))}
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.addReactionButton}
+              onPress={() => {
+                setCurrentReactingItem({ postId: post.id, commentId: item.id });
+                setIsEmojiPickerOpen(true);
+              }}
+            >
+              <Text style={styles.addReactionText}>Add reaction</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+      </View>
+      
+      {/* Nested replies */}
+      {item.replies?.length > 0 && (
+        <View style={styles.repliesContainer}>
+          <FlatList
+            data={item.replies}
+            renderItem={renderComment}
+            keyExtractor={(reply) => reply.id.toString()}
+          />
+        </View>
+      )}
+    </View>
+  );
 
   return (
     <View style={styles.container}>
@@ -303,7 +285,7 @@ const renderComment = ({ item }: { item: Comment }) => (
       {/* Post header */}
       <View style={styles.header}>
         <Image
-          source={{ uri: post.user.avatar_url || '@/assets/favicon.png' }}
+          source={{ uri: `${getApiBaseImage()}/storage/${user.profile_photo}` || '@/assets/favicon.png' }}
           style={styles.avatar}
         />
         <Text style={styles.username}>{post.user.name}</Text>

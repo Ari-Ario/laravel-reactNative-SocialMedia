@@ -67,6 +67,7 @@ class AuthenticatedSessionController extends Controller
                 'id' => $request->user()->id,
                 'name' => $request->user()->name,
                 'email' => $request->user()->email,
+                'profile_photo' => $request->user()->profile_photo,
                 // 'created_at' => $request->user()->created_at->toDateTimeString()
             ]
         ]);

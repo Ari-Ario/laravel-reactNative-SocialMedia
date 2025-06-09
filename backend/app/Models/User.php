@@ -56,6 +56,7 @@ class User extends Authenticatable
                 'id' => $this->id,
                 'name' => $this->name,
                 'email' => $this->email,
+                'profile_photo' => $this->profile_photo,
                 // Add other safe-to-expose fields
             ];
         }

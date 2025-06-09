@@ -1,47 +1,69 @@
+import { useState, useRef, useEffect } from 'react';
+import { 
+  View, 
+  ScrollView, 
+  Text, 
+  FlatList, 
+  TouchableOpacity, 
+  StyleSheet,
+  Image,
+  Modal,
+  Alert,
+  Platform
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { View, ScrollView, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import BoxedIcon from '@/components/BoxedIcon';
 import Colors from '@/constants/Colors';
 import AuthContext from "@/context/AuthContext";
 import { logout } from "@/services/AuthService";
 import { useContext } from "react";
-import LoginScreen from "../../LoginScreen";
-
+import { uploadProfilePhoto, deleteProfilePhoto, requestCameraPermission } from '@/services/SettingService';
+import * as ImagePicker from 'expo-image-picker';
+import { Camera, CameraType } from 'expo-camera';
+import getApiBaseImage from '@/services/getApiBaseImage';
+import { loadUser } from '@/services/AuthService';
+import { Router } from 'expo-router';
 const Page = () => {
-const devices = [
-  { name: 'Broadcast Lists', icon: 'megaphone', backgroundColor: '#25D366' }, // WhatsApp Green
-  { name: 'Starred Messages', icon: 'star', backgroundColor: '#FFD700' },     // Gold
-  { name: 'Linked Devices', icon: 'laptop-outline', backgroundColor: '#25D366' },
-];
+  const { user, setUser } = useContext(AuthContext);
+  const [showPhotoOptions, setShowPhotoOptions] = useState(false);
+  const [cameraVisible, setCameraVisible] = useState(false);
+  // const [cameraType, setCameraType] = useState<CameraType>(CameraType.back);
+  const [cameraType, setCameraType] = useState<CameraType>(CameraType?.back || CameraType?.front);
 
-const items = [
-  { name: 'Account', icon: 'key', backgroundColor: '#075E54' },               // WhatsApp Dark Green
-  { name: 'Privacy', icon: 'lock-closed', backgroundColor: '#33A5D1' },
-  { name: 'Chats', icon: 'logo-whatsapp', backgroundColor: '#25D366' },
-  { name: 'Notifications', icon: 'notifications', backgroundColor: '#FF3B30' }, // iOS red
-  { name: 'Storage and Data', icon: 'repeat', backgroundColor: '#25D366' },
-];
+  const cameraRef = useRef<Camera>(null);
 
-const support = [
-  { name: 'Help', icon: 'information', backgroundColor: '#075E54' },
-  { name: 'Tell a Friend', icon: 'heart', backgroundColor: '#FF3B30' },
-];
+  const devices = [
+    { name: 'Broadcast Lists', icon: 'megaphone', backgroundColor: '#25D366' }, // WhatsApp Green
+    { name: 'Starred Messages', icon: 'star', backgroundColor: '#FFD700' },     // Gold
+    { name: 'Linked Devices', icon: 'laptop-outline', backgroundColor: '#25D366' },
+  ];
+
+  const items = [
+    { name: 'Account', icon: 'key', backgroundColor: '#075E54' },               // WhatsApp Dark Green
+    { name: 'Privacy', icon: 'lock-closed', backgroundColor: '#33A5D1' },
+    { name: 'Chats', icon: 'logo-whatsapp', backgroundColor: '#25D366' },
+    { name: 'Notifications', icon: 'notifications', backgroundColor: '#FF3B30' }, // iOS red
+    { name: 'Storage and Data', icon: 'repeat', backgroundColor: '#25D366' },
+  ];
+
+  const support = [
+    { name: 'Help', icon: 'information', backgroundColor: '#075E54' },
+    { name: 'Tell a Friend', icon: 'heart', backgroundColor: '#FF3B30' },
+  ];
 
 
-    const { user, setUser } = useContext(AuthContext);
-
-    const handleLogout = async () => {
-      try {
-          await logout();
-          setUser(null); // This will trigger the redirect in the effect below
-          if (!user || (user === null)) {
-            router.replace('/LoginScreen');
-          }
-      } catch (error) {
-          console.error("Logout failed:", error);
-          setUser(null); // Ensure logout even if API fails
-      }
-    };
+  const handleLogout = async () => {
+    try {
+        await logout();
+        setUser(null); // This will trigger the redirect in the effect below
+        if (!user || (user === null)) {
+          router.replace('/LoginScreen');
+        }
+    } catch (error) {
+        console.error("Logout failed:", error);
+        setUser(null); // Ensure logout even if API fails
+    }
+  };
 
   const renderListItem = ({ item }: any) => (
     <View style={styles.item}>
@@ -51,8 +73,213 @@ const support = [
     </View>
   );
 
+  const handleChoosePhoto = async () => {
+    setShowPhotoOptions(false);
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission required', 'We need access to your photos');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+
+    if (!result.canceled && result.assets.length > 0) {
+      try {
+        await uploadProfilePhoto(result.assets[0].uri);
+        // refresh user profile UI if needed
+        const refreshedUser = await loadUser();
+        setUser(refreshedUser);
+      } catch (error) {
+        console.error('Profile upload error:', error);
+        Alert.alert('Upload Failed', 'Please try again.');
+      }
+    }
+  };
+
+
+  const handleTakePhoto = async () => {
+    setShowPhotoOptions(false);
+    const permission = await requestCameraPermission();
+    
+    if (!permission) {
+      Alert.alert('Permission required', 'We need access to your camera');
+      return;
+    }
+
+    setCameraVisible(true);
+  };
+
+  const handleCapturePhoto = async () => {
+    if (cameraRef.current) {
+      const photo = await cameraRef.current.takePictureAsync();
+      setCameraVisible(false);
+      await uploadProfilePhoto(photo.uri);
+      // Update user context or refetch user data
+    }
+  };
+
+
+  const handleDeletePhoto = async () => {
+    setShowPhotoOptions(false);
+
+    const confirmDelete = Platform.OS === 'web'
+      ? window.confirm("Are you sure you want to delete your profile photo?")
+      : await new Promise((resolve) => {
+          Alert.alert(
+            'Delete Photo',
+            'Are you sure you want to delete your profile photo?',
+            [
+              { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+              { text: 'Delete', style: 'destructive', onPress: () => resolve(true) },
+            ]
+          );
+        });
+
+    if (!confirmDelete) return;
+
+    try {
+      await deleteProfilePhoto();
+
+      if (Platform.OS === 'web') {
+        alert('Profile photo deleted successfully');
+      } else {
+        Alert.alert('Success', 'Profile photo deleted successfully');
+      }
+
+      // Refresh user context or re-fetch user data if necessary
+      const refreshedUser = await loadUser();
+      if (refreshedUser && refreshedUser.id) {
+        setTimeout(() => {
+          setUser(refreshedUser);
+        }, 100);
+      }
+
+    } catch (error) {
+      console.error('Failed to delete profile photo:', error);
+      const errorMessage = error.message || 'An error occurred. Please try again.';
+
+      if (Platform.OS === 'web') {
+        alert(errorMessage);
+      } else {
+        Alert.alert('Error', errorMessage);
+      }
+    }
+  };
+
+
+  const renderProfilePhoto = () => {
+    if (user?.profile_photo) {
+      return (
+        <Image 
+          source={{ uri: `${getApiBaseImage()}/storage/${user.profile_photo}` }}
+          style={styles.profilePhoto}
+        />
+      );
+    } else {
+      const initials = `${user?.name?.charAt(0) || ''}${user?.last_name?.charAt(0) || ''}`;
+      return (
+        <View style={[styles.profilePhoto, styles.initialsContainer]}>
+          <Text style={styles.initials}>{initials}</Text>
+        </View>
+      );
+    }
+  };
+
   return (
     <View style={styles.container}>
+
+      {/* Profile Photo Section */}
+      <View style={styles.profileSection}>
+        <TouchableOpacity onPress={() => setShowPhotoOptions(true)}>
+          <View style={styles.photoContainer}>
+            {renderProfilePhoto()}
+            <View style={styles.cameraIconContainer}>
+              <Ionicons name="camera" size={20} color="white" />
+            </View>
+          </View>
+        </TouchableOpacity>
+        
+        <Text style={styles.userName}>{user?.name}</Text>
+      </View>
+
+      {/* Photo Options Modal */}
+      <Modal
+        visible={showPhotoOptions}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPhotoOptions(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowPhotoOptions(false)}
+        >
+          <View style={styles.photoOptions}>
+            <TouchableOpacity 
+              style={styles.optionButton}
+              onPress={handleChoosePhoto}
+            >
+              <Text style={styles.optionText}>Upload from device</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.optionButton}
+              onPress={handleTakePhoto}
+            >
+              <Text style={styles.optionText}>Take a photo</Text>
+            </TouchableOpacity>
+            {user?.profile_photo && (
+              <TouchableOpacity 
+                style={[styles.optionButton, styles.deleteOption]}
+                onPress={handleDeletePhoto}
+              >
+                <Text style={styles.optionText}>Delete photo</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Camera Modal */}
+      {cameraVisible && (
+        <View style={StyleSheet.absoluteFill}>
+          <Camera 
+            style={StyleSheet.absoluteFill}
+            type={cameraType}
+            ref={cameraRef}
+          >
+            <View style={styles.cameraControls}>
+              <TouchableOpacity 
+                style={styles.cameraButton}
+                onPress={() => setCameraVisible(false)}
+              >
+                <Ionicons name="close" size={30} color="white" />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.captureButton}
+                onPress={handleCapturePhoto}
+              >
+                <View style={styles.captureInner} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.cameraButton}
+                onPress={() => setCameraType(
+                  cameraType === CameraType.back ? CameraType.front : CameraType.back
+                )}
+              >
+                <Ionicons name="camera-reverse" size={30} color="white" />
+              </TouchableOpacity>
+            </View>
+          </Camera>
+        </View>
+      )}
+
+      
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.scrollContainer}>
         <View style={styles.block}>
           <FlatList
@@ -99,6 +326,94 @@ const styles = StyleSheet.create({
       alignItems: 'center',    
       width: '100%'
       // backgroundColor: Colors.background,
+  },
+  profileSection: {
+    alignItems: 'center',
+    paddingVertical: 10,
+    backgroundColor: 'transparent',
+  },
+  photoContainer: {
+    position: 'relative',
+    marginBottom: 5,
+  },
+  profilePhoto: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#e1e1e1',
+  },
+  initialsContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  initials: {
+    fontSize: 40,
+    fontWeight: 'bold',
+    color: '#555',
+  },
+  cameraIconContainer: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#25D366',
+    borderRadius: 20,
+    padding: 5,
+  },
+  userName: {
+    fontSize: 22,
+    fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoOptions: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    width: '80%',
+    overflow: 'hidden',
+  },
+  optionButton: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  optionText: {
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  deleteOption: {
+    borderBottomWidth: 0,
+  },
+  cameraControls: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 20,
+    alignItems: 'flex-end',
+  },
+  cameraButton: {
+    alignSelf: 'flex-end',
+  },
+  captureButton: {
+    alignSelf: 'center',
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 3,
+    borderColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  captureInner: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'white',
   },
   scrollContainer: {
     // paddingVertical: 20,

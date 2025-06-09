@@ -18,7 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { createPost, updatePost } from '@/services/PostService';
 import { useLocalSearchParams, router } from 'expo-router';
 import getApiBaseImage from '@/services/getApiBaseImage';
-import { deletePostMedia } from '@/services/PostService';
+import { deletePostMedia, fetchPosts } from '@/services/PostService';
 
 interface CreatePostProps {
   visible: boolean;
@@ -189,6 +189,7 @@ export default function CreatePost({ visible, onClose, onPostCreated }: CreatePo
         : await createPost(formData);
 
       onPostCreated();
+      fetchPosts();
       handleClose();
     } catch (error) {
       console.error('Error creating/updating post:', error);
