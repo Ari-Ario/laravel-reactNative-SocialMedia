@@ -83,8 +83,8 @@ export default function CommentItem({ comment, postId }) {
 const styles = StyleSheet.create({
   container: {
     padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    // borderBottomWidth: 1,
+    // borderBottomColor: '#eee',
   },
   replyContainer: {
     marginLeft: 20,
@@ -113,8 +113,8 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
+    // borderWidth: 1,
+    // borderColor: '#ddd',
     borderRadius: 5,
     padding: 8,
     marginBottom: 5,

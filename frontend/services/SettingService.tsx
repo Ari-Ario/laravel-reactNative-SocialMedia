@@ -55,3 +55,20 @@ export const requestCameraPermission = async () => {
   const { status } = await Camera.requestCameraPermissionsAsync();
   return status === 'granted';
 };
+
+export async function updateUserName(name: string) {
+  const token = await getToken();
+  const API_BASE = getApiBase();
+
+  const formData = new FormData();
+  formData.append('name', name);
+
+  const response = await axios.post(`${API_BASE}/profile/name`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return response.data;
+}

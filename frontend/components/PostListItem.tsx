@@ -272,7 +272,7 @@ const handleReportSubmitted = () => {
     <View style={styles.container}>
 
       {/* Show repost header if this is a repost */}
-      {post.reposts?.length > 0 && (
+      {(post.reposts?.length > 0 && (post.reposts[0].user.name !== user?.name)) && (
         <View style={styles.repostHeader}>
           <Feather name="repeat" size={16} color="#666" />
           <Text style={styles.repostText}>
@@ -282,26 +282,32 @@ const handleReportSubmitted = () => {
       )}
 
       <View style={styles.head}>
-      {/* Post header */}
-      <View style={styles.header}>
-        <Image
-          source={{ uri: `${getApiBaseImage()}/storage/${user.profile_photo}` || '@/assets/favicon.png' }}
-          style={styles.avatar}
-        />
-        <Text style={styles.username}>{post.user.name}</Text>
+        {/* Post header */}
+        <View style={styles.header}>
 
-      </View>
+          <View style={styles.infoFoto}>
+            <Image
+              source={{ uri: `${getApiBaseImage()}/storage/${post.user.profile_photo}` || '@/assets/favicon.png' }}
+              style={styles.avatar}
+            />
+            <View style={styles.nameCaption}>
+              <Text style={styles.username}>{post.user.name}</Text>
+              <View style={styles.menuContainer}>
+              {/* Post caption */}
+              {post.caption && <Text style={styles.caption}>{post.caption}</Text>}
+              </View>
+            </View>
+            
+          </View>
 
-      <View style={styles.menuContainer}>
-      {/* Post caption */}
-      {post.caption && <Text style={styles.caption}>{post.caption}</Text>}
-        <TouchableOpacity 
-            style={styles.menuButton}
-            onPress={() => setMenuVisible(true)}
-        >
-            <Ionicons name="ellipsis-horizontal" size={20} />
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity 
+              style={styles.menuButton}
+              onPress={() => setMenuVisible(true)}
+          >
+              <Ionicons name="ellipsis-horizontal" size={20} />
+          </TouchableOpacity>
+        </View>
+
       </View>
 
       {/* Post media */}
@@ -391,7 +397,7 @@ const handleReportSubmitted = () => {
           {/* Comments list */}
           <ScrollView 
             style={styles.commentsList}
-            contentContainerStyle={{ paddingBottom: 60 }}
+            contentContainerStyle={{ paddingBottom: 50 }}
           >
             {post.comments?.length > 0 ? (
               <FlatList
@@ -460,8 +466,8 @@ const handleReportSubmitted = () => {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    // borderBottomWidth: 1,
+    // borderBottomColor: '#eee',
   },
   head: {
     flexDirection: 'row',
@@ -471,13 +477,22 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
     padding: 10,
+  },
+  infoFoto: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '92%',
   },
   avatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
     marginRight: 10,
+      alignSelf: 'flex-start',
+
   },
   menuContainer: {
     flexDirection: 'row',
@@ -488,11 +503,16 @@ const styles = StyleSheet.create({
   username: {
     fontWeight: 'bold',
     fontSize: 14,
+    alignSelf: 'flex-start'
+  },
+  nameCaption: {
+    width: '84%'
   },
   caption: {
-    paddingHorizontal: 10,
-    marginBottom: 10,
+    padding: 0,
+    margin: 0,
     fontSize: 14,
+    minWidth: '80%'
   },
   media: {
     width: '100%',
@@ -552,7 +572,7 @@ const styles = StyleSheet.create({
     maxHeight: 400, // Adjust as needed
   },
   commentsList: {
-    paddingHorizontal: 10,
+    // paddingHorizontal: 10,
   },
   noCommentsText: {
     textAlign: 'center',
@@ -561,13 +581,13 @@ const styles = StyleSheet.create({
   },
   commentContainer: {
     padding: 0,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
   },
   commentHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 5,
+    // marginBottom: 5,
   },
   commentAvatar: {
     width: 32,
@@ -589,7 +609,8 @@ const styles = StyleSheet.create({
   },
   commentReactions: {
     marginLeft: 40,
-    marginTop: 5,
+    marginTop: 0,
+    marginBottom:5,
   },
   replyButton: {
     marginLeft: 40,
@@ -607,9 +628,10 @@ const styles = StyleSheet.create({
   commentInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
+    paddingLeft: 10,
+    paddingRight:10,
+    // borderTopWidth: 1,
+    // borderTopColor: '#eee',
     backgroundColor: 'white',
     position: 'absolute',
     bottom: 0,
@@ -621,9 +643,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 20,
-    padding: 10,
-    paddingHorizontal: 15,
+    padding: 5,
+    paddingHorizontal: 10,
     marginRight: 10,
+    marginBottom: 10,
   },
   commentSubmitButton: {
     backgroundColor: '#3498db',
@@ -644,8 +667,9 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   menuButton: {
-    marginLeft: 'auto',
-    padding: 8,
+    // marginLeft: 'auto',
+    paddingLeft: 8,
+    alignSelf: 'flex-start'
 },
   repostHeader: {
     flexDirection: 'row',

@@ -19,6 +19,7 @@ import { createPost, updatePost } from '@/services/PostService';
 import { useLocalSearchParams, router } from 'expo-router';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { deletePostMedia, fetchPosts } from '@/services/PostService';
+import { Platform } from 'react-native';
 
 interface CreatePostProps {
   visible: boolean;
@@ -28,7 +29,7 @@ interface CreatePostProps {
 
 export default function CreatePost({ visible, onClose, onPostCreated }: CreatePostProps) {
   const params = useLocalSearchParams();
-  const isEditing = !!params.postId;
+  const isEditing = !!(params.postId && params.postId !== 'null');
   
   const [caption, setCaption] = useState('');
   const [media, setMedia] = useState<any[]>([]);

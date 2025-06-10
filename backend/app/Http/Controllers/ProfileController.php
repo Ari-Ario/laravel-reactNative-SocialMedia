@@ -49,4 +49,18 @@ class ProfileController extends Controller
 
         return response()->json(['message' => 'Profile photo removed']);
     }
+
+    public function updateName(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+        ]);
+
+        $user = auth()->user();
+        $user->name = $request->name;
+        $user->save();
+
+        return response()->json(['user' => $user]);
+    }
+
 }

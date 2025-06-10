@@ -3,6 +3,7 @@ import {
   View, 
   ScrollView, 
   Text, 
+  TextInput,
   FlatList, 
   TouchableOpacity, 
   StyleSheet,
@@ -17,20 +18,24 @@ import Colors from '@/constants/Colors';
 import AuthContext from "@/context/AuthContext";
 import { logout } from "@/services/AuthService";
 import { useContext } from "react";
-import { uploadProfilePhoto, deleteProfilePhoto, requestCameraPermission } from '@/services/SettingService';
+import { uploadProfilePhoto, deleteProfilePhoto, requestCameraPermission, updateUserName } from '@/services/SettingService';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, CameraType } from 'expo-camera';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { loadUser } from '@/services/AuthService';
-import { Router } from 'expo-router';
+import { router } from 'expo-router';
+
 const Page = () => {
   const { user, setUser } = useContext(AuthContext);
   const [showPhotoOptions, setShowPhotoOptions] = useState(false);
   const [cameraVisible, setCameraVisible] = useState(false);
   // const [cameraType, setCameraType] = useState<CameraType>(CameraType.back);
   const [cameraType, setCameraType] = useState<CameraType>(CameraType?.back || CameraType?.front);
-
   const cameraRef = useRef<Camera>(null);
+  const [editNameVisible, setEditNameVisible] = useState(false);
+  const [newName, setNewName] = useState(user?.name || '');
+  const [saving, setSaving] = useState(false);
+
 
   const devices = [
     { name: 'Broadcast Lists', icon: 'megaphone', backgroundColor: '#25D366' }, // WhatsApp Green
@@ -205,7 +210,16 @@ const Page = () => {
           </View>
         </TouchableOpacity>
         
-        <Text style={styles.userName}>{user?.name}</Text>
+        <TouchableOpacity onPress={() => {
+          setNewName(user?.name || '');
+          setEditNameVisible(true);
+        }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 10, }}>
+            <Text style={styles.userName}>{user?.name}</Text>
+            <Ionicons name="create-outline" size={20} color="black" style={{ paddingLeft: 10, }} />
+          </View>
+        </TouchableOpacity>
+
       </View>
 
       {/* Photo Options Modal */}
@@ -244,6 +258,67 @@ const Page = () => {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Change Name Modal */}
+      <Modal
+        visible={editNameVisible}
+        transparent={false}
+        animationType="slide"
+        onRequestClose={() => setEditNameVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'white' }}>
+          {/* Header */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderColor: '#ccc' }}>
+            <TouchableOpacity onPress={() => setEditNameVisible(false)}>
+              <Text style={{ color: '#1DA1F2', fontSize: 16 }}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={{ fontWeight: 'bold', fontSize: 18 }}>Name</Text>
+            <TouchableOpacity
+              onPress={async () => {
+                setSaving(true);
+                try {
+                  const response = await updateUserName(newName); // See next step
+                  const updated = await loadUser();
+                  setUser(updated);
+                  setEditNameVisible(false);
+                } catch (e) {
+                  console.error(e);
+                  Alert.alert('Failed', 'Could not update name');
+                } finally {
+                  setSaving(false);
+                }
+              }}
+              disabled={newName === user?.name || saving}
+            >
+              <Text style={{
+                color: newName === user?.name || saving ? '#ccc' : '#1DA1F2',
+                fontWeight: 'bold',
+                fontSize: 16
+              }}>
+                Save
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Text area */}
+          <View style={{ padding: 16 }}>
+            <TextInput
+              value={newName}
+              onChangeText={setNewName}
+              style={{
+                fontSize: 18,
+                borderColor: '#ccc',
+                borderWidth: 1,
+                padding: 12,
+                borderRadius: 8,
+              }}
+              placeholder="Enter your name"
+              autoFocus
+            />
+          </View>
+        </View>
+      </Modal>
+
 
       {/* Camera Modal */}
       {cameraVisible && (
@@ -334,7 +409,7 @@ const styles = StyleSheet.create({
   },
   photoContainer: {
     position: 'relative',
-    marginBottom: 5,
+    marginBottom: 10,
   },
   profilePhoto: {
     width: 120,

@@ -50,12 +50,13 @@ Route::group(["middleware" => ["auth:sanctum"]], function() {
     Route::prefix('profile')->group(function () {
         Route::post('/photo', [ProfileController::class, 'uploadPhoto']);
         Route::delete('/photo', [ProfileController::class, 'deletePhoto']);
+        Route::post('/name', [ProfileController::class, 'updateName']);
     });
 
     // Posts
     Route::get('/posts', [PostController::class, 'index']);
     Route::post('/posts', [PostController::class, 'store']);
-    Route::post('/posts/{post}', [PostController::class, 'update']);
+    Route::match(['put', 'post'], '/posts/{post}', [PostController::class, 'update']);
     Route::delete('/posts/{post}', [PostController::class, 'destroy']);
 
     Route::post('/posts/{post}/repost', [PostController::class, 'repost']);
