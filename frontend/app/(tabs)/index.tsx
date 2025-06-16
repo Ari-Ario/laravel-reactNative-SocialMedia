@@ -7,25 +7,49 @@ import { useContext } from "react";
 import LoginScreen from "../LoginScreen";
 import PostListItem from '@/components/PostListItem';
 import { Alert } from 'react-native';
-import EmojiPicker from 'rn-emoji-keyboard';
 import FloatingActionButton from '@/components/FloatingActionButton';
 import getApiBaseImage from "@/services/getApiBaseImage";
-import { getToken } from "@/services/TokenService";
 import { fetchPosts, bookmarkPost, repostPost, sharePost, commentOnPost, reactToPost } from "@/services/PostService";
 import CreatePost from "@/components/CreatePost";
 import { Ionicons } from "@expo/vector-icons";
+import ProfilePreview from "@/components/ProfilePreview";
+import AddStory from "@/components/AddStory";
+import { fetchStories, createStory } from "@/services/StoryService";
+import { useRouter } from 'expo-router';
+import { useProfileView } from "@/context/ProfileViewContext";
+
+type StoryGroup = {
+  user: {
+    id: number;
+    name: string;
+    profile_photo: string;
+  };
+  stories: Array<{
+    id: number;
+    media_path: string;
+    viewed: boolean;
+  }>;
+  all_viewed: boolean;
+  latest_story: {
+    id: number;
+    media_path: string;
+  };
+};
 
 const HomePage = () => {
     const { user, setUser } = useContext(AuthContext);
     const [posts, setPosts] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
-    const [selectedPost, setSelectedPost] = useState<any>(null);
-    const [commentText, setCommentText] = useState('');
-    const [replyingTo, setReplyingTo] = useState<any>(null);
-    const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
-    const [currentReactingPost, setCurrentReactingPost] = useState<any>(null);
     const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
+    // const [profilePreviewVisible, setProfilePreviewVisible] = useState(false);
+    const { profileViewUserId, setProfileViewUserId, profilePreviewVisible, setProfilePreviewVisible } = useProfileView();
+
+    const [addStoryVisible, setAddStoryVisible] = useState(false);
+    const [stories, setStories] = useState([]);
+    const router = useRouter();
+    const [storyGroups, setStoryGroups] = useState<StoryGroup[]>([]);
+    // const [profileViewUserId, setProfileViewUserId] = useState(null);
 
     const handleLogout = async () => {
       try {
@@ -100,13 +124,37 @@ const HomePage = () => {
     const handleRefresh = () => {
         setRefreshing(true);
         fetchPostsAndHandleState();
+        fetchStoriesAndHandleState();
     };
 
     useEffect(() => {
         if (user) {
             fetchPostsAndHandleState();
+            fetchStoriesAndHandleState();
         }
     }, [user]);
+
+    //ProfilePreview and Stories
+    const handleProfilePreview = () => {
+      setProfilePreviewVisible(true);
+    };
+
+    const handleAddStory = () => {
+      setAddStoryVisible(true);
+    };
+
+    const fetchStoriesAndHandleState = async () => {
+      try {
+        const data = await fetchStories();
+        setStoryGroups(data);
+        console.log( 'all stories: ',data);
+
+      } catch (error) {
+        console.error('Error fetching stories:', error);
+      }
+    };
+
+    //END ProfilePreview and Stories
 
     useEffect(() => {
       if (user === undefined) return; // still loading, don't redirect
@@ -115,6 +163,24 @@ const HomePage = () => {
       }
     }, [user]);
 
+
+  useEffect(() => {
+    const loadStories = async () => {
+      try {
+        const data = await fetchStories();
+        setStories(data);
+      } catch (error) {
+        console.error('Error loading stories:', error);
+      }
+    };
+
+    loadStories();
+  }, []);
+
+  const handleProfilePress = (userId: string) => {
+    setProfileViewUserId(userId);
+    setProfilePreviewVisible(true);
+  };
 
     if (!user) {
       return (
@@ -132,23 +198,24 @@ const HomePage = () => {
       );
     }
 
-  const renderProfilePhoto = () => {
-    if (user?.profile_photo) {
+    const renderProfilePhoto = () => {
       return (
-        <Image 
-          source={{ uri: `${getApiBaseImage()}/storage/${user.profile_photo}` }}
-          style={styles.profilePhoto}
-        />
+        <TouchableOpacity onPress={() => handleProfilePress(user.id)}>
+          {user?.profile_photo ? (
+            <Image 
+              source={{ uri: `${getApiBaseImage()}/storage/${user.profile_photo}` }}
+              style={styles.profilePhoto}
+            />
+          ) : (
+            <View style={styles.initialsContainer}>
+              <Text style={styles.initials}>
+                {user?.name?.charAt(0)}{user?.last_name?.charAt(0)}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
       );
-    } else {
-      const initials = `${user?.name?.charAt(0) || ''}${user?.last_name?.charAt(0) || ''}`;
-      return (
-        <View style={[styles.profilePhoto, styles.initialsContainer]}>
-          <Text style={styles.initials}>{initials}</Text>
-        </View>
-      );
-    }
-  };
+    };
 
     return (
       <AuthContext.Provider value={{ user, setUser }}>
@@ -156,18 +223,78 @@ const HomePage = () => {
           {/* Header with welcome message and logout button */}
           <View style={styles.header}>
 
-            <View style={styles.profilePhoto}>
-              <TouchableOpacity onPress={() => setShowPhotoOptions(true)}>
+            {/* <View style={styles.profilePhoto}>
+              <TouchableOpacity onPress={() => handleProfilePreview()}>
                 <View style={styles.photoContainer}>
                   {renderProfilePhoto()}
                   <View style={styles.addIconContainer}>
-                    <Ionicons name="add" size={10} color="white" />
+                    <Ionicons name="add" size={10} color="white" onPress={() => handleAddStory()} />
                   </View>
                 </View>
               </TouchableOpacity>
-              
-              <Text style={styles.userName}>{user?.name}</Text>
-            </View>
+            </View> */}
+
+            {storyGroups.length >= 0 && (
+              <View style={styles.storiesContainer}>
+                <ScrollView 
+                    horizontal 
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ paddingHorizontal: 10 }}
+                    snapToAlignment="start"
+                    decelerationRate="fast"
+                    snapToInterval={80} // Or width of story item including margin
+                    overScrollMode="never"
+                >
+                  {/* My Story (Add new) */}
+                  <TouchableOpacity 
+                    style={styles.storyItem}
+                    onPress={() => handleProfilePress(user.id)}
+                  >
+                    <View style={styles.myStoryCircle}>
+                      {renderProfilePhoto()}
+                      <View style={styles.addStoryIcon}>
+                        <Ionicons name="add" size={16} color="white" 
+                            onPress={(e) => {
+                              e.stopPropagation(); // Prevent triggering both handlers
+                              handleAddStory();
+                            }} 
+                        />
+                      </View>
+                    </View>
+                    <Text style={styles.storyUsername} onPress={handleAddStory}>Your Story</Text>
+                  </TouchableOpacity>
+                  
+                  {/* Other users' stories */}
+                  {storyGroups.map((group) => (
+                    <TouchableOpacity 
+                      key={group.user.id}
+                      style={styles.storyItem}
+                      onPress={() => router.push({
+                        pathname: '/story/[id]',
+                        params: { id: group.latest_story.id }
+                      })}
+                    >
+                      <View style={[
+                        styles.storyBorder,
+                        group.all_viewed && styles.viewedStoryBorder
+                      ]}>
+                        <Image 
+                          source={{ uri: `${getApiBaseImage()}/storage/${group.user.profile_photo}` }}
+                          style={styles.storyImage}
+                        />
+                        {!group.all_viewed && (
+                          <View style={styles.unseenBadge} />
+                        )}
+                      </View>
+                      <Text style={styles.storyUsername}>
+                        {group.user.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
             <Button title="Logout" onPress={handleLogout} />
           </View>
 
@@ -200,81 +327,164 @@ const HomePage = () => {
             setIsCreateModalVisible(true);
           }} />
 
+        {/* Pop-Ups below */}
         </View>
           <CreatePost
             visible={isCreateModalVisible}
             onClose={() => setIsCreateModalVisible(false)}
             onPostCreated={fetchPostsAndHandleState}
           />
+
+          <ProfilePreview 
+            userId={profileViewUserId}
+            visible={profilePreviewVisible}
+            onClose={() => setProfilePreviewVisible(false)}
+          />
+
+          <AddStory
+            visible={addStoryVisible}
+            onClose={() => setAddStoryVisible(false)}
+            onStoryCreated={fetchStoriesAndHandleState}
+          />
       </AuthContext.Provider>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: '#fff',
-      width: '100%',
-      maxWidth: 500,
-      alignSelf: 'center',
-    },
-    header: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: 5,
-      backgroundColor: '#f8f8f8',
-      borderBottomWidth: 1,
-      borderBottomColor: '#eee',
-    },
-    photoContainer: {
-      position: 'relative',
-      marginBottom: 0,
-      display: 'flex',
-    },
-    profilePhoto: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      width: 60,
-      height: 60,
-      borderRadius: 60,
-      backgroundColor: '#e1e1e1',
-    },
-    userName: {
-      paddingLeft: 10,
-    },
-    initials: {
-      fontSize: 40,
-      fontWeight: 'bold',
-      color: '#555',
-    },
-    initialsContainer: {
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    addIconContainer: {
-      position: 'absolute',
-      right: 0,
-      bottom: 0,
-      backgroundColor: '#25D366',
-      borderRadius: 20,
-      padding: 5,
-    },
-    listContent: {
-      gap: 10,
-      paddingBottom: 20,
-    },
-    loadingContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    postContainer: {
-      marginBottom: 15,
-      borderBottomWidth: 1,
-      borderBottomColor: '#eee',
-    },
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    width: '100%',
+    maxWidth: 500,
+    alignSelf: 'center',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 5,
+    backgroundColor: '#f8f8f8',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  photoContainer: {
+    position: 'relative',
+    marginBottom: 0,
+    display: 'flex',
+  },
+  profilePhoto: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: 60,
+    height: 60,
+    borderRadius: 60,
+    backgroundColor: '#e1e1e1',
+  },
+  userName: {
+    paddingLeft: 10,
+  },
+  initials: {
+    fontSize: 40,
+    fontWeight: 'bold',
+    color: '#555',
+  },
+  initialsContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addIconContainer: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#25D366',
+    borderRadius: 20,
+    padding: 5,
+  },
+  listContent: {
+    gap: 10,
+    paddingBottom: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  postContainer: {
+    marginBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+storiesContainer: {
+    // paddingVertical: 10,
+    // borderBottomWidth: 1,
+    // borderBottomColor: '#eee',
+  },
+  myStoryCircle: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    position: 'relative',
+  },
+  storyItem: {
+    alignItems: 'center',
+    marginHorizontal: 8,
+  },
+  storyBorder: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 2,
+    borderColor: '#3897f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  viewedStoryBorder: {
+    borderColor: '#999',
+  },
+  storyImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  storyUsername: {
+    marginTop: 5,
+    fontSize: 12,
+    maxWidth: 70,
+    textAlign: 'center',
+  },
+  addStoryIcon: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#3897f0',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  unseenBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#3897f0',
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  viewedStoryBorder: {
+    borderColor: '#999',
+  },
+
 });
 
 export default HomePage;

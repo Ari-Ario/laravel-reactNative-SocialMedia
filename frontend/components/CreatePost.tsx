@@ -135,7 +135,7 @@ export default function CreatePost({ visible, onClose, onPostCreated }: CreatePo
   };
 
   const handleSubmit = async () => {  // Make sure this is marked async
-    if (!caption.trim() && media.length === 0) {
+    if (!caption.trim() || media.length === 0) {
       Alert.alert('Error', 'Please add a caption or media');
       return;
     }

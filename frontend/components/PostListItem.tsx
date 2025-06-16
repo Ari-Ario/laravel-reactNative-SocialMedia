@@ -19,13 +19,14 @@ import AuthContext from '@/context/AuthContext';
 import { router } from 'expo-router';
 import { Platform, Alert } from 'react-native';
 import getApiBaseImage from '@/services/getApiBaseImage';
+import { useProfileView } from '@/context/ProfileViewContext';
 interface Comment {
   id: number;
   content: string;
   user: {
     id: number;
     name: string;
-    avatar_url: string | null;
+    profile_photo: string | null;
   };
   replies?: Comment[];
   reaction_counts?: Array<{
@@ -39,7 +40,7 @@ interface Repost {
   user: {
     id: number;
     name: string;
-    avatar_url: string | null;
+    profile_photo: string | null;
   };
   created_at: string;
 }
@@ -50,7 +51,7 @@ interface Post {
   user: {
     id: number;
     name: string;
-    avatar_url: string | null;
+    profile_photo: string | null;
   };
   media: Array<{
     id: number;
@@ -103,6 +104,7 @@ export default function PostListItem({
 const [menuVisible, setMenuVisible] = useState(false);
 const [reportVisible, setReportVisible] = useState(false);
 const { user, setUser } = useContext(AuthContext);
+const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
 
 const isOwner = user?.id === post.user.id;
 
@@ -200,11 +202,19 @@ const handleReportSubmitted = () => {
     <View style={styles.commentContainer}>
       {/* Comment header */}
       <View style={styles.commentHeader}>
-        <Image
-          source={{ uri: item.user.avatar_url || 'https://via.placeholder.com/32' }}
-          style={styles.commentAvatar}
-        />
-        <Text style={styles.commentUsername}>{item.user.name}</Text>
+        {/* <View> { `${getApiBaseImage()}/storage/${user.profile_photo}` } </View> */}
+        <TouchableOpacity onPress={() => {
+          setProfileViewUserId(item.user.id);
+          setProfilePreviewVisible(true);
+        }}
+        >
+          <Image
+            source={{ uri: `${getApiBaseImage()}/storage/${item.user.profile_photo}` || 'https://via.placeholder.com/32' }}
+            style={styles.commentAvatar}
+          />
+          <Text style={styles.commentUsername}>{item.user.name}</Text>
+
+        </TouchableOpacity>
       {/* Comment content */}
       <Text style={styles.commentContent}>{item.content}</Text>
       </View>
@@ -286,10 +296,19 @@ const handleReportSubmitted = () => {
         <View style={styles.header}>
 
           <View style={styles.infoFoto}>
-            <Image
-              source={{ uri: `${getApiBaseImage()}/storage/${post.user.profile_photo}` || '@/assets/favicon.png' }}
-              style={styles.avatar}
-            />
+            <TouchableOpacity 
+            style={styles.Foto}
+            onPress={() => {
+              setProfileViewUserId(post.user.id);
+              setProfilePreviewVisible(true);
+            }}
+            >
+              <Image
+                source={{ uri: `${getApiBaseImage()}/storage/${post.user.profile_photo}` || '@/assets/favicon.png' }}
+                style={styles.avatar}
+              />
+            </TouchableOpacity>
+
             <View style={styles.nameCaption}>
               <Text style={styles.username}>{post.user.name}</Text>
               <View style={styles.menuContainer}>
@@ -485,6 +504,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: '92%',
+  },
+  Foto: {
+    alignSelf: 'flex-start',
   },
   avatar: {
     width: 40,

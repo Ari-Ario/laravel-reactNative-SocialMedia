@@ -9,7 +9,7 @@ use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\ChatbotTrainingController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
-
+use App\Http\Controllers\StoryController;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -19,13 +19,13 @@ use Illuminate\Auth\Events\Registered;
 
 Route::group(["middleware" => ["auth:sanctum"]], function() {
 
-    Route::get('/users', [AuthenticatedSessionController::class, 'getUsers']);
-    
+    // Profile routes
+    Route::get('/users', [AuthenticatedSessionController::class, 'getUsers']); //maybe needed later
     Route::get('/user', [AuthenticatedSessionController::class, 'getUser']);
-    
-    // Route::get('/user', function (Request $request) {
-    //     return $request->user();
-    // })->middleware('auth:sanctum');
+    Route::get('/profiles/{user}', [ProfileController::class, 'show']);
+    Route::post('/profiles/{user}/follow', [ProfileController::class, 'follow']);
+
+
     Route::post('/chat', [ChatbotController::class, 'handleMessage']);
     Route::post('/test-csrf', fn () => [1, 2, 3]);
 
@@ -53,6 +53,13 @@ Route::group(["middleware" => ["auth:sanctum"]], function() {
         Route::post('/name', [ProfileController::class, 'updateName']);
     });
 
+    // Stories
+    Route::get('/stories', [StoryController::class, 'index']);
+    Route::post('/stories', [StoryController::class, 'store']);
+    Route::get('/stories/{story}', [StoryController::class, 'show']);
+    Route::get('/users/{user}/stories', [StoryController::class, 'userStories']);
+    Route::post('/stories/{story}/view', [StoryController::class, 'markAsViewed']);
+    
     // Posts
     Route::get('/posts', [PostController::class, 'index']);
     Route::post('/posts', [PostController::class, 'store']);

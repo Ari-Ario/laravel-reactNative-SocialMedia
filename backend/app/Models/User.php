@@ -49,15 +49,40 @@ class User extends Authenticatable
         ];
     }
 
-        // Added this method to control what user data gets returned
-        public function toAuthArray()
-        {
-            return [
-                'id' => $this->id,
-                'name' => $this->name,
-                'email' => $this->email,
-                'profile_photo' => $this->profile_photo,
-                // Add other safe-to-expose fields
-            ];
-        }
+    // Added this method to control what user data gets returned
+    public function toAuthArray()
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'email' => $this->email,
+            'profile_photo' => $this->profile_photo,
+            // Add other safe-to-expose fields
+        ];
+    }
+
+    public function viewedStories()
+    {
+        return $this->belongsToMany(Story::class, 'story_views')
+            ->withTimestamps();
+    }
+
+    //for viewing profile of others with followers
+    public function posts()
+    {
+        return $this->hasMany(Post::class);
+    }
+
+    public function followers()
+    {
+        return $this->belongsToMany(User::class, 'followers', 'following_id', 'follower_id')
+            ->withTimestamps();
+    }
+
+    public function following()
+    {
+        return $this->belongsToMany(User::class, 'followers', 'follower_id', 'following_id')
+            ->withTimestamps();
+    }
+
 }

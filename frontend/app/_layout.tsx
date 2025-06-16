@@ -13,6 +13,9 @@ import { loadUser } from '@/services/AuthService';
 import { getToken } from '@/services/TokenService';
 import LoginScreen from './LoginScreen';
 import RegisterScreen from './RegisterScreen';
+import { usePathname } from 'expo-router';
+import { ProfileViewProvider } from '@/context/ProfileViewContext';
+import { GlobalModals } from '@/components/GlobalModals';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -52,19 +55,48 @@ export default function RootLayout() {
     return () => { isMounted = false };
   }, []);
 
-  useEffect(() => {
-    if (isReady) {
-      if (user) {
-        console.log("leading to tabs, If user exists!")
-        router.replace('/(tabs)');
-      } else if (!user || user === null) {
-        router.replace('/');
+  const pathname = usePathname();
 
-      } else {
+  // useEffect(() => {
+  //   if (!isReady) return;
+
+  //   if (user) {
+  //     if (!pathname.startsWith('/(tabs)/settings')) {
+  //       router.replace('/(tabs)/settings');
+  //     }
+  //   } else if (user) {
+  //     if (!pathname.startsWith('/(tabs)/calls')) {
+  //       router.replace('/(tabs)/calls');
+  //     }
+  //   } else if (user) {
+  //     if (!pathname.startsWith('/(tabs)/chats')) {
+  //       router.replace('/(tabs)/chats');
+  //     }
+  //   } else if (user) {
+  //     if (!pathname.startsWith('/(tabs)')) {
+  //       router.replace('/(tabs)');
+  //     } 
+  //   } else {
+  //     if (!pathname.startsWith('/LoginScreen')) {
+  //       router.replace('/');
+  //     }
+  //   }
+  // }, [isReady, user]);
+
+  useEffect(() => {
+    if (!isReady) return;
+
+    if (!user) {
+      if (pathname !== '/' && !pathname.startsWith('/LoginScreen')) {
         router.replace('/');
       }
+    } else {
+      // User is logged in
+      if (!pathname.startsWith('/(tabs)')) {
+        router.replace('/(tabs)');
+      }
     }
-  }, [isReady, user]); // Add  here
+  }, [isReady, user, pathname]);
 
   if (!isReady) {
     return (
@@ -76,8 +108,10 @@ export default function RootLayout() {
 
   return (
     <AuthContext.Provider value={{ user, setUser }}>
-
-      <Stack screenOptions={{ headerShown: false }} />
+      <ProfileViewProvider>
+        <Stack screenOptions={{ headerShown: false }} />
+        <GlobalModals />
+      </ProfileViewProvider>
 
     </AuthContext.Provider>
   );
