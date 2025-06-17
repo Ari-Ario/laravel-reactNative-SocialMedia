@@ -5,13 +5,10 @@ import { Ionicons } from '@expo/vector-icons';
 import PostListItem from './PostListItem';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { useProfileView } from '@/context/ProfileViewContext';
+import { useModal } from '@/context/ModalContext';
 
 const ProfilePreview = ({ userId, visible, onClose }) => {
-  // const { 
-  //   profileViewUserId, 
-  //   profilePreviewVisible, 
-  //   setProfilePreviewVisible 
-  // } = useProfileView();
+  const { openModal } = useModal();
   const { profilePreviewVisible, setProfilePreviewVisible } = useProfileView();
 
   const [profile, setProfile] = useState(null);
@@ -53,12 +50,14 @@ const ProfilePreview = ({ userId, visible, onClose }) => {
       
       // Assuming the API returns updated data
       const updatedData = response.data || response;
+      console.log(updatedData);
       
-      setIsFollowing(updatedData.is_following);
+      setIsFollowing(!isFollowing); // Toggle the follow state
       setProfile(prev => ({
         ...prev,
-        followers_count: updatedData.followers_count,
-        // Include any other updated fields if needed
+        followers_count: isFollowing 
+          ? prev.followers_count - 1 
+          : prev.followers_count + 1,
       }));
       
       // Optional: Show success feedback

@@ -26,9 +26,9 @@ export const fetchProfile = async (userId: string) => {
   }
 };
 
-export const followUser = async (userId: string) => {
+export const followUser = async (userId: string, action) => {
   try {
-    const action = isFollowing ? 'unfollow' : 'follow';
+    // const action = isFollowing ? 'unfollow' : 'follow';
     const response = await axios.post(`${API_BASE}/profiles/${userId}/follow`, {
       action
     });

@@ -25,10 +25,14 @@ interface CreatePostProps {
   visible: boolean;
   onClose: () => void;
   onPostCreated: () => void;
+  initialParams?: {
+    postId?: string | null;
+    caption?: string;
+    media?: string;
+  };
 }
-
-export default function CreatePost({ visible, onClose, onPostCreated }: CreatePostProps) {
-  const params = useLocalSearchParams();
+export default function CreatePost({ visible, onClose, onPostCreated, initialParams }: CreatePostProps) {
+  const params = initialParams || useLocalSearchParams();
   const isEditing = !!(params.postId && params.postId !== 'null');
   
   const [caption, setCaption] = useState('');

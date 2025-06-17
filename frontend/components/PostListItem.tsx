@@ -20,6 +20,8 @@ import { router } from 'expo-router';
 import { Platform, Alert } from 'react-native';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { useProfileView } from '@/context/ProfileViewContext';
+import { useModal } from '@/context/ModalContext';
+
 interface Comment {
   id: number;
   content: string;
@@ -78,8 +80,8 @@ interface PostListItemProps {
   onRepost: (postId: number) => void;
   onShare: (postId: number) => void;
   onBookmark: (postId: number) => void;
-  onEditPost: () => void; 
-  setIsCreateModalVisible: (visible: boolean) => void;
+  // onEditPost: () => void; 
+  // setIsCreateModalVisible: (visible: boolean) => void;
 }
 
 export default function PostListItem({ 
@@ -89,8 +91,8 @@ export default function PostListItem({
   onRepost,
   onShare,
   onBookmark,
-  setIsCreateModalVisible
-}: PostListItemProps) {
+}: Omit<PostListItemProps, 'onEditPost' | 'setIsCreateModalVisible'>) {
+  const { openModal } = useModal();
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
@@ -156,18 +158,19 @@ const handleDelete = async () => {
     }
 };
 
-const handleEdit = () => {
-  setMenuVisible(false);
-  router.push({
-    pathname: '/',
-    params: { 
+  const handleEdit = () => {
+    openModal('edit', {
       postId: post.id,
-      caption: post.caption,
-      media: JSON.stringify(post.media),
-    }
-  });
-  setIsCreateModalVisible(true);
-};
+      initialCaption: post.caption,
+      initialMedia: post.media,
+
+      // Optional: Add any refresh logic you need
+      onPostCreated: () => {
+        fetchPosts();
+        setMenuVisible(false);
+      }
+    });
+  };
 
 const handleReport = () => {
     setMenuVisible(false);

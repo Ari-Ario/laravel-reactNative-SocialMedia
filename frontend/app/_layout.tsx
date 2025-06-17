@@ -16,6 +16,9 @@ import RegisterScreen from './RegisterScreen';
 import { usePathname } from 'expo-router';
 import { ProfileViewProvider } from '@/context/ProfileViewContext';
 import { GlobalModals } from '@/components/GlobalModals';
+import { ModalProvider } from '@/context/ModalContext';
+import ModalManager from '@/components/ModalManager';
+
 
 SplashScreen.preventAutoHideAsync();
 
@@ -86,15 +89,19 @@ export default function RootLayout() {
   useEffect(() => {
     if (!isReady) return;
 
+    // Or better Logic
+    if (pathname?.startsWith('/story/') || pathname?.startsWith('/profile-preview') || pathname?.startsWith('/CreatPost')) {
+      return;
+    }
+
     if (!user) {
-      if (pathname !== '/' && !pathname.startsWith('/LoginScreen')) {
+      if (pathname !== '/' && !pathname?.startsWith('/LoginScreen')) {
         router.replace('/');
       }
-    } else {
-      // User is logged in
-      if (!pathname.startsWith('/(tabs)')) {
-        router.replace('/(tabs)');
-      }
+    } 
+    
+    if (!pathname?.startsWith('/(tabs)')) {
+      router.replace('/(tabs)');
     }
   }, [isReady, user, pathname]);
 
@@ -108,10 +115,15 @@ export default function RootLayout() {
 
   return (
     <AuthContext.Provider value={{ user, setUser }}>
-      <ProfileViewProvider>
-        <Stack screenOptions={{ headerShown: false }} />
-        <GlobalModals />
-      </ProfileViewProvider>
+      <ModalProvider>
+
+        <ProfileViewProvider>
+          <Stack screenOptions={{ headerShown: false, animation: 'none' }} />
+          <GlobalModals />
+          <ModalManager />
+        </ProfileViewProvider>
+
+      </ModalProvider>
 
     </AuthContext.Provider>
   );
