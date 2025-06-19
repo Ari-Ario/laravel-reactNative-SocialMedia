@@ -7,7 +7,8 @@ import {
   TouchableOpacity, 
   FlatList, 
   TextInput,
-  ScrollView
+  ScrollView,
+  findNodeHandle, UIManager
 } from 'react-native';
 import { Ionicons, Feather, AntDesign } from '@expo/vector-icons';
 import { useState, useContext } from 'react';
@@ -102,7 +103,7 @@ export default function PostListItem({
     commentId?: number;
   } | null>(null);
 
-
+const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 const [menuVisible, setMenuVisible] = useState(false);
 const [reportVisible, setReportVisible] = useState(false);
 const { user, setUser } = useContext(AuthContext);
@@ -170,6 +171,7 @@ const handleDelete = async () => {
         setMenuVisible(false);
       }
     });
+    setMenuVisible(false);
   };
 
 const handleReport = () => {
@@ -281,6 +283,15 @@ const handleReportSubmitted = () => {
     </View>
   );
 
+
+
+  const handleMenuPress = (event: NativeSyntheticEvent<NativeTouchEvent>) => {
+    setMenuVisible(true);
+    setMenuPosition({
+      top: event.nativeEvent.pageY,
+      left: event.nativeEvent.pageX,
+    });
+  };
   return (
     <View style={styles.container}>
 
@@ -324,7 +335,8 @@ const handleReportSubmitted = () => {
 
           <TouchableOpacity 
               style={styles.menuButton}
-              onPress={() => setMenuVisible(true)}
+              // onPress={() => setMenuVisible(true)}
+              onPress={handleMenuPress}
           >
               <Ionicons name="ellipsis-horizontal" size={20} />
           </TouchableOpacity>
@@ -473,6 +485,7 @@ const handleReportSubmitted = () => {
           onEdit={handleEdit}
           onReport={handleReport}
           isOwner={isOwner}
+          anchorPosition={menuPosition}
       />
 
       <ReportPost

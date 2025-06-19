@@ -1,5 +1,5 @@
 // components/PostMenu.tsx
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Alert, NativeSyntheticEvent, NativeTouchEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface PostMenuProps {
@@ -9,6 +9,7 @@ interface PostMenuProps {
     onEdit: () => void;
     onReport: () => void;
     isOwner: boolean;
+    anchorPosition?: { top: number; left: number }; // Add this prop
 }
 
 export default function PostMenu({ 
@@ -17,21 +18,17 @@ export default function PostMenu({
     onDelete, 
     onEdit, 
     onReport,
-    isOwner 
+    isOwner,
+    anchorPosition = { top: 0, left: 0 } // Default position
 }: PostMenuProps) {
     return (
-        <Modal
-            transparent
-            visible={visible}
-            animationType="fade"
-            onRequestClose={onClose}
-        >
-            <TouchableOpacity 
-                style={styles.overlay} 
-                activeOpacity={1} 
-                onPress={onClose}
-            >
-                <View style={styles.menuContainer}>
+        <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
+            <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
+                <View style={[styles.menuContainer, { 
+                    position: 'absolute',
+                    top: anchorPosition.top + 20, // Offset below the button
+                    left: anchorPosition.left - 180, // Align to the right
+                }]}>
                     {isOwner && (
                         <>
                             <TouchableOpacity 
