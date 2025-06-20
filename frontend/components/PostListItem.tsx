@@ -108,7 +108,8 @@ const [menuVisible, setMenuVisible] = useState(false);
 const [reportVisible, setReportVisible] = useState(false);
 const { user, setUser } = useContext(AuthContext);
 const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
-
+const reactionsToShow = getGroupedReactions(post);
+const totalReactions = reactionsToShow.reduce((acc, r) => acc + r.count, 0);
 const isOwner = user?.id === post.user.id;
 
 const handleDelete = async () => {
@@ -185,12 +186,24 @@ const handleReportSubmitted = () => {
 
 
   // Default emojis to show if no reactions exist
-  const defaultEmojis = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+  // const defaultEmojis = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+  const defaultEmojis = ['🤍']; 
+
   
   // Get reactions to display (from backend or default)
-  const reactionsToShow = post.reactions?.length > 0 
-    ? post.reactions 
-    : defaultEmojis.map(emoji => ({ emoji, count: 0 }));
+  function getGroupedReactions(post: Post): { emoji: string; count: number }[] {
+    if (!post.reactions || post.reactions.length === 0) {
+      return defaultEmojis.map(emoji => ({ emoji, count: 0 }));
+    }
+
+    const countsMap = new Map<string, number>();
+
+    for (const reaction of post.reactions) {
+      countsMap.set(reaction.emoji, (countsMap.get(reaction.emoji) || 0) + 1);
+    }
+
+    return [...countsMap.entries()].map(([emoji, count]) => ({ emoji, count }));
+  }
 
   const handleReact = (emoji: string) => {
     if (!currentReactingItem) return;
@@ -398,22 +411,34 @@ const handleReportSubmitted = () => {
         
       {/* Post reaction bar */}
       <View style={styles.reactionBarContainer}>
-        <TouchableOpacity
-          style={styles.reactionBar}
-          onPress={() => {
-            setCurrentReactingItem({ postId: post.id });
-            setIsEmojiPickerOpen(true);
-          }}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.reactionBar}
         >
-          {reactionsToShow.map((reaction, idx) => (
-            <View key={idx} style={styles.reactionItem}>
-              <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
-              {reaction.count > 0 && (
-                <Text style={styles.reactionCount}>{reaction.count}</Text>
+
+          <TouchableOpacity
+            style={styles.reactionBar}
+            onPress={() => {
+              setCurrentReactingItem({ postId: post.id });
+              setIsEmojiPickerOpen(true);
+            }}
+          >
+            {reactionsToShow.map((reaction, idx) => (
+              <View key={idx} style={styles.reactionItem}>
+                <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
+                {reaction.count > 0 && (
+                  <Text style={styles.reactionCount}>{reaction.count}</Text>
+                )}
+              </View>
+            ))}
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 2 }}>
+              {totalReactions > 0 && (
+                <Text style={styles.totalReactionCount}>{totalReactions}</Text>
               )}
             </View>
-          ))}
-        </TouchableOpacity>
+          </TouchableOpacity>
+        </ScrollView>
       </View>
 
         {/* Bookmark button */}
@@ -501,8 +526,6 @@ const handleReportSubmitted = () => {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: 'white',
-    // borderBottomWidth: 1,
-    // borderBottomColor: '#eee',
   },
   head: {
     flexDirection: 'row',
@@ -569,9 +592,10 @@ const styles = StyleSheet.create({
   reactionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f2f5',
+    borderWidth: 1,
     borderRadius: 15,
-    paddingHorizontal: 8,
+    borderColor: '#e8eaed',
+    paddingHorizontal: 6,
     paddingVertical: 4,
   },
   reactionEmoji: {

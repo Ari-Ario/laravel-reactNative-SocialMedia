@@ -26,9 +26,7 @@ class PostController extends Controller
         $posts = Post::with([
                 'user',
                 'media',
-                'reactions' => function($query) use ($userId) {
-                    $query->where('user_id', $userId);
-                },
+                'reactions',
                 'reactionCounts',
                 'comments.user',
                 'comments.replies.user',
