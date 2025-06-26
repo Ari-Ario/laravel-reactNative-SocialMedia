@@ -1,12 +1,10 @@
-import { View, Text, Pressable, StyleSheet, Button, ActivityIndicator, ScrollView, FlatList, Image, TouchableOpacity } from "react-native";
-import { Link, router, Stack } from 'expo-router';
-import { useState, useEffect } from "react";
+import { View, Text, Pressable, StyleSheet, Button, ActivityIndicator, ScrollView, FlatList, Image, TouchableOpacity, Alert } from "react-native";
+import { Link, router, Stack, useRouter } from 'expo-router';
+import { useState, useEffect, useContext } from "react";
 import AuthContext from "@/context/AuthContext";
 import { logout } from "@/services/AuthService";
-import { useContext } from "react";
 import LoginScreen from "../LoginScreen";
 import PostListItem from '@/components/PostListItem';
-import { Alert } from 'react-native';
 import FloatingActionButton from '@/components/FloatingActionButton';
 import getApiBaseImage from "@/services/getApiBaseImage";
 import { fetchPosts, bookmarkPost, repostPost, sharePost, commentOnPost, reactToPost } from "@/services/PostService";
@@ -14,9 +12,9 @@ import CreatePost from "@/components/CreatePost";
 import { Ionicons } from "@expo/vector-icons";
 import ProfilePreview from "@/components/ProfilePreview";
 import AddStory from "@/components/AddStory";
-import { fetchStories, createStory } from "@/services/StoryService";
-import { useRouter } from 'expo-router';
+import { fetchStories } from "@/services/StoryService";
 import { useProfileView } from "@/context/ProfileViewContext";
+import { usePostStore } from "@/stores/postStore"; // ✅ Zustand store
 
 type StoryGroup = {
   user: {
@@ -24,331 +22,201 @@ type StoryGroup = {
     name: string;
     profile_photo: string;
   };
-  stories: Array<{
-    id: number;
-    media_path: string;
-    viewed: boolean;
-  }>;
+  stories: Array<{ id: number; media_path: string; viewed: boolean }>;
   all_viewed: boolean;
-  latest_story: {
-    id: number;
-    media_path: string;
-  };
+  latest_story: { id: number; media_path: string };
 };
 
 const HomePage = () => {
-    const { user, setUser } = useContext(AuthContext);
-    const [posts, setPosts] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [refreshing, setRefreshing] = useState(false);
-    const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
-    // const [profilePreviewVisible, setProfilePreviewVisible] = useState(false);
-    const { profileViewUserId, setProfileViewUserId, profilePreviewVisible, setProfilePreviewVisible } = useProfileView();
+  const { user, setUser } = useContext(AuthContext);
+  const router = useRouter();
+  const { profileViewUserId, setProfileViewUserId, profilePreviewVisible, setProfilePreviewVisible } = useProfileView();
 
-    const [addStoryVisible, setAddStoryVisible] = useState(false);
-    const [stories, setStories] = useState([]);
-    const router = useRouter();
-    const [storyGroups, setStoryGroups] = useState<StoryGroup[]>([]);
-    // const [profileViewUserId, setProfileViewUserId] = useState(null);
+  const { posts, setPosts, updatePost, addPost } = usePostStore(); // ✅ Zustand
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
+  const [addStoryVisible, setAddStoryVisible] = useState(false);
+  const [storyGroups, setStoryGroups] = useState<StoryGroup[]>([]);
 
-    const handleLogout = async () => {
-      try {
-          await logout();
-          setUser(null);
-          if (!user || (user === null)) {
-            router.replace('/LoginScreen');
-          }
-      } catch (error) {
-          console.error("Logout failed:", error);
-          setUser(null);
-      }
-    };
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setUser(null);
+      if (!user || user === null) router.replace('/LoginScreen');
+    } catch (error) {
+      console.error("Logout failed:", error);
+      setUser(null);
+    }
+  };
 
-    const fetchPostsAndHandleState = async () => {
-        try {
-            setLoading(true);
-            const postsData = await fetchPosts();
-            setPosts(postsData);
-            console.log(postsData);
-        } catch (error) {
-            Alert.alert('Error', 'Something went wrong while fetching posts');
-            console.error(error);
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    };
+  const fetchPostsAndHandleState = async () => {
+    try {
+      setLoading(true);
+      const postsData = await fetchPosts();
+      setPosts(postsData); // ✅ Zustand
+    } catch (error) {
+      Alert.alert('Error', 'Something went wrong while fetching posts');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
-    const handleRepost = async (postId: number) => {
-      try {
-        const response = await repostPost(postId);
-        
-        setPosts(prevPosts => 
-          prevPosts.map(post => {
-            if (post.id === postId) {
-              // Update repost status and count
-              const updatedPost = {
-                ...post,
-                is_reposted: response.reposted,
-                reposts_count: response.reposts_count
-              };
-              
-              // If this was a new repost, add to reposts array
-              if (response.reposted && response.repost_user) {
-                updatedPost.reposts = [
-                  {
-                    id: Date.now(), // temporary ID
-                    user: response.repost_user,
-                    created_at: new Date().toISOString()
-                  },
-                  ...(post.reposts || [])
-                ];
-              } else if (!response.reposted) {
-                // If repost was removed, filter out current user's repost
-                updatedPost.reposts = (post.reposts || []).filter(
-                  repost => repost.user.id !== user?.id
-                );
-              }
-              
-              return updatedPost;
-            }
-            return post;
-          })
-        );
-      } catch (error) {
-        console.error('Error handling repost:', error);
-        Alert.alert('Error', 'Could not complete repost action');
-      }
-    };
+  const handleRepost = async (postId: number) => {
+    try {
+      const response = await repostPost(postId);
+      updatePost((prev) => {
+        if (prev.id !== postId) return prev;
+        const updated = {
+          ...prev,
+          is_reposted: response.reposted,
+          reposts_count: response.reposts_count,
+          reposts: response.reposted
+            ? [{ id: Date.now(), user: response.repost_user, created_at: new Date().toISOString() }, ...(prev.reposts || [])]
+            : (prev.reposts || []).filter(r => r.user.id !== user?.id)
+        };
+        return updated;
+      });
+    } catch (error) {
+      console.error('Error handling repost:', error);
+      Alert.alert('Error', 'Could not complete repost action');
+    }
+  };
 
-    const handleRefresh = () => {
-        setRefreshing(true);
-        fetchPostsAndHandleState();
-        fetchStoriesAndHandleState();
-    };
-
-    useEffect(() => {
-        if (user) {
-            fetchPostsAndHandleState();
-            fetchStoriesAndHandleState();
-        }
-    }, [user]);
-
-    //ProfilePreview and Stories
-    const handleProfilePreview = () => {
-      setProfilePreviewVisible(true);
-    };
-
-    const handleAddStory = () => {
-      setAddStoryVisible(true);
-    };
-
-    const fetchStoriesAndHandleState = async () => {
-      try {
-        const data = await fetchStories();
-        setStoryGroups(data);
-        console.log( 'all stories: ',data);
-
-      } catch (error) {
-        console.error('Error fetching stories:', error);
-      }
-    };
-
-    //END ProfilePreview and Stories
-
-    useEffect(() => {
-      if (user === undefined) return; // still loading, don't redirect
-      if (user === null) {
-        router.replace('/LoginScreen');
-      }
-    }, [user]);
-
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchPostsAndHandleState();
+    fetchStoriesAndHandleState();
+  };
 
   useEffect(() => {
-    const loadStories = async () => {
-      try {
-        const data = await fetchStories();
-        setStories(data);
-      } catch (error) {
-        console.error('Error loading stories:', error);
-      }
-    };
+    if (user) {
+      fetchPostsAndHandleState();
+      fetchStoriesAndHandleState();
+    }
+  }, [user]);
 
-    loadStories();
-  }, []);
+  const fetchStoriesAndHandleState = async () => {
+    try {
+      const data = await fetchStories();
+      setStoryGroups(data);
+    } catch (error) {
+      console.error('Error fetching stories:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (user === undefined) return;
+    if (user === null) router.replace('/LoginScreen');
+  }, [user]);
 
   const handleProfilePress = (userId: string) => {
     setProfileViewUserId(userId);
     setProfilePreviewVisible(true);
   };
 
-    if (!user) {
-      return (
-        <>
-          <Stack.Screen name="Login" component={LoginScreen} />
-        </>
-      );
-    }
-
-    if (loading && !refreshing) {
-      return (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" />
+  const renderProfilePhoto = () => (
+    <TouchableOpacity onPress={() => handleProfilePress(user.id)}>
+      {user?.profile_photo ? (
+        <Image source={{ uri: `${getApiBaseImage()}/storage/${user.profile_photo}` }} style={styles.profilePhoto} />
+      ) : (
+        <View style={styles.initialsContainer}>
+          <Text style={styles.initials}>{user?.name?.charAt(0)}{user?.last_name?.charAt(0)}</Text>
         </View>
-      );
-    }
+      )}
+    </TouchableOpacity>
+  );
 
-    const renderProfilePhoto = () => {
-      return (
-        <TouchableOpacity onPress={() => handleProfilePress(user.id)}>
-          {user?.profile_photo ? (
-            <Image 
-              source={{ uri: `${getApiBaseImage()}/storage/${user.profile_photo}` }}
-              style={styles.profilePhoto}
-            />
-          ) : (
-            <View style={styles.initialsContainer}>
-              <Text style={styles.initials}>
-                {user?.name?.charAt(0)}{user?.last_name?.charAt(0)}
-              </Text>
+  if (!user) return <><Stack.Screen name="Login" component={LoginScreen} /></>;
+  if (loading && !refreshing) return <View style={styles.loadingContainer}><ActivityIndicator size="large" /></View>;
+
+  return (
+    <AuthContext.Provider value={{ user, setUser }}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          {storyGroups.length >= 0 && (
+            <View style={styles.storiesContainer}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 10 }} snapToAlignment="start" decelerationRate="fast" snapToInterval={80}>
+                <TouchableOpacity style={styles.storyItem} onPress={() => handleProfilePress(user.id)}>
+                  <View style={styles.myStoryCircle}>
+                    {renderProfilePhoto()}
+                    <View style={styles.addStoryIcon}>
+                      <Ionicons name="add" size={16} color="white" onPress={(e) => { e.stopPropagation(); setAddStoryVisible(true); }} />
+                    </View>
+                  </View>
+                  <Text style={styles.storyUsername} onPress={() => setAddStoryVisible(true)}>Your Story</Text>
+                </TouchableOpacity>
+                {storyGroups.map(group => (
+                  <TouchableOpacity key={group.user.id} style={styles.storyItem} onPress={() => router.push({ pathname: '/story/[id]', params: { id: group.latest_story.id } })}>
+                    <View style={[styles.storyBorder, group.all_viewed && styles.viewedStoryBorder]}>
+                      <Image source={{ uri: `${getApiBaseImage()}/storage/${group.user.profile_photo}` }} style={styles.storyImage} />
+                      {!group.all_viewed && <View style={styles.unseenBadge} />}
+                    </View>
+                    <Text style={styles.storyUsername}>{group.user.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
           )}
-        </TouchableOpacity>
-      );
-    };
-
-    return (
-      <AuthContext.Provider value={{ user, setUser }}>
-        <View style={styles.container}>
-          {/* Header with welcome message and logout button */}
-          <View style={styles.header}>
-
-            {/* <View style={styles.profilePhoto}>
-              <TouchableOpacity onPress={() => handleProfilePreview()}>
-                <View style={styles.photoContainer}>
-                  {renderProfilePhoto()}
-                  <View style={styles.addIconContainer}>
-                    <Ionicons name="add" size={10} color="white" onPress={() => handleAddStory()} />
-                  </View>
-                </View>
-              </TouchableOpacity>
-            </View> */}
-
-            {storyGroups.length >= 0 && (
-              <View style={styles.storiesContainer}>
-                <ScrollView 
-                    horizontal 
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: 10 }}
-                    snapToAlignment="start"
-                    decelerationRate="fast"
-                    snapToInterval={80} // Or width of story item including margin
-                    overScrollMode="never"
-                >
-                  {/* My Story (Add new) */}
-                  <TouchableOpacity 
-                    style={styles.storyItem}
-                    onPress={() => handleProfilePress(user.id)}
-                  >
-                    <View style={styles.myStoryCircle}>
-                      {renderProfilePhoto()}
-                      <View style={styles.addStoryIcon}>
-                        <Ionicons name="add" size={16} color="white" 
-                            onPress={(e) => {
-                              e.stopPropagation(); // Prevent triggering both handlers
-                              handleAddStory();
-                            }} 
-                        />
-                      </View>
-                    </View>
-                    <Text style={styles.storyUsername} onPress={handleAddStory}>Your Story</Text>
-                  </TouchableOpacity>
-                  
-                  {/* Other users' stories */}
-                  {storyGroups.map((group) => (
-                    <TouchableOpacity 
-                      key={group.user.id}
-                      style={styles.storyItem}
-                      onPress={() => router.push({
-                        pathname: '/story/[id]',
-                        params: { id: group.latest_story.id }
-                      })}
-                    >
-                      <View style={[
-                        styles.storyBorder,
-                        group.all_viewed && styles.viewedStoryBorder
-                      ]}>
-                        <Image 
-                          source={{ uri: `${getApiBaseImage()}/storage/${group.user.profile_photo}` }}
-                          style={styles.storyImage}
-                        />
-                        {!group.all_viewed && (
-                          <View style={styles.unseenBadge} />
-                        )}
-                      </View>
-                      <Text style={styles.storyUsername}>
-                        {group.user.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-
-            <Button title="Logout" onPress={handleLogout} />
-          </View>
-
-          {/* Feed content */}
-          <FlatList
-            data={posts}
-            renderItem={({ item }) => (
-              <View style={styles.postContainer}>
-                <PostListItem 
-                  post={item} 
-                  onReact={reactToPost} 
-                  onCommentSubmit={commentOnPost}
-                  onRepost={handleRepost}
-                  onShare={sharePost}
-                  onBookmark={bookmarkPost}
-                  setIsCreateModalVisible={setIsCreateModalVisible}
-                />
-
-              </View>
-            )}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-            onRefresh={handleRefresh}
-            refreshing={refreshing}
-            keyExtractor={(item) => item.id.toString()}
-          />
-          
-          <FloatingActionButton onPress={() => {
-            router.setParams({ postId: null }); // Clear any edit params
-            setIsCreateModalVisible(true);
-          }} />
-
-        {/* Pop-Ups below */}
+          <Button title="Logout" onPress={handleLogout} />
         </View>
-          <CreatePost
-            visible={isCreateModalVisible}
-            onClose={() => setIsCreateModalVisible(false)}
-            onPostCreated={fetchPostsAndHandleState}
-          />
 
-          <ProfilePreview 
-            userId={profileViewUserId}
-            visible={profilePreviewVisible}
-            onClose={() => setProfilePreviewVisible(false)}
-          />
+        <FlatList
+          data={posts}
+          renderItem={({ item }) => (
+            <View style={styles.postContainer}>
+              <PostListItem
+                post={item}
+                onReact={reactToPost}
+                onCommentSubmit={commentOnPost}
+                onRepost={handleRepost}
+                onShare={sharePost}
+                onBookmark={bookmarkPost}
+                setIsCreateModalVisible={setIsCreateModalVisible}
+              />
+            </View>
+          )}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          onRefresh={handleRefresh}
+          refreshing={refreshing}
+          keyExtractor={(item) => item.id.toString()}
+        />
 
-          <AddStory
-            visible={addStoryVisible}
-            onClose={() => setAddStoryVisible(false)}
-            onStoryCreated={fetchStoriesAndHandleState}
-          />
-      </AuthContext.Provider>
-    );
-}
+        <FloatingActionButton onPress={() => {
+          router.setParams({ postId: null });
+          setIsCreateModalVisible(true);
+        }} />
+      </View>
+
+      <CreatePost
+        visible={isCreateModalVisible}
+        onClose={() => setIsCreateModalVisible(false)}
+        onPostCreated={(post) => {
+          if (post?.id) {
+            updatePost(post); // ✅ Zustand: live update
+          } else {
+            fetchPostsAndHandleState();
+          }
+        }}
+      />
+
+      <ProfilePreview
+        userId={profileViewUserId}
+        visible={profilePreviewVisible}
+        onClose={() => setProfilePreviewVisible(false)}
+      />
+
+      <AddStory
+        visible={addStoryVisible}
+        onClose={() => setAddStoryVisible(false)}
+        onStoryCreated={fetchStoriesAndHandleState}
+      />
+    </AuthContext.Provider>
+  );
+};
+
 
 const styles = StyleSheet.create({
   container: {

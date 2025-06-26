@@ -20,17 +20,19 @@ import { useLocalSearchParams, router } from 'expo-router';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { deletePostMedia, fetchPosts } from '@/services/PostService';
 import { Platform } from 'react-native';
+import { usePostStore } from '@/stores/postStore';
 
 interface CreatePostProps {
   visible: boolean;
   onClose: () => void;
-  onPostCreated: () => void;
+  onPostCreated?: (post: Post) => void;
   initialParams?: {
     postId?: string | null;
     caption?: string;
     media?: string;
   };
 }
+
 export default function CreatePost({ visible, onClose, onPostCreated, initialParams }: CreatePostProps) {
   const params = initialParams || useLocalSearchParams();
   const isEditing = !!(params.postId && params.postId !== 'null');
@@ -43,6 +45,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
   const [cameraType, setCameraType] = useState<CameraType>(CameraType?.back || CameraType?.front);
   const cameraRef = useRef(null);
   const [deleteStatus, setDeleteStatus] = useState<{visible: boolean, message: string}>({visible: false, message: ''});
+  const postStore = usePostStore();
 
   // Initialize with edit data if available
     useEffect(() => {
@@ -138,71 +141,74 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
     }
   };
 
-  const handleSubmit = async () => {  // Make sure this is marked async
-    if (!caption.trim() || media.length === 0) {
-      Alert.alert('Error', 'Please add a caption or media');
-      return;
+const handleSubmit = async () => {
+  if (!caption.trim() || media.length === 0) {
+    Alert.alert('Error', 'Please add a caption or media');
+    return;
+  }
+
+  setIsUploading(true);
+  try {
+    const formData = new FormData();
+    formData.append('caption', caption);
+
+    if (isEditing) {
+      formData.append('_method', 'PUT');
+      media.forEach(item => {
+        if (item._deleted && item.id) {
+          formData.append('delete_media[]', item.id.toString());
+        }
+      });
     }
 
-    setIsUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('caption', caption);
+    const uploadPromises = media
+      .filter(item => !item.id && !item._deleted)
+      .map(async (item, index) => {
+        let file;
 
-      if (isEditing) {
-        formData.append('_method', 'PUT');
-        
-        // Handle media to delete (marked with _deleted)
-        media.forEach(item => {
-          if (item._deleted && item.id) {
-            formData.append('delete_media[]', item.id.toString());
-          }
-        });
-      }
+        if (Platform.OS === 'web') {
+          const response = await fetch(item.uri);
+          const blob = await response.blob();
+          file = new File([blob], `media-${index}.${item.uri.split('.').pop()}`, {
+            type: item.type || 'image/jpeg',
+          });
+        } else {
+          const fileType = item.uri.split('.').pop();
+          const fileName = item.fileName || `media-${Date.now()}.${fileType}`;
 
-      // Handle new media uploads
-      const uploadPromises = media
-        .filter(item => !item.id && !item._deleted)
-        .map(async (item, index) => {
-          let file;
-          
-          if (Platform.OS === 'web') {
-            const response = await fetch(item.uri);
-            const blob = await response.blob();
-            file = new File([blob], `media-${index}.${item.uri.split('.').pop()}`, {
-              type: item.type || 'image/jpeg',
-            });
-          } else {
-            const fileType = item.uri.split('.').pop();
-            const fileName = item.fileName || `media-${Date.now()}.${fileType}`;
-            
-            file = {
-              uri: item.uri,
-              name: fileName,
-              type: item.type || `image/${fileType}`,
-            };
-          }
+          file = {
+            uri: item.uri,
+            name: fileName,
+            type: item.type || `image/${fileType}`,
+          };
+        }
 
-          formData.append(`media[${index}]`, file);
-        });
+        formData.append(`media[${index}]`, file);
+      });
 
-      await Promise.all(uploadPromises);
+    await Promise.all(uploadPromises);
 
-      // Make the API call
-      const response = isEditing && params.postId
-        ? await updatePost(Number(params.postId), formData)
-        : await createPost(formData);
+    const post = isEditing && params.postId
+      ? await updatePost(Number(params.postId), formData)
+      : await createPost(formData);
 
-      onPostCreated();
-      fetchPosts();
-      handleClose();
-    } catch (error) {
-      console.error('Error creating/updating post:', error);
-      Alert.alert('Error', `Failed to ${isEditing ? 'update' : 'create'} post`);
-    } finally {
-      setIsUploading(false);
+    if (isEditing && params.postId) {
+      postStore.updatePost(post);
+    } else {
+      postStore.addPost(post);
     }
-  };
+    if (onPostCreated) {
+      onPostCreated(post); // ✅ This will now work
+    }
+    handleClose(); // ✅ Let Zustand update the store
+  } catch (error) {
+    console.error('Error creating/updating post:', error);
+    Alert.alert('Error', `Failed to ${isEditing ? 'update' : 'create'} post`);
+  } finally {
+    setIsUploading(false);
+  }
+};
+
 
 const handleClose = () => {
   setCaption('');

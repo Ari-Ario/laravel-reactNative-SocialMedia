@@ -50,6 +50,7 @@ export async function updatePost(postId: number, formData: FormData) {
             Authorization: `Bearer ${token}`,
         },
     });
+    // console.log(response.data)
     
     return response.data;
 }

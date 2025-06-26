@@ -22,6 +22,7 @@ import { Platform, Alert } from 'react-native';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { useProfileView } from '@/context/ProfileViewContext';
 import { useModal } from '@/context/ModalContext';
+import { usePostStore } from '@/stores/postStore';
 
 interface Comment {
   id: number;
@@ -110,7 +111,11 @@ const { user, setUser } = useContext(AuthContext);
 const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
 const reactionsToShow = getGroupedReactions(post);
 const totalReactions = reactionsToShow.reduce((acc, r) => acc + r.count, 0);
+const { deletePostById, updatePost: updatePostInStore } = usePostStore();
+const postStore = usePostStore();
+
 const isOwner = user?.id === post.user.id;
+
 
 const handleDelete = async () => {
     try {
@@ -133,6 +138,7 @@ const handleDelete = async () => {
         }
 
         await deletePost(post.id);
+        deletePostById(post.id);
         setMenuVisible(false);
         
         if (Platform.OS === 'web') {
@@ -167,8 +173,10 @@ const handleDelete = async () => {
       initialMedia: post.media,
 
       // Optional: Add any refresh logic you need
-      onPostCreated: () => {
-        fetchPosts();
+      onPostCreated: (updatedPost) => {
+        // console.log('✅ Got post in PostListItem:', updatedPost);
+        // console.log('✅ Post ID:', updatedPost?.id);
+        updatePostInStore(updatedPost); // this will crash only if post is still undefined
         setMenuVisible(false);
       }
     });
@@ -187,11 +195,11 @@ const handleReportSubmitted = () => {
 
   // Default emojis to show if no reactions exist
   // const defaultEmojis = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
-  const defaultEmojis = ['🤍']; 
-
+  
   
   // Get reactions to display (from backend or default)
   function getGroupedReactions(post: Post): { emoji: string; count: number }[] {
+    const defaultEmojis = ['🤍']; 
     if (!post.reactions || post.reactions.length === 0) {
       return defaultEmojis.map(emoji => ({ emoji, count: 0 }));
     }
@@ -210,6 +218,7 @@ const handleReportSubmitted = () => {
     
     if (currentReactingItem.commentId) {
       onReact(currentReactingItem.postId, emoji, currentReactingItem.commentId);
+      postStore.updatePostReactions(currentReactingItem.postId, emoji, currentReactingItem.commentId);
     } else {
       onReact(currentReactingItem.postId, emoji);
     }
