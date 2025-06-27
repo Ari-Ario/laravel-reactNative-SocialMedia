@@ -8,6 +8,8 @@ import {
   FlatList, 
   TextInput,
   ScrollView,
+  Modal,
+  NativeSyntheticEvent,
   findNodeHandle, UIManager
 } from 'react-native';
 import { Ionicons, Feather, AntDesign } from '@expo/vector-icons';
@@ -23,6 +25,7 @@ import getApiBaseImage from '@/services/getApiBaseImage';
 import { useProfileView } from '@/context/ProfileViewContext';
 import { useModal } from '@/context/ModalContext';
 import { usePostStore } from '@/stores/postStore';
+
 
 interface Comment {
   id: number;
@@ -109,12 +112,18 @@ const [menuVisible, setMenuVisible] = useState(false);
 const [reportVisible, setReportVisible] = useState(false);
 const { user, setUser } = useContext(AuthContext);
 const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
-const reactionsToShow = getGroupedReactions(post);
+const reactionsToShow = getGroupedReactions(post, user?.id);
 const totalReactions = reactionsToShow.reduce((acc, r) => acc + r.count, 0);
 const { deletePostById, updatePost: updatePostInStore } = usePostStore();
 const postStore = usePostStore();
 
+const { posts } = usePostStore();
+const currentPost = posts.find((p) => p.id === post.id);
+const comments = currentPost?.comments || [];
+
 const isOwner = user?.id === post.user.id;
+
+const [isFullScreen, setIsFullScreen] = useState(false);
 
 
 const handleDelete = async () => {
@@ -176,7 +185,7 @@ const handleDelete = async () => {
       onPostCreated: (updatedPost) => {
         // console.log('✅ Got post in PostListItem:', updatedPost);
         // console.log('✅ Post ID:', updatedPost?.id);
-        updatePostInStore(updatedPost); // this will crash only if post is still undefined
+        updatePostInStore(updatedPost);
         setMenuVisible(false);
       }
     });
@@ -196,21 +205,35 @@ const handleReportSubmitted = () => {
   // Default emojis to show if no reactions exist
   // const defaultEmojis = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
   
-  
   // Get reactions to display (from backend or default)
-  function getGroupedReactions(post: Post): { emoji: string; count: number }[] {
-    const defaultEmojis = ['🤍']; 
+  function getGroupedReactions(post: Post, currentUserId?: number): 
+    { emoji: string; count: number; user_ids: number[] }[] {
+    
+    const defaultEmojis = ['🤍'];
+    
     if (!post.reactions || post.reactions.length === 0) {
-      return defaultEmojis.map(emoji => ({ emoji, count: 0 }));
+      return defaultEmojis.map(emoji => ({ 
+        emoji, 
+        count: 0,
+        user_ids: []
+      }));
     }
 
-    const countsMap = new Map<string, number>();
+    const reactionMap = new Map<string, { count: number, user_ids: number[] }>();
 
     for (const reaction of post.reactions) {
-      countsMap.set(reaction.emoji, (countsMap.get(reaction.emoji) || 0) + 1);
+      const existing = reactionMap.get(reaction.emoji) || { count: 0, user_ids: [] };
+      reactionMap.set(reaction.emoji, {
+        count: existing.count + 1,
+        user_ids: [...existing.user_ids, reaction.user_id]
+      });
     }
 
-    return [...countsMap.entries()].map(([emoji, count]) => ({ emoji, count }));
+    return [...reactionMap.entries()].map(([emoji, { count, user_ids }]) => ({ 
+      emoji, 
+      count,
+      user_ids 
+    }));
   }
 
   const handleReact = (emoji: string) => {
@@ -293,6 +316,7 @@ const handleReportSubmitted = () => {
       </View>
       
       {/* Nested replies */}
+      
       {item.replies?.length > 0 && (
         <View style={styles.repliesContainer}>
           <FlatList
@@ -314,6 +338,8 @@ const handleReportSubmitted = () => {
       left: event.nativeEvent.pageX,
     });
   };
+
+
   return (
     <View style={styles.container}>
 
@@ -384,7 +410,15 @@ const handleReportSubmitted = () => {
           style={styles.actionButton}
           onPress={() => setShowComments(!showComments)}
         >
-          <Ionicons name="chatbubble-outline" size={24} />
+          <Ionicons 
+            name="chatbubble-outline" 
+            size={24} 
+            color={
+              post.comments.some(comment => comment.user_id === user?.id) 
+                ? '#10b981' 
+                : '#000'
+            } 
+          />
           {post.comments_count > 0 && (
             <Text style={styles.actionCount}>{post.comments_count}</Text>
           )}
@@ -418,14 +452,11 @@ const handleReportSubmitted = () => {
           <Feather name="send" size={24} />
         </TouchableOpacity>
         
-      {/* Post reaction bar */}
-      <View style={styles.reactionBarContainer}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.reactionBar}
-        >
-
+        {/* Post reaction bar */}
+        {reactionsToShow.map((reaction, idx) => {
+          const isMyReaction = reaction.user_ids?.includes(user?.id);
+          
+          return (
           <TouchableOpacity
             style={styles.reactionBar}
             onPress={() => {
@@ -433,22 +464,28 @@ const handleReportSubmitted = () => {
               setIsEmojiPickerOpen(true);
             }}
           >
-            {reactionsToShow.map((reaction, idx) => (
-              <View key={idx} style={styles.reactionItem}>
-                <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
-                {reaction.count > 0 && (
-                  <Text style={styles.reactionCount}>{reaction.count}</Text>
-                )}
-              </View>
-            ))}
-            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 2 }}>
-              {totalReactions > 0 && (
-                <Text style={styles.totalReactionCount}>{totalReactions}</Text>
+            <View 
+              key={idx} 
+              style={[
+                styles.reactionItem,
+                isMyReaction && styles.reactionItemMine
+              ]}
+            >
+              <Text style={styles.reactionEmoji}>
+                {reaction.emoji}
+              </Text>
+              {reaction.count > 0 && (
+                <Text style={[
+                  styles.reactionCount,
+                  isMyReaction && styles.reactionCountMine
+                ]}>
+                  {reaction.count}
+                </Text>
               )}
             </View>
           </TouchableOpacity>
-        </ScrollView>
-      </View>
+          );
+        })}
 
         {/* Bookmark button */}
         <TouchableOpacity 
@@ -461,47 +498,76 @@ const handleReportSubmitted = () => {
 
       {/* Comments section */}
       {showComments && (
-        <View style={styles.commentsSection}>
-          {/* Comments list */}
-          <ScrollView 
-            style={styles.commentsList}
-            contentContainerStyle={{ paddingBottom: 50 }}
-          >
-            {post.comments?.length > 0 ? (
-              <FlatList
-                data={post.comments}
-                renderItem={renderComment}
-                keyExtractor={(comment) => comment.id.toString()}
-                scrollEnabled={false} // Let the parent ScrollView handle scrolling
-              />
-            ) : (
-              <Text style={styles.noCommentsText}>No comments yet</Text>
-            )}
-          </ScrollView>
+        <Modal
+          visible={showComments}
+          animationType="slide"
+          transparent
+          onRequestClose={() => {
+            setIsFullScreen(false)
+            setShowComments(false)
+          }}
+        >
+          <TouchableOpacity
+            style={styles.commentsBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowComments(false)}
+          />
 
-          {/* Comment input (fixed at bottom) */}
-          <View style={styles.commentInputContainer}>
-            <TextInput
-              style={styles.commentInput}
-              placeholder={replyingTo ? "Replying to comment..." : "Write a comment..."}
-              value={commentText}
-              onChangeText={setCommentText}
-              multiline
-            />
-            <TouchableOpacity
-              style={styles.commentSubmitButton}
-              onPress={() => {
-                onCommentSubmit(post.id, commentText, replyingTo || undefined);
-                setCommentText('');
-                setReplyingTo(null);
-              }}
-              disabled={!commentText.trim()}
+          <View style={[
+            styles.commentsSheet,
+            isFullScreen && styles.fullScreenSheet
+          ]}>
+            <TouchableOpacity 
+              style={styles.sheetHandleContainer}
+              onPress={() => setIsFullScreen(!isFullScreen)}
             >
-              <Text style={styles.commentSubmitText}>Post</Text>
+              <View style={styles.sheetHandle} />
             </TouchableOpacity>
+
+            {/* Comments List */}
+            <ScrollView
+              style={styles.commentsList}
+              contentContainerStyle={{ paddingBottom: 100 }}
+            >
+              {comments.length > 0 ? (
+                <FlatList
+                  data={comments}
+                  renderItem={renderComment}
+                  keyExtractor={(comment) => comment.id.toString()}
+                  scrollEnabled={false}
+                />
+              ) : (
+                <Text style={styles.noCommentsText}>No comments yet</Text>
+              )}
+            </ScrollView>
+
+            {/* Comment input */}
+            <View style={styles.commentInputContainer}>
+              <TextInput
+                style={styles.commentInput}
+                placeholder={
+                  replyingTo ? "Replying to comment..." : "Write a comment..."
+                }
+                value={commentText}
+                onChangeText={setCommentText}
+                multiline
+              />
+              <TouchableOpacity
+                style={styles.commentSubmitButton}
+                onPress={() => {
+                  onCommentSubmit(post.id, commentText, replyingTo || undefined);
+                  setCommentText("");
+                  setReplyingTo(null);
+                }}
+                disabled={!commentText.trim()}
+              >
+                <Text style={styles.commentSubmitText}>Post</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        </Modal>
       )}
+
 
       {/* Emoji Picker */}
       <EmojiPicker
@@ -598,6 +664,8 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 5,
   },
+
+
   reactionItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -606,7 +674,20 @@ const styles = StyleSheet.create({
     borderColor: '#e8eaed',
     paddingHorizontal: 6,
     paddingVertical: 4,
+    // Add this new property:
+    backgroundColor: 'transparent', // Default background
   },
+  // Add these new styles:
+  reactionItemMine: {
+    borderColor: '#10b981', // Green border for your reactions
+    backgroundColor: 'rgba(16, 185, 129, 0.1)', // Light green background
+  },
+  reactionCountMine: {
+    color: '#10b981', // Green text for your reaction counts
+    fontWeight: '600',
+  },
+
+
   reactionEmoji: {
     fontSize: 14,
   },
@@ -639,9 +720,49 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#65676B',
   },
-  commentsSection: {
-    maxHeight: 400, // Adjust as needed
+
+
+  commentsBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
   },
+
+  commentsSheet: {
+    // position: 'absolute',
+    width: '100%',
+    maxWidth: 500,
+    alignSelf: 'center',
+    bottom: 0,
+    // left: 0,
+    // right: 0,
+    height: '66%',
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 20,
+  },
+  fullScreenSheet: {
+    height: '100%', // Or '100%' if you want truly full screen
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+  },
+  sheetHandleContainer: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#ccc',
+  },
+
+
   commentsList: {
     // paddingHorizontal: 10,
   },
@@ -737,6 +858,8 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
+
+
   menuButton: {
     // marginLeft: 'auto',
     paddingLeft: 8,

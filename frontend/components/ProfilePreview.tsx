@@ -6,6 +6,7 @@ import PostListItem from './PostListItem';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { useProfileView } from '@/context/ProfileViewContext';
 import { useModal } from '@/context/ModalContext';
+import { usePostStore } from '@/stores/postStore';
 
 const ProfilePreview = ({ userId, visible, onClose }) => {
   const { openModal } = useModal();
@@ -15,6 +16,8 @@ const ProfilePreview = ({ userId, visible, onClose }) => {
   const [loading, setLoading] = useState(true);
   const [followLoading, setFollowLoading] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
+  const { posts } = usePostStore();
+  const userPosts = posts.filter(p => p.user.id === userId);
 
   useEffect(() => {
     if (visible && userId) {
@@ -155,7 +158,7 @@ const ProfilePreview = ({ userId, visible, onClose }) => {
             </TouchableOpacity>
 
             <FlatList
-              data={profile.posts}
+              data={userPosts}
               renderItem={({ item }) => (
                 <PostListItem 
                   post={item} 

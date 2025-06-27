@@ -1,3 +1,5 @@
+import 'react-native-gesture-handler'; // MUST BE FIRST IMPORT
+
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { useRouter, Redirect, Stack } from 'expo-router';
@@ -18,6 +20,7 @@ import { ProfileViewProvider } from '@/context/ProfileViewContext';
 import { GlobalModals } from '@/components/GlobalModals';
 import { ModalProvider } from '@/context/ModalContext';
 import ModalManager from '@/components/ModalManager';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 
 SplashScreen.preventAutoHideAsync();
@@ -114,17 +117,23 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthContext.Provider value={{ user, setUser }}>
-      <ModalProvider>
-
-        <ProfileViewProvider>
-          <Stack screenOptions={{ headerShown: false, animation: 'none' }} />
-          <GlobalModals />
-          <ModalManager />
-        </ProfileViewProvider>
-
-      </ModalProvider>
-
-    </AuthContext.Provider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthContext.Provider value={{ user, setUser }}>
+        <ModalProvider>
+          <ProfileViewProvider>
+            {/* Stack must be the last child to properly handle gestures */}
+            <Stack screenOptions={{ 
+              headerShown: false, 
+              animation: 'none',
+              gestureEnabled: true // Ensure screen gestures work
+            }} />
+            
+            {/* Modals render above Stack */}
+            <GlobalModals />
+            <ModalManager />
+          </ProfileViewProvider>
+        </ModalProvider>
+      </AuthContext.Provider>
+    </GestureHandlerRootView>
   );
 }

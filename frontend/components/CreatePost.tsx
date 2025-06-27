@@ -345,7 +345,10 @@ const handleClose = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'white',
+    // backgroundColor: 'white',
+    maxWidth: 500,
+    width: "100%",
+    alignSelf: 'center'
   },
   cameraContainer: {
     flex: 1,

@@ -35,20 +35,20 @@ export const usePostStore = create<PostStore>((set) => ({
       posts: state.posts.filter((p) => p.id !== postId),
     })),
 
-    updatePostComments: (postId: number, comments: Comment[]) => {
+  updatePostComments: (updatedPost: Post) => {
     set((state) => ({
-        posts: state.posts.map((post) =>
-        post.id === postId ? { ...post, comments } : post
-        ),
+      posts: state.posts.map((post) =>
+        post.id === updatedPost.id ? { ...post, comments: updatedPost.comments } : post
+      ),
     }));
-    },
+  },
 
-    updatePostReactions: (postId: number, reactions: { emoji: string; count: number }[]) => {
+  updatePostReactions: (updatedPost: Post) => {
     set((state) => ({
-        posts: state.posts.map((post) =>
-        post.id === postId ? { ...post, reactions } : post
-        ),
+      posts: state.posts.map((post) =>
+        post.id === updatedPost.id ? { ...post, reactions: updatedPost.reactions } : post
+      ),
     }));
-    },
+  },
 
 }));
