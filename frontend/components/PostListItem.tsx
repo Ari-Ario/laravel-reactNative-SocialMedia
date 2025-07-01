@@ -14,7 +14,7 @@ import {
   NativeTouchEvent
 } from 'react-native';
 import { Ionicons, Feather, AntDesign } from '@expo/vector-icons';
-import { useState, useContext } from 'react';
+import { useState, useContext, useRef } from 'react';
 import EmojiPicker from 'rn-emoji-keyboard';
 import PostMenu from './PostMenu';
 import ReportPost from './ReportPost';
@@ -328,10 +328,10 @@ const handleDelete = async () => {
   };
 
   const handleReact = async (emoji: string) => {
-    if (!currentReactingItem?.postId || !user?.id) {
-      console.error('Missing reaction data:', { currentReactingItem, user });
-      return;
-    }
+    // if (!currentReactingItem?.postId || !user?.id) {
+    //   console.error('Missing reaction data:', { currentReactingItem, user });
+    //   return;
+    // }
 
     const { postId, commentId } = currentReactingItem;
     
@@ -440,6 +440,19 @@ const handleDelete = async () => {
       setIsEmojiPickerOpen(false);
     }
   };
+
+const useDoubleTap = (callback: () => void, delay = 300) => {
+  const lastTap = useRef<number>(0);
+
+  return () => {
+    const now = Date.now();
+    if (lastTap.current && now - lastTap.current < delay) {
+      callback();
+    }
+    lastTap.current = now;
+  };
+};
+
 
 const handleReactComment = async (emoji: string) => {
   if (!currentReactingComment?.postId || !currentReactingComment?.commentId || !user?.id) {
@@ -713,12 +726,21 @@ const renderComment = ({ item }: { item: Comment }) => {
 
       {/* Post media */}
       {post.media?.length > 0 && (
-        <Image
-          source={{ uri: `${getApiBaseImage()}/storage/${post.media[0].file_path}` }}
-          style={styles.media}
-          resizeMode="cover"
-        />
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={useDoubleTap(() => {
+            setCurrentReactingItem({ postId: post.id });
+            handleReact("❤️");
+          })}
+        >
+          <Image
+            source={{ uri: `${getApiBaseImage()}/storage/${post.media[0].file_path}` }}
+            style={styles.media}
+            resizeMode="cover"
+          />
+        </TouchableOpacity>
       )}
+
 
 
 
@@ -778,6 +800,7 @@ const renderComment = ({ item }: { item: Comment }) => {
           return (
           <TouchableOpacity
             style={styles.reactionBar}
+            key={`reaction-${reaction.emoji}-${idx}`} 
             onPress={() => {
               setCurrentReactingItem({ postId: post.id });
               setIsEmojiPickerOpen(true);
