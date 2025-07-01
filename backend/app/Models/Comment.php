@@ -31,4 +31,11 @@ class Comment extends Model
     {
         return $this->hasMany(Comment::class, 'parent_id')->with('replies');
     }
+
+    // app/Models/Comment.php
+    public function reaction_comments() // Keep SINGULAR since your table is 'reaction_comment'
+    {
+        return $this->hasMany(ReactionComment::class, 'comment_id');
+    }
+
 }

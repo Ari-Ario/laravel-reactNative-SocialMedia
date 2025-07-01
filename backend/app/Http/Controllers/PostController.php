@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Post;
 use App\Models\Reaction;
 use App\Models\Comment;
+use App\Models\ReactionComment;
 use App\Models\Repost;
 use App\Models\Bookmark;
 use App\Models\Media;
@@ -19,8 +20,10 @@ use App\Http\Controllers\Controller;
 
 class PostController extends Controller
 {
-    public function index()
-    {
+
+public function index()
+{
+    try {
         $userId = Auth::id();
         
         $posts = Post::with([
@@ -29,18 +32,41 @@ class PostController extends Controller
                 'reactions',
                 'reactionCounts',
                 'comments.user',
+                'comments.reaction_comments.user',
                 'comments.replies.user',
-                'reposts.user' // Include the user who reposted
+                'comments.replies.reaction_comments.user',
+                'reposts.user'
             ])
-            ->withCount(['reactions', 'comments', 'reposts'])
+            ->withCount([
+                'reactions',
+                'comments',
+                'reposts'
+            ])
             ->withExists(['reposts as is_reposted' => function($query) use ($userId) {
                 $query->where('user_id', $userId);
             }])
             ->latest()
             ->paginate(10);
 
+        // Manually add reaction counts (more reliable than complex subqueries)
+        $posts->getCollection()->transform(function ($post) {
+            $post->comments->each(function ($comment) {
+                $comment->reaction_comments_count = $comment->reaction_comments->count();
+                
+                $comment->replies->each(function ($reply) {
+                    $reply->reaction_comments_count = $reply->reaction_comments->count();
+                });
+            });
+            return $post;
+        });
+
         return response()->json($posts);
+
+    } catch (\Exception $e) {
+        \Log::error('PostController error: '.$e->getMessage());
+        return response()->json(['error' => 'Server error'], 500);
     }
+}
 
     public function store(Request $request)
     {
@@ -243,6 +269,35 @@ class PostController extends Controller
         ]);
 
         return response()->json($comment->load('user', 'replies'));
+    }
+
+    public function reactToComment(Request $request, $commentId)
+    {
+        $request->validate([
+            'emoji' => 'required|string|max:10'
+        ]);
+        
+        $reaction = ReactionComment::updateOrCreate(
+            [
+                'user_id' => auth()->id(),
+                'comment_id' => $commentId
+            ],
+            [
+                'emoji' => $request->emoji
+            ]
+        );
+        
+        $comment = Comment::withCount('reaction_comments')
+            ->with(['reaction_comments' => function($query) {
+                $query->selectRaw('emoji, count(*) as count')
+                    ->groupBy('emoji');
+            }])
+            ->findOrFail($commentId);
+        
+        return response()->json([
+            'reaction' => $reaction,
+            'reaction_counts' => $comment->reactions
+        ]);
     }
 
     private function getMediaFolder($type)

@@ -17,7 +17,7 @@ export async function fetchPosts() {
     if (!response.data) {
         throw new Error('Failed to fetch posts');
     }
-    
+    console.log('data back in PostService: ',response.data.data)
     return response.data.data; // Return the posts array
 }
 
@@ -107,19 +107,80 @@ export async function fetchPost(postId: number) {
     return response.data;
 }
 
-export async function reactToPost(postId: number, emoji: string) {
-    const token = await getToken();
-    const API_BASE = getApiBase();
-    const response = await axios.post(`${API_BASE}/posts/${postId}/react`, 
-        { emoji },
-        {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        }
+export const reactToPost = async (
+  postId: number,
+  emoji: string,
+  commentId?: number
+): Promise<{ reaction: Reaction }> => {
+  const token = await getToken();
+  const API_BASE = getApiBase();
+
+  try {
+    const response = await axios.post(
+      `${API_BASE}/posts/${postId}/react`,
+      { emoji, comment_id: postId },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      }
     );
+
+    if (!response.data?.reaction) {
+      throw new Error('Invalid response structure');
+    }
+
     return response.data;
-}
+  } catch (error) {
+    console.error('API reaction error:', {
+      error,
+      postId,
+      commentId,
+      emoji
+    });
+    throw error;
+  }
+};
+
+export const reactToComment = async (
+  postId: number,
+  commentId: number,
+  emoji: string
+): Promise<{
+  comment(postId: number, commentId: number, comment: any): unknown; reaction: Reaction 
+}> => {
+  const token = await getToken();
+  const API_BASE = getApiBase();
+
+  try {
+    const response = await axios.post(
+      `${API_BASE}/comments/${commentId}/react`,
+      { emoji, comment_id: commentId },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      }
+    );
+
+    if (!response.data?.reaction) {
+      throw new Error('Invalid response structure');
+    }
+    console.log('Returned Data of changing reaction to Comment: ' ,response.data)
+    return response.data;
+  } catch (error) {
+    console.error('API reaction error:', {
+      error,
+      postId,
+      commentId,
+      emoji
+    });
+    throw error;
+  }
+};
+
 
 export async function commentOnPost(postId: number, content: string, parentId?: number) {
     const token = await getToken();

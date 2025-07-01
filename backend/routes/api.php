@@ -72,6 +72,8 @@ Route::group(["middleware" => ["auth:sanctum"]], function() {
     Route::delete('/posts/{post}/media/{media}', [PostController::class, 'deleteMedia']);
     // Reactions
     Route::post('/posts/{post}/react', [PostController::class, 'react']);
+    Route::post('/comments/{id}/react', [PostController::class, 'reactToComment']); 
+
     
     // Comments
     Route::post('/posts/{post}/comment', [PostController::class, 'comment']);

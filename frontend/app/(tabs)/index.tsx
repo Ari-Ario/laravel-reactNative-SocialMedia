@@ -90,6 +90,17 @@ const HomePage = () => {
     fetchStoriesAndHandleState();
   };
 
+  // In parent component (FeedScreen/ProfileScreen)
+const handleCommentSubmit = async (postId: number, content: string, parentId?: number) => {
+  try {
+    // Directly return the comment from your PostService
+    return await commentOnPost(postId, content, parentId);
+  } catch (error) {
+    console.error('Comment submission failed:', error);
+    throw error;
+  }
+};
+
   useEffect(() => {
     if (user) {
       fetchPostsAndHandleState();
@@ -169,7 +180,7 @@ const HomePage = () => {
               <PostListItem
                 post={item}
                 onReact={reactToPost}
-                onCommentSubmit={commentOnPost}
+                onCommentSubmit={handleCommentSubmit}
                 onRepost={handleRepost}
                 onShare={sharePost}
                 onBookmark={bookmarkPost}
