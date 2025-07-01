@@ -328,10 +328,10 @@ const handleDelete = async () => {
   };
 
   const handleReact = async (emoji: string) => {
-    // if (!currentReactingItem?.postId || !user?.id) {
-    //   console.error('Missing reaction data:', { currentReactingItem, user });
-    //   return;
-    // }
+    if (!currentReactingItem?.postId || !user?.id) {
+      console.error('Missing reaction data:', { currentReactingItem, user });
+      return;
+    }
 
     const { postId, commentId } = currentReactingItem;
     
@@ -441,15 +441,20 @@ const handleDelete = async () => {
     }
   };
 
-const useDoubleTap = (callback: () => void, delay = 300) => {
-  const lastTap = useRef<number>(0);
-
+const useDoubleTap = (onDoubleTap, onSingleTap = () => {}) => {
+  const lastTap = useRef(0);
+  
   return () => {
     const now = Date.now();
-    if (lastTap.current && now - lastTap.current < delay) {
-      callback();
+    if (lastTap.current && now - lastTap.current < 300) {
+      // Double tap
+      onDoubleTap();
+      lastTap.current = 0;
+    } else {
+      // Single tap (first tap)
+      onSingleTap();
+      lastTap.current = now;
     }
-    lastTap.current = now;
   };
 };
 
@@ -490,6 +495,7 @@ const handleReactComment = async (emoji: string) => {
         response.reaction_counts ?? null
       );
     }
+    setIsEmojiPickerOpen(false);
 
   } catch (error) {
     console.error('Reaction error:', error);
@@ -636,7 +642,7 @@ const renderComment = ({ item }: { item: Comment }) => {
               style={styles.addReactionButton}
               onPress={() => {
                 setCurrentReactingComment({ postId: post.id, commentId: item.id });
-                setCurrentReactingItem(null);
+                // setCurrentReactingItem(null);
                 setIsEmojiPickerOpen(true);
               }}
             >
@@ -728,10 +734,17 @@ const renderComment = ({ item }: { item: Comment }) => {
       {post.media?.length > 0 && (
         <TouchableOpacity
           activeOpacity={0.9}
-          onPress={useDoubleTap(() => {
-            setCurrentReactingItem({ postId: post.id });
-            handleReact("❤️");
-          })}
+          onPress={useDoubleTap(
+            () => {
+              // Second tap - perform reaction and sets the id, in case it is not set yet
+              setCurrentReactingItem({ postId: post.id });
+              handleReact("❤️");
+            },
+            () => {
+              // First tap - set reacting item
+              setCurrentReactingItem({ postId: post.id });
+            }
+          )}
         >
           <Image
             source={{ uri: `${getApiBaseImage()}/storage/${post.media[0].file_path}` }}
@@ -802,6 +815,7 @@ const renderComment = ({ item }: { item: Comment }) => {
             style={styles.reactionBar}
             key={`reaction-${reaction.emoji}-${idx}`} 
             onPress={() => {
+              setCurrentReactingComment(null);
               setCurrentReactingItem({ postId: post.id });
               setIsEmojiPickerOpen(true);
             }}

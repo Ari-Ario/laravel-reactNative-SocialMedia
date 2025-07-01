@@ -157,7 +157,7 @@ export const usePostStore = create<PostStore>((set) => ({
   },
   
   // comment Reaction
-// Updated comment reaction functions to match backend data structure
+// Updated comment reaction functions
 addCommentReaction: (postId, commentId, userId, emoji) => set((state) => {
   const postIndex = state.posts.findIndex(p => p.id === postId);
   if (postIndex === -1) {
@@ -169,39 +169,39 @@ addCommentReaction: (postId, commentId, userId, emoji) => set((state) => {
     posts: state.posts.map((post) => {
       if (post.id !== postId) return post;
       
+      const updater = (comment: Comment) => {
+        // Check if user already has this exact reaction
+        const hasExistingReaction = comment.reaction_comments?.some(
+          r => r.user_id === userId && r.emoji === emoji
+        );
+        
+        if (hasExistingReaction) return comment;
+        
+        // Create temporary reaction matching backend structure
+        const tempReaction = {
+          id: 1000000 + Date.now(), // Temporary ID
+          user_id: userId,
+          comment_id: commentId,
+          emoji,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        // Remove any existing reactions from this user first
+        const filteredReactions = comment.reaction_comments?.filter(
+          r => r.user_id !== userId
+        ) || [];
+        
+        return {
+          ...comment,
+          reaction_comments: [...filteredReactions, tempReaction],
+          reaction_comments_count: (comment.reaction_comments_count || 0) + 1
+        };
+      };
+
       return {
         ...post,
-        comments: post.comments?.map(comment => {
-          if (comment.id !== commentId) return comment;
-          
-          // Check if user already has this exact reaction
-          const hasExistingReaction = comment.reaction_comments?.some(
-            r => r.user_id === userId && r.emoji === emoji
-          );
-          
-          if (hasExistingReaction) return comment;
-          
-          // Create temporary reaction matching backend structure
-          const tempReaction = {
-            id: 1000000 + Date.now(), // Temporary ID
-            user_id: userId,
-            comment_id: commentId,
-            emoji,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
-          
-          // Remove any existing reactions from this user first
-          const filteredReactions = comment.reaction_comments?.filter(
-            r => r.user_id !== userId
-          ) || [];
-          
-          return {
-            ...comment,
-            reaction_comments: [...filteredReactions, tempReaction],
-            reaction_comments_count: (comment.reaction_comments_count || 0) + 1
-          };
-        })
+        comments: updateCommentInTree(post.comments, commentId, updater)
       };
     })
   };
@@ -219,22 +219,22 @@ updateCommentReactions: (postId, commentId, newReaction, counts = null) =>
       posts: state.posts.map((post) => {
         if (post.id !== postId) return post;
 
+        const updater = (comment: Comment) => {
+          // Remove any reaction by this user
+          const filtered = (comment.reaction_comments || []).filter(
+            (r) => r.user_id !== newReaction.user_id
+          );
+
+          return {
+            ...comment,
+            reaction_comments: [...filtered, newReaction],
+            reaction_comments_count: counts ?? comment.reaction_comments_count,
+          };
+        };
+
         return {
           ...post,
-          comments: post.comments?.map((comment) => {
-            if (comment.id !== commentId) return comment;
-
-            // Remove any reaction by this user
-            const filtered = (comment.reaction_comments || []).filter(
-              (r) => r.user_id !== newReaction.user_id
-            );
-
-            return {
-              ...comment,
-              reaction_comments: [...filtered, newReaction],
-              reaction_comments_count: counts ?? comment.reaction_comments_count,
-            };
-          }),
+          comments: updateCommentInTree(post.comments, commentId, updater)
         };
       }),
     };
@@ -248,29 +248,29 @@ removeCommentReaction: (postId, commentId, userId) => set((state) => {
     posts: state.posts.map((post) => {
       if (post.id !== postId) return post;
       
+      const updater = (comment: Comment) => {
+        // Count how many reactions we're removing
+        const userReactions = comment.reaction_comments?.filter(
+          r => r.user_id === userId
+        ) || [];
+        
+        const removeCount = userReactions.length;
+        
+        return {
+          ...comment,
+          reaction_comments: comment.reaction_comments?.filter(
+            r => r.user_id !== userId
+          ),
+          reaction_comments_count: Math.max(
+            0,
+            (comment.reaction_comments_count || 0) - removeCount
+          )
+        };
+      };
+
       return {
         ...post,
-        comments: post.comments?.map(comment => {
-          if (comment.id !== commentId) return comment;
-          
-          // Count how many reactions we're removing
-          const userReactions = comment.reaction_comments?.filter(
-            r => r.user_id === userId
-          ) || [];
-          
-          const removeCount = userReactions.length;
-          
-          return {
-            ...comment,
-            reaction_comments: comment.reaction_comments?.filter(
-              r => r.user_id !== userId
-            ),
-            reaction_comments_count: Math.max(
-              0,
-              (comment.reaction_comments_count || 0) - removeCount
-            )
-          };
-        })
+        comments: updateCommentInTree(post.comments, commentId, updater)
       };
     })
   };
@@ -376,3 +376,26 @@ function addReplyToComment(comments: Comment[], newComment: Comment): Comment[] 
     return comment;
   });
 }
+
+// Helper function to recursively update comments and their replies
+const updateCommentInTree = (
+  comments: Comment[],
+  commentId: number,
+  updater: (comment: Comment) => Comment
+): Comment[] => {
+  return comments?.map(comment => {
+    if (comment.id === commentId) {
+      return updater(comment);
+    }
+    
+    // Check replies if this isn't the target comment
+    if (comment.replies?.length) {
+      return {
+        ...comment,
+        replies: updateCommentInTree(comment.replies, commentId, updater)
+      };
+    }
+    
+    return comment;
+  }) || [];
+};
