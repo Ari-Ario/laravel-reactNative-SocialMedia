@@ -240,14 +240,14 @@ updateCommentReactions: (postId, commentId, newReaction, counts = null) =>
     };
   }),
 
-removeCommentReaction: (postId, commentId, userId, updatedCounts = [], updatedCountNumber = null ) => set((state) => {
+removeCommentReaction: (postId, commentId, userId, updatedCounts = [], updatedCountNumber = null) => set((state) => {
   const postIndex = state.posts.findIndex(p => p.id === postId);
   if (postIndex === -1) return state;
-  
+
   return {
     posts: state.posts.map((post) => {
       if (post.id !== postId) return post;
-      
+
       const updater = (comment: Comment) => {
         const filteredReactions = comment.reaction_comments?.filter(
           r => r.user_id !== userId
@@ -313,7 +313,64 @@ updatePostWithNewComment: (postId, comment) => {
       };
     }),
   }));
-}
+},
+updateCommentWithServerData: (postId, commentId, serverComment) => set((state) => {
+  const postIndex = state.posts.findIndex(p => p.id === postId);
+  if (postIndex === -1) return state;
+
+  // Helper function to ensure reaction_comments exists
+  const ensureReactions = (comment: Comment) => ({
+    ...comment,
+    reaction_comments: comment.reaction_comments || [],
+    replies: comment.replies?.map(ensureReactions) || []
+  });
+
+  return {
+    posts: state.posts.map((post) => {
+      if (post.id !== postId) return post;
+      
+      return {
+        ...post,
+        comments: post.comments?.map(comment => {
+          if (comment.id !== commentId) return comment;
+          
+          // Ensure all nested comments have reaction_comments
+          return ensureReactions(serverComment);
+        }) ?? [ensureReactions(serverComment)]
+      };
+    })
+  };
+}),
+
+// In your post store
+removeComment: (postId: number, commentId: number) => set((state) => {
+  const postIndex = state.posts.findIndex(p => p.id === postId);
+  if (postIndex === -1) return state;
+
+  const removeCommentAndReplies = (comments: Comment[]): Comment[] => {
+    return comments
+      .filter(comment => comment.id !== commentId)
+      .map(comment => ({
+        ...comment,
+        replies: removeCommentAndReplies(comment.replies || [])
+      }));
+  };
+
+  return {
+    posts: state.posts.map(post => {
+      if (post.id !== postId) return post;
+      
+      const updatedComments = removeCommentAndReplies(post.comments || []);
+      
+      return {
+        ...post,
+        comments: updatedComments,
+        // If you're using withCount, this will be updated on next fetch
+      };
+    })
+  };
+}),
+
 }));
 
 // Helper functions

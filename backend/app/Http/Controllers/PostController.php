@@ -33,8 +33,15 @@ class PostController extends Controller
                     'reactionCounts',
                     'comments.user',
                     'comments.reaction_comments.user',
-                    'comments.replies.user',
-                    'comments.replies.reaction_comments.user',
+                    'comments.replies' => function ($query) {
+                        $query->with(['user', 'reaction_comments.user'])
+                            ->withCount('reaction_comments');
+                    },
+                    'comments.replies.replies' => function ($query) {
+                        $query->with(['user', 'reaction_comments.user'])
+                            ->withCount('reaction_comments');
+                    },
+                    // Add more levels if needed
                     'reposts.user'
                 ])
                 ->withCount([
@@ -48,15 +55,19 @@ class PostController extends Controller
                 ->latest()
                 ->paginate(10);
 
-            // Manually add reaction counts (more reliable than complex subqueries)
+            // Recursively transform all comments and replies
             $posts->getCollection()->transform(function ($post) {
-                $post->comments->each(function ($comment) {
+                $transformComment = function ($comment) use (&$transformComment) {
                     $comment->reaction_comments_count = $comment->reaction_comments->count();
                     
-                    $comment->replies->each(function ($reply) {
-                        $reply->reaction_comments_count = $reply->reaction_comments->count();
-                    });
-                });
+                    if ($comment->replies) {
+                        $comment->replies->each($transformComment);
+                    }
+                    
+                    return $comment;
+                };
+                
+                $post->comments->each($transformComment);
                 return $post;
             });
 
@@ -427,4 +438,33 @@ class PostController extends Controller
 
         return response()->json(['message' => 'Post bookmarked', 'bookmarked' => true]);
     }
+
+    // In your PostController.php
+public function deleteComment($postId, $commentId)
+{
+    try {
+        $comment = Comment::where('post_id', $postId)
+            ->where('id', $commentId)
+            ->where('user_id', auth()->id())
+            ->firstOrFail();
+
+        $comment->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Comment deleted successfully',
+            'deleted_comment_id' => $commentId,
+            'post_id' => $postId
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Delete comment error: '.$e->getMessage());
+        return response()->json([
+            'success' => false,
+            'error' => 'Failed to delete comment',
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
+    
 }

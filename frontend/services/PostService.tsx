@@ -267,7 +267,6 @@ export async function commentOnPost(postId: number, content: string, parentId?: 
             },
         }
     );
-    console.log(response.data)
     return response.data;
 }
 
@@ -340,4 +339,29 @@ export async function reportPost(postId: number, reason: string) {
         }
     );
     return response.data;
+}
+
+export async function deleteComment(postId: number, commentId: number) {
+  const token = await getToken();
+  const API_BASE = getApiBase();
+  
+  try {
+    const response = await axios.delete(
+      `${API_BASE}/posts/${postId}/comments/${commentId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    
+    if (response.data.success) {
+      return response.data;
+    } else {
+      throw new Error(response.data.message || 'Failed to delete comment');
+    }
+  } catch (error) {
+    console.error('Error deleting comment:', error);
+    throw new Error('Failed to delete comment');
+  }
 }

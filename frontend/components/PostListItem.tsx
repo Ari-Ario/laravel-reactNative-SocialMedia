@@ -18,7 +18,7 @@ import { useState, useContext, useRef } from 'react';
 import EmojiPicker from 'rn-emoji-keyboard';
 import PostMenu from './PostMenu';
 import ReportPost from './ReportPost';
-import { deletePost, fetchPosts, reactToPost, reactToComment, deleteReactionFromPost, deleteReactionFromComment } from '@/services/PostService';
+import { deletePost, fetchPosts, reactToPost, reactToComment, deleteReactionFromPost, deleteReactionFromComment, deleteComment } from '@/services/PostService';
 import AuthContext from '@/context/AuthContext';
 import { router } from 'expo-router';
 import { Platform, Alert } from 'react-native';
@@ -271,7 +271,8 @@ const handleDelete = async () => {
     comment: Comment, 
     currentUserId?: number
   ): { emoji: string; count: number; user_ids: number[] }[] {
-    
+      // console.log('reaction_comments on comment', comment.id, comment.reaction_comments);
+
     const defaultEmojis = ['🤍'];
     
     if (!comment?.reaction_comments || comment?.reaction_comments.length === 0) {
@@ -606,7 +607,7 @@ const handleDelete = async () => {
 const renderComment = ({ item }: { item: Comment }) => {
   const groupedReactions = getGroupedReactionsComments(item);
 
-    const deleteCommentReaction = async (emoji: string) => {
+  const deleteCommentReaction = async (emoji: string) => {
     if (!item.id || !user?.id) return;
 
     try {
@@ -646,6 +647,34 @@ const renderComment = ({ item }: { item: Comment }) => {
       // Revert on error
       postStore.updatePost(post);
       console.error('Failed to delete comment reaction:', error);
+    }
+  };
+
+  const isMyComment = item.user_id === user?.id;
+
+  const handleDeleteComment = async () => {
+    try {
+      // Optimistic update
+      postStore.removeComment(post.id, item.id);
+      
+      // API call
+      await deleteComment(post.id, item.id);
+      
+      // Optional: show success message
+      Alert.alert('Success', 'Comment deleted successfully');
+    } catch (error) {
+      // Revert on error
+      postStore.updatePost(post);
+      
+      // Show error message
+      Alert.alert(
+        'Error', 
+        error.response?.data?.error || 
+        error.message || 
+        'Failed to delete comment'
+      );
+      
+      console.error('Failed to delete comment:', error);
     }
   };
   
@@ -738,6 +767,17 @@ const renderComment = ({ item }: { item: Comment }) => {
             </TouchableOpacity>
           )}
         </View>
+
+        {/* Add delete button for my comments */}
+        {isMyComment && (
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={handleDeleteComment}
+          >
+            <Ionicons name="trash-bin-outline" size={18} color="#ff4444" />
+          </TouchableOpacity>
+        )}
+
       </View>
       
       {/* Nested replies */}
@@ -1341,5 +1381,10 @@ const styles = StyleSheet.create({
   },
   activeActionCount: {
     color: '#10b981',
+  },
+
+  deleteButton: {
+    marginLeft: 'auto', // Pushes to far right
+    padding: 8,
   },
 });

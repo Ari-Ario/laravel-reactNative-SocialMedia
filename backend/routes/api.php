@@ -79,6 +79,7 @@ Route::group(["middleware" => ["auth:sanctum"]], function() {
     
     // Comments
     Route::post('/posts/{post}/comment', [PostController::class, 'comment']);
+    Route::delete('/posts/{post}/comments/{comment}', [PostController::class, 'deleteComment']);
 });
 
 Route::post('/forgot-password', [PasswordResetLinkController::class, 'store']);
