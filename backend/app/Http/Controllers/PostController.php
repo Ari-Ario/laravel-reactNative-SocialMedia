@@ -21,52 +21,52 @@ use App\Http\Controllers\Controller;
 class PostController extends Controller
 {
 
-public function index()
-{
-    try {
-        $userId = Auth::id();
-        
-        $posts = Post::with([
-                'user',
-                'media',
-                'reactions',
-                'reactionCounts',
-                'comments.user',
-                'comments.reaction_comments.user',
-                'comments.replies.user',
-                'comments.replies.reaction_comments.user',
-                'reposts.user'
-            ])
-            ->withCount([
-                'reactions',
-                'comments',
-                'reposts'
-            ])
-            ->withExists(['reposts as is_reposted' => function($query) use ($userId) {
-                $query->where('user_id', $userId);
-            }])
-            ->latest()
-            ->paginate(10);
+    public function index()
+    {
+        try {
+            $userId = Auth::id();
+            
+            $posts = Post::with([
+                    'user',
+                    'media',
+                    'reactions',
+                    'reactionCounts',
+                    'comments.user',
+                    'comments.reaction_comments.user',
+                    'comments.replies.user',
+                    'comments.replies.reaction_comments.user',
+                    'reposts.user'
+                ])
+                ->withCount([
+                    'reactions',
+                    'comments',
+                    'reposts'
+                ])
+                ->withExists(['reposts as is_reposted' => function($query) use ($userId) {
+                    $query->where('user_id', $userId);
+                }])
+                ->latest()
+                ->paginate(10);
 
-        // Manually add reaction counts (more reliable than complex subqueries)
-        $posts->getCollection()->transform(function ($post) {
-            $post->comments->each(function ($comment) {
-                $comment->reaction_comments_count = $comment->reaction_comments->count();
-                
-                $comment->replies->each(function ($reply) {
-                    $reply->reaction_comments_count = $reply->reaction_comments->count();
+            // Manually add reaction counts (more reliable than complex subqueries)
+            $posts->getCollection()->transform(function ($post) {
+                $post->comments->each(function ($comment) {
+                    $comment->reaction_comments_count = $comment->reaction_comments->count();
+                    
+                    $comment->replies->each(function ($reply) {
+                        $reply->reaction_comments_count = $reply->reaction_comments->count();
+                    });
                 });
+                return $post;
             });
-            return $post;
-        });
 
-        return response()->json($posts);
+            return response()->json($posts);
 
-    } catch (\Exception $e) {
-        \Log::error('PostController error: '.$e->getMessage());
-        return response()->json(['error' => 'Server error'], 500);
+        } catch (\Exception $e) {
+            \Log::error('PostController error: '.$e->getMessage());
+            return response()->json(['error' => 'Server error'], 500);
+        }
     }
-}
 
     public function store(Request $request)
     {
@@ -274,7 +274,7 @@ public function index()
     public function reactToComment(Request $request, $commentId)
     {
         $request->validate([
-            'emoji' => 'required|string|max:10'
+            'emoji' => 'required|string|max:1000'
         ]);
         
         $reaction = ReactionComment::updateOrCreate(
@@ -299,6 +299,58 @@ public function index()
             'reaction_counts' => $comment->reactions
         ]);
     }
+
+    public function deleteReaction(Request $request, $postId)
+    {
+        $user = auth()->user();
+        
+        // Delete all reactions from this user for this post
+        $deleted = Reaction::where([
+            'user_id' => $user->id,
+            'post_id' => $postId
+        ])->delete();
+
+        // Get updated reaction counts
+        $post = Post::withCount('reactions')
+            ->with(['reactions' => function($query) {
+                $query->selectRaw('emoji, count(*) as count')
+                    ->groupBy('emoji');
+            }])
+            ->findOrFail($postId);
+
+        return response()->json([
+            'success' => $deleted > 0,
+            'reaction_counts' => $post->reactions,
+            'reaction_comments_count' => $post->reactions_count
+        ]);
+    }
+
+    public function deleteCommentReaction(Request $request, $commentId)
+    {
+        $user = auth()->user();
+        
+        // Delete all reactions from this user for this comment
+        $deleted = ReactionComment::where([
+            'user_id' => $user->id,
+            'comment_id' => $commentId
+        ])->delete();
+
+        // Get updated comment with reactions
+        $comment = Comment::withCount('reaction_comments')
+            ->with(['reaction_comments' => function($query) {
+                $query->selectRaw('emoji, count(*) as count')
+                    ->groupBy('emoji');
+            }])
+            ->findOrFail($commentId);
+
+        return response()->json([
+            'success' => $deleted > 0,
+            'reaction_counts' => $comment->reaction_comments,
+            'reaction_comments_count' => $comment->reaction_comments_count
+        ]);
+    }
+
+
 
     private function getMediaFolder($type)
     {

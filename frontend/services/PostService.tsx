@@ -143,6 +143,44 @@ export const reactToPost = async (
   }
 };
 
+export const deleteReactionFromPost = async (
+  postId: number,
+  commentId?: number
+): Promise<{ success: boolean; reaction_counts?: ReactionCount[] }> => {
+  const token = await getToken();
+  const API_BASE = getApiBase();
+
+  try {
+    const endpoint = commentId 
+      ? `${API_BASE}/comments/${commentId}/deletereaction`
+      : `${API_BASE}/posts/${postId}/deletereaction`;
+
+    const response = await axios.post(  // Changed from DELETE to POST
+      endpoint,
+      {},  // Empty body since your route doesn't expect any data
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (response.data?.success !== true) {
+      throw new Error('Failed to delete reaction');
+    }
+
+    return response.data;
+  } catch (error) {
+    console.error('API delete reaction error:', {
+      error,
+      postId,
+      commentId
+    });
+    throw error;
+  }
+};
+
 export const reactToComment = async (
   postId: number,
   commentId: number,
@@ -181,6 +219,42 @@ export const reactToComment = async (
   }
 };
 
+export const deleteReactionFromComment = async (
+  commentId: number
+): Promise<{ 
+  success: boolean; 
+  reaction_counts?: ReactionCount[];
+  reaction_comments_count?: number;
+}> => {
+  const token = await getToken();
+  const API_BASE = getApiBase();
+
+  try {
+    const response = await axios.post(
+      `${API_BASE}/comments/${commentId}/deletereaction`,
+      {}, // Empty body
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (response.data?.success !== true) {
+      throw new Error('Failed to delete comment reaction');
+    }
+    console.log(response.data)
+    return response.data;
+  } catch (error) {
+    console.error('API delete comment reaction error:', {
+      error,
+      commentId
+    });
+    throw error;
+  }
+};
+
 
 export async function commentOnPost(postId: number, content: string, parentId?: number) {
     const token = await getToken();
@@ -193,6 +267,7 @@ export async function commentOnPost(postId: number, content: string, parentId?: 
             },
         }
     );
+    console.log(response.data)
     return response.data;
 }
 

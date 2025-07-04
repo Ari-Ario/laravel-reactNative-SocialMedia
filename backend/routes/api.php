@@ -70,10 +70,12 @@ Route::group(["middleware" => ["auth:sanctum"]], function() {
     Route::post('/posts/{post}/share', [PostController::class, 'share']);
     Route::post('/posts/{post}/bookmark', [PostController::class, 'bookmark']);
     Route::delete('/posts/{post}/media/{media}', [PostController::class, 'deleteMedia']);
+    
     // Reactions
     Route::post('/posts/{post}/react', [PostController::class, 'react']);
+    Route::post('/posts/{post}/deletereaction', [PostController::class, 'deleteReaction']);
     Route::post('/comments/{id}/react', [PostController::class, 'reactToComment']); 
-
+    Route::post('/comments/{comment}/deletereaction', [PostController::class, 'deleteCommentReaction']);
     
     // Comments
     Route::post('/posts/{post}/comment', [PostController::class, 'comment']);

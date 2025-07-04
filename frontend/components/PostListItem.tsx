@@ -18,7 +18,7 @@ import { useState, useContext, useRef } from 'react';
 import EmojiPicker from 'rn-emoji-keyboard';
 import PostMenu from './PostMenu';
 import ReportPost from './ReportPost';
-import { deletePost, fetchPosts, reactToPost, reactToComment } from '@/services/PostService';
+import { deletePost, fetchPosts, reactToPost, reactToComment, deleteReactionFromPost, deleteReactionFromComment } from '@/services/PostService';
 import AuthContext from '@/context/AuthContext';
 import { router } from 'expo-router';
 import { Platform, Alert } from 'react-native';
@@ -268,36 +268,36 @@ const handleDelete = async () => {
   }
 
   function getGroupedReactionsComments(
-  comment: Comment, 
-  currentUserId?: number
-): { emoji: string; count: number; user_ids: number[] }[] {
-  
-  const defaultEmojis = ['🤍'];
-  
-  if (!comment?.reaction_comments || comment?.reaction_comments.length === 0) {
-    return defaultEmojis.map(emoji => ({ 
+    comment: Comment, 
+    currentUserId?: number
+  ): { emoji: string; count: number; user_ids: number[] }[] {
+    
+    const defaultEmojis = ['🤍'];
+    
+    if (!comment?.reaction_comments || comment?.reaction_comments.length === 0) {
+      return defaultEmojis.map(emoji => ({ 
+        emoji, 
+        count: 0,
+        user_ids: []
+      }));
+    }
+
+    const reactionMap = new Map<string, { count: number, user_ids: number[] }>();
+
+    for (const reaction of comment.reaction_comments) {
+      const existing = reactionMap.get(reaction.emoji) || { count: 0, user_ids: [] };
+      reactionMap.set(reaction.emoji, {
+        count: existing.count + 1,
+        user_ids: [...existing.user_ids, reaction.user_id]
+      });
+    }
+
+    return [...reactionMap.entries()].map(([emoji, { count, user_ids }]) => ({ 
       emoji, 
-      count: 0,
-      user_ids: []
+      count,
+      user_ids 
     }));
   }
-
-  const reactionMap = new Map<string, { count: number, user_ids: number[] }>();
-
-  for (const reaction of comment.reaction_comments) {
-    const existing = reactionMap.get(reaction.emoji) || { count: 0, user_ids: [] };
-    reactionMap.set(reaction.emoji, {
-      count: existing.count + 1,
-      user_ids: [...existing.user_ids, reaction.user_id]
-    });
-  }
-
-  return [...reactionMap.entries()].map(([emoji, { count, user_ids }]) => ({ 
-    emoji, 
-    count,
-    user_ids 
-  }));
-}
 
   // helper function for handleReact function below
   const updateReactionCounts = (
@@ -441,81 +441,117 @@ const handleDelete = async () => {
     }
   };
 
-const useDoubleTap = (onDoubleTap, onSingleTap = () => {}) => {
-  const lastTap = useRef(0);
-  
-  return () => {
-    const now = Date.now();
-    if (lastTap.current && now - lastTap.current < 300) {
-      // Double tap
-      onDoubleTap();
-      lastTap.current = 0;
-    } else {
-      // Single tap (first tap)
-      onSingleTap();
-      lastTap.current = now;
+  const useDoubleTap = (onDoubleTap, onSingleTap = () => {}) => {
+    const lastTap = useRef(0);
+    
+    return () => {
+      const now = Date.now();
+      if (lastTap.current && now - lastTap.current < 300) {
+        // Double tap
+        onDoubleTap();
+        lastTap.current = 0;
+      } else {
+        // Single tap (first tap)
+        onSingleTap();
+        lastTap.current = now;
+      }
+    };
+  };
+
+  const deletePostReaction = async () => {
+    if (!post.id || !user?.id) return;
+
+    try {
+      // Optimistic update
+      const updatedPost = {
+        ...post,
+        reactions: post.reactions?.filter(r => r.user_id !== user.id) || [],
+        reaction_counts: post.reaction_counts?.map(rc => ({
+          ...rc,
+          count: rc.user_id === user.id ? Math.max(0, rc.count - 1) : rc.count
+        }))
+      };
+      
+      postStore.updatePost(updatedPost);
+
+      // API call (now using POST)
+      const response = await deleteReactionFromPost(post.id);
+      
+      // Update with server data if needed
+      if (response.reaction_counts) {
+        postStore.updatePost({
+          ...updatedPost,
+          reaction_counts: response.reaction_counts,
+          reactions_count: response.reaction_comments_count
+        });
+      }
+    } catch (error) {
+      // Revert on error
+      postStore.updatePost(post);
+      console.error('Failed to delete reaction:', error);
     }
   };
-};
 
 
-const handleReactComment = async (emoji: string) => {
-  if (!currentReactingComment?.postId || !currentReactingComment?.commentId || !user?.id) {
-    console.error('Missing reaction data:', { currentReactingComment, user });
-    return;
-  }
-
-  const { postId, commentId } = currentReactingComment;
-  const {
-    addCommentReaction,
-    removeCommentReaction,
-    updateCommentReactions,
-  } = usePostStore.getState();
-
-  try {
-    const post = usePostStore.getState().posts[postId];
-    const comment = post?.comments?.find(c => c.id === commentId);
-    const hasExistingReaction = comment?.reaction_comments?.some(
-      r => r.user_id === user.id && r.emoji === emoji
-    );
-
-    if (hasExistingReaction) {
-      removeCommentReaction(postId, commentId, user.id);
-    } else {
-      addCommentReaction(postId, commentId, user.id, emoji);
+  const handleReactComment = async (emoji: string) => {
+    if (!currentReactingComment?.postId || !currentReactingComment?.commentId || !user?.id) {
+      console.error('Missing reaction data:', { currentReactingComment, user });
+      return;
     }
 
-    const response = await reactToComment(postId, commentId, emoji);
+    const { postId, commentId } = currentReactingComment;
+    const {
+      addCommentReaction,
+      removeCommentReaction,
+      updateCommentReactions,
+    } = usePostStore.getState();
 
-    if (response?.reaction) {
-      updateCommentReactions(
-        postId,
-        commentId,
-        response.reaction,
-        response.reaction_counts ?? null
+    try {
+      const post = usePostStore.getState().posts[postId];
+      const comment = post?.comments?.find(c => c.id === commentId);
+      const hasExistingReaction = comment?.reaction_comments?.some(
+        r => r.user_id === user.id && r.emoji === emoji
       );
+
+      if (hasExistingReaction) {
+        removeCommentReaction(postId, commentId, user.id);
+      } else {
+        addCommentReaction(postId, commentId, user.id, emoji);
+      }
+
+      const response = await reactToComment(postId, commentId, emoji);
+
+      if (response?.reaction) {
+        updateCommentReactions(
+          postId,
+          commentId,
+          response.reaction,
+          response.reaction_counts ?? null
+        );
+      }
+      setIsEmojiPickerOpen(false);
+
+    } catch (error) {
+      console.error('Reaction error:', error);
+      const post = usePostStore.getState().posts[postId];
+      const comment = post?.comments?.find(c => c.id === commentId);
+      const originalHadReaction = comment?.reaction_comments?.some(
+        r => r.user_id === user.id && r.id <= 1000000
+      );
+
+      if (originalHadReaction) {
+        addCommentReaction(postId, commentId, user.id, emoji);
+      } else {
+        removeCommentReaction(postId, commentId, user.id);
+      }
+
+      Alert.alert("Error", "Failed to save reaction");
+    } finally {
+      setIsEmojiPickerOpen(false);
     }
-    setIsEmojiPickerOpen(false);
+  };
 
-  } catch (error) {
-    console.error('Reaction error:', error);
-    const post = usePostStore.getState().posts[postId];
-    const comment = post?.comments?.find(c => c.id === commentId);
-    const originalHadReaction = comment?.reaction_comments?.some(
-      r => r.user_id === user.id && r.id <= 1000000
-    );
 
-    if (originalHadReaction) {
-      addCommentReaction(postId, commentId, user.id, emoji);
-    } else {
-      removeCommentReaction(postId, commentId, user.id);
-    }
-
-    Alert.alert("Error", "Failed to save reaction");
-  } finally {
-    setIsEmojiPickerOpen(false);
-  }
-};
 
 
   const submitComment =async () => {
@@ -569,6 +605,49 @@ const handleReactComment = async (emoji: string) => {
 
 const renderComment = ({ item }: { item: Comment }) => {
   const groupedReactions = getGroupedReactionsComments(item);
+
+    const deleteCommentReaction = async (emoji: string) => {
+    if (!item.id || !user?.id) return;
+
+    try {
+      // Optimistic update
+      const updatedPost = {
+        ...post,
+        comments: post.comments?.map(comment => {
+          if (comment.id !== item.id) return comment;
+          
+          return {
+            ...comment,
+            reaction_comments: comment.reaction_comments?.filter(
+              r => r.user_id !== user.id
+            ),
+            reaction_comments_count: Math.max(
+              0,
+              (comment.reaction_comments_count || 0) - 1
+            )
+          };
+        })
+      };
+      
+      postStore.updatePost(updatedPost);
+
+      // API call
+      const response = await deleteReactionFromComment(item.id);
+
+      postStore.removeCommentReaction(
+        post.id,
+        item.id,
+        user.id,
+        response.reaction_counts,
+        response.reaction_comments_count
+      );
+      
+    } catch (error) {
+      // Revert on error
+      postStore.updatePost(post);
+      console.error('Failed to delete comment reaction:', error);
+    }
+  };
   
   return (
     <View style={styles.commentContainer}>
@@ -613,20 +692,28 @@ const renderComment = ({ item }: { item: Comment }) => {
               {groupedReactions.slice(0, 3).map((reaction, idx) => {
                 const isMyReaction = reaction.user_ids?.includes(user?.id);
                 
-                return ( // Don't forget the return statement!
-                  <View 
+                return isMyReaction ? (
+                  <TouchableOpacity
                     key={`${reaction.emoji}-${idx}`}
-                    style={[
-                      styles.reactionItem,
-                      isMyReaction && styles.reactionItemMine
-                    ]}
+                    style={[styles.reactionItem, styles.reactionItemMine]}
+                    onPress={() => deleteCommentReaction(reaction.emoji)}
+                    activeOpacity={0.7}
                   >
                     <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
                     {reaction.count > 1 && (
-                      <Text style={[
-                        styles.reactionCount,
-                        isMyReaction && styles.reactionCountMine // Optional: style count differently if it's your reaction
-                      ]}>
+                      <Text style={[styles.reactionCount, styles.reactionCountMine]}>
+                        {reaction.count}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                ) : (
+                  <View 
+                    key={`${reaction.emoji}-${idx}`}
+                    style={styles.reactionItem}
+                  >
+                    <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
+                    {reaction.count > 1 && (
+                      <Text style={styles.reactionCount}>
                         {reaction.count}
                       </Text>
                     )}
@@ -806,7 +893,7 @@ const renderComment = ({ item }: { item: Comment }) => {
           <Feather name="send" size={24} />
         </TouchableOpacity>
         
-        {/* Post reaction bar */}
+        {/* reaction bar of Post */}
         {reactionsToShow.map((reaction, idx) => {
           const isMyReaction = reaction.user_ids?.includes(user?.id);
           
@@ -827,9 +914,21 @@ const renderComment = ({ item }: { item: Comment }) => {
                 isMyReaction && styles.reactionItemMine
               ]}
             >
-              <Text style={styles.reactionEmoji}>
-                {reaction.emoji}
-              </Text>
+              {isMyReaction ? (
+                <TouchableOpacity 
+                  onPress={deletePostReaction}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.reactionEmoji}>
+                    {reaction.emoji}
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={styles.reactionEmoji}>
+                  {reaction.emoji}
+                </Text>
+              )}
+              
               {reaction.count > 0 && (
                 <Text style={[
                   styles.reactionCount,

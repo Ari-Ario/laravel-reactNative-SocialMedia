@@ -172,7 +172,7 @@ addCommentReaction: (postId, commentId, userId, emoji) => set((state) => {
       const updater = (comment: Comment) => {
         // Check if user already has this exact reaction
         const hasExistingReaction = comment.reaction_comments?.some(
-          r => r.user_id === userId && r.emoji === emoji
+          (          r: { user_id: string | number; emoji: string; }) => r.user_id === userId && r.emoji === emoji
         );
         
         if (hasExistingReaction) return comment;
@@ -189,7 +189,7 @@ addCommentReaction: (postId, commentId, userId, emoji) => set((state) => {
         
         // Remove any existing reactions from this user first
         const filteredReactions = comment.reaction_comments?.filter(
-          r => r.user_id !== userId
+          (          r: { user_id: string | number; }) => r.user_id !== userId
         ) || [];
         
         return {
@@ -222,7 +222,7 @@ updateCommentReactions: (postId, commentId, newReaction, counts = null) =>
         const updater = (comment: Comment) => {
           // Remove any reaction by this user
           const filtered = (comment.reaction_comments || []).filter(
-            (r) => r.user_id !== newReaction.user_id
+            (r: { user_id: number; }) => r.user_id !== newReaction.user_id
           );
 
           return {
@@ -240,7 +240,7 @@ updateCommentReactions: (postId, commentId, newReaction, counts = null) =>
     };
   }),
 
-removeCommentReaction: (postId, commentId, userId) => set((state) => {
+removeCommentReaction: (postId, commentId, userId, updatedCounts = [], updatedCountNumber = null ) => set((state) => {
   const postIndex = state.posts.findIndex(p => p.id === postId);
   if (postIndex === -1) return state;
   
@@ -249,22 +249,15 @@ removeCommentReaction: (postId, commentId, userId) => set((state) => {
       if (post.id !== postId) return post;
       
       const updater = (comment: Comment) => {
-        // Count how many reactions we're removing
-        const userReactions = comment.reaction_comments?.filter(
-          r => r.user_id === userId
+        const filteredReactions = comment.reaction_comments?.filter(
+          r => r.user_id !== userId
         ) || [];
-        
-        const removeCount = userReactions.length;
-        
+
         return {
           ...comment,
-          reaction_comments: comment.reaction_comments?.filter(
-            r => r.user_id !== userId
-          ),
-          reaction_comments_count: Math.max(
-            0,
-            (comment.reaction_comments_count || 0) - removeCount
-          )
+          reaction_comments: filteredReactions,
+          reaction_counts: updatedCounts,
+          reaction_comments_count: updatedCountNumber ?? filteredReactions.length
         };
       };
 
@@ -304,22 +297,13 @@ updatePostWithNewComment: (postId, comment) => {
       const currentComments = post.comments || [];
       
       // For replies, find the parent comment
-      if (comment.parent_id) {
-        return {
-          ...post,
-          comments: currentComments.map(parent => {
-            if (parent.id === comment.parent_id) {
-              return {
-                ...parent,
-                replies: [...(parent.replies || []), comment]
-              };
-            }
-            return parent;
-          }),
-          // Don't increment count for replies
-          comments_count: post.comments_count
-        };
-      }
+    if (comment.parent_id) {
+      return {
+        ...post,
+        comments: addReplyToComment(currentComments, comment),
+        comments_count: post.comments_count
+      };
+    }
       
       // For top-level comments
       return {
@@ -383,13 +367,14 @@ const updateCommentInTree = (
   commentId: number,
   updater: (comment: Comment) => Comment
 ): Comment[] => {
-  return comments?.map(comment => {
+  return comments.map(comment => {
+    // Apply updater to matching comment
     if (comment.id === commentId) {
       return updater(comment);
     }
     
-    // Check replies if this isn't the target comment
-    if (comment.replies?.length) {
+    // Recursively process replies if they exist
+    if (comment.replies && comment.replies.length > 0) {
       return {
         ...comment,
         replies: updateCommentInTree(comment.replies, commentId, updater)
@@ -397,5 +382,5 @@ const updateCommentInTree = (
     }
     
     return comment;
-  }) || [];
+  });
 };
