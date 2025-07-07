@@ -106,6 +106,10 @@ export default function RootLayout() {
     if (!pathname?.startsWith('/(tabs)')) {
       router.replace('/(tabs)');
     }
+
+    if (pathname?.startsWith('/settings')) {
+      router.replace('/settings');
+    }
   }, [isReady, user, pathname]);
 
   if (!isReady) {

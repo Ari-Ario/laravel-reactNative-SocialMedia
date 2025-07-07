@@ -49,9 +49,28 @@ Join our community of developers creating universal apps.
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
 
-## reseting the path of Emulator every time:
+
+
+# Emulator error handling
+
+## reseting the path of Emulator every time in case of leaving path:
 export ANDROID_HOME=/home/ari/Android/Sdk
 export PATH=$PATH:$ANDROID_HOME/emulator
 export PATH=$PATH:$ANDROID_HOME/tools
 export PATH=$PATH:$ANDROID_HOME/tools/bin
 export PATH=$PATH:$ANDROID_HOME/platform-tools
+
+## if not working!
+```bash
+emulator -list-avds
+```
+
+first for pixel 6:
+emulator @Pixel_6 -no-snapshot-load -gpu swiftshader_indirect
+
+second for pixel 9 foldable:
+emulator -avd Pixel_9_API35_Foldable -no-snapshot-load -gpu swiftshader_indirect
+
+
+## then in new Terminal:
+npx expo start -c
