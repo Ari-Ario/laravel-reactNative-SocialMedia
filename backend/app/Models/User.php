@@ -20,10 +20,25 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'username',          // For @mentions
         'email',
         'password',
+        'bio',
+        'birthday',
+        'gender', 
         'profile_photo',
-        'is_admin',
+        'cover_photo',
+        'job_title',         // Professional title
+        'company',           // Workplace
+        'education',         // Education history (could be JSON)
+        'website',           // Personal website
+        'location',          // City/Country
+        'phone',             // Contact number (optional)
+        // 'social_links',      // JSON: {twitter: x, instagram: y}
+        'is_private',        // Private account flag
+        'is_admin',          // Admin role flag
+        'theme_preference',  // Light/dark mode
+        'locale', 
     ];
 
     /**
