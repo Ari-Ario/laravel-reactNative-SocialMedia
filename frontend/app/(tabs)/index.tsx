@@ -2,7 +2,6 @@ import { View, Text, Pressable, StyleSheet, Button, ActivityIndicator, ScrollVie
 import { Link, router, Stack, useRouter } from 'expo-router';
 import { useState, useEffect, useContext } from "react";
 import AuthContext from "@/context/AuthContext";
-import { logout } from "@/services/AuthService";
 import LoginScreen from "../LoginScreen";
 import PostListItem from '@/components/PostListItem';
 import FloatingActionButton from '@/components/FloatingActionButton';
@@ -39,16 +38,6 @@ const HomePage = () => {
   const [addStoryVisible, setAddStoryVisible] = useState(false);
   const [storyGroups, setStoryGroups] = useState<StoryGroup[]>([]);
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      setUser(null);
-      if (!user || user === null) router.replace('/LoginScreen');
-    } catch (error) {
-      console.error("Logout failed:", error);
-      setUser(null);
-    }
-  };
 
   const fetchPostsAndHandleState = async () => {
     try {
@@ -117,10 +106,10 @@ const handleCommentSubmit = async (postId: number, content: string, parentId?: n
     }
   };
 
-  useEffect(() => {
-    if (user === undefined) return;
-    if (user === null) router.replace('/LoginScreen');
-  }, [user]);
+  // useEffect(() => {
+  //   if (user === undefined) return;
+  //   if (user === null) router.replace('/LoginScreen');
+  // }, [user]);
 
   const handleProfilePress = (userId: string) => {
     setProfileViewUserId(userId);
@@ -145,32 +134,36 @@ const handleCommentSubmit = async (postId: number, content: string, parentId?: n
   return (
     <AuthContext.Provider value={{ user, setUser }}>
       <View style={styles.container}>
-        <View style={styles.header}>
-          {storyGroups.length >= 0 && (
-            <View style={styles.storiesContainer}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 10 }} snapToAlignment="start" decelerationRate="fast" snapToInterval={80}>
-                <TouchableOpacity style={styles.storyItem} onPress={() => handleProfilePress(user.id)}>
-                  <View style={styles.myStoryCircle}>
-                    {renderProfilePhoto()}
-                    <View style={styles.addStoryIcon}>
-                      <Ionicons name="add" size={16} color="white" onPress={(e) => { e.stopPropagation(); setAddStoryVisible(true); }} />
+        <View style={styles.headerScrollContainer}>
+
+          <View style={styles.header}>
+            {storyGroups.length >= 0 && (
+              <View style={styles.storiesContainer}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 10 }} snapToAlignment="start" decelerationRate="fast" snapToInterval={80}>
+                  <TouchableOpacity style={styles.storyItem} onPress={() => handleProfilePress(user.id)}>
+                    <View style={styles.myStoryCircle}>
+                      {renderProfilePhoto()}
+                      <View style={styles.addStoryIcon}>
+                        <Ionicons name="add" size={16} color="white" onPress={(e) => { e.stopPropagation(); setAddStoryVisible(true); }} />
+                      </View>
                     </View>
-                  </View>
-                  <Text style={styles.storyUsername} onPress={() => setAddStoryVisible(true)}>Your Story</Text>
-                </TouchableOpacity>
-                {storyGroups.map(group => (
-                  <TouchableOpacity key={group.user.id} style={styles.storyItem} onPress={() => router.push({ pathname: '/story/[id]', params: { id: group.latest_story.id } })}>
-                    <View style={[styles.storyBorder, group.all_viewed && styles.viewedStoryBorder]}>
-                      <Image source={{ uri: `${getApiBaseImage()}/storage/${group.user.profile_photo}` }} style={styles.storyImage} />
-                      {!group.all_viewed && <View style={styles.unseenBadge} />}
-                    </View>
-                    <Text style={styles.storyUsername}>{group.user.name}</Text>
+                    <Text style={styles.storyUsername} onPress={() => setAddStoryVisible(true)}>Your Story</Text>
                   </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          )}
-          <Button title="Logout" onPress={handleLogout} />
+                  {storyGroups.map(group => (
+                    <TouchableOpacity key={group.user.id} style={styles.storyItem} onPress={() => router.push({ pathname: '/story/[id]', params: { id: group.latest_story.id } })}>
+                      <View style={[styles.storyBorder, group.all_viewed && styles.viewedStoryBorder]}>
+                        <Image source={{ uri: `${getApiBaseImage()}/storage/${group.user.profile_photo}` }} style={styles.storyImage} />
+                        {!group.all_viewed && <View style={styles.unseenBadge} />}
+                      </View>
+                      <Text style={styles.storyUsername}>{group.user.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+            {/* <Button title="Logout" onPress={handleLogout} /> */}
+          </View>
+
         </View>
 
         <FlatList
@@ -232,19 +225,27 @@ const handleCommentSubmit = async (postId: number, content: string, parentId?: n
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    position: 'relative',
     backgroundColor: '#fff',
     width: '100%',
-    maxWidth: 500,
+    maxWidth: 1024,
     alignSelf: 'center',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 5,
+  headerScrollContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10, // Ensure header stays above content
     backgroundColor: '#f8f8f8',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+  },
+  header: {
+    width: '100%',
+    // maxWidth: 500,
+    alignSelf: 'center',
+    padding: 5,
   },
   photoContainer: {
     position: 'relative',
@@ -290,6 +291,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   postContainer: {
+    top: 100,
     marginBottom: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',

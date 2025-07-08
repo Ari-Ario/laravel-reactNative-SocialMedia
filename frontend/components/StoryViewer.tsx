@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions, Animated, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions, Animated, ActivityIndicator, TextInput, ScrollView } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -183,24 +183,32 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
         </TouchableOpacity>
       </View>
 
-      {/* Story content */}
-      <TouchableOpacity 
-        style={styles.contentContainer}
-        activeOpacity={1}
-        onPress={handleSwipe}
-      >
-        <Image 
-          source={{ uri: `${getApiBaseImage()}/storage/${currentStory.media_path}` }}
-          style={styles.storyImage}
-          resizeMode="contain"
-        />
-        
-        {currentStory.caption && (
-          <View style={styles.captionContainer}>
-            <Text style={styles.caption}>{currentStory.caption}</Text>
-          </View>
-        )}
-      </TouchableOpacity>
+      {/* Story content - Wrapped in new ScrollView container */}
+      <View style={styles.scrollWrapper}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          <TouchableOpacity 
+            style={styles.contentContainer}
+            activeOpacity={1}
+            onPress={handleSwipe}
+          >
+            <Image 
+              source={{ uri: `${getApiBaseImage()}/storage/${currentStory.media_path}` }}
+              style={styles.storyImage}
+              resizeMode="contain"
+            />
+            
+            {currentStory.caption && (
+              <View style={styles.captionContainer}>
+                <Text style={styles.caption}>{currentStory.caption}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
 
       {/* Footer */}
       <View style={styles.footer}>
@@ -221,6 +229,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'black',
+    width: '100%',
+    maxWidth: 1024,
+    alignSelf: 'center',
+  },
+  scrollWrapper: {
+    flex: 1,
+    width: '100%',
+    overflow: 'hidden',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    width: '100%',
   },
   progressBarsContainer: {
     flexDirection: 'row',

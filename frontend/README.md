@@ -74,3 +74,10 @@ emulator -avd Pixel_9_API35_Foldable -no-snapshot-load -gpu swiftshader_indirect
 
 ## then in new Terminal:
 npx expo start -c
+
+
+📊 Comparison Table
+Emulator	         RAMUse	Storage	Best For
+Pixel 6 (API 34)	2GB	   8GB	   Daily debugging
+PixelFold(API 35) 4GB	   12GB	   Foldable-specific testing
+Pixel 8 (API 36)	3GB	   10GB	   Android 15 features          (Not in use, just info)

@@ -15,7 +15,7 @@ class UsersTableSeeder extends Seeder
     public function run()
     {
         // Clear the table first
-        // User::truncate();
+        User::truncate();
 
         // Create 10 dummy users
         for ($i = 1; $i <= 10; $i++) {
@@ -34,5 +34,17 @@ class UsersTableSeeder extends Seeder
                 'is_admin' => $i === 1, // Make first user admin
             ]);
         }
+
+        // Now seed posts
+        \App\Models\Post::truncate(); // Clear existing posts
+
+        for ($i = 1; $i <= 20; $i++) {
+            \App\Models\Post::create([
+                'user_id' => rand(1, 10), // Random user between 1-10
+                'caption' => "This is post #$i by user " . rand(1, 10) . ". " . 
+                            "Lorem ipsum dolor sit amet, consectetur adipiscing elit."
+            ]);
+        }
+
     }
 }

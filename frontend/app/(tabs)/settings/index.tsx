@@ -517,8 +517,8 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   logout: {
-    color: Colors.primary,
-    fontSize: 18,
+    color: 'red',
+    fontSize: 24,
     textAlign: 'center',
     paddingVertical: 14,
   },

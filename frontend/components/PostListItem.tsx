@@ -459,6 +459,18 @@ const handleDelete = async () => {
     };
   };
 
+  const handleDoubleTap = useDoubleTap(
+    () => {
+      // Double tap action
+      setCurrentReactingItem({ postId: post.id });
+      handleReact("❤️");
+    },
+    () => {
+      // Single tap action
+      setCurrentReactingItem({ postId: post.id });
+    }
+  );
+
   const deletePostReaction = async () => {
     if (!post.id || !user?.id) return;
 
@@ -861,17 +873,7 @@ const renderComment = ({ item }: { item: Comment }) => {
       {post.media?.length > 0 && (
         <TouchableOpacity
           activeOpacity={0.9}
-          onPress={useDoubleTap(
-            () => {
-              // Second tap - perform reaction and sets the id, in case it is not set yet
-              setCurrentReactingItem({ postId: post.id });
-              handleReact("❤️");
-            },
-            () => {
-              // First tap - set reacting item
-              setCurrentReactingItem({ postId: post.id });
-            }
-          )}
+          onPress={handleDoubleTap} // 2. Use the pre-created handler
         >
           <Image
             source={{ uri: `${getApiBaseImage()}/storage/${post.media[0].file_path}` }}
@@ -880,9 +882,6 @@ const renderComment = ({ item }: { item: Comment }) => {
           />
         </TouchableOpacity>
       )}
-
-
-
 
       {/* Action buttons */}
       <View style={styles.actionBar}>
@@ -934,57 +933,63 @@ const renderComment = ({ item }: { item: Comment }) => {
         </TouchableOpacity>
         
         {/* reaction bar of Post */}
-        {reactionsToShow.map((reaction, idx) => {
-          const isMyReaction = reaction.user_ids?.includes(user?.id);
-          
-          return (
-          <TouchableOpacity
-            style={styles.reactionBar}
-            key={`reaction-${reaction.emoji}-${idx}`} 
-            onPress={() => {
-              setCurrentReactingComment(null);
-              setCurrentReactingItem({ postId: post.id });
-              setIsEmojiPickerOpen(true);
-            }}
+        <View style={styles.reactionScrollContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.reactionBar}
           >
-            <View 
-              key={idx} 
-              style={[
-                styles.reactionItem,
-                isMyReaction && styles.reactionItemMine
-              ]}
-            >
-              {isMyReaction ? (
-                <TouchableOpacity 
-                  onPress={deletePostReaction}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.reactionEmoji}>
-                    {reaction.emoji}
-                  </Text>
-                </TouchableOpacity>
-              ) : (
-                <Text style={styles.reactionEmoji}>
-                  {reaction.emoji}
-                </Text>
-              )}
+            {reactionsToShow.map((reaction, idx) => {
+              const isMyReaction = reaction.user_ids?.includes(user?.id);
               
-              {reaction.count > 0 && (
-                <Text style={[
-                  styles.reactionCount,
-                  isMyReaction && styles.reactionCountMine
-                ]}>
-                  {reaction.count}
-                </Text>
-              )}
-            </View>
-          </TouchableOpacity>
-          );
-        })}
+              return (
+                <View 
+                  key={`reaction-${reaction.emoji}-${idx}`}
+                  style={[
+                    styles.reactionItem,
+                    isMyReaction && styles.reactionItemMine
+                  ]}
+                >
+                  {isMyReaction ? (
+                    <TouchableOpacity 
+                      onPress={deletePostReaction}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.reactionEmoji}>
+                        {reaction.emoji}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setCurrentReactingComment(null);
+                        setCurrentReactingItem({ postId: post.id });
+                        setIsEmojiPickerOpen(true);
+                      }}
+                    >
+                      <Text style={styles.reactionEmoji}>
+                        {reaction.emoji}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  
+                  {reaction.count > 0 && (
+                    <Text style={[
+                      styles.reactionCount,
+                      isMyReaction && styles.reactionCountMine
+                    ]}>
+                      {reaction.count}
+                    </Text>
+                  )}
+                </View>
+              );
+            })}
+          </ScrollView>
+        </View>
 
         {/* Bookmark button */}
         <TouchableOpacity 
-          style={[styles.actionButton, { marginLeft: 'auto' }]}
+          style={[styles.actionButton, { marginLeft: 'auto', marginRight: 0 }]}
           onPress={() => onBookmark(post.id)}
         >
           <Feather name="bookmark" size={24} />
@@ -1156,13 +1161,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
-  reactionBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 5,
-  },
-
+reactionScrollContainer: {
+  flex: 1,          // Takes available space
+  marginHorizontal: 5, // Small gap
+  overflow: 'hidden',  // Contain overflow
+},
+reactionBar: {
+  flexDirection: 'row',
+  gap: 5,           // Space between reactions
+  alignItems: 'center',
+},
 
   reactionItem: {
     flexDirection: 'row',
@@ -1172,7 +1180,6 @@ const styles = StyleSheet.create({
     borderColor: '#e8eaed',
     paddingHorizontal: 6,
     paddingVertical: 4,
-    // Add this new property:
     backgroundColor: 'transparent', // Default background
   },
   // Add these new styles:
@@ -1204,12 +1211,14 @@ const styles = StyleSheet.create({
     color: '#65676B',
     fontStyle: 'italic',
   },
-  actionBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
+actionBar: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between', // Distribute space
+  paddingHorizontal: 10,
+  paddingVertical: 8,
+},
+// Remove marginLeft: 'auto' from bookmark
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',

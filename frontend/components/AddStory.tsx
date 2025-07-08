@@ -150,6 +150,9 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 1024,
     backgroundColor: 'white',
   },
   header: {

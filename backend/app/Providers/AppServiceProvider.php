@@ -20,9 +20,14 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Bootstrap any application services.
      */
-    public function boot(): void
+    public function boot()
     {
-        //
+        if (app()->environment('local')) {
+            // Auto-refresh stories daily at midnight
+            if (now()->format('H:i') === '00:00') {
+                \Artisan::call('db:seed --class=StoriesTableSeeder');
+            }
+        }
     }
 
     // public function boot()
