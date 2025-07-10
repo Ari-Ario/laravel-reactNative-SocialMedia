@@ -101,6 +101,7 @@ const handleCommentSubmit = async (postId: number, content: string, parentId?: n
     try {
       const data = await fetchStories();
       setStoryGroups(data);
+      // console.log('storyGroups is: ' ,storyGroups);
     } catch (error) {
       console.error('Error fetching stories:', error);
     }
@@ -165,28 +166,30 @@ const handleCommentSubmit = async (postId: number, content: string, parentId?: n
           </View>
 
         </View>
-
-        <FlatList
-          data={posts}
-          renderItem={({ item }) => (
-            <View style={styles.postContainer}>
-              <PostListItem
-                post={item}
-                onReact={reactToPost}
-                onCommentSubmit={handleCommentSubmit}
-                onRepost={handleRepost}
-                onShare={sharePost}
-                onBookmark={bookmarkPost}
-                setIsCreateModalVisible={setIsCreateModalVisible}
-              />
-            </View>
-          )}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          onRefresh={handleRefresh}
-          refreshing={refreshing}
-          keyExtractor={(item) => item.id.toString()}
-        />
+        
+        <View style={styles.allPostContainer}>
+          <FlatList
+            data={posts}
+            renderItem={({ item }) => (
+              <View style={styles.postContainer}>
+                <PostListItem
+                  post={item}
+                  onReact={reactToPost}
+                  onCommentSubmit={handleCommentSubmit}
+                  onRepost={handleRepost}
+                  onShare={sharePost}
+                  onBookmark={bookmarkPost}
+                  setIsCreateModalVisible={setIsCreateModalVisible}
+                />
+              </View>
+            )}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            onRefresh={handleRefresh}
+            refreshing={refreshing}
+            keyExtractor={(item) => item.id.toString()}
+          />
+        </View>
 
         <FloatingActionButton onPress={() => {
           router.setParams({ postId: null });
@@ -236,7 +239,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    zIndex: 10, // Ensure header stays above content
+    zIndex: 10,
     backgroundColor: '#f8f8f8',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
@@ -290,8 +293,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  postContainer: {
+  allPostContainer: {
     top: 100,
+  },
+  postContainer: {
     marginBottom: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',

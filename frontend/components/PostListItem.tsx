@@ -137,7 +137,6 @@ const [menuVisible, setMenuVisible] = useState(false);
 const [reportVisible, setReportVisible] = useState(false);
 const { user, setUser } = useContext(AuthContext);
 const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
-// const reactionsToShow = getGroupedReactions(post, user?.id);
 const { deletePostById, updatePost: updatePostInStore } = usePostStore();
 const postStore = usePostStore();
 
@@ -233,7 +232,6 @@ const handleDelete = async () => {
   };
 
 
-  // Default emojis to show if no reactions exist
   // const defaultEmojis = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
   
   // Get reactions to display (from backend or default)
@@ -264,15 +262,14 @@ const handleDelete = async () => {
       emoji, 
       count,
       user_ids 
-    }));
+    }))
+    .sort((a, b) => b.count - a.count);
   }
 
   function getGroupedReactionsComments(
     comment: Comment, 
     currentUserId?: number
   ): { emoji: string; count: number; user_ids: number[] }[] {
-      // console.log('reaction_comments on comment', comment.id, comment.reaction_comments);
-
     const defaultEmojis = ['🤍'];
     
     if (!comment?.reaction_comments || comment?.reaction_comments.length === 0) {
@@ -293,11 +290,14 @@ const handleDelete = async () => {
       });
     }
 
-    return [...reactionMap.entries()].map(([emoji, { count, user_ids }]) => ({ 
-      emoji, 
-      count,
-      user_ids 
-    }));
+    // Convert to array and sort by count (descending)
+    return [...reactionMap.entries()]
+      .map(([emoji, { count, user_ids }]) => ({ 
+        emoji, 
+        count,
+        user_ids 
+      }))
+      .sort((a, b) => b.count - a.count); // 👈 New sorting line
   }
 
   // helper function for handleReact function below
@@ -337,7 +337,7 @@ const handleDelete = async () => {
     const { postId, commentId } = currentReactingItem;
     
     try {
-      console.log('Processing reaction:', { postId, commentId, emoji });
+      // console.log('Processing reaction:', { postId, commentId, emoji });
 
       // 1. Get current post from store
       const currentPost = postStore.posts.find(p => p.id === postId);
@@ -720,17 +720,15 @@ const renderComment = ({ item }: { item: Comment }) => {
         </TouchableOpacity>
         
         {/* Comment reactions - now using grouped reactions */}
-        <View style={styles.commentReactions}>
+        {/* 👇 Scrollable Reaction Container (NEW) */}
+        <View style={styles.commentReactionsScrollContainer}>
           {groupedReactions.length > 0 ? (
-            <TouchableOpacity
-              style={styles.reactionBar}
-              onPress={() => {
-                setCurrentReactingComment({ postId: post.id, commentId: item.id });
-                setCurrentReactingItem(null);
-                setIsEmojiPickerOpen(true);
-              }}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.commentReactionsScrollContent}
             >
-              {groupedReactions.slice(0, 3).map((reaction, idx) => {
+              {groupedReactions.map((reaction, idx) => {
                 const isMyReaction = reaction.user_ids?.includes(user?.id);
                 
                 return isMyReaction ? (
@@ -748,9 +746,14 @@ const renderComment = ({ item }: { item: Comment }) => {
                     )}
                   </TouchableOpacity>
                 ) : (
-                  <View 
+                  <TouchableOpacity
                     key={`${reaction.emoji}-${idx}`}
                     style={styles.reactionItem}
+                    onPress={() => {
+                      setCurrentReactingComment({ postId: post.id, commentId: item.id });
+                      setCurrentReactingItem(null);
+                      setIsEmojiPickerOpen(true);
+                    }}
                   >
                     <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
                     {reaction.count > 1 && (
@@ -758,19 +761,15 @@ const renderComment = ({ item }: { item: Comment }) => {
                         {reaction.count}
                       </Text>
                     )}
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
-              {groupedReactions.length > 3 && (
-                <Text style={styles.reactionCount}>+{groupedReactions.length - 3}</Text>
-              )}
-            </TouchableOpacity>
+            </ScrollView>
           ) : (
             <TouchableOpacity
               style={styles.addReactionButton}
               onPress={() => {
                 setCurrentReactingComment({ postId: post.id, commentId: item.id });
-                // setCurrentReactingItem(null);
                 setIsEmojiPickerOpen(true);
               }}
             >
@@ -1304,10 +1303,23 @@ actionBar: {
     fontSize: 14,
     marginLeft: 40, // Align with text under avatar
   },
-  commentButtons : {
-    flex: 1,
-    flexDirection: 'row',
-  },
+commentButtons: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginTop: 5,
+  marginBottom: 5,
+},
+commentReactionsScrollContainer: {
+  flex: 1, // Takes available space
+  marginLeft: 10, // Space from Reply button
+  marginRight: 10, // Space from Delete button
+  overflow: 'hidden', // Contain overflow
+},
+commentReactionsScrollContent: {
+  flexDirection: 'row',
+  gap: 5, // Space between reactions
+  alignItems: 'center',
+},
   commentReactions: {
     marginLeft: 40,
     marginTop: 0,

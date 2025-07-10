@@ -64,11 +64,13 @@ export default function StoryScreen() {
   };
 
 // Modify the handleNext and handlePrev functions to ensure stories are marked as viewed
-const handleNextUser = async () => {
+const handleNextUser = async (currentIndex?: number) => {
     if (currentGroupIndex < storyGroups.length - 1) {
         // Mark current story as viewed before moving
         try {
-            await markStoryAsViewed(storyGroups[currentGroupIndex].stories[currentStoryIndex].id);
+          if (currentIndex !== undefined) {
+            await markStoryAsViewed(storyGroups[currentGroupIndex].stories[currentIndex].id);
+          }        
         } catch (error) {
             console.error('Error marking story as viewed:', error);
         }
@@ -80,11 +82,13 @@ const handleNextUser = async () => {
     }
 };
 
-const handlePrevUser = async () => {
+const handlePrevUser = async (currentIndex?: number) => {
     if (currentGroupIndex > 0) {
         // Mark current story as viewed before moving
         try {
-            await markStoryAsViewed(storyGroups[currentGroupIndex].stories[currentStoryIndex].id);
+          if (currentIndex !== undefined) {
+            await markStoryAsViewed(storyGroups[currentGroupIndex].stories[currentIndex].id);
+          }
         } catch (error) {
             console.error('Error marking story as viewed:', error);
         }
@@ -102,9 +106,11 @@ const handlePrevUser = async () => {
     );
   }
 
-  const currentGroup = storyGroups[currentGroupIndex];
-  const initialStoryId = currentGroup.stories.find(story => story.id.toString() === id)?.id || 
-                        currentGroup.stories[0].id;
+// Modify the initialStoryId selection logic (around line 76)
+const currentGroup = storyGroups[currentGroupIndex];
+const initialStoryId = currentGroup.stories.find(story => story.id.toString() === id)?.id || 
+                      currentGroup.stories.find(story => !story.viewed)?.id || 
+                      currentGroup.stories[0].id;
 
   return (
     <View style={styles.container}>

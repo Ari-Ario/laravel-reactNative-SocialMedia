@@ -12,8 +12,8 @@ interface StoryViewerProps {
   userId: number;
   initialStoryId: number;
   onClose: () => void;
-  onNextUser: () => void;
-  onPrevUser: () => void;
+  onNextUser: (currentIndex?: number) => void;
+  onPrevUser: (currentIndex?: number) => void;
 }
 
 const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }: StoryViewerProps) => {
@@ -35,7 +35,11 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
         
         // Find the index of the initial story
         const initialIndex = data.findIndex(story => story.id === initialStoryId);
-        setCurrentStoryIndex(initialIndex !== -1 ? initialIndex : 0);
+        const firstUnviewedIndex = data.findIndex(story => !story.viewed);
+        setCurrentStoryIndex(
+          firstUnviewedIndex !== -1 ? firstUnviewedIndex : 
+          initialIndex !== -1 ? initialIndex : 0
+        );
       } catch (error) {
         console.error('Error loading stories:', error);
         onClose();
@@ -100,7 +104,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
       setCurrentStoryIndex(currentStoryIndex + 1);
     } else {
       // No more stories from this user, move to next user
-      onNextUser();
+      onNextUser(currentStoryIndex);
     }
   };
 
@@ -110,7 +114,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
       setCurrentStoryIndex(currentStoryIndex - 1);
     } else {
       // No more stories from this user, move to previous user
-      onPrevUser();
+      onPrevUser(currentStoryIndex);
     }
   };
 
