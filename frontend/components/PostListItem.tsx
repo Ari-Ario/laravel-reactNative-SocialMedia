@@ -162,54 +162,54 @@ const isOwner = user?.id === post.user.id;
 const [isFullScreen, setIsFullScreen] = useState(false);
 
 
-const handleDelete = async () => {
-    try {
-        const confirmMessage = Platform.OS === 'web' 
-            ? window.confirm("Are you sure you want to delete this post?")
-            : await new Promise((resolve) => {
-                Alert.alert(
-                    "Delete Post",
-                    "Are you sure you want to delete this post?",
-                    [
-                        { text: "Cancel", onPress: () => resolve(false) },
-                        { text: "Delete", onPress: () => resolve(true) }
-                    ]
-                );
-            });
+  const handleDelete = async () => {
+      try {
+          const confirmMessage = Platform.OS === 'web' 
+              ? window.confirm("Are you sure you want to delete this post?")
+              : await new Promise((resolve) => {
+                  Alert.alert(
+                      "Delete Post",
+                      "Are you sure you want to delete this post?",
+                      [
+                          { text: "Cancel", onPress: () => resolve(false) },
+                          { text: "Delete", onPress: () => resolve(true) }
+                      ]
+                  );
+              });
 
-        if (!confirmMessage) {
-            setMenuVisible(false);
-            return;
-        }
+          if (!confirmMessage) {
+              setMenuVisible(false);
+              return;
+          }
 
-        await deletePost(post.id);
-        deletePostById(post.id);
-        setMenuVisible(false);
-        
-        if (Platform.OS === 'web') {
-            alert("Post deleted successfully");
-        } else {
-            Alert.alert("Success", "Post deleted successfully");
-        }
-        
-        // Refresh posts list
-        // if (onPostDeleted) {
-        //     onPostDeleted();
-        // }
-        fetchPosts();
-        setMenuVisible(false);
+          await deletePost(post.id);
+          deletePostById(post.id);
+          setMenuVisible(false);
+          
+          if (Platform.OS === 'web') {
+              alert("Post deleted successfully");
+          } else {
+              Alert.alert("Success", "Post deleted successfully");
+          }
+          
+          // Refresh posts list
+          // if (onPostDeleted) {
+          //     onPostDeleted();
+          // }
+          fetchPosts();
+          setMenuVisible(false);
 
-    } catch (error) {
-        console.error('Delete error:', error);
-        const errorMessage = error.message || "Could not delete post. Please try again.";
-        
-        if (Platform.OS === 'web') {
-            alert(errorMessage);
-        } else {
-            Alert.alert("Error", errorMessage);
-        }
-    }
-};
+      } catch (error) {
+          console.error('Delete error:', error);
+          const errorMessage = error.message || "Could not delete post. Please try again.";
+          
+          if (Platform.OS === 'web') {
+              alert(errorMessage);
+          } else {
+              Alert.alert("Error", errorMessage);
+          }
+      }
+  };
 
   const handleEdit = () => {
     openModal('edit', {
@@ -925,68 +925,68 @@ const handleNavigatePrevPost = useCallback(() => {
       </View>
 
       {/* Post media */}
-{post.media && post.media.length > 0 && (
-  <View style={styles.mediaContainer}>
-    {sortedMedia.length === 1 ? (
-      <TouchableOpacity onPress={() => openMediaViewer(0)}>
-        {sortedMedia[0].type === 'video' ? (
-          <Video
-            source={{ uri: `${getApiBaseImage()}/storage/${sortedMedia[0].file_path}` }}
-            style={styles.singleMedia}
-            resizeMode="cover"
-            shouldPlay={false}
-            isMuted
-            useNativeControls={false}
-          />
-        ) : (
-          <Image
-            source={{ uri: `${getApiBaseImage()}/storage/${sortedMedia[0].file_path}` }}
-            style={styles.singleMedia}
-            resizeMode="cover"
-          />
-        )}
-      </TouchableOpacity>
-    ) : (
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {sortedMedia.map((media, index) => (
-          <TouchableOpacity 
-            key={`${media.id}-${index}`}
-            onPress={() => openMediaViewer(index)}
-            style={styles.multiMediaItem}
-          >
-            {media.type === 'video' ? (
-              <Video
-                source={{ uri: `${getApiBaseImage()}/storage/${media.file_path}` }}
-                style={styles.multiMediaContent}
-                resizeMode="cover"
-                shouldPlay={false}
-                isMuted
-                useNativeControls={false}
-              />
-            ) : (
-              <Image
-                source={{ uri: `${getApiBaseImage()}/storage/${media.file_path}` }}
-                style={styles.multiMediaContent}
-                resizeMode="cover"
-              />
-            )}
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    )}
-  </View>
-)}
+      {post.media && post.media.length > 0 && (
+        <View style={styles.mediaContainer}>
+          {sortedMedia.length === 1 ? (
+            <TouchableOpacity onPress={() => openMediaViewer(0)}>
+              {sortedMedia[0].type === 'video' ? (
+                <Video
+                  source={{ uri: `${getApiBaseImage()}/storage/${sortedMedia[0].file_path}` }}
+                  style={styles.singleMedia}
+                  resizeMode="cover"
+                  shouldPlay={false}
+                  isMuted
+                  useNativeControls={false}
+                />
+              ) : (
+                <Image
+                  source={{ uri: `${getApiBaseImage()}/storage/${sortedMedia[0].file_path}` }}
+                  style={styles.singleMedia}
+                  resizeMode="cover"
+                />
+              )}
+            </TouchableOpacity>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {sortedMedia.map((media, index) => (
+                <TouchableOpacity 
+                  key={`${media.id}-${index}`}
+                  onPress={() => openMediaViewer(index)}
+                  style={styles.multiMediaItem}
+                >
+                  {media.type === 'video' ? (
+                    <Video
+                      source={{ uri: `${getApiBaseImage()}/storage/${media.file_path}` }}
+                      style={styles.multiMediaContent}
+                      resizeMode="cover"
+                      shouldPlay={false}
+                      isMuted
+                      useNativeControls={false}
+                    />
+                  ) : (
+                    <Image
+                      source={{ uri: `${getApiBaseImage()}/storage/${media.file_path}` }}
+                      style={styles.multiMediaContent}
+                      resizeMode="cover"
+                    />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+      )}
 
-<MediaViewer
-  visible={mediaViewerVisible}
-  mediaItems={sortedMedia}
-  startIndex={mediaViewerIndex}
-  onClose={handleCloseViewer}
-  post={post}
-  getApiBaseImage={getApiBaseImage}
-  onNavigateNext={handleNavigateNextPost}
-  onNavigatePrev={handleNavigatePrevPost}
-/>
+      <MediaViewer
+        visible={mediaViewerVisible}
+        mediaItems={sortedMedia}
+        startIndex={mediaViewerIndex}
+        onClose={handleCloseViewer}
+        post={post}
+        getApiBaseImage={getApiBaseImage}
+        onNavigateNext={handleNavigateNextPost}
+        onNavigatePrev={handleNavigatePrevPost}
+      />
 
       {/* Action buttons */}
       <View style={styles.actionBar}>

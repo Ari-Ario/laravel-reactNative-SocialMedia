@@ -70,39 +70,88 @@ class ProfileController extends Controller
     // Requesting other users and follower
     public function show($userId)
     {
-        $user = User::withCount([
-            'posts',
-            'followers',
-            'following'
-        ])->findOrFail($userId);
+        try {
+            $authUserId = Auth::id();
 
-        $posts = Post::where('user_id', $userId)
-            ->withCount(['reactions', 'comments'])
-            ->with(['media', 'reactions' => function($query) {
-                $query->where('user_id', Auth::id());
-            }])
-            ->latest()
-            ->get();
+            // Retrieve the user info
+            $user = User::withCount([
+                'posts',
+                'followers',
+                'following'
+            ])->findOrFail($userId);
 
-        $isFollowing = Follower::where([
-            'follower_id' => Auth::id(),
-            'following_id' => $userId
-        ])->exists();
+            // Get the posts exactly like index()
+            $posts = Post::where('user_id', $userId)
+                ->with([
+                    'user',
+                    'media',
+                    'reactions',
+                    'reactionCounts',
+                    'comments.user',
+                    'comments.reaction_comments.user',
+                    'comments.replies' => function ($query) {
+                        $query->with(['user', 'reaction_comments.user'])
+                            ->withCount('reaction_comments');
+                    },
+                    'comments.replies.replies' => function ($query) {
+                        $query->with(['user', 'reaction_comments.user'])
+                            ->withCount('reaction_comments');
+                    },
+                    'reposts.user'
+                ])
+                ->withCount([
+                    'reactions',
+                    'comments',
+                    'reposts'
+                ])
+                ->withExists(['reposts as is_reposted' => function($query) use ($authUserId) {
+                    $query->where('user_id', $authUserId);
+                }])
+                ->latest()
+                ->paginate(10);
 
-        return response()->json([
-            'id' => $user->id,
-            'name' => $user->name,
-            'last_name' => $user->last_name,
-            'username' => $user->username,
-            'bio' => $user->bio,
-            'profile_photo' => $user->profile_photo,
-            'posts_count' => $user->posts_count,
-            'followers_count' => $user->followers_count,
-            'following_count' => $user->following_count,
-            'is_following' => $isFollowing,
-            'posts' => $posts
-        ]);
+            // Recursively transform all comments and replies
+            $posts->getCollection()->transform(function ($post) {
+                $transformComment = function ($comment) use (&$transformComment) {
+                    $comment->reaction_comments_count = $comment->reaction_comments->count();
+
+                    if ($comment->replies) {
+                        $comment->replies->each($transformComment);
+                    }
+
+                    return $comment;
+                };
+
+                $post->comments->each($transformComment);
+                return $post;
+            });
+
+            // Return the same structure, but wrap with user info
+            return response()->json([
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'last_name' => $user->last_name,
+                    'username' => $user->username,
+                    'bio' => $user->bio,
+                    'profile_photo' => $user->profile_photo,
+                    'posts_count' => $user->posts_count,
+                    'followers_count' => $user->followers_count,
+                    'following_count' => $user->following_count,
+                    'is_following' => Follower::where([
+                        'follower_id' => $authUserId,
+                        'following_id' => $userId
+                    ])->exists(),
+                ],
+                'posts' => $posts
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('PostController@show error: '.$e->getMessage());
+            return response()->json(['error' => 'Server error'], 500);
+        }
     }
+
 
     public function follow(Request $request, $userId)
     {

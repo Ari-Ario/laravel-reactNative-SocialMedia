@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList, ActivityIndicator, Modal, Alert } from 'react-native';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { fetchProfile, followUser, updateProfile } from '@/services/UserService';
 import { Ionicons } from '@expo/vector-icons';
 import PostListItem from './PostListItem';
@@ -16,14 +16,24 @@ const ProfilePreview = ({ userId, visible, onClose }) => {
   const [loading, setLoading] = useState(true);
   const [followLoading, setFollowLoading] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
-  const { posts } = usePostStore();
-  const userPosts = posts.filter(p => p.user.id === userId);
+  const { posts, setPosts } = usePostStore();
+  const originalPostsRef = useRef(posts);
 
-  useEffect(() => {
-    if (visible && userId) {
-      handleFetchProfile();
-    }
-  }, [visible, userId]);
+  const userPosts = posts;
+
+useEffect(() => {
+  if (visible && userId) {
+    // Save current posts
+    originalPostsRef.current = posts;
+    // Fetch the profile and replace posts
+    handleFetchProfile();
+  }
+
+  // When visible becomes false, restore original posts
+  if (!visible && originalPostsRef.current) {
+    setPosts(originalPostsRef.current);
+  }
+}, [visible, userId]);
 
   const handleFetchProfile = async () => {
     try {
@@ -34,8 +44,11 @@ const ProfilePreview = ({ userId, visible, onClose }) => {
       // Adjust according to your actual API response structure
       const profileData = response.data || response;
       
-      setProfile(profileData);
+      setProfile(profileData.user);
+      console.log(profileData);
       setIsFollowing(profileData.is_following);
+      // Put profile posts into usePostStore
+      setPosts(profileData.posts?.data || []);
     } catch (error) {
       console.error('Error fetching profile:', error);
       // Optionally show error to user
@@ -191,7 +204,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     width: '100%',
-    maxWidth: 500,
+    maxWidth: 1024,
     alignSelf: 'center',
   },
   closeButton: {
