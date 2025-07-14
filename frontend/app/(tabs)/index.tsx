@@ -167,7 +167,6 @@ const handleCommentSubmit = async (postId: number, content: string, parentId?: n
 
         </View>
         
-        <View style={styles.allPostContainer}>
           <FlatList
             data={posts}
             renderItem={({ item }) => (
@@ -189,7 +188,6 @@ const handleCommentSubmit = async (postId: number, content: string, parentId?: n
             refreshing={refreshing}
             keyExtractor={(item) => item.id.toString()}
           />
-        </View>
 
         <FloatingActionButton onPress={() => {
           router.setParams({ postId: null });
@@ -235,7 +233,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   headerScrollContainer: {
-    position: 'absolute',
+    position: 'sticky',
     top: 0,
     left: 0,
     right: 0,
@@ -244,6 +242,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
+
   header: {
     width: '100%',
     // maxWidth: 500,
@@ -293,9 +292,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  allPostContainer: {
-    top: 100,
-  },
+
   postContainer: {
     marginBottom: 15,
     borderBottomWidth: 1,

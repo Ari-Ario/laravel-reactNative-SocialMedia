@@ -17,7 +17,7 @@ export async function fetchPosts() {
     if (!response.data) {
         throw new Error('Failed to fetch posts');
     }
-    console.log('data back in PostService: ',response.data.data)
+    // console.log('data back in PostService: ',response.data.data)
     return response.data.data; // Return the posts array
 }
 

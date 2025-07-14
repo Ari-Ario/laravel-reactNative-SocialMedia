@@ -84,7 +84,7 @@ class PostController extends Controller
         $request->validate([
             'caption' => 'nullable|string|max:500',
             'media' => 'required|array|max:10',
-            'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,avi,mp3,wav,pdf,doc,docx|max:20480'
+            'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,webm,avi,mp3,wav,pdf,doc,docx|max:20480'
         ]);
 
         $post = Post::create([
@@ -120,7 +120,7 @@ class PostController extends Controller
         $request->validate([
             'caption' => 'nullable|string|max:500',
             'media' => 'sometimes|array|max:10',
-            'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,avi,mp3,wav,pdf,doc,docx|max:20480',
+            'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,webm,avi,mp3,wav,pdf,doc,docx|max:20480',
             'delete_media' => 'sometimes|array',
             'delete_media.*' => 'exists:media,id'
         ]);

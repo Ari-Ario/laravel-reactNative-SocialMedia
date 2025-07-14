@@ -11,10 +11,11 @@ import {
   Modal,
   NativeSyntheticEvent,
   findNodeHandle, UIManager,
-  NativeTouchEvent
+  NativeTouchEvent,
+  Dimensions
 } from 'react-native';
 import { Ionicons, Feather, AntDesign } from '@expo/vector-icons';
-import { useState, useContext, useRef } from 'react';
+import { useState, useContext, useRef, useCallback } from 'react';
 import EmojiPicker from 'rn-emoji-keyboard';
 import PostMenu from './PostMenu';
 import ReportPost from './ReportPost';
@@ -26,7 +27,12 @@ import getApiBaseImage from '@/services/getApiBaseImage';
 import { useProfileView } from '@/context/ProfileViewContext';
 import { useModal } from '@/context/ModalContext';
 import { usePostStore } from '@/stores/postStore';
+import { Video } from 'expo-av';
+import { MediaViewer } from './MediaViewer';
+import React from 'react';
 
+const { width } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
 
 interface Comment {
   reaction_comments: any;
@@ -805,7 +811,7 @@ const renderComment = ({ item }: { item: Comment }) => {
   );
 };
 
-
+//Media
 
   const handleMenuPress = (event: NativeSyntheticEvent<NativeTouchEvent>) => {
     setMenuVisible(true);
@@ -815,6 +821,56 @@ const renderComment = ({ item }: { item: Comment }) => {
     });
   };
 
+const [mediaViewerVisible, setMediaViewerVisible] = useState(false);
+const [mediaViewerIndex, setMediaViewerIndex] = useState(0);
+
+const sortedMedia = React.useMemo(() => {
+  return post.media?.sort((a, b) => (a.type === 'video' ? -1 : 1)) || [];
+}, [post.media]);
+
+const openMediaViewer = (index: number) => {
+  setMediaViewerIndex(index);
+  setMediaViewerVisible(true);
+};
+
+const handleCloseViewer = useCallback(() => {
+  setMediaViewerVisible(false);
+}, []);
+
+const findAdjacentPostWithMedia = useCallback((direction: 'next' | 'prev') => {
+  const currentIndex = posts.findIndex(p => p.id === post.id);
+  if (currentIndex === -1) return null;
+
+  const increment = direction === 'next' ? 1 : -1;
+  let newIndex = currentIndex + increment;
+
+  while (newIndex >= 0 && newIndex < posts.length) {
+    if (posts[newIndex]?.media?.length > 0) {
+      return posts[newIndex];
+    }
+    newIndex += increment;
+  }
+  return null;
+}, [post.id, posts]);
+
+const handleNavigateNextPost = useCallback(() => {
+  const nextPost = findAdjacentPostWithMedia('next');
+  if (nextPost) {
+    handleCloseViewer();
+    // You'll need to implement how to navigate to nextPost
+    // This might involve scrolling to it or using navigation.navigate()
+    console.log('Navigate to next post:', nextPost.id);
+  }
+}, [findAdjacentPostWithMedia, handleCloseViewer]);
+
+const handleNavigatePrevPost = useCallback(() => {
+  const prevPost = findAdjacentPostWithMedia('prev');
+  if (prevPost) {
+    handleCloseViewer();
+    // Implement navigation to prevPost
+    console.log('Navigate to previous post:', prevPost.id);
+  }
+}, [findAdjacentPostWithMedia, handleCloseViewer]);
 
   return (
     <View style={styles.container}>
@@ -869,18 +925,68 @@ const renderComment = ({ item }: { item: Comment }) => {
       </View>
 
       {/* Post media */}
-      {post.media?.length > 0 && (
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={handleDoubleTap} // 2. Use the pre-created handler
-        >
+{post.media && post.media.length > 0 && (
+  <View style={styles.mediaContainer}>
+    {sortedMedia.length === 1 ? (
+      <TouchableOpacity onPress={() => openMediaViewer(0)}>
+        {sortedMedia[0].type === 'video' ? (
+          <Video
+            source={{ uri: `${getApiBaseImage()}/storage/${sortedMedia[0].file_path}` }}
+            style={styles.singleMedia}
+            resizeMode="cover"
+            shouldPlay={false}
+            isMuted
+            useNativeControls={false}
+          />
+        ) : (
           <Image
-            source={{ uri: `${getApiBaseImage()}/storage/${post.media[0].file_path}` }}
-            style={styles.media}
+            source={{ uri: `${getApiBaseImage()}/storage/${sortedMedia[0].file_path}` }}
+            style={styles.singleMedia}
             resizeMode="cover"
           />
-        </TouchableOpacity>
-      )}
+        )}
+      </TouchableOpacity>
+    ) : (
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        {sortedMedia.map((media, index) => (
+          <TouchableOpacity 
+            key={`${media.id}-${index}`}
+            onPress={() => openMediaViewer(index)}
+            style={styles.multiMediaItem}
+          >
+            {media.type === 'video' ? (
+              <Video
+                source={{ uri: `${getApiBaseImage()}/storage/${media.file_path}` }}
+                style={styles.multiMediaContent}
+                resizeMode="cover"
+                shouldPlay={false}
+                isMuted
+                useNativeControls={false}
+              />
+            ) : (
+              <Image
+                source={{ uri: `${getApiBaseImage()}/storage/${media.file_path}` }}
+                style={styles.multiMediaContent}
+                resizeMode="cover"
+              />
+            )}
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    )}
+  </View>
+)}
+
+<MediaViewer
+  visible={mediaViewerVisible}
+  mediaItems={sortedMedia}
+  startIndex={mediaViewerIndex}
+  onClose={handleCloseViewer}
+  post={post}
+  getApiBaseImage={getApiBaseImage}
+  onNavigateNext={handleNavigateNextPost}
+  onNavigatePrev={handleNavigatePrevPost}
+/>
 
       {/* Action buttons */}
       <View style={styles.actionBar}>
@@ -1152,9 +1258,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     minWidth: '80%'
   },
-  media: {
+  mediaContainer: {
+    marginTop: 8,
+    overflow: 'hidden',
+  },
+  singleMedia: {
+    aspectRatio: 16/9,
     width: '100%',
-    aspectRatio: 16 / 9, // or 1 for square
+  },
+  singleMediaContent: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
+  },
+  multiMedia: {
+    width: '100%',
+    justifyContent: 'center',
+    maxWidth: isWeb ? 600 : '100%', // Limit width on web
+    alignSelf: 'center',
+  },
+  multiMediaScroll: {
+    paddingVertical: 8,
+    justifyContent: 'center',
+  },
+  multiMediaItem: {
+    width: width * 0.5,
+    aspectRatio: 1,
+    marginHorizontal: 4,
+    maxWidth: isWeb ? 400 : width * 0.5, // Limit max width on web
+
+  },
+  multiMediaContent: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
   },
   reactionBarContainer: {
     paddingHorizontal: 10,
@@ -1310,11 +1447,15 @@ commentButtons: {
   marginBottom: 5,
 },
 commentReactionsScrollContainer: {
-  flex: 1, // Takes available space
-  marginLeft: 10, // Space from Reply button
-  marginRight: 10, // Space from Delete button
-  overflow: 'hidden', // Contain overflow
+  flexDirection: 'row',
+  flexGrow: 1,
+  flexShrink: 1,
+  minWidth: 0, // crucial on web
+  marginLeft: 10,
+  marginRight: 10,
+  overflow: 'hidden',
 },
+
 commentReactionsScrollContent: {
   flexDirection: 'row',
   gap: 5, // Space between reactions
