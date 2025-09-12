@@ -83,7 +83,7 @@ class PostController extends Controller
     {
         $request->validate([
             'caption' => 'nullable|string|max:500',
-            'media' => 'required|array|max:10',
+            'media' => 'sometimes|array|max:10',
             'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,webm,avi,mp3,wav,pdf,doc,docx|max:20480'
         ]);
 
@@ -91,19 +91,20 @@ class PostController extends Controller
             'user_id' => Auth::id(),
             'caption' => $request->caption
         ]);
-
-        foreach ($request->file('media') as $file) {
-            $type = $this->getMediaType($file->getMimeType());
-            $folder = $this->getMediaFolder($type);
-            $path = $file->store("media/{$folder}/" . Auth::id(), 'public');
-            
-            $post->media()->create([
-                'file_path' => $path,
-                'type' => $type,
-                'mime_type' => $file->getMimeType(),
-                'size' => $file->getSize(),
-                'original_name' => $file->getClientOriginalName()
-            ]);
+        if ($request->hasFile('media')) {
+            foreach ($request->file('media') as $file) {
+                $type = $this->getMediaType($file->getMimeType());
+                $folder = $this->getMediaFolder($type);
+                $path = $file->store("media/{$folder}/" . Auth::id(), 'public');
+                
+                $post->media()->create([
+                    'file_path' => $path,
+                    'type' => $type,
+                    'mime_type' => $file->getMimeType(),
+                    'size' => $file->getSize(),
+                    'original_name' => $file->getClientOriginalName()
+                ]);
+            }
         }
 
         return response()->json($post->load('user', 'media'));

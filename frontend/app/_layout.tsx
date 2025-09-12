@@ -93,7 +93,7 @@ export default function RootLayout() {
     if (!isReady) return;
 
     // Or better Logic
-    if (pathname?.startsWith('/story/') || pathname?.startsWith('/profile-preview') || pathname?.startsWith('/CreatPost')) {
+    if (pathname?.startsWith('/story/') || pathname?.startsWith('/profile-preview') || pathname?.startsWith('/CreatPost') || pathname?.startsWith('/chats')) {
       return;
     }
 

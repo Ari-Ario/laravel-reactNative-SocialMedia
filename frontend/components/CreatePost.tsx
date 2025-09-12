@@ -142,7 +142,9 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
   };
 
 const handleSubmit = async () => {
-  if (!caption.trim() || media.length === 0) {
+    // if (!caption.trim() || media.length === 0) {
+
+  if (!caption.trim()) {
     Alert.alert('Error', 'Please add a caption or media');
     return;
   }
@@ -193,8 +195,10 @@ const handleSubmit = async () => {
       : await createPost(formData);
 
     if (isEditing && params.postId) {
+      // console.log("arrived at update of PostStore")
       postStore.updatePost(post);
     } else {
+      console.log("arrived at create of PostStore")
       postStore.addPost(post);
     }
     if (onPostCreated) {

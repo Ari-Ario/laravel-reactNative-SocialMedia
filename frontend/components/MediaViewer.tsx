@@ -20,6 +20,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import getApiBaseImage from '@/services/getApiBaseImage';
+import { PostActionButtons } from './PostActionButtons';
 
 type Media = {
   id: string;
@@ -27,21 +28,71 @@ type Media = {
   file_path: string;
 };
 
-type MediaViewerProps = {
+// components/MediaViewer.tsx
+interface MediaViewerProps {
   visible: boolean;
-  mediaItems: Media[];
+  mediaItems: Array<{
+    id: number;
+    file_path: string;
+    type: string;
+  }>;
   startIndex: number;
   onClose: () => void;
   post: {
     id: number;
-    caption?: string;
-    [key: string]: any;
+    user: {
+      id: number | string;
+      name: string;
+      profile_photo: string | null;
+    };
+    caption: string;
+    comments_count: number;
+    comments: Array<{
+      id: number;
+      content: string;
+      user_id: string | number;
+      user: {
+        id: number;
+        name: string;
+        profile_photo: string | null;
+      };
+      replies?: Array<any>;
+      reaction_counts?: Array<any>;
+    }>;
+    reposts_count?: number;
+    is_reposted?: boolean;
+    reactions: any;
+    reaction_counts: Array<{ emoji: string; count: number }>;
   };
   getApiBaseImage: () => string;
   onNavigateNext: () => void;
   onNavigatePrev: () => void;
-};
-
+  // Action button handlers
+  onReact: (emoji: string) => void;
+  onDeleteReaction: () => void;
+  onRepost: () => void;
+  onShare: () => void;
+  onBookmark: () => void;
+  onCommentPress: () => void;
+  onDoubleTap: () => void;
+  // Reaction state
+  currentReactingItem: {
+    postId: number;
+    commentId?: number;
+  } | null;
+  setCurrentReactingItem: (item: { postId: number; commentId?: number } | null) => void;
+  setIsEmojiPickerOpen: (open: boolean) => void;
+  // Comment functions
+  onCommentSubmit: (content: string, parentId?: number) => Promise<any>;
+  getGroupedReactions: (post: any, userId?: number) => Array<{
+    emoji: string;
+    count: number;
+    user_ids: number[];
+  }>;
+  // For comment reactions
+  handleReactComment: (emoji: string) => void;
+  deleteCommentReaction: (emoji: string) => void;
+}
 const { width, height } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 100;
 const ANIMATION_CONFIG = { duration: 300 };
@@ -55,6 +106,24 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   getApiBaseImage,
   onNavigateNext,
   onNavigatePrev,
+  // Action button handlers
+  onReact,
+  onDeleteReaction,
+  onRepost,
+  onShare,
+  onBookmark,
+  onCommentPress,
+  // Reaction state
+  currentReactingItem,
+  setCurrentReactingItem,
+  setIsEmojiPickerOpen,
+  // Comment functions
+  onCommentSubmit,
+  getGroupedReactions,
+  // For comment reactions
+  handleReactComment,
+  deleteCommentReaction,
+  onDoubleTap,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [showFullCaption, setShowFullCaption] = useState(false);
@@ -201,6 +270,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
                       resizeMode="contain"
                       shouldPlay={index === currentIndex}
                       useNativeControls={false}
+                      onPress={onDoubleTap}
                       isLooping
                     />
                   ) : (
@@ -238,6 +308,21 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
               {currentIndex + 1} / {mediaItems.length}
             </Text>
           )}
+
+      {/* Action buttons */}
+      <PostActionButtons
+        post={post}
+        onReact={onReact}
+        onDeleteReaction={onDeleteReaction}
+        onRepost={onRepost}
+        onShare={onShare}
+        onBookmark={onBookmark}
+        onCommentPress={onCommentPress}
+        currentReactingItem={currentReactingItem}
+        setCurrentReactingItem={setCurrentReactingItem}
+        setIsEmojiPickerOpen={setIsEmojiPickerOpen}
+        getGroupedReactions={getGroupedReactions}
+      />
 
           {/* Close button */}
           <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
@@ -289,7 +374,7 @@ const styles = StyleSheet.create({
   },
   captionContainer: {
     position: 'absolute',
-    bottom: 0,
+    bottom: 40,
     left: 0,
     right: 0,
     backgroundColor: 'rgba(0,0,0,0.7)',

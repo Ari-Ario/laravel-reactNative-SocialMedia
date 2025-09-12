@@ -21,13 +21,13 @@ export async function fetchPosts() {
     return response.data.data; // Return the posts array
 }
 
-export async function createPost(formData) {
+export async function createPost(formData: FormData) {
     const token = await getToken();
     const API_BASE = getApiBase();
     const url = (API_BASE === 'http://127.0.0.1:8000/api') ? '/posts' : `${API_BASE}/posts`;
     console.log(formData)
 
-  const response = await axios.post(url, formData, {
+  const response = await axios.post(`${API_BASE}/posts`, formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
         Authorization: `Bearer ${token}`,
