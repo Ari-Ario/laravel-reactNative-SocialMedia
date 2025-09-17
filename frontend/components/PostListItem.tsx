@@ -84,8 +84,6 @@ export default function PostListItem({
     await service.submitComment(post.id, onCommentSubmit);
   };
 
-
-
   return (
     <View style={styles.container}>
 

@@ -25,7 +25,7 @@ export async function createPost(formData: FormData) {
     const token = await getToken();
     const API_BASE = getApiBase();
     const url = (API_BASE === 'http://127.0.0.1:8000/api') ? '/posts' : `${API_BASE}/posts`;
-    console.log(formData)
+    // console.log(formData)
 
   const response = await axios.post(`${API_BASE}/posts`, formData, {
     headers: {
@@ -206,7 +206,7 @@ export const reactToComment = async (
     if (!response.data?.reaction) {
       throw new Error('Invalid response structure');
     }
-    console.log('Returned Data of changing reaction to Comment: ' ,response.data)
+    // console.log('Returned Data of changing reaction to Comment: ' ,response.data)
     return response.data;
   } catch (error) {
     console.error('API reaction error:', {
@@ -244,7 +244,7 @@ export const deleteReactionFromComment = async (
     if (response.data?.success !== true) {
       throw new Error('Failed to delete comment reaction');
     }
-    console.log(response.data)
+    // console.log(response.data)
     return response.data;
   } catch (error) {
     console.error('API delete comment reaction error:', {

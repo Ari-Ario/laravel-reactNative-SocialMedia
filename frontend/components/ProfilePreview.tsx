@@ -49,10 +49,12 @@ useEffect(() => {
       const profileData = response.data || response;
       
       setProfile(profileData.user);
-      console.log(profileData);
-      setIsFollowing(profileData.is_following);
+      setIsFollowing(profileData.user.is_following);
+      // console.log(profileData);
+
       // Put profile posts into usePostStore
       setPosts(profileData.posts?.data || []);
+
     } catch (error) {
       console.error('Error fetching profile:', error);
       // Optionally show error to user
@@ -70,7 +72,7 @@ useEffect(() => {
       
       // Assuming the API returns updated data
       const updatedData = response.data || response;
-      console.log(updatedData);
+      // console.log(updatedData);
       
       setIsFollowing(!isFollowing); // Toggle the follow state
       setProfile(prev => ({
@@ -90,8 +92,6 @@ useEffect(() => {
       setFollowLoading(false);
     }
   };
-
-  
 
   const renderProfilePhoto = () => {
     if (profile?.profile_photo) {

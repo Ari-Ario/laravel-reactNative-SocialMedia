@@ -180,7 +180,6 @@ const submitComment = async () => {
             }}
             onCommentPress={(post) => {
               setSelectedPost(post);
-              console.log(selectedPost)
               service.setShowComments(!service.showComments);
             }}
           />
@@ -209,7 +208,7 @@ const submitComment = async () => {
         onBookmark={() => {}}
         onCommentPress={() => {
           setSelectedPost(chatPosts[0]);
-          console.log(selectedPost);
+          // console.log(selectedPost);
           service.setShowComments(!service.showComments);
         }}
         onDoubleTap={() => {}}

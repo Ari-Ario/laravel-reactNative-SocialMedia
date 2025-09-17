@@ -28,13 +28,6 @@ const ChatMessage = ({ item, user, service, onMenuPress, onCommentPress }: ChatM
     }
   };
 
-  // Handle menu press with the specific post
-  const handleMenuPress = () => {
-    if (onMenuPress) {
-      onMenuPress();
-    }
-  };
-
   return (
     <View style={[
       styles.messageContainer,

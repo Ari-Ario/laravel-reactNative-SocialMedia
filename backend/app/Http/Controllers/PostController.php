@@ -9,6 +9,7 @@ use App\Models\ReactionComment;
 use App\Models\Repost;
 use App\Models\Bookmark;
 use App\Models\Media;
+use App\Models\Follower;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -42,16 +43,26 @@ class PostController extends Controller
                             ->withCount('reaction_comments');
                     },
                     // Add more levels if needed
-                    'reposts.user'
+                    'reposts.user',
                 ])
                 ->withCount([
                     'reactions',
                     'comments',
                     'reposts'
                 ])
-                ->withExists(['reposts as is_reposted' => function($query) use ($userId) {
-                    $query->where('user_id', $userId);
-                }])
+    ->withExists([
+        'reposts as is_reposted' => function ($q) use ($userId) {
+            $q->where('user_id', $userId);
+        },
+        // ✅ Correct way to add is_following
+        'user as is_following' => function ($q) use ($userId) {
+            // check if the post author has the current user among their followers
+            $q->whereHas('followers', function ($qq) use ($userId) {
+                // check follower user id — don't reference pivot here
+                $qq->whereKey($userId);
+            });
+        },
+    ])
                 ->latest()
                 ->paginate(10);
 

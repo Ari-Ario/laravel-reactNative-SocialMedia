@@ -629,7 +629,6 @@ export const usePostListService = (user: any) => {
       setCommentText('');
       setReplyingTo(null);
     } catch (err) {
-      console.log(err);
       console.error('Full error details:', {
         err,
         postId,

@@ -46,7 +46,7 @@ const ChatPage = () => {
             const uniqueUsers = new Map();
             
             posts.forEach(post => {
-                if (post.user && post.user.id !== user?.id) {
+                if (post.user && post.user.id !== user?.id && post.is_following) {
                     if (!uniqueUsers.has(post.user.id)) {
                         uniqueUsers.set(post.user.id, {
                             id: post.user.id.toString(),
@@ -63,6 +63,7 @@ const ChatPage = () => {
                     }
                 }
             });
+            console.log(posts[0])
 
             const chatConversations: Chat[] = Array.from(uniqueUsers.values()).map(userData => ({
                 id: userData.id,
@@ -203,11 +204,21 @@ const ChatPage = () => {
                 <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
                 <TextInput
                     style={styles.searchInput}
-                    placeholder="Search chats and contacts..."
+                    placeholder="Search..."
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                     clearButtonMode="while-editing"
                 />
+                {searchQuery.length > 0 && (
+                    <Ionicons
+                        name="close-outline"
+                        size={20}
+                        color="#666"
+                        style={styles.closeIcon}
+                        onPress={() => setSearchQuery('')}
+                        accessibilityLabel="Clear search"
+                    />
+                )}
             </View>
 
             <SectionList
@@ -259,6 +270,10 @@ const styles = StyleSheet.create({
     },
     searchIcon: {
         marginRight: 8,
+    },
+    closeIcon: {
+        marginLeft: 8,
+        alignSelf: 'center',
     },
     searchInput: {
         flex: 1,
