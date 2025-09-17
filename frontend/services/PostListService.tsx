@@ -8,7 +8,8 @@ import {
   reactToComment, 
   deleteReactionFromPost, 
   deleteReactionFromComment, 
-  deleteComment 
+  deleteComment,
+  commentOnPost
 } from '@/services/PostService';
 import { useModal } from '@/context/ModalContext';
 import { useProfileView } from '@/context/ProfileViewContext';
@@ -589,6 +590,7 @@ export const usePostListService = (user: any) => {
   // Submit comment
   const submitComment = async (postId: number, onCommentSubmit: Function) => {
     if (!commentText.trim()) return;
+    // console.log(postId, commentText, onCommentSubmit)
     
     try {
       const comment = await onCommentSubmit(
@@ -596,6 +598,7 @@ export const usePostListService = (user: any) => {
         commentText, 
         replyingTo || undefined
       );
+      console.warn(comment)
 
       if (!comment?.id) {
         throw new Error('Invalid comment response - missing id');
@@ -617,7 +620,7 @@ export const usePostListService = (user: any) => {
         reaction_counts: []
       };
 
-      console.log(formattedComment)
+      // console.log(formattedComment)
       
       // Update the store
       postStore.updatePostWithNewComment(postId, formattedComment);
@@ -625,9 +628,10 @@ export const usePostListService = (user: any) => {
       // Reset form
       setCommentText('');
       setReplyingTo(null);
-    } catch (error) {
+    } catch (err) {
+      console.log(err);
       console.error('Full error details:', {
-        error,
+        err,
         postId,
         commentText,
         replyingTo,

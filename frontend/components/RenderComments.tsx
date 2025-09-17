@@ -62,8 +62,6 @@ const RenderComments = ({
       }))
       .sort((a, b) => b.count - a.count);
   };
-  
-  const totalReactions = reactionsToShow.reduce((acc, r) => acc + r.count, 0);
 
   const renderComment = ({ item }: { item: any }) => {
     const groupedReactions = getGroupedReactionsComments(item);

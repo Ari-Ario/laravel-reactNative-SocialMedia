@@ -44,6 +44,8 @@ const HomePage = () => {
       setLoading(true);
       const postsData = await fetchPosts();
       setPosts(postsData); // ✅ Zustand
+      
+      console.log(posts);
     } catch (error) {
       Alert.alert('Error', 'Something went wrong while fetching posts');
     } finally {

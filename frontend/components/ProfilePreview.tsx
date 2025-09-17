@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList, ActivityIndicator, Modal, Alert } from 'react-native';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useContext } from 'react';
 import { fetchProfile, followUser, updateProfile } from '@/services/UserService';
 import { Ionicons } from '@expo/vector-icons';
 import PostListItem from './PostListItem';
@@ -7,11 +7,15 @@ import getApiBaseImage from '@/services/getApiBaseImage';
 import { useProfileView } from '@/context/ProfileViewContext';
 import { useModal } from '@/context/ModalContext';
 import { usePostStore } from '@/stores/postStore';
+import AuthContext from '@/context/AuthContext';
+import { usePostListService } from '@/services/PostListService';
+import { commentOnPost } from '@/services/PostService';
 
 const ProfilePreview = ({ userId, visible, onClose }) => {
   const { openModal } = useModal();
   const { profilePreviewVisible, setProfilePreviewVisible } = useProfileView();
-
+  const { user } = useContext(AuthContext);
+  const service = usePostListService(user);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [followLoading, setFollowLoading] = useState(false);
@@ -176,10 +180,11 @@ useEffect(() => {
                 <PostListItem 
                   post={item} 
                   onReact={() => {}} 
-                  onCommentSubmit={() => {}} 
+                  onCommentSubmit={commentOnPost} 
                   onRepost={() => {}} 
                   onShare={() => {}} 
-                  onBookmark={() => {}} 
+                  onBookmark={() => {}}
+                  onReactComment={() => {}}
                 />
               )}
               keyExtractor={(item) => item.id.toString()}

@@ -35,9 +35,9 @@ import { commentOnPost, reactToComment, deleteReactionFromComment } from '@/serv
 const ChatDetailScreen = () => {
   const { id } = useLocalSearchParams();
   const { user } = useContext(AuthContext);
-  const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
-  const { posts, updatePostWithNewComment, updateCommentReactions, removeCommentReaction } = usePostStore();
   const service = usePostListService(user);
+  const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
+  const { posts, updateCommentReactions, removeCommentReaction } = usePostStore();
   
   const [inputText, setInputText] = useState('');
   const [chatUser, setChatUser] = useState<any>(null);
@@ -57,16 +57,6 @@ const ChatDetailScreen = () => {
     if (!inputText.trim()) return;
     
     // Create a new post/message
-    const newMessage = {
-      id: Date.now(),
-      caption: inputText,
-      user: user,
-      created_at: new Date().toISOString(),
-      media: [],
-      comments: [],
-      reaction_counts: [],
-      isOutgoing: true
-    };
     
     // For now, we'll just add to local state since it's a chat message
     // In a real app, you'd send this to your backend and update Zustand
@@ -109,7 +99,7 @@ const submitComment = async () => {
     }
   };
 
-  const handleDeleteCommentReaction = async (commentId: number, emoji: string) => {
+  const handleDeleteCommentReaction = async (commentId: number) => {
     if (!selectedPost || !user?.id) return;
 
     try {
@@ -420,13 +410,12 @@ const styles = StyleSheet.create({
   menuButton: {
     padding: 4,
   },
-// app/(tabs)/chats/[id].tsx - Update messagesList style
-messagesList: {
-  padding: 16,
-  paddingBottom: 80,
-  // Ensure proper content fitting
-  flexGrow: 1,
-},
+  messagesList: {
+    padding: 16,
+    paddingBottom: 80,
+    // Ensure proper content fitting
+    flexGrow: 1,
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',

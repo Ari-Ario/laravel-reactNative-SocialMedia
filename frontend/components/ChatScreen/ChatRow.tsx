@@ -1,4 +1,4 @@
-// components/ChatRow.tsx
+// components/ChatScreen/ChatRow.tsx
 import { View, Text, Image, StyleSheet, Pressable } from 'react-native';
 import { Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,46 +25,62 @@ const ChatRow = ({
   unreadCount = 0, 
   avatar, 
   isOnline = false,
-  isPinned = false
+  isPinned = false,
+  type = 'chat'
 }: ChatRowProps) => {
-  return (
-    <Link href={`/(tabs)/chats/${id}`} asChild>
-      <Pressable style={styles.container}>
-        <View style={styles.avatarContainer}>
-          <Image 
-            source={{ uri: `${getApiBaseImage()}/storage/${avatar}` || 'https://via.placeholder.com/50' }} 
-            style={styles.avatar}
-          />
-          {isOnline && <View style={styles.onlineIndicator} />}
+  
+  const renderContent = () => (
+    <Pressable style={styles.container}>
+      <View style={styles.avatarContainer}>
+        <Image 
+          source={{ uri: avatar ? `${getApiBaseImage()}/storage/${avatar}` : 'https://via.placeholder.com/50' }} 
+          style={styles.avatar}
+        />
+        {isOnline && <View style={styles.onlineIndicator} />}
+      </View>
+      
+      <View style={styles.content}>
+        <View style={styles.header}>
+          <Text style={styles.name} numberOfLines={1}>{name}</Text>
+          {type === 'chat' && (
+            <Text style={styles.timestamp}>{timestamp}</Text>
+          )}
         </View>
         
-        <View style={styles.content}>
-          <View style={styles.header}>
-            <Text style={styles.name} numberOfLines={1}>{name}</Text>
-            <Text style={styles.timestamp}>{timestamp}</Text>
-          </View>
+        <View style={styles.footer}>
+          <Text style={[styles.lastMessage, type === 'contact' && styles.contactMessage]} numberOfLines={1}>
+            {lastMessage || (type === 'contact' ? 'Available for chat' : 'Start a conversation...')}
+          </Text>
           
-          <View style={styles.footer}>
-            <Text style={styles.lastMessage} numberOfLines={1}>
-              {lastMessage || 'Start a conversation...'}
-            </Text>
-            
-            {unreadCount > 0 && (
+          {type === 'chat' ? (
+            unreadCount > 0 && (
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </Text>
               </View>
-            )}
-          </View>
+            )
+          ) : (
+            <Ionicons name="chatbubble-outline" size={20} color="#007AFF" />
+          )}
         </View>
+      </View>
 
-        {isPinned && (
-          <Ionicons name="pin" size={16} color="#666" style={styles.pinIcon} />
-        )}
-      </Pressable>
-    </Link>
+      {type === 'chat' && isPinned && (
+        <Ionicons name="pin" size={16} color="#666" style={styles.pinIcon} />
+      )}
+    </Pressable>
   );
+
+  if (type === 'chat') {
+    return (
+      <Link href={`/(tabs)/chats/${id}`} asChild>
+        {renderContent()}
+      </Link>
+    );
+  }
+
+  return renderContent();
 };
 
 const styles = StyleSheet.create({
@@ -97,7 +113,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    minWidth: 0, // Important for text truncation
+    minWidth: 0,
   },
   header: {
     flexDirection: 'row',
@@ -125,6 +141,10 @@ const styles = StyleSheet.create({
     color: '#666',
     flex: 1,
     marginRight: 8,
+  },
+  contactMessage: {
+    color: '#007AFF',
+    fontWeight: '500',
   },
   badge: {
     backgroundColor: '#007AFF',

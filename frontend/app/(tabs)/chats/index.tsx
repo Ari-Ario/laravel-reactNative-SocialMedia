@@ -1,12 +1,11 @@
 // app/(tabs)/chats/index.tsx
-import { View, StyleSheet, ActivityIndicator, FlatList, Text, SectionList } from "react-native";
+import { View, StyleSheet, ActivityIndicator, FlatList, Text, SectionList, TextInput } from "react-native";
 import { router } from 'expo-router';
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useMemo } from "react";
 import AuthContext from "@/context/AuthContext";
 import { usePostStore } from '@/stores/postStore';
-import { usePostListService } from '@/services/PostListService';
 import ChatRow from '@/components/ChatScreen/ChatRow';
-import ContactRow from '@/components/ChatScreen/ContactRow';
+import { Ionicons } from '@expo/vector-icons';
 
 interface Chat {
   id: string;
@@ -28,8 +27,8 @@ const ChatPage = () => {
     const [contacts, setContacts] = useState<Chat[]>([]);
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
-    // Redirect effect - handles both initial load and logout cases
     useEffect(() => {
         if (!user) {
             router.replace('/LoginScreen');
@@ -59,31 +58,27 @@ const ChatPage = () => {
                     }
                     const userData = uniqueUsers.get(post.user.id);
                     userData.postCount++;
-                    // Keep the latest post
                     if (new Date(post.created_at) > new Date(userData.lastPost.created_at || 0)) {
                         userData.lastPost = post;
                     }
                 }
             });
 
-            // Convert to chat format
             const chatConversations: Chat[] = Array.from(uniqueUsers.values()).map(userData => ({
                 id: userData.id,
                 name: userData.name,
                 lastMessage: userData.lastPost.caption || 'Media shared',
                 timestamp: formatTimestamp(userData.lastPost.created_at),
-                unreadCount: Math.floor(Math.random() * 5), // Random unread count for demo
+                unreadCount: Math.floor(Math.random() * 5),
                 avatar: userData.avatar,
-                isOnline: Math.random() > 0.3, // Random online status
-                isPinned: Math.random() > 0.8, // Random pinned status
+                isOnline: Math.random() > 0.3,
+                isPinned: Math.random() > 0.8,
                 user_id: userData.id,
                 type: 'chat'
             }));
 
-            // Sort by timestamp (most recent first)
             chatConversations.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-            // Create contacts list (could be from your actual contacts API)
             const contactList: Chat[] = [
                 {
                     id: 'contact-1',
@@ -93,6 +88,16 @@ const ChatPage = () => {
                     avatar: 'https://via.placeholder.com/50',
                     isOnline: true,
                     user_id: 'contact-1',
+                    type: 'contact'
+                },
+                {
+                    id: 'contact-4',
+                    name: 'ARI ARIO',
+                    lastMessage: 'Hey YOu!',
+                    timestamp: '8:07 PM',
+                    avatar: 'https://via.placeholder.com/50',
+                    isOnline: true,
+                    user_id: 'contact-4',
                     type: 'contact'
                 },
                 {
@@ -145,12 +150,36 @@ const ChatPage = () => {
         }
     };
 
+    const filteredData = useMemo(() => {
+        if (!searchQuery.trim()) {
+            return [
+                { title: 'Chats', data: chats },
+                { title: 'Contacts', data: contacts }
+            ];
+        }
+
+        const query = searchQuery.toLowerCase();
+        
+        const filteredChats = chats.filter(item =>
+            item.name.toLowerCase().includes(query) ||
+            item.lastMessage?.toLowerCase().includes(query)
+        );
+
+        const filteredContacts = contacts.filter(item =>
+            item.name.toLowerCase().includes(query)
+        );
+
+        return [
+            { title: 'Chats', data: filteredChats },
+            { title: 'Contacts', data: filteredContacts }
+        ].filter(section => section.data.length > 0);
+    }, [searchQuery, chats, contacts]);
+
     const onRefresh = async () => {
         setRefreshing(true);
         await fetchChatsAndContacts();
     };
 
-    // Show nothing or loading indicator while checking authentication
     if (!user) {
         return (
             <View style={styles.container}>
@@ -167,33 +196,32 @@ const ChatPage = () => {
         );
     }
 
-    const sections = [
-        {
-            title: 'Chats',
-            data: chats,
-        },
-        {
-            title: 'Contacts',
-            data: contacts,
-        }
-    ];
-
     return (
         <View style={styles.container}>
+            {/* Search Header */}
+            <View style={styles.searchContainer}>
+                <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+                <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search chats and contacts..."
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    clearButtonMode="while-editing"
+                />
+            </View>
+
             <SectionList
-                sections={sections}
+                sections={filteredData}
                 keyExtractor={(item) => item.id}
-                renderItem={({ item, section }) => (
-                    section.title === 'Chats' ? (
-                        <ChatRow {...item} />
-                    ) : (
-                        <ContactRow {...item} />
-                    )
+                renderItem={({ item }) => (
+                    <ChatRow {...item} />
                 )}
-                renderSectionHeader={({ section: { title } }) => (
-                    <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionHeaderText}>{title}</Text>
-                    </View>
+                renderSectionHeader={({ section: { title, data } }) => (
+                    data.length > 0 && (
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionHeaderText}>{title}</Text>
+                        </View>
+                    )
                 )}
                 ItemSeparatorComponent={() => (
                     <View style={styles.separator} />
@@ -204,7 +232,9 @@ const ChatPage = () => {
                 onRefresh={onRefresh}
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
-                        <Text style={styles.emptyText}>No chats yet</Text>
+                        <Text style={styles.emptyText}>
+                            {searchQuery ? 'No results found' : 'No chats yet'}
+                        </Text>
                     </View>
                 }
                 stickySectionHeadersEnabled={false}
@@ -218,20 +248,46 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#fff',
     },
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f0f0f0',
+        margin: 16,
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        height: 44,
+    },
+    searchIcon: {
+        marginRight: 8,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 16,
+        height: '100%',
+    },
     list: {
         flex: 1,
-        width: '100%',
     },
     listContent: {
         paddingBottom: 20,
-        backgroundColor: '#fff',
-        flexGrow: 1
+    },
+    sectionHeader: {
+        backgroundColor: '#f8f8f8',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e0e0e0',
+    },
+    sectionHeaderText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#666',
+        textTransform: 'uppercase',
     },
     separator: {
         height: StyleSheet.hairlineWidth,
         backgroundColor: '#e0e0e0',
         marginLeft: 80,
-        marginRight: 16,
     },
     emptyContainer: {
         flex: 1,
@@ -242,19 +298,6 @@ const styles = StyleSheet.create({
     emptyText: {
         fontSize: 16,
         color: '#666',
-    },
-    sectionHeader: {
-        backgroundColor: '#f8f8f8',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e0e0e0',
-    },
-    sectionHeaderText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#666',
-        textTransform: 'uppercase',
     },
 });
 
