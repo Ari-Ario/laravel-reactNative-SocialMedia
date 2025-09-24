@@ -11,6 +11,7 @@ use App\Models\Bookmark;
 use App\Models\Media;
 use App\Models\Follower;
 
+use Pusher\Pusher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -18,7 +19,20 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
-
+use App\Events\NewComment;
+use App\Events\NewReaction;
+use App\Events\NewCommentReaction;
+use App\Events\CommentDeleted;
+use App\Events\DeleteReactionComment;
+use App\Events\DeleteReaction;
+use App\Events\PostDeleted;
+use App\Events\NewPost;
+use App\Events\PostUpdated;
+use App\Events\CommentReaction;
+// use App\Events\RepostEvent;
+// use App\Events\BookmarkEvent;
+// use App\Events\ShareEvent;
+// use App\Events\UpdatePost;
 class PostController extends Controller
 {
 
@@ -117,85 +131,16 @@ class PostController extends Controller
                 ]);
             }
         }
+        
+        // Load the post with relationships before broadcasting
+        $post->load('user', 'media');
+        
+        // Broadcast the new post event with user info
+        broadcast(new NewPost($post->id, Auth::id(), Auth::user()->name));
 
         return response()->json($post->load('user', 'media'));
     }
 
-
-    public function update(Request $request, Post $post)
-    {
-        // Verify ownership
-        if ($post->user_id !== Auth::id()) {
-            abort(403, 'Unauthorized action.');
-        }
-
-        $request->validate([
-            'caption' => 'nullable|string|max:500',
-            'media' => 'sometimes|array|max:10',
-            'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,webm,avi,mp3,wav,pdf,doc,docx|max:20480',
-            'delete_media' => 'sometimes|array',
-            'delete_media.*' => 'exists:media,id'
-        ]);
-
-        // Update caption if changed
-        if ($request->has('caption')) {
-            $post->caption = $request->caption;
-            $post->save();
-        }
-
-        // Handle media deletions
-        if ($request->has('delete_media')) {
-            foreach ($request->delete_media as $mediaId) {
-                $media = Media::find($mediaId);
-                Storage::disk('public')->delete($media->file_path);
-                $media->delete();
-            }
-        }
-
-        // Handle new media uploads
-        if ($request->hasFile('media')) {
-            foreach ($request->file('media') as $file) {
-                $type = $this->getMediaType($file->getMimeType());
-                $folder = $this->getMediaFolder($type);
-                $path = $file->store("media/{$folder}/" . Auth::id(), 'public');
-                
-                $post->media()->create([
-                    'file_path' => $path,
-                    'type' => $type,
-                    'mime_type' => $file->getMimeType(),
-                    'size' => $file->getSize(),
-                    'original_name' => $file->getClientOriginalName()
-                ]);
-            }
-        }
-
-        return response()->json($post->fresh()->load('user', 'media'));
-    }
-
-    public function deleteMedia(Post $post, Media $media)
-    {
-        // Verify user owns the post
-        if ($post->user_id !== Auth::id()) {
-            abort(403, 'Unauthorized action.');
-        }
-
-        // Verify media belongs to post
-        // if ($media->post_id !== $post->id) {
-        //     abort(400, 'Media does not belong to this post');
-        // }
-
-        // Delete file from storage
-        Storage::disk('public')->delete($media->file_path);
-
-        // Delete record from database
-        $media->delete();
-
-        return response()->json([
-            'message' => 'Media deleted successfully',
-            'remaining_media' => $post->media()->count()
-        ]);
-    }
-        
 
     public function destroy(Post $post)
     {
@@ -225,6 +170,8 @@ class PostController extends Controller
             $post->delete();
 
             DB::commit();
+            // Broadcast the deletion of post
+            broadcast(new PostDeleted($post->id));
 
             return response()->json([
                 'message' => 'Post deleted successfully',
@@ -241,6 +188,140 @@ class PostController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    public function update(Request $request, Post $post)
+    {
+        // Verify ownership
+        if ($post->user_id !== Auth::id()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $request->validate([
+            'caption' => 'nullable|string|max:500',
+            'media' => 'sometimes|array|max:10',
+            'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,webm,avi,mp3,wav,pdf,doc,docx|max:20480',
+            'delete_media' => 'sometimes|array',
+            'delete_media.*' => 'exists:media,id'
+        ]);
+
+        $changes = [];
+        $updatedFields = [];
+
+        // Track caption changes
+        if ($request->has('caption') && $request->caption !== $post->caption) {
+            $changes['caption'] = [
+                'old' => $post->caption,
+                'new' => $request->caption
+            ];
+            $updatedFields[] = 'caption';
+            
+            $post->caption = $request->caption;
+            $post->save();
+        }
+
+        // Track media deletions
+        $deletedMedia = [];
+        if ($request->has('delete_media')) {
+            foreach ($request->delete_media as $mediaId) {
+                $media = Media::find($mediaId);
+                if ($media) {
+                    $deletedMedia[] = [
+                        'id' => $media->id,
+                        'file_path' => $media->file_path,
+                        'type' => $media->type
+                    ];
+                    Storage::disk('public')->delete($media->file_path);
+                    $media->delete();
+                }
+            }
+            if (!empty($deletedMedia)) {
+                $changes['deleted_media'] = $deletedMedia;
+                $updatedFields[] = 'media';
+            }
+        }
+
+        // Track new media uploads
+        $newMedia = [];
+        if ($request->hasFile('media')) {
+            foreach ($request->file('media') as $file) {
+                $type = $this->getMediaType($file->getMimeType());
+                $folder = $this->getMediaFolder($type);
+                $path = $file->store("media/{$folder}/" . Auth::id(), 'public');
+                
+                $media = $post->media()->create([
+                    'file_path' => $path,
+                    'type' => $type,
+                    'mime_type' => $file->getMimeType(),
+                    'size' => $file->getSize(),
+                    'original_name' => $file->getClientOriginalName()
+                ]);
+                
+                $newMedia[] = [
+                    'id' => $media->id,
+                    'file_path' => $media->file_path,
+                    'type' => $media->type,
+                    'mime_type' => $media->mime_type
+                ];
+            }
+            if (!empty($newMedia)) {
+                $changes['new_media'] = $newMedia;
+                $updatedFields[] = 'media';
+            }
+        }
+
+        // Reload the post with fresh relationships
+        $updatedPost = $post->fresh()->load('user', 'media');
+
+        // Broadcast update event only if there were actual changes
+        if (!empty($updatedFields)) {
+            broadcast(new PostUpdated(
+                $post->id, 
+                Auth::id(), 
+                Auth::user()->name, 
+                $changes, 
+                $updatedFields
+            ));
+
+            Log::info('✅ Post updated and broadcasted', [
+                'post_id' => $post->id,
+                'user_id' => Auth::id(),
+                'user_name' => Auth::user()->name,
+                'updated_fields' => $updatedFields,
+                'changes' => $changes
+            ]);
+        } else {
+            Log::info('ℹ️ Post update called but no changes detected', [
+                'post_id' => $post->id,
+                'user_id' => Auth::id()
+            ]);
+        }
+
+        return response()->json($updatedPost);
+    }
+
+    public function deleteMedia(Post $post, Media $media)
+    {
+        // Verify user owns the post
+        if ($post->user_id !== Auth::id()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        // Verify media belongs to post
+        // if ($media->post_id !== $post->id) {
+        //     abort(400, 'Media does not belong to this post');
+        // }
+
+        // Delete file from storage
+        Storage::disk('public')->delete($media->file_path);
+
+        // Delete record from database
+        $media->delete();
+
+        return response()->json([
+            'message' => 'Media deleted successfully',
+            'remaining_media' => $post->media()->count()
+        ]);
     }
 
 
@@ -271,14 +352,23 @@ class PostController extends Controller
             ]
         );
 
+        broadcast(new NewReaction($reaction, $post->id));
+
         return response()->json([
             'reaction' => $reaction,
             'reaction_counts' => $post->reactionCounts
         ]);
     }
 
+
     public function comment(Request $request, Post $post)
     {
+        // \Log::info('💬 REAL COMMENT API CALLED', [
+        //     'post_id' => $post->id,
+        //     'user_id' => Auth::id(),
+        //     'payload' => $request->all(),
+        // ]);
+
         $request->validate([
             'content' => 'required|string|max:500',
             'parent_id' => 'nullable|exists:comments,id'
@@ -291,7 +381,68 @@ class PostController extends Controller
             'content' => $request->content
         ]);
 
-        return response()->json($comment->load('user', 'replies'));
+        // Load relationships
+        $comment->load('user', 'replies');
+
+        \Log::info('✅ REAL COMMENT CREATED - Testing broadcast methods', [
+            'comment_id' => $comment->id,
+            'post_id' => $post->id
+        ]);
+
+        // METHOD 1: Test direct Pusher first
+        // try {
+        //     $config = config('broadcasting.connections.pusher');
+            
+        //     \Log::info('🔍 Pusher config', ['config' => $config]);
+            
+        //     $pusher = new Pusher(  // ← Now this will work with the correct import
+        //         $config['key'],
+        //         $config['secret'],
+        //         $config['app_id'],
+        //         $config['options']
+        //     );
+            
+        //     $directData = [
+        //         'comment' => [
+        //             'id' => $comment->id,
+        //             'content' => $comment->content,
+        //             'user_id' => $comment->user_id,
+        //             'user' => $comment->user,
+        //             'created_at' => $comment->created_at->toISOString(),
+        //             'updated_at' => $comment->updated_at->toISOString()
+        //         ],
+        //         'postId' => $post->id
+        //     ];
+            
+        //     \Log::info('🔍 Attempting direct Pusher trigger', [
+        //         'channel' => 'post.' . $post->id,
+        //         'event' => 'new-comment',
+        //         'data' => $directData
+        //     ]);
+            
+        //     $directResponse = $pusher->trigger('post.' . $post->id, 'new-comment', $directData);
+        //     \Log::info('✅ Direct Pusher trigger result', ['response' => $directResponse]);
+            
+        // } catch (\Exception $e) {
+        //     \Log::error('❌ Direct Pusher trigger failed', [
+        //         'error' => $e->getMessage(),
+        //         'trace' => $e->getTraceAsString()
+        //     ]);
+        // }
+
+        // METHOD 2: Test Laravel broadcast (should work now with the provider)
+        try {
+            \Log::info('🔍 Attempting Laravel broadcast');
+            broadcast(new \App\Events\NewComment($comment, $post->id));
+            \Log::info('✅ Laravel broadcast called successfully');
+        } catch (\Exception $e) {
+            \Log::error('❌ Laravel broadcast failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+
+        return response()->json($comment);
     }
 
     public function reactToComment(Request $request, $commentId)
@@ -317,6 +468,15 @@ class PostController extends Controller
             }])
             ->findOrFail($commentId);
         
+        broadcast(new CommentReaction($reaction, $commentId, $comment->post_id));
+        
+        //  \Log::info('✅ CommentReaction Event Broadcasted', [
+        //     'comment_id' => $commentId,
+        //     'post_id' => $comment->post_id,
+        //     'reaction_id' => $reaction->id,
+        //     'user_id' => $reaction->user_id
+        // ]);
+
         return response()->json([
             'reaction' => $reaction,
             'reaction_counts' => $comment->reactions
@@ -371,6 +531,36 @@ class PostController extends Controller
             'reaction_counts' => $comment->reaction_comments,
             'reaction_comments_count' => $comment->reaction_comments_count
         ]);
+    }
+
+    public function deleteComment($postId, $commentId)
+    {
+        try {
+            $comment = Comment::where('post_id', $postId)
+                ->where('id', $commentId)
+                ->where('user_id', auth()->id())
+                ->firstOrFail();
+
+            $comment->delete();
+
+            // Broadcast the deletion
+            broadcast(new CommentDeleted($postId, $commentId));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Comment deleted successfully',
+                'deleted_comment_id' => $commentId,
+                'post_id' => $postId
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Delete comment error: '.$e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to delete comment',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
 
@@ -450,33 +640,5 @@ class PostController extends Controller
 
         return response()->json(['message' => 'Post bookmarked', 'bookmarked' => true]);
     }
-
-    // In your PostController.php
-public function deleteComment($postId, $commentId)
-{
-    try {
-        $comment = Comment::where('post_id', $postId)
-            ->where('id', $commentId)
-            ->where('user_id', auth()->id())
-            ->firstOrFail();
-
-        $comment->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Comment deleted successfully',
-            'deleted_comment_id' => $commentId,
-            'post_id' => $postId
-        ]);
-
-    } catch (\Exception $e) {
-        \Log::error('Delete comment error: '.$e->getMessage());
-        return response()->json([
-            'success' => false,
-            'error' => 'Failed to delete comment',
-            'message' => $e->getMessage()
-        ], 500);
-    }
-}
     
 }

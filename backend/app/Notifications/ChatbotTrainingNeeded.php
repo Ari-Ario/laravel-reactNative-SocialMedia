@@ -6,52 +6,58 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
 
-class ChatbotTrainingNeeded extends Notification
+class ChatbotTrainingNeeded extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    /**
-     * Create a new notification instance.
-     */
-    public function __construct()
+    public $message;
+    public $category;
+    public $keywords;
+
+    public function __construct($message, $category, $keywords)
     {
-        //
+        $this->message = $message;
+        $this->category = $category;
+        $this->keywords = $keywords;
     }
 
-    /**
-     * Get the notification's delivery channels.
-     *
-     * @return array<int, string>
-     */
-    public function via(object $notifiable): array
+    public function via($notifiable)
     {
+        Log::info('📧 Notification via method called', [
+            'notifiable_id' => $notifiable->id,
+            'notifiable_email' => $notifiable->email,
+            'channels' => ['mail', 'database'] // Add database if you want to store notifications
+        ]);
+        
         return ['mail'];
     }
 
-    /**
-     * Get the mail representation of the notification.
-     */
-    public function toMail(object $notifiable): MailMessage
+    public function toMail($notifiable)
     {
+        Log::info('📧 Preparing email notification', [
+            'to' => $notifiable->email,
+            'message' => $this->message
+        ]);
+
         return (new MailMessage)
-            ->line('The introduction to the notification.')
-            ->action('Notification Action', url('/'))
-            ->line('Thank you for using our application!');
+            ->subject('🤖 Chatbot Training Needed')
+            ->greeting('Hello ' . $notifiable->name . '!')
+            ->line('The chatbot needs training for a new message:')
+            ->line('**Message:** ' . $this->message)
+            ->line('**Category:** ' . $this->category)
+            ->line('**Keywords:** ' . implode(', ', $this->keywords))
+            ->action('Train Chatbot', url('/chatbot-training'))
+            ->line('Thank you for helping improve our chatbot!');
     }
 
-    /**
-     * Get the array representation of the notification.
-     *
-     * @return array<string, mixed>
-     */
-    public function toArray(object $notifiable): array
+    public function toArray($notifiable)
     {
         return [
-            //
-            'message' => 'New chatbot question needs review',
-            'question' => $this->message,
-            'link' => '/admin/chatbot-training?needs_review=1'
+            'message' => $this->message,
+            'category' => $this->category,
+            'keywords' => $this->keywords,
         ];
     }
 }

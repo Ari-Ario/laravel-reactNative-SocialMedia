@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Http;
 use App\Models\ChatbotTraining;
 use App\Models\User;
 use App\Notifications\ChatbotTrainingNeeded;
+use App\Events\ChatbotTrainingNeeded as ChatbotTrainingNeededEvent;
 
 class ChatbotController extends Controller
 {
@@ -98,6 +99,7 @@ class ChatbotController extends Controller
         ]);
         
         $this->learnResponse($message, '', $category);
+
         return "I'm still learning about $category questions. Our team will review this shortly.";
 
         // // Everything else goes to AI
@@ -138,35 +140,98 @@ class ChatbotController extends Controller
     // Learning Capability
     private function learnResponse(string $message, string $response = '', string $category = null): void
     {
-        if (empty($response)) {
-            $this->notifyAdmins($message);
-        }
+        $analysis = $this->analyzeMessage($message);
+        $category = $category ?? $this->detectCategories($message)[0] ?? 'general';
 
         // Check for existing similar entries
         $existing = ChatbotTraining::where('trigger', 'like', "%$message%")
             ->when($category, fn($q) => $q->where('category', $category))
-            ->exists();
+            ->first();
             
         if ($existing) {
-            \Log::info("Similar training entry exists", ['message' => $message]);
+            \Log::info("Similar training entry exists", [
+                'message' => $message, 
+                'existing_id' => $existing->id,
+                'existing_needs_review' => $existing->needs_review
+            ]);
+            
+            // If the existing entry needs review and we still don't have a response
+            if ($existing->needs_review && empty($response)) {
+                \Log::info("Existing entry still needs review - triggering notification");
+                
+                // Send notifications separately (not through the event)
+                $this->sendChatbotNotifications($message, $category, $analysis['keywords']);
+                
+                // Still broadcast the event for real-time updates
+                event(new \App\Events\ChatbotTrainingNeeded(
+                    $message, 
+                    $category, 
+                    $analysis['keywords']
+                ));
+            }
             return;
         }
-        
-        $analysis = $this->analyzeMessage($message);
-        $category = $category ?? $this->detectCategories($message)[0] ?? 'general';
 
-        ChatbotTraining::create([
+        // Create the training entry only if it doesn't exist
+        $training = ChatbotTraining::create([
             'trigger' => $message,
             'response' => $response,
             'keywords' => $analysis['keywords'],
-            // 'category' => $this->detectCategory($message),
             'category' => $category,
             'needs_review' => empty($response),
             'trained_by' => auth()->id() ?? null
         ]);
         
+        // If response is empty (needs review), notify private users and admins
+        if (empty($response)) {
+            \Log::info("🤖 Chatbot training needed - notifying private users and admins");
+            
+            // Send notifications separately
+            $this->sendChatbotNotifications($message, $category, $analysis['keywords']);
+            
+            // Broadcast the event for real-time updates
+            event(new \App\Events\ChatbotTrainingNeeded(
+                $message, 
+                $category, 
+                $analysis['keywords']
+            ));
+        }
+        
         // Clear cache to ensure new responses are available
         cache()->forget('learned_responses');
+    }
+
+    // Add this new method to handle notifications separately
+    private function sendChatbotNotifications(string $message, string $category, array $keywords): void
+    {
+        try {
+            \Log::info("📧 Starting separate notification process");
+            
+            // Get users with ai_admin = true
+            $usersToNotify = \App\Models\User::where('ai_admin', true)->get();
+            
+            \Log::info("📧 Found users to notify", [
+                'total_users' => $usersToNotify->count(),
+                'user_emails' => $usersToNotify->pluck('email')->toArray(),
+                'message' => $message
+            ]);
+
+            if ($usersToNotify->count() > 0) {
+                \Illuminate\Support\Facades\Notification::send(
+                    $usersToNotify, 
+                    new \App\Notifications\ChatbotTrainingNeeded($message, $category, $keywords)
+                );
+                
+                \Log::info("✅ Notifications sent successfully to queue");
+            } else {
+                \Log::warning("❌ No ai_admin users found to notify");
+            }
+        } catch (\Exception $e) {
+            \Log::error("❌ Notification sending failed", [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
     }
     
     // Returning Learned questions 

@@ -134,6 +134,4 @@ Route::post("/register", function (request $request) {
         return response()->json([
             'token' => $user->createToken($request->device_name)->plainTextToken
         ]);
-
-    
 });

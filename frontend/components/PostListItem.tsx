@@ -15,7 +15,7 @@ import {
   Platform
 } from 'react-native';
 import { Ionicons, Feather, AntDesign } from '@expo/vector-icons';
-import { useContext, useMemo } from 'react';
+import { useContext, useEffect, useMemo } from 'react';
 import EmojiPicker from 'rn-emoji-keyboard';
 import PostMenu from './PostMenu';
 import ReportPost from './ReportPost';
@@ -31,6 +31,7 @@ import React from 'react';
 import { PostActionButtons } from './PostActionButtons';
 import { usePostListService } from '@/services/PostListService';
 import RenderComments from './RenderComments';
+import PusherService from '@/services/PusherService';
 
 interface PostListItemProps {
   post: any;
@@ -83,6 +84,25 @@ export default function PostListItem({
   const submitComment = async () => {
     await service.submitComment(post.id, onCommentSubmit);
   };
+
+// Add this useEffect to subscribe to real-time updates for each post
+useEffect(() => {
+  if (posts.length > 0) {
+    posts.forEach(post => {
+      // Subscribe to real-time updates for each post
+      PusherService.subscribeToPost(post.id);
+    });
+  }
+
+  // Cleanup: unsubscribe from all posts when component unmounts
+  return () => {
+    if (posts.length > 0) {
+      posts.forEach(post => {
+        PusherService.unsubscribeFromPost(post.id);
+      });
+    }
+  };
+}, [posts]);
 
   return (
     <View style={styles.container}>

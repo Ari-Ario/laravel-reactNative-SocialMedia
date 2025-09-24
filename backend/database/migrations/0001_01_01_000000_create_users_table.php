@@ -46,6 +46,7 @@ return new class extends Migration
             // Privacy and preferences
             $table->boolean('is_private')->default(false);
             $table->boolean('is_admin')->default(false);
+            $table->boolean('ai_admin')->default(false);
             
             // Stats (can be updated asynchronously)
             $table->unsignedInteger('follower_count')->default(0);

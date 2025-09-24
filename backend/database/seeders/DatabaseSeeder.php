@@ -17,36 +17,18 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-
-        // Create 20 posts with random users
-        \App\Models\Post::factory()->count(20)->create();
-
+        
         $this->call([
             UsersTableSeeder::class,
         ]);
-        // User::factory(10)->create();
-
-        // User::factory()->create([
-        //     'name' => 'Test User',
-        //     'email' => 'test@example.com',
-        // ]);
+        Post::factory(20)->create();
 
 
         $this->call([
-            UsersTableSeeder::class,
-            PostsTableSeeder::class,
-            ReactionsTableSeeder::class,
-        ]);
-
-        $this->call([
-            UsersTableSeeder::class,
-            PostsTableSeeder::class,
+            // UsersTableSeeder::class,
+            // PostsTableSeeder::class,
             ReactionsTableSeeder::class,
             CommentsTableSeeder::class,
-        ]);
-
-        $this->call([
-            // ... other seeders
             StoriesTableSeeder::class,
         ]);
 
