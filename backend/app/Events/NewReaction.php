@@ -7,7 +7,6 @@ use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 
 class NewReaction implements ShouldBroadcast
 {
@@ -20,21 +19,30 @@ class NewReaction implements ShouldBroadcast
     {
         $this->reaction = $reaction;
         $this->postId = $postId;
-        
-        Log::info('🎯 NewReaction Event Created', [
-            'post_id' => $postId,
-            'reaction_id' => $reaction->id,
-            'user_id' => $reaction->user_id
-        ]);
     }
 
     public function broadcastOn()
     {
-        Log::info('📡 NewReaction broadcasting on channel', [
-            'channel' => 'post.' . $this->postId
-        ]);
-        
         return new Channel('post.' . $this->postId);
+    }
+
+    public function broadcastWith()
+    {
+        // CRITICAL: Return a proper array structure
+        return [
+            'reaction' => [
+                'id' => $this->reaction->id,
+                'emoji' => $this->reaction->emoji,
+                'user_id' => $this->reaction->user_id,
+                'post_id' => $this->reaction->post_id,
+                'user' => [
+                    'id' => $this->reaction->user->id,
+                    'name' => $this->reaction->user->name,
+                    'profile_photo' => $this->reaction->user->profile_photo,
+                ]
+            ],
+            'postId' => $this->postId
+        ];
     }
     
     public function broadcastAs()

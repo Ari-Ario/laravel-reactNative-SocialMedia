@@ -21,7 +21,6 @@ import { GlobalModals } from '@/components/GlobalModals';
 import { ModalProvider } from '@/context/ModalContext';
 import ModalManager from '@/components/ModalManager';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { usePostStore } from '@/stores/postStore'; // ADD THIS IMPORT
 
 SplashScreen.preventAutoHideAsync();
 
@@ -33,8 +32,6 @@ export default function RootLayout() {
   const [user, setUser] = useState(null);
   const [isReady, setIsReady] = useState(false);
   const router = useRouter();
-  const { initializeRealtime, disconnectRealtime } = usePostStore(); // ADD THIS
-  const realtimeInitialized = useRef(false); // Track initialization
 
   useEffect(() => {
     let isMounted = true;
@@ -46,16 +43,9 @@ export default function RootLayout() {
 
         if (token) {
           const userData = await loadUser();
-          if (isMounted) {
-            setUser(userData);
-            
-            // Initialize real-time AFTER user is set
-            if (userData?.token && !realtimeInitialized.current) {
-              console.log('🔐 Initializing real-time connection...');
-              initializeRealtime(userData.token);
-              realtimeInitialized.current = true;
-            }
-          }
+          if (isMounted) setUser(userData);
+        } else {
+          router.replace('/LoginScreen');
         }
       } catch (error) {
         console.log("Initial auth check failed:", error);
@@ -69,29 +59,9 @@ export default function RootLayout() {
 
     initialize();
 
-    return () => { 
-      isMounted = false;
-      if (realtimeInitialized.current) {
-        console.log('🧹 Cleaning up real-time connection...');
-        disconnectRealtime();
-        realtimeInitialized.current = false;
-      }
-    };
-  }, []);
+    return () => { isMounted = false };
 
-  // NEW: Real-time initialization effect
-  useEffect(() => {
-    if (user && user.token) {
-      console.log('🔐 User authenticated, initializing real-time...');
-      initializeRealtime(user.token);
-      
-      // Cleanup on unmount
-      return () => {
-        console.log('🧹 Cleaning up real-time connection...');
-        disconnectRealtime();
-      };
-    }
-  }, [user]); // ADD THIS EFFECT
+  }, []);
 
   const pathname = usePathname();
 

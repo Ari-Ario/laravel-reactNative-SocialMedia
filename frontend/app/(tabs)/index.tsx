@@ -14,6 +14,9 @@ import AddStory from "@/components/AddStory";
 import { fetchStories } from "@/services/StoryService";
 import { useProfileView } from "@/context/ProfileViewContext";
 import { usePostStore } from "@/stores/postStore"; // ✅ Zustand store
+import { useNotificationStore } from '@/stores/notificationStore'; // NEW
+import { usePostListService } from "@/services/PostListService";
+import { getToken } from "@/services/TokenService";
 
 type StoryGroup = {
   user: {
@@ -31,13 +34,69 @@ const HomePage = () => {
   const router = useRouter();
   const { profileViewUserId, setProfileViewUserId, profilePreviewVisible, setProfilePreviewVisible } = useProfileView();
 
-  const { posts, setPosts, updatePost, addPost } = usePostStore(); // ✅ Zustand
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const [addStoryVisible, setAddStoryVisible] = useState(false);
   const [storyGroups, setStoryGroups] = useState<StoryGroup[]>([]);
+  const { posts, setPosts, subscribeToPostInternal, unsubscribeFromPostInternal } = usePostStore();
+  const { unreadCount, setNotificationPanelVisible } = useNotificationStore(); // NEW
+  const service = usePostListService(user);
+  const [isTokenReady, setIsTokenReady] = useState(false);
 
+
+  // Check token availability first
+  useEffect(() => {
+    const checkToken = async () => {
+      const token = await getToken();
+      if (token) {
+        setIsTokenReady(true);
+      } else {
+        console.warn('⚠️ No token available for real-time updates');
+        setIsTokenReady(true);
+      }
+    };
+
+    checkToken();
+  }, []);
+
+  // Subscribe to posts only when token is ready and posts exist
+  useEffect(() => {
+    if (isTokenReady && posts.length > 0) {
+      console.log('🏠 Home screen: Subscribing to', posts.length, 'posts using INTERNAL callbacks');
+      
+      posts.forEach(post => {
+        subscribeToPostInternal(post.id);
+      });
+
+      // Cleanup: unsubscribe from all posts
+      return () => {
+        console.log('🏠 Home screen: Unsubscribing from', posts.length, 'posts');
+        posts.forEach(post => {
+          unsubscribeFromPostInternal(post.id);
+        });
+      };
+    }
+  }, [posts.length, isTokenReady]);
+
+  // Load posts when component mounts
+  useEffect(() => {
+    const loadPosts = async () => {
+      try {
+        const postsData = await fetchPosts();
+        setPosts(postsData);
+      } catch (error) {
+        console.error('Error loading posts:', error);
+      }
+    };
+
+    if (user) {
+      loadPosts();
+    }
+  }, [user]);
+
+
+  //////////////////////////////////
 
   const fetchPostsAndHandleState = async () => {
     try {
@@ -137,8 +196,26 @@ const handleCommentSubmit = async (postId: number, content: string, parentId?: n
   return (
     <AuthContext.Provider value={{ user, setUser }}>
       <View style={styles.container}>
-        <View style={styles.headerScrollContainer}>
+        <View style={styles.header}>
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle}>Home</Text>
+            <TouchableOpacity 
+              style={styles.notificationBell}
+              onPress={() => setNotificationPanelVisible(true)}
+            >
+              <Ionicons name="notifications-outline" size={24} color="#000" />
+              {unreadCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
 
+        <View style={styles.headerScrollContainer}>
           <View style={styles.header}>
             {storyGroups.length >= 0 && (
               <View style={styles.storiesContainer}>
@@ -370,6 +447,37 @@ storiesContainer: {
     borderColor: '#999',
   },
 
+
+    headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  notificationBell: {
+    position: 'relative',
+    padding: 8,
+  },
+  badge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
 });
 
 export default HomePage;

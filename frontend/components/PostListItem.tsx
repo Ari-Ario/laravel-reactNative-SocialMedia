@@ -85,24 +85,6 @@ export default function PostListItem({
     await service.submitComment(post.id, onCommentSubmit);
   };
 
-// Add this useEffect to subscribe to real-time updates for each post
-useEffect(() => {
-  if (posts.length > 0) {
-    posts.forEach(post => {
-      // Subscribe to real-time updates for each post
-      PusherService.subscribeToPost(post.id);
-    });
-  }
-
-  // Cleanup: unsubscribe from all posts when component unmounts
-  return () => {
-    if (posts.length > 0) {
-      posts.forEach(post => {
-        PusherService.unsubscribeFromPost(post.id);
-      });
-    }
-  };
-}, [posts]);
 
   return (
     <View style={styles.container}>
@@ -336,7 +318,7 @@ useEffect(() => {
               />
               <TouchableOpacity
                 style={styles.commentSubmitButton}
-                onPress={submitComment}
+                onPress={() => { submitComment(); }}
                 disabled={!service.commentText.trim()}
               >
                 <Text style={styles.commentSubmitText}>Post</Text>

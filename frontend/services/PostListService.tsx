@@ -590,7 +590,7 @@ export const usePostListService = (user: any) => {
   // Submit comment
   const submitComment = async (postId: number, onCommentSubmit: Function) => {
     if (!commentText.trim()) return;
-    // console.log(postId, commentText, onCommentSubmit)
+    // console.log('Submitting comment:', { postId, commentText, replyingTo, user });
     
     try {
       const comment = await onCommentSubmit(
