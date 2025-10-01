@@ -14,39 +14,39 @@ class NewComment implements ShouldBroadcast
 
     public $comment;
     public $postId;
+    public $postOwnerId;
 
-    public function __construct($comment, $postId)
+    public function __construct($comment, $postId, $postOwnerId = null)
     {
         $this->comment = $comment;
         $this->postId = $postId;
+        // Get post owner ID - you might need to load the post relationship
+        $this->postOwnerId = $postOwnerId ?? $comment->post->user_id;
     }
 
     public function broadcastOn()
     {
-        return new Channel('post.' . $this->postId);
+        return [
+            new Channel('posts.global'),              // For real-time feed updates
+            new Channel('user.' . $this->postOwnerId) // For notifications to post owner
+        ];
+    }
+
+    public function broadcastAs()
+    {
+        return 'new-comment';
     }
 
     public function broadcastWith()
     {
-        // CRITICAL: Return a proper array structure
         return [
-            'comment' => [
-                'id' => $this->comment->id,
-                'content' => $this->comment->content,
-                'user_id' => $this->comment->user_id,
-                'post_id' => $this->comment->post_id,
-                'user' => [
-                    'id' => $this->comment->user->id,
-                    'name' => $this->comment->user->name,
-                    'profile_photo' => $this->comment->user->profile_photo,
-                ]
-            ],
-            'postId' => $this->postId
+            'comment' => $this->comment->load('user'),
+            'postId' => $this->postId,
+            'postOwnerId' => $this->postOwnerId,
+            // ✅ Add these for easier notification handling
+            'type' => 'comment',
+            'title' => 'New Comment',
+            'message' => $this->comment->user->name . ' commented on your post',
         ];
-    }
-    
-    public function broadcastAs()
-    {
-        return 'new-comment';
     }
 }

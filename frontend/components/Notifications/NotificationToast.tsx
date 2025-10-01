@@ -1,3 +1,4 @@
+// components/Notifications/NotificationToast.tsx
 import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, Animated, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +22,8 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
 
   useEffect(() => {
     if (visible) {
+      console.log('🔔 NotificationToast: Showing notification', notification);
+      
       // Slide in animation
       Animated.parallel([
         Animated.timing(slideAnim, {
@@ -67,10 +70,33 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
     switch (notification.type) {
       case 'comment': return 'chatbubble-outline';
       case 'reaction': return 'heart-outline';
+      case 'comment_reaction': return 'heart-outline';
       case 'post': return 'image-outline';
+      case 'new_post': return 'image-outline';
       case 'mention': return 'at-outline';
       case 'follow': return 'person-add-outline';
+      case 'new_follower': return 'person-add-outline';
+      case 'chatbot_training': return 'school-outline';
+      case 'post_updated': return 'create-outline';
+      case 'post_deleted': return 'trash-outline';
       default: return 'notifications-outline';
+    }
+  };
+
+  const getIconColor = () => {
+    switch (notification.type) {
+      case 'comment': return '#007AFF';
+      case 'reaction': return '#FF3B30';
+      case 'comment_reaction': return '#FF3B30';
+      case 'post': return '#4CD964';
+      case 'new_post': return '#4CD964';
+      case 'mention': return '#FF9500';
+      case 'follow': return '#5856D6';
+      case 'new_follower': return '#5856D6';
+      case 'chatbot_training': return '#FF2D55';
+      case 'post_updated': return '#FF9500';
+      case 'post_deleted': return '#FF3B30';
+      default: return '#8E8E93';
     }
   };
 
@@ -83,7 +109,7 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
       }
     ]}>
       <TouchableOpacity style={styles.toastContent} onPress={onPress}>
-        <Ionicons name={getIconName()} size={20} color="#007AFF" />
+        <Ionicons name={getIconName()} size={20} color={getIconColor()} />
         <View style={styles.textContainer}>
           <Text style={styles.title} numberOfLines={1}>{notification.title}</Text>
           <Text style={styles.message} numberOfLines={2}>{notification.message}</Text>

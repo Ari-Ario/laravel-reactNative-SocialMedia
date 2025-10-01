@@ -1,3 +1,4 @@
+// components/Notifications/NotificationPanel.tsx
 import React from 'react';
 import { 
   View, 
@@ -23,12 +24,12 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
 }) => {
   const { notifications, markAsRead, removeNotification } = useNotificationStore();
 
-  // DEBUG: Log when panel opens and notifications count
+  // DEBUG: Log when panel opens
   React.useEffect(() => {
     if (visible) {
       console.log('🔔 Notification Panel Opened');
       console.log('🔔 Total notifications:', notifications.length);
-      console.log('🔔 Notifications:', notifications);
+      console.log('🔔 Unread count:', notifications.filter(n => !n.isRead).length);
     }
   }, [visible, notifications.length]);
 
@@ -73,6 +74,12 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
       case 'post': return 'image-outline';
       case 'mention': return 'at-outline';
       case 'follow': return 'person-add-outline';
+      case 'new_follower': return 'person-add-outline';
+      case 'user_unfollowed': return 'person-remove-outline';
+      case 'chatbot_training': return 'school-outline';
+      case 'comment_reaction': return 'heart-outline';
+      case 'post_updated': return 'pencil-outline';
+      case 'post_deleted': return 'trash-outline';
       default: return 'notifications-outline';
     }
   };
@@ -84,6 +91,12 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
       case 'post': return '#4CD964';
       case 'mention': return '#FF9500';
       case 'follow': return '#5856D6';
+      case 'new_follower': return '#5856D6';
+      case 'user_unfollowed': return '#FF3B30';
+      case 'chatbot_training': return '#FF2D55';
+      case 'comment_reaction': return '#FF3B30';
+      case 'post_updated': return '#FF9500';
+      case 'post_deleted': return '#FF3B30';
       default: return '#8E8E93';
     }
   };
@@ -135,7 +148,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         ) : (
           <View style={styles.emptyState}>
             <Ionicons name="notifications-off-outline" size={48} color="#ccc" />
-            <Text style={styles.emptyText}>No new notifications</Text>
+            <Text style={styles.emptyText}>No notifications yet</Text>
             <Text style={styles.emptySubtext}>
               New notifications will appear here in real-time
             </Text>
@@ -238,3 +251,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
 });
+
+export default NotificationPanel;

@@ -7,55 +7,46 @@ use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 
 class NewPost implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $postId;
-    public $userId;
-    public $userName;
+    public $post;
+    public $followerIds; // Array of follower IDs
 
-    public function __construct($postId, $userId = null, $userName = null)
+    public function __construct($post, $followerIds = [])
     {
-        $this->postId = $postId;
-        $this->userId = $userId;
-        $this->userName = $userName;
-        
-        // Log::info('🎯 NewPost Event Created', [
-        //     'post_id' => $postId,
-        //     'user_id' => $userId,
-        //     'user_name' => $userName
-        // ]);
+        $this->post = $post;
+        $this->followerIds = $followerIds;
     }
 
     public function broadcastOn()
     {
-        // Log::info('📡 NewPost broadcasting on channel', [
-        //     'channel' => 'posts'
-        // ]);
+        $channels = [new Channel('posts.global')];
         
-        return new Channel('posts'); // Public channel for all users
+        // Broadcast to all followers
+        foreach ($this->followerIds as $followerId) {
+            $channels[] = new Channel('user.' . $followerId);
+        }
+        
+        return $channels;
+    }
+
+    public function broadcastAs()
+    {
+        return 'new-post';
     }
 
     public function broadcastWith()
     {
-        // Log::info('📦 NewPost broadcast data prepared', [
-        //     'post_id' => $this->postId
-        // ]);
-        
         return [
-            'postId' => $this->postId,
-            'userId' => $this->userId,
-            'userName' => $this->userName,
-            'action' => 'created',
-            'timestamp' => now()->toISOString()
+            'post' => $this->post->load('user'),
+            'followerIds' => $this->followerIds,
+            // ✅ ADD NOTIFICATION METADATA
+            'type' => 'new_post',
+            'title' => 'New Post',
+            'message' => $this->post->user->name . ' created a new post',
         ];
-    }
-    
-    public function broadcastAs()
-    {
-        return 'new-post';
     }
 }

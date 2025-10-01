@@ -1,3 +1,4 @@
+// app/(tabs)/_layout.tsx
 import { Tabs, Stack, router, Redirect } from 'expo-router';
 import { useContext, useEffect, useState, useRef } from 'react';
 import AuthContext from '@/context/AuthContext';
@@ -34,50 +35,67 @@ export default function TabLayout() {
   // Real-time initialization effect - FIXED VERSION
   useEffect(() => {
     let isMounted = true;
+    let initializationTimeout: NodeJS.Timeout;
 
     async function initializeRealtimeConnection() {
       try {
         setIsLoading(true);
         const token = await getToken();
         
-        console.log('🔐 Token check result:', { hasToken: !!token, hasUser: !!user });
+        console.log('🔐 Token check result:', { 
+          hasToken: !!token, 
+          hasUser: !!user,
+          userId: user?.id 
+        });
         
         if (!isMounted) return;
 
-        if (token && user && !realtimeInitialized.current) {
-          console.log('🔐 Token found, initializing real-time...');
+        // ✅ FIX: Wait a bit for user context to be fully loaded
+        if (token && user?.id) {
+          console.log('🔐 Token and user ID found, initializing real-time...');
           
-          // Initialize both post and notification real-time
+          // Initialize post real-time
           initializeRealtime(token);
-          initNotifications(token);
           
-          // Set the initialization time for notifications
-          setInitializationTime(new Date());
+          // Initialize notification real-time WITH user ID
+          initNotifications(token, user.id);
+          
+          // ✅ FIX: Check if setInitializationTime exists before calling
+          if (typeof setInitializationTime === 'function') {
+            setInitializationTime(new Date());
+          }
           
           realtimeInitialized.current = true;
           setIsRealtimeReady(true);
+          
+          console.log('✅ Real-time systems initialized');
         } else {
-          // FIX: Handle both cases - no token OR no user
-          console.log('🔐 No token or user not authenticated, skipping real-time initialization');
+          console.log('🔐 Missing token or user ID, skipping real-time initialization');
           setIsRealtimeReady(true);
         }
       } catch (error) {
         console.error('❌ Real-time initialization failed:', error);
         setIsRealtimeReady(true);
       } finally {
-        // FIX: Always set loading to false, regardless of token/user status
         if (isMounted) {
-          setIsLoading(false);
-          console.log('🔐 Loading complete, isLoading set to false');
+          // ✅ FIX: Add small delay to ensure everything is loaded
+          initializationTimeout = setTimeout(() => {
+            setIsLoading(false);
+            console.log('🔐 Loading complete');
+          }, 500);
         }
       }
     }
 
-    initializeRealtimeConnection();
+    // ✅ FIX: Add small delay before initialization
+    const initializationTimer = setTimeout(() => {
+      initializeRealtimeConnection();
+    }, 1000);
 
-    // Cleanup when tabs layout unmounts
     return () => {
       isMounted = false;
+      clearTimeout(initializationTimer);
+      clearTimeout(initializationTimeout);
       if (realtimeInitialized.current) {
         console.log('🧹 Cleaning up real-time connections...');
         disconnectRealtime();
@@ -86,7 +104,7 @@ export default function TabLayout() {
         setIsRealtimeReady(false);
       }
     };
-  }, [user]);
+  }, [user?.id]); // Only depend on user.id
 
   // NEW: Handle notification toasts
   const handleShowToast = (notification: any) => {

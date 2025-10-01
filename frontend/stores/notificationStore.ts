@@ -1,79 +1,98 @@
+// stores/notificationStore.ts - FIXED VERSION
 import { create } from 'zustand';
-import { Notification, NotificationState } from '@/types/Notification';
 import PusherService from '@/services/PusherService';
 
-interface NotificationStore extends NotificationState {
-  initializationTime: Date | null;
-  
+export interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  data: any;
+  isRead: boolean;
+  createdAt: Date;
+  userId?: number;
+  postId?: number;
+  commentId?: number;
+  avatar?: string;
+}
+
+interface NotificationStore {
+  notifications: Notification[];
+  unreadCount: number;
+  isNotificationPanelVisible: boolean;
+  isConnected: boolean;
+  currentUserId: number | null;
+
   // Actions
-  addNotification: (notification: Omit<Notification, 'id' | 'createdAt' | 'isRead'>) => void;
+  setNotificationPanelVisible: (visible: boolean) => void;
+  setCurrentUserId: (userId: number) => void;
+  
+  // ✅ FIXED: Notification management
+  addNotification: (notification: Omit<Notification, 'id' | 'isRead'>) => void;
   markAsRead: (notificationId: string) => void;
   markAllAsRead: () => void;
-  removeNotification: (notificationId: string) => void;
-  clearNotifications: () => void;
-  setNotificationPanelVisible: (visible: boolean) => void;
-  initializeRealtime: (token: string) => void;
-  disconnectRealtime: () => void;
+  initializationTime: Date | null;
   setInitializationTime: (time: Date) => void;
+  clearAll: () => void;
+  
+  // ✅ FIXED: Real-time initialization
+  initializeRealtime: (token: string, userId: number) => void;
+  disconnectRealtime: () => void;
 }
 
 export const useNotificationStore = create<NotificationStore>((set, get) => ({
   notifications: [],
   unreadCount: 0,
   isNotificationPanelVisible: false,
+  isConnected: false,
+  currentUserId: null,
   initializationTime: null,
 
-  // FIX: Only ONE addNotification method
-  addNotification: (notificationData) => {
-    const now = new Date();
-    const { initializationTime } = get();
-    
-    // ONLY add notifications that occur AFTER initialization time
-    if (initializationTime && notificationData.createdAt < initializationTime) {
-      console.log('🔔 Ignoring old notification (before initialization)');
-      return;
-    }
 
+  setNotificationPanelVisible: (visible) => set({ isNotificationPanelVisible: visible }),
+  
+  setCurrentUserId: (userId) => set({ currentUserId: userId }),
+  setInitializationTime: (time) => set({ initializationTime: time }),
+
+  // ✅ FIXED: This is the key function that updates the store
+  addNotification: (notificationData) => {
     const newNotification: Notification = {
-      id: Date.now().toString(),
       ...notificationData,
-      createdAt: now,
-      isRead: false
+      id: Date.now().toString(), // Generate unique ID
+      isRead: false,
+      createdAt: notificationData.createdAt || new Date()
     };
 
-    set((state) => ({
-      notifications: [newNotification, ...state.notifications],
-      unreadCount: state.unreadCount + 1
-    }));
+    console.log('🔔 ADDING NOTIFICATION TO STORE:', newNotification);
 
-    // Show toast notification for 3 seconds
-    get().showTemporaryNotification(newNotification);
+    set((state) => {
+      const newNotifications = [newNotification, ...state.notifications];
+      const newUnreadCount = state.unreadCount + 1;
+      
+      console.log('🔔 STORE UPDATED - Total:', newNotifications.length, 'Unread:', newUnreadCount);
+      
+      return {
+        notifications: newNotifications,
+        unreadCount: newUnreadCount
+      };
+    });
   },
 
-  // REMOVE THIS DUPLICATE METHOD:
-  // addNotification: (notificationData) => {
-  //   const newNotification: Notification = {
-  //     id: Date.now().toString(),
-  //     ...notificationData,
-  //     createdAt: new Date(),
-  //     isRead: false
-  //   };
-  //
-  //   set((state) => ({
-  //     notifications: [newNotification, ...state.notifications],
-  //     unreadCount: state.unreadCount + 1
-  //   }));
-  //
-  //   get().showTemporaryNotification(newNotification);
-  // },
-
   markAsRead: (notificationId) => {
-    set((state) => ({
-      notifications: state.notifications.map(notif =>
+    set((state) => {
+      const updatedNotifications = state.notifications.map(notif =>
         notif.id === notificationId ? { ...notif, isRead: true } : notif
-      ),
-      unreadCount: Math.max(0, state.unreadCount - 1)
-    }));
+      );
+      
+      const newUnreadCount = updatedNotifications.filter(n => !n.isRead).length;
+      
+      console.log('🔔 Marked as read - Unread count:', newUnreadCount);
+      
+      return {
+        notifications: updatedNotifications,
+        unreadCount: newUnreadCount
+      };
+    });
   },
 
   markAllAsRead: () => {
@@ -85,63 +104,49 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
 
   removeNotification: (notificationId) => {
     set((state) => {
-      const notification = state.notifications.find(n => n.id === notificationId);
-      const wasUnread = notification && !notification.isRead;
+      const notificationToRemove = state.notifications.find(n => n.id === notificationId);
+      const wasUnread = notificationToRemove?.isRead === false;
+      
+      const newNotifications = state.notifications.filter(n => n.id !== notificationId);
+      const newUnreadCount = wasUnread ? Math.max(0, state.unreadCount - 1) : state.unreadCount;
       
       return {
-        notifications: state.notifications.filter(n => n.id !== notificationId),
-        unreadCount: wasUnread ? Math.max(0, state.unreadCount - 1) : state.unreadCount
+        notifications: newNotifications,
+        unreadCount: newUnreadCount
       };
     });
   },
 
-  clearNotifications: () => {
-    set({ notifications: [], unreadCount: 0 });
-  },
+  clearAll: () => set({ notifications: [], unreadCount: 0 }),
 
-  setNotificationPanelVisible: (visible) => {
-    set({ isNotificationPanelVisible: visible });
+  // ✅ FIXED: This connects Pusher events to the store
+  initializeRealtime: (token: string, userId: number) => {
+    console.log('🔔 INITIALIZING NOTIFICATION REAL-TIME FOR USER:', userId);
     
-    if (visible) {
-      get().markAllAsRead();
+    const success = PusherService.initialize(token);
+    
+    if (success && userId) {
+      // ✅ CRITICAL: Subscribe to user notifications and connect to store
+      PusherService.subscribeToUserNotifications(userId, (notificationData) => {
+        console.log('🔔 PUSHER EVENT RECEIVED → ADDING TO STORE:', notificationData);
+        
+        // ✅ This is what was missing - add to store!
+        get().addNotification(notificationData);
+      });
+      
+      set({ isConnected: true, currentUserId: userId });
+      console.log('✅ NOTIFICATION REAL-TIME INITIALIZED SUCCESSFULLY');
+    } else {
+      console.error('❌ FAILED TO INITIALIZE NOTIFICATION REAL-TIME');
     }
   },
 
-  initializeRealtime: (token: string) => {
-    const { addNotification, setInitializationTime } = get();
-
-    // Set initialization time FIRST
-    const initTime = new Date();
-    setInitializationTime(initTime);
-    console.log('🔔 Notification system initialized at:', initTime.toISOString());
-
-    // Initialize Pusher for notifications
-    PusherService.initialize(token);
-
-    // FIX: Get actual user ID - you need to replace this with your actual user ID
-    // If your user object has an ID, you'll need to pass it here
-    const currentUserId = 1; // TODO: Replace with actual user ID
-    
-    console.log('🔔 Subscribing to notifications for user:', currentUserId);
-
-    PusherService.subscribeToUserNotifications(currentUserId, (notificationData) => {
-      console.log('🔔 Received real-time notification:', notificationData);
-      addNotification(notificationData);
-    });
-  },
-
   disconnectRealtime: () => {
-    console.log('🔔 Disconnecting notification real-time');
-    // FIX: Add proper cleanup
-    const currentUserId = 1; // TODO: Replace with actual user ID
-    PusherService.unsubscribeFromUserNotifications(currentUserId);
+    const { currentUserId } = get();
+    if (currentUserId) {
+      PusherService.unsubscribeFromUserNotifications(currentUserId);
+    }
+    PusherService.disconnect();
+    set({ isConnected: false, currentUserId: null });
   },
-
-  setInitializationTime: (time: Date) => {
-    set({ initializationTime: time });
-  },
-
-  showTemporaryNotification: (notification: Notification) => {
-    console.log('🔔 Showing temporary notification:', notification.message);
-  }
 }));

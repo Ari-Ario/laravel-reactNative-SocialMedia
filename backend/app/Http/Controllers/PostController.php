@@ -433,7 +433,9 @@ class PostController extends Controller
         // METHOD 2: Test Laravel broadcast (should work now with the provider)
         try {
             \Log::info('🔍 Attempting Laravel broadcast');
-            broadcast(new \App\Events\NewComment($comment, $post->id));
+            // broadcast(new \App\Events\NewComment($comment, $post->id));
+            broadcast(new \App\Events\NewComment($comment, $post->id, $post->user_id));
+
             \Log::info('✅ Laravel broadcast called successfully');
         } catch (\Exception $e) {
             \Log::error('❌ Laravel broadcast failed', [

@@ -1,3 +1,4 @@
+// app/(tabs)/index.tsx
 import { View, Text, Pressable, StyleSheet, Button, ActivityIndicator, ScrollView, FlatList, Image, TouchableOpacity, Alert } from "react-native";
 import { Link, router, Stack, useRouter } from 'expo-router';
 import { useState, useEffect, useContext } from "react";
@@ -6,7 +7,7 @@ import LoginScreen from "../LoginScreen";
 import PostListItem from '@/components/PostListItem';
 import FloatingActionButton from '@/components/FloatingActionButton';
 import getApiBaseImage from "@/services/getApiBaseImage";
-import { fetchPosts, bookmarkPost, repostPost, sharePost, commentOnPost, reactToPost } from "@/services/PostService";
+import { fetchPosts, bookmarkPost, repostPost, sharePost, commentOnPost, reactToPost, updatePost } from "@/services/PostService";
 import CreatePost from "@/components/CreatePost";
 import { Ionicons } from "@expo/vector-icons";
 import ProfilePreview from "@/components/ProfilePreview";
@@ -17,6 +18,8 @@ import { usePostStore } from "@/stores/postStore"; // ✅ Zustand store
 import { useNotificationStore } from '@/stores/notificationStore'; // NEW
 import { usePostListService } from "@/services/PostListService";
 import { getToken } from "@/services/TokenService";
+import PusherService from "@/services/PusherService";
+import { NotificationPanel } from "@/components/Notifications/NotificationPanel";
 
 type StoryGroup = {
   user: {
@@ -39,45 +42,92 @@ const HomePage = () => {
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const [addStoryVisible, setAddStoryVisible] = useState(false);
   const [storyGroups, setStoryGroups] = useState<StoryGroup[]>([]);
-  const { posts, setPosts, subscribeToPostInternal, unsubscribeFromPostInternal } = usePostStore();
-  const { unreadCount, setNotificationPanelVisible } = useNotificationStore(); // NEW
-  const service = usePostListService(user);
+  const { posts, setPosts } = usePostStore();
   const [isTokenReady, setIsTokenReady] = useState(false);
+const { 
+  unreadCount, 
+  setNotificationPanelVisible, 
+  isNotificationPanelVisible,
+  initializeRealtime,
+  disconnectRealtime,
+  addNotification,
+  setCurrentUserId
+} = useNotificationStore();
 
+// ✅ FIX: Simplified real-time initialization
+useEffect(() => {
+  let isMounted = true;
 
-  // Check token availability first
-  useEffect(() => {
-    const checkToken = async () => {
+  const initializeRealTimeSystems = async () => {
+    try {
       const token = await getToken();
-      if (token) {
+      if (token && user?.id && isMounted) {
         setIsTokenReady(true);
+        
+        console.log('🔐 Initializing real-time systems for user:', user.id);
+        
+        // Set user ID first
+        setCurrentUserId(user.id);
+        
+        // Initialize notification real-time
+        const success = initializeRealtime(token, user.id);
+        
+        if (success) {
+          console.log('✅ Notification real-time initialized successfully');
+        } else {
+          console.warn('⚠️ Notification real-time initialization failed');
+        }
       } else {
-        console.warn('⚠️ No token available for real-time updates');
+        console.warn('⚠️ No token or user ID available for real-time updates');
         setIsTokenReady(true);
       }
-    };
+    } catch (error) {
+      console.error('❌ Real-time initialization error:', error);
+      setIsTokenReady(true);
+    }
+  };
 
-    checkToken();
-  }, []);
+  // ✅ FIX: Add delay to avoid conflicts with TabLayout initialization
+  const timer = setTimeout(() => {
+    initializeRealTimeSystems();
+  }, 2000);
+
+  return () => {
+    isMounted = false;
+    clearTimeout(timer);
+    console.log('🧹 Cleaning up real-time systems');
+    disconnectRealtime();
+  };
+}, [user?.id]);
+
+// ✅ TEST: Add this temporary button to verify it works
+const addTestNotification = () => {
+  addNotification({
+    type: 'test',
+    title: 'Test Notification',
+    message: 'This proves the store is working!',
+    data: { test: true },
+    createdAt: new Date()
+  });
+};
 
   // Subscribe to posts only when token is ready and posts exist
   useEffect(() => {
     if (isTokenReady && posts.length > 0) {
-      console.log('🏠 Home screen: Subscribing to', posts.length, 'posts using INTERNAL callbacks');
+      console.log('🏠 Setting up real-time subscriptions for', posts.length, 'posts');
       
-      posts.forEach(post => {
-        subscribeToPostInternal(post.id);
-      });
-
-      // Cleanup: unsubscribe from all posts
+      const postIds = posts.map(post => post.id);
+      usePostStore.getState().subscribeToPosts(postIds);
+      
       return () => {
-        console.log('🏠 Home screen: Unsubscribing from', posts.length, 'posts');
-        posts.forEach(post => {
-          unsubscribeFromPostInternal(post.id);
-        });
+        console.log('🏠 Cleaning up post subscriptions');
+        usePostStore.getState().unsubscribeFromAllPosts();
       };
     }
   }, [posts.length, isTokenReady]);
+
+  // Make sure your handlers are properly connected:
+
 
   // Load posts when component mounts
   useEffect(() => {
@@ -196,12 +246,31 @@ const handleCommentSubmit = async (postId: number, content: string, parentId?: n
   return (
     <AuthContext.Provider value={{ user, setUser }}>
       <View style={styles.container}>
+        {/* ADD NOTIFICATION PANEL */}
+        <NotificationPanel
+          visible={isNotificationPanelVisible}
+          onClose={() => setNotificationPanelVisible(false)}
+        />
+
+        {/* Your existing header */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>Home</Text>
+
+
+            <TouchableOpacity 
+              style={styles.testButton}
+              onPress={addTestNotification}
+            >
+              <Text style={styles.testButtonText}>Test Notification</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity 
               style={styles.notificationBell}
-              onPress={() => setNotificationPanelVisible(true)}
+              onPress={() => {
+                console.log('🔔 Opening notification panel, unread count:', unreadCount);
+                setNotificationPanelVisible(true);
+              }}
             >
               <Ionicons name="notifications-outline" size={24} color="#000" />
               {unreadCount > 0 && (
@@ -274,12 +343,13 @@ const handleCommentSubmit = async (postId: number, content: string, parentId?: n
         }} />
       </View>
 
+      {/* Your existing modals */}
       <CreatePost
         visible={isCreateModalVisible}
         onClose={() => setIsCreateModalVisible(false)}
         onPostCreated={(post) => {
           if (post?.id) {
-            updatePost(post); // ✅ Zustand: live update
+            // Handle post creation
           } else {
             fetchPostsAndHandleState();
           }
@@ -478,6 +548,19 @@ storiesContainer: {
     fontSize: 10,
     fontWeight: 'bold',
   },
+
+  // Add to your styles
+testButton: {
+  backgroundColor: '#007AFF',
+  padding: 10,
+  borderRadius: 5,
+  margin: 10,
+  alignItems: 'center'
+},
+testButtonText: {
+  color: 'white',
+  fontWeight: 'bold'
+}
 });
 
 export default HomePage;

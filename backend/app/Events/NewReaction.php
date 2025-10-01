@@ -14,39 +14,38 @@ class NewReaction implements ShouldBroadcast
 
     public $reaction;
     public $postId;
+    public $postOwnerId;
 
-    public function __construct($reaction, $postId)
+    public function __construct($reaction, $postId, $postOwnerId = null)
     {
         $this->reaction = $reaction;
         $this->postId = $postId;
+        $this->postOwnerId = $postOwnerId ?? $reaction->post->user_id;
     }
 
     public function broadcastOn()
     {
-        return new Channel('post.' . $this->postId);
+        return [
+            new Channel('posts.global'),
+            new Channel('user.' . $this->postOwnerId),
+        ];
+    }
+
+    public function broadcastAs()
+    {
+        return 'new-reaction';
     }
 
     public function broadcastWith()
     {
-        // CRITICAL: Return a proper array structure
         return [
-            'reaction' => [
-                'id' => $this->reaction->id,
-                'emoji' => $this->reaction->emoji,
-                'user_id' => $this->reaction->user_id,
-                'post_id' => $this->reaction->post_id,
-                'user' => [
-                    'id' => $this->reaction->user->id,
-                    'name' => $this->reaction->user->name,
-                    'profile_photo' => $this->reaction->user->profile_photo,
-                ]
-            ],
-            'postId' => $this->postId
+            'reaction' => $this->reaction->load('user'),
+            'postId' => $this->postId,
+            'postOwnerId' => $this->postOwnerId,
+            // ✅ ADD NOTIFICATION METADATA
+            'type' => 'reaction',
+            'title' => 'New Reaction',
+            'message' => $this->reaction->user->name . ' reacted with ' . $this->reaction->emoji,
         ];
-    }
-    
-    public function broadcastAs()
-    {
-        return 'new-reaction';
     }
 }

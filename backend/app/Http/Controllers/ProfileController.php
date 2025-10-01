@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\NewFollower;
 use App\Models\User;
 use App\Models\Post;
 use App\Models\Follower;
@@ -165,9 +166,16 @@ class ProfileController extends Controller
         if ($request->action === 'follow') {
             $currentUser->following()->syncWithoutDetaching([$userId]);
             $message = 'User followed successfully';
+            
+            // BROADCAST NEW FOLLOWER EVENT
+            broadcast(new NewFollower($currentUser, $user));
+            
         } else {
             $currentUser->following()->detach($userId);
             $message = 'User unfollowed successfully';
+            
+            // You can also create an Unfollow event if needed
+            // broadcast(new UserUnfollowed($currentUser, $user));
         }
 
         $user->loadCount('followers');
