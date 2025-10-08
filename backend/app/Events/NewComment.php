@@ -26,10 +26,15 @@ class NewComment implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        return [
-            new Channel('posts.global'),              // For real-time feed updates
-            new Channel('user.' . $this->postOwnerId) // For notifications to post owner
+        $channels = [
+            new Channel('posts.global'), // For real-time feed updates
         ];
+
+        if ($this->postOwnerId != auth()->id()) {
+            $channels[] = new Channel('user.' . $this->postOwnerId); // For notifications to post owner
+        }
+
+        return $channels;
     }
 
     public function broadcastAs()

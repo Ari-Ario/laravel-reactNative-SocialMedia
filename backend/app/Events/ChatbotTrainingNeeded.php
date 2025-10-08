@@ -2,6 +2,7 @@
 
 namespace App\Events;
 
+use App\Models\User;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -28,8 +29,16 @@ class ChatbotTrainingNeeded implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        // Broadcast to a channel that private users and admins can subscribe to
-        return new Channel('chatbot-training');
+        $channels = [];
+        
+        // Get all AI admin users
+        $adminUsers = User::where('ai_admin', 1)->get();
+        
+        foreach ($adminUsers as $admin) {
+            $channels[] = new Channel('user.' . $admin->id);
+        }
+        
+        return $channels;
     }
 
     public function broadcastWith()

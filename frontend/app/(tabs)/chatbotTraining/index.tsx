@@ -28,14 +28,14 @@ const ChatbotTrainingScreen = () => {
         fetchCategories();
 
         // Set up interval for auto-refresh every 2 minutes
-        const intervalId = setInterval(() => {
-            fetchTrainings();
-            fetchNeedsReview();
-            fetchCategories();
-        }, 2 * 60 * 1000); // 2 minutes in milliseconds
+        // const intervalId = setInterval(() => {
+        //     fetchTrainings();
+        //     fetchNeedsReview();
+        //     fetchCategories();
+        // }, 2 * 60 * 1000);
 
         // Clean up interval when component unmounts
-        return () => clearInterval(intervalId);
+        // return () => clearInterval(intervalId);
     }, []);
     
     const fetchTrainings = async () => {

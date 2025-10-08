@@ -154,6 +154,7 @@ class ProfileController extends Controller
     }
 
 
+    // follow  method
     public function follow(Request $request, $userId)
     {
         $request->validate([
@@ -167,15 +168,12 @@ class ProfileController extends Controller
             $currentUser->following()->syncWithoutDetaching([$userId]);
             $message = 'User followed successfully';
             
-            // BROADCAST NEW FOLLOWER EVENT
-            broadcast(new NewFollower($currentUser, $user));
+            // ✅ FIX: Pass the correct parameters
+            broadcast(new NewFollower($currentUser, $user->id));
             
         } else {
             $currentUser->following()->detach($userId);
             $message = 'User unfollowed successfully';
-            
-            // You can also create an Unfollow event if needed
-            // broadcast(new UserUnfollowed($currentUser, $user));
         }
 
         $user->loadCount('followers');

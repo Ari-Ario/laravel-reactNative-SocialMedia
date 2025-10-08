@@ -1,6 +1,17 @@
 export interface Notification {
   id: string;
-  type: 'comment' | 'reaction' | 'post' | 'mention' | 'follow';
+  type:
+    | 'reaction'
+    | 'post'
+    | 'comment'
+    | 'mention'
+    | 'follow'
+    | 'comment_reaction'
+    | 'new_post'
+    | 'new_follower'
+    | 'chatbot_training'
+    | 'post_updated'
+    | 'post_deleted';
   title: string;
   message: string;
   data: any;

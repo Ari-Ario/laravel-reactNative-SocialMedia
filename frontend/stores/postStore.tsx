@@ -51,14 +51,24 @@ interface Post {
 
 interface PostStore {
   posts: Post[];
-  subscribedPostIds: number[]; // Track which posts we're subscribed to
+  subscribedPostIds: number[];
+  expandedPostId: number | null;
   
+  // Track pending operations to prevent duplicates
+  pendingCommentIds: Set<number>;
+  pendingReactionIds: Set<number>;
+  pendingPostIds: Set<number>; 
+
   // Basic operations
   setPosts: (posts: Post[]) => void;
   updatePost: (updatedPost: Post) => void;
   addPost: (newPost: Post) => void;
   deletePostById: (postId: number) => void;
   
+  // Expanded post management
+  setExpandedPostId: (postId: number | null) => void;
+  toggleExpandedPostId: (postId: number) => void;
+
   // Reactions
   addPostReaction: (postId: number, reaction: Reaction) => void;
   removePostReaction: (postId: number, reactionId: number) => void;
@@ -66,7 +76,7 @@ interface PostStore {
   // Comments
   addPostComment: (postId: number, comment: Comment) => void;
   updatePostWithNewComment: (postId: number, comment: Comment) => void;
-  removeComment: (postId: number, commentId: number) => void; // ADDED TO INTERFACE
+  removeComment: (postId: number, commentId: number) => void;
 
   updateCommentReactions: (
     postId: number,
@@ -94,22 +104,40 @@ interface PostStore {
     serverComment: Comment
   ) => void;
 
-  // Real-time methods - FIXED INTERFACE
+  // Real-time methods
   initializeRealtime: (token: string) => void;
-  subscribeToPost: (postId: number) => void; // FIXED: This was missing implementation
+  // subscribeToPost: (postId: number) => void;
   unsubscribeFromPost: (postId: number) => void;
-  subscribeToPosts: (postIds: number[]) => void; // NEW: For global channel approach
-  unsubscribeFromAllPosts: () => void; // NEW
+  subscribeToPosts: (postIds: number[]) => void;
+  unsubscribeFromAllPosts: () => void;
   disconnectRealtime: () => void;
+  
+  // Real-time event handlers with duplicate prevention
   handleNewComment: (data: { comment: any; postId: number }) => void;
   handleNewReaction: (data: { reaction: any; postId: number }) => void;
   handleCommentDeleted: (data: { commentId: number; postId: number }) => void;
   handleReactionDeleted: (data: { reactionId: number; postId: number }) => void;
+  handleCommentReaction: (data: { reaction: any; postId: number; commentId: number }) => void;
+  handleNewPost: (data: { post: any }) => void;
+  handlePostUpdated: (data: { post: any; postId: number }) => void;
+  handlePostDeleted: (data: { postId: number }) => void;
+
+  // Duplicate prevention helpers
+  markCommentAsPending: (commentId: number) => void;
+  markReactionAsPending: (reactionId: number) => void;
+  clearPendingComment: (commentId: number) => void;
+  clearPendingReaction: (reactionId: number) => void;
 }
 
 export const usePostStore = create<PostStore>((set, get) => ({
   posts: [],
-  subscribedPostIds: [], // Track subscriptions
+  subscribedPostIds: [],
+  expandedPostId: null,
+  
+  // Track pending operations to prevent duplicates
+  pendingCommentIds: new Set<number>(),
+  pendingReactionIds: new Set<number>(),
+  pendingPostIds: new Set<number>(),
 
   // Basic post operations
   setPosts: (posts) => set({ posts }),
@@ -123,16 +151,86 @@ export const usePostStore = create<PostStore>((set, get) => ({
     }));
   },
   
-  addPost: (newPost) => set((state) => ({
-    posts: [newPost, ...state.posts],
-  })),
+  addPost: (newPost) => {
+    const { pendingPostIds } = get();
+    
+    // Skip if this post is already pending (being handled by real-time)
+    if (pendingPostIds.has(newPost.id)) {
+      console.log('🔄 Skipping duplicate post (already pending):', newPost.id);
+      return;
+    }
+
+    set((state) => ({
+      posts: [newPost, ...state.posts],
+    }));
+  },
     
   deletePostById: (postId) => set((state) => ({
     posts: state.posts.filter((p) => p.id !== postId),
   })),
 
-  // Reaction operations
+  // Expanded post management
+  setExpandedPostId: (postId) => set({ expandedPostId: postId }),
+  
+  toggleExpandedPostId: (postId) => {
+    set((state) => ({
+      expandedPostId: state.expandedPostId === postId ? null : postId
+    }));
+  },
+
+  // Duplicate prevention helpers
+  markPostAsPending: (postId: number) => {
+    set((state) => ({
+      pendingPostIds: new Set([...state.pendingPostIds, postId])
+    }));
+  },
+
+  clearPendingPost: (postId: number) => {
+    set((state) => {
+      const newPending = new Set(state.pendingPostIds);
+      newPending.delete(postId);
+      return { pendingPostIds: newPending };
+    });
+  },
+  
+  markCommentAsPending: (commentId: number) => {
+    set((state) => ({
+      pendingCommentIds: new Set([...state.pendingCommentIds, commentId])
+    }));
+  },
+
+  markReactionAsPending: (reactionId: number) => {
+    set((state) => ({
+      pendingReactionIds: new Set([...state.pendingReactionIds, reactionId])
+    }));
+  },
+
+  clearPendingComment: (commentId: number) => {
+    set((state) => {
+      const newPending = new Set(state.pendingCommentIds);
+      newPending.delete(commentId);
+      return { pendingCommentIds: newPending };
+    });
+  },
+
+  clearPendingReaction: (reactionId: number) => {
+    set((state) => {
+      const newPending = new Set(state.pendingReactionIds);
+      newPending.delete(reactionId);
+      return { pendingReactionIds: newPending };
+    });
+  },
+
+  // Reaction operations with duplicate prevention
   addPostReaction: (postId, reaction) => {
+    const { pendingReactionIds } = get();
+    
+    // Skip if this reaction is already pending (being handled by real-time)
+    if (pendingReactionIds.has(reaction.id)) {
+      console.log('🔄 Skipping duplicate reaction (already pending):', reaction.id);
+      return;
+    }
+
     set((state) => ({
       posts: state.posts.map((post) => {
         if (post.id !== postId) return post;
@@ -174,54 +272,127 @@ export const usePostStore = create<PostStore>((set, get) => ({
     }));
   },
   
-  // Comment reaction functions
-  addCommentReaction: (postId, commentId, userId, emoji) => set((state) => {
-    const postIndex = state.posts.findIndex(p => p.id === postId);
-    if (postIndex === -1) {
-      console.warn(`Post ${postId} not found in store`);
-      return state;
+  // Comment operations with duplicate prevention
+  addPostComment: (postId, comment) => {
+    const { pendingCommentIds } = get();
+    
+    // Skip if this comment is already pending (being handled by real-time)
+    if (pendingCommentIds.has(comment.id)) {
+      console.log('🔄 Skipping duplicate comment (already pending):', comment.id);
+      return;
     }
 
-    return {
+    set((state) => ({
       posts: state.posts.map((post) => {
         if (post.id !== postId) return post;
         
-        const updater = (comment: Comment) => {
-          const hasExistingReaction = comment.reaction_comments?.some(
-            (r: any) => r.user_id === userId && r.emoji === emoji
-          );
-          
-          if (hasExistingReaction) return comment;
-          
-          const tempReaction = {
-            id: 1000000 + Date.now(),
-            user_id: userId,
-            comment_id: commentId,
-            emoji,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
-          
-          const filteredReactions = comment.reaction_comments?.filter(
-            (r: any) => r.user_id !== userId
-          ) || [];
-          
-          return {
-            ...comment,
-            reaction_comments: [...filteredReactions, tempReaction],
-            reaction_comments_count: (comment.reaction_comments_count || 0) + 1
-          };
-        };
-
+        const newComments = comment.parent_id
+          ? addReplyToComment(post.comments || [], comment)
+          : [...(post.comments || []), comment];
+        
         return {
           ...post,
-          comments: updateCommentInTree(post.comments, commentId, updater)
+          comments: newComments,
+          comments_count: (post.comments_count || 0) + 1
         };
-      })
-    };
-  }),
+      }),
+    }));
+  },
+  
+  updatePostWithNewComment: (postId, comment) => {
+    const { pendingCommentIds } = get();
+    
+    if (pendingCommentIds.has(comment.id)) {
+      console.log('🔄 Skipping duplicate comment in update:', comment.id);
+      return;
+    }
 
-  updateCommentReactions: (postId, commentId, newReaction, counts = null) =>
+    set((state) => ({
+      posts: state.posts.map((post) => {
+        if (post.id !== postId) return post;
+        
+        const currentComments = post.comments || [];
+        
+        if (comment.parent_id) {
+          return {
+            ...post,
+            comments: addReplyToComment(currentComments, comment),
+            comments_count: post.comments_count
+          };
+        }
+        
+        return {
+          ...post,
+          comments: [...currentComments, comment],
+          comments_count: (post.comments_count || 0) + 1
+        };
+      }),
+    }));
+  },
+
+  // Comment reaction functions
+  addCommentReaction: (postId, commentId, userId, emoji) => {
+    const { pendingReactionIds } = get();
+    const tempReactionId = 1000000 + Date.now(); // Generate temp ID
+    
+    // Mark as pending to prevent duplicates
+    get().markReactionAsPending(tempReactionId);
+
+    set((state) => {
+      const postIndex = state.posts.findIndex(p => p.id === postId);
+      if (postIndex === -1) {
+        console.warn(`Post ${postId} not found in store`);
+        return state;
+      }
+
+      return {
+        posts: state.posts.map((post) => {
+          if (post.id !== postId) return post;
+          
+          const updater = (comment: Comment) => {
+            const hasExistingReaction = comment.reaction_comments?.some(
+              (r: any) => r.user_id === userId && r.emoji === emoji
+            );
+            
+            if (hasExistingReaction) return comment;
+            
+            const tempReaction = {
+              id: tempReactionId,
+              user_id: userId,
+              comment_id: commentId,
+              emoji,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            };
+            
+            const filteredReactions = comment.reaction_comments?.filter(
+              (r: any) => r.user_id !== userId
+            ) || [];
+            
+            return {
+              ...comment,
+              reaction_comments: [...filteredReactions, tempReaction],
+              reaction_comments_count: (comment.reaction_comments_count || 0) + 1
+            };
+          };
+
+          return {
+            ...post,
+            comments: updateCommentInTree(post.comments, commentId, updater)
+          };
+        })
+      };
+    });
+  },
+
+  updateCommentReactions: (postId, commentId, newReaction, counts = null) => {
+    const { pendingReactionIds } = get();
+    
+    if (pendingReactionIds.has(newReaction.id)) {
+      console.log('🔄 Skipping duplicate comment reaction:', newReaction.id);
+      return;
+    }
+
     set((state) => {
       const postIndex = state.posts.findIndex((p) => p.id === postId);
       if (postIndex === -1) {
@@ -251,79 +422,38 @@ export const usePostStore = create<PostStore>((set, get) => ({
           };
         }),
       };
-    }),
-
-  removeCommentReaction: (postId, commentId, userId, updatedCounts = [], updatedCountNumber = null) => set((state) => {
-    const postIndex = state.posts.findIndex(p => p.id === postId);
-    if (postIndex === -1) return state;
-
-    return {
-      posts: state.posts.map((post) => {
-        if (post.id !== postId) return post;
-
-        const updater = (comment: Comment) => {
-          const filteredReactions = comment.reaction_comments?.filter(
-            (r: any) => r.user_id !== userId
-          ) || [];
-
-          return {
-            ...comment,
-            reaction_comments: filteredReactions,
-            reaction_counts: updatedCounts,
-            reaction_comments_count: updatedCountNumber ?? filteredReactions.length
-          };
-        };
-
-        return {
-          ...post,
-          comments: updateCommentInTree(post.comments, commentId, updater)
-        };
-      })
-    };
-  }),
-  
-  // Comment operations
-  addPostComment: (postId, comment) => {
-    set((state) => ({
-      posts: state.posts.map((post) => {
-        if (post.id !== postId) return post;
-        
-        const newComments = comment.parent_id
-          ? addReplyToComment(post.comments || [], comment)
-          : [...(post.comments || []), comment];
-        
-        return {
-          ...post,
-          comments: newComments,
-          comments_count: (post.comments_count || 0) + 1
-        };
-      }),
-    }));
+    });
   },
-  
-  updatePostWithNewComment: (postId, comment) => {
-    set((state) => ({
-      posts: state.posts.map((post) => {
-        if (post.id !== postId) return post;
-        
-        const currentComments = post.comments || [];
-        
-        if (comment.parent_id) {
+
+  removeCommentReaction: (postId, commentId, userId, updatedCounts = [], updatedCountNumber = null) => 
+    set((state) => {
+      const postIndex = state.posts.findIndex(p => p.id === postId);
+      if (postIndex === -1) return state;
+
+      return {
+        posts: state.posts.map((post) => {
+          if (post.id !== postId) return post;
+
+          const updater = (comment: Comment) => {
+            const filteredReactions = comment.reaction_comments?.filter(
+              (r: any) => r.user_id !== userId
+            ) || [];
+
+            return {
+              ...comment,
+              reaction_comments: filteredReactions,
+              reaction_counts: updatedCounts,
+              reaction_comments_count: updatedCountNumber ?? filteredReactions.length
+            };
+          };
+
           return {
             ...post,
-            comments: addReplyToComment(currentComments, comment),
-            comments_count: post.comments_count
+            comments: updateCommentInTree(post.comments, commentId, updater)
           };
-        }
-        
-        return {
-          ...post,
-          comments: [...currentComments, comment],
-          comments_count: (post.comments_count || 0) + 1
-        };
-      }),
-    }));
-  },
+        })
+      };
+    }),
 
   updateCommentWithServerData: (postId, commentId, serverComment) => set((state) => {
     const postIndex = state.posts.findIndex(p => p.id === postId);
@@ -377,44 +507,40 @@ export const usePostStore = create<PostStore>((set, get) => ({
     };
   }),
 
-  // REAL-TIME METHODS - FIXED AND ENHANCED
+  // REAL-TIME METHODS
   initializeRealtime: (token: string) => {
     console.log('🔄 Initializing real-time connection...');
     PusherService.initialize(token);
   },
   
-  // OPTION A: Individual post subscriptions (if using individual channels)
-  subscribeToPost: (postId: number) => {
-    if (!PusherService.isReady()) {
-      console.warn('⚠️ Pusher not ready, delaying subscription to post:', postId);
-      setTimeout(() => {
-        get().subscribeToPost(postId);
-      }, 1000);
-      return;
-    }
+  // subscribeToPost: (postId: number) => {
+  //   if (!PusherService.isReady()) {
+  //     console.warn('⚠️ Pusher not ready, delaying subscription to post:', postId);
+  //     setTimeout(() => {
+  //       get().subscribeToPost(postId);
+  //     }, 1000);
+  //     return;
+  //   }
     
-    console.log(`🔄 Subscribing to individual post ${postId}`);
+  //   console.log(`🔄 Subscribing to individual post ${postId}`);
     
-    const handleNewComment = (data: any) => {
-      console.log('📝 Individual post comment received:', data);
-      get().handleNewComment(data);
-    };
+  //   const handleNewComment = (data: any) => {
+  //     console.log('📝 Individual post comment received:', data);
+  //     get().handleNewComment(data);
+  //   };
     
-    const handleNewReaction = (data: any) => {
-      console.log('❤️ Individual post reaction received:', data);
-      get().handleNewReaction(data);
-    };
+  //   const handleNewReaction = (data: any) => {
+  //     console.log('❤️ Individual post reaction received:', data);
+  //     get().handleNewReaction(data);
+  //   };
     
-    // Use individual post subscription
-    PusherService.subscribeToIndividualPost(postId, handleNewComment, handleNewReaction);
+  //   PusherService.subscribeToIndividualPost(postId, handleNewComment, handleNewReaction);
     
-    // Track subscription
-    set((state) => ({
-      subscribedPostIds: [...state.subscribedPostIds, postId]
-    }));
-  },
+  //   set((state) => ({
+  //     subscribedPostIds: [...state.subscribedPostIds, postId]
+  //   }));
+  // },
   
-  // OPTION B: Global channel approach (if using posts.global)
   subscribeToPosts: (postIds: number[]) => {
     if (!PusherService.isReady()) {
       console.warn('⚠️ Pusher not ready, delaying global subscription');
@@ -435,12 +561,121 @@ export const usePostStore = create<PostStore>((set, get) => ({
       console.log('❤️ Global channel reaction received:', data);
       get().handleNewReaction(data);
     };
+
+    const handleCommentReaction = (data: any) => {
+      console.log('💖 Global channel comment reaction received:', data);
+      get().handleCommentReaction(data);
+    };
+
+    const handleNewPost = (data: any) => {
+      console.log('📝 Global channel new post received:', data);
+      get().handleNewPost(data);
+    };
+
+    const handlePostUpdated = (data: any) => {
+      console.log('✏️ Global channel post updated:', data);
+      get().handlePostUpdated(data);
+    };
+
+    const handlePostDeleted = (data: any) => {
+      console.log('🗑️ Global channel post deleted:', data);
+      get().handlePostDeleted(data);
+    };
     
-    // Use global posts subscription
-    PusherService.subscribeToPosts(postIds, handleNewComment, handleNewReaction);
+    PusherService.subscribeToPosts(
+      postIds, 
+      handleNewComment, 
+      handleNewReaction,
+      handleCommentReaction,
+      handleNewPost,
+      handlePostUpdated,
+      handlePostDeleted
+    );
+  },
+
+  // Add these new event handlers to your PostStore
+  handleCommentReaction: (data) => {
+    const { posts, pendingReactionIds } = get();
+    
+    // Mark this reaction as pending to prevent API duplicates
+    get().markReactionAsPending(data.reaction.id);
+
+    const updatedPosts = posts.map(post => {
+      if (post.id === data.postId) {
+        const updater = (comment: Comment) => {
+          if (comment.id === data.commentId) {
+            const existingReactions = comment.reaction_comments || [];
+            const alreadyReacted = existingReactions.some(
+              (r: any) => r.user_id === data.reaction.user_id && r.emoji === data.reaction.emoji
+            );
+            
+            if (!alreadyReacted) {
+              console.log('✅ Adding new comment reaction via real-time:', data.reaction.id);
+              return {
+                ...comment,
+                reaction_comments: [...existingReactions, data.reaction],
+                reaction_comments_count: (comment.reaction_comments_count || 0) + 1
+              };
+            }
+          }
+          return comment;
+        };
+
+        return {
+          ...post,
+          comments: updateCommentInTree(post.comments, data.commentId, updater)
+        };
+      }
+      return post;
+    });
+    set({ posts: updatedPosts });
+  },
+
+  handleNewPost: (data) => {
+    const { posts, pendingPostIds } = get();
+    
+    // Mark this post as pending to prevent API duplicates
+    get().markPostAsPending(data.post.id);
+
+    // Check if post already exists
+    const postExists = posts.some(post => post.id === data.post.id);
+    
+    if (!postExists) {
+      console.log('✅ Adding new post via real-time:', data.post.id);
+      set((state) => ({
+        posts: [data.post, ...state.posts]
+      }));
+    } else {
+      console.log('🔄 Post already exists, skipping duplicate:', data.post.id);
+    }
+  },
+
+  handlePostUpdated: (data) => {
+    const { posts } = get();
+    
+    const updatedPosts = posts.map(post => {
+      if (post.id === data.postId) {
+        console.log('✅ Updating post via real-time:', data.postId);
+        return {
+          ...post,
+          ...data.post, // Merge updated post data
+          updated_at: new Date().toISOString()
+        };
+      }
+      return post;
+    });
+    set({ posts: updatedPosts });
+  },
+
+  handlePostDeleted: (data) => {
+    const { posts } = get();
+    
+    console.log('🗑️ Removing post via real-time:', data.postId);
+    set((state) => ({
+      posts: state.posts.filter(post => post.id !== data.postId)
+    }));
   },
   
-  // SIMPLIFIED: Just unsubscribe from global channel
   unsubscribeFromAllPosts: () => {
     console.log('🔄 Unsubscribing from all posts');
     PusherService.unsubscribeFromChannel('posts.global');
@@ -454,12 +689,14 @@ export const usePostStore = create<PostStore>((set, get) => ({
       subscribedPostIds: state.subscribedPostIds.filter(id => id !== postId)
     }));
   },
-  
 
-  
-  // Event handlers
+  // REAL-TIME EVENT HANDLERS WITH DUPLICATE PREVENTION
   handleNewComment: (data) => {
-    const { posts } = get();
+    const { posts, pendingCommentIds } = get();
+    
+    // Mark this comment as pending to prevent API duplicates
+    get().markCommentAsPending(data.comment.id);
+
     const updatedPosts = posts.map(post => {
       if (post.id === data.postId) {
         const existingComments = post.comments || [];
@@ -470,7 +707,7 @@ export const usePostStore = create<PostStore>((set, get) => ({
           return post;
         }
 
-        console.log('✅ Adding new comment to post:', data.postId);
+        console.log('✅ Adding new comment via real-time:', data.comment.id);
         return {
           ...post,
           comments: [...existingComments, data.comment],
@@ -483,7 +720,11 @@ export const usePostStore = create<PostStore>((set, get) => ({
   },
   
   handleNewReaction: (data) => {
-    const { posts } = get();
+    const { posts, pendingReactionIds } = get();
+    
+    // Mark this reaction as pending to prevent API duplicates
+    get().markReactionAsPending(data.reaction.id);
+
     const updatedPosts = posts.map(post => {
       if (post.id === data.postId) {
         const existingReactions = post.reactions || [];
@@ -502,7 +743,7 @@ export const usePostStore = create<PostStore>((set, get) => ({
         );
         
         if (!alreadyReacted) {
-          console.log('✅ Adding new reaction to post:', data.postId);
+          console.log('✅ Adding new reaction via real-time:', data.reaction.id);
           return {
             ...post,
             reactions: [...existingReactions, data.reaction],
@@ -519,6 +760,9 @@ export const usePostStore = create<PostStore>((set, get) => ({
     const { posts } = get();
     console.log('🗑️ Handling comment deletion:', data);
     
+    // Clear from pending set
+    get().clearPendingComment(data.commentId);
+
     const updatedPosts = posts.map(post => {
       if (post.id === data.postId) {
         const removeCommentAndReplies = (comments: Comment[]): Comment[] => {
@@ -541,13 +785,15 @@ export const usePostStore = create<PostStore>((set, get) => ({
       return post;
     });
     set({ posts: updatedPosts });
-    console.log('✅ Comment deleted via real-time');
   },
 
   handleReactionDeleted: (data) => {
     const { posts } = get();
     console.log('❌ Handling reaction deletion:', data);
     
+    // Clear from pending set
+    get().clearPendingReaction(data.reactionId);
+
     const updatedPosts = posts.map(post => {
       if (post.id === data.postId) {
         const existingReactions = post.reactions || [];
@@ -568,7 +814,6 @@ export const usePostStore = create<PostStore>((set, get) => ({
       return post;
     });
     set({ posts: updatedPosts });
-    console.log('✅ Reaction deleted via real-time');
   },
   
   disconnectRealtime: () => {
@@ -578,7 +823,7 @@ export const usePostStore = create<PostStore>((set, get) => ({
   },
 }));
 
-// Helper functions (UNCHANGED)
+// Helper functions (keep the same)
 function updateReactionCounts(
   counts: Array<{ emoji: string; count: number }>,
   emoji: string,

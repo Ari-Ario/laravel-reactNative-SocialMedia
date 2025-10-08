@@ -104,6 +104,7 @@ class PostController extends Controller
         }
     }
 
+    // store method
     public function store(Request $request)
     {
         $request->validate([
@@ -116,6 +117,7 @@ class PostController extends Controller
             'user_id' => Auth::id(),
             'caption' => $request->caption
         ]);
+        
         if ($request->hasFile('media')) {
             foreach ($request->file('media') as $file) {
                 $type = $this->getMediaType($file->getMimeType());
@@ -135,10 +137,12 @@ class PostController extends Controller
         // Load the post with relationships before broadcasting
         $post->load('user', 'media');
         
-        // Broadcast the new post event with user info
-        broadcast(new NewPost($post->id, Auth::id(), Auth::user()->name));
+        // ✅ FIX: Get follower IDs and pass to event
+        $followerIds = Auth::user()->followers()->pluck('users.id')->toArray();
+        
+        broadcast(new NewPost($post, $followerIds));
 
-        return response()->json($post->load('user', 'media'));
+        return response()->json($post);
     }
 
 
@@ -150,7 +154,10 @@ class PostController extends Controller
                 'message' => 'Unauthorized: You can only delete your own posts'
             ], 403);
         }
+        
+        $postToDelete = Post::findOrFail($post->id);
 
+         // Use transaction to ensure data integrity
         try {
             DB::beginTransaction();
 
@@ -170,8 +177,16 @@ class PostController extends Controller
             $post->delete();
 
             DB::commit();
+            
             // Broadcast the deletion of post
-            broadcast(new PostDeleted($post->id));
+            $followerIds = Auth::user()->followers()->pluck('users.id')->toArray();
+        
+            broadcast(new PostDeleted(
+                $postToDelete,
+                $followerIds,
+                Auth::id(),
+                Auth::user()->name
+            ));
 
             return response()->json([
                 'message' => 'Post deleted successfully',
@@ -275,12 +290,17 @@ class PostController extends Controller
 
         // Broadcast update event only if there were actual changes
         if (!empty($updatedFields)) {
+            // ✅ GET FOLLOWER IDs
+            $followerIds = Auth::user()->followers()->pluck('users.id')->toArray();
+            
+            // ✅ USE SINGLE EVENT FOR BOTH REAL-TIME UPDATES AND NOTIFICATIONS
             broadcast(new PostUpdated(
                 $post->id, 
                 Auth::id(), 
                 Auth::user()->name, 
                 $changes, 
-                $updatedFields
+                $updatedFields,
+                $followerIds // ✅ PASS FOLLOWER IDs
             ));
 
             Log::info('✅ Post updated and broadcasted', [
@@ -288,12 +308,8 @@ class PostController extends Controller
                 'user_id' => Auth::id(),
                 'user_name' => Auth::user()->name,
                 'updated_fields' => $updatedFields,
-                'changes' => $changes
-            ]);
-        } else {
-            Log::info('ℹ️ Post update called but no changes detected', [
-                'post_id' => $post->id,
-                'user_id' => Auth::id()
+                'changes' => $changes,
+                'follower_count' => count($followerIds)
             ]);
         }
 

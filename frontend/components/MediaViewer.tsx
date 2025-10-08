@@ -296,7 +296,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
                   style={styles.captionText}
                   numberOfLines={showFullCaption ? undefined : 1}
                 >
-                  {post.caption}
+                  {post.caption.substring(0, 30)}
                 </Text>
               </TouchableOpacity>
             </Animated.View>

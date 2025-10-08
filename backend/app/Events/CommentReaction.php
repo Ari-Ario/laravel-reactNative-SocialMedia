@@ -27,15 +27,22 @@ class CommentReaction implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        return [
-            new Channel('posts.global'),
-            new Channel('user.' . $this->commentOwnerId),
+        $channels = [
+            new Channel('posts.global'), // For real-time feed updates
         ];
+        
+        // ✅ FIX: Always broadcast to posts.global for real-time updates
+        // Only send notifications if it's not the comment owner reacting
+        if ($this->commentOwnerId != auth()->id()) {
+            $channels[] = new Channel('user.' . $this->commentOwnerId); // For notifications
+        }
+        
+        return $channels;  
     }
 
     public function broadcastAs()
     {
-        return 'comment-reaction'; // ✅ Use consistent naming
+        return 'comment-reaction'; // ✅ Matches frontend
     }
 
     public function broadcastWith()
@@ -45,10 +52,11 @@ class CommentReaction implements ShouldBroadcast
             'commentId' => $this->commentId,
             'postId' => $this->postId,
             'commentOwnerId' => $this->commentOwnerId,
-            // ✅ ADD NOTIFICATION METADATA
+            // ✅ FIX: Use consistent data structure
             'type' => 'comment_reaction',
             'title' => 'Comment Reaction',
             'message' => $this->reaction->user->name . ' reacted to your comment',
+            'timestamp' => now()->toISOString()
         ];
     }
 }

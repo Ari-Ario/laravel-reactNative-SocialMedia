@@ -69,7 +69,10 @@ export default function RootLayout() {
   useEffect(() => {
     if (!isReady) return;
 
-    if (pathname?.startsWith('/story/') || pathname?.startsWith('/profile-preview') || pathname?.startsWith('/CreatPost') || pathname?.startsWith('/chats')) {
+    if (pathname?.startsWith('/story/') 
+      || pathname?.startsWith('/profile-preview') 
+      || pathname?.startsWith('/CreatPost') 
+      || pathname?.startsWith('/chats')) {
       return;
     }
 
@@ -91,10 +94,10 @@ export default function RootLayout() {
       router.replace('/settings');
     }
 
-    if (pathname?.startsWith('/chatbotTraining')) {
+      // Handle chatbot and chatbotTraining routes more robustly because of same prefix .startsWith() 'chatbot'
+    if (pathname === '/chatbotTraining' || pathname?.startsWith('/chatbotTraining/')) {
       router.replace('/chatbotTraining');
-    }
-    if (pathname?.startsWith('/chatbot')) {
+    } else if (pathname === '/chatbot' || pathname?.startsWith('/chatbot/')) {
       router.replace('/chatbot');
     }
   }, [isReady, user, pathname]);

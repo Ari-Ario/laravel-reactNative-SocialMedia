@@ -92,132 +92,185 @@ class PusherService {
   }
 
   // OPTIMIZED: Subscribe to user notifications with ALL event types
-subscribeToUserNotifications(userId: number, onNotification: (data: any) => void): boolean {
-  if (!this.pusher || !this.isInitialized) {
-    console.warn('⚠️ Pusher not initialized. Skipping notification subscription.');
-    return false;
-  }
-  
-  try {
-    const channelName = `user.${userId}`;
-    
-    if (this.channels.has(channelName)) {
-      console.log(`ℹ️ Already subscribed to user notifications: ${channelName}`);
-      return true;
+  subscribeToUserNotifications(userId: number, onNotification: (data: any) => void): boolean {
+    if (!this.pusher || !this.isInitialized) {
+      console.warn('⚠️ Pusher not initialized. Skipping notification subscription.');
+      return false;
     }
     
-    const channel = this.pusher.subscribe(channelName);
-    
-    // ✅ PROPERLY FORMAT NOTIFICATIONS FOR THE STORE
-    channel.bind('new-comment', (data: any) => {
-      console.log('💬 New comment notification received:', data);
+    try {
+      const channelName = `user.${userId}`;
       
-      const notification = {
-        type: 'comment',
-        title: 'New Comment',
-        message: `${data.comment.user?.name || 'Someone'} commented: "${data.comment.content?.substring(0, 30)}..."`,
-        data: data,
-        userId: data.comment.user_id,
-        postId: data.postId,
-        commentId: data.comment.id,
-        avatar: data.comment.user?.profile_photo,
-        createdAt: new Date()
-      };
+      if (this.channels.has(channelName)) {
+        console.log(`ℹ️ Already subscribed to user notifications: ${channelName}`);
+        return true;
+      }
       
-      console.log('💬 SENDING TO NOTIFICATION STORE:', notification);
-      onNotification(notification);
-    });
-    
-    // ✅ FIX: Update other bindings too if they use broadcastAs
-    channel.bind('new-reaction', (data: any) => {
-      console.log('❤️ New reaction notification:', data);
+      const channel = this.pusher.subscribe(channelName);
       
-      const notification = {
-        type: 'reaction',
-        title: 'New Reaction',
-        message: `${data.reaction.user?.name || 'Someone'} reacted with ${data.reaction.emoji}`,
-        data: data,
-        userId: data.reaction.user_id,
-        postId: data.postId,
-        avatar: data.reaction.user?.profile_photo,
-        createdAt: new Date()
-      };
+      // ✅ PROPERLY FORMAT NOTIFICATIONS FOR THE STORE
+      channel.bind('new-comment', (data: any) => {
+        console.log('💬 New comment notification received:', data);
+        
+        const notification = {
+          type: 'comment',
+          title: 'New Comment',
+          message: `${data.comment.user?.name || 'Someone'} commented: "${data.comment.content?.substring(0, 30)}..."`,
+          data: data,
+          userId: data.comment.user_id,
+          postId: data.postId,
+          commentId: data.comment.id,
+          avatar: data.comment.user?.profile_photo,
+          createdAt: new Date()
+        };
+        
+        console.log('💬 SENDING TO NOTIFICATION STORE:', notification);
+        onNotification(notification);
+      });
       
-      console.log('❤️ SENDING TO NOTIFICATION STORE:', notification);
-      onNotification(notification);
-    });
+      // ✅ FIX: Update other bindings too if they use broadcastAs
+      channel.bind('new-reaction', (data: any) => {
+        console.log('❤️ New reaction notification:', data);
+        
+        const notification = {
+          type: 'reaction',
+          title: 'New Reaction',
+          message: `${data.reaction.user?.name || 'Someone'} reacted with ${data.reaction.emoji} on post: "${data.reaction.post.caption.substring(0, 50)}..."`,
+          data: data,
+          userId: data.reaction.user_id,
+          postId: data.postId,
+          avatar: data.reaction.user?.profile_photo,
+          createdAt: new Date()
+        };
+        
+        console.log('❤️ SENDING TO NOTIFICATION STORE:', notification);
+        onNotification(notification);
+      });
 
-    channel.bind('comment-reaction', (data: any) => {
-      console.log('💖 New comment reaction:', data);
-      
-      const notification = {
-        type: data.type || 'comment_reaction',
-        title: data.title || 'Comment Reaction',
-        message: data.message || `${data.reaction.user?.name || 'Someone'} reacted to your comment with ${data.reaction.emoji}`,
-        data: data,
-        userId: data.reaction.user_id,
-        postId: data.postId,
-        commentId: data.reaction.comment_id,
-        avatar: data.reaction.user?.profile_photo,
-        createdAt: new Date()
-      };
-      
-      console.log('💖 SENDING TO NOTIFICATION STORE:', notification);
-      onNotification(notification);
-    });
+      channel.bind('comment-reaction', (data: any) => {
+        console.log('💖 New comment reaction:', data);
+        
+        const notification = {
+          type: data.type || 'comment_reaction',
+          title: data.title || 'Comment Reaction',
+          message: `${data.reaction.user?.name || 'Someone'} reacted to your comment "${data.reaction.comment.content.substring(0, 50)}..." with ${data.reaction.emoji}` || data.message ,
+          data: data,
+          userId: data.reaction.user_id,
+          postId: data.postId,
+          commentId: data.reaction.comment_id,
+          avatar: data.reaction.user?.profile_photo,
+          createdAt: new Date()
+        };
+        
+        console.log('💖 SENDING TO NOTIFICATION STORE:', notification);
+        onNotification(notification);
+      });
 
-    channel.bind('new-follower', (data: any) => {
-      console.log('👤 New follower:', data);
-      
-      const notification = {
-        type: data.type || 'new_follower',
-        title: data.title || 'New Follower',
-        message: data.message || `${data.follower.name} started following you`,
-        data: data,
-        userId: data.follower.id,
-        avatar: data.follower.profile_photo,
-        createdAt: new Date()
-      };
-      
-      console.log('👤 SENDING TO NOTIFICATION STORE:', notification);
-      onNotification(notification);
-    });
+      channel.bind('new-follower', (data: any) => {
+        console.log('👤 New follower:', data);
+        
+        const notification = {
+          type: data.type || 'new_follower',
+          title: data.title || 'New Follower',
+          message: data.message || `${data.follower.name} started following you`,
+          data: data,
+          userId: data.follower.id,
+          avatar: data.follower.profile_photo,
+          createdAt: new Date()
+        };
+        
+        console.log('👤 SENDING TO NOTIFICATION STORE:', notification);
+        onNotification(notification);
+      });
 
-    channel.bind('new-post', (data: any) => {
-      console.log('📝 New post from followed user:', data);
-      
-      const notification = {
-        type: data.type || 'new_post',
-        title: data.title || 'New Post',
-        message: data.message || `${data.post.user.name} created a new post: "${data.post.content?.substring(0, 30)}..."`,
-        data: data,
-        userId: data.post.user_id,
-        postId: data.post.id,
-        avatar: data.post.user.profile_photo,
-        createdAt: new Date()
-      };
-      
-      console.log('📝 SENDING TO NOTIFICATION STORE:', notification);
-      onNotification(notification);
-    });
+      channel.bind('new-post', (data: any) => {
+        console.log('📝 New post notification:', data);
+        
+        const notification = {
+          type: data.type || 'new_post',
+          title: data.title || 'New Post',
+          message: `${data.post.user.name} created a new post: ${data.post.caption.substring(0, 30)}...` || data.message,
+          data: data,
+          userId: data.post.user_id,
+          postId: data.post.id,
+          avatar: data.post.user.profile_photo,
+          createdAt: new Date()
+        };
+        
+        console.log('📝 SENDING TO NOTIFICATION STORE:', notification);
+        onNotification(notification);
+      });
 
-    // Add more event types as needed...
+      channel.bind('post-updated', (data: any) => {
+        console.log('✏️ Post updated notification:', data);
+        
+        const notification = {
+          type: data.type || 'post_updated',
+          title: data.title || 'Post Updated',
+          message: `${data.userName} updated a post : ${data.changes.caption?.new.substring(0, 30)}...` || data.message,
+          data: data,
+          userId: data.userId,    // ✅ Use userId instead of data.post.user_id
+          postId: data.postId,    // ✅ Use postId instead of data.post.id
+          avatar: data.profile_photo,           // Your current event doesn't send avatar
+          createdAt: new Date()
+        };
+        
+        console.log('✏️ SENDING TO NOTIFICATION STORE:', notification);
+        onNotification(notification);
+      });
 
-    channel.bind('pusher:subscription_succeeded', () => {
-      console.log(`✅ SUBSCRIBED TO USER NOTIFICATIONS: ${channelName}`);
-    });
-    
-    channel.bind('pusher:subscription_error', (error: any) => {
-      console.error(`❌ NOTIFICATION SUBSCRIPTION ERROR:`, error);
-    });
-    
-    this.channels.set(channelName, channel);
-    return true;
-  } catch (error) {
-    console.error(`❌ ERROR SUBSCRIBING TO NOTIFICATIONS:`, error);
-    return false;
+      channel.bind('post-deleted', (data: any) => {
+        console.log('✏️ Post deleted notification:', data);
+        
+        const notification = {
+          type: data.type || 'post_deleted',
+          title: data.title || 'Post deleted',
+          message: `${data.userName} deleted post` || data.message,
+          data: data,
+          userId: data.userId,
+          postId: data.postId,
+          avatar: data.profile_photo,
+          createdAt: new Date()
+        };
+        
+        console.log('✏️ SENDING TO NOTIFICATION STORE:', notification);
+        onNotification(notification);
+      });
+
+      channel.bind('chatbot-training-needed', (data: any) => {
+        console.log('🤖 Chatbot training notification (user channel):', data);
+        
+        const notification = {
+          type: data.type || 'chatbot_training',
+          title: data.title || 'Chatbot Training Needed',
+          message: `New training data: "${data.question}"` || data.message.substring(0, 60) + '...',
+          data: data,
+          question: data.question,
+          category: data.category,
+          keywords: data.keywords,
+          timestamp: new Date(data.timestamp),
+          createdAt: new Date()
+        };
+        
+        console.log('🤖 SENDING TO NOTIFICATION STORE:', notification);
+        onNotification(notification);
+      });
+
+      channel.bind('pusher:subscription_succeeded', () => {
+        console.log(`✅ SUBSCRIBED TO USER NOTIFICATIONS: ${channelName}`);
+      });
+      
+      channel.bind('pusher:subscription_error', (error: any) => {
+        console.error(`❌ NOTIFICATION SUBSCRIPTION ERROR:`, error);
+      });
+      
+      this.channels.set(channelName, channel);
+      return true;
+    } catch (error) {
+      console.error(`❌ ERROR SUBSCRIBING TO NOTIFICATIONS:`, error);
+      return false;
+    }
   }
-}
 
   // Make sure you have this method:
   unsubscribeFromUserNotifications(userId: number): void {
@@ -225,8 +278,16 @@ subscribeToUserNotifications(userId: number, onNotification: (data: any) => void
     this.unsubscribeFromChannel(channelName);
   }
 
-  // In the same PusherService.ts - update posts global binding
-  subscribeToPosts(postIds: number[], onNewComment: (data: any) => void, onNewReaction: (data: any) => void): boolean {
+  // UPDATED: Enhanced posts.global subscription with all event types
+  subscribeToPosts(
+    postIds: number[], 
+    onNewComment: (data: any) => void, 
+    onNewReaction: (data: any) => void,
+    onCommentReaction: (data: any) => void,
+    onNewPost: (data: any) => void,
+    onPostUpdated: (data: any) => void,
+    onPostDeleted: (data: any) => void
+  ): boolean {
     if (!this.pusher || !this.isInitialized) {
       console.warn('⚠️ Pusher not initialized. Skipping global posts subscription.');
       return false;
@@ -242,16 +303,15 @@ subscribeToUserNotifications(userId: number, onNotification: (data: any) => void
 
       const channel = this.pusher.subscribe(channelName);
       
-      // ✅ FIX: Use 'new-comment' here too
+      // Comments
       channel.bind('new-comment', (data: any) => {
-        // Only handle if it's for one of our posts
         if (postIds.includes(data.postId)) {
           console.log('💬 Global channel: Relevant comment for post:', data.postId);
           onNewComment(data);
         }
       });
       
-      // ✅ FIX: Use 'new-reaction' if your reaction event uses broadcastAs
+      // Post Reactions
       channel.bind('new-reaction', (data: any) => {
         if (postIds.includes(data.postId)) {
           console.log('❤️ Global channel: Relevant reaction for post:', data.postId);
@@ -259,8 +319,49 @@ subscribeToUserNotifications(userId: number, onNotification: (data: any) => void
         }
       });
 
+      // New Posts
+      channel.bind('new-post', (data: any) => {
+        console.log('📝 Global channel: New post received:', data.post?.id);
+        onNewPost(data);
+      });
+      
+      // Comment Reactions
+      channel.bind('comment-reaction', (data: any) => {
+        if (postIds.includes(data.postId)) {
+          console.log('💖 Global channel: Relevant comment reaction for post:', data.postId);
+          onCommentReaction(data);
+        }
+      });
+
+
+      // Post Updates
+      channel.bind('post-updated', (data: any) => {
+        if (postIds.includes(data.postId)) {
+          console.log('✏️ Global channel: Post updated:', data.postId);
+          onPostUpdated(data);
+        }
+      });
+
+      // Post Deletions
+      channel.bind('post-deleted', (data: any) => {
+        if (postIds.includes(data.postId)) {
+          console.log('🗑️ Global channel: Post deleted:', data.postId);
+          onPostDeleted(data);
+        }
+      });
+
+      // Chatbot Training (if relevant to posts)
+      channel.bind('chatbot-training-needed', (data: any) => {
+        console.log('🤖 Global channel: Chatbot training needed');
+        // You might want to handle this differently for posts channel
+      });
+
       channel.bind('pusher:subscription_succeeded', () => {
         console.log(`✅ SUBSCRIBED TO GLOBAL POSTS CHANNEL for ${postIds.length} posts`);
+      });
+      
+      channel.bind('pusher:subscription_error', (error: any) => {
+        console.error(`❌ GLOBAL POSTS SUBSCRIPTION ERROR:`, error);
       });
       
       this.channels.set(channelName, channel);
@@ -272,18 +373,35 @@ subscribeToUserNotifications(userId: number, onNotification: (data: any) => void
   }
 
   // Update post subscriptions when posts change
-  updatePostSubscriptions(postIds: number[], onNewComment: (data: any) => void, onNewReaction: (data: any) => void): boolean {
+  updatePostSubscriptions(
+    postIds: number[], 
+    onNewComment: (data: any) => void, 
+    onNewReaction: (data: any) => void,
+    onCommentReaction: (data: any) => void,
+    onNewPost: (data: any) => void,
+    onPostUpdated: (data: any) => void,
+    onPostDeleted: (data: any) => void
+  ): boolean {
     // First unsubscribe from old channel
     this.unsubscribeFromChannel('posts.global');
     
     // Then subscribe with new post list
-    return this.subscribeToPosts(postIds, onNewComment, onNewReaction);
+    return this.subscribeToPosts(
+      postIds, 
+      onNewComment, 
+      onNewReaction, 
+      onCommentReaction, 
+      onNewPost, 
+      onPostUpdated, 
+      onPostDeleted
+    );
   }
   
   unsubscribeFromIndividualPost(postId: number): void {
     const channelName = `post.${postId}`;
     this.unsubscribeFromChannel(channelName);
   }
+
   // Generic unsubscribe method
   unsubscribeFromChannel(channelName: string): void {
     const channel = this.channels.get(channelName);

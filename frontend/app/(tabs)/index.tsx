@@ -44,72 +44,61 @@ const HomePage = () => {
   const [storyGroups, setStoryGroups] = useState<StoryGroup[]>([]);
   const { posts, setPosts } = usePostStore();
   const [isTokenReady, setIsTokenReady] = useState(false);
-const { 
-  unreadCount, 
-  setNotificationPanelVisible, 
-  isNotificationPanelVisible,
-  initializeRealtime,
-  disconnectRealtime,
-  addNotification,
-  setCurrentUserId
-} = useNotificationStore();
+  const { 
+    unreadCount, 
+    setNotificationPanelVisible, 
+    isNotificationPanelVisible,
+    initializeRealtime,
+    disconnectRealtime,
+    addNotification,
+    setCurrentUserId
+  } = useNotificationStore();
 
-// ✅ FIX: Simplified real-time initialization
-useEffect(() => {
-  let isMounted = true;
+  // ✅ FIX: Simplified real-time initialization
+  useEffect(() => {
+    let isMounted = true;
 
-  const initializeRealTimeSystems = async () => {
-    try {
-      const token = await getToken();
-      if (token && user?.id && isMounted) {
-        setIsTokenReady(true);
-        
-        console.log('🔐 Initializing real-time systems for user:', user.id);
-        
-        // Set user ID first
-        setCurrentUserId(user.id);
-        
-        // Initialize notification real-time
-        const success = initializeRealtime(token, user.id);
-        
-        if (success) {
-          console.log('✅ Notification real-time initialized successfully');
+    const initializeRealTimeSystems = async () => {
+      try {
+        const token = await getToken();
+        if (token && user?.id && isMounted) {
+          setIsTokenReady(true);
+          
+          console.log('🔐 Initializing real-time systems for user:', user.id);
+          
+          // Set user ID first
+          setCurrentUserId(user.id);
+          
+          // Initialize notification real-time
+          const success = initializeRealtime(token, user.id);
+          
+          if (success) {
+            console.log('✅ Notification real-time initialized successfully');
+          } else {
+            console.warn('⚠️ Notification real-time initialization failed');
+          }
         } else {
-          console.warn('⚠️ Notification real-time initialization failed');
+          console.warn('⚠️ No token or user ID available for real-time updates');
+          setIsTokenReady(true);
         }
-      } else {
-        console.warn('⚠️ No token or user ID available for real-time updates');
+      } catch (error) {
+        console.error('❌ Real-time initialization error:', error);
         setIsTokenReady(true);
       }
-    } catch (error) {
-      console.error('❌ Real-time initialization error:', error);
-      setIsTokenReady(true);
-    }
-  };
+    };
 
-  // ✅ FIX: Add delay to avoid conflicts with TabLayout initialization
-  const timer = setTimeout(() => {
-    initializeRealTimeSystems();
-  }, 2000);
+    // ✅ FIX: Add delay to avoid conflicts with TabLayout initialization
+    const timer = setTimeout(() => {
+      initializeRealTimeSystems();
+    }, 2000);
 
-  return () => {
-    isMounted = false;
-    clearTimeout(timer);
-    console.log('🧹 Cleaning up real-time systems');
-    disconnectRealtime();
-  };
-}, [user?.id]);
-
-// ✅ TEST: Add this temporary button to verify it works
-const addTestNotification = () => {
-  addNotification({
-    type: 'test',
-    title: 'Test Notification',
-    message: 'This proves the store is working!',
-    data: { test: true },
-    createdAt: new Date()
-  });
-};
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+      console.log('🧹 Cleaning up real-time systems');
+      disconnectRealtime();
+    };
+  }, [user?.id]);
 
   // Subscribe to posts only when token is ready and posts exist
   useEffect(() => {
@@ -256,14 +245,6 @@ const handleCommentSubmit = async (postId: number, content: string, parentId?: n
         <View style={styles.header}>
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>Home</Text>
-
-
-            <TouchableOpacity 
-              style={styles.testButton}
-              onPress={addTestNotification}
-            >
-              <Text style={styles.testButtonText}>Test Notification</Text>
-            </TouchableOpacity>
 
             <TouchableOpacity 
               style={styles.notificationBell}

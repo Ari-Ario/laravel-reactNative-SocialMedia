@@ -1,6 +1,6 @@
 // components/Notifications/NotificationToast.tsx
 import React, { useEffect } from 'react';
-import { View, Text, TouchableOpacity, Animated, StyleSheet } from 'react-native';
+import { View, Text, Image, TouchableOpacity, Animated, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Notification } from '@/types/Notification';
 
@@ -22,7 +22,6 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
 
   useEffect(() => {
     if (visible) {
-      console.log('🔔 NotificationToast: Showing notification', notification);
       
       // Slide in animation
       Animated.parallel([
@@ -109,6 +108,7 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
       }
     ]}>
       <TouchableOpacity style={styles.toastContent} onPress={onPress}>
+
         <Ionicons name={getIconName()} size={20} color={getIconColor()} />
         <View style={styles.textContainer}>
           <Text style={styles.title} numberOfLines={1}>{notification.title}</Text>
@@ -140,11 +140,11 @@ const styles = StyleSheet.create({
   toastContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    padding: 8,
   },
   textContainer: {
-    flex: 1,
-    marginLeft: 10,
+    // flex: 1,
+    marginLeft: 100,
   },
   title: {
     fontWeight: '600',

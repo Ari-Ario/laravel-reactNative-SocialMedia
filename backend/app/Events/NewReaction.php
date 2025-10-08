@@ -25,10 +25,17 @@ class NewReaction implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        return [
-            new Channel('posts.global'),
-            new Channel('user.' . $this->postOwnerId),
+
+        $channels = [
+            new Channel('posts.global'), // For real-time feed updates
         ];
+        
+        if ($this->postOwnerId != auth()->id()) {
+            $channels[] = new Channel('user.' . $this->postOwnerId); // For notifications to post owner
+        } else {
+            $channels = []; // No notification if the reactor is the post owner
+        }
+        return $channels;
     }
 
     public function broadcastAs()

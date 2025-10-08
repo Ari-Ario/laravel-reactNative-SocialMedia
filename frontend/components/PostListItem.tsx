@@ -12,10 +12,11 @@ import {
   NativeSyntheticEvent,
   Alert,
   Dimensions,
-  Platform
+  Platform,
+  Pressable
 } from 'react-native';
 import { Ionicons, Feather, AntDesign } from '@expo/vector-icons';
-import { useContext, useEffect, useMemo } from 'react';
+import { useContext, useState, useMemo } from 'react';
 import EmojiPicker from 'rn-emoji-keyboard';
 import PostMenu from './PostMenu';
 import ReportPost from './ReportPost';
@@ -55,7 +56,7 @@ export default function PostListItem({
   const { user } = useContext(AuthContext);
   const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
   const { openModal } = useModal();
-  const { posts, updatePost: updatePostInStore } = usePostStore();
+  const { posts, updatePost: updatePostInStore, expandedPostId, toggleExpandedPostId } = usePostStore();
   const currentPost = posts.find(p => p.id === post.id) || post;
 
   // Use the PostListService
@@ -120,8 +121,17 @@ export default function PostListItem({
             <View style={styles.nameCaption}>
               <Text style={styles.username}>{post.user.name}</Text>
               <View style={styles.menuContainer}>
-              {/* Post caption */}
-              {post.caption && <Text style={styles.caption}>{post.caption}</Text>}
+                {post.caption && (
+                  <Pressable onPress={() => toggleExpandedPostId(post.id)}>
+                    <Text style={styles.caption}>
+                      {expandedPostId === post.id
+                        ? post.caption
+                        : post.caption.length > 60
+                          ? `${post.caption.substring(0, 60)} ...`
+                          : post.caption}
+                    </Text>
+                  </Pressable>
+                )}
               </View>
             </View>
             
@@ -412,7 +422,17 @@ const styles = StyleSheet.create({
     padding: 0,
     margin: 0,
     fontSize: 14,
-    minWidth: '80%'
+    color: "#333",
+    minWidth: "90%",
+    flexShrink: 1,
+    flexWrap: "wrap",
+    ...Platform.select({
+      web: {
+        whiteSpace: "pre-wrap",
+        wordBreak: "break-word",
+        maxWidth: 800,
+      },
+    }),
   },
   mediaContainer: {
     marginTop: 8,

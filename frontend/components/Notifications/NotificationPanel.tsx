@@ -7,11 +7,13 @@ import {
   FlatList, 
   StyleSheet, 
   Modal,
+  Image,
   ScrollView 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { Notification } from '@/types/Notification';
+import getApiBaseImage from '@/services/getApiBaseImage';
 
 interface NotificationPanelProps {
   visible: boolean;
@@ -25,13 +27,13 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   const { notifications, markAsRead, removeNotification } = useNotificationStore();
 
   // DEBUG: Log when panel opens
-  React.useEffect(() => {
-    if (visible) {
-      console.log('🔔 Notification Panel Opened');
-      console.log('🔔 Total notifications:', notifications.length);
-      console.log('🔔 Unread count:', notifications.filter(n => !n.isRead).length);
-    }
-  }, [visible, notifications.length]);
+  // React.useEffect(() => {
+  //   if (visible) {
+  //     console.log('🔔 Notification Panel Opened');
+  //     console.log('🔔 Total notifications:', notifications.length);
+  //     console.log('🔔 Unread count:', notifications.filter(n => !n.isRead).length);
+  //   }
+  // }, [visible, notifications.length]);
 
   const renderNotificationItem = ({ item }: { item: Notification }) => (
     <TouchableOpacity 
@@ -44,18 +46,35 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         onClose();
       }}
     >
-      <View style={styles.notificationContent}>
-        <Ionicons 
-          name={getNotificationIcon(item.type)} 
-          size={20} 
-          color={getNotificationColor(item.type)} 
+
+      <TouchableOpacity 
+      style={styles.Foto}
+      // onPress={() => {
+      //   service.setProfileViewUserId(post.user.id);
+      //   service.setProfilePreviewVisible(true);
+      // }}
+      >
+        <Image
+          source={{ uri: `${getApiBaseImage()}/storage/${item.avatar}` || require('@/assets/images/favicon.png') }}
+          style={styles.avatar}
         />
+      </TouchableOpacity>
+
+      <View style={styles.notificationContent}>
         <View style={styles.textContent}>
-          <Text style={styles.notificationTitle}>{item.title}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons 
+              name={getNotificationIcon(item.type)} 
+              size={20} 
+              color={getNotificationColor(item.type)} 
+            />
+            <Text style={styles.notificationTitle}>{item.title}</Text>
+            <Text style={styles.notificationTime}>
+              {formatTimeAgo(item.createdAt)}
+            </Text>
+          </View>
+
           <Text style={styles.notificationMessage}>{item.message}</Text>
-          <Text style={styles.notificationTime}>
-            {formatTimeAgo(item.createdAt)}
-          </Text>
         </View>
       </View>
       <TouchableOpacity 
@@ -199,7 +218,7 @@ const styles = StyleSheet.create({
   notificationItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    padding: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#f5f5f5',
   },
@@ -228,6 +247,8 @@ const styles = StyleSheet.create({
   notificationTime: {
     fontSize: 10,
     color: '#999',
+    marginLeft: 'auto',
+    paddingRight: 10,
   },
   deleteButton: {
     padding: 4,
@@ -249,6 +270,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     paddingHorizontal: 20,
+  },
+  Foto: {
+    alignSelf: 'flex-start',
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
+    alignSelf: 'flex-start',
   },
 });
 
