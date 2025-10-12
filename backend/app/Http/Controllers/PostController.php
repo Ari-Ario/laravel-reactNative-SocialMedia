@@ -154,10 +154,8 @@ class PostController extends Controller
                 'message' => 'Unauthorized: You can only delete your own posts'
             ], 403);
         }
-        
-        $postToDelete = Post::findOrFail($post->id);
 
-         // Use transaction to ensure data integrity
+        // Use transaction to ensure data integrity
         try {
             DB::beginTransaction();
 
@@ -173,6 +171,11 @@ class PostController extends Controller
                 $media->delete();
             }
 
+            // Store post ID before deletion
+            $postId = $post->id;
+            $postCaption = $post->caption;
+            $mediaCount = $post->media()->count();
+
             // Delete the post
             $post->delete();
 
@@ -182,15 +185,17 @@ class PostController extends Controller
             $followerIds = Auth::user()->followers()->pluck('users.id')->toArray();
         
             broadcast(new PostDeleted(
-                $postToDelete,
+                $postId, // Pass postId as first parameter
+                $postCaption,
                 $followerIds,
                 Auth::id(),
                 Auth::user()->name
+                // Removed $postToDelete since it's not needed
             ));
 
             return response()->json([
                 'message' => 'Post deleted successfully',
-                'deleted_media_count' => $post->media()->count()
+                'deleted_media_count' => $mediaCount
             ]);
 
         } catch (\Exception $e) {

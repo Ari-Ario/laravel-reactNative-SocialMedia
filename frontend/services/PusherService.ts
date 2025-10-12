@@ -225,7 +225,7 @@ class PusherService {
         const notification = {
           type: data.type || 'post_deleted',
           title: data.title || 'Post deleted',
-          message: `${data.userName} deleted post` || data.message,
+          message: `${data.userName} deleted post: ${data.postCaption}` || data.message,
           data: data,
           userId: data.userId,
           postId: data.postId,

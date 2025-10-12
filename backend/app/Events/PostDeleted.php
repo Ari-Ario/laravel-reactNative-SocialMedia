@@ -13,14 +13,16 @@ class PostDeleted implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $postId; // ✅ FIX: Use postId instead of postToDelete for consistency
+    public $postId;
     public $followerIds;
     public $userId;
     public $userName;
+    public $postCaption;
 
-    public function __construct($postId, $followerIds = [], $userId = null, $userName = null)
+    public function __construct($postId, $postCation, $followerIds = [], $userId = null, $userName = null)
     {
-        $this->postId = $postId; // ✅ FIX: Use postId for consistency
+        $this->postId = $postId;
+        $this->postCaption = $postCation;
         $this->followerIds = $followerIds;
         $this->userId = $userId;
         $this->userName = $userName;
@@ -42,22 +44,22 @@ class PostDeleted implements ShouldBroadcast
 
     public function broadcastAs()
     {
-        return 'post-deleted'; // ✅ Matches frontend
+        return 'post-deleted';
     }
 
     public function broadcastWith()
     {
         return [
-            'postId' => $this->postId, // ✅ FIX: Use postId for consistency
+            'postId' => $this->postId,
+            'postCaption' => $this->postCaption,
             'userId' => $this->userId,
             'profile_photo' => User::find($this->userId)?->profile_photo,
             'userName' => $this->userName,
             'followerIds' => $this->followerIds,
-            // ✅ FIX: Use consistent data structure
             'type' => 'post_deleted',
-            'title' => 'Post Deleted', 
+            'title' => 'Post Deleted',
             'message' => $this->userName . ' deleted their post',
-            'timestamp' => now()->toISOString()
+            'timestamp' => now()->toIso8601String() // Fixed typo: toISOString -> toIso8601String
         ];
     }
 }

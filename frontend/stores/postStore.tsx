@@ -273,31 +273,36 @@ export const usePostStore = create<PostStore>((set, get) => ({
   },
   
   // Comment operations with duplicate prevention
-  addPostComment: (postId, comment) => {
-    const { pendingCommentIds } = get();
-    
-    // Skip if this comment is already pending (being handled by real-time)
-    if (pendingCommentIds.has(comment.id)) {
-      console.log('🔄 Skipping duplicate comment (already pending):', comment.id);
-      return;
-    }
+addPostComment: (postId, comment) => {
+  const { pendingCommentIds } = get();
+  
+  if (pendingCommentIds.has(comment.id)) {
+    console.log('🔄 Skipping duplicate comment (already pending):', comment.id);
+    return;
+  }
 
-    set((state) => ({
-      posts: state.posts.map((post) => {
-        if (post.id !== postId) return post;
-        
-        const newComments = comment.parent_id
-          ? addReplyToComment(post.comments || [], comment)
-          : [...(post.comments || []), comment];
-        
-        return {
-          ...post,
-          comments: newComments,
-          comments_count: (post.comments_count || 0) + 1
-        };
-      }),
-    }));
-  },
+  set((state) => ({
+    posts: state.posts.map((post) => {
+      if (post.id !== postId) return post;
+      
+      const newComment = {
+        ...comment,
+        reaction_comments: comment.reaction_comments || [], // Initialize reaction_comments
+        reaction_comments_count: comment.reaction_comments_count || 0, // Initialize count
+      };
+      
+      const newComments = comment.parent_id
+        ? addReplyToComment(post.comments || [], newComment)
+        : [...(post.comments || []), newComment];
+      
+      return {
+        ...post,
+        comments: newComments,
+        comments_count: (post.comments_count || 0) + 1
+      };
+    }),
+  }));
+},
   
   updatePostWithNewComment: (postId, comment) => {
     const { pendingCommentIds } = get();
@@ -594,42 +599,47 @@ export const usePostStore = create<PostStore>((set, get) => ({
   },
 
   // Add these new event handlers to your PostStore
-  handleCommentReaction: (data) => {
-    const { posts, pendingReactionIds } = get();
-    
-    // Mark this reaction as pending to prevent API duplicates
-    get().markReactionAsPending(data.reaction.id);
+handleCommentReaction: (data) => {
+  const { posts, pendingReactionIds } = get();
+  
+  console.log('✅ Received comment reaction data:', data);
+  
+  // Coerce commentId to number
+  const commentId = Number(data.commentId);
+  
+  get().markReactionAsPending(data.reaction.id);
 
-    const updatedPosts = posts.map(post => {
-      if (post.id === data.postId) {
-        const updater = (comment: Comment) => {
-          if (comment.id === data.commentId) {
-            const existingReactions = comment.reaction_comments || [];
-            const alreadyReacted = existingReactions.some(
-              (r: any) => r.user_id === data.reaction.user_id && r.emoji === data.reaction.emoji
-            );
-            
-            if (!alreadyReacted) {
-              console.log('✅ Adding new comment reaction via real-time:', data.reaction.id);
-              return {
-                ...comment,
-                reaction_comments: [...existingReactions, data.reaction],
-                reaction_comments_count: (comment.reaction_comments_count || 0) + 1
-              };
-            }
+  const updatedPosts = posts.map(post => {
+    if (post.id === data.postId) {
+      const updater = (comment: Comment) => {
+        if (comment.id === commentId) {
+          const existingReactions = comment.reaction_comments || [];
+          const alreadyReacted = existingReactions.some(
+            (r: any) => r.user_id === data.reaction.user_id && r.emoji === data.reaction.emoji
+          );
+          
+          if (!alreadyReacted) {
+            console.log('✅ Adding new comment reaction via real-time:', data.reaction.id);
+            return {
+              ...comment,
+              reaction_comments: [...existingReactions, data.reaction],
+              reaction_comments_count: (comment.reaction_comments_count || 0) + 1
+            };
           }
-          return comment;
-        };
+          console.log('🔄 Comment reaction already exists:', data.reaction.id);
+        }
+        return comment;
+      };
 
-        return {
-          ...post,
-          comments: updateCommentInTree(post.comments, data.commentId, updater)
-        };
-      }
-      return post;
-    });
-    set({ posts: updatedPosts });
-  },
+      return {
+        ...post,
+        comments: updateCommentInTree(post.comments || [], commentId, updater)
+      };
+    }
+    return post;
+  });
+  set({ posts: updatedPosts });
+},
 
   handleNewPost: (data) => {
     const { posts, pendingPostIds } = get();
@@ -653,13 +663,21 @@ export const usePostStore = create<PostStore>((set, get) => ({
   handlePostUpdated: (data) => {
     const { posts } = get();
     
+    console.log('✅ Received post update data:', data); // Log the data to inspect it
+    
     const updatedPosts = posts.map(post => {
       if (post.id === data.postId) {
         console.log('✅ Updating post via real-time:', data.postId);
+        // Apply changes from data.changes
+        const updatedPost = { ...post };
+        if (data.changes) {
+          Object.keys(data.changes).forEach((field) => {
+            updatedPost[field] = data.changes[field].new;
+          });
+        }
         return {
-          ...post,
-          ...data.post, // Merge updated post data
-          updated_at: new Date().toISOString()
+          ...updatedPost,
+          updated_at: data.timestamp || new Date().toISOString()
         };
       }
       return post;
