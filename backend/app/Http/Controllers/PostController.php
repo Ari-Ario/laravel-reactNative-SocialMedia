@@ -10,6 +10,7 @@ use App\Models\Repost;
 use App\Models\Bookmark;
 use App\Models\Media;
 use App\Models\Follower;
+use App\Models\User;
 
 use Pusher\Pusher;
 use Illuminate\Http\Request;
@@ -64,19 +65,19 @@ class PostController extends Controller
                     'comments',
                     'reposts'
                 ])
-    ->withExists([
-        'reposts as is_reposted' => function ($q) use ($userId) {
-            $q->where('user_id', $userId);
-        },
-        // ✅ Correct way to add is_following
-        'user as is_following' => function ($q) use ($userId) {
-            // check if the post author has the current user among their followers
-            $q->whereHas('followers', function ($qq) use ($userId) {
-                // check follower user id — don't reference pivot here
-                $qq->whereKey($userId);
-            });
-        },
-    ])
+                ->withExists([
+                    'reposts as is_reposted' => function ($q) use ($userId) {
+                        $q->where('user_id', $userId);
+                    },
+                    // ✅ Correct way to add is_following
+                    'user as is_following' => function ($q) use ($userId) {
+                        // check if the post author has the current user among their followers
+                        $q->whereHas('followers', function ($qq) use ($userId) {
+                            // check follower user id — don't reference pivot here
+                            $qq->whereKey($userId);
+                        });
+                    },
+                ])
                 ->latest()
                 ->paginate(10);
 
@@ -183,15 +184,17 @@ class PostController extends Controller
             
             // Broadcast the deletion of post
             $followerIds = Auth::user()->followers()->pluck('users.id')->toArray();
-        
-            broadcast(new PostDeleted(
-                $postId, // Pass postId as first parameter
-                $postCaption,
-                $followerIds,
-                Auth::id(),
-                Auth::user()->name
-                // Removed $postToDelete since it's not needed
-            ));
+            $followers = User::whereIn('id', $followerIds)->get();
+
+            foreach ($followers as $follower) {
+                $follower->notify(new PostDeleted(
+                    $postId,
+                    $postCaption,
+                    $followerIds,
+                    Auth::id(),
+                    Auth::user()->name
+                ));
+            }
 
             return response()->json([
                 'message' => 'Post deleted successfully',
@@ -384,88 +387,54 @@ class PostController extends Controller
 
     public function comment(Request $request, Post $post)
     {
-        // \Log::info('💬 REAL COMMENT API CALLED', [
-        //     'post_id' => $post->id,
-        //     'user_id' => Auth::id(),
-        //     'payload' => $request->all(),
-        // ]);
-
         $request->validate([
             'content' => 'required|string|max:500',
             'parent_id' => 'nullable|exists:comments,id'
         ]);
 
-        $comment = Comment::create([
-            'user_id' => Auth::id(),
-            'post_id' => $post->id,
-            'parent_id' => $request->parent_id,
-            'content' => $request->content
-        ]);
-
-        // Load relationships
-        $comment->load('user', 'replies');
-
-        \Log::info('✅ REAL COMMENT CREATED - Testing broadcast methods', [
-            'comment_id' => $comment->id,
-            'post_id' => $post->id
-        ]);
-
-        // METHOD 1: Test direct Pusher first
-        // try {
-        //     $config = config('broadcasting.connections.pusher');
-            
-        //     \Log::info('🔍 Pusher config', ['config' => $config]);
-            
-        //     $pusher = new Pusher(  // ← Now this will work with the correct import
-        //         $config['key'],
-        //         $config['secret'],
-        //         $config['app_id'],
-        //         $config['options']
-        //     );
-            
-        //     $directData = [
-        //         'comment' => [
-        //             'id' => $comment->id,
-        //             'content' => $comment->content,
-        //             'user_id' => $comment->user_id,
-        //             'user' => $comment->user,
-        //             'created_at' => $comment->created_at->toISOString(),
-        //             'updated_at' => $comment->updated_at->toISOString()
-        //         ],
-        //         'postId' => $post->id
-        //     ];
-            
-        //     \Log::info('🔍 Attempting direct Pusher trigger', [
-        //         'channel' => 'post.' . $post->id,
-        //         'event' => 'new-comment',
-        //         'data' => $directData
-        //     ]);
-            
-        //     $directResponse = $pusher->trigger('post.' . $post->id, 'new-comment', $directData);
-        //     \Log::info('✅ Direct Pusher trigger result', ['response' => $directResponse]);
-            
-        // } catch (\Exception $e) {
-        //     \Log::error('❌ Direct Pusher trigger failed', [
-        //         'error' => $e->getMessage(),
-        //         'trace' => $e->getTraceAsString()
-        //     ]);
-        // }
-
-        // METHOD 2: Test Laravel broadcast (should work now with the provider)
         try {
-            \Log::info('🔍 Attempting Laravel broadcast');
-            // broadcast(new \App\Events\NewComment($comment, $post->id));
-            broadcast(new \App\Events\NewComment($comment, $post->id, $post->user_id));
+            $comment = Comment::create([
+                'user_id' => Auth::id(),
+                'post_id' => $post->id,
+                'parent_id' => $request->parent_id,
+                'content' => $request->content
+            ]);
 
-            \Log::info('✅ Laravel broadcast called successfully');
+            $comment->load('user', 'replies');
+
+            \Log::info('✅ Comment created', [
+                'comment_id' => $comment->id,
+                'post_id' => $post->id
+            ]);
+
+            // Notify the post owner if they are not the commenter
+            if ($post->user_id != Auth::id()) {
+                $postOwner = User::findOrFail($post->user_id);
+                $postOwner->notify(new NewComment(
+                    $comment->id,
+                    $post->id,
+                    $post->user_id,
+                    Auth::id(),
+                    Auth::user()->name,
+                    $comment->content
+                ));
+                \Log::info('✅ Notification sent to post owner', [
+                    'post_owner_id' => $post->user_id,
+                    'comment_id' => $comment->id
+                ]);
+            }
+
+            return response()->json($comment);
         } catch (\Exception $e) {
-            \Log::error('❌ Laravel broadcast failed', [
+            \Log::error('❌ Comment creation failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+            return response()->json([
+                'message' => 'Failed to create comment',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json($comment);
     }
 
     public function reactToComment(Request $request, $commentId)

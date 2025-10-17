@@ -6,19 +6,40 @@ use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Notifications\Notification as LaravelNotification;
 use Illuminate\Queue\SerializesModels;
 
-class NewFollower implements ShouldBroadcast
+class NewFollower extends LaravelNotification implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $follower;
+    public $followerId;
+    public $followerName;
     public $followedUserId;
 
-    public function __construct($follower, $followedUserId)
+    public function __construct($followerId, $followerName, $followedUserId)
     {
-        $this->follower = $follower;
+        $this->followerId = $followerId;
+        $this->followerName = $followerName;
         $this->followedUserId = $followedUserId;
+    }
+
+    public function via($notifiable)
+    {
+        return ['database', 'broadcast'];
+    }
+
+    public function toArray($notifiable)
+    {
+        return [
+            'followerId' => $this->followerId,
+            'followerName' => $this->followerName,
+            'followedUserId' => $this->followedUserId,
+            'type' => 'new_follower',
+            'title' => 'New Follower',
+            'message' => $this->followerName . ' started following you',
+            'timestamp' => now()->toIso8601String(),
+        ];
     }
 
     public function broadcastOn()
@@ -30,18 +51,19 @@ class NewFollower implements ShouldBroadcast
 
     public function broadcastAs()
     {
-        return 'new-follower'; // ✅ Use consistent naming
+        return 'new-follower';
     }
 
     public function broadcastWith()
     {
         return [
-            'follower' => $this->follower,
+            'followerId' => $this->followerId,
+            'followerName' => $this->followerName,
             'followedUserId' => $this->followedUserId,
-            // ✅ ADD NOTIFICATION METADATA
             'type' => 'new_follower',
             'title' => 'New Follower',
-            'message' => $this->follower->name . ' started following you',
+            'message' => $this->followerName . ' started following you',
+            'timestamp' => now()->toIso8601String(),
         ];
     }
 }

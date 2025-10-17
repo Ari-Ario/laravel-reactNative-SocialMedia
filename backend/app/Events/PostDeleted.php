@@ -8,8 +8,10 @@ use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Notifications\Notification as LaravelNotification;
 
-class PostDeleted implements ShouldBroadcast
+
+class PostDeleted extends LaravelNotification implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -26,6 +28,27 @@ class PostDeleted implements ShouldBroadcast
         $this->followerIds = $followerIds;
         $this->userId = $userId;
         $this->userName = $userName;
+    }
+
+    public function via($notifiable)
+    {
+        return ['database', 'broadcast'];
+    }
+
+    public function toArray($notifiable)
+    {
+        return [
+            'postId' => $this->postId,
+            'postCaption' => $this->postCaption,
+            'userId' => $this->userId,
+            'profile_photo' => User::find($this->userId)?->profile_photo,
+            'userName' => $this->userName,
+            'followerIds' => $this->followerIds,
+            'type' => 'post_deleted',
+            'title' => 'Post Deleted',
+            'message' => $this->userName . ' deleted their post' . ($this->postCaption ? ": " . substr($this->postCaption, 0, 30) : ''),
+            'timestamp' => now()->toIso8601String(),
+        ];
     }
 
     public function broadcastOn()

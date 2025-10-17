@@ -161,28 +161,43 @@ class ProfileController extends Controller
             'action' => 'required|in:follow,unfollow'
         ]);
 
-        $user = User::findOrFail($userId);
-        $currentUser = Auth::user();
+        try {
+            $user = User::findOrFail($userId);
+            $currentUser = Auth::user();
 
-        if ($request->action === 'follow') {
-            $currentUser->following()->syncWithoutDetaching([$userId]);
-            $message = 'User followed successfully';
-            
-            // ✅ FIX: Pass the correct parameters
-            broadcast(new NewFollower($currentUser, $user->id));
-            
-        } else {
-            $currentUser->following()->detach($userId);
-            $message = 'User unfollowed successfully';
+            if ($request->action === 'follow') {
+                $currentUser->following()->syncWithoutDetaching([$userId]);
+                $message = 'User followed successfully';
+
+                // Notify the followed user
+                $user->notify(new NewFollower(
+                    $currentUser->id,
+                    $currentUser->name,
+                    $user->id
+                ));
+            } else {
+                $currentUser->following()->detach($userId);
+                $message = 'User unfollowed successfully';
+            }
+
+            $user->loadCount('followers');
+
+            return response()->json([
+                'is_following' => $request->action === 'follow',
+                'followers_count' => $user->followers_count,
+                'message' => $message
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Follow action failed: ' . $e->getMessage(), [
+                'userId' => $userId,
+                'action' => $request->action,
+                'error' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'message' => 'Failed to process follow action',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        $user->loadCount('followers');
-
-        return response()->json([
-            'is_following' => $request->action === 'follow',
-            'followers_count' => $user->followers_count,
-            'message' => $message
-        ]);
     }
 
 }

@@ -10,6 +10,8 @@ use App\Http\Controllers\ChatbotTrainingController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StoryController;
+use App\Http\Controllers\NotificationController;
+
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -80,6 +82,9 @@ Route::group(["middleware" => ["auth:sanctum"]], function() {
     // Comments
     Route::post('/posts/{post}/comment', [PostController::class, 'comment']);
     Route::delete('/posts/{post}/comments/{comment}', [PostController::class, 'deleteComment']);
+
+    // routes/api.php
+    Route::get('/notifications/missed', [NotificationController::class, 'missedNotifications'] );
 });
 
 Route::post('/forgot-password', [PasswordResetLinkController::class, 'store']);

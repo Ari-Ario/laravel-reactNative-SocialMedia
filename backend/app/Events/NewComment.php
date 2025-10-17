@@ -2,38 +2,63 @@
 
 namespace App\Events;
 
+use App\Models\User;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Notifications\Notification as LaravelNotification;
 use Illuminate\Queue\SerializesModels;
 
-class NewComment implements ShouldBroadcast
+class NewComment extends LaravelNotification implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $comment;
+    public $commentId;
     public $postId;
     public $postOwnerId;
+    public $commenterId;
+    public $commenterName;
+    public $content;
 
-    public function __construct($comment, $postId, $postOwnerId = null)
+    public function __construct($commentId, $postId, $postOwnerId, $commenterId, $commenterName, $content)
     {
-        $this->comment = $comment;
+        $this->commentId = $commentId;
         $this->postId = $postId;
-        // Get post owner ID - you might need to load the post relationship
-        $this->postOwnerId = $postOwnerId ?? $comment->post->user_id;
+        $this->postOwnerId = $postOwnerId;
+        $this->commenterId = $commenterId;
+        $this->commenterName = $commenterName;
+        $this->content = $content;
+    }
+
+    public function via($notifiable)
+    {
+        return ['database', 'broadcast'];
+    }
+
+    public function toArray($notifiable)
+    {
+        return [
+            'commentId' => $this->commentId,
+            'postId' => $this->postId,
+            'postOwnerId' => $this->postOwnerId,
+            'userId' => $this->commenterId,
+            'userName' => $this->commenterName,
+            'content' => $this->content,
+            'type' => 'new_comment',
+            'title' => 'New Comment',
+            'message' => $this->commenterName . ' commented on your post: ' . substr($this->content, 0, 30),
+            'profile_photo' => User::find($this->commenterId)?->profile_photo,
+            'timestamp' => now()->toIso8601String(),
+        ];
     }
 
     public function broadcastOn()
     {
-        $channels = [
-            new Channel('posts.global'), // For real-time feed updates
-        ];
-
+        $channels = [new Channel('posts.global')];
         if ($this->postOwnerId != auth()->id()) {
-            $channels[] = new Channel('user.' . $this->postOwnerId); // For notifications to post owner
+            $channels[] = new Channel('user.' . $this->postOwnerId);
         }
-
         return $channels;
     }
 
@@ -45,13 +70,17 @@ class NewComment implements ShouldBroadcast
     public function broadcastWith()
     {
         return [
-            'comment' => $this->comment->load('user'),
+            'commentId' => $this->commentId,
             'postId' => $this->postId,
             'postOwnerId' => $this->postOwnerId,
-            // ✅ Add these for easier notification handling
-            'type' => 'comment',
+            'userId' => $this->commenterId,
+            'userName' => $this->commenterName,
+            'content' => $this->content,
+            'type' => 'new_comment',
             'title' => 'New Comment',
-            'message' => $this->comment->user->name . ' commented on your post',
+            'message' => $this->commenterName . ' commented on your post',
+            'profile_photo' => User::find($this->commenterId)?->profile_photo,
+            'timestamp' => now()->toIso8601String(),
         ];
     }
 }
