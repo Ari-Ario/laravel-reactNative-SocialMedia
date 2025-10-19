@@ -352,7 +352,6 @@ const handleCommentSubmit = async (postId: number, content: string, parentId?: n
   );
 };
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,

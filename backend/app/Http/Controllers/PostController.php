@@ -407,16 +407,12 @@ class PostController extends Controller
                 'post_id' => $post->id
             ]);
 
-            // Notify the post owner if they are not the commenter
             if ($post->user_id != Auth::id()) {
                 $postOwner = User::findOrFail($post->user_id);
                 $postOwner->notify(new NewComment(
-                    $comment->id,
+                    $comment,
                     $post->id,
-                    $post->user_id,
-                    Auth::id(),
-                    Auth::user()->name,
-                    $comment->content
+                    $post->user_id
                 ));
                 \Log::info('✅ Notification sent to post owner', [
                     'post_owner_id' => $post->user_id,
@@ -533,10 +529,17 @@ class PostController extends Controller
                 ->where('user_id', auth()->id())
                 ->firstOrFail();
 
+            $post = Post::findOrFail($postId); // Load post to get user_id
             $comment->delete();
 
-            // Broadcast the deletion
-            broadcast(new CommentDeleted($postId, $commentId));
+            if ($post->user_id != auth()->id()) {
+                $postOwner = User::findOrFail($post->user_id);
+                broadcast(new CommentDeleted($postId, $commentId, $post->user_id))->toOthers();
+                \Log::info('✅ Comment deletion notification sent', [
+                    'post_owner_id' => $post->user_id,
+                    'comment_id' => $commentId,
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
@@ -544,9 +547,8 @@ class PostController extends Controller
                 'deleted_comment_id' => $commentId,
                 'post_id' => $postId
             ]);
-
         } catch (\Exception $e) {
-            \Log::error('Delete comment error: '.$e->getMessage());
+            \Log::error('Delete comment error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'error' => 'Failed to delete comment',

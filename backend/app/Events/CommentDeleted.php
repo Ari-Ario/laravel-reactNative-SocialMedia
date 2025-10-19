@@ -7,7 +7,6 @@ use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 
 class CommentDeleted implements ShouldBroadcast
 {
@@ -15,11 +14,13 @@ class CommentDeleted implements ShouldBroadcast
 
     public $commentId;
     public $postId;
+    public $postOwnerId;
 
-    public function __construct($postId ,$commentId)
+    public function __construct($postId, $commentId, $postOwnerId = null)
     {
         $this->commentId = $commentId;
         $this->postId = $postId;
+        $this->postOwnerId = $postOwnerId;
     }
 
     public function broadcastOn()
@@ -28,11 +29,16 @@ class CommentDeleted implements ShouldBroadcast
             new Channel('posts.global'), // For real-time feed updates
         ];
 
-        if ($this->postOwnerId != auth()->id()) {
-            $channels[] = new Channel('user.' . $this->postOwnerId); // For notifications to post owner
+        if ($this->postOwnerId && $this->postOwnerId != auth()->id()) {
+            $channels[] = new Channel('user.' . $this->postOwnerId); // For post owner notifications
         }
 
         return $channels;
+    }
+
+    public function broadcastAs()
+    {
+        return 'comment-deleted';
     }
 
     public function broadcastWith()
