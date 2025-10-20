@@ -104,6 +104,80 @@ class PostController extends Controller
             return response()->json(['error' => 'Server error'], 500);
         }
     }
+    
+    // show method for a single post
+    public function showPost($id)
+    {
+        try {
+            $userId = Auth::id();
+            
+            $post = Post::with([
+                    'user',
+                    'media',
+                    'reactions',
+                    'reactionCounts',
+                    'comments.user',
+                    'comments.reaction_comments.user',
+                    'comments.replies' => function ($query) {
+                        $query->with(['user', 'reaction_comments.user'])
+                            ->withCount('reaction_comments');
+                    },
+                    'comments.replies.replies' => function ($query) {
+                        $query->with(['user', 'reaction_comments.user'])
+                            ->withCount('reaction_comments');
+                    },
+                    'reposts.user',
+                ])
+                ->withCount([
+                    'reactions',
+                    'comments',
+                    'reposts'
+                ])
+                ->withExists([
+                    'reposts as is_reposted' => function ($q) use ($userId) {
+                        $q->where('user_id', $userId);
+                    },
+                    'user as is_following' => function ($q) use ($userId) {
+                        $q->whereHas('followers', function ($qq) use ($userId) {
+                            $qq->whereKey($userId);
+                        });
+                    },
+                ])
+                ->findOrFail($id);
+
+            // Recursively transform all comments and replies to match index structure
+            $transformComment = function ($comment) use (&$transformComment) {
+                $comment->reaction_comments_count = $comment->reaction_comments->count();
+                
+                if ($comment->replies) {
+                    $comment->replies->each($transformComment);
+                }
+                
+                return $comment;
+            };
+            
+            $post->comments->each($transformComment);
+
+            // Return the post directly (same structure as index pagination items)
+            return response()->json($post);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            \Log::error('Post not found for ID: ' . $id);
+            return response()->json([
+                'success' => false,
+                'message' => 'Post not found'
+            ], 404);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching post: ' . $e->getMessage(), [
+                'id' => $id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve post: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 
     // store method
     public function store(Request $request)

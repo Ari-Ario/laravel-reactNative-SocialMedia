@@ -151,18 +151,25 @@ export const usePostStore = create<PostStore>((set, get) => ({
     }));
   },
   
-  addPost: (newPost) => {
-    const { pendingPostIds } = get();
-    
-    // Skip if this post is already pending (being handled by real-time)
-    if (pendingPostIds.has(newPost.id)) {
-      console.log('🔄 Skipping duplicate post (already pending):', newPost.id);
-      return;
-    }
-
-    set((state) => ({
-      posts: [newPost, ...state.posts],
-    }));
+  addPost: (post) => {
+    set((state) => {
+      const existingIndex = state.posts.findIndex(p => p.id === post.id);
+      
+      // Only update if the post is different
+      if (existingIndex >= 0) {
+        const existingPost = state.posts[existingIndex];
+        // Simple check to avoid unnecessary updates
+        if (JSON.stringify(existingPost) === JSON.stringify(post)) {
+          return state; // No change needed
+        }
+        
+        const updatedPosts = [...state.posts];
+        updatedPosts[existingIndex] = post;
+        return { posts: updatedPosts };
+      } else {
+        return { posts: [post, ...state.posts] };
+      }
+    });
   },
     
   deletePostById: (postId) => set((state) => ({

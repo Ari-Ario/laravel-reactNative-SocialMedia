@@ -21,6 +21,31 @@ export async function fetchPosts() {
     return response.data.data; // Return the posts array
 }
 
+export async function fetchPostById(postId: number) {
+    const token = await getToken();
+    const API_BASE = getApiBase();
+    
+    try {
+        const response = await axios.get(`${API_BASE}/posts/${postId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        
+        console.log('📱 Fetched post by ID response structure:', {
+            data: response.data,
+            hasDataProperty: !!response.data.data,
+            keys: Object.keys(response.data)
+        });
+        
+        // If the response has a data property, return it, otherwise return the whole response
+        return response.data.data || response.data;
+    } catch (error) {
+        console.error('❌ Error fetching post by ID:', postId, error);
+        throw error;
+    }
+}
+
 export async function createPost(formData: FormData) {
     const token = await getToken();
     const API_BASE = getApiBase();
