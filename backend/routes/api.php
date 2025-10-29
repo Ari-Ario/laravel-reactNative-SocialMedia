@@ -72,6 +72,8 @@ Route::group(["middleware" => ["auth:sanctum"]], function() {
     Route::post('/posts/{post}/share', [PostController::class, 'share']);
     Route::post('/posts/{post}/bookmark', [PostController::class, 'bookmark']);
     Route::delete('/posts/{post}/media/{media}', [PostController::class, 'deleteMedia']);
+    // Single Post fetch
+    Route::get('/posts/{id}', [PostController::class, 'showPost']);
     
     // Reactions
     Route::post('/posts/{post}/react', [PostController::class, 'react']);

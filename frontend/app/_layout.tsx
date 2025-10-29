@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import 'react-native-reanimated';
 import AuthContext from '@/context/AuthContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { ActivityIndicator, View, Text } from 'react-native';
+import { ActivityIndicator, View, Text, Platform } from 'react-native';
 import { loadUser } from '@/services/AuthService';
 import { getToken } from '@/services/TokenService';
 import LoginScreen from './LoginScreen';
@@ -70,6 +70,7 @@ export default function RootLayout() {
     if (!isReady) return;
 
     if (pathname?.startsWith('/story/') 
+      || pathname?.startsWith('/post/')
       || pathname?.startsWith('/profile-preview') 
       || pathname?.startsWith('/CreatPost') 
       || pathname?.startsWith('/chats')) {
@@ -111,7 +112,23 @@ export default function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView 
+    style={{
+        flex: 1,
+        // Only apply maxWidth on web
+        ...(Platform.OS === 'web' && {
+          width: '100%',
+          maxWidth: 1440,
+          justifyContent: 'center',
+          alignSelf: 'center',
+          // marginHorizontal: 'auto',
+          backgroundColor: '#fff',  // Optional: clean background
+          borderLeftWidth: 1,       // Optional: subtle side borders
+          borderRightWidth: 1,
+          borderColor: '#ddd',
+        }),
+      }}
+    >
       <AuthContext.Provider value={{ user, setUser }}>
         <ModalProvider>
           <ProfileViewProvider>

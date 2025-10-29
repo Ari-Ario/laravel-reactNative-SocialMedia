@@ -7,13 +7,17 @@ import {
   FlatList, 
   StyleSheet, 
   Modal,
-  Image,
-  ScrollView 
+  Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { Notification } from '@/types/Notification';
 import getApiBaseImage from '@/services/getApiBaseImage';
+import { router } from 'expo-router';
+import { useProfileView } from '@/context/ProfileViewContext';
+import { usePostStore } from '@/stores/postStore';
+import { fetchPostById } from '@/services/PostService';
+import { fetchProfile } from '@/services/UserService';
 
 interface NotificationPanelProps {
   visible: boolean;
@@ -24,67 +28,153 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   visible,
   onClose
 }) => {
-  const { notifications, markAsRead, removeNotification } = useNotificationStore();
+  const { getRegularNotifications, markAsRead, removeNotification } = useNotificationStore();
+  const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
+  const { addPost } = usePostStore();
 
-  // DEBUG: Log when panel opens
-  // React.useEffect(() => {
-  //   if (visible) {
-  //     console.log('🔔 Notification Panel Opened');
-  //     console.log('🔔 Total notifications:', notifications.length);
-  //     console.log('🔔 Unread count:', notifications.filter(n => !n.isRead).length);
-  //   }
-  // }, [visible, notifications.length]);
+  // Use getRegularNotifications to exclude follower notifications
+  const regularNotifications = getRegularNotifications();
 
-  const renderNotificationItem = ({ item }: { item: Notification }) => (
-    <TouchableOpacity 
-      style={[styles.notificationItem, !item.isRead && styles.unreadNotification]}
-      onPress={() => {
-        if (!item.isRead) {
-          markAsRead(item.id);
-        }
-        // Handle notification tap (navigate to post, etc.)
-        onClose();
-      }}
-    >
+const handleNotificationPress = async (item: Notification) => {
+  console.log('Notification pressed:', item.type, 'postId:', item.postId, 'commentId:', item.commentId);
+  
+  if (!item.isRead) {
+    markAsRead(item.id);
+  }
 
+  try {
+    if (item.type === 'post_deleted') {
+      onClose();
+      return;
+    }
+
+    if (['post', 'post_updated', 'reaction'].includes(item.type) && item.postId) {
+      const postData = await fetchPostById(item.postId);
+      if (postData?.data) addPost(postData.data);
+      router.push(`/post/${item.postId}`);
+      onClose();
+      return;
+    }
+
+    if ((item.type === 'comment' || item.type === 'comment_reaction') && item.postId && item.commentId) {
+      const postData = await fetchPostById(item.postId);
+      if (postData?.data) addPost(postData.data);
+      router.push({
+        pathname: `/post/${item.postId}`,
+        params: { highlightCommentId: item.commentId.toString() }
+      });
+      onClose();
+      return;
+    }
+
+    if (item.type === 'comment-deleted' && item.postId) {
+      const postData = await fetchPostById(item.postId);
+      if (postData?.data) addPost(postData.data);
+      router.push(`/post/${item.postId}`);
+      onClose();
+      return;
+    }
+
+    if (item.userId && !['new_follower', 'user_unfollowed', 'new-follower', 'user-unfollowed'].includes(item.type)) {
+      try {
+        await fetchProfile(item.userId.toString());
+      } catch (err) {
+        console.error('Failed to preload profile:', err);
+      }
+      setProfileViewUserId(item.userId.toString());
+      setProfilePreviewVisible(true);
+      onClose();
+      return;
+    }
+
+    onClose();
+  } catch (error) {
+    console.error('Error handling notification press:', error);
+    onClose();
+  }
+};
+
+  const handleAvatarPress = (item: Notification) => {
+    console.log('🖼️ Avatar pressed for user:', item.userId);
+    if (item.userId) {
+      setProfileViewUserId(item.userId.toString());
+      setProfilePreviewVisible(true);
+      onClose();
+    }
+  };
+
+  const renderNotificationItem = ({ item }: { item: Notification }) => {
+    // Safe avatar URL handling
+    const getAvatarSource = () => {
+      if (!item.avatar) {
+        return require('@/assets/images/favicon.png');
+      }
+      
+      // Ensure avatar is a string and not empty
+      const avatarString = String(item.avatar).trim();
+      if (!avatarString) {
+        return require('@/assets/images/favicon.png');
+      }
+      
+      return { uri: `${getApiBaseImage()}/storage/${avatarString}` };
+    };
+
+    const avatarSource = getAvatarSource();
+
+    return (
       <TouchableOpacity 
-      style={styles.Foto}
-      // onPress={() => {
-      //   service.setProfileViewUserId(post.user.id);
-      //   service.setProfilePreviewVisible(true);
-      // }}
+        style={[styles.notificationItem, !item.isRead && styles.unreadNotification]}
+        onPress={() => handleNotificationPress(item)}
       >
-        <Image
-          source={{ uri: `${getApiBaseImage()}/storage/${item.avatar}` || require('@/assets/images/favicon.png') }}
-          style={styles.avatar}
-        />
-      </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.Foto}
+          onPress={(e) => {
+            e.stopPropagation(); // Prevent triggering the main notification press
+            handleAvatarPress(item);
+          }}
+        >
+          <Image
+            source={avatarSource}
+            style={styles.avatar}
+            defaultSource={require('@/assets/images/favicon.png')}
+            onError={(e) => {
+              console.log('🖼️ Image load error for avatar:', item.avatar, e.nativeEvent.error);
+            }}
+            // onLoad={() => {
+            //   console.log('🖼️ Image loaded successfully for avatar:', item.avatar);
+            // }}
+          />
+        </TouchableOpacity>
 
-      <View style={styles.notificationContent}>
-        <View style={styles.textContent}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Ionicons 
-              name={getNotificationIcon(item.type)} 
-              size={20} 
-              color={getNotificationColor(item.type)} 
-            />
-            <Text style={styles.notificationTitle}>{item.title}</Text>
-            <Text style={styles.notificationTime}>
-              {formatTimeAgo(item.createdAt)}
-            </Text>
+        <View style={styles.notificationContent}>
+          <View style={styles.textContent}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons 
+                name={getNotificationIcon(item.type)} 
+                size={20} 
+                color={getNotificationColor(item.type)} 
+              />
+              <Text style={styles.notificationTitle}>{item.title}</Text>
+              <Text style={styles.notificationTime}>
+                {formatTimeAgo(item.createdAt)}
+              </Text>
+            </View>
+
+            <Text style={styles.notificationMessage}>{item.message}</Text>
           </View>
-
-          <Text style={styles.notificationMessage}>{item.message}</Text>
         </View>
-      </View>
-      <TouchableOpacity 
-        onPress={() => removeNotification(item.id)}
-        style={styles.deleteButton}
-      >
-        <Ionicons name="close" size={16} color="#999" />
+        <TouchableOpacity 
+          onPress={(e) => {
+            e.stopPropagation(); // Prevent triggering the main notification press
+            removeNotification(item.id);
+          }}
+          style={styles.deleteButton}
+        >
+          <Ionicons name="close" size={16} color="#999" />
+        </TouchableOpacity>
       </TouchableOpacity>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -93,12 +183,12 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
       case 'post': return 'image-outline';
       case 'mention': return 'at-outline';
       case 'follow': return 'person-add-outline';
-      case 'new_follower': return 'person-add-outline';
-      case 'user_unfollowed': return 'person-remove-outline';
+      // REMOVED: follower types since they're in separate panel
       case 'chatbot_training': return 'school-outline';
       case 'comment_reaction': return 'heart-outline';
       case 'post_updated': return 'pencil-outline';
       case 'post_deleted': return 'trash-outline';
+      case 'comment_deleted': return 'trash-outline';
       default: return 'notifications-outline';
     }
   };
@@ -110,12 +200,12 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
       case 'post': return '#4CD964';
       case 'mention': return '#FF9500';
       case 'follow': return '#5856D6';
-      case 'new_follower': return '#5856D6';
-      case 'user_unfollowed': return '#FF3B30';
+      // REMOVED: follower types since they're in separate panel
       case 'chatbot_training': return '#FF2D55';
       case 'comment_reaction': return '#FF3B30';
       case 'post_updated': return '#FF9500';
       case 'post_deleted': return '#FF3B30';
+      case 'comment_deleted': return '#FF3B30';
       default: return '#8E8E93';
     }
   };
@@ -140,6 +230,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
       animationType="slide"
       transparent
       onRequestClose={onClose}
+      statusBarTranslucent={true} // Add for Android
     >
       <TouchableOpacity 
         style={styles.backdrop}
@@ -150,19 +241,20 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
       <View style={styles.panelContainer}>
         <View style={styles.panelHeader}>
           <Text style={styles.panelTitle}>
-            Notifications {notifications.length > 0 ? `(${notifications.length})` : ''}
+            Notifications {regularNotifications.length > 0 ? `(${regularNotifications.length})` : ''}
           </Text>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <Ionicons name="close" size={24} color="#000" />
           </TouchableOpacity>
         </View>
 
-        {notifications.length > 0 ? (
+        {regularNotifications.length > 0 ? (
           <FlatList
-            data={notifications}
+            data={regularNotifications}
             renderItem={renderNotificationItem}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false} // Add for better UX
           />
         ) : (
           <View style={styles.emptyState}>
@@ -196,6 +288,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+    overflow: 'hidden', // Add for Android
   },
   panelHeader: {
     flexDirection: 'row',
@@ -204,6 +297,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+    backgroundColor: 'white', // Ensure background color
   },
   panelTitle: {
     fontSize: 18,
@@ -214,13 +308,15 @@ const styles = StyleSheet.create({
   },
   listContent: {
     flexGrow: 1,
+    paddingBottom: 10, // Add some bottom padding
   },
   notificationItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
+    padding: 12, // Slightly increased padding for better touch
     borderBottomWidth: 1,
     borderBottomColor: '#f5f5f5',
+    minHeight: 70, // Ensure consistent height
   },
   unreadNotification: {
     backgroundColor: '#f8f9fa',
@@ -243,6 +339,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginBottom: 4,
+    lineHeight: 16, // Better text rendering
   },
   notificationTime: {
     fontSize: 10,
@@ -252,6 +349,7 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     padding: 4,
+    marginLeft: 8, // Add some spacing
   },
   emptyState: {
     flex: 1,
@@ -270,6 +368,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     paddingHorizontal: 20,
+    lineHeight: 16,
   },
   Foto: {
     alignSelf: 'flex-start',
@@ -280,6 +379,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginRight: 10,
     alignSelf: 'flex-start',
+    backgroundColor: '#f0f0f0', // Fallback background
   },
 });
 

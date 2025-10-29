@@ -20,6 +20,7 @@ import { usePostListService } from "@/services/PostListService";
 import { getToken } from "@/services/TokenService";
 import PusherService from "@/services/PusherService";
 import { NotificationPanel } from "@/components/Notifications/NotificationPanel";
+import FollowersPanel from "@/components/Notifications/FollowersPanel";
 
 type StoryGroup = {
   user: {
@@ -45,9 +46,12 @@ const HomePage = () => {
   const { posts, setPosts } = usePostStore();
   const [isTokenReady, setIsTokenReady] = useState(false);
   const { 
-    unreadCount, 
-    setNotificationPanelVisible, 
-    isNotificationPanelVisible,
+    isNotificationPanelVisible, 
+    setNotificationPanelVisible,
+    isFollowersPanelVisible,
+    setIsFollowersPanelVisible,
+    unreadCount,
+    unreadFollowerCount ,
     initializeRealtime,
     disconnectRealtime,
     addNotification,
@@ -240,28 +244,56 @@ const handleCommentSubmit = async (postId: number, content: string, parentId?: n
           visible={isNotificationPanelVisible}
           onClose={() => setNotificationPanelVisible(false)}
         />
+        <FollowersPanel
+          visible={isFollowersPanelVisible}
+          onClose={() => setIsFollowersPanelVisible(false)}
+        />
 
         {/* Your existing header */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>Home</Text>
 
-            <TouchableOpacity 
-              style={styles.notificationBell}
-              onPress={() => {
-                console.log('🔔 Opening notification panel, unread count:', unreadCount);
-                setNotificationPanelVisible(true);
-              }}
-            >
-              <Ionicons name="notifications-outline" size={24} color="#000" />
-              {unreadCount > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
+            <View style={styles.headerIcons}>
+              {/* Regular Notifications Icon */}
+              <TouchableOpacity 
+                style={styles.notificationBell}
+                onPress={() => {
+                  console.log('🔔 Opening notification panel, unread count:', unreadCount);
+                  setNotificationPanelVisible(true);
+                }}
+              >
+                <Ionicons name="notifications-outline" size={24} color="#000" />
+                {unreadCount > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              {/* Followers Icon */}
+              <TouchableOpacity 
+                style={styles.notificationBell}
+                onPress={() => {
+                  console.log('👥 Opening followers panel, unread count:', unreadFollowerCount);
+                  setIsFollowersPanelVisible(true);
+                }}
+              >
+                <Ionicons name="people-outline" size={24} color="#000" />
+                {unreadFollowerCount > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>
+                      {unreadFollowerCount > 99 ? '99+' : unreadFollowerCount}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              {/* Other icons... */}
+            </View>
+
           </View>
         </View>
 
@@ -498,7 +530,7 @@ storiesContainer: {
   },
 
 
-    headerContent: {
+  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -508,24 +540,28 @@ storiesContainer: {
     fontSize: 24,
     fontWeight: 'bold',
   },
+  headerIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   notificationBell: {
+    marginLeft: 15,
     position: 'relative',
-    padding: 8,
   },
   badge: {
     position: 'absolute',
-    top: 4,
-    right: 4,
-    backgroundColor: '#FF3B30',
+    top: -5,
+    right: -5,
+    backgroundColor: 'red',
     borderRadius: 10,
-    minWidth: 18,
-    height: 18,
+    minWidth: 20,
+    height: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
   badgeText: {
     color: 'white',
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: 'bold',
   },
 

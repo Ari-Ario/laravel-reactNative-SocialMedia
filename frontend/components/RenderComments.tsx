@@ -9,12 +9,12 @@ interface RenderCommentsProps {
   user: any;
   service: any;
   postId: number;
-  // comments: any[];
   onProfilePress: (userId: string) => void;
   onReply: (comment: any) => void;
   onReactComment: (commentId: number) => void;
   onDeleteCommentReaction: (commentId: number, emoji: string) => void;
   onDeleteComment: (commentId: number) => void;
+  highlightedCommentId?: string | null; // Add this
 }
 
 const RenderComments = ({
@@ -26,7 +26,8 @@ const RenderComments = ({
   onReply,
   onReactComment,
   onDeleteCommentReaction,
-  onDeleteComment
+  onDeleteComment,
+  highlightedCommentId
 }: RenderCommentsProps) => {
   // Get the latest comments from Zustand store
   const { posts } = usePostStore();
@@ -66,9 +67,13 @@ const RenderComments = ({
   const renderComment = ({ item }: { item: any }) => {
     const groupedReactions = getGroupedReactionsComments(item);
     const isMyComment = item.user_id === user?.id;
+    const isHighlighted = highlightedCommentId && item.id.toString() === highlightedCommentId;
 
     return (
-      <View style={styles.commentContainer}>
+      <View style={[
+        styles.commentContainer, 
+        isHighlighted && styles.highlightedComment // Add highlighted style
+      ]}>
         {/* Comment header */}
         <View style={styles.commentHeader}>
           <TouchableOpacity onPress={() => onProfilePress(item.user.id)}>
@@ -195,6 +200,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
     // backgroundColor: '#f0f0f0'
+  },
+  highlightedComment: {
+    backgroundColor: '#e6f3ff',
+    borderLeftWidth: 3,
+    borderLeftColor: '#0095f6',
+    marginLeft: -3,
   },
   commentHeader: {
     flexDirection: 'row',

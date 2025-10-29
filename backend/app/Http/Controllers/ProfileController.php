@@ -173,7 +173,8 @@ class ProfileController extends Controller
                 $user->notify(new NewFollower(
                     $currentUser->id,
                     $currentUser->name,
-                    $user->id
+                    $user->id,
+                    $profilePhoto = $currentUser->profile_photo
                 ));
             } else {
                 $currentUser->following()->detach($userId);

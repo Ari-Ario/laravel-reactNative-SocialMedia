@@ -16,12 +16,13 @@ class NewFollower extends LaravelNotification implements ShouldBroadcast
     public $followerId;
     public $followerName;
     public $followedUserId;
-
-    public function __construct($followerId, $followerName, $followedUserId)
+    public $profilePhoto;
+    public function __construct($followerId, $followerName, $followedUserId, $profilePhoto)
     {
         $this->followerId = $followerId;
         $this->followerName = $followerName;
         $this->followedUserId = $followedUserId;
+        $this->profilePhoto = $profilePhoto;    
     }
 
     public function via($notifiable)
@@ -34,6 +35,7 @@ class NewFollower extends LaravelNotification implements ShouldBroadcast
         return [
             'followerId' => $this->followerId,
             'followerName' => $this->followerName,
+            'profile_photo' => $this->profilePhoto,
             'followedUserId' => $this->followedUserId,
             'type' => 'new_follower',
             'title' => 'New Follower',
@@ -59,6 +61,7 @@ class NewFollower extends LaravelNotification implements ShouldBroadcast
         return [
             'followerId' => $this->followerId,
             'followerName' => $this->followerName,
+            'profile_photo' => $this->profilePhoto,
             'followedUserId' => $this->followedUserId,
             'type' => 'new_follower',
             'title' => 'New Follower',

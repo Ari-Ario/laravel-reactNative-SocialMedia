@@ -23,8 +23,11 @@ export interface Notification {
 
 interface NotificationStore {
   notifications: Notification[];
+  followerNotifications: Notification[];
   unreadCount: number;
+  unreadFollowerCount: number;
   isNotificationPanelVisible: boolean;
+  isFollowersPanelVisible: boolean;
   isConnected: boolean;
   currentUserId: number | null;
   lastActiveTime: string | null;
@@ -32,6 +35,7 @@ interface NotificationStore {
 
   // Actions
   setNotificationPanelVisible: (visible: boolean) => void;
+  setIsFollowersPanelVisible: (visible: boolean) => void;
   setCurrentUserId: (userId: number) => void;
   setInitializationTime: (time: Date) => void;
   setLastActiveTime: (time: string) => void;
@@ -40,6 +44,7 @@ interface NotificationStore {
   addNotification: (notification: Omit<Notification, 'id' | 'isRead'>) => void;
   markAsRead: (notificationId: string) => void;
   markAllAsRead: () => void;
+  markAllFollowerNotificationsAsRead: () => void;
   removeNotification: (notificationId: string) => void;
   clearAll: () => void;
   
@@ -49,25 +54,36 @@ interface NotificationStore {
   
   // Missed notifications
   fetchMissedNotifications: (token: string, userId: number) => Promise<void>;
+
+  // Getters for filtered notifications
+  getFollowerNotifications: () => Notification[];
+  getRegularNotifications: () => Notification[];
+  getUnreadFollowerCount: () => number;
 }
+
+// Helper function to check if a notification is a follower type
+const isFollowerNotification = (type: string): boolean => {
+  return ['new_follower', 'user_unfollowed', 'new-follower', 'user-unfollowed', 'follow'].includes(type);
+};
 
 export const useNotificationStore = create<NotificationStore>()(
   persist(
     (set, get) => ({
       notifications: [],
+      followerNotifications: [],
       unreadCount: 0,
+      unreadFollowerCount: 0,
       isNotificationPanelVisible: false,
+      isFollowersPanelVisible: false,
       isConnected: false,
       currentUserId: null,
       lastActiveTime: null,
       initializationTime: null,
 
       setNotificationPanelVisible: (visible) => set({ isNotificationPanelVisible: visible }),
-      
+      setIsFollowersPanelVisible: (visible) => set({ isFollowersPanelVisible: visible }),
       setCurrentUserId: (userId) => set({ currentUserId: userId }),
-      
       setInitializationTime: (time) => set({ initializationTime: time }),
-
       setLastActiveTime: (time) => set({ lastActiveTime: time }),
 
       addNotification: (notificationData) => {
@@ -78,14 +94,18 @@ export const useNotificationStore = create<NotificationStore>()(
           createdAt: notificationData.createdAt || new Date()
         };
 
-        // Prevent duplicates
-        const { notifications } = get();
-        const isDuplicate = notifications.some(notif => 
+        const isFollower = isFollowerNotification(newNotification.type);
+
+        // Prevent duplicates - check in the appropriate array
+        const { notifications, followerNotifications } = get();
+        const targetArray = isFollower ? followerNotifications : notifications;
+        
+        const isDuplicate = targetArray.some(notif => 
           notif.id === newNotification.id || 
           (notif.type === newNotification.type && 
            notif.postId === newNotification.postId && 
            notif.commentId === newNotification.commentId &&
-           Math.abs(new Date(notif.createdAt).getTime() - newNotification.createdAt.getTime()) < 60000) // Within 1 minute
+           Math.abs(new Date(notif.createdAt).getTime() - newNotification.createdAt.getTime()) < 60000)
         );
 
         if (isDuplicate) {
@@ -93,62 +113,134 @@ export const useNotificationStore = create<NotificationStore>()(
           return;
         }
 
-        console.log('🔔 ADDING NOTIFICATION TO STORE:', newNotification);
+        console.log('🔔 ADDING NOTIFICATION TO STORE:', newNotification.type, 'isFollower:', isFollower);
 
         set((state) => {
-          const newNotifications = [newNotification, ...state.notifications].slice(0, 50); // Keep only latest 50
-          const newUnreadCount = newNotifications.filter(n => !n.isRead).length;
-          
-          console.log('🔔 STORE UPDATED - Total:', newNotifications.length, 'Unread:', newUnreadCount);
-          
-          return {
-            notifications: newNotifications,
-            unreadCount: newUnreadCount
-          };
+          if (isFollower) {
+            // Add to follower notifications (newest first)
+            const newFollowerNotifications = [newNotification, ...state.followerNotifications].slice(0, 50);
+            const newUnreadFollowerCount = newFollowerNotifications.filter(n => !n.isRead).length;
+            
+            console.log('🔔 FOLLOWER STORE UPDATED - Total:', newFollowerNotifications.length, 'Unread:', newUnreadFollowerCount);
+            
+            return {
+              followerNotifications: newFollowerNotifications,
+              unreadFollowerCount: newUnreadFollowerCount,
+              notifications: state.notifications,
+              unreadCount: state.unreadCount
+            };
+          } else {
+            // Add to regular notifications (newest first)
+            const newNotifications = [newNotification, ...state.notifications].slice(0, 50);
+            const newUnreadCount = newNotifications.filter(n => !n.isRead).length;
+            
+            console.log('🔔 REGULAR STORE UPDATED - Total:', newNotifications.length, 'Unread:', newUnreadCount);
+            
+            return {
+              notifications: newNotifications,
+              unreadCount: newUnreadCount,
+              followerNotifications: state.followerNotifications,
+              unreadFollowerCount: state.unreadFollowerCount
+            };
+          }
         });
       },
 
       markAsRead: (notificationId) => {
         set((state) => {
-          const updatedNotifications = state.notifications.map(notif =>
-            notif.id === notificationId ? { ...notif, isRead: true } : notif
-          );
+          // Check both arrays to find where the notification is
+          const inFollowerNotifications = state.followerNotifications.some(n => n.id === notificationId);
           
-          const newUnreadCount = updatedNotifications.filter(n => !n.isRead).length;
-          
-          return {
-            notifications: updatedNotifications,
-            unreadCount: newUnreadCount
-          };
+          if (inFollowerNotifications) {
+            const updatedFollowerNotifications = state.followerNotifications.map(notif =>
+              notif.id === notificationId ? { ...notif, isRead: true } : notif
+            );
+            const newUnreadFollowerCount = updatedFollowerNotifications.filter(n => !n.isRead).length;
+            
+            return {
+              followerNotifications: updatedFollowerNotifications,
+              unreadFollowerCount: newUnreadFollowerCount,
+              notifications: state.notifications,
+              unreadCount: state.unreadCount
+            };
+          } else {
+            const updatedNotifications = state.notifications.map(notif =>
+              notif.id === notificationId ? { ...notif, isRead: true } : notif
+            );
+            const newUnreadCount = updatedNotifications.filter(n => !n.isRead).length;
+            
+            return {
+              notifications: updatedNotifications,
+              unreadCount: newUnreadCount,
+              followerNotifications: state.followerNotifications,
+              unreadFollowerCount: state.unreadFollowerCount
+            };
+          }
         });
       },
 
       markAllAsRead: () => {
         set((state) => ({
           notifications: state.notifications.map(notif => ({ ...notif, isRead: true })),
-          unreadCount: 0
+          unreadCount: 0,
+          followerNotifications: state.followerNotifications,
+          unreadFollowerCount: state.unreadFollowerCount
         }));
         
-        // Update last active time when marking all as read
+        get().setLastActiveTime(new Date().toISOString());
+      },
+
+      markAllFollowerNotificationsAsRead: () => {
+        set((state) => ({
+          followerNotifications: state.followerNotifications.map(notif => ({ ...notif, isRead: true })),
+          unreadFollowerCount: 0,
+          notifications: state.notifications,
+          unreadCount: state.unreadCount
+        }));
+        
         get().setLastActiveTime(new Date().toISOString());
       },
 
       removeNotification: (notificationId) => {
         set((state) => {
-          const notificationToRemove = state.notifications.find(n => n.id === notificationId);
-          const wasUnread = notificationToRemove?.isRead === false;
+          const inFollowerNotifications = state.followerNotifications.some(n => n.id === notificationId);
           
-          const newNotifications = state.notifications.filter(n => n.id !== notificationId);
-          const newUnreadCount = wasUnread ? Math.max(0, state.unreadCount - 1) : state.unreadCount;
-          
-          return {
-            notifications: newNotifications,
-            unreadCount: newUnreadCount
-          };
+          if (inFollowerNotifications) {
+            const notificationToRemove = state.followerNotifications.find(n => n.id === notificationId);
+            const wasUnread = notificationToRemove?.isRead === false;
+            
+            const newFollowerNotifications = state.followerNotifications.filter(n => n.id !== notificationId);
+            const newUnreadFollowerCount = wasUnread ? Math.max(0, state.unreadFollowerCount - 1) : state.unreadFollowerCount;
+            
+            return {
+              followerNotifications: newFollowerNotifications,
+              unreadFollowerCount: newUnreadFollowerCount,
+              notifications: state.notifications,
+              unreadCount: state.unreadCount
+            };
+          } else {
+            const notificationToRemove = state.notifications.find(n => n.id === notificationId);
+            const wasUnread = notificationToRemove?.isRead === false;
+            
+            const newNotifications = state.notifications.filter(n => n.id !== notificationId);
+            const newUnreadCount = wasUnread ? Math.max(0, state.unreadCount - 1) : state.unreadCount;
+            
+            return {
+              notifications: newNotifications,
+              unreadCount: newUnreadCount,
+              followerNotifications: state.followerNotifications,
+              unreadFollowerCount: state.unreadFollowerCount
+            };
+          }
         });
       },
 
-      clearAll: () => set({ notifications: [], unreadCount: 0 }),
+      clearAll: () => set({ 
+        notifications: [], 
+        followerNotifications: [], 
+        unreadCount: 0, 
+        unreadFollowerCount: 0 
+      }),
 
       initializeRealtime: (token: string, userId: number) => {
         console.log('🔔 INITIALIZING NOTIFICATION REAL-TIME FOR USER:', userId);
@@ -156,15 +248,11 @@ export const useNotificationStore = create<NotificationStore>()(
         const success = PusherService.initialize(token);
         
         if (success && userId) {
-          // Subscribe to user notifications
           PusherService.subscribeToUserNotifications(userId, (notificationData) => {
             console.log('🔔 PUSHER EVENT RECEIVED → ADDING TO STORE:', notificationData);
-            
-            // Add to store
             get().addNotification(notificationData);
           });
           
-          // Fetch missed notifications
           get().fetchMissedNotifications(token, userId);
           
           set({ isConnected: true, currentUserId: userId });
@@ -181,16 +269,14 @@ export const useNotificationStore = create<NotificationStore>()(
         }
         PusherService.disconnect();
         
-        // Set last active time when disconnecting
         get().setLastActiveTime(new Date().toISOString());
-        
         set({ isConnected: false, currentUserId: null });
       },
 
       fetchMissedNotifications: async (token: string, userId: number) => {
         try {
           const { lastActiveTime } = get();
-          const apiUrl = getApiBase() || 'http://localhost:8000'; // Fallback URL
+          const apiUrl = getApiBase() || 'http://localhost:8000';
           const url = `${apiUrl}/notifications/missed`;
           const tokken = await getToken();
           console.log('📬 Fetching missed notifications from:', url, 'since:', lastActiveTime);
@@ -200,11 +286,10 @@ export const useNotificationStore = create<NotificationStore>()(
             params: {
               last_seen_time: lastActiveTime || undefined,
             },
-            timeout: 10000, // 10-second timeout
+            timeout: 10000,
           });
 
           const missedNotifications = response.data;
-
           console.log('📬 Found missed notifications:', missedNotifications);
 
           if (missedNotifications.length > 0) {
@@ -216,7 +301,6 @@ export const useNotificationStore = create<NotificationStore>()(
             });
           }
 
-          // Update last active time
           get().setLastActiveTime(new Date().toISOString());
         } catch (error: any) {
           console.error('❌ Error fetching missed notifications:', {
@@ -229,12 +313,35 @@ export const useNotificationStore = create<NotificationStore>()(
             } : null,
           });
 
-          // Retry once after a delay if network error
           if (error.code === 'ERR_NETWORK' && !get().isConnected) {
             console.log('🔄 Retrying fetchMissedNotifications in 5 seconds...');
             setTimeout(() => get().fetchMissedNotifications(token, userId), 5000);
           }
         }
+      },
+
+      // Getters for filtered notifications
+      getFollowerNotifications: () => {
+        const { followerNotifications } = get();
+        console.log('👥 Getting follower notifications:', followerNotifications.length);
+        return followerNotifications;
+      },
+
+      getRegularNotifications: () => {
+        const { notifications } = get();
+        console.log('🔔 Getting regular notifications:', notifications.length);
+        // Double-check that no follower notifications are in the regular array
+        const filteredNotifications = notifications.filter(notif => !isFollowerNotification(notif.type));
+        if (filteredNotifications.length !== notifications.length) {
+          console.log('⚠️ Filtered out follower notifications from regular array');
+        }
+        return filteredNotifications;
+      },
+
+      getUnreadFollowerCount: () => {
+        const { unreadFollowerCount } = get();
+        console.log('👥 Unread follower count:', unreadFollowerCount);
+        return unreadFollowerCount;
       },
     }),
     {
@@ -245,12 +352,21 @@ export const useNotificationStore = create<NotificationStore>()(
           ...notif,
           createdAt: notif.createdAt.toISOString()
         })),
+        followerNotifications: state.followerNotifications.map(notif => ({
+          ...notif,
+          createdAt: notif.createdAt.toISOString()
+        })),
         unreadCount: state.unreadCount,
+        unreadFollowerCount: state.unreadFollowerCount,
         lastActiveTime: state.lastActiveTime,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.notifications = state.notifications.map(notif => ({
+            ...notif,
+            createdAt: new Date(notif.createdAt)
+          }));
+          state.followerNotifications = state.followerNotifications.map(notif => ({
             ...notif,
             createdAt: new Date(notif.createdAt)
           }));

@@ -174,8 +174,8 @@ class PusherService {
           title: data.title || 'New Follower',
           message: data.message || `${data.follower.name} started following you`,
           data: data,
-          userId: data.follower.id,
-          avatar: data.follower.profile_photo,
+          userId: data.followerId,
+          avatar: data.profile_photo || null,
           createdAt: new Date()
         };
         
