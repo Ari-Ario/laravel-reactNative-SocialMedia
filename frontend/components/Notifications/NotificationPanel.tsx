@@ -47,6 +47,15 @@ const handleNotificationPress = async (item: Notification) => {
       onClose();
       return;
     }
+    
+    if (['training_needed', 'chatbot_training'].includes(item.type)) {
+      router.replace({
+        pathname: '/(tabs)/chatbotTraining',
+        params: { highlightChatbotTraining: 'true' },
+      });
+      onClose();
+      return;
+    }
 
     if (['post', 'post_updated', 'reaction'].includes(item.type) && item.postId) {
       const postData = await fetchPostById(item.postId);

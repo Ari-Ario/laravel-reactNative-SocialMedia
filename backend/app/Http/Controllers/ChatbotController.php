@@ -8,40 +8,58 @@ use App\Models\ChatbotTraining;
 use App\Models\User;
 use App\Notifications\ChatbotTrainingNeeded;
 use App\Events\ChatbotTrainingNeeded as ChatbotTrainingNeededEvent;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class ChatbotController extends Controller
 {
-    // Contextual memory variables
-    private $conversationContext = [];
-    private $currentContext = null;
-    
+    // Contextual memory – now per conversation
+    private $conversationContext = [];     // [conv_id => [messages]]
+    private $contextTimestamps = [];       // [conv_id => last_active_timestamp]
+    private $currentContext = [];          // [conv_id => 'account'|'payment'|...]
+    private $decisionTreeState = [];       // [conv_id => current_node]
+
     public function handleMessage(Request $request)
     {
         $request->validate([
             'message' => 'required|string',
-            'conversation_id' => 'nullable|string' // For maintaining conversation context
+            'conversation_id' => 'nullable|string'
         ]);
 
-        $message = strtolower(trim($request->message));
-        // Add to conversation history
-        $this->conversationContext[] = $message;
+        $message = trim($request->message);
+        $conversationId = $request->conversation_id ?? Str::uuid()->toString();
 
-        // Option 1: Simple rule-based responses
-        $response = $this->getRuleBasedResponse($request->message);
-        
-        // Option 2: Integrate with an AI service (like OpenAI)
-        // $response = $this->getAIResponse($request->message);
+        // Initialize conversation storage
+        if (!isset($this->conversationContext[$conversationId])) {
+            $this->conversationContext[$conversationId] = [];
+            $this->contextTimestamps[$conversationId] = time();
+        }
+
+        // Add message to history
+        $this->conversationContext[$conversationId][] = strtolower($message);
+        $this->contextTimestamps[$conversationId] = time();
+
+        // Clean old context
+        $this->cleanOldContext($conversationId);
+
+        // Main response engine
+        $response = $this->getRuleBasedResponse($message, $conversationId);
 
         return response()->json([
             'response' => $response,
-            'conversation_id' => $request->conversation_id ?? uniqid()
+            'conversation_id' => $conversationId
         ]);
     }
-        
-    // Option 1: Simple rule-based responses currently using
-    private function getRuleBasedResponse(string $message): string
+
+    // ========================================================================
+    // MAIN RESPONSE ENGINE – FULLY EXTENDED
+    // ========================================================================
+    private function getRuleBasedResponse(string $message, string $conversationId): string
     {
-        // 1. Check exact matches
+        $lowerMessage = strtolower($message);
+
+        // 1. Exact matches (hardcoded)
         $exactResponses = [
             'hello' => 'Hi! How can I help?',
             'hi' => 'Hi! How can I help?',
@@ -51,75 +69,139 @@ class ChatbotController extends Controller
             'email' => 'Check your spam folder or request a new verification email',
             'refund' => 'Our refund policy allows returns within 30 days',
         ];
-        
-        if (isset($exactResponses[strtolower($message)])) {
-            return $exactResponses[strtolower($message)];
+
+        if (isset($exactResponses[$lowerMessage])) {
+            return $exactResponses[$lowerMessage];
         }
-        
-        // 2. Check learned responses
+
+        // 2. Check learned responses from cache
         $learnedResponses = cache()->get('learned_responses', []);
-        if (isset($learnedResponses[$message])) {
-            return $learnedResponses[$message];
+        if (isset($learnedResponses[$lowerMessage])) {
+            return $learnedResponses[$lowerMessage];
         }
-        
-        // 3. Analyze message
+
+        // 3. Analyze message (NLP)
         $analysis = $this->analyzeMessage($message);
-        
-        // 4. Handle by sentiment
-        if ($analysis['sentiment'] === 'negative') {
+        $keywords = $analysis['keywords'];
+        $sentiment = $analysis['sentiment'];
+
+        // 4. Handle negative sentiment
+        if ($sentiment === 'negative') {
             return "I'm sorry to hear you're having trouble. Let me help resolve this.";
         }
-        
+
         // 5. Check keyword patterns
-        if ($response = $this->checkKeywordPatterns($analysis['keywords'])) {
+        if ($response = $this->checkKeywordPatterns($keywords)) {
             return $response;
         }
-        
-        // 6. Check conversation context
-        if ($this->isContextualResponse($message)) {
-            if ($contextResponse = $this->getContextualResponse()) {
-                return $contextResponse;
+
+        // 6. Decision Tree (e.g., account flow)
+        if ($response = $this->handleAccountQuestions($message, $conversationId)) {
+            return $response;
+        }
+
+        // 7. Contextual response
+        if ($this->isContextualResponse($message, $conversationId)) {
+            if ($response = $this->getContextualResponse($conversationId)) {
+                return $response;
             }
         }
-        
-        // Check database first then go to step 7
-        \Log::info("Processing message", ['message' => $message]);
-    
-        if ($response = $this->getTrainedResponses($message)) {
+
+        // 8. Database trained responses (fuzzy + scored)
+        if ($response = $this->getTrainedResponses($message, $conversationId)) {
             return $response;
         }
-        
-        $analysis = $this->analyzeMessage($message);
+
+        // 9. AI fallback + auto-learn (still inside rule-based)
         $category = $this->detectCategories($message)[0] ?? 'general';
-        
-        \Log::info("No trained response found, creating learning entry", [
-            'message' => $message,
-            'category' => $category,
-            'keywords' => $analysis['keywords']
-        ]);
-        
-        $this->learnResponse($message, '', $category);
+        $aiResponse = $this->getAIResponse($message);
 
-        return "I'm still learning about $category questions. Our team will review this shortly.";
-
-        // // Everything else goes to AI
-        // $aiResponse = $this->getAIResponse($message);
-
-        // return response()->json(['response' => $aiResponse]);
+        if ($aiResponse && $this->isSimpleQuestion($message)) {
+            // Auto-learn simple AI answers
+            $this->learnResponse($message, $aiResponse, $category);
+            return $aiResponse . " *(AI helped me learn this)*";
+        } else {
+            // Learn with human review
+            $this->learnResponse($message, '', $category);
+            return "I'm still learning about $category questions. Our team will review this shortly.";
+        }
     }
 
+    // ========================================================================
+    // 1. EXACT + CACHED RESPONSES
+    // ========================================================================
+    // Already in getRuleBasedResponse()
 
-    // Decision Tree
-    private function handleAccountQuestions(string $message): string
+    // ========================================================================
+    // 2. LEARNED RESPONSES FROM DB (FUZZY + SCORING)
+    // ========================================================================
+    private function getTrainedResponses(string $message, string $conversationId): ?string
     {
-        $accountFlow = [
+        $messageWords = $this->tokenizeMessage($message);
+        $detectedCategories = $this->detectCategories($message);
+
+        if (empty($messageWords)) return null;
+
+        // Cache all active trainings
+        $allTrainings = Cache::remember('all_chatbot_trainings', 3600, function () {
+            return ChatbotTraining::where('is_active', true)->get();
+        });
+
+        $scores = [];
+
+        foreach ($allTrainings as $t) {
+            $triggerWords = $this->tokenizeMessage($t->trigger);
+            $keywordWords = $t->keywords ?? [];
+            $docWords = array_merge($triggerWords, $keywordWords, [$t->category]);
+
+            $overlap = count(array_intersect($messageWords, $docWords));
+            $score = $overlap * 2;
+
+            if (in_array($t->category, $detectedCategories)) {
+                $score += 3;
+            }
+
+            if ($score > 0) {
+                $scores[] = [
+                    'response' => $t->response,
+                    'score' => $score,
+                    'id' => $t->id
+                ];
+            }
+        }
+
+        if (empty($scores)) return null;
+
+        usort($scores, fn($a, $b) => $b['score'] <=> $a['score']);
+        $best = $scores[0];
+
+        Log::info("Best DB match", [
+            'message' => $message,
+            'id' => $best['id'],
+            'score' => $best['score'],
+            'response' => $best['response']
+        ]);
+
+        return $best['response'];
+    }
+
+    // ========================================================================
+    // 3. DECISION TREE – ACCOUNT FLOW (FULLY IMPLEMENTED)
+    // ========================================================================
+    private function handleAccountQuestions(string $message, string $conversationId): ?string
+    {
+        $state = $this->decisionTreeState[$conversationId] ?? 'start';
+
+        $tree = [
             'start' => [
-                'pattern' => '/account|profile/',
+                'pattern' => '/\b(account|profile|login|sign in|register)\b/i',
                 'response' => 'What would you like to do? (update info, reset password, delete account)',
                 'next' => [
-                    'update info' => 'update_info',
-                    'reset password' => 'reset_password',
-                    'delete account' => 'delete_account'
+                    'update' => 'update_info',
+                    'info' => 'update_info',
+                    'password' => 'reset_password',
+                    'reset' => 'reset_password',
+                    'delete' => 'delete_account',
                 ]
             ],
             'update_info' => [
@@ -127,301 +209,228 @@ class ChatbotController extends Controller
                 'next' => null
             ],
             'reset_password' => [
-                'response' => 'Visit our password reset page at example.com/reset',
+                'response' => 'Visit example.com/reset or use the "Forgot Password?" link',
+                'next' => null
+            ],
+            'delete_account' => [
+                'response' => 'To delete your account, go to Settings > Privacy > Delete Account. This cannot be undone.',
                 'next' => null
             ]
         ];
-        
-        // Implement tree traversal based on conversation history
-        // ...
+
+        $node = $tree[$state] ?? null;
+
+        // Enter tree
+        if ($state === 'start' && $node && preg_match($node['pattern'], $message)) {
+            $this->decisionTreeState[$conversationId] = 'start';
+            return $node['response'];
+        }
+
+        // Traverse tree
+        if ($node && $node['next']) {
+            foreach ($node['next'] as $keyword => $nextState) {
+                if (str_contains(strtolower($message), $keyword)) {
+                    $this->decisionTreeState[$conversationId] = $nextState;
+                    return $tree[$nextState]['response'] ?? "Done.";
+                }
+            }
+        }
+
+        // Exit tree after final answer
+        if ($node && !$node['next']) {
+            unset($this->decisionTreeState[$conversationId]);
+        }
+
+        return null;
     }
 
+    // ========================================================================
+    // 4. CONTEXTUAL MEMORY (PER CONVERSATION)
+    // ========================================================================
+    private function isContextualResponse(string $message, string $conversationId): bool
+    {
+        $lastThree = array_slice($this->conversationContext[$conversationId] ?? [], -3);
+        $contextString = implode(' ', $lastThree);
 
-    // Learning Capability
+        $contextTriggers = [
+            'account' => ['account', 'profile', 'login', 'password', 'email'],
+            'payment' => ['payment', 'bill', 'invoice', 'refund', 'charge'],
+            'technical' => ['bug', 'error', 'crash', 'not working', 'issue'],
+            'feature' => ['how to', 'use', 'feature', 'tutorial', 'guide']
+        ];
+
+        foreach ($contextTriggers as $context => $triggers) {
+            foreach ($triggers as $trigger) {
+                if (str_contains($contextString, $trigger)) {
+                    $this->currentContext[$conversationId] = $context;
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private function getContextualResponse(string $conversationId): ?string
+    {
+        $context = $this->currentContext[$conversationId] ?? null;
+        $lastMessages = array_slice($this->conversationContext[$conversationId] ?? [], -3);
+
+        if (!$context) return null;
+
+        switch ($context) {
+            case 'account':
+                if ($this->containsAny($lastMessages, ['password', 'reset'])) {
+                    return 'Reset password: Settings > Security > Change Password';
+                }
+                if ($this->containsAny($lastMessages, ['email', 'verify'])) {
+                    return 'Verify email: Check spam or resend from Settings > Account';
+                }
+                return 'Account help: update profile, reset password, or delete account';
+
+            case 'payment':
+                if ($this->containsAny($lastMessages, ['refund', 'return'])) {
+                    return 'Refunds take 5–7 days. Contact support@example.com';
+                }
+                return 'Billing: View invoices in Settings > Billing';
+
+            case 'technical':
+                return 'Please share: device, app version, and exact error';
+
+            case 'feature':
+                return 'Ask about any feature: upload, share, notifications, etc.';
+        }
+
+        return null;
+    }
+
+    // Helper
+    private function containsAny(array $haystack, array $needles): bool
+    {
+        foreach ($needles as $needle) {
+            foreach ($haystack as $item) {
+                if (str_contains($item, $needle)) return true;
+            }
+        }
+        return false;
+    }
+
+    // ========================================================================
+    // 5. LEARNING + NOTIFICATIONS (UNCHANGED LOGIC)
+    // ========================================================================
     private function learnResponse(string $message, string $response = '', string $category = null): void
     {
         $analysis = $this->analyzeMessage($message);
         $category = $category ?? $this->detectCategories($message)[0] ?? 'general';
 
-        // Check for existing similar entries
         $existing = ChatbotTraining::where('trigger', 'like', "%$message%")
             ->when($category, fn($q) => $q->where('category', $category))
             ->first();
-            
+
         if ($existing) {
-            \Log::info("Similar training entry exists", [
-                'message' => $message, 
-                'existing_id' => $existing->id,
-                'existing_needs_review' => $existing->needs_review
-            ]);
-            
-            // If the existing entry needs review and we still don't have a response
             if ($existing->needs_review && empty($response)) {
-                \Log::info("Existing entry still needs review - triggering notification");
-                
-                // Send notifications separately (not through the event)
                 $this->sendChatbotNotifications($message, $category, $analysis['keywords']);
-                
-                // Still broadcast the event for real-time updates
-                event(new \App\Events\ChatbotTrainingNeeded(
-                    $message, 
-                    $category, 
-                    $analysis['keywords']
-                ));
+                event(new \App\Events\ChatbotTrainingNeeded($message, $category, $analysis['keywords']));
             }
             return;
         }
 
-        // Create the training entry only if it doesn't exist
         $training = ChatbotTraining::create([
             'trigger' => $message,
             'response' => $response,
             'keywords' => $analysis['keywords'],
             'category' => $category,
             'needs_review' => empty($response),
-            'trained_by' => auth()->id() ?? null
+            'trained_by' => auth()->id() ?? null,
+            'is_active' => !empty($response)
         ]);
-        
-        // If response is empty (needs review), notify private users and admins
+
         if (empty($response)) {
-            \Log::info("🤖 Chatbot training needed - notifying private users and admins");
-            
-            // Send notifications separately
             $this->sendChatbotNotifications($message, $category, $analysis['keywords']);
-            
-            // Broadcast the event for real-time updates
-            event(new \App\Events\ChatbotTrainingNeeded(
-                $message, 
-                $category, 
-                $analysis['keywords']
-            ));
+            event(new \App\Events\ChatbotTrainingNeeded($message, $category, $analysis['keywords']));
         }
-        
-        // Clear cache to ensure new responses are available
+
         cache()->forget('learned_responses');
+        cache()->forget('all_chatbot_trainings');
     }
 
-    // Add this new method to handle notifications separately
     private function sendChatbotNotifications(string $message, string $category, array $keywords): void
     {
         try {
-            \Log::info("📧 Starting separate notification process");
-            
-            // Get users with ai_admin = true
-            $usersToNotify = \App\Models\User::where('ai_admin', true)->get();
-            
-            \Log::info("📧 Found users to notify", [
-                'total_users' => $usersToNotify->count(),
-                'user_emails' => $usersToNotify->pluck('email')->toArray(),
-                'message' => $message
-            ]);
+            $usersToNotify = User::where('ai_admin', true)->get();
 
             if ($usersToNotify->count() > 0) {
                 \Illuminate\Support\Facades\Notification::send(
-                    $usersToNotify, 
+                    $usersToNotify,
                     new \App\Notifications\ChatbotTrainingNeeded($message, $category, $keywords)
                 );
-                
-                \Log::info("✅ Notifications sent successfully to queue");
-            } else {
-                \Log::warning("❌ No ai_admin users found to notify");
             }
         } catch (\Exception $e) {
-            \Log::error("❌ Notification sending failed", [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+            Log::error("Notification failed", ['error' => $e->getMessage()]);
         }
-    }
-    
-    // Returning Learned questions 
-    private function getTrainedResponses(string $message): ?string
-    {
-        // 1. First try exact match (properly escaped column name)
-        $exactMatch = ChatbotTraining::where('is_active', true)
-            ->whereRaw('LOWER(`trigger`) = ?', [strtolower($message)])
-            ->first();
-    
-        if ($exactMatch) {
-            \Log::info("Exact match found for: '$message'", [
-                'id' => $exactMatch->id,
-                'response' => $exactMatch->response
-            ]);
-            return $exactMatch->response;
-        }
-    
-        // 2. Tokenize and analyze message
-        $messageWords = $this->tokenizeMessage($message);
-        $detectedCategories = $this->detectCategories($message);
-        
-        \Log::debug("Message analysis", [
-            'message' => $message,
-            'words' => $messageWords,
-            'categories' => $detectedCategories
-        ]);
-    
-        if (empty($messageWords)) {
-            return null;
-        }
-    
-        // 3. Get all potential responses with scoring
-        $potentialResponses = ChatbotTraining::where('is_active', true)
-            ->get()
-            ->map(function ($training) use ($messageWords, $detectedCategories) {
-                // Combine all matching criteria
-                $trainingWords = array_merge(
-                    $this->tokenizeMessage($training->trigger),
-                    $training->keywords ?? [],
-                    [$training->category]
-                );
-                
-                $wordIntersection = array_intersect($messageWords, $trainingWords);
-                $categoryMatch = in_array($training->category, $detectedCategories);
-                
-                return [
-                    'response' => $training->response,
-                    'score' => (count($wordIntersection) * 2) + ($categoryMatch ? 3 : 0),
-                    'length' => strlen($training->trigger),
-                    'id' => $training->id,
-                    'category_match' => $categoryMatch
-                ];
-            })
-            ->filter(fn($r) => $r['score'] > 0)
-            ->sortBy([
-                ['score', 'desc'],
-                ['category_match', 'desc'], 
-                ['length', 'desc']
-            ]);
-    
-        \Log::debug("Potential responses", $potentialResponses->values()->toArray());
-    
-        if ($potentialResponses->isNotEmpty()) {
-            $bestMatch = $potentialResponses->first();
-            
-            \Log::info("Best match selected", [
-                'id' => $bestMatch['id'],
-                'score' => $bestMatch['score'],
-                'category_match' => $bestMatch['category_match'],
-                'response' => $bestMatch['response']
-            ]);
-            
-            return $bestMatch['response'];
-        }
-    
-        \Log::info("No suitable match found for message", ['message' => $message]);
-        return null;
-    }
-    
-    private function detectCategories(string $message): array
-    {
-        $categories = ['account', 'payment', 'post', 'feature', 'technical'];
-        $found = [];
-        
-        foreach ($categories as $category) {
-            if (stripos($message, $category) !== false) {
-                $found[] = $category;
-            }
-        }
-        
-        return $found;
-    }
-    
-    private function tokenizeMessage(string $message): array
-    {
-        $message = strtolower(trim($message));
-        $words = preg_split('/\s+/', preg_replace('/[^a-z0-9\s]/', '', $message));
-        
-        $stopWords = ['the', 'a', 'an', 'is', 'are', 'i', 'you', 'we', 'to', 'my', 'can'];
-        $words = array_diff($words, $stopWords);
-        
-        return array_values(array_unique(array_filter($words)));
     }
 
-    // Sentiment
-    // NLP 
+    // ========================================================================
+    // 6. NLP: TOKENIZE, SENTIMENT, CATEGORIES
+    // ========================================================================
     private function analyzeMessage(string $message): array
     {
-        // Tokenization
         $words = preg_split('/\s+/', strtolower($message));
-        
-        // Remove stop words
-        $stopWords = ['the', 'a', 'is', 'are', 'i', 'you', 'we'];
-        $filteredWords = array_diff($words, $stopWords);
-        
-        // Simple sentiment analysis
-        $positiveWords = ['happy', 'good', 'great', 'thanks'];
-        $negativeWords = ['angry', 'bad', 'wrong', 'broken'];
-        
+        $stopWords = ['the', 'a', 'an', 'is', 'are', 'i', 'you', 'we', 'to', 'my', 'can', 'it', 'and', 'or', 'but', 'in', 'on', 'at'];
+        $filtered = array_diff($words, $stopWords);
+
+        $positive = ['happy', 'good', 'great', 'thanks', 'thank', 'awesome', 'excellent'];
+        $negative = ['angry', 'bad', 'wrong', 'broken', 'issue', 'problem', 'fail', 'error'];
+
         $sentiment = 'neutral';
-        foreach ($filteredWords as $word) {
-            if (in_array($word, $positiveWords)) $sentiment = 'positive';
-            if (in_array($word, $negativeWords)) $sentiment = 'negative';
+        foreach ($filtered as $word) {
+            if (in_array($word, $positive)) $sentiment = 'positive';
+            if (in_array($word, $negative)) $sentiment = 'negative';
         }
-        
+
         return [
-            'keywords' => array_values($filteredWords),
+            'keywords' => array_values(array_unique($filtered)),
             'sentiment' => $sentiment
         ];
     }
 
-    private function notifyAdmins(string $message): void
+    private function tokenizeMessage(string $message): array
     {
-        // $admins = User::where('is_admin', true)->get();
-
-        $admins = User::where('email', 'xusrew@yahoo.com')->get();
-        
-        foreach ($admins as $admin) {
-            $admin->notify(new ChatbotTrainingNeeded($message));
-        }
-        
-        // Also consider real-time notification
-        // event(new ChatbotTrainingCreated($message));
-        event(new ChatbotTrainingNeeded($message));
+        $message = strtolower(preg_replace('/[^a-z0-9\s]/', '', $message));
+        $words = preg_split('/\s+/', trim($message));
+        $stopWords = ['the', 'a', 'an', 'is', 'are', 'i', 'you', 'we', 'to', 'my', 'can', 'it', 'and'];
+        return array_values(array_unique(array_diff($words, $stopWords)));
     }
 
-    // Check keyword pattern 
+    private function detectCategories(string $message): array
+    {
+        $categories = ['account', 'payment', 'post', 'feature', 'technical'];
+        $found = [];
+        foreach ($categories as $cat) {
+            if (stripos($message, $cat) !== false) $found[] = $cat;
+        }
+        return $found;
+    }
+
+    // ========================================================================
+    // 7. KEYWORD PATTERNS
+    // ========================================================================
     private function checkKeywordPatterns(array $keywords): ?string
     {
         $patterns = [
-            [
-                'keywords' => ['hello', 'hi', 'hey', 'greetings', 'good morning'],
-                'response' => 'Hello there! How can I help you today?',
-                'priority' => 1
-            ],
-            [
-                'keywords' => ['account', 'profile', 'login', 'sign in', 'register'],
-                'response' => 'For account help: go to Settings > Account or ask about login, password, or profile',
-                'priority' => 3
-            ],
-            [
-                'keywords' => ['payment', 'bill', 'invoice', 'refund', 'charge'],
-                'response' => 'Payment support: visit Settings > Billing or ask about invoices, refunds, or charges',
-                'priority' => 3
-            ],
-            [
-                'keywords' => ['thank', 'thanks', 'appreciate', 'grateful'],
-                'response' => 'You\'re very welcome! Let me know if you need anything else.',
-                'priority' => 1
-            ],
-            [
-                'keywords' => ['bug', 'error', 'crash', 'not working'],
-                'response' => 'Technical support: please describe your issue including device model and app version',
-                'priority' => 4
-            ]
+            ['keywords' => ['hello', 'hi', 'hey'], 'response' => 'Hello there! How can I help you today?', 'priority' => 1],
+            ['keywords' => ['thank', 'thanks'], 'response' => 'You\'re very welcome! Let me know if you need anything else.', 'priority' => 1],
+            ['keywords' => ['account', 'profile', 'login'], 'response' => 'For account help: go to Settings > Account', 'priority' => 3],
+            ['keywords' => ['payment', 'bill', 'refund'], 'response' => 'Payment support: visit Settings > Billing', 'priority' => 3],
+            ['keywords' => ['bug', 'error', 'crash'], 'response' => 'Technical support: please describe your device and app version', 'priority' => 4],
         ];
 
-        // Sort by priority (highest first)
         usort($patterns, fn($a, $b) => $b['priority'] <=> $a['priority']);
 
-        foreach ($patterns as $pattern) {
-            foreach ($keywords as $keyword) {
-                if (in_array($keyword, $pattern['keywords'])) {
-                    \Log::debug("Keyword pattern matched", [
-                        'keyword' => $keyword,
-                        'pattern' => $pattern['keywords'],
-                        'response' => $pattern['response']
-                    ]);
-                    return $pattern['response'];
+        foreach ($patterns as $p) {
+            foreach ($keywords as $kw) {
+                if (in_array($kw, $p['keywords'])) {
+                    return $p['response'];
                 }
             }
         }
@@ -429,152 +438,93 @@ class ChatbotController extends Controller
         return null;
     }
 
-
-    // Contextual memory functions
-    private function isContextualResponse(string $message): bool
+    // ========================================================================
+    // 8. AI FALLBACK (INSIDE RULE-BASED)
+    // ========================================================================
+    private function getAIResponse(string $message): ?string
     {
-        // Always check against current active context first
-        if ($this->currentContext) {
-            return true;
-        }
+        try {
+            $apiKey = config('services.openai.key');
+            if (!$apiKey) return null;
 
-        $lastThreeMessages = array_slice($this->conversationContext, -3);
-        $contextString = implode(' ', $lastThreeMessages);
-        
-        // Expanded context triggers
-        $contextTriggers = [
-            'account' => ['account', 'profile', 'login', 'sign in', 'register'],
-            'payment' => ['payment', 'invoice', 'bill', 'credit', 'charge'],
-            'technical' => ['bug', 'crash', 'error', 'not working', 'problem'],
-            'feature' => ['feature', 'how to use', 'guide', 'tutorial', 'use']
-        ];
-        
-        foreach ($contextTriggers as $context => $triggers) {
-            foreach ($triggers as $trigger) {
-                if (str_contains($contextString, $trigger)) {
-                    $this->currentContext = $context;
-                    return true;
-                }
-            }
+            $response = Http::timeout(10)->withHeaders([
+                'Authorization' => 'Bearer ' . $apiKey,
+            ])->post('https://api.openai.com/v1/chat/completions', [
+                'model' => 'gpt-3.5-turbo',
+                'messages' => [['role' => 'user', 'content' => $message]],
+                'temperature' => 0.7,
+                'max_tokens' => 150
+            ]);
+
+            return $response->json('choices.0.message.content') ?? null;
+        } catch (\Exception $e) {
+            Log::warning("AI fallback failed", ['error' => $e->getMessage()]);
+            return null;
         }
-        
-        return false;
-    }
-    
-    private function getContextualResponse(): ?string
-    {
-        $lastMessages = array_slice($this->conversationContext, -3);
-        
-        // Account context responses
-        if ($this->currentContext === 'account') {
-            if (array_intersect(['password', 'reset'], $lastMessages)) {
-                return 'You can reset your password at: Settings > Account > Reset Password';
-            }
-            if (array_intersect(['email', 'verify'], $lastMessages)) {
-                return 'Check your spam folder or request a new verification email from your account settings';
-            }
-            return 'For account help, visit our support page or ask about: password reset, email verification, or profile changes';
-        }
-        
-        // Payment context responses
-        if ($this->currentContext === 'payment') {
-            if (array_intersect(['refund', 'return'], $lastMessages)) {
-                return 'Refunds are processed within 5-7 business days. Contact refunds@example.com for urgent requests';
-            }
-            if (array_intersect(['failed', 'declined'], $lastMessages)) {
-                return 'For failed payments, please verify your card details or try an alternative payment method';
-            }
-            return 'For billing support, you can: check invoices in Settings > Billing, or contact payments@example.com';
-        }
-        
-        // Technical support context
-        if ($this->currentContext === 'technical') {
-            if (array_intersect(['crash', 'freeze'], $lastMessages)) {
-                return 'Try updating to the latest version. If crashes persist, please describe when it happens';
-            }
-            return 'For technical issues, please specify: device model, app version, and exact error message if available';
-        }
-        
-        // Feature help context
-        if ($this->currentContext === 'feature') {
-            if (array_intersect(['how to', 'use'], $lastMessages)) {
-                return 'We have video tutorials at help.example.com/videos or you can ask about specific features';
-            }
-            return 'Which feature do you need help with? You can ask about: uploading files, sharing, notifications, etc.';
-        }
-        
-        print_r($lastMessages);
-        // No specific context matched
-        return null;
     }
 
+    // ========================================================================
+    // 9. AUTO-APPROVE SIMPLE QUESTIONS
+    // ========================================================================
+    private function isSimpleQuestion(string $message): bool
+    {
+        $message = strtolower($message);
+        $questionWords = ['how', 'what', 'where', 'when', 'why', 'can', 'does', 'is'];
+        $hasQuestion = count(array_intersect(
+            preg_split('/\s+/', $message),
+            $questionWords
+        )) > 0;
 
+        return strlen($message) < 80 && $hasQuestion;
+    }
 
+    // ========================================================================
+    // 10. MEMORY CLEANUP
+    // ========================================================================
+    private function cleanOldContext(string $conversationId): void
+    {
+        if (!isset($this->conversationContext[$conversationId])) return;
 
-    /////////// Extra Functions or similar functions but other form ////////////////
+        // Keep last 10 messages
+        $this->conversationContext[$conversationId] = array_slice(
+            $this->conversationContext[$conversationId], -10
+        );
+
+        // Clear after 30 minutes
+        if (time() - ($this->contextTimestamps[$conversationId] ?? 0) > 1800) {
+            unset($this->conversationContext[$conversationId]);
+            unset($this->currentContext[$conversationId]);
+            unset($this->decisionTreeState[$conversationId]);
+            unset($this->contextTimestamps[$conversationId]);
+        }
+    }
+
+    // ========================================================================
+    // LEGACY / UNUSED (KEPT FOR COMPATIBILITY)
+    // ========================================================================
+    private function notifyAdmins(string $message): void
+    {
+        $admins = User::where('email', 'xusrew@yahoo.com')->get();
+        foreach ($admins as $admin) {
+            $admin->notify(new ChatbotTrainingNeeded($message));
+        }
+        event(new ChatbotTrainingNeeded($message));
+    }
 
     private function checkKeywordPatterns2(array $keywords): ?string
     {
-        // Define keyword groups and their responses
-        $keywordGroups = [
-            'greetings' => [
-                'keywords' => ['hello', 'hi', 'hey', 'greetings'],
-                'response' => 'Hello there! How can I help you today?'
-            ],
-            'thanks' => [
-                'keywords' => ['thank', 'thanks', 'appreciate'],
-                'response' => 'You\'re very welcome!'
-            ],
-            'account' => [
-                'keywords' => ['account', 'profile', 'login'],
-                'response' => '2-For account issues, go to Settings > Account'
-            ],
-            // Add more groups as needed
+        $groups = [
+            'greetings' => ['hello', 'hi', 'hey'],
+            'thanks' => ['thank', 'thanks'],
+            'account' => ['account', 'profile', 'login'],
         ];
-
-        // Check each keyword against all groups
-        foreach ($keywords as $keyword) {
-            foreach ($keywordGroups as $group) {
-                if (in_array($keyword, $group['keywords'])) {
-                    return $group['response'];
+        foreach ($keywords as $kw) {
+            foreach ($groups as $response) {
+                if (in_array($kw, $response)) {
+                    return "$response response";
                 }
             }
         }
-
         return null;
     }
-
-
-    private function cleanOldContext(): void
-    {
-        // Keep only last 10 messages
-        if (count($this->conversationContext) > 10) {
-            $this->conversationContext = array_slice($this->conversationContext, -10);
-        }
-        
-        // Clear context after 30 minutes of inactivity
-        if ($this->lastMessageTime && time() - $this->lastMessageTime > 1800) {
-            $this->conversationContext = [];
-            $this->currentContext = null;
-        }
-    }
-
-    // Option 2: Directly using or Fallback to an open AI 
-    private function getAIResponse(string $message): string
-    {
-        $apiKey = config('services.openai.key');
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $apiKey,
-            'Content-Type' => 'application/json'
-        ])->post('https://api.openai.com/v1/chat/completions', [
-            'model' => 'gpt-3.5-turbo',
-            'messages' => [
-                ['role' => 'user', 'content' => $message]
-            ],
-            'temperature' => 0.7
-        ]);
-
-        return $response->json()['choices'][0]['message']['content'] ?? 'Sorry, I encountered an error.';
-    }
-
 }

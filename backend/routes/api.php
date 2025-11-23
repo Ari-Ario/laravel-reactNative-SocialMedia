@@ -28,7 +28,7 @@ Route::group(["middleware" => ["auth:sanctum"]], function() {
     Route::post('/profiles/{user}/follow', [ProfileController::class, 'follow']);
 
 
-    Route::post('/chat', [ChatbotController::class, 'handleMessage']);
+    Route::post('/chatbot', [ChatbotController::class, 'handleMessage']);
     Route::post('/test-csrf', fn () => [1, 2, 3]);
 
     Route::post('/logout', function (Request $request) {

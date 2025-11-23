@@ -241,7 +241,8 @@ class PusherService {
         console.log('🤖 Chatbot training notification (user channel):', data);
         
         const notification = {
-          type: data.type || 'chatbot_training',
+          id: `chatbot-${Date.now()}-${Math.random()}`,
+          type: 'chatbot_training' || data.type,
           title: data.title || 'Chatbot Training Needed',
           message: `New training data: "${data.question}"` || data.message.substring(0, 60) + '...',
           data: data,
@@ -249,7 +250,8 @@ class PusherService {
           category: data.category,
           keywords: data.keywords,
           timestamp: new Date(data.timestamp),
-          createdAt: new Date()
+          createdAt: new Date(),
+          $isRead: false,
         };
         
         console.log('🤖 SENDING TO NOTIFICATION STORE:', notification);

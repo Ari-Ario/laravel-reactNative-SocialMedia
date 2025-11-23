@@ -30,6 +30,7 @@ const FollowersPanel = ({ visible, onClose }: FollowersPanelProps) => {
   const unreadFollowerCount = getUnreadFollowerCount();
 
   const renderFollowerItem = ({ item }: { item: Notification }) => (
+    console.log('Rendering follower item:', item),
     <TouchableOpacity 
       style={[styles.followerItem, !item.isRead && styles.unreadFollower]}
       onPress={() => {
@@ -77,7 +78,7 @@ const FollowersPanel = ({ visible, onClose }: FollowersPanelProps) => {
           </View>
           <Text style={styles.followerMessage}>{item.message}</Text>
         </View>
-        {item.type === 'new_follower' && item.userId && (
+        {/* {item.type === 'new_follower' && item.userId && (
           <TouchableOpacity
             style={[styles.followButton, item.data?.is_following && styles.followingButton]}
             onPress={async () => {
@@ -100,7 +101,7 @@ const FollowersPanel = ({ visible, onClose }: FollowersPanelProps) => {
               {loading[item.id] ? '...' : item.data?.is_following ? 'Following' : 'Follow'}
             </Text>
           </TouchableOpacity>
-        )}
+        )} */}
       </View>
       <TouchableOpacity 
         onPress={() => removeNotification(item.id)}

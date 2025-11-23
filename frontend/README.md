@@ -75,6 +75,16 @@ emulator -avd Pixel_9_API35_Foldable -no-snapshot-load -gpu swiftshader_indirect
 ## then in new Terminal:
 npx expo start -c
 
+## Learning resources
+
+https://docs.expo.dev/tutorial/follow-up/
+https://reactnative.dev/docs/animations
+------ and react + Typscript -------
+https://react.dev/learn/your-first-component
+https://www.typescriptlang.org/docs/handbook/2/basic-types.html
+https://react-typescript-cheatsheet.netlify.app/docs/basic/getting-started/hooks/
+
+
 
 📊 Comparison Table
 Emulator	         RAMUse	Storage	Best For
