@@ -14,5 +14,6 @@ curl -X POST http://localhost:8000/api/posts/60/comment \
   -H "Authorization: Bearer 3dfsoacOoyKEFKiIHBuLSeIGqB09XMe75lMRWX6P3bf8d3fd" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
-  -d '{"content": "Testing clean Laravel broadcast only"}'
+  -d '{"content": "Testing clean Laravel broadcast only"}
 
+php artisan serve
