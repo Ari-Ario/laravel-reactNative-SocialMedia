@@ -17,3 +17,5 @@ curl -X POST http://localhost:8000/api/posts/60/comment \
   -d '{"content": "Testing clean Laravel broadcast only"}
 
 php artisan serve
+
+mysql -u alex -p -h 127.0.0.1 -P 3306 graf
