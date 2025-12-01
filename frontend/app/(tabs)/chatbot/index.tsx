@@ -35,49 +35,67 @@ export default function ChatbotScreen() {
     ]);
   }, []);
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
+const handleSend = async () => {
+  if (!input.trim()) return;
 
-    const userMessage = {
-      id: Date.now(),
-      text: input,
-      sender: 'user',
-      type: 'text'
-    };
+  const userMessage = {
+    id: Date.now(),
+    text: input,
+    sender: 'user',
+    type: 'text' as const,
+  };
 
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
-    Keyboard.dismiss();
-    setIsTyping(true);
+  setMessages(prev => [...prev, userMessage]);
+  setInput('');
+  Keyboard.dismiss();
+  setIsTyping(true);
 
-    try {
-      const API_BASE = getApiBase();
-      const { data } = await axios.post(`${API_BASE}/chatbot`, {
+  try {
+    const API_BASE = getApiBase();
+
+    const response = await axios.post(
+      `${API_BASE}/chatbot`,
+      {
         message: input,
         conversation_id: conversationId.current,
-      });
+      },
+      {
+        timeout: 200000, // ← 200 seconds (Phi-3 on CPU needs this)
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
 
-      conversationId.current = data.conversation_id;
+    const data = response.data;
+    conversationId.current = data.conversation_id;
 
-      const botReply = {
-        id: Date.now() + 1,
-        text: data.response,
-        sender: 'bot',
-        type: data.response.includes('*') ? 'ai' : 'text'
-      };
+    const botReply = {
+      id: Date.now() + 1,
+      text: data.response || "No response",
+      sender: 'bot' as const,
+      type: data.response?.includes('powered by AI') || data.response?.includes('*') ? 'ai' : 'text',
+    };
 
-      setMessages(prev => [...prev, botReply]);
-    } catch (error) {
-      setMessages(prev => [...prev, {
-        id: Date.now() + 1,
-        text: 'Sorry, I\'m having trouble connecting.',
-        sender: 'bot',
-        type: 'error'
-      }]);
-    } finally {
-      setIsTyping(false);
+    setMessages(prev => [...prev, botReply]);
+
+  } catch (error: any) {
+    console.error("Chatbot error:", error.message);
+
+    let errorText = "Sorry, I'm having trouble connecting.";
+
+    if (error.code === 'ECONNABORTED') {
+      errorText = "The AI is thinking deeply... this can take up to 45 seconds.";
     }
-  };
+
+    setMessages(prev => [...prev, {
+      id: Date.now() + 1,
+      text: errorText,
+      sender: 'bot',
+      type: 'error' as const,
+    }]);
+  } finally {
+    setIsTyping(false);
+  }
+};
 
   const renderItem = ({ item }) => {
     const isUser = item.sender === 'user';
@@ -115,9 +133,11 @@ export default function ChatbotScreen() {
       />
 
       {isTyping && (
-        <View style={styles.typingContainer}>
-          <ActivityIndicator size="small" color="#666" />
-          <Text style={styles.typingText}>Bot is typing...</Text>
+        <View style={{ padding: 15, alignItems: 'flex-start' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f0f0', padding: 12, borderRadius: 18 }}>
+            <ActivityIndicator size="small" color="#007AFF" />
+            <Text style={{ marginLeft: 10, color: '#555' }}>AI is thinking (up to 30s on laptop)</Text>
+          </View>
         </View>
       )}
 

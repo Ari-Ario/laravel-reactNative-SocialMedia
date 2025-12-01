@@ -59,72 +59,84 @@ class ChatbotController extends Controller
     {
         $lowerMessage = strtolower($message);
 
-        // 1. Exact matches (hardcoded)
+        // 1–8: All your existing fast checks (exact, cache, keywords, etc.)
         $exactResponses = [
             'hello' => 'Hi! How can I help?',
             'hi' => 'Hi! How can I help?',
             'hey' => 'Hi! How can I help?',
-            'help' => 'I can assist with account, payment, and technical questions.',
-            'password' => 'You can reset your password at Settings > Security',
-            'email' => 'Check your spam folder or request a new verification email',
-            'refund' => 'Our refund policy allows returns within 30 days',
+            // ... keep all your existing ones
         ];
 
         if (isset($exactResponses[$lowerMessage])) {
             return $exactResponses[$lowerMessage];
         }
 
-        // 2. Check learned responses from cache
         $learnedResponses = cache()->get('learned_responses', []);
         if (isset($learnedResponses[$lowerMessage])) {
             return $learnedResponses[$lowerMessage];
         }
 
-        // 3. Analyze message (NLP)
         $analysis = $this->analyzeMessage($message);
         $keywords = $analysis['keywords'];
         $sentiment = $analysis['sentiment'];
 
-        // 4. Handle negative sentiment
         if ($sentiment === 'negative') {
             return "I'm sorry to hear you're having trouble. Let me help resolve this.";
         }
 
-        // 5. Check keyword patterns
         if ($response = $this->checkKeywordPatterns($keywords)) {
             return $response;
         }
 
-        // 6. Decision Tree (e.g., account flow)
         if ($response = $this->handleAccountQuestions($message, $conversationId)) {
             return $response;
         }
 
-        // 7. Contextual response
         if ($this->isContextualResponse($message, $conversationId)) {
             if ($response = $this->getContextualResponse($conversationId)) {
                 return $response;
             }
         }
 
-        // 8. Database trained responses (fuzzy + scored)
         if ($response = $this->getTrainedResponses($message, $conversationId)) {
             return $response;
         }
 
-        // 9. AI fallback + auto-learn (still inside rule-based)
+        // ————————————————————————————————————
+        // 9. RAG AI CALL — SAFE & CLEAN
+        // ————————————————————————————————————
         $category = $this->detectCategories($message)[0] ?? 'general';
-        $aiResponse = $this->getAIResponse($message);
+        $ragResponse = $this->askRAGMicroservice($message);
 
-        if ($aiResponse && $this->isSimpleQuestion($message)) {
-            // Auto-learn simple AI answers
-            $this->learnResponse($message, $aiResponse, $category);
-            return $aiResponse . " *(AI helped me learn this)*";
-        } else {
-            // Learn with human review
-            $this->learnResponse($message, '', $category);
-            return "I'm still learning about $category questions. Our team will review this shortly.";
+        if ($ragResponse && is_string($ragResponse)) {
+            $clean = trim($ragResponse);
+
+            if (strlen($clean) > 10 && strlen($clean) < 600) {
+                $lower = strtolower($clean);
+                $badWords = ['error', 'exception', 'sorry', 'failed', 'problem', 'cannot', 'unable'];
+                $hasBadWord = false;
+                foreach ($badWords as $word) {
+                    if (str_contains($lower, $word)) {
+                        $hasBadWord = true;
+                        break;
+                    }
+                }
+                // commenting Learn only if clean response temporarily
+                // if (!$hasBadWord) {
+                //     $this->learnResponse($message, $clean, $category);
+                // }
+            }
+
+            return $clean . " (powered by AI)";
         }
+
+        // ————————————————————————————————————
+        // FINAL FALLBACK
+        // ————————————————————————————————————
+        $this->learnResponse($message, '', $category);
+        $this->updateKnowledgeBase();
+
+        return "I'm still learning about $category questions. Our team will review this shortly.";
     }
 
     // ========================================================================
@@ -182,7 +194,13 @@ class ChatbotController extends Controller
             'response' => $best['response']
         ]);
 
-        return $best['response'];
+        // MINIMAL FIX: Only return if response is real and not empty
+        if (!empty(trim($best['response'] ?? '')) && strlen(trim($best['response'])) > 5) {
+            return trim($best['response']);
+        }
+
+        // If response is empty or too short → act like nothing was found
+        return null;
     }
 
     // ========================================================================
@@ -398,7 +416,7 @@ class ChatbotController extends Controller
     {
         $message = strtolower(preg_replace('/[^a-z0-9\s]/', '', $message));
         $words = preg_split('/\s+/', trim($message));
-        $stopWords = ['the', 'a', 'an', 'is', 'are', 'i', 'you', 'we', 'to', 'my', 'can', 'it', 'and'];
+        $stopWords = ['the', 'a', 'an', 'is', 'are', 'i', 'you', 'we', 'to', 'my', 'can', 'it', 'and', 'explain', 'or', 'but', 'in', 'on', 'at'];
         return array_values(array_unique(array_diff($words, $stopWords)));
     }
 
@@ -498,6 +516,108 @@ class ChatbotController extends Controller
             unset($this->contextTimestamps[$conversationId]);
         }
     }
+    
+    // ========================================================================
+    // 11. RAG MICROSERVICE INTEGRATION
+    // ========================================================================
+private function askRAGMicroservice(string $message): ?string
+{
+    $maxRetries = 2;
+    $retryDelay = 1000; // milliseconds
+    
+    for ($attempt = 0; $attempt < $maxRetries; $attempt++) {
+        try {
+            if ($attempt > 0) {
+                // Wait before retry
+                usleep($retryDelay * 1000);
+                \Log::info("Retrying RAG request", [
+                    'attempt' => $attempt + 1,
+                    'message' => $message
+                ]);
+            }
+            
+            // Use persistent connection with proper timeouts
+            $response = \Illuminate\Support\Facades\Http::withOptions([
+                'connect_timeout' => 10,  // Connection timeout
+                'timeout' => 15,          // Response timeout (increased)
+                'verify' => false,        // For local development only
+            ])
+            ->retry(1, 100) // Retry once after 100ms
+            ->post('http://127.0.0.1:8001/chat', [
+                'question' => trim($message)
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $answer = $data['answer'] ?? null;
+                
+                if ($answer) {
+                    \Log::info("RAG service successful", [
+                        'message' => $message,
+                        'answer_length' => strlen($answer),
+                        'attempt' => $attempt + 1
+                    ]);
+                    return $answer;
+                }
+            } else {
+                \Log::warning("RAG service error", [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                    'attempt' => $attempt + 1
+                ]);
+            }
+            
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            \Log::warning("RAG connection failed", [
+                'error' => $e->getMessage(),
+                'attempt' => $attempt + 1
+            ]);
+        } catch (\Exception $e) {
+            \Log::error("RAG microservice error", [
+                'error' => $e->getMessage(),
+                'attempt' => $attempt + 1
+            ]);
+            
+            // If it's a timeout, try again
+            if (str_contains($e->getMessage(), 'timed out')) {
+                continue;
+            }
+            
+            // For other errors, break
+            break;
+        }
+    }
+    
+    \Log::error("All RAG attempts failed", ['message' => $message]);
+    return null;
+}
+    // ========================================================================
+private function updateKnowledgeBase(): void
+{
+    try {
+        $entries = ChatbotTraining::where('is_active', true)
+            ->whereNotNull('response')
+            ->where('response', '!=', '')
+            ->get();
+
+        $docs = $entries->map(fn($e) => [
+            "text" => "Question: {$e->trigger}\nAnswer: {$e->response}",
+            "source" => "trained_data"
+        ])->toArray();
+
+        $path = base_path('../python-ai-service/knowledge.json'); // ← correct path
+
+        // Create directory if missing
+        $dir = dirname($path);
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+
+        file_put_contents($path, json_encode($docs, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    } catch (\Throwable $e) {
+        \Log::warning("Could not update knowledge.json", ['error' => $e->getMessage()]);
+        // ← Does NOT crash the chatbot
+    }
+}
+
 
     // ========================================================================
     // LEGACY / UNUSED (KEPT FOR COMPATIBILITY)

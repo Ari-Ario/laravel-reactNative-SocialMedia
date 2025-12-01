@@ -1,0 +1,494 @@
+[
+  {
+    "text": "Artificial Intelligence (AI) refers to the simulation of human intelligence in machines that are programmed to think and learn like humans, including capabilities like problem-solving, pattern recognition, and decision-making.",
+    "source": "ai-definition"
+  },
+  {
+    "text": "Machine learning is a subset of artificial intelligence that enables computers to learn and make decisions from data without being explicitly programmed for every task, using algorithms that improve automatically through experience.",
+    "source": "ml-definition"
+  },
+  {
+    "text": "Quantum computing uses quantum bits or qubits which can exist in multiple states simultaneously through superposition, enabling them to solve certain problems much faster than classical computers for specific applications like cryptography and optimization.",
+    "source": "quantum-computing"
+  },
+  {
+    "text": "Genetics is the study of genes, genetic variation, and heredity in living organisms. DNA contains the genetic instructions used in the development and functioning of all known living organisms and viruses.",
+    "source": "genetics"
+  },
+  {
+    "text": "Climate change refers to long-term shifts in temperatures and weather patterns, primarily caused by human activities like burning fossil fuels which increase greenhouse gas concentrations in the atmosphere leading to global warming.",
+    "source": "climate-change"
+  },
+  {
+    "text": "The Internet is a global network of interconnected computers that communicate using standardized protocols, enabling worldwide connectivity and access to information through services like the World Wide Web, email, and file sharing.",
+    "source": "internet"
+  },
+  {
+    "text": "Renewable energy comes from natural sources that are constantly replenished, including solar power from sunlight, wind energy, hydropower from water, geothermal energy from earth's heat, and biomass from organic materials.",
+    "source": "renewable-energy"
+  },
+  {
+    "text": "Blockchain is a distributed, decentralized digital ledger that records transactions across many computers in a way that ensures security, transparency, and immutability of the recorded data, originally developed for cryptocurrencies like Bitcoin.",
+    "source": "blockchain"
+  },
+  {
+    "text": "Neural networks are computing systems inspired by biological neural networks in animal brains, consisting of interconnected nodes that process information and learn to perform tasks by analyzing examples, widely used in deep learning applications.",
+    "source": "neural-networks"
+  },
+  {
+    "text": "The human brain contains approximately 86 billion neurons that communicate through electrical and chemical signals, forming complex networks that enable thought, memory, consciousness, and all cognitive functions.",
+    "source": "human-brain"
+  },
+  {
+    "text": "Photosynthesis is the process used by plants, algae, and some bacteria to convert light energy into chemical energy that can be released to fuel the organisms' activities through cellular respiration, producing oxygen as a byproduct.",
+    "source": "photosynthesis"
+  },
+  {
+    "text": "Black holes are regions of spacetime where gravity is so strong that nothing—no particles or even electromagnetic radiation such as light—can escape from it, formed when massive stars collapse at the end of their life cycles.",
+    "source": "black-holes"
+  },
+  {
+    "text": "Virtual Reality (VR) creates simulated environments that users can interact with using special electronic equipment like headsets, while Augmented Reality (AR) overlays digital information onto the real world through devices like smartphones or smart glasses.",
+    "source": "virtual-reality"
+  },
+  {
+    "text": "The solar system consists of the Sun and eight planets: Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, and Neptune, along with their moons, asteroids, comets, dwarf planets, and other celestial bodies orbiting the Sun.",
+    "source": "solar-system"
+  },
+  {
+    "text": "DNA (deoxyribonucleic acid) is the molecule that carries genetic instructions in all living organisms, consisting of two strands that coil around each other to form a double helix containing four chemical bases: adenine, thymine, cytosine, and guanine.",
+    "source": "dna"
+  },
+  {
+    "text": "Artificial intelligence (AI) is the capability of computational systems to perform tasks typically associated with human intelligence, such as learning, reasoning, problem-solving, perception, and decision-making. It is a field of research in computer science that develops and studies methods and software that enable machines to perceive their environment and use learning and intelligence to take ...",
+    "source": "wikipedia-artificial-intelligence"
+  },
+  {
+    "text": "Machine learning (ML) is a field of study in artificial intelligence concerned with the development and study of statistical algorithms that can learn from data and generalise to unseen data, and thus perform tasks without explicit instructions. Within a subdiscipline in machine learning, advances in the field of deep learning have allowed neural networks, a class of statistical algorithms, to sur...",
+    "source": "wikipedia-machine-learning"
+  },
+  {
+    "text": "In machine learning, deep learning focuses on utilizing multilayered neural networks to perform tasks such as classification, regression, and representation learning. The field takes inspiration from biological neuroscience and revolves around stacking artificial neurons into layers and \"training\" them to process data. The adjective \"deep\" refers to the use of multiple layers (ranging from three t...",
+    "source": "wikipedia-deep-learning"
+  },
+  {
+    "text": "A quantum computer is a (real or theoretical) computer that exploits superposed and entangled states, and the intrinsically non-deterministic outcomes of quantum measurements, as features of its computation. Quantum computers can be viewed as sampling from quantum systems that evolve in ways that may be described as operating on an enormous number of possibilities simultaneously, though still subj...",
+    "source": "wikipedia-quantum-computing"
+  },
+  {
+    "text": "Computer science is the study of computation, information, and automation. Included broadly in the sciences, computer science spans theoretical disciplines (such as algorithms, theory of computation, and information theory) to applied disciplines (including the design and implementation of hardware and software). An expert in the field is known as a computer scientist.  Algorithms and data structu...",
+    "source": "wikipedia-computer-science"
+  },
+  {
+    "text": "Physics is the scientific study of matter, its fundamental constituents, its motion and behavior through space and time, and the related entities of energy and force. It is one of the most fundamental scientific disciplines. A scientist who specializes in the field of physics is called a physicist. Physics is one of the oldest academic disciplines. Over much of the past two millennia, physics, che...",
+    "source": "wikipedia-physics"
+  },
+  {
+    "text": "Biology is the scientific study of life and living organisms. It is a broad natural science that encompasses a wide range of fields and unifying principles that explain the structure, function, growth, origin, evolution, and distribution of life. Central to biology are five fundamental themes: the cell as the basic unit of life, genes and heredity as the basis of inheritance, evolution as the driv...",
+    "source": "wikipedia-biology"
+  },
+  {
+    "text": "Chemistry is the scientific study of the properties and behavior of matter. It is a physical science within the natural sciences that studies the chemical elements that make up matter and compounds made of atoms, molecules and ions: their composition, structure, properties, behavior and the changes they undergo during reactions with other substances. Chemistry also addresses the nature of chemical...",
+    "source": "wikipedia-chemistry"
+  },
+  {
+    "text": "Mathematics is a field of study that discovers and organizes methods, theories, and theorems that are developed and proved for the needs of empirical sciences and mathematics itself. There are many areas of mathematics, which include number theory (the study of numbers), algebra (the study of formulas and related structures), geometry (the study of shapes and spaces that contain them), analysis (t...",
+    "source": "wikipedia-mathematics"
+  },
+  {
+    "text": "Neuroscience is the scientific study of the nervous system (the brain, spinal cord, and peripheral nervous system), its functions, and its disorders. It is a multidisciplinary science that combines physiology, anatomy, molecular biology, developmental biology, cytology, psychology, physics, computer science, chemistry, medicine, statistics, and mathematical modeling to understand the fundamental a...",
+    "source": "wikipedia-neuroscience"
+  },
+  {
+    "text": "Psychology is the scientific study of behavior and mind. Its subject matter includes the behavior of humans and nonhumans, both conscious and unconscious phenomena, and mental processes such as thoughts, feelings, and motives. Psychology is an academic discipline of immense scope, crossing the boundaries between the natural and social sciences. Biological psychologists seek an understanding of the...",
+    "source": "wikipedia-psychology"
+  },
+  {
+    "text": "Economics () is a social science that studies the production, distribution, and consumption of goods and services. Economics focuses on the behaviour and interactions of economic agents and how economies work. Microeconomics analyses what is viewed as basic elements within economies, including individual agents and markets, their interactions, and the outcomes of interactions. Individual agents ma...",
+    "source": "wikipedia-economics"
+  },
+  {
+    "text": "Present-day climate change includes both global warming—the ongoing increase in global average temperature—and its wider effects on Earth's climate system. Climate change in a broader sense also includes previous long-term changes to Earth's climate. The modern-day rise in global temperatures is driven by human activities, especially fossil fuel (coal, oil and natural gas) burning since the Indust...",
+    "source": "wikipedia-climate-change"
+  },
+  {
+    "text": "Renewable energy (also called green energy) is energy made from renewable natural resources that are replenished on a human timescale. The most widely used renewable energy types are solar energy, wind power, and hydropower. Bioenergy and geothermal power are also significant in some countries. Some also consider nuclear power a renewable power source, although this is controversial, as nuclear en...",
+    "source": "wikipedia-renewable-energy"
+  },
+  {
+    "text": "Space exploration is the physical investigation of outer space by uncrewed robotic space probes and through human spaceflight. While the observation of objects in space, known as astronomy, predates reliable recorded history, it was the development of large and relatively efficient rockets during the mid-twentieth century that allowed physical space exploration to become a reality. Common rational...",
+    "source": "wikipedia-space-exploration"
+  },
+  {
+    "text": "Genetic engineering, also called genetic modification or genetic manipulation, is the modification and manipulation of an organism's genes using technology. It is a set of technologies used to change the genetic makeup of cells, including the transfer of genes within and across species boundaries to produce improved or novel organisms. New DNA is obtained by either isolating and copying the geneti...",
+    "source": "wikipedia-genetic-engineering"
+  },
+  {
+    "text": "Robotics is the interdisciplinary study and practice of the design, construction, operation, and use of robots. Within mechanical engineering, robotics is the design and construction of the physical structures of robots, while in computer science, robotics focuses on robotic automation algorithms. Other disciplines contributing to robotics include electrical, control, software, information, electr...",
+    "source": "wikipedia-robotics"
+  },
+  {
+    "text": "The Internet (or internet) is the global system of interconnected computer networks that uses the Internet protocol suite (TCP/IP) to communicate between networks and devices. It is a network of networks that comprises private, public, academic, business, and government networks of local to global scope, linked by electronic, wireless, and optical networking technologies. The Internet carries a va...",
+    "source": "wikipedia-internet"
+  },
+  {
+    "text": "A blockchain is a distributed ledger with growing lists of records (blocks) that are securely linked together via cryptographic hashes. Each block contains a cryptographic hash of the previous block, a timestamp, and transaction data (generally represented as a Merkle tree, where data nodes are represented by leaves). Since each block contains information about the previous block, they effectively...",
+    "source": "wikipedia-blockchain"
+  },
+  {
+    "text": "Virtual reality (VR) is a simulated experience that employs 3D near-eye displays and pose tracking to give the user an immersive feel of a virtual world. Applications of virtual reality include entertainment (particularly video games), education (such as medical, safety, or military training), research  and business (such as virtual meetings). VR is one of the key technologies in the reality-virtu...",
+    "source": "wikipedia-virtual-reality"
+  },
+  {
+    "text": "Augmented reality (AR), also known as mixed reality (MR), is a technology that overlays real-time 3D-rendered computer graphics onto a portion of the real world through a display, such as a handheld device or head-mounted display. This experience is seamlessly interwoven with the physical world such that it is perceived as an immersive aspect of the real environment. In this way, augmented reality...",
+    "source": "wikipedia-augmented-reality"
+  },
+  {
+    "text": "Natural language processing (NLP) is the processing of natural language information by a computer. The study of NLP, a subfield of computer science, is generally associated with artificial intelligence. NLP is related to information retrieval, knowledge representation, computational linguistics, and more broadly with linguistics. Major processing tasks in an NLP system include: speech recognition,...",
+    "source": "wikipedia-natural-language-processing"
+  },
+  {
+    "text": "Computer vision tasks include methods for acquiring, processing, analyzing, and understanding digital images, and extraction of high-dimensional data from the real world in order to produce numerical or symbolic information, e.g. in the form of decisions. \"Understanding\" in this context signifies the transformation of visual images (the input to the retina) into descriptions of the world that make...",
+    "source": "wikipedia-computer-vision"
+  },
+  {
+    "text": "Data science is an interdisciplinary academic field that uses statistics, scientific computing, scientific methods, processing, scientific visualization, algorithms and systems to extract or extrapolate knowledge from potentially noisy, structured, or unstructured data.  Data science also integrates domain knowledge from the underlying application domain (e.g., natural sciences, information techno...",
+    "source": "wikipedia-data-science"
+  },
+  {
+    "text": "Big data primarily refers to data sets that are too large or complex to be dealt with by traditional data-processing software. Data with many entries (rows) offer greater statistical power, while data with higher complexity (more attributes or columns) may lead to a higher false discovery rate. Big data analysis challenges include capturing data, data storage, data analysis, search, sharing, trans...",
+    "source": "wikipedia-big-data"
+  },
+  {
+    "text": "Cloud computing is defined by the ISO as \"a paradigm for enabling network access to a scalable and elastic pool of shareable physical or virtual resources with self-service provisioning and administration on demand\". It is commonly referred to as \"the cloud\".",
+    "source": "wikipedia-cloud-computing"
+  },
+  {
+    "text": "Computer security (also cybersecurity, digital security, or information technology (IT) security) is a subdiscipline within the field of information security. It focuses on protecting computer software, systems, and networks from threats that can lead to unauthorized information disclosure, theft or damage to hardware, software, or data, as well as from the disruption or misdirection of the servic...",
+    "source": "wikipedia-cybersecurity"
+  },
+  {
+    "text": "Bioinformatics ( ) is an interdisciplinary field of science that develops methods and software tools for understanding biological data, especially when the data sets are large and complex. Bioinformatics uses biology, chemistry, physics, computer science, data science, computer programming, information engineering, mathematics and statistics to analyze and interpret biological data. This process  ...",
+    "source": "wikipedia-bioinformatics"
+  },
+  {
+    "text": "Nanotechnology is the manipulation of matter with at least one dimension sized from 1 to 100 nanometers (nm). At this scale, commonly known as the nanoscale, surface area and quantum mechanical effects become important in describing properties of matter. This definition of nanotechnology includes all types of research and technologies that deal with these special properties. It is common to see th...",
+    "source": "wikipedia-nanotechnology"
+  },
+  {
+    "text": "Renewable energy (also called green energy) is energy made from renewable natural resources that are replenished on a human timescale. The most widely used renewable energy types are solar energy, wind power, and hydropower. Bioenergy and geothermal power are also significant in some countries. Some also consider nuclear power a renewable power source, although this is controversial, as nuclear en...",
+    "source": "wikipedia-renewable-energy"
+  },
+  {
+    "text": "Astronomy is a natural science that studies celestial objects and the phenomena that occur in the cosmos. It uses mathematics, physics, and chemistry to explain their origin and their overall evolution. Objects of interest include planets, moons, stars, nebulae, galaxies, meteoroids, asteroids, and comets...",
+    "source": "wikipedia-astronomy"
+  },
+  {
+    "text": "Geology is a branch of natural science concerned with the Earth and other astronomical bodies, the rocks of which they are composed, and the processes by which they change over time. The name comes from Ancient Greek γῆ (gê) 'earth' and λoγία (-logía) 'study of, discourse'. Modern geology significantly overlaps all other Earth sciences, including hydrology...",
+    "source": "wikipedia-geology"
+  },
+  {
+    "text": "Engineering is the practice of using natural science, mathematics, and the engineering design process to solve problems within technology, increase efficiency and productivity, and improve systems. The traditional disciplines of engineering are civil, mechanical, electrical, and chemical...",
+    "source": "wikipedia-engineering"
+  },
+  {
+    "text": "Medicine is the science and practice of caring for patients, managing the diagnosis, prognosis, prevention, treatment, palliation of their injury or disease, and promoting their health. Medicine encompasses a variety of health care practices evolved to maintain and restore health by the prevention and treatment of illness...",
+    "source": "wikipedia-medicine"
+  },
+  {
+    "text": "Sociology is the scientific study of human society that focuses on society, human social behavior, patterns of social relationships, social interaction, and aspects of culture associated with everyday life. The term sociology was coined in the late 18th century to describe the scientific study of society...",
+    "source": "wikipedia-sociology"
+  },
+  {
+    "text": "Anthropology is the scientific study of humanity that crosses biology and sociology, concerned with human behavior, human biology, cultures, societies, and linguistics, in both the present and past, including archaic humans. Social anthropology studies patterns of behaviour, while cultural anthropology studies cultural meaning, including norms and values...",
+    "source": "wikipedia-anthropology"
+  },
+  {
+    "text": "Political science is the social scientific study of politics. It deals with systems of governance and power, and the analysis of political activities, political thought, political behavior, and associated constitutions and laws. Specialists in the field are political scientists.",
+    "source": "wikipedia-political-science"
+  },
+  {
+    "text": "Environmental science is an academic field that integrates the physical, biological, and mathematical sciences to study the environment and solve environmental problems. It uses an integrated, quantitative, and interdisciplinary approach to analyze environmental systems and emerged from the fields of natural history and medicine during the Enlightenment...",
+    "source": "wikipedia-environmental-science"
+  },
+  {
+    "text": "A cryptocurrency (colloquially crypto) is a digital currency designed to work through a computer network that is not reliant on any central authority, such as a government or bank, to uphold or maintain it. However, a type of cryptocurrency called a stablecoin may rely upon government action or legislation to require that a stable value be upheld and maintained...",
+    "source": "wikipedia-cryptocurrency"
+  },
+  {
+    "text": "Biotechnology is a multidisciplinary field that involves the integration of natural sciences and engineering sciences in order to achieve the application of organisms and parts thereof for products and services. Specialists in the field are known as biotechnologists...",
+    "source": "wikipedia-biotechnology"
+  },
+  {
+    "text": "Space technology is technology for use in outer space. Space technology includes space vehicles such as spacecraft, satellites, space stations and orbital launch vehicles; deep-space communication; in-space propulsion; and a wide variety of other technologies including support infrastructure equipment, and procedures...",
+    "source": "wikipedia-space-technology"
+  },
+  {
+    "text": "Human history or world history is the record of humankind from prehistory to the present. Modern humans evolved in Africa around 300,000 years ago and initially lived as hunter-gatherers. They migrated out of Africa during the Last Ice Age and had spread to every continent except Antarctica by the end of the Ice Age 12,000 years ago...",
+    "source": "wikipedia-world-history"
+  },
+  {
+    "text": "Ancient history is a time period from the beginning of writing and recorded human history through late antiquity. The span of recorded history is roughly 5,000 years, beginning with the development of Sumerian cuneiform script. Ancient history covers all continents inhabited by humans in the period 3000 BC – AD 500, ending with the expansion of Islam in late antiquity...",
+    "source": "wikipedia-ancient-history"
+  },
+  {
+    "text": "In the history of Europe, the Middle Ages or medieval period lasted approximately from the 5th to the late 15th centuries, comparable with the post-classical period of global history. It began with the fall of the Western Roman Empire and transitioned into the Renaissance and the Age of Discovery...",
+    "source": "wikipedia-middle-ages"
+  },
+  {
+    "text": "The Renaissance (UK: rin-AY-sənss, US: REN-ə-sahnss) is a period of history and a European cultural movement covering the 15th and 16th centuries. It marked the transition from the Middle Ages to modernity and was characterized by an effort to revive and surpass the ideas and achievements of classical antiquity...",
+    "source": "wikipedia-renaissance"
+  },
+  {
+    "text": "The Industrial Revolution, sometimes divided into the First Industrial Revolution and Second Industrial Revolution, was a transitional period of the global economy toward more widespread, efficient and stable manufacturing processes, succeeding the Second Agricultural Revolution...",
+    "source": "wikipedia-industrial-revolution"
+  },
+  {
+    "text": "World War I, or the First World War (28 July 1914 – 11 November 1918), also known as the Great War, was a global conflict between two coalitions: the Allies (or Entente) and the Central Powers. Major areas of conflict included Europe and the Middle East, as well as parts of Africa and the Asia-Pacific...",
+    "source": "wikipedia-world-war-i"
+  },
+  {
+    "text": "World War II or the Second World War (1 September 1939 – 2 September 1945) was a global conflict between two coalitions: the Allies and the Axis powers. Nearly all of the world's countries participated, with many nations mobilising all resources in pursuit of total war...",
+    "source": "wikipedia-world-war-ii"
+  },
+  {
+    "text": "The Cold War was a period of global geopolitical rivalry between the United States (US) and the Soviet Union (USSR) and their respective allies, the capitalist Western Bloc and communist Eastern Bloc, which began in the aftermath of the Second World War and ended with the dissolution of the Soviet Union in 1991...",
+    "source": "wikipedia-cold-war"
+  },
+  {
+    "text": "The modern era or the modern period is considered the current historical period of human history. It was originally applied to the history of Europe and Western history for events that came after the Classical antiquity and the Middle Ages, often from around the year 1500, like the Reformation in Germany giving rise to Protestantism...",
+    "source": "wikipedia-modern-history"
+  },
+  {
+    "text": "Literature is any collection of written work, but it is also used more narrowly for writings specifically considered to be an art form, especially novels, plays, and poems. It includes both print and digital writing. In recent centuries, the definition has expanded to include oral literature, much of which has been transcribed...",
+    "source": "wikipedia-literature"
+  },
+  {
+    "text": "Music is the arrangement of sound to create some combination of form, harmony, melody, rhythm, or otherwise expressive content. Music is generally agreed to be a cultural universal that is present in all human societies. Definitions of music vary widely in substance and approach...",
+    "source": "wikipedia-music"
+  },
+  {
+    "text": "The visual arts are art forms such as painting, drawing, printmaking, sculpture, ceramics, photography, video, image, filmmaking, design, crafts, and architecture. Many artistic disciplines such as performing arts, conceptual art, and textile arts, also involve aspects of the visual arts, as well as arts of other types...",
+    "source": "wikipedia-visual-arts"
+  },
+  {
+    "text": "A film is a work of visual art that simulates experiences and otherwise communicates ideas, stories, perceptions, emotions, or atmosphere through the use of moving images that are generally, since the 1930s, synchronized with sound and some times using other sensory stimulations...",
+    "source": "wikipedia-film"
+  },
+  {
+    "text": "Theatre or theater is a collaborative form of performing art that uses live performers, usually actors, to present experiences of a real or imagined event before a live audience in a specific place, often a stage. The performers may communicate this experience to the audience through combinations of gesture, speech, song, music, and dance...",
+    "source": "wikipedia-theatre"
+  },
+  {
+    "text": "Architecture is the art and technique of designing and building, as distinguished from the skills associated with construction. It is both the process and the product of sketching, conceiving, planning, designing, and constructing buildings or other structures...",
+    "source": "wikipedia-architecture"
+  },
+  {
+    "text": "Photography is the art, application, and practice of creating images by recording light, either electronically by means of an image sensor, or chemically by means of a light-sensitive material such as photographic film...",
+    "source": "wikipedia-photography"
+  },
+  {
+    "text": "Dance is an art form, consisting of sequences of body movements with aesthetic and often symbolic value, either improvised or purposefully selected. Dance can be categorized and described by its choreography, by its repertoire of movements or by its historical period or place of origin...",
+    "source": "wikipedia-dance"
+  },
+  {
+    "text": "Ethics is the philosophical study of moral phenomena. Also called moral philosophy, it investigates normative questions about what people ought to do or which behavior is morally right. Its main branches include normative ethics, applied ethics, and metaethics. Normative ethics aims to find general principles that govern how people should act...",
+    "source": "wikipedia-ethics"
+  },
+  {
+    "text": "Logic is the study of correct reasoning. It includes both formal and informal logic. Formal logic is the study of deductively valid inferences or logical truths. It examines how conclusions follow from premises based on the structure of arguments alone, independent of their topic and content. Informal logic is associated with informal fallacies, critical thinking, and argumentation theory...",
+    "source": "wikipedia-logic"
+  },
+  {
+    "text": "Metaphysics is the branch of philosophy that examines the basic structure of reality. It is traditionally seen as the study of mind-independent features of the world, but some theorists view it as an inquiry into the conceptual framework of human understanding...",
+    "source": "wikipedia-metaphysics"
+  },
+  {
+    "text": "Epistemology is the branch of philosophy that examines the nature, origin, and limits of knowledge. Also called the theory of knowledge, it explores different types of knowledge, such as propositional knowledge about facts, practical knowledge in the form of skills, and knowledge by acquaintance as a familiarity through experience...",
+    "source": "wikipedia-epistemology"
+  },
+  {
+    "text": "Political philosophy studies the theoretical and conceptual foundations of politics. It examines the nature, scope, and legitimacy of political institutions, such as states. The field investigates different forms of government, ranging from democracy to authoritarianism, and the values guiding political action, like justice, equality, and liberty...",
+    "source": "wikipedia-political-philosophy"
+  },
+  {
+    "text": "Aesthetics is a visual branch of philosophy that studies beauty, taste, and related phenomena. In a broad sense, it includes the philosophy of art, which examines the nature of art, artistic creativity, the meanings of artworks, and audience appreciation. Aesthetic properties are features that influence the appeal of objects...",
+    "source": "wikipedia-aesthetics"
+  },
+  {
+    "text": "A country is an area of land, which has its own government and laws, or used to have them, such as a state, a nation, a nation state, or other political entity. When referring to a specific polity, the term \"country\" may refer to a sovereign state, a state with limited recognition, a constituent country, or a dependent territory...",
+    "source": "wikipedia-countries"
+  },
+  {
+    "text": "A city is a human settlement of a substantial size. The term \"city\" has different meanings around the world and in some places the settlement can be very small. Even where the term is limited to larger settlements, there is no universally agreed definition of the lower boundary for their size...",
+    "source": "wikipedia-cities"
+  },
+  {
+    "text": "The ocean is the body of salt water that covers approximately 70.8% of Earth. The ocean is conventionally divided into large bodies of water, which are also referred to as oceans (in descending order: the Pacific Ocean, the Atlantic Ocean, the Indian Ocean, the Antarctic/Southern Ocean, and the Arctic Ocean), and are themselves mostly divided into seas, gulfs and subsequent bodies of water...",
+    "source": "wikipedia-oceans"
+  },
+  {
+    "text": "A mountain is an elevated portion of the surface of a planet, generally with steep sides that show significant exposed bedrock. Although definitions vary, a mountain may differ from a plateau in having a limited summit area, and is usually higher than a hill, typically rising at least 600 metres (2,000 ft) above the surrounding land...",
+    "source": "wikipedia-mountains"
+  },
+  {
+    "text": "A river is a natural stream of fresh water that flows on land or inside caves towards another body of water at a lower elevation, such as an ocean, lake, or another river. A river may run dry before reaching the end of its course if it runs out of water, or only flow during certain seasons. Rivers are regulated by the water cycle, the processes by which water moves around the Earth...",
+    "source": "wikipedia-rivers"
+  },
+  {
+    "text": "Climate is the long-term weather pattern in a region, typically averaged over 30 years. More rigorously, it is the mean and variability of meteorological variables over a time spanning from months to millions of years. Some of the meteorological variables that are commonly measured are temperature, humidity, atmospheric pressure, wind, and precipitation...",
+    "source": "wikipedia-climate"
+  },
+  {
+    "text": "An ecosystem (or ecological system) is a system formed by organisms in interaction with their environment. The biotic and abiotic components are linked together through nutrient cycles and energy flows. Ecosystems are controlled by external and internal factors. External factors—including climate—control the ecosystem's structure, but are not influenced by it...",
+    "source": "wikipedia-ecosystems"
+  },
+  {
+    "text": "Natural Resources is a 1970 soul album released by Motown girl group Martha Reeves and the Vandellas on the Gordy (Motown) label. The album is significant for the Vietnam War ballad \"I Should Be Proud\" and the slow jam, \"Love Guess Who\"...",
+    "source": "wikipedia-natural-resources"
+  },
+  {
+    "text": "Science is a systematic discipline that builds and organises knowledge in the form of testable hypotheses and predictions about the universe. Modern science is typically divided into two – or three – major branches: the natural sciences, which study the physical world, and the social sciences, which study individuals and societies...",
+    "source": "wikipedia-science"
+  },
+  {
+    "text": "The following outline is provided as a topical overview of science. Science is the systematic study of the world and the resulting knowledge obtained from this study. The word \"science\" derives from the Latin word scientia meaning knowledge. A practitioner of science is called a \"scientist\"...",
+    "source": "wikipedia-outline-of-science"
+  },
+  {
+    "text": "EUROTRAC (European Experiment on Transportation and Transformation of Environmentally Relevant Trace Constituents) was a joint European scientific research programme within the Eureka Framework. EUROTRAC was accepted as a Eureka project at the second Eureka Ministerial Conference held in Hannover (Germany) in November 1985...",
+    "source": "wikipedia-eurotrac"
+  },
+  {
+    "text": "Scienticide is a concept used to refer to various multifaceted processes or phenomena that lead to the harassment, reduction, or outright destruction of scientific and technological systems in some countries of the world, as well as the exile or abandonment of researchers from their places of training...",
+    "source": "wikipedia-scienticide"
+  },
+  {
+    "text": "Science and technology is an interdisciplinary topic encompassing science, technology, and their interactions.",
+    "source": "wikipedia-category:science-and-technology"
+  },
+  {
+    "text": "Criticism of science in general, including philosophy of science or scientific method; or of mainstream science; or of specific aspects of science, such as relativity or GMOs.",
+    "source": "wikipedia-category:criticism-of-science"
+  },
+  {
+    "text": "See also Category:Pseudoscience and its navbox. Fringe science could use its own navbox for the remainder of the category.",
+    "source": "wikipedia-category:fringe-science"
+  },
+  {
+    "text": "Technology is the application of conceptual knowledge to achieve practical goals, especially in a reproducible way. The word technology can also mean the products resulting from such efforts, including both tangible tools such as utensils or machines, and intangible ones such as software. Technology plays a critical role in science, engineering, and everyday life...",
+    "source": "wikipedia-technology"
+  },
+  {
+    "text": "The following outline is provided as an overview of and topical guide to technology: Technology – collection of tools, including machinery, modifications, arrangements and procedures used by humans. Engineering is the discipline that seeks to study and design new technology...",
+    "source": "wikipedia-outline-of-technology"
+  },
+  {
+    "text": "Android Central is a technology journalism website based in the United States, Canada, and the United Kingdom that covers the Android operating system. It publishes news, reviews of products and services, and editorials. Android Central also covers Google, Android TV and streaming, Wear OS, Chrome OS, Gemini, and Android XR and VR devices in the MetaQuest range...",
+    "source": "wikipedia-android-central"
+  },
+  {
+    "text": "Brilliant Labs is a Singapore-based technology company that produces open source eyewear featuring artificial intelligence (AI). Brilliant Labs was founded in 2019 in Hong Kong by Bobak Tavangar, a former Apple program lead...",
+    "source": "wikipedia-brilliant-labs"
+  },
+  {
+    "text": "The Broadly Applicable Tracking System, or BATS, is a small, lightweight tool that scientists use to track animal movements. It is shaped like a backpack and glued onto the back of a bat or other small animal. It contains GPS and wireless internet equipment that allow the scientists track the animal's movements...",
+    "source": "wikipedia-broadly-applicable-tracking-system"
+  },
+  {
+    "text": "Centre for Digitization of Indigenous African Languages, CDIAL is a technology company focused on artificial intelligence (AI) for the enterprise, specializing in language models in low-resourced languages, research, and deployment. The organization was founded in 2021 and is headquartered in Los Angeles, US with offices in Lagos, Nigeria...",
+    "source": "wikipedia-cdial"
+  },
+  {
+    "text": "Closed-loop geothermal systems (also known as “advanced geothermal systems” or “AGS”) are a type of engineered geothermal energy system containing subsurface working fluid that is heated in a hot rock reservoir without direct contact with rock pores and fractures.: Instead, the subsurface working fluid stays inside a closed loop of deeply buried pipes that conduct Earth’s heat...",
+    "source": "wikipedia-closed-loop-geothermal"
+  },
+  {
+    "text": "Criticism of technology is an analysis of adverse impacts of industrial and digital technologies. It is argued that, in all advanced industrial societies (not necessarily only capitalist ones), technology becomes a means of domination, control, and exploitation, or more generally something which threatens the survival of humanity...",
+    "source": "wikipedia-criticism-of-technology"
+  },
+  {
+    "text": "On July 17th 2024, it was announced at the State Opening of Parliament that the Labour government will introduce the Cyber Security and Resilience Bill (CS&R). The proposed legislation is intended to update the existing Network and Information Security Regulations 2018, known as UK NIS...",
+    "source": "wikipedia-cyber-security-and-resilience-bill"
+  },
+  {
+    "text": "Cyberpunk is a subgenre of science fiction set in a dystopian future. It is characterized by its focus on a combination of \"low-life and high tech\". It features a range of futuristic technological and scientific achievements, including artificial intelligence and cyberware, which are juxtaposed with societal collapse, dystopia or decay...",
+    "source": "wikipedia-cyberpunk"
+  },
+  {
+    "text": "De-extinction (also known as resurrection biology, or species revivalism) is the process of generating an organism that either resembles or is an extinct organism. There are several ways to carry out the process of de-extinction. Cloning is the most widely proposed method, although genome editing and selective breeding have also been considered...",
+    "source": "wikipedia-de-extinction"
+  },
+  {
+    "text": "Digital ecology is a science about the interdependence of digital systems and the natural environment. This field of study looks at the methods in which digital technologies are changing the way how people interact with the environment, as well as how these technologies affects the environment itself. It is a branch of ecology that promotes green practices to fight digital pollution...",
+    "source": "wikipedia-digital-ecology"
+  },
+  {
+    "text": "Flyover is a feature on Apple Maps that allows users to view select areas in a 3D setting. Flyover also allows users to take \"tours\" of these locations through the City Tours feature, showcasing various landmarks in the area. Imagery is provided through the use of planes, which collect fine data on buildings...",
+    "source": "wikipedia-flyover-(apple-maps)"
+  },
+  {
+    "text": "A foldable smartphone (also called a foldable phone or simply foldable) is a smartphone with a folding form factor. While folding designs have been used previously in clamshell or \"flip phone\" models, the term \"foldable\" now generally refers to a newer style featuring flexible displays. Some variants of the concept instead use multiple touchscreen panels connected by a hinge...",
+    "source": "wikipedia-foldable-smartphone"
+  },
+  {
+    "text": "...",
+    "source": "wikipedia-future-technology"
+  },
+  {
+    "text": "Gerontechnology, also called gerotechnology is an inter- and multidisciplinary academic as well as a professional field that combines various disciplines of gerontology and technology...",
+    "source": "wikipedia-gerontechnology"
+  },
+  {
+    "text": "Gigabit Multimedia Serial Link, commonly referred to as GMSL, is a serial link technology that is used for video distribution in cars. It was developed by Maxim Integrated. Maxim Integrated was acquired by Analog Devices in 2021...",
+    "source": "wikipedia-gigabit-multimedia-serial-link"
+  },
+  {
+    "text": "The history of science and technology (HST) is a field of history that examines the development of the understanding of the natural world (science) and humans' ability to manipulate it (technology) at different points in time...",
+    "source": "wikipedia-history-of-science-and-technology"
+  },
+  {
+    "text": "The language of mathematics or mathematical language is an extension of the natural language (for example English) that is used in mathematics and in science for expressing results (scientific laws, theorems, proofs, logical deductions, etc.) with concision, precision and unambiguity.",
+    "source": "wikipedia-language-of-mathematics"
+  },
+  {
+    "text": "Applied mathematics is a branch of mathematics that concerns itself with the application of mathematical knowledge to other domains...",
+    "source": "wikipedia-category:applied-mathematics"
+  },
+  {
+    "text": "Articles about the influence of mathematics in culture.",
+    "source": "wikipedia-category:mathematics-and-culture"
+  },
+  {
+    "text": "This category sorts articles related to occupations within the field of mathematics.",
+    "source": "wikipedia-category:mathematics-occupations"
+  },
+  {
+    "text": "Each entry below is an outline, an introduction to a subject structured as a hierarchical list of the essential points. Each of these outlines focuses on a mathematics or logic. Along with Wikipedia:Contents/Outlines, the outlines on Wikipedia form an all-encompassing outline of the knowledge of humankind. Pages included here should also be included in Category:Outlines.",
+    "source": "wikipedia-category:outlines-of-mathematics-and-logic"
+  },
+  {
+    "text": "This glossary of computer science is a list of definitions of terms and concepts used in computer science, its sub-disciplines, and related fields, including terms relevant to software, data science, and computer programming.",
+    "source": "wikipedia-glossary-of-computer-science"
+  },
+  {
+    "text": "In computing, a device or software program is said to be agnostic or data agnostic if the method or format of data transmission is irrelevant to the device or program's function. This means that the device or program can receive data in multiple formats or from multiple sources, and still process that data effectively.",
+    "source": "wikipedia-agnostic-(data)"
+  },
+  {
+    "text": "Any kind of logic, function, expression, or theory based on the work of George Boole is considered Boolean...",
+    "source": "wikipedia-boolean"
+  },
+  {
+    "text": "A learnable function is a mathematical function that can be learned from data, typically through a machine learning algorithm, to minimize errors and perform a specific task. In the context of statistical learning theory, this refers to a function class where an algorithm can identify a specific function that best approximates the underlying pattern or distribution within in the data...",
+    "source": "wikipedia-user:caishaofeng/sandbox"
+  },
+  {
+    "text": "Catalytic computing is a technique in computer science, relevant to complexity theory, that uses full memory, as well as empty memory space, to perform computations. Full memory is memory that begins in an arbitrary state and must be returned to that state at the end of the computation, for example important data...",
+    "source": "wikipedia-catalytic-computing"
+  },
+  {
+    "text": "Computational gastronomy is an interdisciplinary field combining computational science with culinary studies. It applies data-driven techniques to analyze various aspects of food, including recipes, flavors, nutrition, and sustainability. The field utilizes advancements in data analytics, machine learning, and computational models to systematically study food and optimize culinary practices...",
+    "source": "wikipedia-computational-gastronomy"
+  }
+]
