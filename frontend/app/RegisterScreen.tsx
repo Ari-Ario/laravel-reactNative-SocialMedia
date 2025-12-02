@@ -75,7 +75,7 @@ const RegisterUser: React.FC = () => {
                 secureTextEntry={true} 
                 value={password} 
                 onChangeText={(text) => setPassword(text)} 
-                keyboardType="password" 
+                keyboardType="default" 
                 errors={errors.password}
                 />
 
