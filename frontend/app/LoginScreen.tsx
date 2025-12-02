@@ -59,7 +59,7 @@ export default function () {
                 secureTextEntry={true} 
                 value={password} 
                 onChangeText={(text) => setPassword(text)} 
-                keyboardType="password" 
+                keyboardType="default" 
                 errors={errors.password}
                 />
 
