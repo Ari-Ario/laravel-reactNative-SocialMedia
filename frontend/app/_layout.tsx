@@ -127,6 +127,11 @@ export default function RootLayout() {
           borderRightWidth: 1,
           borderColor: '#ddd',
         }),
+        // Only apply top on IOS
+        ...(Platform.OS === 'ios' && {
+          paddingTop: 40,
+          // top: 40,
+        }),
       }}
     >
       <AuthContext.Provider value={{ user, setUser }}>
