@@ -106,28 +106,25 @@ class ChatbotController extends Controller
         // 9. RAG AI CALL — SAFE & CLEAN
         // ————————————————————————————————————
         $category = $this->detectCategories($message)[0] ?? 'general';
-        $ragResponse = $this->askRAGMicroservice($message);
+        $ragResult = $this->askRAGMicroservice($message);
 
-        if ($ragResponse && is_string($ragResponse)) {
-            $clean = trim($ragResponse);
-
-            if (strlen($clean) > 10 && strlen($clean) < 600) {
-                $lower = strtolower($clean);
-                $badWords = ['error', 'exception', 'sorry', 'failed', 'problem', 'cannot', 'unable'];
-                $hasBadWord = false;
-                foreach ($badWords as $word) {
-                    if (str_contains($lower, $word)) {
-                        $hasBadWord = true;
-                        break;
-                    }
-                }
-                // commenting Learn only if clean response temporarily
-                // if (!$hasBadWord) {
-                //     $this->learnResponse($message, $clean, $category);
-                // }
+        if ($ragResult['success']) {
+            $answer = $ragResult['answer'];
+            $confidence = $ragResult['confidence'] ?? 0;
+            $isFallback = $ragResult['is_fallback'] ?? false;
+            
+            if (!$isFallback && $confidence >= 0.6) {
+                // Good match - return answer
+                return $answer . " (powered by AI)";
+            } else {
+                // Low confidence or fallback - trigger learning
+                $this->learnResponse($message, '', $category);
+                return "I'm still learning about $category questions...";
             }
-
-            return $clean . " (powered by AI)";
+        } else {
+            // RAG failed - trigger learning
+            $this->learnResponse($message, '', $category);
+            return "I'm still learning about $category questions...";
         }
 
         // ————————————————————————————————————
@@ -394,7 +391,53 @@ class ChatbotController extends Controller
     private function analyzeMessage(string $message): array
     {
         $words = preg_split('/\s+/', strtolower($message));
-        $stopWords = ['the', 'a', 'an', 'is', 'are', 'i', 'you', 'we', 'to', 'my', 'can', 'it', 'and', 'or', 'but', 'in', 'on', 'at'];
+        $stopWords = [
+            // Basic English stop words
+            "a","about","above","after","again","against","all","am","an","and","any",
+            "are","aren","as","at","be","because","been","before","being","below",
+            "between","both","but","by","can","cannot","could","couldn","did","didn",
+            "do","does","doesn","doing","don","down","during","each","few","for",
+            "from","further","had","hadn","has","hasn","have","haven","having","he",
+            "her","here","hers","herself","him","himself","his","how","i","if","in",
+            "into","is","isn","it","its","itself","just","ll","me","might","mightn",
+            "more","most","must","mustn","my","myself","needn","no","nor","not","now",
+            "of","off","on","once","only","or","other","our","ours","ourselves","out",
+            "over","own","re","s","same","shan","she","should","shouldn","so","some",
+            "such","t","than","that","the","their","theirs","them","themselves","then",
+            "there","these","they","this","those","through","to","too","under",
+            "until","up","ve","very","was","wasn","we","were","weren","what","when",
+            "where","which","while","who","whom","why","will","with","won","would",
+            "wouldn","you","your","yours","yourself","yourselves",
+
+            // Contractions & chat shorthand
+            "im","i'm","ive","i’ve","you're","youre","youve","you’ve","we're","weve",
+            "theyre","they're","theyve","they’ve","can't","dont","won't","didn't",
+            "doesn't","isn't","aren't","wasn't","weren't","shouldn't","couldn't",
+            "wouldn't","mustn't","shan't","ain","ma",
+
+            // Fillers / meaningless in chat queries
+            "hey","hi","hello","yo","ok","okay","hmm","uh","um","oh","ah","well",
+            "please","pls","tho","though","btw","asap","haha","lol","lmao",
+
+            // Polite / irrelevant to intent
+            "thanks","thank","thankyou","thx","regards","kind","dear",
+            "sorry","pardon", "excuse", "sir","madam", "mr","mrs","ms",
+            "greetings","welcome", "appreciate","appreciated", "gratitude",
+
+            // Common question filler words
+            "tell","explain","define","about","say","me","just","really","basically",
+            "actually","kinda","sorta", "like","thing","stuff","anything","everything",
+            "some","more","less","bit","lot","lots","part","parts", "way","ways",
+
+            // Noise tokens (common mistakes)
+            "y","d","ll","t","ve","re","m", "s","n", "em", "'", "’", "“","”","\"",
+
+            // Non-meaningful pronouns / determiners
+            "this","that","these","those","here","there", "anyone","anybody","someone",
+            "somebody","everyone","everybody","nobody","noone","none","all","both", "each",
+            "either","neither","one","ones","others", "whose", 
+        ];
+
         $filtered = array_diff($words, $stopWords);
 
         $positive = ['happy', 'good', 'great', 'thanks', 'thank', 'awesome', 'excellent'];
@@ -422,7 +465,81 @@ class ChatbotController extends Controller
 
     private function detectCategories(string $message): array
     {
-        $categories = ['account', 'payment', 'post', 'feature', 'technical'];
+        $categories = [
+            // Core app & support
+            'account', 'advertising', 'api', 'app', 'backup', 'block', 'bug',
+            'cancellation', 'comment', 'crash', 'data', 'desktop', 'download',
+            'error', 'faq', 'feature', 'follow', 'guide', 'how-to', 'integration',
+            'like', 'login', 'mobile', 'notification', 'payment', 'performance',
+            'post', 'privacy', 'profile', 'refund', 'report', 'restore', 'security',
+            'settings', 'share', 'speed', 'storage', 'subscription', 'technical',
+            'third-party', 'trial', 'unfollow', 'upload', 'web',
+
+            // Technology
+            'algorithms', 'analytics', 'android', 'api development',
+            'artificial intelligence', 'augmented reality',
+            'automation', 'big data', 'blockchain', 'cloud computing',
+            'computing', 'computer science', 'crypto', 'cryptography',
+            'cybersecurity', 'data engineering', 'data science', 'databases',
+            'deep learning', 'devops', 'digital marketing', 'e-commerce',
+            'frontend development', 'full-stack development', 'gaming',
+            'hardware', 'iot', 'javascript', 'machine learning', 'mobile apps',
+            'networking', 'programming', 'quantum computing', 'robotics',
+            'software', 'software development', 'system administration',
+            'ui design', 'ux design', 'virtual reality', 'web development',
+
+            // Science fields
+            'astronomy', 'astrophysics', 'biology', 'biotechnology',
+            'chemistry', 'climate science', 'cosmology', 'ecology',
+            'environmental science', 'evolution', 'genetics', 'geology',
+            'life sciences', 'marine biology', 'mathematics', 'meteorology',
+            'nanotechnology', 'neuroscience', 'oceanography', 'physics',
+            'planetary science', 'space science',
+
+            // Health & medicine
+            'anatomy', 'cardiology', 'dentistry', 'disease', 'fitness',
+            'health', 'immunology', 'medical technology', 'medicine',
+            'mental health', 'microbiology', 'nutrition', 'pharmacology',
+            'physiology', 'public health',
+
+            // Social sciences
+            'anthropology', 'archaeology', 'communication', 'criminology',
+            'economics', 'education', 'finance', 'geography',
+            'history', 'international relations', 'law',
+            'linguistics', 'management', 'marketing', 'philosophy',
+            'political science', 'psychology', 'social science', 'sociology',
+
+            // Humanities & Arts
+            'architecture', 'art', 'aesthetics', 'culture', 'dance',
+            'design', 'film', 'language', 'literature', 'logic',
+            'media', 'music', 'painting', 'photography', 'poetry',
+            'theatre', 'visual arts', 'writing',
+
+            // Business & professional
+            'accounting', 'business', 'business strategy', 'entrepreneurship',
+            'human resources', 'investment', 'leadership', 'management consulting',
+            'project management', 'real estate', 'sales', 'startups',
+
+            // Geography & environment
+            'climate', 'cities', 'countries', 'ecosystems',
+            'environment', 'mountains', 'natural resources',
+            'oceans', 'rivers', 'space', 'travel',
+
+            // Modern fields
+            '3d printing', 'aerospace', 'agriculture', 'analytics',
+            'bioinformatics', 'cloud security', 'communication technology',
+            'data privacy', 'digital art', 'digital transformation',
+            'energy', 'green technology', 'renewable energy',
+            'space technology',
+
+            // Extras / general topics
+            'education technology', 'ethics', 'food science', 'gaming industry',
+            'history of science', 'information systems', 'knowledge',
+            'language learning', 'machine vision', 'mobility tech',
+            'nanomaterials', 'open source', 'product design', 'research',
+            'smart cities', 'statistics', 'transportation', 'video production'
+        ];
+
         $found = [];
         foreach ($categories as $cat) {
             if (stripos($message, $cat) !== false) $found[] = $cat;
@@ -520,15 +637,14 @@ class ChatbotController extends Controller
     // ========================================================================
     // 11. RAG MICROSERVICE INTEGRATION
     // ========================================================================
-private function askRAGMicroservice(string $message): ?string
+private function askRAGMicroservice(string $message): array
 {
     $maxRetries = 2;
-    $retryDelay = 1000; // milliseconds
+    $retryDelay = 1000;
     
     for ($attempt = 0; $attempt < $maxRetries; $attempt++) {
         try {
             if ($attempt > 0) {
-                // Wait before retry
                 usleep($retryDelay * 1000);
                 \Log::info("Retrying RAG request", [
                     'attempt' => $attempt + 1,
@@ -536,13 +652,12 @@ private function askRAGMicroservice(string $message): ?string
                 ]);
             }
             
-            // Use persistent connection with proper timeouts
             $response = \Illuminate\Support\Facades\Http::withOptions([
-                'connect_timeout' => 10,  // Connection timeout
-                'timeout' => 15,          // Response timeout (increased)
-                'verify' => false,        // For local development only
+                'connect_timeout' => 10,
+                'timeout' => 15,
+                'verify' => false,
             ])
-            ->retry(1, 100) // Retry once after 100ms
+            ->retry(1, 100)
             ->post('http://127.0.0.1:8001/chat', [
                 'question' => trim($message)
             ]);
@@ -550,46 +665,36 @@ private function askRAGMicroservice(string $message): ?string
             if ($response->successful()) {
                 $data = $response->json();
                 $answer = $data['answer'] ?? null;
+                $confidence = $data['confidence'] ?? 0;
                 
                 if ($answer) {
                     \Log::info("RAG service successful", [
                         'message' => $message,
-                        'answer_length' => strlen($answer),
-                        'attempt' => $attempt + 1
+                        'confidence' => $confidence,
+                        'answer_length' => strlen($answer)
                     ]);
-                    return $answer;
+                    
+                    return [
+                        'answer' => $answer,
+                        'confidence' => $confidence,
+                        'success' => true
+                    ];
                 }
-            } else {
-                \Log::warning("RAG service error", [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                    'attempt' => $attempt + 1
-                ]);
             }
             
-        } catch (\Illuminate\Http\Client\ConnectionException $e) {
-            \Log::warning("RAG connection failed", [
-                'error' => $e->getMessage(),
-                'attempt' => $attempt + 1
-            ]);
         } catch (\Exception $e) {
-            \Log::error("RAG microservice error", [
+            \Log::warning("RAG attempt failed", [
                 'error' => $e->getMessage(),
                 'attempt' => $attempt + 1
             ]);
-            
-            // If it's a timeout, try again
-            if (str_contains($e->getMessage(), 'timed out')) {
-                continue;
-            }
-            
-            // For other errors, break
-            break;
         }
     }
     
-    \Log::error("All RAG attempts failed", ['message' => $message]);
-    return null;
+    return [
+        'answer' => null,
+        'confidence' => 0,
+        'success' => false
+    ];
 }
     // ========================================================================
 private function updateKnowledgeBase(): void

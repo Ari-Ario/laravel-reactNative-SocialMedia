@@ -490,5 +490,637 @@
   {
     "text": "Computational gastronomy is an interdisciplinary field combining computational science with culinary studies. It applies data-driven techniques to analyze various aspects of food, including recipes, flavors, nutrition, and sustainability. The field utilizes advancements in data analytics, machine learning, and computational models to systematically study food and optimize culinary practices...",
     "source": "wikipedia-computational-gastronomy"
+  },
+  {
+    "text": "The Oxford Interfaith Forum is an interfaith, intercultural, and interdisciplinary academic hub connecting scholars and communities across the world to explore academic exchange in interfaith contexts with interdisciplinary lenses.",
+    "source": "wikipedia-oxford-interfaith-forum"
+  },
+  {
+    "text": "Synthetic mathematics is an approach to mathematics in which a mathematical theory is built around a set of postulates specific to the theory. This contrasts to the traditional analytic approach, in which the objects studied by the theory are first constructed and their basic properties are deduced...",
+    "source": "wikipedia-synthetic-mathematics"
+  },
+  {
+    "text": "Computer science in sport is an interdisciplinary discipline that has its goal in combining the theoretical as well as practical aspects and methods of the areas of informatics and sport science...",
+    "source": "wikipedia-computer-science-in-sport"
+  },
+  {
+    "text": "Filter and Refine Principle (FRP) is a general computational strategy in computer science. FRP is used broadly across various disciplines, particularly in information retrieval, database management, and pattern recognition, which efficiently processes large sets of objects through a two-stage approach: filtering and refinement...",
+    "source": "wikipedia-filter-and-refine"
+  },
+  {
+    "text": "A learnable function is a mathematical function that can be learned from data, typically through a machine learning algorithm, to minimize errors and perform a specific task. In the context of statistical learning theory, this refers to a function class where an algorithm can identify a specific function that best approximates the underlying pattern or distribution within in the data...",
+    "source": "wikipedia-learnable-function"
+  },
+  {
+    "text": "The Linked Data Modeling Language, or LinkML, is a data modeling framework based on YAML that aims to \"bring semantic web standards to the masses, simplifying the production of FAIR, ontology-ready data.\" It can be used to specify data schemas that can be used for validating data via formats like JSON-LD and ShEx.",
+    "source": "wikipedia-linkml"
+  },
+  {
+    "text": "Abstractions are fundamental building blocks of computer science, enabling complex systems and ideas to be simplified into more manageable and relatable concepts.",
+    "source": "wikipedia-list-of-abstractions-(computer-science)"
+  },
+  {
+    "text": "Computer science (also called computing science) is the study of the theoretical foundations of information and computation and their implementation and application in computer systems. One well known subject classification system for computer science is the ACM Computing Classification System devised by the Association for Computing Machinery...",
+    "source": "wikipedia-outline-of-computer-science"
+  },
+  {
+    "text": "A peripheral device, or simply peripheral, is an auxiliary hardware device that a computer uses to transfer information externally. A peripheral is a hardware component that is accessible to and controlled by a computer but is not a core component of the computer. It can communicate with a computer through wired or wireless connections...",
+    "source": "wikipedia-peripheral"
+  },
+  {
+    "text": "Prefetching is a technique used in computing to improve performance by retrieving data or instructions before they are needed. By predicting what a program will request in the future, the system can load information in advance to reduced wait times . Prefetching is used in various areas of computing, including CPU architectures and operating systems...",
+    "source": "wikipedia-prefetching"
+  },
+  {
+    "text": "Technology transfer in computer science refers to the transfer of technology developed in computer science or applied computing research, from universities and governments to the private sector. These technologies may be abstract, such as algorithms and data structures, or concrete, such as open source software packages.",
+    "source": "wikipedia-technology-transfer-in-computer-science"
+  },
+  {
+    "text": "Thermodynamic computing refers to a new type of computing that has reached latter stages of development as of 2025. This type of computing has been pioneered and developed by the computing company Extropic.",
+    "source": "wikipedia-thermodynamic-computing"
+  },
+  {
+    "text": "Transition refers to a computer science paradigm in the context of communication systems which describes the change of communication mechanisms, i.e., functions of a communication system, in particular, service and protocol components...",
+    "source": "wikipedia-transition-(computer-science)"
+  },
+  {
+    "text": "Subfields of computer science.",
+    "source": "wikipedia-category:subfields-of-computer-science"
+  },
+  {
+    "text": "In solid state physics, edge states are the topologically protected electronic states that exist at the boundary of the material and cannot be removed without breaking the system's symmetry.",
+    "source": "wikipedia-edge-states"
+  },
+  {
+    "text": "In space physics, an electrostatic solitary wave (ESW) is a type of electromagnetic soliton occurring during short time scales (when compared to the general time scales of variations in the average electric field) in plasma...",
+    "source": "wikipedia-electrostatic-solitary-wave"
+  },
+  {
+    "text": "In statistical physics, frenesy is a measure of the dynamical activity of a system's microscopic trajectories under non-equilibrium conditions...",
+    "source": "wikipedia-frenesy-(physics)"
+  },
+  {
+    "text": "Haloscopes are experimental devices designed to detect axions, hypothetical particles that are candidates for dark matter. These instruments typically use a resonant microwave cavity placed in a strong magnetic field to convert axions into detectable photons via the Primakoff effect...",
+    "source": "wikipedia-haloscope-(physics)"
+  },
+  {
+    "text": "The HUN-REN Wigner Research Centre for Physics is the largest Hungarian research institute studying physics. Formerly a research institute of the Hungarian Academy of Sciences, it became a member of the Eötvös Loránd Research Network and after the ELKH's reorganisation it became part of the HUN-REN Hungarian Research Network...",
+    "source": "wikipedia-hun-ren-wigner-research-centre-for-physics"
+  },
+  {
+    "text": "Joaquim da Costa Ribeiro (Rio de Janeiro, July 8th 1906 - July 29th, 1960) was a Brazilian physicist and university professor in Brazil. He discovered the thermodielectric effect, also known as the Workman-Reynolds in the US. Ribeiro was a member of the Brazilian Academy of Sciences and was the first Scientific Director of CNPq...",
+    "source": "wikipedia-joaquim-da-costa-ribeiro"
+  },
+  {
+    "text": "Lofting, sometimes referred to as \"trajectory shaping\", is a trajectory optimization technique used in some missile systems to extend range and improve target engagement effectiveness, usually in beyond-visual range scenarios.",
+    "source": "wikipedia-missile-lofting"
+  },
+  {
+    "text": "Modern physics is a branch of physics that developed in the early 20th century and onward or branches greatly influenced by early 20th century physics. Notable branches of modern physics include quantum mechanics, special relativity, and general relativity...",
+    "source": "wikipedia-modern-physics"
+  },
+  {
+    "text": "Naïve physics or folk physics is the untrained human perception of basic physical phenomena. In the field of artificial intelligence the study of naïve physics is a part of the effort to formalize the common knowledge of human beings...",
+    "source": "wikipedia-naïve-physics"
+  },
+  {
+    "text": "Negative air ions (NAI) are negatively charged single gas molecules or ion clusters in the air. They play a role in maintaining the charge balance of the atmosphere. The main components of air are molecular nitrogen and oxygen...",
+    "source": "wikipedia-negative-air-ions"
+  },
+  {
+    "text": "In condensed matter physics, the Nottingham effect is a surface cooling and heating mechanism that occurs during field and thermionic electron emission. The effect is named after physicist Wayne B. Nottingham who explained it in a commentary to 1940 experiments by Gertrude M. Fleming and Joseph E. Henderson...",
+    "source": "wikipedia-nottingham-effect"
+  },
+  {
+    "text": "In thermodynamics, nucleation is the first step in the formation of either a new thermodynamic phase or structure via self-assembly or self-organization within a substance or mixture. Nucleation is typically defined to be the process that determines how long an observer has to wait before the new phase or self-organized structure appears...",
+    "source": "wikipedia-nucleation"
+  },
+  {
+    "text": "In physics, a perfect fluid or ideal fluid is a fluid that can be completely characterized by its rest frame mass density ρ m {\\displaystyle \\rho _{m}} and isotropic pressure ⁠ p {\\displaystyle p} ⁠. Real fluids are viscous (\"sticky\") and contain (and conduct) heat. Perfect fluids are idealized models in which these possibilities are ignored...",
+    "source": "wikipedia-perfect-fluid"
+  },
+  {
+    "text": "Physics of life is a branch of physics that studies the fundamental principles governing living systems. It applies methods from mechanics, thermodynamics, statistical physics, and information theory to biological phenomena ranging from molecular assemblies to ecosystems...",
+    "source": "wikipedia-physics-of-life"
+  },
+  {
+    "text": "In physics, the plasmaron was proposed by Lundqvist in 1967 as a quasiparticle arising in a system that has strong plasmon-electron interactions. In the original work, the plasmaron was proposed to describe a secondary peak (or satellite) in the photoemission spectral function of the electron gas...",
+    "source": "wikipedia-plasmaron"
+  },
+  {
+    "text": "A quasi-isodynamic (QI) stellarator is a type of stellarator (a magnetic confinement fusion reactor) that satisfies the property of omnigeneity, avoids the potentially hazardous toroidal bootstrap current, and has minimal neoclassical transport in the collisionless regime. Wendelstein 7-X, the largest stellarator in the world, was designed to be roughly quasi-isodynamic (QI)...",
+    "source": "wikipedia-quasi-isodynamic-stellarator"
+  },
+  {
+    "text": "SDSS J120136.02+300305.5 is an optically inactive, quiescent galaxy that possibly contains a milliparsec supermassive black hole binary.",
+    "source": "wikipedia-sdss-j120136.02+300305.5"
+  },
+  {
+    "text": "Shockwave cosmology is a non-standard cosmology proposed by Joel Smoller and Blake Temple in 2003. In this model, the “big bang” is an explosion inside a black hole, producing the expanding volume of space and matter that includes the observable universe.",
+    "source": "wikipedia-shockwave-cosmology"
+  },
+  {
+    "text": "Actinide chemistry (or actinoid chemistry) is one of the main branches of nuclear chemistry that investigates the processes and molecular systems of the actinides. The actinides derive their name from the group 3 element actinium. The informal chemical symbol An is used in general discussions of actinide chemistry to refer to any actinide...",
+    "source": "wikipedia-actinide-chemistry"
+  },
+  {
+    "text": "Allotropy or allotropism (from Ancient Greek ἄλλος (allos) 'other' and τρόπος (tropos) 'manner, form') is the property of some chemical elements to exist in two or more different forms, in the same physical state, known as allotropes of the elements. Allotropes are different structural modifications of an element: the atoms of the element are bonded together in different manners...",
+    "source": "wikipedia-allotropy"
+  },
+  {
+    "text": "An alloy is a mixture of chemical elements of which in most cases at least one is a metallic element, although it is also sometimes used for mixtures of elements; herein only metallic alloys are described. Metallic alloys often have properties that differ from those of the pure elements from which they are made...",
+    "source": "wikipedia-alloy"
+  },
+  {
+    "text": "Amateur chemistry or home chemistry is the pursuit of chemistry as a private hobby. Amateur chemistry is usually done with whatever chemicals are available at disposal at the privacy of one's home. It should not be confused with clandestine chemistry, which involves the illicit production of controlled drugs.[a] Notable amateur chemists include Oliver Sacks and Sir Edward Elgar.",
+    "source": "wikipedia-amateur-chemistry"
+  },
+  {
+    "text": "The Arens–van Dorp synthesis is a name reaction in organic chemistry. It describes the addition of lithiated ethoxyacetylenes to ketones to give propargyl alcohols, which can undergo further reaction to form α,β-unsaturated aldehydes, or esters...",
+    "source": "wikipedia-arens–van-dorp-synthesis"
+  },
+  {
+    "text": "Astrochemistry is the study of the abundance and reactions of molecules in the universe, and their interaction with radiation. The discipline is an overlap of astronomy and chemistry. The word \"astrochemistry\" may be applied to both the Solar System and the interstellar medium...",
+    "source": "wikipedia-astrochemistry"
+  },
+  {
+    "text": "Atmospheric chemistry is a branch of atmospheric science that studies the chemistry of the Earth's atmosphere and that of other planets...",
+    "source": "wikipedia-atmospheric-chemistry"
+  },
+  {
+    "text": "Atoms are the basic particles of the chemical elements and the fundamental building blocks of matter. An atom consists of a nucleus of protons and generally neutrons, surrounded by an electromagnetically bound swarm of electrons. The chemical elements are distinguished from each other by the number of protons that are in their atoms...",
+    "source": "wikipedia-atom"
+  },
+  {
+    "text": "Biliproteins are pigment protein compounds that are located in photosynthesising organisms such as algae, and sometimes also in certain insects. They refer to any protein that contains a bilin chromophore...",
+    "source": "wikipedia-biliprotein"
+  },
+  {
+    "text": "In aquatic toxicology, bioconcentration is the accumulation of a water-borne chemical substance in an organism exposed to the water. There are several ways in which to measure and assess bioaccumulation and bioconcentration. These include: octanol-water partition coefficients (KOW), bioconcentration factors (BCF), bioaccumulation factors (BAF) and biota-sediment accumulation factor (BSAF)...",
+    "source": "wikipedia-bioconcentration"
+  },
+  {
+    "text": "Biophysical chemistry is a physical science that uses the concepts of physics and physical chemistry for the study of biological systems. The most common feature of the research in this subject is to seek an explanation of the various phenomena in biological systems in terms of either the molecules that make up the system or the supra-molecular structure of these systems...",
+    "source": "wikipedia-biophysical-chemistry"
+  },
+  {
+    "text": "Bittern (pl. bitterns), or nigari, is the salt solution formed when halite (table salt) precipitates from seawater or brines. Bitterns contain magnesium, calcium, and potassium ions as well as chloride, sulfate, iodide, and other ions. Bittern is commonly formed in salt ponds where the evaporation of water prompts the precipitation of halite...",
+    "source": "wikipedia-bittern-(salt)"
+  },
+  {
+    "text": "Building block is a term in chemistry which is used to describe a virtual molecular fragment or a real chemical compound the molecules of which possess reactive functional groups. Building blocks are used for bottom-up modular assembly of molecular architectures: nano-particles, metal-organic frameworks, organic molecular constructs, supra-molecular complexes...",
+    "source": "wikipedia-building-block-(chemistry)"
+  },
+  {
+    "text": "C1 chemistry is the chemistry of one-carbon molecules. Although many compounds and ions contain only one carbon, stable and abundant C-1 feedstocks are the focus of research. Four compounds are of major industrial importance: methane, carbon monoxide, carbon dioxide, and methanol. Technologies that interconvert these species are often used massively to match supply to demand.",
+    "source": "wikipedia-c1-chemistry"
+  },
+  {
+    "text": "Calconcarboxylic acid (IUPAC name 3-hydroxy-4-[(2-hydroxy-4-sulfonaphthalen-1-yl)diazenyl]naphthalene-2-carboxylic acid; commonly called Patton and Reeder's Indicator) is an azo dye that is used as an indicator for complexometric titrations of calcium with ethylenediaminetetraacetic acid (EDTA) in the presence of magnesium...",
+    "source": "wikipedia-calconcarboxylic-acid"
+  },
+  {
+    "text": "Carbodiphosphoranes are a class of organophosphorus compounds with general formula C(PR3)2, consisting of a central carbon atom bound to two phosphine ligands by dative bonds. The central carbon atom has formal oxidation state zero and two high-energy lone pairs with σ and π-symmetry, making carbodiphosphoranes highly nucleophilic and strongly σ- and π-donating through the carbon atom...",
+    "source": "wikipedia-carbodiphosphoranes"
+  },
+  {
+    "text": "The carryover effect is a term used in clinical chemistry to describe the transfer of unwanted material from one container or mixture to another. It describes the influence of one sample upon the following one. It may be from a specimen, or a reagent, or even the washing medium. The significance of carry over is that even a small amount can lead to erroneous results.",
+    "source": "wikipedia-carryover-effect"
+  },
+  {
+    "text": "Chemistry is often called the central science because of its role in connecting the physical sciences, which include chemistry, with the life sciences, pharmaceutical sciences and applied sciences such as medicine and engineering. The nature of this relationship is one of the main topics in the philosophy of chemistry and in scientometrics...",
+    "source": "wikipedia-the-central-science"
+  },
+  {
+    "text": "A biologist is a scientist who conducts research in biology. Biologists are interested in studying life on Earth, whether it is an individual cell, a multicellular organism, or a community of interacting populations...",
+    "source": "wikipedia-biologist"
+  },
+  {
+    "text": "This is a list of encyclopedias as well as encyclopedic and biographical dictionaries published on the subject of biology in any language. Entries are in the English language unless specifically stated as otherwise.",
+    "source": "wikipedia-bibliography-of-encyclopedias:-biology"
+  },
+  {
+    "text": "A bioactive terrarium (or vivarium) is a terrarium for housing one or more terrestrial animal species that includes live plants and populations of small invertebrates and microorganisms to consume and break down the waste products of the primary species...",
+    "source": "wikipedia-bioactive-terrarium"
+  },
+  {
+    "text": "Bioliteracy is the ability to understand and engage with biological topics. The concept is used particularly in the contexts of biotechnology and biodiversity.",
+    "source": "wikipedia-bioliteracy"
+  },
+  {
+    "text": "Biological constraints are factors which make populations resistant to evolutionary change...",
+    "source": "wikipedia-biological-constraints"
+  },
+  {
+    "text": "The biology of romantic love has been explored by such biological sciences as evolutionary psychology, evolutionary biology, anthropology and neuroscience. Neurochemicals and hormones such as dopamine and oxytocin are studied along with a variety of interrelated brain systems which produce the psychological experience and behaviors of romantic love...",
+    "source": "wikipedia-biology-of-romantic-love"
+  },
+  {
+    "text": "Biospeleology, also known as cave biology, is a branch of biology dedicated to the study of organisms that live in caves and are collectively referred to as troglofauna.",
+    "source": "wikipedia-biospeleology"
+  },
+  {
+    "text": "The cancer exodus hypothesis establishes that circulating tumor cell clusters (CTC clusters) maintain their multicellular structure throughout the metastatic process. It was previously thought that these clusters must dissociate into single cells during metastasis...",
+    "source": "wikipedia-cancer-exodus-hypothesis"
+  },
+  {
+    "text": "Chlororespiration is a respiratory process that is thought to occur in plant chloroplasts, involving the electron transport chain (ETC) in the thylakoid membrane. It is thought to involve NAD(P)H dehydrogenase (NDH) and plastid terminal oxidase (PTOX/IMMUTANS), forming an ETC utilizing molecular oxygen as the electron acceptor...",
+    "source": "wikipedia-chlororespiration"
+  },
+  {
+    "text": "A dermestarium (pl. dermestaria) is a room, container, or terrarium where taxidermists let invertebrates - typically beetle larvae - remove (eat) flesh and other soft parts from animal carcasses or parts of animal carcasses, such as skulls. The purpose is to expose and clean individual bones or entire skeletons for study and preservation...",
+    "source": "wikipedia-dermestarium"
+  },
+  {
+    "text": "Endogeny, in biology, refers to the property of originating or developing from within an organism, tissue, or cell. For example, endogenous substances, and endogenous processes are those that originate within a living system (e.g. an organism or a cell)...",
+    "source": "wikipedia-endogeny-(biology)"
+  },
+  {
+    "text": "Excretion is elimination of metabolic waste, which is an essential process in all organisms. In vertebrates, this is primarily carried out by the lungs, kidneys, and skin. This is in contrast with secretion, where the substance may have specific tasks after leaving the cell. For example, placental mammals expel urine from the bladder through the urethra, which is part of the excretory system...",
+    "source": "wikipedia-excretion"
+  },
+  {
+    "text": "The concept of functional information is an attempt to rigorously define the information content of biological systems. The concept was originated by a group led by Jack W. Szostak in 2003.",
+    "source": "wikipedia-functional-information"
+  },
+  {
+    "text": "High throughput biology (or high throughput cell biology) is the use of automation equipment with classical cell biology techniques to address biological questions that are otherwise unattainable using conventional methods...",
+    "source": "wikipedia-high-throughput-biology"
+  },
+  {
+    "text": "Interdigitation is the interlinking of biological components that resembles the fingers of two hands being locked together. It can be a naturally occurring or man-made state.",
+    "source": "wikipedia-interdigitation"
+  },
+  {
+    "text": "Plasmagene is a term used to describe genetic elements that exist outside of the nucleus, typically within the cytoplasm of a cell. These elements are usually associated with organelles like mitochondria and chloroplasts, which contain their own genetic material and replicate independently of the nuclear genome...",
+    "source": "wikipedia-plasmagene"
+  },
+  {
+    "text": "Poison exons (PEs); also called premature termination codon (PTC) exons or nonsense-mediated decay (NMD) exons] are a class of cassette exons that contain PTCs. Inclusion of a PE in a transcript targets the transcript for degradation via NMD. PEs are generally highly conserved elements of the genome and are thought to have important regulatory roles in biology...",
+    "source": "wikipedia-poison-exon"
+  },
+  {
+    "text": "The term polylecty or generalist is used in pollination ecology to refer to bees that collect pollen from a range of unrelated plants. Honey bees exemplify this behavior, collecting nectar from a wide array of flowers. Other predominantly polylectic genera include Bombus, Ceratina, Heriades and Halictus...",
+    "source": "wikipedia-polylecty"
+  },
+  {
+    "text": "The following outline is provided as an overview of and topical guide to medicine: Medicine – science of healing. It encompasses a variety of health care practices evolved to maintain health by the prevention and treatment of illness.",
+    "source": "wikipedia-outline-of-medicine"
+  },
+  {
+    "text": "The 505(b)(2) regulatory pathway is a process for submitting a specific new drug application (NDA) with the Food and Drug Administration in the United States. It is designed for complex generic or biosimilar medications that can share historical public data from a drug that has been previously approved, therefore streamlining the regulatory review for a faster approval.",
+    "source": "wikipedia-505(b)(2)-regulatory-pathway"
+  },
+  {
+    "text": "Alternative medicine is a term often used to describe medical practices where are untested or untestable. Complementary medicine (CM), complementary and alternative medicine (CAM), integrated medicine or integrative medicine (IM), functional medicine, and holistic medicine are among many rebrandings of the same phenomenon.",
+    "source": "wikipedia-terminology-of-alternative-medicine"
+  },
+  {
+    "text": "Life extension is the concept of extending the human lifespan, either modestly through improvements in medicine or dramatically by increasing the maximum lifespan beyond its generally-settled biological limit of around 125 years...",
+    "source": "wikipedia-anti-aging-medicine"
+  },
+  {
+    "text": "An anti-asthmatic agent, also known as an anti-asthma drug, refers to a drug that can aid in airway smooth muscle dilation to allow normal breathing during an asthma attack or reduce inflammation on the airway to decrease airway resistance for asthmatic patients, or both. The goal of asthmatic agents is to reduce asthma exacerbation frequencies and related hospital visits...",
+    "source": "wikipedia-anti-asthmatic-agent"
+  },
+  {
+    "text": "Barotrauma is physical damage to body tissues caused by a difference in pressure between a gas space inside, or in contact with, the body and the surrounding gas or liquid. The initial damage is usually due to over-stretching the tissues in tension or shear, either directly by an expansion of the gas in the closed space or by pressure difference hydrostatically transmitted through the tissue...",
+    "source": "wikipedia-barostriction"
+  },
+  {
+    "text": "Breastmilk medicine refers to the non-nutritional usage of human breast milk (HBM) as a medicine or therapy to cure diseases. Breastmilk is perceived as an important food that provides essential nutrition to infants. It also provides protection in terms of immunity by direct transfer of antibodies from mothers to infants...",
+    "source": "wikipedia-breastmilk-medicine"
+  },
+  {
+    "text": "Clinical handover (patient handover or handover) is the transfer of professional responsibility and accountability for some or all aspects of care for a patient, or group of patients, to another person or professional group on a temporary or permanent basis...",
+    "source": "wikipedia-clinical-handover"
+  },
+  {
+    "text": "Confocal endoscopy, or confocal laser endomicroscopy (CLE), is a modern imaging technique that allows the examination of real-time microscopic and histological features inside the body. In the word \"endomicroscopy\", endo- means \"within\" and -skopein means \"to view or observe\"...",
+    "source": "wikipedia-confocal-endoscopy"
+  },
+  {
+    "text": "Diabetes self-management refers to the ongoing process in which individuals with diabetes actively participate in managing their condition through lifestyle choices, medication adherence, blood glucose monitoring, and education, aimed at maintaining optimal blood sugar levels and preventing complications...",
+    "source": "wikipedia-diabetes-self-management"
+  },
+  {
+    "text": "Dorsal pancreatic agenesis is a congenital anomaly characterised by the absence of the duct of Santorini, tail and body of the pancreas. It is regarded as asymptomatic and the most common clinical manifestation is non-specific abdominal pain. While the cause is unclear, its mechanism is thought to be impaired dorsal buds or mutation of genes that regulate organogenesis during embryogenesis...",
+    "source": "wikipedia-dorsal-pancreatic-agenesis"
+  },
+  {
+    "text": "Drone Emergency Medical Services (DEMS) involve the use of highly autonomous Beyond Visual Line of Sight (BVLOS) drones to deliver critical medical supplies, such as Automated External Defibrillators (AEDs), life-saving medications, and remote diagnostic equipment, directly to emergency situations...",
+    "source": "wikipedia-drone-enhanced-emergency-medical-services"
+  },
+  {
+    "text": "The Electronic health record (German: Elektronische Patientenakte or ePA) was launched on 1 January 2021, for comprehensive digital connectivity within the German healthcare system for patients, between patient and service providers, and between service providers for both hospital settings and primary care...",
+    "source": "wikipedia-electronic-health-record-(germany)"
+  },
+  {
+    "text": "Follicular drug delivery is a mechanism that enables the transport of therapeutic agents through the hair follicles present on the skin. This approach leverages the use of nanoparticles, which are widely employed in the broader field of drug delivery, to specifically target and penetrate these follicular pathways...",
+    "source": "wikipedia-follicular-drug-delivery"
+  },
+  {
+    "text": "People with intersex variations, also called disorders of sex development, have hormonal, genetic, or anatomical differences unexpected of an endosex (non-intersex) male or female. These can include, but are not limited to reproductive organs with a mix of male and female structures, underdeveloped reproductive organs, and rare sex chromosomes or chromosomes unexpected of one's sex...",
+    "source": "wikipedia-intersex-healthcare"
+  },
+  {
+    "text": "In physiology, isotropic bands (better known as I bands) are the lighter bands of skeletal muscle cells (a.k.a. muscle fibers). Isotropic bands contain only actin-containing thin filaments. The thin filaments are placed between 2 myosin filaments and contain only the actin filaments of neighboring sarcomeres...",
+    "source": "wikipedia-isotropic-bands"
+  },
+  {
+    "text": "KDM5C-related neurodevelopmental disorder (also known as Claes-Jensen syndrome) is a rare genetic condition caused by variants in the KDM5C gene, located on the X chromosome. The disorder primarily affects neurodevelopment and cognition, leading to a spectrum of intellectual, behavioral, and physical features that vary widely among affected individuals.",
+    "source": "wikipedia-kdm5c-related-neurodevelopmental-disorder"
+  },
+  {
+    "text": "LAMA2 muscular dystrophy (LAMA2-MD) is a genetically determined muscle disease caused by pathogenic mutations in the LAMA2 gene. It is a subtype of a larger group of genetic muscle diseases known collectively as congenital muscular dystrophies. The clinical presentation of LAMA2-MD varies according to the age at presentation...",
+    "source": "wikipedia-lama2-related-congenital-muscular-dystrophy"
+  },
+  {
+    "text": "The following outline is provided as an overview of and topical guide to engineering: Engineering is the scientific discipline and profession that applies scientific theories, mathematical methods, and empirical evidence to design, create, and analyze technological solutions cognizant of safety, human factors, physical laws, regulations, practicality, and cost.",
+    "source": "wikipedia-outline-of-engineering"
+  },
+  {
+    "text": "The aerospike engine is a type of rocket engine that maintains its aerodynamic efficiency across a wide range of altitudes. It belongs to the class of altitude compensating nozzle engines. Aerospike engines were proposed for many single-stage-to-orbit (SSTO) designs. They were a contender for the Space Shuttle main engine...",
+    "source": "wikipedia-aerospike-engine"
+  },
+  {
+    "text": "Asset management is a systematic approach to the governance and realization of all value for which a group or entity is responsible. It may apply both to tangible assets (physical objects such as complex process or manufacturing plants, infrastructure, buildings or equipment) and to intangible assets (such as intellectual property, goodwill or financial assets)...",
+    "source": "wikipedia-asset-management"
+  },
+  {
+    "text": "In engineering, a bug is a design defect in an engineered system—such as software, computer hardware, electronics, circuitry or machinery—that causes an undesired result. Defects outside the scope of design, such as a server crash due to a natural disaster, are not bugs, nor do bugs occur in natural systems such as the weather...",
+    "source": "wikipedia-bug-(engineering)"
+  },
+  {
+    "text": "Design for inspection (DFI) is an engineering principle that proposes that inspection methods and measurement instruments used to certify manufacturing conformity should be considered early in the design of products...",
+    "source": "wikipedia-design-for-inspection"
+  },
+  {
+    "text": "The Energy and Environmental Engineering field seeks to conserve and maintain the natural environment by using efficient sources of energy. Energy and environmental engineers are continually searching for solutions to emerging, environment-related issues such as erosion, water disposal, air and water pollution, land resources, human health, and environmental restoration...",
+    "source": "wikipedia-energy-and-environmental-engineering"
+  },
+  {
+    "text": "In the mathematical theory of probability, a generalized renewal process (GRP) or G-renewal process is a stochastic point process used to model failure/repair behavior of repairable systems in reliability engineering. Poisson point process is a particular case of GRP.",
+    "source": "wikipedia-generalized-renewal-process"
+  },
+  {
+    "text": "This glossary of engineering terms is a list of definitions about the major concepts of engineering. Please see the bottom of the page for glossaries of specific fields of engineering.",
+    "source": "wikipedia-glossary-of-engineering:-a–l"
+  },
+  {
+    "text": "This glossary of engineering terms is a list of definitions about the major concepts of engineering. Please see the bottom of the page for glossaries of specific fields of engineering.",
+    "source": "wikipedia-glossary-of-engineering:-m–z"
+  },
+  {
+    "text": "Glossary of microelectronics manufacturing terms This is a list of terms used in the manufacture of electronic micro-components. Many of the terms are already defined and explained in Wikipedia; this glossary is for looking up, comparing, and reviewing the terms. You can help enhance this page by adding new terms or clarifying definitions of existing ones...",
+    "source": "wikipedia-glossary-of-microelectronics-manufacturing-terms"
+  },
+  {
+    "text": "Mechanical engineering is a discipline centered around the concept of using force multipliers, moving components, and machines. It utilizes knowledge of mathematics, physics, materials sciences, and engineering technologies. It is one of the oldest and broadest of the engineering disciplines.",
+    "source": "wikipedia-history-of-mechanical-engineering"
+  },
+  {
+    "text": "Industrial engineering (IE) is concerned with the design, improvement and installation of integrated systems of people, materials, information, equipment and energy...",
+    "source": "wikipedia-industrial-engineering"
+  },
+  {
+    "text": "Technical Integrity Engineering, also known as Asset Integrity, involves various engineering disciplines that focus on ensuring a product, process, or system meets its intended requirements when used...",
+    "source": "wikipedia-integrity-engineering"
+  },
+  {
+    "text": "These are lists of engineering software tools used for design, analysis, simulation, and management across different engineering disciplines.",
+    "source": "wikipedia-lists-of-engineering-software"
+  },
+  {
+    "text": "Marine construction is the process of building structures in or adjacent to large bodies of water, usually the sea. These structures can be built for a variety of purposes, including transportation, energy production, and recreation. Marine construction can involve the use of a variety of building materials, predominantly steel and concrete...",
+    "source": "wikipedia-marine-construction"
+  },
+  {
+    "text": "Metal Assisted Chemical Etching (also known as MACE) is the process of wet chemical etching of semiconductors (mainly silicon) with the use of a metal catalyst, usually deposited on the surface of a semiconductor in the form of a thin film or nanoparticles. The semiconductor, covered with the metal, is then immersed in an etching solution containing an oxidizing agent and hydrofluoric acid...",
+    "source": "wikipedia-metal-assisted-chemical-etching"
+  },
+  {
+    "text": "Molecular engineering is an emerging field of study concerned with the design and testing of molecular properties, behavior and interactions in order to assemble better materials, systems, and processes for specific functions...",
+    "source": "wikipedia-molecular-engineering"
+  },
+  {
+    "text": "Multi-disciplinary engineering (MDE) is an approach to engineering that integrates knowledge, principles, and methodologies from multiple distinct fields to address complex problems. This approach is particularly valuable in modern technological and infrastructural developments, where challenges often require the convergence of expertise from diverse domains. == References ==",
+    "source": "wikipedia-multi-disciplinary-engineering"
+  },
+  {
+    "text": "This is a list of notable peer-reviewed academic journals that publish research in the field of artificial intelligence (AI), including areas such as machine learning, computer vision, natural language processing, robotics, and intelligent systems.",
+    "source": "wikipedia-list-of-artificial-intelligence-journals"
+  },
+  {
+    "text": "The actor-critic algorithm (AC) is a family of reinforcement learning (RL) algorithms that combine policy-based RL algorithms such as policy gradient methods, and value-based RL algorithms such as value iteration, Q-learning, SARSA, and TD learning...",
+    "source": "wikipedia-actor-critic-algorithm"
+  },
+  {
+    "text": "In computer science, specifically in algorithms related to pathfinding, a heuristic function is said to be admissible if it never overestimates the cost of reaching the goal, i.e. the cost it estimates to reach the goal is not higher than the lowest possible cost from the current point in the path. In other words, it should act as a lower bound...",
+    "source": "wikipedia-admissible-heuristic"
+  },
+  {
+    "text": "In the context of generative artificial intelligence, AI agents (also referred to as compound AI systems or agentic AI) are a class of intelligent agents distinguished by their ability to operate autonomously in complex environments. Agentic AI tools prioritize decision-making over content creation and do not require human prompts or continuous oversight.",
+    "source": "wikipedia-agentic-ai"
+  },
+  {
+    "text": "Agentive logic (also called the logic of action or logic of agency) is the field of philosophical logic and logic in computer science that studies formal representations of agents, their actions, and their abilities...",
+    "source": "wikipedia-agentive-logic"
+  },
+  {
+    "text": ".ai is the Internet country code top-level domain (ccTLD) for Anguilla, a British Overseas Territory in the Caribbean. It is administered by the government of Anguilla. It is a popular domain hack with companies and projects related to the artificial intelligence industry (AI)...",
+    "source": "wikipedia-.ai"
+  },
+  {
+    "text": "In the field of artificial intelligence (AI), alignment aims to steer AI systems toward a person's or group's intended goals, preferences, or ethical principles. An AI system is considered aligned if it advances the intended objectives. A misaligned AI system pursues unintended objectives...",
+    "source": "wikipedia-ai-alignment"
+  },
+  {
+    "text": "An AI browser is a web browser with integrated artificial intelligence (AI) capabilities, such as automatically summarizing web page content or answering questions about it. A more specialized type is an agentic browser, based on the concept of agentic AI, which can take actions – such as navigating webpages or filling out forms – on behalf of the user...",
+    "source": "wikipedia-ai-browser"
+  },
+  {
+    "text": "AI literacy or artificial intelligence literacy is \"a set of competencies that enables individuals to critically evaluate AI technologies; communicate and collaborate effectively with AI; and use AI as a tool online, at home, and in the workplace.\" AI is employed in a variety of applications, including self-driving automobiles, virtual assistants and text generation by generative AI models...",
+    "source": "wikipedia-ai-literacy"
+  },
+  {
+    "text": "AI nationalism is the idea that nations should develop and control their own artificial intelligence technologies to advance their own interests and ensure technological sovereignty. This concept is gaining traction globally, leading countries to implement new laws, form strategic alliances, and invest significantly in domestic AI capabilities.",
+    "source": "wikipedia-ai-nationalism"
+  },
+  {
+    "text": "AI safety is an interdisciplinary field focused on preventing accidents, misuse, or other harmful consequences arising from artificial intelligence (AI) systems. It encompasses AI alignment (which aims to ensure AI systems behave as intended), monitoring AI systems for risks, and enhancing their robustness. The field is particularly concerned with existential risks posed by advanced AI models...",
+    "source": "wikipedia-ai-safety"
+  },
+  {
+    "text": "AI veganism applies the rules and thinking of veganism to artificial intelligence (AI). The term has been used both to refer to the idea that people should abstain to AI due to its effects on people and animals, and the idea that people should avoid harming AI systems, especially if they could one day feel things or have awareness.",
+    "source": "wikipedia-ai-veganism"
+  },
+  {
+    "text": "AI washing is a deceptive marketing tactic that consists of promoting a product or a service by overstating the role of artificial intelligence (AI) and the integration of it. Companies often involve in the practice to mislead customers to boost their offerings, and to secure funding from investors. The practice raises concerns regarding transparency, and legal issues.",
+    "source": "wikipedia-ai-washing"
+  },
+  {
+    "text": "AI-assisted software development is the use of artificial intelligence agents to augment the software development life cycle. It uses large language models (LLMs), natural language processing, and other AI technologies to assist software developers in a range of tasks from initial code generation to subsequent debugging, testing and documentation.",
+    "source": "wikipedia-ai-assisted-software-development"
+  },
+  {
+    "text": "In the field of artificial intelligence (AI), tasks that are hypothesized to require artificial general intelligence to solve are informally known as AI-complete or AI-hard. Calling a problem AI-complete reflects the belief that it cannot be solved by a simple specific algorithm...",
+    "source": "wikipedia-ai-complete"
+  },
+  {
+    "text": "AIOps (Artificial Intelligence for IT Operations) refers to the use of artificial intelligence, machine learning, and big data analytics to automate and enhance data center management. It helps organizations manage complex IT environments by detecting, diagnosing, and resolving issues more efficiently than traditional methods.",
+    "source": "wikipedia-aiops"
+  },
+  {
+    "text": "In algorithmic information theory, algorithmic probability, also known as Solomonoff probability, is a mathematical method of assigning a prior probability to a given observation. It was invented by Ray Solomonoff in the 1960s. It is used in inductive inference theory and analyses of algorithms...",
+    "source": "wikipedia-algorithmic-probability"
+  },
+  {
+    "text": "Ameca is a robotic humanoid created in 2021 by Engineered Arts, headquarters in Falmouth, Cornwall, United Kingdom. The project commenced in February 2021, and the first public demonstration was at the CES 2022 show in Las Vegas. Ameca's appearance features grey rubber skin on the face and hands, and is specifically designed to appear genderless...",
+    "source": "wikipedia-ameca-(robot)"
+  },
+  {
+    "text": "An and–or tree is a graphical representation of the reduction of problems (or goals) to conjunctions and disjunctions of subproblems (or subgoals).",
+    "source": "wikipedia-and–or-tree"
+  },
+  {
+    "text": "The following outline is provided as an overview of, and topical guide to, machine learning: Machine learning (ML) is a subfield of artificial intelligence within computer science that evolved from the study of pattern recognition and computational learning theory...",
+    "source": "wikipedia-outline-of-machine-learning"
+  },
+  {
+    "text": "80 Million Tiny Images is a dataset intended for training machine-learning systems constructed by Antonio Torralba, Rob Fergus, and William T. Freeman in a collaboration between MIT and New York University. It was published in 2008. The dataset has size 760 GB. It contains 79,302,017 32×32-pixel color images, scaled down from images scraped from the World Wide Web over 8 months...",
+    "source": "wikipedia-80-million-tiny-images"
+  },
+  {
+    "text": "\"A Logical Calculus of the Ideas Immanent in Nervous Activity\" is a 1943 article written by Warren McCulloch and Walter Pitts. The paper, published in the journal The Bulletin of Mathematical Biophysics, proposed a mathematical model of the nervous system as a network of simple logical elements, later known as artificial neurons, or McCulloch-Pitts neurons...",
+    "source": "wikipedia-a-logical-calculus-of-the-ideas-immanent-in-nervous-activity"
+  },
+  {
+    "text": "XLA (Accelerated Linear Algebra) is an open-source compiler for machine learning developed by the OpenXLA project. XLA is designed to improve the performance of machine learning models by optimizing the computation graphs at a lower level, making it particularly useful for large-scale computations and high-performance machine learning models...",
+    "source": "wikipedia-accelerated-linear-algebra"
+  },
+  {
+    "text": "Action model learning (sometimes abbreviated action learning) is an area of machine learning concerned with the creation and modification of a software agent's knowledge about the effects and preconditions of the actions that can be executed within its environment. This knowledge is usually represented in a logic-based action description language and used as input for automated planners...",
+    "source": "wikipedia-action-model-learning"
+  },
+  {
+    "text": "Active learning is a special case of machine learning in which a learning algorithm can interactively query a human user (or some other information source), to label new data points with the desired outputs. The human user must possess knowledge/expertise in the problem domain, including the ability to consult/research authoritative sources when necessary...",
+    "source": "wikipedia-active-learning-(machine-learning)"
+  },
+  {
+    "text": "Adversarial machine learning is the study of the attacks on machine learning algorithms, and of the defenses against such attacks. A survey from May 2020 revealed practitioners' common feeling for better protection of machine learning systems in industrial applications...",
+    "source": "wikipedia-adversarial-machine-learning"
+  },
+  {
+    "text": "The AI factory is an AI-centred decision-making engine employed by some modern firms. It optimizes day-to-day operations by relegating smaller‑scale decisions to machine learning algorithms. The factory is structured around 4 core elements: the data pipeline, algorithm development, the experimentation platform, and the software infrastructure...",
+    "source": "wikipedia-ai-factory"
+  },
+  {
+    "text": "AIXI is a theoretical mathematical formalism for artificial general intelligence. It combines Solomonoff induction with sequential decision theory. AIXI was first proposed by Marcus Hutter in 2000 and several results regarding AIXI are proved in Hutter's 2005 book Universal Artificial Intelligence. AIXI is a reinforcement learning (RL) agent...",
+    "source": "wikipedia-aixi"
+  },
+  {
+    "text": "Algorithm selection (sometimes also called per-instance algorithm selection or offline algorithm selection) is a meta-algorithmic technique to choose an algorithm from a portfolio on an instance-by-instance basis. It is motivated by the observation that on many practical problems, different algorithms have different performance characteristics...",
+    "source": "wikipedia-algorithm-selection"
+  },
+  {
+    "text": "Algorithmic bias describes systematic and repeatable harmful tendency in a computerized sociotechnical system to create \"unfair\" outcomes, such as \"privileging\" one category over another in ways different from the intended function of the algorithm...",
+    "source": "wikipedia-algorithmic-bias"
+  },
+  {
+    "text": "Algorithmic inference gathers new developments in the statistical inference methods made feasible by the powerful computing devices widely available to any data analyst. Cornerstones in this field are computational learning theory, granular computing, bioinformatics, and, long ago, structural probability (Fraser 1966)...",
+    "source": "wikipedia-algorithmic-inference"
+  },
+  {
+    "text": "In data analysis, anomaly detection (also referred to as outlier detection and sometimes as novelty detection) is generally understood to be the identification of rare items, events or observations which deviate significantly from the majority of the data and do not conform to a well defined notion of normal behavior...",
+    "source": "wikipedia-anomaly-detection"
+  },
+  {
+    "text": "Aporia is a machine learning observability platform based in Tel Aviv, Israel. The company has a US office located in San Jose, California. Aporia has developed software for monitoring and controlling undetected defects and failures used by other companies to detect and report anomalies, and warn in the early stages of faults.",
+    "source": "wikipedia-aporia-(company)"
+  },
+  {
+    "text": "In artificial intelligence, apprenticeship learning (or learning from demonstration or imitation learning) is the process of learning by observing an expert. It can be viewed as a form of supervised learning, where the training dataset consists of task executions by a demonstration teacher.",
+    "source": "wikipedia-apprenticeship-learning"
+  },
+  {
+    "text": "Artificial intelligence can be used to automate aspects of the job recruitment process. Advances in artificial intelligence, such as the advent of machine learning and the growth of big data, enable AI to be utilized to recruit, screen, and predict the success of applicants...",
+    "source": "wikipedia-artificial-intelligence-in-hiring"
+  },
+  {
+    "text": "Astrostatistics is a discipline which spans astrophysics, statistical analysis and data mining. It is used to process the vast amount of data produced by automated scanning of the cosmos, to characterize complex datasets, and to link astronomical data to astrophysical theory...",
+    "source": "wikipedia-astrostatistics"
+  },
+  {
+    "text": "In machine learning, attention is a method that determines the importance of each component in a sequence relative to the other components in that sequence. In natural language processing, importance is represented by \"soft\" weights assigned to each word in a sentence...",
+    "source": "wikipedia-attention-(machine-learning)"
+  },
+  {
+    "text": "This is a list of data science journals which includes notable peer-reviewed academic journals in the field of data science and related fields.",
+    "source": "wikipedia-list-of-data-science-journals"
+  },
+  {
+    "text": "Jeph Acheampong is a Ghanaian-American businessman. He is an Expo Live Global Innovator, a World Economic Forum Global Shaper, and was named a Future of Ghana Pioneer.",
+    "source": "wikipedia-jeph-acheampong"
+  },
+  {
+    "text": "Art Recognition is a Swiss technology company headquartered in Adliswil, within the Zurich metropolitan area, Switzerland. Art Recognition specializes in the application of artificial intelligence (AI) for art authentication and the detection of art forgeries.",
+    "source": "wikipedia-art-recognition"
+  },
+  {
+    "text": "Artificial intelligence detection software aims to determine whether some content (text, image, video or audio) was generated using artificial intelligence (AI). However, this software is often unreliable.",
+    "source": "wikipedia-artificial-intelligence-content-detection"
+  },
+  {
+    "text": "Biomedical data science is a multidisciplinary field which leverages large volumes of data to promote biomedical innovation and discovery. Biomedical data science draws from various fields including Biostatistics, Biomedical informatics, and machine learning, with the goal of understanding biological and medical data...",
+    "source": "wikipedia-biomedical-data-science"
+  },
+  {
+    "text": "Astroinformatics is an interdisciplinary field of study involving the combination of astronomy, data science, machine learning, informatics, and information/communications technologies. The field is closely related to astrostatistics. Data-driven astronomy (DDA) refers to the use of data science in astronomy...",
+    "source": "wikipedia-data-driven-astronomy"
+  },
+  {
+    "text": "The Deep Learning Indaba is an annual conference and educational event that aims to strengthen machine learning and artificial intelligence (AI) capacity across Africa. Launched in 2017, it brings together students, researchers, industry practitioners, and policymakers from across the African continent.",
+    "source": "wikipedia-deep-learning-indaba"
+  },
+  {
+    "text": "How Data Happened: A History from the Age of Reason to the Age of Algorithms is a 2023 non-fiction book written by Columbia University professors Chris Wiggins and Matthew L. Jones. The book explores the history of data and statistics from the end of the 18th century to the present day.",
+    "source": "wikipedia-how-data-happened"
+  },
+  {
+    "text": "This is a list of data science software and platforms used in data science, which includes programming languages, programming environments, machine learning frameworks, data engineering tools, statistical software, data analysis, plotting, MLOps systems, and more.",
+    "source": "wikipedia-list-of-data-science-software"
+  },
+  {
+    "text": "This is a list of publications in data science, generally organized by order of use in a data analysis workflow. See the list of publications in statistics for more research-based and fundamental publications; while this list is more applied, business oriented, and cross-disciplinary...",
+    "source": "wikipedia-list-of-publications-in-data-science"
+  },
+  {
+    "text": "In statistics, cluster analysis is the algorithmic grouping of objects into homogeneous groups based on numerical measurements. Model-based clustering based on a statistical model for the data, usually a mixture model...",
+    "source": "wikipedia-model-based-clustering"
+  },
+  {
+    "text": "Netvibes is a French brand of Dassault Systèmes that previously ran a web service offering a dashboard and feed reader. Currently, the company offers business intelligence tools.",
+    "source": "wikipedia-netvibes"
+  },
+  {
+    "text": "The Observational Health Data Sciences and Informatics, or OHDSI (pronounced \"Odyssey\") is an international collaborative effort aimed at improving health outcomes through large-scale analytics of health data. The OHDSI effort includes diverse researchers and health databases worldwide, with its central coordinating center located at Columbia University...",
+    "source": "wikipedia-observational-health-data-sciences-and-informatics"
+  },
+  {
+    "text": "In topological data analysis, a persistence barcode, sometimes shortened to barcode, is an algebraic invariant associated with a filtered chain complex or a persistence module that characterizes the stability of topological features throughout a growing family of spaces...",
+    "source": "wikipedia-persistence-barcode"
+  },
+  {
+    "text": "A data physicalization (or simply physicalization) is a physical artefact whose geometry or material properties encode data. It has the main goals to engage people and to communicate data using computer-supported physical data representations.",
+    "source": "wikipedia-data-physicalization"
+  },
+  {
+    "text": "Social data science is an interdisciplinary field that addresses social science problems by applying or designing computational and digital methods. As the name implies, Social Data Science is located primarily within the social science, but it relies on technical advances in fields like data science, network science, and computer science...",
+    "source": "wikipedia-social-data-science"
+  },
+  {
+    "text": "Statistical thinking is a tool for process analysis of phenomena in relatively simple terms, while also providing a level of uncertainty surrounding it. It is worth nothing that \"statistical thinking\" is not the same as \"quantitative literacy\", although there is overlap in interpreting numbers and data visualizations...",
+    "source": "wikipedia-statistical-thinking"
   }
 ]

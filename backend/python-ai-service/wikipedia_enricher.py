@@ -182,8 +182,66 @@ class WikipediaEnricher:
             with open("knowledge.json", "r", encoding="utf-8") as f:
                 final_kb = json.load(f)
             print(f"Final knowledge base size: {len(final_kb)} entries")
-        
+        self.enrich_more_topics()
         return self.added_count
+
+    # ====================== EXTENDED ENRICHER ======================
+
+    wiki = wikipediaapi.Wikipedia(
+            user_agent='MyChatbot/1.0 (contact@example.com)',
+            language='en',
+            extract_format=wikipediaapi.ExtractFormat.WIKI
+    )
+
+    def enrich_more_topics(start_topics: List[str], depth: int = 2) -> List[dict]:
+        """Recursive fetch: Start from topics, get linked pages"""
+        new_docs = []
+        visited = set()
+        
+        def fetch_recursive(topic: str, current_depth: int):
+            if current_depth > depth or topic in visited:
+                return
+            visited.add(topic)
+            
+            try:
+                page = wiki.page(topic)
+                if page.exists():
+                    text = page.text[:2000]  # Limit size
+                    source = f"wikipedia-{topic.lower().replace(' ', '-')}"
+                    new_docs.append({"text": text, "source": source})
+                    
+                    # Get links for recursion
+                    links = list(page.links.keys())[:10]  # Top 10 links
+                    for link in links:
+                        fetch_recursive(link, current_depth + 1)
+            except Exception as e:
+                print(f"Error fetching {topic}: {e}")
+        
+        for start in start_topics:
+            fetch_recursive(start, 0)
+        
+        return new_docs
+
+    # Usage: Add to your main enrich function
+    additional_topics = ["Artificial Intelligence", "Quantum Computing", "Renewable Energy"]  # Expand list
+    new_entries = enrich_more_topics(additional_topics, depth=2)
+
+    # Append to existing knowledge.json
+    if os.path.exists("knowledge.json"):
+        with open("knowledge.json", "r") as f:
+            existing = json.load(f)
+    else:
+        existing = []
+
+    # Avoid duplicates by source
+    existing_sources = {d["source"] for d in existing}
+    updated = existing + [d for d in new_entries if d["source"] not in existing_sources]
+
+    with open("knowledge.json", "w") as f:
+        json.dump(updated, f, indent=2)
+
+    print(f"Added {len(new_entries)} new entries. Total now: {len(updated)}")
+
 
 def backup_knowledge():
     """Create a backup of knowledge.json"""
@@ -202,3 +260,4 @@ if __name__ == "__main__":
     # Run enrichment
     enricher = WikipediaEnricher()
     enricher.enrich_knowledge_comprehensive(max_total=150)
+    # enricher.enrich_more_topics()
