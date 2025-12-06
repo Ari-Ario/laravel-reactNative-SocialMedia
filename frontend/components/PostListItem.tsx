@@ -549,6 +549,9 @@ const styles = StyleSheet.create({
     height: '100%',
     borderTopLeftRadius: 0,
     borderTopRightRadius: 0,
+    ...(Platform.OS === 'ios' && {
+      height: '94%',
+    }),
   },
   sheetHandleContainer: {
     alignItems: 'center',
@@ -571,6 +574,7 @@ const styles = StyleSheet.create({
   commentInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: "center",
     paddingLeft: 10,
     paddingRight:10,
     backgroundColor: 'white',
@@ -578,20 +582,24 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+    ...(Platform.OS === 'ios' && {
+      bottom: 20,
+    }),
   },
   commentInput: {
     flex: 1,
+    alignSelf: "center",
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 20,
-    padding: 5,
+    padding: 6,
     paddingHorizontal: 10,
     marginRight: 10,
     marginBottom: 10,
   },
   commentSubmitButton: {
     backgroundColor: '#3498db',
-    padding: 10,
+    padding: 6,
     borderRadius: 20,
     paddingHorizontal: 15,
   },

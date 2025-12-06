@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList, ActivityIndicator, Modal, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList, ActivityIndicator, Modal, Alert, Platform } from 'react-native';
 import { useState, useEffect, useRef, useContext } from 'react';
 import { fetchProfile, followUser, updateProfile } from '@/services/UserService';
 import { Ionicons } from '@expo/vector-icons';
@@ -211,6 +211,9 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 1024,
     alignSelf: 'center',
+    ...(Platform.OS === 'ios' && {
+      paddingTop: 40,
+    }),
   },
   closeButton: {
     alignSelf: 'flex-end',

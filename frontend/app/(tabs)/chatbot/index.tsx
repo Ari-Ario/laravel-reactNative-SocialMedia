@@ -20,6 +20,7 @@ export default function ChatbotScreen() {
   const { user } = useContext(AuthContext);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
+  const [inputHeight, setInputHeight] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
   const conversationId = useRef(null);
   const flatListRef = useRef(null);
@@ -146,9 +147,16 @@ const handleSend = async () => {
           value={input}
           onChangeText={setInput}
           placeholder="Ask me anything..."
-          style={styles.input}
-          returnKeyType="send"
-          onSubmitEditing={handleSend}
+          style={[styles.input]}
+          multiline
+          numberOfLines={1}
+          textAlignVertical="top"
+          blurOnSubmit={false}
+          onContentSizeChange={(e) => {
+            setInputHeight(e.nativeEvent.contentSize.height);
+            // keep the list scrolled to end when typing
+            setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
+          }}
         />
         <TouchableOpacity onPress={handleSend} style={styles.sendButton} disabled={isTyping}>
           <Text style={styles.sendButtonText}>{isTyping ? '...' : 'Send'}</Text>
@@ -206,15 +214,23 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     backgroundColor: 'white',
     alignItems: 'center',
-    paddingBottom: 40,
+    ...(Platform.OS === 'ios' && {
+      bottom: 80
+    }),
   },
   input: {
     flex: 1,
-    backgroundColor: '#f1f1f1',
+    alignSelf: "center",
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 20,
     padding: 12,
-    borderRadius: 25,
-    fontSize: 16,
-    maxHeight: 100,
+    paddingHorizontal: 10,
+    marginRight: 10,
+    marginBottom: 10,
+    ...(Platform.OS !== 'web' && {
+      maxHeight: 220,
+    }),
   },
   sendButton: {
     marginLeft: 10,

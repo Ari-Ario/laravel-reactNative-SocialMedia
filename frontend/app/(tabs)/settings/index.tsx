@@ -493,13 +493,18 @@ const styles = StyleSheet.create({
   scrollContainer: {
     // paddingVertical: 20,
     minWidth: 350,
-    width: 500
+    width: 500,
+    ...(Platform.OS === 'ios' && {
+      minWidth: '100%',
+      width: 'auto'
+    }),
   },
   block: {
     backgroundColor: '#fff',
     marginBottom: 30,
     paddingHorizontal: 16,
     paddingVertical: 10,
+    width: '100%',
   },
   separator: {
     height: 1,
