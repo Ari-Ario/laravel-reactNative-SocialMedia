@@ -1,17 +1,44 @@
 from fastapi import FastAPI
+# From: venv/lib/python3.x/site-packages/fastapi/
+# Purpose: Web framework to create API endpoints
+
 from pydantic import BaseModel
+# From: venv/lib/python3.x/site-packages/pydantic/
+# Purpose: Data validation and settings management
+
 import faiss
+# From: venv/lib/python3.x/site-packages/faiss/
+# Purpose: Facebook's vector similarity search library (C++ compiled)
+# Function: Creates indexes for fast semantic search
+
 import numpy as np
+# From: venv/lib/python3.x/site-packages/numpy/
+# Purpose: Numerical computing, handles embedding arrays
+
 from sentence_transformers import SentenceTransformer
-import json
-import os
-import time
+# From: venv/lib/python3.x/site-packages/sentence_transformers/
+# Purpose: Converts text to vectors (embeddings)
+# Uses: "all-MiniLM-L6-v2" model (384-dimensional embeddings)
+
+import json, os, time, re
+# Built-in Python libraries
+# json: Load/save knowledge.json
+# os: File system operations
+# time: Measure performance
+# re: Regular expressions for text processing
+
 from typing import List, Dict, Optional
-import re
+# Python type hints for better code clarity
+
 from collections import defaultdict
+# Built-in: Creates dictionaries with default values
 
 app = FastAPI()
+# Creates the FastAPI application instance
+# Handles HTTP requests, routing, documentation
+
 KNOWLEDGE_PATH = "knowledge.json"
+# Path to your knowledge database file
 
 # ====================== LOAD AND INDEX KNOWLEDGE ======================
 print("🚀 Loading knowledge base...")
@@ -20,6 +47,8 @@ if not os.path.exists(KNOWLEDGE_PATH):
 
 with open(KNOWLEDGE_PATH, "r", encoding="utf-8") as f:
     docs = json.load(f)
+# Reads the entire knowledge.json into memory
+# Each entry: {"text": "...", "source": "..."}
 
 print(f"✅ Loaded {len(docs)} knowledge entries")
 
@@ -51,7 +80,9 @@ for idx, doc in enumerate(docs):
 
 # ====================== SETUP EMBEDDER AND FAISS ======================
 print("🤖 Initializing RAG system...")
-embedder = SentenceTransformer("all-MiniLM-L6-v2")
+# embedder = SentenceTransformer("all-MiniLM-L6-v2")
+embedder = SentenceTransformer("multi-qa-mpnet-base-dot-v1")
+# This converts text to numerical vectors
 
 # Prepare embeddings for semantic search
 doc_texts = [doc["text"] for doc in docs]
@@ -59,13 +90,15 @@ embeddings = embedder.encode(doc_texts, normalize_embeddings=True)
 dim = embeddings.shape[1]
 semantic_index = faiss.IndexFlatIP(dim)
 semantic_index.add(embeddings.astype('float32'))
+# Creates FAISS index for fast similarity search
+# Uses: Cosine similarity (normalized dot product)
 
 print(f"✅ Semantic index ready with {len(doc_texts)} entries")
 
 class Query(BaseModel):
     question: str
 
-# Common stop words to ignore
+# Common stop words to ignore / Improves accuracy by filtering out meaningless words
 STOP_WORDS = {
     "what", "is", "are", "the", "a", "an", "about", "explain", "define", 
     "tell", "me", "of", "and", "or", "but", "in", "on", "at", "to", "for",
@@ -104,8 +137,10 @@ def extract_keywords(question: str) -> List[str]:
     words = re.findall(r'\b\w+\b', question.lower())
     # Remove stop words and short words
     keywords = [w for w in words if w not in STOP_WORDS and len(w) > 2]
+    # Example: "what is artificial intelligence" → ["artificial", "intelligence"]
     return keywords
 
+# Tier 1: Exact Source Match (Highest Priority)
 def exact_source_match(question: str) -> Optional[Dict]:
     """Check for exact source/topic match (HIGHEST CONFIDENCE)"""
     clean_q = clean_question(question)
@@ -135,6 +170,7 @@ def exact_source_match(question: str) -> Optional[Dict]:
     
     return None
 
+# Tier 2: Keyword Match (Medium Priority)
 def keyword_match(question: str) -> Optional[Dict]:
     """Keyword-based matching with scoring"""
     keywords = extract_keywords(question)
@@ -177,6 +213,7 @@ def keyword_match(question: str) -> Optional[Dict]:
     
     return None
 
+# Tier 3: Semantic Match (Fallback)
 def semantic_match(question: str) -> Optional[Dict]:
     """Semantic similarity search with strict thresholds"""
     try:
@@ -204,27 +241,71 @@ def semantic_match(question: str) -> Optional[Dict]:
         print(f"Semantic search error: {e}")
         return None
 
+# 🤝 Orchestrator Function
 def find_best_answer(question: str) -> Dict:
     """Find best answer using multiple strategies with strict thresholds"""
     start_time = time.time()
-    
+    exact_result = None
+    keyword_result = None
+    semantic_result = None
     # Strategy 1: Exact source/topic match (fastest and most accurate)
     result = exact_source_match(question)
     if result:
         result["search_time"] = time.time() - start_time
-        return result
+        exact_result = result
     
     # Strategy 2: Keyword matching (strict)
     result = keyword_match(question)
     if result and result.get("score", 0) >= 0.6:  # Minimum 60% confidence
         result["search_time"] = time.time() - start_time
-        return result
+        keyword_result = result
     
     # Strategy 3: Semantic search (strictest)
     result = semantic_match(question)
     if result and result.get("score", 0) >= 0.65:  # Minimum 65% similarity
         result["search_time"] = time.time() - start_time
-        return result
+        semantic_result = result
+    
+    # Build final output
+    if exact_result:
+        parts = []
+
+        # Always add the main exact result text
+        parts.append(exact_result["text"])
+
+        # Add optional similar topics section
+        if (keyword_result and keyword_result['source'] != exact_result['source']):
+            parts.append("Relevant keyword topic:\n" + keyword_result["text"])
+
+        # Add optional semantic topics section
+        if (semantic_result and semantic_result['source'] != exact_result['source'] and semantic_result['source'] != keyword_result['source']):
+            parts.append("Relevant semantic topic:\n" + semantic_result["text"])
+
+        return {
+            "text": "\n\n".join(parts),
+            "score": exact_result["score"],
+            "source": exact_result["source"],
+            "method": exact_result["method"],
+            "search_time": time.time() - start_time
+        }
+        
+    elif keyword_result:
+        parts = []
+        parts.append(keyword_result["text"])
+
+        if (semantic_result and semantic_result['source'] != keyword_result['source']):
+            parts.append("Relevant semantic topic:\n" + semantic_result["text"])
+
+        return {
+            "text": "\n\n".join(parts),
+            "score": keyword_result["score"],
+            "source": keyword_result["source"],
+            "method": keyword_result["method"],
+            "search_time": time.time() - start_time
+        }
+
+    elif semantic_result:
+        return semantic_result
     
     # No good match found
     return {

@@ -20,6 +20,59 @@ class ChatbotController extends Controller
     private $currentContext = [];          // [conv_id => 'account'|'payment'|...]
     private $decisionTreeState = [];       // [conv_id => current_node]
 
+    private function correctMessage(string $text): string
+    {
+        // Trim
+        $text = trim($text);
+        // Replace multiple spaces
+        $text = preg_replace('/\s+/', ' ', $text);
+
+        // Capitalize first letter
+        $text = ucfirst($text);
+
+        // Add missing period if no punctuation
+        // if (!preg_match('/[.!?]$/', $text)) {
+        //     $text .= '.';
+        // }
+
+        // Common typo dictionary
+        $typos = [
+            'teh' => 'the',
+            'recieve' => 'receive',
+            'adress' => 'address',
+            'langauge' => 'language',
+            'plz' => 'please',
+            'pls' => 'please',
+            'thx' => 'thanks',
+            'u ' => 'you ',
+            'ur ' => 'your ',
+            'r ' => 'are ',
+            'btw' => 'by the way',
+            'asap' => 'as soon as possible',
+            'idk' => 'I don\'t know',
+            'imo' => 'in my opinion',
+            'fyi' => 'for your information',
+            'gr8' => 'great',
+            'l8r' => 'later',
+            'b4' => 'before',
+            'w/ ' => 'with ',
+            'w/o ' => 'without ',
+            'thier' => 'their',
+            'definately' => 'definitely',
+            'occured' => 'occurred',
+            'seperate' => 'separate',
+            'wich' => 'which',
+            'wierd' => 'weird',
+            'alot' => 'a lot',
+        ];
+
+        foreach ($typos as $wrong => $correct) {
+            $text = preg_replace('/\b' . preg_quote($wrong, '/') . '\b/i', $correct, $text);
+        }
+
+        return $text;
+    }
+
     public function handleMessage(Request $request)
     {
         $request->validate([
@@ -27,7 +80,8 @@ class ChatbotController extends Controller
             'conversation_id' => 'nullable|string'
         ]);
 
-        $message = trim($request->message);
+        $message = $this->correctMessage($request->message);
+        $hasTypo = $message !== $request->message;
         $conversationId = $request->conversation_id ?? Str::uuid()->toString();
 
         // Initialize conversation storage
@@ -44,7 +98,7 @@ class ChatbotController extends Controller
         $this->cleanOldContext($conversationId);
 
         // Main response engine
-        $response = $this->getRuleBasedResponse($message, $conversationId);
+        $response = $this->getRuleBasedResponse($message, $hasTypo, $conversationId);
 
         return response()->json([
             'response' => $response,
@@ -55,7 +109,7 @@ class ChatbotController extends Controller
     // ========================================================================
     // MAIN RESPONSE ENGINE – FULLY EXTENDED
     // ========================================================================
-    private function getRuleBasedResponse(string $message, string $conversationId): string
+    private function getRuleBasedResponse(string $message, $hasTypo, string $conversationId): string
     {
         $lowerMessage = strtolower($message);
 
@@ -64,18 +118,31 @@ class ChatbotController extends Controller
             'hello' => 'Hi! How can I help?',
             'hi' => 'Hi! How can I help?',
             'hey' => 'Hi! How can I help?',
+            'thanks' => 'You\'re welcome! Let me know if you need anything else.',
+            'thank you' => 'You\'re welcome! Let me know if you need anything else.',
+            'thankyou' => 'You\'re welcome! Let me know if you need anything else.',
+            'help' => 'Sure! What do you need assistance with?',
             // ... keep all your existing ones
         ];
 
+        // ————————————————————————————————————
+        // 1. Direkt Exact Matches; depending on above array, no external functionslike next steps
+        // ————————————————————————————————————
         if (isset($exactResponses[$lowerMessage])) {
-            return $exactResponses[$lowerMessage];
+            return $exactResponses[$lowerMessage] . " (general exact match)";
         }
 
+        // ————————————————————————————————————
+        // 2. Cached Responses
+        // ————————————————————————————————————
         $learnedResponses = cache()->get('learned_responses', []);
         if (isset($learnedResponses[$lowerMessage])) {
-            return $learnedResponses[$lowerMessage];
+            return $learnedResponses[$lowerMessage] . ' (from cach-memory)';
         }
 
+        // ————————————————————————————————————
+        // 3. Sentiment Analysis
+        // ————————————————————————————————————
         $analysis = $this->analyzeMessage($message);
         $keywords = $analysis['keywords'];
         $sentiment = $analysis['sentiment'];
@@ -84,22 +151,43 @@ class ChatbotController extends Controller
             return "I'm sorry to hear you're having trouble. Let me help resolve this.";
         }
 
+        // ————————————————————————————————————
+        // 4. Keyword Pattern Matching
+        // ————————————————————————————————————
         if ($response = $this->checkKeywordPatterns($keywords)) {
-            return $response;
+            return $response . " (based on keywords)";
         }
 
+        // ————————————————————————————————————
+        // 5. Decision Tree for Account Questions
+        // ————————————————————————————————————
         if ($response = $this->handleAccountQuestions($message, $conversationId)) {
+            if ($hasTypo) {
+                $response .= " did you mean:" . $message;
+            }
             return $response;
         }
-
+        // ————————————————————————————————————    
+        // 6. Contextual Memory Check
+        // ————————————————————————————————————
         if ($this->isContextualResponse($message, $conversationId)) {
             if ($response = $this->getContextualResponse($conversationId)) {
-                return $response;
+                return $response . " (based on recent context)";
             }
         }
 
+        // ————————————————————————————————————
+        // 7. Learned Responses from DB (Fuzzy + Scoring)
+        // ————————————————————————————————————
         if ($response = $this->getTrainedResponses($message, $conversationId)) {
-            return $response;
+            return $response . " (from trained responses by employees)";
+        }
+
+        // ————————————————————————————————————
+        // 8. Fallback to meaningless check and keywords
+        // ————————————————————————————————————
+        if (count($keywords) === 0) {
+            return 'Could you please provide more details so I can assist you better?';
         }
 
         // ————————————————————————————————————
@@ -124,11 +212,11 @@ class ChatbotController extends Controller
         } else {
             // RAG failed - trigger learning
             $this->learnResponse($message, '', $category);
-            return "I'm still learning about $category questions...";
+            return "(GPT) I'm still learning about $category questions...";
         }
 
         // ————————————————————————————————————
-        // FINAL FALLBACK
+        // FINAL FALLBACK for security: Trigger learning + notify
         // ————————————————————————————————————
         $this->learnResponse($message, '', $category);
         $this->updateKnowledgeBase();
@@ -137,75 +225,130 @@ class ChatbotController extends Controller
     }
 
     // ========================================================================
-    // 1. EXACT + CACHED RESPONSES
-    // ========================================================================
-    // Already in getRuleBasedResponse()
-
-    // ========================================================================
     // 2. LEARNED RESPONSES FROM DB (FUZZY + SCORING)
     // ========================================================================
     private function getTrainedResponses(string $message, string $conversationId): ?string
     {
         $messageWords = $this->tokenizeMessage($message);
-        $detectedCategories = $this->detectCategories($message);
+        $detectedCategories = $this->detectCategories($message); // e.g. ['technical']
 
-        if (empty($messageWords)) return null;
+        if (empty($messageWords)) {
+            return null;
+        }
 
         // Cache all active trainings
         $allTrainings = Cache::remember('all_chatbot_trainings', 3600, function () {
             return ChatbotTraining::where('is_active', true)->get();
         });
 
-        $scores = [];
+        $candidates = [];
 
         foreach ($allTrainings as $t) {
+            // Fix 1: Split comma-separated categories
+            $trainingCategories = array_map('trim', explode(',', $t->category ?? 'general'));
+            $trainingCategories = array_filter($trainingCategories);
+
             $triggerWords = $this->tokenizeMessage($t->trigger);
-            $keywordWords = $t->keywords ?? [];
-            $docWords = array_merge($triggerWords, $keywordWords, [$t->category]);
+            $keywordWords = is_array($t->keywords) ? $t->keywords : json_decode($t->keywords ?? '[]', true);
+            $docWords = array_merge($triggerWords, $keywordWords, $trainingCategories);
+
+            // Remove duplicates
+            $docWords = array_unique($docWords);
 
             $overlap = count(array_intersect($messageWords, $docWords));
-            $score = $overlap * 2;
+            $score = $overlap * 2.5; // Slightly higher weight per word
 
-            if (in_array($t->category, $detectedCategories)) {
-                $score += 3;
+            // Fix 2: Category match = big bonus (even partial)
+            $categoryMatched = false;
+            $matchedCategory = array();
+            foreach ($detectedCategories as $detected) {
+                foreach ($trainingCategories as $cat) {
+                    if (str_contains(strtolower($cat), strtolower($detected)) ||
+                        str_contains(strtolower($detected), strtolower($cat))) {
+                        $categoryMatched = true;
+                        array_push($matchedCategory, $cat);
+                        // break 2;
+                    }
+                }
+            }
+            $countCategory = count($matchedCategory);
+            if ($countCategory > 0 && !empty($matchedCategory)) {
+                foreach ($matchedCategory as $matcheCategory) {
+                    $score += 4; // Bonus for each category match
+                }
             }
 
-            if ($score > 0) {
-                $scores[] = [
-                    'response' => $t->response,
-                    'score' => $score,
-                    'id' => $t->id
+            // Only include if has response and score > 1
+            if (!empty(trim($t->response)) && $score >= 12) {
+                $candidates[] = [
+                    'response' => trim($t->response),
+                    'score'     => $score,
+                    'id'        => $t->id,
+                    'trigger'   => $t->trigger,
+                    'category'  => $t->category,
+                    'matched_category' => $categoryMatched ? $matcheCategory : null,
+                    'raw_score' => $overlap,
                 ];
             }
         }
 
-        if (empty($scores)) return null;
-
-        usort($scores, fn($a, $b) => $b['score'] <=> $a['score']);
-        $best = $scores[0];
-
-        Log::info("Best DB match", [
-            'message' => $message,
-            'id' => $best['id'],
-            'score' => $best['score'],
-            'response' => $best['response']
-        ]);
-
-        // MINIMAL FIX: Only return if response is real and not empty
-        if (!empty(trim($best['response'] ?? '')) && strlen(trim($best['response'])) > 5) {
-            return trim($best['response']);
+        if (empty($candidates)) {
+            return null;
         }
 
-        // If response is empty or too short → act like nothing was found
-        return null;
+        // Sort by score DESC
+        usort($candidates, fn($a, $b) => $b['score'] <=> $a['score']);
+
+        // Take top 3 (or less)
+        $top = array_slice($candidates, 0, 3);
+
+        // Build final response like Python version
+        $parts = [];
+
+        // 1. Always include the best one
+        $parts[] = $top[0]['response'];
+
+        // 2. Add 2nd if different
+        if (isset($top[1])) {
+            if (trim($top[1]['response']) !== trim($top[0]['response'])) {
+                $parts[] = "Another helpful answer:\n" . $top[1]['response'];
+            }
+        }
+
+        // 3. Add 3rd if different
+        if (isset($top[2])) {
+            if (
+                trim($top[2]['response']) !== trim($top[0]['response']) &&
+                (!isset($top[1]) || trim($top[2]['response']) !== trim($top[1]['response']))
+            ) {
+                $parts[] = "Also related:\n" . $top[2]['response'];
+            }
+        }
+        \Log::info("Chatbot scoring", [
+            'message' => $message,
+            'candidates' => array_map(fn($c) => [
+                'id' => $c['id'],
+                'trigger' => $c['trigger'],
+                'score' => $c['score'],
+                'raw_score' => $c['raw_score'],
+                'matched_category' => $c['matched_category'],
+                // 'word_ratio' => $c['word_ratio'],
+                // 'cat_match' => $c['cat_match']
+            ], $candidates)
+        ]);
+        return implode("\n\n", $parts);
     }
+
 
     // ========================================================================
     // 3. DECISION TREE – ACCOUNT FLOW (FULLY IMPLEMENTED)
     // ========================================================================
     private function handleAccountQuestions(string $message, string $conversationId): ?string
     {
-        $state = $this->decisionTreeState[$conversationId] ?? 'start';
+        $analysis = $this->analyzeMessage($message);
+        $keywords = $analysis['keywords'] ?? []; // e.g. ['account', 'reset', 'password']
+        $message = implode(' ', $keywords); // simplified message for tree traversal
+        $state = $this->decisionTreeState[$conversationId] ?? 'start'; 
 
         $tree = [
             'start' => [
@@ -244,7 +387,9 @@ class ChatbotController extends Controller
         // Traverse tree
         if ($node && $node['next']) {
             foreach ($node['next'] as $keyword => $nextState) {
-                if (str_contains(strtolower($message), $keyword)) {
+                // this returns even a partial match like info in informatics then it goes to update_info and finall y returns "Go to Settings > Profile > Edit"
+                // if (str_contains(strtolower($message), $keyword))
+                if (preg_match('/\b' . preg_quote($keyword, '/') . '\b/i', $message)) {
                     $this->decisionTreeState[$conversationId] = $nextState;
                     return $tree[$nextState]['response'] ?? "Done.";
                 }
@@ -266,17 +411,20 @@ class ChatbotController extends Controller
     {
         $lastThree = array_slice($this->conversationContext[$conversationId] ?? [], -3);
         $contextString = implode(' ', $lastThree);
+        $analysis = $this->analyzeMessage($message);
+        $keywords = $analysis['keywords'] ?? [];
 
         $contextTriggers = [
             'account' => ['account', 'profile', 'login', 'password', 'email'],
             'payment' => ['payment', 'bill', 'invoice', 'refund', 'charge'],
             'technical' => ['bug', 'error', 'crash', 'not working', 'issue'],
-            'feature' => ['how to', 'use', 'feature', 'tutorial', 'guide']
+            'feature' => ['use', 'feature', 'tutorial', 'guide']
         ];
 
         foreach ($contextTriggers as $context => $triggers) {
             foreach ($triggers as $trigger) {
-                if (str_contains($contextString, $trigger)) {
+                // many cases where str_contains is used to find partial matches and then check if the trigger is in keywords and also if it's the first keyword and keywords length is equal to 1
+                if (str_contains($contextString, $trigger) && in_array($trigger, $keywords) && count($keywords) === 1) {
                     $this->currentContext[$conversationId] = $context;
                     return true;
                 }
@@ -331,7 +479,7 @@ class ChatbotController extends Controller
     }
 
     // ========================================================================
-    // 5. LEARNING + NOTIFICATIONS (UNCHANGED LOGIC)
+    // 5. LEARNING + NOTIFICATIONS FOR REVIEW
     // ========================================================================
     private function learnResponse(string $message, string $response = '', string $category = null): void
     {
@@ -388,8 +536,10 @@ class ChatbotController extends Controller
     // ========================================================================
     // 6. NLP: TOKENIZE, SENTIMENT, CATEGORIES
     // ========================================================================
+    // analyzeMessage for interpreting a user query. sentiment + keyword extraction improves routing
     private function analyzeMessage(string $message): array
     {
+        // tokenizer + stopword removal + sentiment detection + normalization
         $words = preg_split('/\s+/', strtolower($message));
         $stopWords = [
             // Basic English stop words
@@ -455,8 +605,10 @@ class ChatbotController extends Controller
         ];
     }
 
+    // tokenizeMessage matching message to  training dataset. fewer filters = higher chance of overlap with training data triggers
     private function tokenizeMessage(string $message): array
     {
+        // light tokenizer + minimal stopword removal for training matching
         $message = strtolower(preg_replace('/[^a-z0-9\s]/', '', $message));
         $words = preg_split('/\s+/', trim($message));
         $stopWords = ['the', 'a', 'an', 'is', 'are', 'i', 'you', 'we', 'to', 'my', 'can', 'it', 'and', 'explain', 'or', 'but', 'in', 'on', 'at'];
@@ -465,86 +617,91 @@ class ChatbotController extends Controller
 
     private function detectCategories(string $message): array
     {
-        $categories = [
-            // Core app & support
-            'account', 'advertising', 'api', 'app', 'backup', 'block', 'bug',
-            'cancellation', 'comment', 'crash', 'data', 'desktop', 'download',
-            'error', 'faq', 'feature', 'follow', 'guide', 'how-to', 'integration',
-            'like', 'login', 'mobile', 'notification', 'payment', 'performance',
-            'post', 'privacy', 'profile', 'refund', 'report', 'restore', 'security',
-            'settings', 'share', 'speed', 'storage', 'subscription', 'technical',
-            'third-party', 'trial', 'unfollow', 'upload', 'web',
+        $lower = strtolower(trim($message));
 
-            // Technology
-            'algorithms', 'analytics', 'android', 'api development',
-            'artificial intelligence', 'augmented reality',
-            'automation', 'big data', 'blockchain', 'cloud computing',
-            'computing', 'computer science', 'crypto', 'cryptography',
-            'cybersecurity', 'data engineering', 'data science', 'databases',
-            'deep learning', 'devops', 'digital marketing', 'e-commerce',
-            'frontend development', 'full-stack development', 'gaming',
-            'hardware', 'iot', 'javascript', 'machine learning', 'mobile apps',
-            'networking', 'programming', 'quantum computing', 'robotics',
-            'software', 'software development', 'system administration',
-            'ui design', 'ux design', 'virtual reality', 'web development',
+        // Master category map: real category → list of trigger words/phrases
+        // This is the GOLD standard for 2025 chatbots
+        $categoryMap = [
+            // Core app & platform
+            'account'          => ['account', 'profile', 'login', 'signup', 'register', 'password', 'email verify'],
+            'payment'          => ['payment', 'billing', 'subscription', 'refund', 'charge', 'paypal', 'stripe', 'invoice'],
+            'technical'        => ['bug', 'error', 'crash', 'not working', 'broken', 'issue', 'slow', 'lag', 'freeze'],
+            'feature'          => ['feature', 'add', 'missing', 'wish', 'request', 'idea', 'suggestion'],
+            'mobile'           => ['mobile', 'app', 'android', 'ios', 'iphone', 'play store', 'app store'],
+            'notification'     => ['notification', 'alert', 'bell', 'push', 'reminder'],
+            'privacy'          => ['privacy', 'data', 'delete account', 'gdpr', 'personal info'],
 
-            // Science fields
-            'astronomy', 'astrophysics', 'biology', 'biotechnology',
-            'chemistry', 'climate science', 'cosmology', 'ecology',
-            'environmental science', 'evolution', 'genetics', 'geology',
-            'life sciences', 'marine biology', 'mathematics', 'meteorology',
-            'nanotechnology', 'neuroscience', 'oceanography', 'physics',
-            'planetary science', 'space science',
+            // Tech & Development
+            'ai'               => ['ai', 'artificial intelligence', 'chatgpt', 'gpt', 'llm', 'grok', 'claude', 'gemini'],
+            'machine-learning' => ['machine learning', 'ml', 'deep learning', 'neural network', 'training data'],
+            'programming'      => ['programming', 'code', 'python', 'javascript', 'php', 'laravel', 'react', 'vue'],
+            'web-dev'          => ['web development', 'frontend', 'backend', 'html', 'css', 'api', 'rest'],
+            'cloud'            => ['cloud', 'aws', 'azure', 'google cloud', 'server', 'hosting', 'docker', 'kubernetes'],
+            'security'         => ['security', 'hacking', 'cybersecurity', 'encryption', '2fa', 'password manager'],
 
-            // Health & medicine
-            'anatomy', 'cardiology', 'dentistry', 'disease', 'fitness',
-            'health', 'immunology', 'medical technology', 'medicine',
-            'mental health', 'microbiology', 'nutrition', 'pharmacology',
-            'physiology', 'public health',
+            // Media & Arts (your film/theater test case)
+            'film'             => ['film', 'movie', 'cinema', 'netflix', 'streaming', 'hollywood', 'bollywood'],
+            'sci-fi'           => ['sci-fi', 'science fiction', 'scifi', 'dune', 'blade runner', 'matrix'],
+            'theater'          => ['theater', 'theatre', 'play', 'stage', 'acting', 'drama', 'schauspiel'],
+            'storytelling'     => ['story', 'narrative', 'plot', 'script', 'screenplay', 'writing story'],
+            'director'         => ['director', 'filmmaker', 'nolan', 'scorsese', 'tarantino', 'villeneuve'],
+            'documentary'      => ['documentary', 'doc', 'real story', 'true story'],
 
-            // Social sciences
-            'anthropology', 'archaeology', 'communication', 'criminology',
-            'economics', 'education', 'finance', 'geography',
-            'history', 'international relations', 'law',
-            'linguistics', 'management', 'marketing', 'philosophy',
-            'political science', 'psychology', 'social science', 'sociology',
+            // Science & Academia
+            'physics'          => ['physics', 'quantum', 'relativity', 'einstein', 'particle'],
+            'biology'          => ['biology', 'dna', 'genes', 'evolution', 'cells', 'biotech'],
+            'math'            => ['math', 'mathematics', 'calculus', 'algebra', 'statistics', 'geometry'],
+            'space'            => ['space', 'nasa', 'mars', 'astronomy', 'cosmos', 'black hole', 'telescope'],
 
-            // Humanities & Arts
-            'architecture', 'art', 'aesthetics', 'culture', 'dance',
-            'design', 'film', 'language', 'literature', 'logic',
-            'media', 'music', 'painting', 'photography', 'poetry',
-            'theatre', 'visual arts', 'writing',
+            // Health & Life
+            'health'           => ['health', 'fitness', 'diet', 'exercise', 'mental health', 'therapy'],
+            'medicine'         => ['medicine', 'doctor', 'hospital', 'disease', 'vaccine', 'pharma'],
 
-            // Business & professional
-            'accounting', 'business', 'business strategy', 'entrepreneurship',
-            'human resources', 'investment', 'leadership', 'management consulting',
-            'project management', 'real estate', 'sales', 'startups',
+            // Business & Money
+            'business'         => ['business', 'startup', 'entrepreneur', 'marketing', 'sales', 'money'],
+            'crypto'           => ['crypto', 'bitcoin', 'ethereum', 'blockchain', 'nft', 'web3'],
 
-            // Geography & environment
-            'climate', 'cities', 'countries', 'ecosystems',
-            'environment', 'mountains', 'natural resources',
-            'oceans', 'rivers', 'space', 'travel',
+            // Education & Learning
+            'education'        => ['education', 'school', 'university', 'course', 'learning', 'study', 'exam'],
+            'language'         => ['language', 'english', 'german', 'french', 'spanish', 'learn language'],
 
-            // Modern fields
-            '3d printing', 'aerospace', 'agriculture', 'analytics',
-            'bioinformatics', 'cloud security', 'communication technology',
-            'data privacy', 'digital art', 'digital transformation',
-            'energy', 'green technology', 'renewable energy',
-            'space technology',
-
-            // Extras / general topics
-            'education technology', 'ethics', 'food science', 'gaming industry',
-            'history of science', 'information systems', 'knowledge',
-            'language learning', 'machine vision', 'mobility tech',
-            'nanomaterials', 'open source', 'product design', 'research',
-            'smart cities', 'statistics', 'transportation', 'video production'
+            // Lifestyle & Culture
+            'travel'           => ['travel', 'vacation', 'flight', 'hotel', 'country', 'city'],
+            'food'             => ['food', 'cooking', 'recipe', 'restaurant', 'cuisine'],
+            'music'            => ['music', 'song', 'spotify', 'album', 'concert', 'band'],
+            'gaming'           => ['gaming', 'game', 'playstation', 'xbox', 'nintendo', 'pc gaming'],
         ];
 
-        $found = [];
-        foreach ($categories as $cat) {
-            if (stripos($message, $cat) !== false) $found[] = $cat;
+        $detected = [];
+
+        foreach ($categoryMap as $category => $triggers) {
+            foreach ($triggers as $trigger) {
+                // Exact word or phrase match (with word boundaries)
+                if (preg_match('/\b' . preg_quote($trigger, '/') . '\b/i', $message)) {
+                    $detected[] = $category;
+                    break; // one match per category is enough
+                }
+            }
         }
-        return $found;
+
+        // Special cases: multi-word phrases that must be together
+        $specialPhrases = [
+            'machine learning'     => 'machine-learning',
+            'artificial intelligence' => 'ai',
+            'science fiction'      => 'sci-fi',
+            'web development'      => 'web-dev',
+            'mental health'        => 'health',
+            'data science'         => 'machine-learning',
+        ];
+
+        foreach ($specialPhrases as $phrase => $cat) {
+            if (stripos($lower, $phrase) !== false) {
+                $detected[] = $cat;
+            }
+        }
+
+        // Remove duplicates and return
+        return array_values(array_unique($detected));
     }
 
     // ========================================================================
