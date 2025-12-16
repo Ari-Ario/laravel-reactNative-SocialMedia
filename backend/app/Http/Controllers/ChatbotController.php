@@ -24,18 +24,14 @@ class ChatbotController extends Controller
     {
         // Trim
         $text = trim($text);
+        
         // Replace multiple spaces
         $text = preg_replace('/\s+/', ' ', $text);
-
+        
         // Capitalize first letter
         $text = ucfirst($text);
-
-        // Add missing period if no punctuation
-        // if (!preg_match('/[.!?]$/', $text)) {
-        //     $text .= '.';
-        // }
-
-        // Common typo dictionary
+        
+        // Common typo dictionary (expanded)
         $typos = [
             'teh' => 'the',
             'recieve' => 'receive',
@@ -64,12 +60,81 @@ class ChatbotController extends Controller
             'wich' => 'which',
             'wierd' => 'weird',
             'alot' => 'a lot',
+            'neccessary' => 'necessary',
+            'untill' => 'until',
+            'tommorow' => 'tomorrow',
+            'tommorrow' => 'tomorrow',
+            'wierd' => 'weird',
+            'accomodate' => 'accommodate',
+            'acheive' => 'achieve',
+            'arguement' => 'argument',
+            'commited' => 'committed',
+            'embarass' => 'embarrass',
+            'existance' => 'existence',
+            'firey' => 'fiery',
+            'gauge' => 'gauge',
+            'harrass' => 'harass',
+            'occurence' => 'occurrence',
+            'persue' => 'pursue',
+            'seige' => 'siege',
+            'speach' => 'speech',
+            'truely' => 'truly',
+            'wierd' => 'weird',
+            'filmz' => 'films',
+            'theatre' => 'theater',
+            'theather' => 'theater',
+            'directer' => 'director',
+            'screenplaye' => 'screenplay',
+            'storey' => 'story',
+            'storeytelling' => 'storytelling',
         ];
-
+        
+        // Word boundary replacement for all typos
         foreach ($typos as $wrong => $correct) {
             $text = preg_replace('/\b' . preg_quote($wrong, '/') . '\b/i', $correct, $text);
         }
-
+        
+        // Fix common contractions
+        $contractions = [
+            "cant" => "can't",
+            "dont" => "don't",
+            "wont" => "won't",
+            "isnt" => "isn't",
+            "arent" => "aren't",
+            "wasnt" => "wasn't",
+            "werent" => "weren't",
+            "havent" => "haven't",
+            "hasnt" => "hasn't",
+            "hadnt" => "hadn't",
+            "wouldnt" => "wouldn't",
+            "shouldnt" => "shouldn't",
+            "couldnt" => "couldn't",
+            "mightnt" => "mightn't",
+            "mustnt" => "mustn't",
+            "im" => "I'm",
+            "youre" => "you're",
+            "hes" => "he's",
+            "shes" => "she's",
+            "its" => "it's",
+            "were" => "we're",
+            "theyre" => "they're",
+            "ive" => "I've",
+            "youve" => "you've",
+            "weve" => "we've",
+            "theyve" => "they've",
+            "ill" => "I'll",
+            "youll" => "you'll",
+            "hell" => "he'll",
+            "shell" => "she'll",
+            "itll" => "it'll",
+            "well" => "we'll",
+            "theyll" => "they'll",
+        ];
+        
+        foreach ($contractions as $wrong => $correct) {
+            $text = preg_replace('/\b' . preg_quote($wrong, '/') . '\b/i', $correct, $text);
+        }
+        
         return $text;
     }
 
@@ -180,7 +245,15 @@ class ChatbotController extends Controller
         // 7. Learned Responses from DB (Fuzzy + Scoring)
         // ————————————————————————————————————
         if ($response = $this->getTrainedResponses($message, $conversationId)) {
-            return $response . " (from trained responses by employees)";
+            // If the returned/stored response already mentions that it's from trained
+            // responses (various wordings may be used), don't append another tag.
+            // This prevents duplicate parentheticals when the DB text already
+            // contains that note.
+            if (preg_match('/trained\s+responses/i', $response)) {
+                return $response;
+            }
+
+            return $response . " (from our trained responses by employees)";
         }
 
         // ————————————————————————————————————
@@ -230,7 +303,7 @@ class ChatbotController extends Controller
     private function getTrainedResponses(string $message, string $conversationId): ?string
     {
         $messageWords = $this->tokenizeMessage($message);
-        $detectedCategories = $this->detectCategories($message); // e.g. ['technical']
+        $detectedCategories = $this->detectCategories($message);
 
         if (empty($messageWords)) {
             return null;
@@ -243,102 +316,466 @@ class ChatbotController extends Controller
 
         $candidates = [];
 
+        // FIRST: Check for exact trigger match with typo correction
         foreach ($allTrainings as $t) {
-            // Fix 1: Split comma-separated categories
-            $trainingCategories = array_map('trim', explode(',', $t->category ?? 'general'));
-            $trainingCategories = array_filter($trainingCategories);
+            $normalizedMessage = strtolower(trim($this->correctMessage($message)));
+            $normalizedTrigger = strtolower(trim($t->trigger));
+            
+            // Direct exact match
+            if ($normalizedMessage === $normalizedTrigger) {
+                \Log::info("Exact trigger match found", [
+                    'message' => $message,
+                    'trigger' => $t->trigger,
+                    'response_id' => $t->id
+                ]);
+                return trim($t->response);
+            }
+            
+            // Check with punctuation removed
+            $cleanMessage = preg_replace('/[^\w\s]/', '', $normalizedMessage);
+            $cleanTrigger = preg_replace('/[^\w\s]/', '', $normalizedTrigger);
+            if ($cleanMessage === $cleanTrigger) {
+                \Log::info("Exact trigger match (punctuation removed)", [
+                    'message' => $message,
+                    'trigger' => $t->trigger,
+                    'response_id' => $t->id
+                ]);
+                return trim($t->response);
+            }
+            
+            // Check if message contains trigger or vice versa (for very close matches)
+            $messageWordsLower = array_map('strtolower', $messageWords);
+            $triggerWords = array_map('strtolower', $this->tokenizeMessage($t->trigger));
+            
+            $intersection = count(array_intersect($messageWordsLower, $triggerWords));
+            $minWords = min(count($messageWordsLower), count($triggerWords));
+            
+            // If all trigger words are in message or vice versa
+            if ($minWords > 0 && $intersection == $minWords) {
+                \Log::info("Complete word overlap match", [
+                    'message' => $message,
+                    'trigger' => $t->trigger,
+                    'response_id' => $t->id
+                ]);
+                return trim($t->response);
+            }
+        }
 
-            $triggerWords = $this->tokenizeMessage($t->trigger);
-            $keywordWords = is_array($t->keywords) ? $t->keywords : json_decode($t->keywords ?? '[]', true);
+        // Weight configuration - easily adjustable
+        $wordOverlapWeight = 0.70; // 70% of total score
+        $categoryMatchWeight = 0.30; // 30% of total score
+
+        // IMPROVEMENT #1: Performance optimization - limit processing for long candidate lists
+        $performanceLimit = 100; // Process maximum 100 trainings at once
+        
+        foreach ($allTrainings as $t) {
+            // IMPROVEMENT #7: Cache processed training data
+            $trainingKey = 'training_' . $t->id;
+            $processedTraining = Cache::remember($trainingKey, 3600, function() use ($t) {
+                $categories = array_map('trim', explode(',', $t->category ?? 'general'));
+                $categories = array_filter($categories);
+                
+                return [
+                    'categories' => $categories,
+                    'trigger_words' => $this->tokenizeMessage($t->trigger),
+                    'keywords' => is_array($t->keywords) ? $t->keywords : json_decode($t->keywords ?? '[]', true),
+                    'category_count' => count($categories),
+                ];
+            });
+            
+            $trainingCategories = $processedTraining['categories'];
+            $totalTrainingCategories = $processedTraining['category_count'];
+            $triggerWords = $processedTraining['trigger_words'];
+            $keywordWords = $processedTraining['keywords'];
+            
             $docWords = array_merge($triggerWords, $keywordWords, $trainingCategories);
-
-            // Remove duplicates
             $docWords = array_unique($docWords);
+            $totalDocWords = count($docWords);
 
+            // Calculate word overlap - IMPROVED STRATEGY
             $overlap = count(array_intersect($messageWords, $docWords));
-            $score = $overlap * 2.5; // Slightly higher weight per word
+            
+            // STRATEGY 1: Trigger word focus (most important)
+            $triggerOverlap = count(array_intersect($messageWords, $triggerWords));
+            $triggerOverlapPercentage = count($triggerWords) > 0 
+                ? ($triggerOverlap / count($triggerWords)) * 100 
+                : 0;
+                
+            // STRATEGY 2: Message coverage (how much of user's message is covered)
+            $messageCoverage = count($messageWords) > 0 
+                ? ($overlap / count($messageWords)) * 100 
+                : 0;
+                
+            // STRATEGY 3: All document words
+            $allOverlapPercentage = $totalDocWords > 0 
+                ? ($overlap / $totalDocWords) * 100 
+                : 0;
+            
+            // COMBINED: Weighted average for better precision
+            $wordOverlapPercentage = 
+                ($triggerOverlapPercentage * 0.6) +  // 60% weight to trigger words
+                ($messageCoverage * 0.3) +          // 30% weight to message coverage
+                ($allOverlapPercentage * 0.1);      // 10% weight to all document words
 
-            // Fix 2: Category match = big bonus (even partial)
-            $categoryMatched = false;
-            $matchedCategory = array();
+            $wordScore = ($wordOverlapPercentage * $wordOverlapWeight) / 100;
+
+            // Calculate category match percentage - IMPROVED with stemming
+            $matchedCategories = [];
             foreach ($detectedCategories as $detected) {
+                $detected = trim($detected);
+                if (empty($detected)) continue;
+                
+                // IMPROVEMENT #3: Stem detected word
+                $detectedStemmed = $this->stemWord($detected);
+                $detectedLower = strtolower($detected);
+                
                 foreach ($trainingCategories as $cat) {
-                    if (str_contains(strtolower($cat), strtolower($detected)) ||
-                        str_contains(strtolower($detected), strtolower($cat))) {
-                        $categoryMatched = true;
-                        array_push($matchedCategory, $cat);
-                        // break 2;
+                    $cat = trim($cat);
+                    if (empty($cat)) continue;
+                    
+                    $catStemmed = $this->stemWord($cat);
+                    $catLower = strtolower($cat);
+                    
+                    // Check for match with multiple strategies including stemming
+                    $isMatch = false;
+                    
+                    // 1. Exact match
+                    if ($catLower === $detectedLower) {
+                        $isMatch = true;
+                    }
+                    // 2. Stemmed match
+                    elseif ($catStemmed === $detectedStemmed) {
+                        $isMatch = true;
+                    }
+                    // 3. Contains match (but not too short to avoid false matches)
+                    elseif ((str_contains($catLower, $detectedLower) || 
+                        str_contains($detectedLower, $catLower)) &&
+                        strlen($detected) > 2 && strlen($cat) > 2) {
+                        $isMatch = true;
+                    }
+                    // 4. Singular/plural variations
+                    elseif (($catLower === $detectedLower . 's' || 
+                            $detectedLower === $catLower . 's' ||
+                            $catLower === $detectedLower . 'es' || 
+                            $detectedLower === $catLower . 'es') &&
+                        strlen($detected) > 2) {
+                        $isMatch = true;
+                    }
+                    
+                    if ($isMatch && !in_array($cat, $matchedCategories)) {
+                        $matchedCategories[] = $cat;
                     }
                 }
             }
-            $countCategory = count($matchedCategory);
-            if ($countCategory > 0 && !empty($matchedCategory)) {
-                foreach ($matchedCategory as $matcheCategory) {
-                    $score += 4; // Bonus for each category match
+
+            $matchedCategoryCount = count($matchedCategories);
+            $categoryMatchPercentage = $totalTrainingCategories > 0 
+                ? ($matchedCategoryCount / $totalTrainingCategories) * 100 
+                : ($matchedCategoryCount > 0 ? 100 : 0);
+            $categoryScore = ($categoryMatchPercentage * $categoryMatchWeight) / 100;
+
+            // Calculate total score (0-100%)
+            $totalScore = ($wordScore + $categoryScore) * 100;
+
+            // BONUS: Exact word order match in trigger
+            $exactWordOrderBonus = 0;
+            $messageLower = strtolower($message);
+            $triggerLower = strtolower($t->trigger);
+            
+            // Check if message contains exact trigger phrase
+            if (str_contains($messageLower, $triggerLower)) {
+                $exactWordOrderBonus = 20; // Big bonus for exact phrase match
+            }
+            
+            // Check if trigger contains exact message phrase
+            elseif (str_contains($triggerLower, $messageLower)) {
+                $exactWordOrderBonus = 15;
+            }
+            
+            // Check for significant word sequence matches
+            else {
+                $messageWordsStr = implode(' ', array_map('strtolower', $messageWords));
+                $triggerWordsStr = implode(' ', array_map('strtolower', $triggerWords));
+                
+                // Use similar_text for phrase similarity
+                similar_text($messageWordsStr, $triggerWordsStr, $similarity);
+                if ($similarity > 60) {
+                    $exactWordOrderBonus = $similarity / 5; // Up to 12 bonus points
+                }
+            }
+            
+            $totalScore += $exactWordOrderBonus;
+            
+            // IMPROVEMENT #2: Add length normalization (prefer responses for longer queries)
+            $lengthFactor = min(1.0, count($messageWords) / 20); // Normalize to 0-1
+            $lengthBonus = $lengthFactor * 10; // Up to 10% bonus for longer queries
+            $totalScore += $lengthBonus;
+            
+            // IMPROVEMENT #5: Dynamic threshold adjustment
+            $dynamicThreshold = max(25, min(45, 35 - (count($messageWords) * 0.5)));
+            // Shorter messages (<10 words): higher threshold (30-35)
+            // Longer messages (>20 words): lower threshold (25-30)
+            
+            // IMPROVEMENT #6: Add response quality metrics
+            $responseLength = strlen(trim($t->response));
+            $responseQualityScore = min(1.0, $responseLength / 500); // Normalize
+            $qualityAdjustment = 0.9 + ($responseQualityScore * 0.2); // Adjust by ±10%
+            $totalScore *= $qualityAdjustment;
+            
+            // IMPROVEMENT #4: Add conversation context awareness
+            if ($conversationId) {
+                $conversationContext = $this->getConversationContext($conversationId);
+                if ($conversationContext) {
+                    $contextBonus = $this->calculateContextBonus($t, $conversationContext);
+                    $totalScore += $contextBonus;
                 }
             }
 
-            // Only include if has response and score > 1
-            if (!empty(trim($t->response)) && $score >= 12) {
+            // Only include if has response and score >= dynamic threshold
+            if (!empty(trim($t->response)) && $totalScore >= $dynamicThreshold) {
                 $candidates[] = [
                     'response' => trim($t->response),
-                    'score'     => $score,
+                    'score'     => $totalScore,
                     'id'        => $t->id,
                     'trigger'   => $t->trigger,
                     'category'  => $t->category,
-                    'matched_category' => $categoryMatched ? $matcheCategory : null,
-                    'raw_score' => $overlap,
+                    'matched_category' => !empty($matchedCategories) ? implode(', ', $matchedCategories) : null,
+                    'word_overlap_percentage' => $wordOverlapPercentage,
+                    'trigger_overlap_percentage' => $triggerOverlapPercentage,
+                    'message_coverage_percentage' => $messageCoverage,
+                    'category_match_percentage' => $categoryMatchPercentage,
+                    'matched_category_count' => $matchedCategoryCount,
+                    'total_training_categories' => $totalTrainingCategories,
+                    'total_doc_words' => $totalDocWords,
+                    'exact_order_bonus' => $exactWordOrderBonus,
+                    'length_bonus' => $lengthBonus,
+                    'quality_adjustment' => $qualityAdjustment,
+                    'dynamic_threshold' => $dynamicThreshold,
                 ];
+            }
+            
+            // IMPROVEMENT #1: Performance optimization - stop if too many candidates
+            if (count($candidates) > 50) {
+                // Sort and keep only top 30 for further processing
+                usort($candidates, fn($a, $b) => $b['score'] <=> $a['score']);
+                $candidates = array_slice($candidates, 0, 30);
+                break; // Stop processing more trainings
             }
         }
 
         if (empty($candidates)) {
-            return null;
+            \Log::info("No trained responses found for message", [
+                'message' => $message,
+                'detected_categories' => $detectedCategories,
+                'word_count' => count($messageWords)
+            ]);
+            return null; // Let GPT handle it
         }
 
-        // Sort by score DESC
-        usort($candidates, fn($a, $b) => $b['score'] <=> $a['score']);
+        // IMPROVED TIERED SORTING
+        $filteredCandidates = [];
+
+        foreach ($candidates as $candidate) {
+            // Tier 1: High trigger overlap (> 75%) OR exact word order bonus
+            if ($candidate['trigger_overlap_percentage'] > 75 || $candidate['exact_order_bonus'] > 15) {
+                $candidate['tier'] = 1;
+                $candidate['tier_score'] = 
+                    ($candidate['trigger_overlap_percentage'] * 1000) + 
+                    ($candidate['exact_order_bonus'] * 500) + 
+                    $candidate['score'];
+                $filteredCandidates[] = $candidate;
+            }
+            // Tier 2: Good word overlap (> 60%)
+            elseif ($candidate['word_overlap_percentage'] > 60) {
+                $candidate['tier'] = 2;
+                $candidate['tier_score'] = 
+                    ($candidate['word_overlap_percentage'] * 100) + 
+                    ($candidate['trigger_overlap_percentage'] * 50) + 
+                    $candidate['score'];
+                $filteredCandidates[] = $candidate;
+            }
+            // Tier 3: Medium word overlap (> 40%)
+            elseif ($candidate['word_overlap_percentage'] > 40) {
+                $candidate['tier'] = 3;
+                $candidate['tier_score'] = 
+                    ($candidate['word_overlap_percentage'] * 50) + 
+                    ($candidate['category_match_percentage'] * 25) + 
+                    $candidate['score'];
+                $filteredCandidates[] = $candidate;
+            }
+            // Tier 4: Low word overlap (≤ 40%) - EXCLUDED FROM RESULTS
+            else {
+                // Do not add to filtered candidates - they're too low quality
+                \Log::debug("Excluding low quality candidate", [
+                    'id' => $candidate['id'],
+                    'trigger' => $candidate['trigger'],
+                    'word_overlap' => $candidate['word_overlap_percentage'],
+                    'score' => $candidate['score']
+                ]);
+                // Skip this candidate completely
+                continue;
+            }
+        }
+
+        // Replace original candidates with filtered ones
+        $candidates = $filteredCandidates;
+
+        // Check if we have any candidates left after filtering
+        if (empty($candidates)) {
+            \Log::info("No quality trained responses found after filtering", [
+                'message' => $message,
+                'detected_categories' => $detectedCategories,
+                'original_candidates_count' => count($filteredCandidates),
+                'filtered_out' => count($filteredCandidates) - count($candidates)
+            ]);
+            return null; // Let GPT handle it
+        }
+
+        // Sort by tier first, then tier score
+        usort($candidates, function($a, $b) {
+            // Compare tiers
+            if ($a['tier'] !== $b['tier']) {
+                return $a['tier'] <=> $b['tier']; // Lower tier number = better
+            }
+            // Same tier, compare tier score
+            return $b['tier_score'] <=> $a['tier_score'];
+        });
 
         // Take top 3 (or less)
         $top = array_slice($candidates, 0, 3);
 
-        // Build final response like Python version
+        // Build final response
         $parts = [];
-
-        // 1. Always include the best one
         $parts[] = $top[0]['response'];
 
-        // 2. Add 2nd if different
         if (isset($top[1])) {
             if (trim($top[1]['response']) !== trim($top[0]['response'])) {
                 $parts[] = "Another helpful answer:\n" . $top[1]['response'];
             }
         }
 
-        // 3. Add 3rd if different
         if (isset($top[2])) {
-            if (
-                trim($top[2]['response']) !== trim($top[0]['response']) &&
-                (!isset($top[1]) || trim($top[2]['response']) !== trim($top[1]['response']))
-            ) {
+            if (trim($top[2]['response']) !== trim($top[0]['response']) &&
+                (!isset($top[1]) || trim($top[2]['response']) !== trim($top[1]['response']))) {
                 $parts[] = "Also related:\n" . $top[2]['response'];
             }
         }
+
+        // Enhanced logging with IMPROVEMENT #9: Heatmap breakdown
         \Log::info("Chatbot scoring", [
             'message' => $message,
+            'detected_categories' => $detectedCategories,
+            'scoring_config' => [
+                'word_overlap_weight' => $wordOverlapWeight,
+                'category_match_weight' => $categoryMatchWeight,
+                'dynamic_threshold_applied' => 'yes',
+            ],
+            'scoring_breakdown' => [
+                'word_overlap_base' => round($wordOverlapPercentage, 2) . '%',
+                'word_overlap_weighted' => round($wordScore * 100, 2) . '%',
+                'category_base' => round($categoryMatchPercentage, 2) . '%',
+                'category_weighted' => round($categoryScore * 100, 2) . '%',
+                'exact_order_bonus' => round($exactWordOrderBonus, 2),
+                'length_bonus' => round($lengthBonus, 2),
+                'quality_adjustment' => round($qualityAdjustment, 3),
+                'final_score' => round($totalScore, 2) . '%',
+            ],
             'candidates' => array_map(fn($c) => [
                 'id' => $c['id'],
                 'trigger' => $c['trigger'],
-                'score' => $c['score'],
-                'raw_score' => $c['raw_score'],
-                'matched_category' => $c['matched_category'],
-                // 'word_ratio' => $c['word_ratio'],
-                // 'cat_match' => $c['cat_match']
-            ], $candidates)
+                'tier' => $c['tier'],
+                'total_score' => round($c['score'], 2) . '%',
+                'word_overlap' => round($c['word_overlap_percentage'], 2) . '%',
+                'trigger_overlap' => round($c['trigger_overlap_percentage'], 2) . '%',
+                'message_coverage' => round($c['message_coverage_percentage'], 2) . '%',
+                'category_match' => round($c['category_match_percentage'], 2) . '%',
+                'exact_order_bonus' => round($c['exact_order_bonus'], 2),
+                'length_bonus' => round($c['length_bonus'], 2),
+                'matched_categories' => $c['matched_category'],
+                'category_stats' => "{$c['matched_category_count']}/{$c['total_training_categories']}",
+            ], $candidates),
+            'top_selected' => array_map(fn($c) => [
+                'id' => $c['id'],
+                'trigger' => $c['trigger'],
+                'score' => round($c['score'], 2) . '%',
+                'tier' => $c['tier']
+            ], $top)
         ]);
+
         return implode("\n\n", $parts);
     }
 
+    // NEW HELPER METHODS TO ADD TO YOUR CLASS:
+
+    /**
+     * IMPROVEMENT #3: Simple word stemming
+     */
+    private function stemWord($word)
+    {
+        $word = strtolower(trim($word));
+        
+        // Common English plural/singular patterns
+        $patterns = [
+            '/(ies|ied)$/' => 'y',
+            '/(es|ed|ing|s)$/' => '',
+            '/(ational|tional|enci|anci)$/' => '',
+            '/(izer|ization)$/' => 'ize',
+        ];
+        
+        foreach ($patterns as $pattern => $replacement) {
+            $word = preg_replace($pattern, $replacement, $word);
+        }
+        
+        return $word;
+    }
+
+    /**
+     * IMPROVEMENT #4: Get conversation context from your class property
+     */
+    private function getConversationContext($conversationId)
+    {
+        // Use your existing conversationContext property instead of a Conversation model
+        if (isset($this->conversationContext[$conversationId])) {
+            return $this->conversationContext[$conversationId];
+        }
+        return [];
+    }
+
+    /**
+     * IMPROVEMENT #4: Calculate context bonus
+     */
+    private function calculateContextBonus($training, $conversationContext)
+    {
+        if (empty($conversationContext)) {
+            return 0;
+        }
+        
+        $bonus = 0;
+        $contextText = implode(' ', $conversationContext);
+        $contextWords = $this->tokenizeMessage($contextText);
+        
+        // Check if training content appears in recent context
+        // Handle both string (JSON) and array formats for keywords
+        $keywords = $training->keywords;
+        if (is_string($keywords)) {
+            $keywordWords = json_decode($keywords ?? '[]', true) ?: [];
+        } else {
+            $keywordWords = is_array($keywords) ? $keywords : [];
+        }
+        
+        $trainingWords = array_merge(
+            $this->tokenizeMessage($training->trigger),
+            $keywordWords,
+            array_map('trim', explode(',', $training->category ?? ''))
+        );
+        
+        $contextOverlap = count(array_intersect($contextWords, $trainingWords));
+        if ($contextOverlap > 0) {
+            $bonus = min(15, $contextOverlap * 3); // Up to 15 bonus points
+        }
+        
+        return $bonus;
+    }
 
     // ========================================================================
     // 3. DECISION TREE – ACCOUNT FLOW (FULLY IMPLEMENTED)
@@ -590,8 +1027,8 @@ class ChatbotController extends Controller
 
         $filtered = array_diff($words, $stopWords);
 
-        $positive = ['happy', 'good', 'great', 'thanks', 'thank', 'awesome', 'excellent'];
-        $negative = ['angry', 'bad', 'wrong', 'broken', 'issue', 'problem', 'fail', 'error'];
+        $positive = ['happy', 'good', 'great', 'thanks', 'thank', 'awesome', 'excellent', 'love', 'like', 'fantastic', 'positive', 'satisfied', 'pleased', 'helpful'];
+        $negative = ['angry', 'bad', 'wrong', 'broken', 'issue', 'problem', 'fail', 'error', 'hate', 'dislike', 'terrible', 'negative', 'unsatisfied', 'frustrated', 'dissatisfied'];
 
         $sentiment = 'neutral';
         foreach ($filtered as $word) {
@@ -630,6 +1067,9 @@ class ChatbotController extends Controller
             'mobile'           => ['mobile', 'app', 'android', 'ios', 'iphone', 'play store', 'app store'],
             'notification'     => ['notification', 'alert', 'bell', 'push', 'reminder'],
             'privacy'          => ['privacy', 'data', 'delete account', 'gdpr', 'personal info'],
+            'settings'         => ['settings', 'preferences', 'options', 'customize', 'configuration'],
+            'general'          => ['help', 'support', 'question', 'how to', 'guide', 'information'],
+            'troubleshooting' => ['troubleshoot', 'fix', 'resolve', 'solution', 'workaround'],
 
             // Tech & Development
             'ai'               => ['ai', 'artificial intelligence', 'chatgpt', 'gpt', 'llm', 'grok', 'claude', 'gemini'],
@@ -638,14 +1078,24 @@ class ChatbotController extends Controller
             'web-dev'          => ['web development', 'frontend', 'backend', 'html', 'css', 'api', 'rest'],
             'cloud'            => ['cloud', 'aws', 'azure', 'google cloud', 'server', 'hosting', 'docker', 'kubernetes'],
             'security'         => ['security', 'hacking', 'cybersecurity', 'encryption', '2fa', 'password manager'],
+            'data-science'     => ['data science', 'data analysis', 'data visualization', 'pandas', 'numpy', 'jupyter'],
+            'devops'          => ['devops', 'ci/cd', 'continuous integration', 'deployment', 'infrastructure as code'],
+            'blockchain'       => ['blockchain', 'smart contract', 'solidity', 'decentralized', 'defi'],
+            'robotics'         => ['robotics', 'robot', 'automation', 'drone', 'mechatronics'],
+            'iot'              => ['iot', 'internet of things', 'smart device', 'sensor', 'embedded'],
+            'quantum-computing' => ['quantum computing', 'qubit', 'quantum algorithm', 'entanglement'],
 
             // Media & Arts (your film/theater test case)
             'film'             => ['film', 'movie', 'cinema', 'netflix', 'streaming', 'hollywood', 'bollywood'],
             'sci-fi'           => ['sci-fi', 'science fiction', 'scifi', 'dune', 'blade runner', 'matrix'],
             'theater'          => ['theater', 'theatre', 'play', 'stage', 'acting', 'drama', 'schauspiel'],
-            'storytelling'     => ['story', 'narrative', 'plot', 'script', 'screenplay', 'writing story'],
+            'storytelling'     => ['story', 'narrative', 'plot', 'script', 'screenplay', 'writing story', 'storytelling', 'storyteller'],
             'director'         => ['director', 'filmmaker', 'nolan', 'scorsese', 'tarantino', 'villeneuve'],
             'documentary'      => ['documentary', 'doc', 'real story', 'true story'],
+            'animation'       => ['animation', 'animated', 'cartoon', 'pixar', 'disney', 'anime'],
+            'visual-effects'  => ['visual effects', 'vfx', 'cgi', 'special effects', 'green screen'],
+            'cinematography'  => ['cinematography', 'camera work', 'shot composition', 'lighting', 'lens'],
+            'film-history'    => ['film history', 'cinema history', 'classic films', 'silent era', 'golden age of hollywood'],
 
             // Science & Academia
             'physics'          => ['physics', 'quantum', 'relativity', 'einstein', 'particle'],
@@ -656,20 +1106,44 @@ class ChatbotController extends Controller
             // Health & Life
             'health'           => ['health', 'fitness', 'diet', 'exercise', 'mental health', 'therapy'],
             'medicine'         => ['medicine', 'doctor', 'hospital', 'disease', 'vaccine', 'pharma'],
+            'psychology'       => ['psychology', 'mind', 'behavior', 'cognitive', 'emotion', 'therapy'],
+            'nutrition'        => ['nutrition', 'vitamins', 'supplements', 'healthy eating', 'meal plan'],
+            'wellness'        => ['wellness', 'self-care', 'mindfulness', 'meditation', 'stress management'],
+            'fitness'         => ['fitness', 'workout', 'gym', 'training', 'cardio', 'strength'],
 
             // Business & Money
             'business'         => ['business', 'startup', 'entrepreneur', 'marketing', 'sales', 'money'],
             'crypto'           => ['crypto', 'bitcoin', 'ethereum', 'blockchain', 'nft', 'web3'],
+            'investing'        => ['investing', 'stocks', 'bonds', 'portfolio', 'financial planning'],
+            'economics'        => ['economics', 'market', 'inflation', 'recession', 'supply and demand'],
+            'real-estate'      => ['real estate', 'property', 'housing market', 'mortgage', 'renting', 'buying'],
+            'personal-finance' => ['personal finance', 'budgeting', 'saving', 'debt', 'credit score'],
+            'tax'              => ['tax', 'irs', 'filing', 'deduction', 'refund'],
 
             // Education & Learning
             'education'        => ['education', 'school', 'university', 'course', 'learning', 'study', 'exam'],
             'language'         => ['language', 'english', 'german', 'french', 'spanish', 'learn language'],
+            'history-academia' => ['history', 'philosophy', 'sociology', 'anthropology', 'archaeology'],
+            'research'         => ['research', 'paper', 'study', 'experiment', 'findings'],
+            'teaching'         => ['teaching', 'lesson plan', 'curriculum', 'student engagement'],
+            'online-learning'  => ['online learning', 'e-learning', 'mooc', 'virtual classroom', 'distance education'],
+            'child-education'  => ['child education', 'early childhood', 'developmental milestones', 'parenting', 'learning through play'],
+            'adult-education'  => ['adult education', 'continuing education', 'lifelong learning', 'skills development', 'professional development'],
+            'special-education' => ['special education', 'learning disabilities', 'individualized education plan', 'inclusive education', 'special needs'],
+            'educational-technology' => ['educational technology', 'edtech', 'learning management system', 'digital learning tools', 'virtual reality in education'],
 
             // Lifestyle & Culture
             'travel'           => ['travel', 'vacation', 'flight', 'hotel', 'country', 'city'],
             'food'             => ['food', 'cooking', 'recipe', 'restaurant', 'cuisine'],
             'music'            => ['music', 'song', 'spotify', 'album', 'concert', 'band'],
             'gaming'           => ['gaming', 'game', 'playstation', 'xbox', 'nintendo', 'pc gaming'],
+            'fashion'          => ['fashion', 'clothes', 'style', 'designer', 'trend'],
+            'sports'           => ['sports', 'football', 'soccer', 'basketball', 'tennis', 'olympics', 'world cup'],
+            'history'          => ['history', 'ancient', 'medieval', 'modern history', 'historical event'],
+            'literature'       => ['literature', 'book', 'novel', 'author', 'poetry', 'reading'],
+            'art'              => ['art', 'painting', 'sculpture', 'museum', 'gallery', 'artist'],
+            'photography'      => ['photography', 'photo', 'camera', 'lens', 'shooting', 'editing'],
+            'environment'      => ['environment', 'climate change', 'sustainability', 'pollution', 'conservation'],
         ];
 
         $detected = [];

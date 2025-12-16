@@ -4,5 +4,5 @@
 
 expo-env.d.ts
 /venv
-
+backend/python-ai-service/venv/
 # @end expo-cli
