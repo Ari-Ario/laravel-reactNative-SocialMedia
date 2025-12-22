@@ -1,44 +1,57 @@
-from fastapi import FastAPI
-# From: venv/lib/python3.x/site-packages/fastapi/
-# Purpose: Web framework to create API endpoints
+
+# ====================== CORE IMPORTS ======================
+from fastapi import FastAPI, BackgroundTasks
+# FastAPI for HTTP endpoints + background tasks
 
 from pydantic import BaseModel
-# From: venv/lib/python3.x/site-packages/pydantic/
-# Purpose: Data validation and settings management
+# Pydantic for request models
 
 import faiss
-# From: venv/lib/python3.x/site-packages/faiss/
-# Purpose: Facebook's vector similarity search library (C++ compiled)
-# Function: Creates indexes for fast semantic search
+# FAISS for vector similarity
 
 import numpy as np
-# From: venv/lib/python3.x/site-packages/numpy/
-# Purpose: Numerical computing, handles embedding arrays
+# Numerical arrays
 
 from sentence_transformers import SentenceTransformer
-# From: venv/lib/python3.x/site-packages/sentence_transformers/
-# Purpose: Converts text to vectors (embeddings)
-# Uses: "all-MiniLM-L6-v2" model (384-dimensional embeddings)
+# Text embeddings
 
-import json, os, time, re
-# Built-in Python libraries
-# json: Load/save knowledge.json
-# os: File system operations
-# time: Measure performance
-# re: Regular expressions for text processing
+import requests
+from bs4 import BeautifulSoup
+from datasets import load_dataset
+# External ingestion deps:
+# - requests + bs4 for Wikipedia/StackExchange
+# - datasets for Hugging Face streaming
 
-from typing import List, Dict, Optional
-# Python type hints for better code clarity
+import json, os, time, re, hashlib, difflib
+# Built-in utilities + hashing + fuzzy matching
 
+from typing import List, Dict, Optional, Any
 from collections import defaultdict
-# Built-in: Creates dictionaries with default values
+
 
 app = FastAPI()
 # Creates the FastAPI application instance
-# Handles HTTP requests, routing, documentation
 
 KNOWLEDGE_PATH = "knowledge.json"
 # Path to your knowledge database file
+
+
+
+# ---------------------- PATCH: Requests session with headers for Wikipedia ----------------------
+# ---------------------- PATCH: Requests session with headers for Wikipedia ----------------------
+REQUEST_HEADERS = {
+    # Use a descriptive UA with contact info per MediaWiki policy:
+    # https://www.mediawiki.org/wiki/API:Etiquette#Identifying_your_client
+    "User-Agent": "PythonAIService/1.0 (+https://example.com/contact; mostafanejad@yourdomain.com)",
+    "Accept": "application/json",
+}
+
+# Reuse one session for all HTTP calls; helps with connection reuse and header consistency
+HTTP = requests.Session()
+HTTP.headers.update(REQUEST_HEADERS)
+
+
+
 
 # ====================== LOAD AND INDEX KNOWLEDGE ======================
 print("🚀 Loading knowledge base...")
@@ -54,29 +67,57 @@ print(f"✅ Loaded {len(docs)} knowledge entries")
 
 # Create multiple indexes for better matching
 keyword_index = defaultdict(list)  # word -> list of doc indices
-source_index = {}  # source -> doc
-topic_index = {}  # clean topic -> doc
+source_index = {}                  # source -> doc
+topic_index = {}                   # clean topic -> doc
+
+# ---------------------- PATCH: Topic extraction from source ----------------------
+def _extract_topic_from_source(src: str) -> str:
+    """
+    Derive a clean topic from `source`.
+    Handles:
+      - 'wikipedia-<topic>' synthetic keys
+      - Wikipedia URLs like 'https://en.wikipedia.org/wiki/Sigmund_Freud' -> 'sigmund freud'
+      - General sources by replacing dashes with spaces
+    """
+    s = (src or "").strip().lower()
+
+    # Case 1: synthetic 'wikipedia-' keys
+    if s.startswith("wikipedia-"):
+        return s.replace("wikipedia-", "").replace("-", " ").strip()
+
+    # Case 2: Wikipedia canonical URL
+    if "wikipedia.org/wiki/" in s:
+        try:
+            title = s.split("wikipedia.org/wiki/")[1]
+            title = title.split("#")[0].split("?")[0]     # strip anchors/queries
+            title = title.replace("_", " ")
+            title = re.sub(r"[^a-z0-9\s]", " ", title)    # keep alnum + spaces
+            title = re.sub(r"\s+", " ", title).strip()
+            return title
+        except Exception:
+            pass
+
+    # Case 3: General fallback
+    return s.replace("-", " ").strip()
+# -------------------------------------------------------------------------------
 
 for idx, doc in enumerate(docs):
     # Index by source
     source = doc.get("source", "").lower()
     source_index[source] = doc
-    
-    # Extract clean topic from source
-    if "wikipedia-" in source:
-        clean_topic = source.replace("wikipedia-", "").replace("-", " ").strip()
-    else:
-        clean_topic = source.replace("-", " ").strip()
-    
+
+    # PATCH: Use improved topic extraction for all sources
+    clean_topic = _extract_topic_from_source(source)
     if clean_topic:
         topic_index[clean_topic] = doc
-    
+
     # Index by keywords in text
-    text = doc["text"].lower()
-    words = set(re.findall(r'\b\w+\b', text))
+    text = doc.get("text", "")
+    words = set(re.findall(r'\b\w+\b', text.lower()))
     for word in words:
         if len(word) > 3:  # Only index meaningful words
             keyword_index[word].append(idx)
+
 
 # ====================== SETUP EMBEDDER AND FAISS ======================
 print("🤖 Initializing RAG system...")
@@ -241,73 +282,419 @@ def semantic_match(question: str) -> Optional[Dict]:
         print(f"Semantic search error: {e}")
         return None
 
+
+
+def live_wikipedia_fallback(question: str) -> Optional[Dict]:
+    clean_q = clean_question(question)
+    keywords = set(extract_keywords(question))
+
+    API_SEARCH = "https://en.wikipedia.org/w/api.php"
+    params = {
+        "action": "query",
+        "list": "search",
+        "srsearch": clean_q,
+        "srlimit": 5,  # check more results
+        "format": "json",
+        "formatversion": 2,
+    }
+
+    try:
+        r = HTTP.get(API_SEARCH, params=params, timeout=30)
+        r.raise_for_status()
+        data = r.json()
+        search_results = data.get("query", {}).get("search", [])
+
+        if not search_results:
+            return None
+
+        # Try up to 3 top results for relevance
+        for result in search_results[:3]:
+            title = result["title"].lower()
+            snippet = result.get("snippet", "").lower()
+
+            # Simple relevance check: at least 2 keywords must appear in title or snippet
+            title_words = set(re.findall(r'\w+', title))
+            snippet_words = set(re.findall(r'\w+', snippet))
+            matched = keywords.intersection(title_words | snippet_words)
+
+            if len(matched) >= min(2, len(keywords)):  # at least 2 matches, or all if <2
+                print(f"Relevant Wikipedia page found: {result['title']}")
+                items = _wiki_fetch_pages([result["title"]])
+                if items:
+                    doc = items[0]
+                    _append_items([doc])
+                    return {
+                        "text": doc["text"],
+                        "source": doc["source"],
+                        "score": 0.88,
+                        "method": "live_wikipedia",
+                        "confidence": "high"
+                    }
+
+        print("No relevant Wikipedia page found — skipping")
+        return None
+
+    except Exception as e:
+        print(f"Live Wikipedia fallback failed: {e}")
+        return None
+
+# Tier 4: Live Stack Overflow Fallback for coding questions
+def live_stackoverflow_fallback(question: str) -> Optional[Dict]:
+    """Search Stack Overflow and return the best answer (not just the question)"""
+    clean_q = clean_question(question)
+    
+    # Quick programming check
+    programming_keywords = {"code", "python", "java", "javascript", "c++", "error", "bug", "how to", 
+                           "function", "class", "api", "library", "framework", "debug", "fix"}
+    keywords = set(extract_keywords(question))
+    if not keywords.intersection(programming_keywords):
+        return None
+
+    search_url = "https://api.stackexchange.com/2.3/search/advanced"
+    
+    # Broader search in title + body
+    params = {
+        "order": "desc",
+        "sort": "relevance",
+        "q": clean_q,           # searches title AND body
+        "site": "stackoverflow",
+        "pagesize": 5,
+        "filter": "withbody"    # includes question body
+    }
+
+    try:
+        r = requests.get(search_url, params=params, timeout=30)
+        r.raise_for_status()
+        data = r.json()
+        items = data.get("items", [])
+        
+        if not items:
+            return None
+
+        # Relevance filtering
+        required_matches = max(3, int(len(keywords) * 0.6))
+        for item in items:
+            title = item["title"].lower()
+            body_text = BeautifulSoup(item.get("body", ""), "html.parser").get_text().lower()
+            combined = title + " " + body_text
+            matched = len(keywords.intersection(set(re.findall(r'\w+', combined))))
+            
+            if matched >= required_matches or item.get("is_answered", False):
+                question_id = item["question_id"]
+                link = item["link"]
+                break
+        else:
+            print("No relevant SO question found")
+            return None
+
+        # Step 2: Fetch answers for this question
+        answers_url = f"https://api.stackexchange.com/2.3/questions/{question_id}/answers"
+        answers_params = {
+            "order": "desc",
+            "sort": "votes",
+            "site": "stackoverflow",
+            "filter": "withbody"  # includes answer.body
+        }
+        ra = requests.get(answers_url, params=answers_params, timeout=30)
+        ra.raise_for_status()
+        answers_data = ra.json()
+        answers = answers_data.get("items", [])
+        
+        if not answers:
+            return None
+
+        # Prefer accepted answer, else highest voted
+        accepted = [a for a in answers if a.get("is_accepted")]
+        best_answer = accepted[0] if accepted else max(answers, key=lambda a: a.get("score", 0))
+
+        # Build rich response
+        text_parts = []
+        text_parts.append(f"Question: {item['title']}\n")
+        text_parts.append(f"Link: {link}\n\n")
+
+        answer_body = best_answer.get("body", "No answer body available")
+        clean_answer = BeautifulSoup(answer_body, "html.parser").get_text()
+        
+        score_text = f" (Score: {best_answer.get('score', 0)}"
+        score_text += ", Accepted" if best_answer.get("is_accepted") else ""
+        score_text += ")"
+        
+        text_parts.append(f"Best Answer{score_text}:\n{clean_answer}")
+
+        full_text = "\n".join(text_parts)[:10000]  # limit size
+
+        doc = {"text": full_text, "source": link}
+        _append_items([doc])
+
+        return {
+            "text": full_text,
+            "source": link,
+            "score": 0.90,
+            "method": "live_stackoverflow",
+            "confidence": "high"
+        }
+
+    except Exception as e:
+        print(f"Stack Overflow fallback failed: {e}")
+        return None
+
+# Tier 6: Live Reddit Search
+def live_reddit_fallback(question: str) -> Optional[Dict]:
+    """Search Reddit for discussions/opinions"""
+    clean_q = clean_question(question)
+    
+    try:
+        search_url = "https://www.reddit.com/search.json"
+        params = {
+            "q": clean_q,
+            "sort": "relevance",
+            "t": "all",
+            "limit": 5,
+            "raw_json": 1
+        }
+        headers = {"User-Agent": "PythonAIService/1.0 (local RAG bot)"}
+        r = requests.get(search_url, params=params, headers=headers, timeout=30)
+        r.raise_for_status()
+        data = r.json()
+        posts = data.get("data", {}).get("children", [])
+        
+        if not posts:
+            return None
+        
+        # Combine top 2-3 relevant posts
+        text_parts = ["Relevant Reddit discussions:\n"]
+        for post in posts[:3]:
+            p = post["data"]
+            title = p.get("title", "")
+            selftext = p.get("selftext", "")[:2000]
+            url = f"https://reddit.com{p.get('permalink', '')}"
+            text_parts.append(f"• {title}\n{selftext}\n(Source: {url})\n")
+        
+        full_text = "\n".join(text_parts)
+        
+        doc = {"text": full_text, "source": f"reddit_search:{clean_q}"}
+        _append_items([doc])
+        
+        return {
+            "text": full_text,
+            "source": "reddit_search",
+            "score": 0.82,
+            "method": "live_reddit",
+            "confidence": "medium"
+        }
+    except Exception as e:
+        print(f"Reddit fallback failed: {e}")
+        return None
+
+# Tier 7: GitHub Code Search (public repos)
+def live_github_code_fallback(question: str) -> Optional[Dict]:
+    """Search public GitHub repos for code/examples"""
+    keywords = extract_keywords(question)
+    if not any(k in keywords for k in ["code", "python", "java", "javascript", "example", "snippet", "implement"]):
+        return None  # only trigger for likely code questions
+    
+    clean_q = clean_question(question)
+    try:
+        search_url = "https://api.github.com/search/code"
+        params = {"q": clean_q}
+        headers = {"Accept": "application/vnd.github.v3+json", "User-Agent": "PythonAIService"}
+        r = requests.get(search_url, params=params, headers=headers, timeout=30)
+        if r.status_code == 403:  # rate limit
+            time.sleep(10)
+            r = requests.get(search_url, params=params, headers=headers, timeout=30)
+        r.raise_for_status()
+        data = r.json()
+        items = data.get("items", [])[:3]
+        
+        if not items:
+            return None
+        
+        text_parts = ["Relevant code from GitHub public repos:\n"]
+        for item in items:
+            repo = item["repository"]["full_name"]
+            path = item["path"]
+            url = item["html_url"]
+            text_parts.append(f"• {repo}/{path}\nLink: {url}\n")
+        
+        full_text = "\n".join(text_parts)
+        doc = {"text": full_text, "source": f"github_code:{clean_q}"}
+        _append_items([doc])
+        
+        return {
+            "text": full_text,
+            "source": "github_code_search",
+            "score": 0.80,
+            "method": "live_github_code",
+            "confidence": "medium"
+        }
+    except Exception as e:
+        print(f"GitHub code fallback failed: {e}")
+        return None
+
+# Tier 8: ArXiv Research Papers
+def live_arxiv_fallback(question: str) -> Optional[Dict]:
+    """Search arXiv for academic/research papers"""
+    clean_q = clean_question(question)
+    
+    try:
+        search_url = "http://export.arxiv.org/api/query"
+        params = {
+            "search_query": f"all:{clean_q}",
+            "start": 0,
+            "max_results": 3,
+            "sortBy": "relevance",
+            "sortOrder": "descending"
+        }
+        r = requests.get(search_url, params=params, timeout=30)
+        r.raise_for_status()
+        
+        import feedparser
+        feed = feedparser.parse(r.text)
+        entries = feed.entries
+        
+        if not entries:
+            return None
+        
+        text_parts = ["Relevant research papers from arXiv:\n"]
+        for entry in entries:
+            title = entry.title
+            summary = entry.summary[:1500]
+            link = entry.link
+            text_parts.append(f"• {title}\n{summary}\n(PDF: {link})\n")
+        
+        full_text = "\n".join(text_parts)
+        doc = {"text": full_text, "source": f"arxiv:{clean_q}"}
+        _append_items([doc])
+        
+        return {
+            "text": full_text,
+            "source": "arxiv_search",
+            "score": 0.84,
+            "method": "live_arxiv",
+            "confidence": "high"
+        }
+    except Exception as e:
+        print(f"arXiv fallback failed: {e}")
+        return None
+
+# Tier 9: YouTube Transcripts
+def live_youtube_fallback(question: str) -> Optional[Dict]:
+    """Search YouTube and get transcript from top relevant video"""
+    clean_q = clean_question(question)
+    
+    try:
+        # First: simple YouTube search to find top video
+        search_url = "https://www.youtube.com/results"
+        params = {"search_query": clean_q}
+        headers = {"User-Agent": "PythonAIService/1.0"}
+        r = requests.get(search_url, params=params, headers=headers, timeout=30)
+        r.raise_for_status()
+        
+        # Extract first video ID (simple regex - works reliably)
+        match = re.search(r"watch\?v=([a-zA-Z0-9_-]{11})", r.text)
+        if not match:
+            return None
+        video_id = match.group(1)
+        video_url = f"https://www.youtube.com/watch?v={video_id}"
+        
+        # Get transcript
+        from youtube_transcript_api import YouTubeTranscriptApi
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        transcript = transcript_list.find_generated_transcript(['en']) or transcript_list.find_transcript(['en'])
+        transcript_data = transcript.fetch()
+        
+        full_text = " ".join([t['text'] for t in transcript_data])
+        full_text = f"YouTube video transcript:\n\n{full_text[:10000]}...\n\nSource: {video_url}"
+        
+        doc = {"text": full_text, "source": video_url}
+        _append_items([doc])
+        
+        return {
+            "text": full_text,
+            "source": video_url,
+            "score": 0.78,
+            "method": "live_youtube",
+            "confidence": "medium"
+        }
+    except Exception as e:
+        print(f"YouTube fallback failed: {e}")
+        return None
+
+# ---------------------- PATCH: GitHub Token for higher rate limits ----------------------
+GITHUB_TOKEN = "your_token_here"  # put at top of file
+
+# Then in live_github_code_fallback:
+headers = {
+    "Accept": "application/vnd.github.v3+json",
+    "Authorization": f"token {GITHUB_TOKEN}",
+    "User-Agent": "PythonAIService"
+}
+
 # 🤝 Orchestrator Function
 def find_best_answer(question: str) -> Dict:
-    """Find best answer using multiple strategies with strict thresholds"""
+    """Find best answer using multiple strategies with strict thresholds + live fallback"""
     start_time = time.time()
-    exact_result = None
-    keyword_result = None
-    semantic_result = None
-    # Strategy 1: Exact source/topic match (fastest and most accurate)
-    result = exact_source_match(question)
-    if result:
-        result["search_time"] = time.time() - start_time
-        exact_result = result
-    
-    # Strategy 2: Keyword matching (strict)
-    result = keyword_match(question)
-    if result and result.get("score", 0) >= 0.6:  # Minimum 60% confidence
-        result["search_time"] = time.time() - start_time
-        keyword_result = result
-    
-    # Strategy 3: Semantic search (strictest)
-    result = semantic_match(question)
-    if result and result.get("score", 0) >= 0.65:  # Minimum 65% similarity
-        result["search_time"] = time.time() - start_time
-        semantic_result = result
-    
-    # Build final output
+
+    # === Tier 1: Exact source/topic match ===
+    exact_result = exact_source_match(question)
     if exact_result:
-        parts = []
+        exact_result["search_time"] = time.time() - start_time
+        return exact_result  # highest priority
 
-        # Always add the main exact result text
-        parts.append(exact_result["text"])
+    # === Tier 2: Keyword match ===
+    keyword_result = keyword_match(question)
+    if keyword_result and keyword_result.get("score", 0) >= 0.6:
+        keyword_result["search_time"] = time.time() - start_time
+        return keyword_result
 
-        # Add optional similar topics section
-        if (keyword_result and keyword_result['source'] != exact_result['source']):
-            parts.append("Relevant keyword topic:\n" + keyword_result["text"])
-
-        # Add optional semantic topics section
-        if (semantic_result and semantic_result['source'] != exact_result['source'] and semantic_result['source'] != keyword_result['source']):
-            parts.append("Relevant semantic topic:\n" + semantic_result["text"])
-
-        return {
-            "text": "\n\n".join(parts),
-            "score": exact_result["score"],
-            "source": exact_result["source"],
-            "method": exact_result["method"],
-            "search_time": time.time() - start_time
-        }
-        
-    elif keyword_result:
-        parts = []
-        parts.append(keyword_result["text"])
-
-        if (semantic_result and semantic_result['source'] != keyword_result['source']):
-            parts.append("Relevant semantic topic:\n" + semantic_result["text"])
-
-        return {
-            "text": "\n\n".join(parts),
-            "score": keyword_result["score"],
-            "source": keyword_result["source"],
-            "method": keyword_result["method"],
-            "search_time": time.time() - start_time
-        }
-
-    elif semantic_result:
+    # === Tier 3: Semantic match ===
+    semantic_result = semantic_match(question)
+    if semantic_result and semantic_result.get("score", 0) >= 0.6:
+        semantic_result["search_time"] = time.time() - start_time
         return semantic_result
-    
-    # No good match found
+
+    # Tier 4: Stack Overflow FIRST for coding questions
+    print("Trying Stack Overflow...")
+    so = live_stackoverflow_fallback(question)
+    if so:
+        so["search_time"] = time.time() - start_time
+        return so
+
+    # Tier 5: GitHub code search
+    print("Trying GitHub code...")
+    github = live_github_code_fallback(question)
+    if github:
+        github["search_time"] = time.time() - start_time
+        return github
+
+    # Tier 6: Wikipedia (now safer with relevance check)
+    print("Trying Wikipedia...")
+    wiki = live_wikipedia_fallback(question)
+    if wiki:
+        wiki["search_time"] = time.time() - start_time
+        return wiki
+
+    # Tier 7: arXiv (research)
+    print("Trying arXiv...")
+    arxiv = live_arxiv_fallback(question)
+    if arxiv:
+        arxiv["search_time"] = time.time() - start_time
+        return arxiv
+
+    # Tier 8: Reddit
+    print("Trying Reddit...")
+    reddit = live_reddit_fallback(question)
+    if reddit:
+        reddit["search_time"] = time.time() - start_time
+        return reddit
+
+    # Tier 9: YouTube
+    print("Trying YouTube...")
+    yt = live_youtube_fallback(question)
+    if yt:
+        yt["search_time"] = time.time() - start_time
+        return yt
+
     return {
         "text": None,
         "score": 0,
@@ -315,6 +702,154 @@ def find_best_answer(question: str) -> Dict:
         "method": "none",
         "confidence": "low"
     }
+
+# ====================== INGESTION + HOT RELOAD ADDITIONS ======================
+# ---- Dedup index based on current knowledge.json ----
+text_hashes = set()
+for d in docs:
+    try:
+        h = hashlib.sha256(d.get("text", "").strip().encode("utf-8")).hexdigest()
+        text_hashes.add(h)
+    except Exception:
+        continue
+
+def _text_hash(t: str) -> str:
+    return hashlib.sha256((t or "").strip().encode("utf-8")).hexdigest()
+
+# ---- Atomic write helper ----
+def _atomic_write_json(path: str, data: List[Dict[str, Any]]):
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, path)
+
+# ---- Index updaters (reuse your logic) ----
+def _update_in_memory_indexes(new_items: List[Dict[str, str]]):
+    """Update source_index, topic_index, keyword_index and FAISS incrementally."""
+    global docs, source_index, topic_index, keyword_index, semantic_index
+
+    # 1) Append to in-memory docs
+    start_len = len(docs)
+    docs.extend(new_items)
+
+    # 2) Update keyword/source/topic indexes
+    for idx, doc in enumerate(new_items, start=start_len):
+        src = doc.get("source", "").lower()
+        source_index[src] = doc
+
+        # PATCH: use improved topic extraction for new items
+        clean_topic = _extract_topic_from_source(src)
+        if clean_topic:
+            topic_index[clean_topic] = doc
+
+        # Keyword index
+        text = doc.get("text", "").lower()
+        words = set(re.findall(r'\b\w+\b', text))
+        for w in words:
+            if len(w) > 3:
+                keyword_index[w].append(idx)
+
+    # 3) Incremental FAISS add
+    try:
+        new_texts = [it["text"] for it in new_items if it.get("text")]
+        if new_texts:
+            new_embs = embedder.encode(new_texts, normalize_embeddings=True)
+            semantic_index.add(new_embs.astype("float32"))
+    except Exception as e:
+        print(f"⚠️ FAISS incremental add failed: {e}")
+
+def _append_items(items: List[Dict[str, str]], flush_every: int = 5000) -> int:
+    """Append deduped items to disk (knowledge.json) and update memory+FAISS."""
+    if not items:
+        return 0
+
+    unique = []
+    added = 0
+    for it in items:
+        t = it.get("text", "")
+        s = it.get("source", "")
+        if not t or not s:
+            continue
+        h = _text_hash(t)
+        if h in text_hashes:
+            continue
+        text_hashes.add(h)
+        unique.append({"text": t, "source": s})
+
+        # Flush in chunks to avoid huge memory
+        if len(unique) >= flush_every:
+            try:
+                with open(KNOWLEDGE_PATH, "r", encoding="utf-8") as f:
+                    current = json.load(f)
+            except Exception:
+                current = []
+            current.extend(unique)
+            _atomic_write_json(KNOWLEDGE_PATH, current)
+            _update_in_memory_indexes(unique)
+            added += len(unique)
+            unique = []
+
+    # Final flush
+    if unique:
+        try:
+            with open(KNOWLEDGE_PATH, "r", encoding="utf-8") as f:
+                current = json.load(f)
+        except Exception:
+            current = []
+        current.extend(unique)
+        _atomic_write_json(KNOWLEDGE_PATH, current)
+        _update_in_memory_indexes(unique)
+        added += len(unique)
+
+    print(f"📥 Appended {added} new items to knowledge.json")
+    return added
+
+# ====================== INGEST FROM WIKIPEDIA (BATCH + SEARCH) ======================
+class WikiTitles(BaseModel):
+    titles: List[str]
+    batch_size: int = 20
+    sleep: float = 0.3
+    formatversion: int = 2  # IMPROVEMENT: cleaner JSON structure from MediaWiki
+
+def _wiki_fetch_pages(titles_batch: List[str]) -> List[Dict[str, str]]:
+    """Fetch extracts+canonical URLs for a batch of titles. Returns [{text, source}] items."""
+    API = "https://en.wikipedia.org/w/api.php"
+    params = {
+        "action": "query",
+        "prop": "extracts|info",
+        "explaintext": 1,           # plain text
+        "inprop": "url",            # include full canonical URL
+        "format": "json",
+        "formatversion": 2,         # IMPROVEMENT: a bit cleaner
+        "titles": "|".join(titles_batch),
+    }
+    try:
+        r = HTTP.get(API, params=params, timeout=60)
+        # PATCH: Friendly handling of Wikipedia anti-abuse 403
+        if r.status_code == 403:
+            print("⚠️ Wikipedia returned 403. Check your User-Agent header and request volume. Retrying with small batch...")
+            # One retry: smaller batch size or a slight delay
+            time.sleep(1.0)
+            r = HTTP.get(API, params=params, timeout=60)
+        r.raise_for_status()
+    except requests.HTTPError as e:
+        print(f"❌ Wikipedia HTTP error: {e} - params={params}")
+        return []
+    except Exception as e:
+        print(f"❌ Wikipedia request error: {e}")
+        return []
+
+    data = r.json()
+    pages = data.get("query", {}).get("pages", [])
+    items = []
+    for p in pages:
+        text = p.get("extract", "") or ""
+        source = p.get("fullurl", "") or ""
+        # Only append meaningful items
+        if text.strip() and source.strip():
+            items.append({"text": text, "source": source})
+    return items
+
 
 @app.post("/chat")
 async def chat(query: Query):
@@ -427,24 +962,24 @@ async def health():
     }
 
 # Warm up and test
-print("\n🔥 Warming up system with test cases...")
-test_cases = [
-    ("what is artificial intelligence", 0.8, "Should match"),
-    ("explain quantum computing", 0.7, "Should match"),
-    ("tell me about renewable energy", 0.8, "Should match"),
-    ("what is blablabla nonsense", 0.0, "Should NOT match"),
-    ("how to cook pasta", 0.0, "Should NOT match"),
-    ("random question about nothing", 0.0, "Should NOT match"),
-]
+# print("\n🔥 Warming up system with test cases...")
+# test_cases = [
+#     ("what is artificial intelligence", 0.8, "Should match"),
+#     ("explain quantum computing", 0.7, "Should match"),
+#     ("tell me about renewable energy", 0.8, "Should match"),
+#     ("what is blablabla nonsense", 0.0, "Should NOT match"),
+#     ("how to cook pasta", 0.0, "Should NOT match"),
+#     ("random question about nothing", 0.0, "Should NOT match"),
+# ]
 
-print("Test Results:")
-print("-" * 80)
-for question, expected_min_score, note in test_cases:
-    result = find_best_answer(question)
-    score = result.get("score", 0)
-    status = "✅ PASS" if score >= expected_min_score else "❌ FAIL"
-    method = result.get("method", "none")
-    print(f"{status} '{question[:40]}...' -> score: {score:.3f} (method: {method}) - {note}")
+# print("Test Results:")
+# print("-" * 80)
+# for question, expected_min_score, note in test_cases:
+#     result = find_best_answer(question)
+#     score = result.get("score", 0)
+#     status = "✅ PASS" if score >= expected_min_score else "❌ FAIL"
+#     method = result.get("method", "none")
+#     print(f"{status} '{question[:40]}...' -> score: {score:.3f} (method: {method}) - {note}")
 
 print("\n🎯 ===== ACCURATE RAG SEARCH READY ===== 🎯")
 print(f"📡 Endpoint: http://127.0.0.1:8001")

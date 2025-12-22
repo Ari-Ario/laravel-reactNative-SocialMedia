@@ -19,7 +19,8 @@ curl -X POST http://localhost:8000/api/posts/60/comment \
 ## python packages installation for AI
 pip install fastapi uvicorn sentence-transformers faiss-cpu transformers torch wikipedia wikipedia-api
 pip install bitsandbytes accelerate
-if not working then force pip with this at end: 
+
+### if not working then force pip with this at end: 
 --break-system-packages
 
 install and activate venve as python virtual environment in directory python-ai-service/:
@@ -27,6 +28,12 @@ install and activate venve as python virtual environment in directory python-ai-
 sudo apt install python3-venv
 
 source venv/bin/activate
+
+### datasets is for streaming huge corpora (C4, CC-News, OpenWebText2…). requests and bs4 are for Wikipedia/StackExchange.
+
+pip install datasets requests beautifulsoup4
+pip install feedparser
+pip install youtube-transcript-api
 
 ### then uvicorn
 sudo apt install uvicorn
