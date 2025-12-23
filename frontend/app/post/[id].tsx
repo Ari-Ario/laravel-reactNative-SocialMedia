@@ -25,7 +25,7 @@ import getApiBaseImage from '@/services/getApiBaseImage';
 import { Ionicons } from '@expo/vector-icons';
 import AuthContext from '@/context/AuthContext';
 import EmojiPicker from 'rn-emoji-keyboard';
-import { Video } from 'expo-av';
+import { Video } from 'expo-video';
 import { usePostListService } from '@/services/PostListService';
 
 const PostDetailScreen = () => {

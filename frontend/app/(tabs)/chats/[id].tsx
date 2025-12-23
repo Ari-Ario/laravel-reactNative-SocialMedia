@@ -22,7 +22,7 @@ import AuthContext from '@/context/AuthContext';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { useProfileView } from '@/context/ProfileViewContext';
 import { usePostStore } from '@/stores/postStore';
-import { Video } from 'expo-av';
+import { Video } from 'expo-video';
 import { MediaViewer } from '@/components/MediaViewer';
 import { usePostListService } from '@/services/PostListService';
 import { PostActionButtons } from '@/components/PostActionButtons';

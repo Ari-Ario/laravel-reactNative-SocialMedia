@@ -9,7 +9,7 @@ import {
   TouchableWithoutFeedback,
   TouchableOpacity,
 } from 'react-native';
-import { Video } from 'expo-av';
+import { Video } from 'expo-video';
 import { PanGestureHandler, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -131,7 +131,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const translateY = useSharedValue(0);
   const overlayOpacity = useSharedValue(0.7);
   const bgOpacity = useSharedValue(1);
-  const videoRefs = useRef<(Video | null)[]>([]);
+  const videoRefs = useRef<any[]>([]);
 
   // Initialize video refs array
   useEffect(() => {
@@ -261,8 +261,8 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
               {mediaItems.map((media, index) => (
                 <View key={`${post.id}-${media.id}-${index}`} style={[styles.mediaItem, { left: width * index }]}>
                   {media.type === 'video' ? (
-                    <Video
-                      ref={(ref) => {
+                      <Video
+                      ref={(ref: any) => {
                         if (ref) videoRefs.current[index] = ref;
                       }}
                       source={{ uri: `${getApiBaseImage()}/storage/${media.file_path}` }}

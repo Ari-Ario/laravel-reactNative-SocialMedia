@@ -1,7 +1,7 @@
 // components/ChatMessage.tsx
 import React, { useMemo } from 'react';
 import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { Video } from 'expo-av';
+import { Video } from 'expo-video';
 import { PostActionButtons } from '../PostActionButtons';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { Ionicons } from '@expo/vector-icons';

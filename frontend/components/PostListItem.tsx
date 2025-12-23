@@ -26,7 +26,7 @@ import getApiBaseImage from '@/services/getApiBaseImage';
 import { useProfileView } from '@/context/ProfileViewContext';
 import { useModal } from '@/context/ModalContext';
 import { usePostStore } from '@/stores/postStore';
-import { Video } from 'expo-av';
+import { Video } from 'expo-video';
 import { MediaViewer } from './MediaViewer';
 import React from 'react';
 import { PostActionButtons } from './PostActionButtons';

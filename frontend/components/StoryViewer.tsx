@@ -302,9 +302,9 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
+    // textShadowColor: 'rgba(0,0,0,0.5)',
+    // textShadowOffset: { width: 1, height: 1 },
+    // textShadowRadius: 2,
   },
   footer: {
     flexDirection: 'row',
