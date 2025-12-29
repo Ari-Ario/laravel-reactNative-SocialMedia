@@ -1,45 +1,44 @@
+// AuthService.tsx (or .ts)
+
 import axios from "@/services/axios";
 import { getToken, setToken } from "./TokenService";
 import getApiBase from "./getApiBase";
 
-export async function login(credentials) {
-    const API_BASE = getApiBase();
-    const url = (API_BASE === 'http://127.0.0.1:8000/api') ? '/login' : `${API_BASE}/login`;
+const API_BASE = getApiBase(); // One single source of truth
 
-    const { data } = await axios.post(url, credentials);
-    console.log("sent to setToken from Login");
-
+export async function login(credentials: any) {
+  try {
+    const { data } = await axios.post(`${API_BASE}/login`, credentials);
     await setToken(data.token);
+    return data;
+  } catch (error) {
+    throw error;
+  }
 }
 
-export async function register(registerInfo) {
-    const API_BASE = getApiBase();
-    const url = (API_BASE === 'http://127.0.0.1:8000/api') ? '/register' : `${API_BASE}/register`;
-
-    const { data } = await axios.post(url, registerInfo);
-    console.log("sending to set token from Registration:"); // Add this
-
+export async function register(registerInfo: any) {
+  try {
+    const { data } = await axios.post(`${API_BASE}/register`, registerInfo);
     await setToken(data.token);
+    return data;
+  } catch (error) {
+    throw error;
+  }
 }
 
 export async function loadUser() {
-  const API_BASE = getApiBase();
-  
   try {
     const token = await getToken();
     if (!token) throw new Error('No authentication token found');
 
     const response = await axios.get(`${API_BASE}/user`);
-
-    // Handle both response structures
     const userData = response.data.user || response.data;
-    
+
     if (!userData?.id) {
       throw new Error('Invalid user data structure received');
     }
 
     return userData;
-    
   } catch (error) {
     console.error('Failed to load user:', error);
     await setToken(null);
@@ -47,32 +46,24 @@ export async function loadUser() {
   }
 }
 
-export async function sendPasswordResetLink(email) {
+export async function sendPasswordResetLink(email: string) {
   try {
-    const API_BASE = getApiBase();
-    const { data } = await axios.post(`${API_BASE}/forgot-password`, { email })
-    console.log(data);
+    const { data } = await axios.post(`${API_BASE}/forgot-password`, { email });
     return data.status;
   } catch (error) {
     console.error('Reset Password failed:', error);
+    throw error;
   }
 }
 
 export async function logout() {
   try {
     const token = await getToken();
-    if (!token) {
-      console.log("No token - already logged out");
-      return;
+    if (token) {
+      await axios.post(`${API_BASE}/logout`, {});
     }
-
-    const API_BASE = getApiBase();
-    await axios.post(`${API_BASE}/logout`, {});
-    await setToken(null);
-
   } catch (error) {
     console.error('Logout API error:', error);
-    // Continue with local cleanup even if API fails
   } finally {
     await setToken(null);
     console.log("Local logout completed");

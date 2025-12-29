@@ -1,25 +1,23 @@
+// services/getApiBase.ts or wherever you keep it
+
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+const getApiBase = (): string => {
+  const androidUrl = Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL_ANDROID || Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL || '';
+  const iosUrl = Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL_IOS || Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL || '';
+  const defaultUrl = Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL || '';
 
+  if (Platform.OS === 'android') {
+    return androidUrl;
+  }
 
-const getApiBase = () => {
-    const isWeb = Platform.OS === 'web';
-  
-    if (Platform.OS === 'android') {
-      console.log("platform is Android");
-  
-      return 'http://10.0.2.2:8000/api'; // Android emulator
-    }
-    if (Platform.OS === 'ios') {
-      return 'http://localhost:8000/api'; // iOS simulator
-    } 
-    if (Platform.OS === 'web') {
-      console.log("platform is WEB");
-  
-      return 'http://127.0.0.1:8000/api';
-    } else {
-      console.log("Platform is unknown. Use Web, Android or IOS!")
-    }
-  };
+  if (Platform.OS === 'ios') {
+    return iosUrl;
+  }
+
+  // Web and physical devices (or fallback)
+  return defaultUrl;
+};
 
 export default getApiBase;
   

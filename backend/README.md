@@ -46,3 +46,8 @@ sudo fuser -k 8001/tcp
 pkill -f uvicorn
 
 uvicorn main:app --reload --host 127.0.0.1 --port 8001
+
+
+## in case the images are not shown:
+
+php artisan storage:link
