@@ -147,14 +147,111 @@ class StoryController extends Controller
         return response()->json($story);
     }
 
-    // Already handled in Story Model
-    // protected function cleanupExpiredStories()
-    // {
-    //     $expiredStories = Story::where('expires_at', '<=', now())->get();
 
-    //     foreach ($expiredStories as $story) {
-    //         Storage::disk('public/stories/')->delete($story->media_path);
-    //         $story->delete();
-    //     }
-    // }
+    
+
+    /**
+     * Make story collaborative
+     */
+    public function makeCollaborative(Request $request, $storyId)
+    {
+        $user = Auth::user();
+        
+        $story = Story::where('id', $storyId)
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+        
+        $request->validate([
+            'branch_options' => 'nullable|array',
+            'interactive_elements' => 'nullable|array',
+        ]);
+        
+        // Create collaboration space for the story
+        $spaceController = new SpaceController();
+        $space = $spaceController->createSpaceFromStory($story, $request->all());
+        
+        // Update story
+        $story->update([
+            'is_collaborative' => true,
+            'linked_project_id' => $space->id,
+            'branch_options' => $request->branch_options,
+            'interactive_elements' => $request->interactive_elements,
+        ]);
+        
+        return response()->json([
+            'story' => $story->load(['collaborationSpace', 'user']),
+            'space' => $space,
+            'message' => 'Story is now collaborative'
+        ]);
+    }
+
+    /**
+     * Add to story chain
+     */
+    public function addToChain(Request $request, $storyId)
+    {
+        $user = Auth::user();
+        
+        $story = Story::where('id', $storyId)
+            ->where('is_collaborative', true)
+            ->firstOrFail();
+        
+        // Check if user can contribute
+        if ($story->user_id !== $user->id && 
+            !in_array($user->id, $story->collaborators ?? [])) {
+            return response()->json([
+                'message' => 'You are not authorized to contribute to this story'
+            ], 403);
+        }
+        
+        $request->validate([
+            'media_path' => 'required|string',
+            'caption' => 'nullable|string',
+            'branch_choice' => 'nullable|string', // If choosing from branch options
+        ]);
+        
+        // Create new story segment
+        $newStory = Story::create([
+            'user_id' => $user->id,
+            'media_path' => $request->media_path,
+            'caption' => $request->caption,
+            'expires_at' => $story->expires_at,
+            'parent_story_id' => $story->id,
+            'chain_length' => $story->chain_length + 1,
+            'is_collaborative' => true,
+            'linked_project_id' => $story->linked_project_id,
+            'collaborators' => $story->collaborators,
+        ]);
+        
+        // Update original story chain length
+        $story->increment('chain_length');
+        
+        // Add to space activity
+        if ($story->linked_project_id) {
+            $space = CollaborationSpace::find($story->linked_project_id);
+            if ($space) {
+                $space->update([
+                    'activity_metrics->story_additions' => ($space->activity_metrics['story_additions'] ?? 0) + 1,
+                ]);
+                
+                // Create magic event
+                MagicEvent::create([
+                    'id' => Str::uuid(),
+                    'space_id' => $space->id,
+                    'event_type' => 'story_continued',
+                    'event_data' => [
+                        'added_by' => $user->id,
+                        'new_story_id' => $newStory->id,
+                        'chain_position' => $story->chain_length,
+                    ],
+                ]);
+            }
+        }
+        
+        return response()->json([
+            'new_story' => $newStory,
+            'original_story' => $story,
+            'message' => 'Added to story chain'
+        ]);
+    }
 }

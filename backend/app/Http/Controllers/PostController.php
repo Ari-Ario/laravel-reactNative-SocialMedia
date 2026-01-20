@@ -708,5 +708,138 @@ class PostController extends Controller
 
         return response()->json(['message' => 'Post bookmarked', 'bookmarked' => true]);
     }
-    
+
+
+    /**
+     * Make post collaborative
+     */
+    public function makeCollaborative(Request $request, $postId)
+    {
+        $user = Auth::user();
+        
+        $post = Post::where('id', $postId)
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+        
+        $request->validate([
+            'contribution_guidelines' => 'nullable|string',
+            'allowed_collaborators' => 'nullable|array',
+            'allowed_collaborators.*' => 'exists:users,id',
+        ]);
+        
+        // Create collaboration space for the post
+        $spaceController = new SpaceController();
+        $space = $spaceController->createSpaceFromPost($post, $request->all());
+        
+        // Update post
+        $post->update([
+            'is_collaborative' => true,
+            'linked_project_id' => $space->id,
+            'contribution_guidelines' => $request->contribution_guidelines,
+            'collaborators' => $request->allowed_collaborators ?? [],
+            'accepting_contributions' => true,
+        ]);
+        
+        return response()->json([
+            'post' => $post->load(['collaborationSpace', 'user']),
+            'space' => $space,
+            'message' => 'Post is now collaborative'
+        ]);
+    }
+
+    /**
+     * Add voice annotation to post
+     */
+    public function addVoiceAnnotation(Request $request, $postId)
+    {
+        $user = Auth::user();
+        
+        $post = Post::where('id', $postId)
+            ->where(function($query) use ($user) {
+                $query->where('user_id', $user->id)
+                    ->orWhereJsonContains('collaborators', $user->id);
+            })
+            ->firstOrFail();
+        
+        $request->validate([
+            'audio_file' => 'required|file|mimes:mp3,wav,m4a|max:10240', // 10MB max
+            'timestamp' => 'nullable|integer', // Position in post content
+            'note' => 'nullable|string',
+        ]);
+        
+        // Store audio file
+        $path = $request->file('audio_file')->store('voice-annotations', 'public');
+        
+        // Add to voice annotations
+        $annotations = $post->voice_annotations ?? [];
+        $annotations[] = [
+            'id' => Str::uuid(),
+            'user_id' => $user->id,
+            'audio_path' => $path,
+            'timestamp' => $request->timestamp,
+            'note' => $request->note,
+            'created_at' => now(),
+        ];
+        
+        $post->update([
+            'voice_annotations' => $annotations,
+        ]);
+        
+        // If post is collaborative, notify space
+        if ($post->linked_project_id) {
+            // Trigger event in space
+            event(new VoiceAnnotationAdded($post, $user));
+        }
+        
+        return response()->json([
+            'annotation' => end($annotations),
+            'message' => 'Voice annotation added'
+        ]);
+    }
+
+    /**
+     * Create branch of post
+     */
+    public function createBranch(Request $request, $postId)
+    {
+        $user = Auth::user();
+        
+        $post = Post::where('id', $postId)
+            ->where(function($query) use ($user) {
+                $query->where('user_id', $user->id)
+                    ->orWhereJsonContains('collaborators', $user->id);
+            })
+            ->firstOrFail();
+        
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'changes' => 'required|array',
+            'description' => 'nullable|string',
+        ]);
+        
+        // Create new post as branch
+        $branch = $post->replicate();
+        $branch->parent_version_id = $post->id;
+        $branch->version = $post->version + 1;
+        $branch->caption = $this->applyChanges($post->caption, $request->changes);
+        $branch->edit_history = array_merge(
+            $post->edit_history ?? [],
+            [
+                [
+                    'user_id' => $user->id,
+                    'changes' => $request->changes,
+                    'description' => $request->description,
+                    'timestamp' => now(),
+                    'branch_from' => $post->id,
+                ]
+            ]
+        );
+        $branch->save();
+        
+        return response()->json([
+            'branch' => $branch,
+            'original' => $post,
+            'message' => 'Branch created successfully'
+        ]);
+    }
 }

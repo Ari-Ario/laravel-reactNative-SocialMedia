@@ -11,6 +11,8 @@ use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StoryController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\SpaceController;
+use App\Http\Controllers\AIController;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -97,6 +99,58 @@ Route::post('/forgot-password', [PasswordResetLinkController::class, 'store']);
 Route::get('/admin/chatbot/train', [ChatbotTrainingController::class, 'show']);
 Route::post('/admin/chatbot/train', [ChatbotTrainingController::class, 'store']);
 
+
+
+
+Route::prefix('spaces')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [SpaceController::class, 'index']);
+    Route::post('/', [SpaceController::class, 'store']);
+    Route::get('/{id}', [SpaceController::class, 'show']);
+    Route::put('/{id}', [SpaceController::class, 'update']);
+    Route::delete('/{id}', [SpaceController::class, 'destroy']);
+    Route::post('/{id}/join', [SpaceController::class, 'join']);
+    Route::post('/{id}/leave', [SpaceController::class, 'leave']);
+    Route::post('/{id}/invite', [SpaceController::class, 'invite']);
+    Route::post('/{id}/start-call', [SpaceController::class, 'startCall']);
+    Route::post('/{id}/end-call', [SpaceController::class, 'endCall']);
+    Route::post('/{id}/share-screen', [SpaceController::class, 'shareScreen']);
+    Route::post('/{id}/magic', [SpaceController::class, 'triggerMagic']);
+    Route::get('/{id}/participants', [SpaceController::class, 'getParticipants']);
+    Route::get('/{id}/ai-suggestions', [SpaceController::class, 'getAISuggestions']);
+    Route::post('/{id}/ai-query', [SpaceController::class, 'aiQuery']);
+});
+
+Route::prefix('ai')->middleware('auth:sanctum')->group(function () {
+    Route::get('/interactions', [AIController::class, 'getInteractions']);
+    Route::post('/interactions/{id}/feedback', [AIController::class, 'provideFeedback']);
+    Route::post('/spaces/{id}/learn', [AIController::class, 'learnFromSpace']);
+    Route::get('/posts/{id}/enhance', [AIController::class, 'enhancePost']);
+    Route::get('/stories/{id}/continue', [AIController::class, 'suggestStoryContinuation']);
+    Route::post('/enhance-comment', [AIController::class, 'enhanceComment']);
+});
+
+// Enhance existing post routes
+Route::prefix('posts')->middleware('auth:sanctum')->group(function () {
+    // ... your existing routes ...
+    Route::post('/{id}/make-collaborative', [PostController::class, 'makeCollaborative']);
+    Route::post('/{id}/add-voice-annotation', [PostController::class, 'addVoiceAnnotation']);
+    Route::post('/{id}/create-branch', [PostController::class, 'createBranch']);
+    Route::post('/{id}/merge-branch', [PostController::class, 'mergeBranch']);
+});
+
+// Enhance existing story routes
+Route::prefix('stories')->middleware('auth:sanctum')->group(function () {
+    // ... your existing routes ...
+    Route::post('/{id}/make-collaborative', [StoryController::class, 'makeCollaborative']);
+    Route::post('/{id}/add-to-chain', [StoryController::class, 'addToChain']);
+    Route::post('/{id}/choose-branch', [StoryController::class, 'chooseBranch']);
+});
+
+// User spaces
+Route::get('/users/{id}/spaces', [SpaceController::class, 'getUserSpaces'])->middleware('auth:sanctum');
+
+
+// Authentication routes
 Route::post('/login', function(Request $request){
     $request->validate([
         'email' => ['required', 'email'],
