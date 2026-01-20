@@ -16,7 +16,7 @@ class ReactionsTableSeeder extends Seeder
     public function run()
     {
         // Clear existing reactions
-        Reaction::truncate();
+        // Reaction::truncate();
 
         $users = User::pluck('id')->toArray();
         $posts = Post::pluck('id')->toArray();

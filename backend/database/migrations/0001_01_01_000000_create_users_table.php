@@ -38,10 +38,7 @@ return new class extends Migration
             $table->string('phone')->nullable();
 
             // Social links (consider JSON if many platforms)
-            $table->string('X')->nullable();
-            $table->string('telegram')->nullable();
-            $table->string('instagram')->nullable();
-            $table->string('facebook')->nullable();
+            $table->json('social_links')->nullable();
             
             // Privacy and preferences
             $table->boolean('is_private')->default(false);
@@ -79,6 +76,14 @@ return new class extends Migration
             // Content preferences
             $table->json('content_filters')->nullable();
             $table->json('muted_keywords')->nullable();
+            
+            // AI enhancements from latest:
+            $table->json('collaboration_styles')->nullable();
+            $table->json('synergy_traits')->nullable();
+            $table->integer('global_cooperation_score')->default(0);
+            $table->json('unlocked_cosmic_badges')->nullable();
+            $table->boolean('enable_web_portals')->default(true);
+            $table->json('external_collaborators')->nullable();
             
             $table->timestamps();
         });

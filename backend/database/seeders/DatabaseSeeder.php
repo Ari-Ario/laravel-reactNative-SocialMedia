@@ -20,16 +20,24 @@ class DatabaseSeeder extends Seeder
         
         $this->call([
             UsersTableSeeder::class,
-        ]);
-        Post::factory(20)->create();
+            // UserPreferencesSeeder::class,
 
-
-        $this->call([
-            // UsersTableSeeder::class,
-            // PostsTableSeeder::class,
-            ReactionsTableSeeder::class,
-            CommentsTableSeeder::class,
+            PostsTableSeeder::class,
             StoriesTableSeeder::class,
+            CommentsTableSeeder::class,
+            ReactionsTableSeeder::class,
+            CommentReactionsTableSeeder::class,
+
+            ConversationsTableSeeder::class,
+            ConversationUserSeeder::class,
+            MessagesTableSeeder::class,
+
+            CollaborationSpacesSeeder::class,
+            SpaceParticipationsSeeder::class,
+            MagicEventsSeeder::class,
+
+            AIInteractionsSeeder::class,
+            AILearningSourcesSeeder::class,
         ]);
 
     }

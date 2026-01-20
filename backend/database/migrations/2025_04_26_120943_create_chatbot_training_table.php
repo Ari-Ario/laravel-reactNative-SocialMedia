@@ -25,6 +25,13 @@ return new class extends Migration {
             $table->index('trigger');
             $table->index('category');
             $table->foreign('trained_by')->references('id')->on('users');
+
+            // collaboration-specific fields from enhanced features
+            $table->string('collaboration_context')->nullable(); // 'brainstorm', 'meeting', 'conflict'
+            $table->json('space_types')->nullable(); // Which space types this applies to
+            $table->integer('usage_count')->default(0); // How often used successfully
+            $table->decimal('success_rate', 5, 2)->default(0); // How helpful it was
+            $table->json('triggers_from_data')->nullable(); // Auto-trigger conditions
         });
     }
 

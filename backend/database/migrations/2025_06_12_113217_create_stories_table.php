@@ -17,6 +17,16 @@ return new class extends Migration
             $table->string('media_path');
             $table->string('caption')->nullable();
             $table->timestamp('expires_at');
+
+            // Enhancements from simplified + AI:
+            $table->boolean('is_collaborative')->default(false);
+            $table->json('collaborators')->nullable();
+            $table->integer('chain_length')->default(1);
+            $table->uuid('parent_story_id')->nullable();
+            $table->json('branch_options')->nullable();
+            $table->json('interactive_elements')->nullable();
+            $table->json('viewer_reactions_summary')->nullable();
+
             $table->timestamps();
         });
     }
