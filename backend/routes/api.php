@@ -55,6 +55,8 @@ Route::group(["middleware" => ["auth:sanctum"]], function() {
         Route::post('/photo', [ProfileController::class, 'uploadPhoto']);
         Route::delete('/photo', [ProfileController::class, 'deletePhoto']);
         Route::post('/name', [ProfileController::class, 'updateName']);
+        Route::get('/followers', [ProfileController::class, 'followers']);
+        Route::get('/following', [ProfileController::class, 'following']);
     });
 
     // Stories
@@ -88,7 +90,7 @@ Route::group(["middleware" => ["auth:sanctum"]], function() {
     Route::delete('/posts/{post}/comments/{comment}', [PostController::class, 'deleteComment']);
 
     // routes/api.php
-    Route::get('/notifications/missed', [NotificationController::class, 'missedNotifications'] );
+    // Route::get('/notifications/missed', [NotificationController::class, 'missedNotifications'] );
 });
 
 Route::post('/forgot-password', [PasswordResetLinkController::class, 'store']);
@@ -102,22 +104,28 @@ Route::post('/admin/chatbot/train', [ChatbotTrainingController::class, 'store'])
 
 
 
-Route::prefix('spaces')->middleware('auth:sanctum')->group(function () {
-    Route::get('/', [SpaceController::class, 'index']);
-    Route::post('/', [SpaceController::class, 'store']);
-    Route::get('/{id}', [SpaceController::class, 'show']);
-    Route::put('/{id}', [SpaceController::class, 'update']);
-    Route::delete('/{id}', [SpaceController::class, 'destroy']);
-    Route::post('/{id}/join', [SpaceController::class, 'join']);
-    Route::post('/{id}/leave', [SpaceController::class, 'leave']);
-    Route::post('/{id}/invite', [SpaceController::class, 'invite']);
-    Route::post('/{id}/start-call', [SpaceController::class, 'startCall']);
-    Route::post('/{id}/end-call', [SpaceController::class, 'endCall']);
-    Route::post('/{id}/share-screen', [SpaceController::class, 'shareScreen']);
-    Route::post('/{id}/magic', [SpaceController::class, 'triggerMagic']);
-    Route::get('/{id}/participants', [SpaceController::class, 'getParticipants']);
-    Route::get('/{id}/ai-suggestions', [SpaceController::class, 'getAISuggestions']);
-    Route::post('/{id}/ai-query', [SpaceController::class, 'aiQuery']);
+Route::middleware(['auth:sanctum'])->group(function () {
+    // Notifications endpoint
+    Route::get('/notifications/missed', [NotificationController::class, 'missedNotifications']);
+    
+    // Collaboration Spaces (keep your existing spaces routes)
+    Route::prefix('spaces')->group(function () {
+        Route::get('/', [SpaceController::class, 'index']);
+        Route::post('/', [SpaceController::class, 'store']);
+        Route::get('/{id}', [SpaceController::class, 'show']);
+        Route::put('/{id}', [SpaceController::class, 'update']);
+        Route::delete('/{id}', [SpaceController::class, 'destroy']);
+        Route::post('/{id}/join', [SpaceController::class, 'join']);
+        Route::post('/{id}/leave', [SpaceController::class, 'leave']);
+        Route::post('/{id}/invite', [SpaceController::class, 'invite']);
+        Route::post('/{id}/start-call', [SpaceController::class, 'startCall']);
+        Route::post('/{id}/end-call', [SpaceController::class, 'endCall']);
+        Route::post('/{id}/share-screen', [SpaceController::class, 'shareScreen']);
+        Route::post('/{id}/magic', [SpaceController::class, 'triggerMagic']);
+        Route::get('/{id}/participants', [SpaceController::class, 'getParticipants']);
+        Route::get('/{id}/ai-suggestions', [SpaceController::class, 'getAISuggestions']);
+        Route::post('/{id}/ai-query', [SpaceController::class, 'aiQuery']);
+    });
 });
 
 Route::prefix('ai')->middleware('auth:sanctum')->group(function () {

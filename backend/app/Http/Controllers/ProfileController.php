@@ -201,4 +201,47 @@ class ProfileController extends Controller
         }
     }
 
+    // Followers list
+    public function followers(Request $request) {
+        $user = $request->user();
+        
+        $followers = \App\Models\Follower::where('following_id', $user->id)
+            ->with('follower')
+            ->get()
+            ->map(function ($follower) {
+                return [
+                    'id' => $follower->follower->id,
+                    'name' => $follower->follower->name,
+                    'email' => $follower->follower->email,
+                    'username' => $follower->follower->username,
+                    'profile_photo' => $follower->follower->profile_photo,
+                    'is_online' => $follower->follower->is_online, // You might need to add this field
+                    'created_at' => $follower->created_at,
+                ];
+            });
+        
+        return response()->json($followers);
+    }
+    // Following list
+    public function following(Request $request) {
+        $user = $request->user();
+        
+        $following = \App\Models\Follower::where('follower_id', $user->id)
+            ->with('following')
+            ->get()
+            ->map(function ($follow) {
+                return [
+                    'id' => $follow->following->id,
+                    'name' => $follow->following->name,
+                    'email' => $follow->following->email,
+                    'username' => $follow->following->username,
+                    'profile_photo' => $follow->following->profile_photo,
+                    'is_online' => $follow->following->is_online,
+                    'created_at' => $follow->created_at,
+                ];
+            });
+        
+        return response()->json($following);
+    }
+
 }

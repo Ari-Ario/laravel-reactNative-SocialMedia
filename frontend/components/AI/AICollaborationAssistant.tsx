@@ -1,6 +1,6 @@
 // components/AI/AICollaborationAssistant.tsx
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, Pressable, Animated } from 'react-native';
+import { View, Text, TextInput, Pressable, Animated, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import * as Haptics from 'expo-haptics';
@@ -382,3 +382,47 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
     </>
   );
 };
+
+const styles = StyleSheet.create({
+  floatingAIButton: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#667EEA',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+  },
+
+  aiPanel: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '80%',
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    padding: 16,
+  },
+
+  aiHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+
+  aiTitle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  aiTitleText: {
+    marginLeft: 8,
+    fontWeight: '600',
+    fontSize: 16,
+  },
+});

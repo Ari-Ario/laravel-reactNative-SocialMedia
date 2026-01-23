@@ -3,15 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\CollaborationSpace;
+use App\Models\SpaceParticipation;
 use App\Models\Conversation;
 use App\Models\Post;
 use App\Models\Story;
-use App\Models\SpaceParticipation;
 use App\Models\MagicEvent;
 use App\Models\AiInteraction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class SpaceController extends Controller
 {
@@ -20,33 +22,64 @@ class SpaceController extends Controller
      */
     public function index(Request $request)
     {
-        $user = Auth::user();
-        
-        // Get spaces where user is participant
-        $participations = SpaceParticipation::where('user_id', $user->id)
-            ->with(['space' => function($query) {
-                $query->withCount('participants');
-                $query->with(['creator', 'linkedConversation', 'linkedPost', 'linkedStory']);
-            }])
-            ->orderBy('last_active_at', 'desc')
-            ->paginate(20);
-        
-        $spaces = $participations->map(function($participation) {
-            $space = $participation->space;
-            $space->my_role = $participation->role;
-            $space->is_online_in_space = $participation->presence_data['is_online'] ?? false;
-            return $space;
-        });
-        
-        return response()->json([
-            'spaces' => $spaces,
-            'pagination' => [
-                'current_page' => $participations->currentPage(),
-                'total' => $participations->total(),
-                'per_page' => $participations->perPage(),
-                'last_page' => $participations->lastPage(),
-            ]
-        ]);
+        try {
+            $user = Auth::user();
+            
+            // Use the scope to get spaces where user is participant
+            $spaces = CollaborationSpace::forUser($user->id)
+                ->with(['creator', 'linkedConversation', 'linkedPost', 'linkedStory'])
+                ->withCount(['participations as participants_count'])
+                ->orderBy('updated_at', 'desc')
+                ->get();
+            
+            // Get participation data for each space
+            $spacesWithParticipation = $spaces->map(function($space) use ($user) {
+                $participation = SpaceParticipation::where('space_id', $space->id)
+                    ->where('user_id', $user->id)
+                    ->first();
+                
+                return [
+                    'id' => $space->id,
+                    'title' => $space->title,
+                    'description' => $space->description,
+                    'space_type' => $space->space_type,
+                    'creator_id' => $space->creator_id,
+                    'settings' => $space->settings,
+                    'content_state' => $space->content_state,
+                    'activity_metrics' => $space->activity_metrics,
+                    'evolution_level' => $space->evolution_level,
+                    'unlocked_features' => $space->unlocked_features,
+                    'is_live' => $space->is_live,
+                    'has_ai_assistant' => $space->has_ai_assistant,
+                    'ai_personality' => $space->ai_personality,
+                    'ai_capabilities' => $space->ai_capabilities,
+                    'linked_conversation_id' => $space->linked_conversation_id,
+                    'linked_post_id' => $space->linked_post_id,
+                    'linked_story_id' => $space->linked_story_id,
+                    'participants_count' => $space->participants_count,
+                    'creator' => $space->creator,
+                    'linked_conversation' => $space->linkedConversation,
+                    'linked_post' => $space->linkedPost,
+                    'linked_story' => $space->linkedStory,
+                    'created_at' => $space->created_at,
+                    'updated_at' => $space->updated_at,
+                    'my_role' => $participation ? $participation->role : null,
+                    'my_permissions' => $participation ? $participation->permissions : null,
+                    'is_online_in_space' => $participation ? ($participation->presence_data['is_online'] ?? false) : false,
+                ];
+            });
+            
+            return response()->json([
+                'spaces' => $spacesWithParticipation,
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error fetching spaces: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Error fetching spaces',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -54,84 +87,123 @@ class SpaceController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'space_type' => 'required|in:chat,whiteboard,meeting,document,brainstorm,story,voice_channel',
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'linked_conversation_id' => 'nullable|exists:conversations,id',
-            'linked_post_id' => 'nullable|exists:posts,id',
-            'linked_story_id' => 'nullable|exists:stories,id',
-            'settings' => 'nullable|array',
-            'ai_personality' => 'nullable|in:helpful,creative,analytical,playful',
-            'ai_capabilities' => 'nullable|array',
-        ]);
+        DB::beginTransaction();
+        
+        try {
+            $validator = Validator::make($request->all(), [
+                'space_type' => 'required|in:chat,whiteboard,meeting,document,brainstorm,story,voice_channel',
+                'title' => 'required|string|max:255',
+                'description' => 'nullable|string',
+                'linked_conversation_id' => 'nullable|exists:conversations,id',
+                'linked_post_id' => 'nullable|exists:posts,id',
+                'linked_story_id' => 'nullable|exists:stories,id',
+                'settings' => 'nullable|array',
+                'ai_personality' => 'nullable|in:helpful,creative,analytical,playful',
+                'ai_capabilities' => 'nullable|array',
+            ]);
 
-        $user = Auth::user();
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
 
-        // Create the space
-        $space = CollaborationSpace::create([
-            'id' => Str::uuid(),
-            'creator_id' => $user->id,
-            'space_type' => $request->space_type,
-            'title' => $request->title,
-            'description' => $request->description,
-            'linked_conversation_id' => $request->linked_conversation_id,
-            'linked_post_id' => $request->linked_post_id,
-            'linked_story_id' => $request->linked_story_id,
-            'settings' => $request->settings ?? $this->getDefaultSettings($request->space_type),
-            'has_ai_assistant' => $request->has('ai_personality'),
-            'ai_personality' => $request->ai_personality,
-            'ai_capabilities' => $request->ai_capabilities ?? ['summarize', 'suggest'],
-            'content_state' => $this->getInitialContentState($request->space_type),
-        ]);
+            $user = Auth::user();
 
-        // Add creator as owner participant
-        SpaceParticipation::create([
-            'space_id' => $space->id,
-            'user_id' => $user->id,
-            'role' => 'owner',
-            'permissions' => $this->getOwnerPermissions(),
-            'presence_data' => [
-                'is_online' => true,
-                'device' => 'web',
-                'last_seen' => now(),
-            ],
-        ]);
+            // Create the space
+            $space = CollaborationSpace::create([
+                'id' => Str::uuid(),
+                'creator_id' => $user->id,
+                'space_type' => $request->space_type,
+                'title' => $request->title,
+                'description' => $request->description,
+                'linked_conversation_id' => $request->linked_conversation_id,
+                'linked_post_id' => $request->linked_post_id,
+                'linked_story_id' => $request->linked_story_id,
+                'settings' => $request->settings ?? $this->getDefaultSettings($request->space_type),
+                'content_state' => $this->getInitialContentState($request->space_type),
+                'has_ai_assistant' => $request->has('ai_personality') || $request->has('ai_capabilities'),
+                'ai_personality' => $request->ai_personality,
+                'ai_capabilities' => $request->ai_capabilities ?? ['summarize', 'suggest'],
+                'activity_metrics' => [
+                    'total_interactions' => 0,
+                    'energy_level' => 50,
+                ],
+            ]);
 
-        // If linked to conversation, update conversation
-        if ($request->linked_conversation_id) {
-            Conversation::where('id', $request->linked_conversation_id)
-                ->update(['linked_project_id' => $space->id]);
+            // Add creator as owner participant
+            SpaceParticipation::create([
+                'space_id' => $space->id,
+                'user_id' => $user->id,
+                'role' => 'owner',
+                'permissions' => $this->getOwnerPermissions(),
+                'presence_data' => [
+                    'is_online' => true,
+                    'device' => 'web',
+                    'last_seen' => now(),
+                ],
+                'contribution_map' => [],
+                'focus_areas' => [],
+            ]);
+
+            // If linked to conversation, update conversation
+            if ($request->linked_conversation_id) {
+                Conversation::where('id', $request->linked_conversation_id)
+                    ->update(['linked_project_id' => $space->id]);
+            }
+
+            // If linked to post, update post
+            if ($request->linked_post_id) {
+                Post::where('id', $request->linked_post_id)
+                    ->update([
+                        'is_collaborative' => true,
+                        'linked_project_id' => $space->id,
+                    ]);
+            }
+
+            // If linked to story, update story
+            if ($request->linked_story_id) {
+                Story::where('id', $request->linked_story_id)
+                    ->update([
+                        'is_collaborative' => true,
+                        'linked_project_id' => $space->id,
+                    ]);
+            }
+
+            // Trigger initial magic event
+            MagicEvent::create([
+                'id' => Str::uuid(),
+                'space_id' => $space->id,
+                'triggered_by' => $user->id,
+                'event_type' => 'space_created',
+                'event_data' => [
+                    'created_by' => $user->id,
+                    'type' => $space->space_type,
+                    'title' => $space->title,
+                ],
+                'context' => [
+                    'initial_space_type' => $space->space_type,
+                    'has_ai_assistant' => $space->has_ai_assistant,
+                ],
+                'has_been_discovered' => false,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'space' => $space->load(['creator']),
+                'message' => 'Space created successfully'
+            ], 201);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error creating space: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Error creating space',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        // If linked to post, update post
-        if ($request->linked_post_id) {
-            Post::where('id', $request->linked_post_id)
-                ->update([
-                    'is_collaborative' => true,
-                    'linked_project_id' => $space->id,
-                ]);
-        }
-
-        // If linked to story, update story
-        if ($request->linked_story_id) {
-            Story::where('id', $request->linked_story_id)
-                ->update([
-                    'is_collaborative' => true,
-                    'linked_project_id' => $space->id,
-                ]);
-        }
-
-        // Trigger initial magic event
-        $this->createMagicEvent($space->id, 'space_created', [
-            'created_by' => $user->id,
-            'type' => $space->space_type,
-        ]);
-
-        return response()->json([
-            'space' => $space->load(['creator', 'linkedConversation', 'linkedPost', 'linkedStory']),
-            'message' => 'Space created successfully'
-        ], 201);
     }
 
     /**
@@ -139,41 +211,189 @@ class SpaceController extends Controller
      */
     public function show($id)
     {
-        $user = Auth::user();
-        
-        // Check if user can access this space
-        $participation = SpaceParticipation::where('space_id', $id)
-            ->where('user_id', $user->id)
-            ->firstOrFail();
-        
-        $space = CollaborationSpace::with([
-            'creator',
-            'linkedConversation',
-            'linkedPost',
-            'linkedStory',
-            'participants.user',
-            'magicEvents' => function($query) {
-                $query->where('has_been_discovered', false)
-                    ->orderBy('created_at', 'desc')
-                    ->limit(5);
+        try {
+            $user = Auth::user();
+            
+            // Check if user can access this space
+            $participation = SpaceParticipation::where('space_id', $id)
+                ->where('user_id', $user->id)
+                ->first();
+            
+            if (!$participation) {
+                return response()->json([
+                    'message' => 'You do not have access to this space'
+                ], 403);
             }
-        ])->findOrFail($id);
+            
+            $space = CollaborationSpace::with([
+                'creator',
+                'linkedConversation',
+                'linkedPost',
+                'linkedStory',
+                'participations.user',
+                'magicEvents' => function($query) {
+                    $query->where('has_been_discovered', false)
+                        ->orderBy('created_at', 'desc')
+                        ->limit(5);
+                }
+            ])->findOrFail($id);
+            
+            // Update last active time for participant
+            $participation->update([
+                'last_active_at' => now(),
+                'presence_data->is_online' => true,
+            ]);
+            
+            return response()->json([
+                'space' => $space,
+                'participation' => $participation,
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error fetching space details: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Error fetching space details',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Helper: Get default settings for space type
+     */
+    // private function getDefaultSettings($spaceType)
+    // {
+    //     $settings = [
+    //         'chat' => [
+    //             'allow_guests' => false,
+    //             'max_participants' => 100,
+    //             'enable_reactions' => true,
+    //             'enable_threads' => false,
+    //             'require_invitation' => false,
+    //         ],
+    //         'whiteboard' => [
+    //             'allow_guests' => true,
+    //             'max_participants' => 20,
+    //             'enable_grid' => true,
+    //             'tools' => ['pen', 'shape', 'text', 'sticker'],
+    //             'require_invitation' => false,
+    //         ],
+    //         'meeting' => [
+    //             'allow_guests' => true,
+    //             'max_participants' => 10,
+    //             'video_on_join' => false,
+    //             'enable_raise_hand' => true,
+    //             'enable_recording' => false,
+    //             'require_invitation' => true,
+    //         ],
+    //         'document' => [
+    //             'allow_guests' => true,
+    //             'max_participants' => 10,
+    //             'editing_mode' => 'collaborative',
+    //             'versioning' => true,
+    //             'require_invitation' => false,
+    //         ],
+    //         'brainstorm' => [
+    //             'allow_guests' => true,
+    //             'max_participants' => 20,
+    //             'anonymous_ideas' => false,
+    //             'voting' => true,
+    //             'require_invitation' => false,
+    //         ],
+    //         'story' => [
+    //             'allow_guests' => true,
+    //             'max_participants' => 10,
+    //             'chain_mode' => 'sequential',
+    //             'allow_branching' => true,
+    //             'require_invitation' => false,
+    //         ],
+    //         'voice_channel' => [
+    //             'allow_guests' => true,
+    //             'max_participants' => 20,
+    //             'spatial_audio' => true,
+    //             'noise_suppression' => true,
+    //             'require_invitation' => false,
+    //         ],
+    //     ];
         
-        // Update last active time for participant
-        $participation->update([
-            'last_active_at' => now(),
-            'presence_data->is_online' => true,
-        ]);
+    //     return $settings[$spaceType] ?? $settings['chat'];
+    // }
+
+    // /**
+    //  * Helper: Get initial content state
+    //  */
+    // private function getInitialContentState($spaceType)
+    // {
+    //     $states = [
+    //         'chat' => [
+    //             'messages' => [],
+    //             'last_message_id' => null,
+    //         ],
+    //         'whiteboard' => [
+    //             'canvas' => [],
+    //             'elements' => [],
+    //             'background' => '#ffffff',
+    //         ],
+    //         'meeting' => [
+    //             'participants' => [],
+    //             'agenda' => [],
+    //             'notes' => '',
+    //         ],
+    //         'document' => [
+    //             'content' => '',
+    //             'revisions' => [],
+    //         ],
+    //         'brainstorm' => [
+    //             'ideas' => [],
+    //             'connections' => [],
+    //             'categories' => [],
+    //         ],
+    //         'story' => [
+    //             'segments' => [],
+    //             'current_branch' => 'main',
+    //             'choices' => [],
+    //         ],
+    //         'voice_channel' => [
+    //             'participants' => [],
+    //             'active_speakers' => [],
+    //         ],
+    //     ];
         
-        // Add user-specific data
-        $space->my_role = $participation->role;
-        $space->my_permissions = $participation->permissions;
-        $space->is_online_in_space = true;
-        
-        return response()->json([
-            'space' => $space,
-            'participation' => $participation,
-        ]);
+    //     return $states[$spaceType] ?? $states['chat'];
+    // }
+
+    /**
+     * Helper: Get owner permissions
+     */
+    private function getOwnerPermissions()
+    {
+        return [
+            'can_edit_space' => true,
+            'can_invite' => true,
+            'can_remove' => true,
+            'can_change_roles' => true,
+            'can_start_calls' => true,
+            'can_share_screen' => true,
+            'can_trigger_magic' => true,
+            'can_configure_ai' => true,
+        ];
+    }
+
+    /**
+     * Helper: Get default participant permissions
+     */
+    private function getDefaultParticipantPermissions()
+    {
+        return [
+            'can_edit_space' => false,
+            'can_invite' => false,
+            'can_remove' => false,
+            'can_change_roles' => false,
+            'can_start_calls' => true,
+            'can_share_screen' => true,
+            'can_trigger_magic' => false,
+            'can_configure_ai' => false,
+        ];
     }
 
     /**

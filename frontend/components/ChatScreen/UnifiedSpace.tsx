@@ -1,4 +1,4 @@
-// components/CollaborationSpace/UnifiedSpace.tsx
+// components/ChatScreen/UnifiedSpace.tsx
 import { useState, useEffect, useRef } from 'react';
 import {
   View,

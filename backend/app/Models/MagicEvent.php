@@ -1,16 +1,20 @@
 <?php
+// app/Models/MagicEvent.php
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MagicEvent extends Model
 {
     use HasFactory;
 
-    protected $keyType = 'string';
+    protected $table = 'magic_events';
+    protected $primaryKey = 'id';
     public $incrementing = false;
+    protected $keyType = 'string';
 
     protected $fillable = [
         'id',
@@ -26,11 +30,21 @@ class MagicEvent extends Model
     ];
 
     protected $casts = [
-        'event_data' => 'array',        // ✅ REQUIRED
+        'event_data' => 'array',
         'context' => 'array',
         'impact' => 'array',
         'discovery_path' => 'array',
         'interactions' => 'array',
         'has_been_discovered' => 'boolean',
     ];
+
+    public function space(): BelongsTo
+    {
+        return $this->belongsTo(CollaborationSpace::class, 'space_id', 'id');
+    }
+
+    public function triggeredByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'triggered_by');
+    }
 }

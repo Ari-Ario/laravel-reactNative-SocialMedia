@@ -69,37 +69,49 @@ export default function RootLayout() {
   useEffect(() => {
     if (!isReady) return;
 
-    if (pathname?.startsWith('/story/') 
-      || pathname?.startsWith('/post/')
-      || pathname?.startsWith('/profile-preview') 
-      || pathname?.startsWith('/CreatPost') 
-      || pathname?.startsWith('/chats')) {
+    // Allowed routes that should NOT redirect to tabs
+    const allowedRoutes = [
+      '/story/',
+      '/post/', 
+      '/profile-preview/',
+      '/CreatPost/',
+      '/chats/',
+      '/spaces/',  // ADD THIS: Allow spaces with IDs
+      '/LoginScreen',
+      '/',
+      '/settings',
+      '/chatbot',
+      '/chatbotTraining',
+    ];
+
+    // Check if current path starts with any allowed route
+    const isAllowedRoute = allowedRoutes.some(route => 
+      pathname?.startsWith(route)
+    );
+
+    if (!user) {
+      // If user not logged in, only allow LoginScreen and root
+      if (pathname !== '/' && !pathname?.startsWith('/LoginScreen')) {
+        router.replace('/LoginScreen');
+      }
       return;
     }
 
-    if (!user) {
-      if (!pathname?.startsWith('/')) {
-        return;
-      }
-      if (!pathname?.startsWith('/LoginScreen')) {
-        return;
-      }
-    } 
-    
-    
+    // User is logged in, check routing
+    if (pathname === '/' || pathname === '/LoginScreen') {
+      // Redirect from login/root to home
+      router.replace('/(tabs)');
+      return;
+    }
+
+    // If it's an allowed route, let it through
+    if (isAllowedRoute) {
+      return;
+    }
+
+    // Default: redirect to tabs for any other route
     if (!pathname?.startsWith('/(tabs)')) {
       router.replace('/(tabs)');
-    }
-
-    if (pathname?.startsWith('/settings')) {
-      router.replace('/settings');
-    }
-
-      // Handle chatbot and chatbotTraining routes more robustly because of same prefix .startsWith() 'chatbot'
-    if (pathname === '/chatbotTraining' || pathname?.startsWith('/chatbotTraining/')) {
-      router.replace('/chatbotTraining');
-    } else if (pathname === '/chatbot' || pathname?.startsWith('/chatbot/')) {
-      router.replace('/chatbot');
     }
   }, [isReady, user, pathname]);
 
@@ -142,7 +154,23 @@ export default function RootLayout() {
               headerShown: false, 
               animation: 'none',
               gestureEnabled: true // Ensure screen gestures work
-            }} />
+            }} >
+              {/* Tabs */}
+              <Stack.Screen
+                name="(tabs)"
+                options={{ headerShown: false }}
+              />
+
+              {/* MODAL over tabs */}
+              {/* <Stack.Screen 
+                name="spaces/[id]" 
+                options={{ 
+                  headerShown: true,
+                  title: 'Space',
+                  presentation: 'modal'
+                }} 
+              /> */}
+            </Stack>
             
             {/* Modals render above Stack */}
             <GlobalModals />
