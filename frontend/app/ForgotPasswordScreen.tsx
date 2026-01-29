@@ -3,7 +3,7 @@ import { SafeAreaView ,View, Text, StyleSheet, Button, TouchableOpacity, Platfor
 import axios from "@/services/axios";
 import FormTextField from "@/components/FormTextField";
 import { login, loadUser } from "@/services/AuthService";
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 import AuthContext from "@/context/AuthContext";
 import { sendPasswordResetLink } from "@/services/AuthService";
 
@@ -31,11 +31,12 @@ export default function () {
     return (
         <SafeAreaView style={styles.wrapper}>
             <View>
-                <Link href={'/LoginScreen'} >
-                    <TouchableOpacity style={styles.button}>
-                        <Text style={styles.buttonText}>◀ Back to Login</Text>
-                    </TouchableOpacity>
-                </Link>
+                <TouchableOpacity 
+                    style={styles.button}
+                    onPress={() => router.replace('/LoginScreen')}
+                >
+                    <Text style={styles.buttonText}>◀ Back to Login</Text>
+                </TouchableOpacity>
             </View>
             
             <View style={styles.container}>

@@ -44,9 +44,10 @@ export default function RootLayout() {
         if (token) {
           const userData = await loadUser();
           if (isMounted) setUser(userData);
-        } else {
-          router.replace('/LoginScreen');
-        }
+        } 
+        // else {
+        //   router.replace('/LoginScreen');
+        // }
       } catch (error) {
         console.log("Initial auth check failed:", error);
       } finally {
@@ -91,8 +92,14 @@ export default function RootLayout() {
 
     if (!user) {
       // If user not logged in, only allow LoginScreen and root
-      if (pathname !== '/' && !pathname?.startsWith('/LoginScreen')) {
+      if (pathname !== '/' && pathname?.startsWith('/LoginScreen')) {
         router.replace('/LoginScreen');
+      } else if (pathname?.startsWith('/RegisterScreen')) {
+        router.replace('/RegisterScreen');
+      } else if (pathname?.startsWith('/ForgotPasswordScreen')) {
+        router.replace('/ForgotPasswordScreen');
+      } else {
+        router.replace('/');
       }
       return;
     }
@@ -153,23 +160,25 @@ export default function RootLayout() {
             <Stack screenOptions={{ 
               headerShown: false, 
               animation: 'none',
-              gestureEnabled: true // Ensure screen gestures work
-            }} >
-              {/* Tabs */}
+              gestureEnabled: true
+            }}>
+              {/* Define ALL screens statically - no conditional rendering */}
+              <Stack.Screen
+                name="LoginScreen"
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="RegisterScreen"
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="ForgotPasswordScreen"
+                options={{ headerShown: false }}
+              />
               <Stack.Screen
                 name="(tabs)"
                 options={{ headerShown: false }}
               />
-
-              {/* MODAL over tabs */}
-              {/* <Stack.Screen 
-                name="spaces/[id]" 
-                options={{ 
-                  headerShown: true,
-                  title: 'Space',
-                  presentation: 'modal'
-                }} 
-              /> */}
             </Stack>
             
             {/* Modals render above Stack */}

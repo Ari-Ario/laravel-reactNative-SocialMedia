@@ -42,9 +42,20 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "expo-secure-store",
-      "expo-video",
-      "expo-audio"
+      [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": true,
+          "supportsPictureInPicture": true
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone."
+        }
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true
