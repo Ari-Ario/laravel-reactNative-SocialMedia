@@ -130,6 +130,10 @@ class CollaborationService {
 
 // services/CollaborationService.ts - UPDATED fetchSpaceDetails method
 async fetchSpaceDetails(spaceId: string): Promise<CollaborationSpace> {
+  if (!this.userToken) {
+    return;
+    // this.userToken = await getToken();
+  }
   try {
     console.log(`Fetching space details for: ${spaceId}`);
     

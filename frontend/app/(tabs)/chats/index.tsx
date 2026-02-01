@@ -1,7 +1,8 @@
 import {
   View, StyleSheet, ActivityIndicator, SectionList,
   TextInput, TouchableOpacity, Text, Modal, Alert,
-  RefreshControl, Animated
+  RefreshControl, Animated,
+  Platform
 } from "react-native";
 import { router } from 'expo-router';
 import { useState, useEffect, useContext, useMemo, useCallback, useRef } from "react";
@@ -456,7 +457,9 @@ const ChatPage = () => {
         ai_capabilities: ['summarize', 'suggest'],
       });
       
+      if (Platform.OS !== 'web') {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
       
       // Add to spaces list
       const newSpaceChat: Chat = {

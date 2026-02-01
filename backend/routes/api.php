@@ -2,9 +2,13 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Password;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
+use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\ChatbotTrainingController;
 use App\Http\Controllers\PostController;
@@ -19,6 +23,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rules;
 use Illuminate\Auth\Events\Registered;
+use Illuminate\Auth\Events\Verified;
+use Illuminate\Support\Facades\Event;
 
 
 Route::group(["middleware" => ["auth:sanctum"]], function() {
@@ -93,7 +99,7 @@ Route::group(["middleware" => ["auth:sanctum"]], function() {
     // Route::get('/notifications/missed', [NotificationController::class, 'missedNotifications'] );
 });
 
-Route::post('/forgot-password', [PasswordResetLinkController::class, 'store']);
+// Route::post('/forgot-password', [PasswordResetLinkController::class, 'store']);
 // Route::get('/reset-password/{token}', [PasswordResetController::class, 'showResetForm'])->name('password.reset');
 
 // Route::post('/login', [AuthenticatedSessionController::class, 'login']);
@@ -159,7 +165,7 @@ Route::get('/users/{id}/spaces', [SpaceController::class, 'getUserSpaces'])->mid
 
 
 // Authentication routes
-Route::post('/login', function(Request $request){
+Route::post('/login', function (Request $request) {
     $request->validate([
         'email' => ['required', 'email'],
         'password' => ['required'],
@@ -179,28 +185,229 @@ Route::post('/login', function(Request $request){
     ]);
 });
 
+// generateUsername helper function
+function generateUsername($name, $email) {
+    $baseUsername = preg_replace('/\s+/', '', strtolower($name));
+    if (empty($baseUsername)) {
+        $baseUsername = explode('@', $email)[0];
+    }
+    $username = $baseUsername;
+    $counter = 1;
+    while (User::where('username', $username)->exists()) {
+        $username = $baseUsername . $counter;
+        $counter++;
+    }
+    return $username;
+}
+
 Route::post("/register", function (request $request) {
 
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'device_name' => ['required'],
-        ]);
+    $request->validate([
+        'name' => ['required', 'string', 'max:255'],
+        'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+        'password' => ['required', 'string', 'min:8', 'confirmed'],
+        'device_name' => ['required', 'string'],
+        'username' => ['nullable', 'string', 'max:255', 'unique:users'],
+    ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
+    // Generate username if not provided
+    $username = $request->username ?? generateUsername($request->name, $request->email);
+    
+    $user = User::create([
+        'name' => $request->name,
+        'email' => $request->email,
+        'username' => $username,
+        'password' => Hash::make($request->password),
+    ]);
 
-        event(new Registered($user));
+    // Generate 6-digit verification code
+    $verificationCode = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+    
+    // Store code in cache for 15 minutes
+    Cache::put('email_verify_' . $user->id, $verificationCode, 900);
+    
+    // Send code via email
+    Mail::raw("Your verification code is: $verificationCode\n\nThis code will expire in 15 minutes.", function($message) use ($user) {
+        $message->to($user->email)
+                ->subject('Verify Your Email Address');
+    });
 
-        // Auth::login($user);
+    $token = $user->createToken($request->device_name)->plainTextToken;
 
-        // return to_route('dashboard');
+    return response()->json([
+        'token' => $token,
+        'user' => $user,
+        'message' => 'Registration successful! Check your email for verification code.',
+        'requires_verification' => true,
+        'verification_method' => 'code', // Indicate code-based verification
+        'user_id' => $user->id
+    ], 201);
+});
+
+// Add verification endpoint
+Route::post('/verify-email-code', function (Request $request) {
+    $request->validate([
+        'user_id' => ['required', 'integer'],
+        'code' => ['required', 'string', 'size:6'],
+    ]);
+
+    $cachedCode = Cache::get('email_verify_' . $request->user_id);
+    
+    if (!$cachedCode || $cachedCode !== $request->code) {
+        return response()->json([
+            'message' => 'Invalid or expired verification code'
+        ], 400);
+    }
+
+    $user = User::find($request->user_id);
+    
+    if (!$user) {
+        return response()->json(['message' => 'User not found'], 404);
+    }
+
+    if ($user->markEmailAsVerified()) {
+        event(new Verified($user));
+        Cache::forget('email_verify_' . $user->id);
+        
+        // Refresh user data to get updated email_verified_at
+        $user->refresh();
+        
+        // Generate a new token
+        $newToken = $user->createToken('verified-email')->plainTextToken;
         
         return response()->json([
-            'token' => $user->createToken($request->device_name)->plainTextToken
+            'message' => 'Email verified successfully!',
+            'verified' => true,
+            'user' => $user, // Return updated user with email_verified_at
+            'token' => $newToken
         ]);
+    }
+
+    return response()->json(['message' => 'Verification failed'], 500);
+})->middleware('auth:sanctum');
+
+// Resend should also require auth
+Route::post('/resend-verification-code', function (Request $request) {
+    $request->validate([
+        'user_id' => ['required', 'integer'],
+    ]);
+
+    $user = User::find($request->user_id);
+    
+    if (!$user) {
+        return response()->json(['message' => 'User not found'], 404);
+    }
+
+    if ($user->hasVerifiedEmail()) {
+        return response()->json(['message' => 'Email already verified']);
+    }
+
+    // Generate new code
+    $verificationCode = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+    Cache::put('email_verify_' . $user->id, $verificationCode, 900);
+    
+    // Send new code
+    Mail::raw("Your new verification code is: $verificationCode\n\nThis code will expire in 15 minutes.", function($message) use ($user) {
+        $message->to($user->email)
+                ->subject('New Verification Code');
+    });
+
+    return response()->json([
+        'message' => 'New verification code sent!',
+        'user_id' => $user->id
+    ]);
+})->middleware('auth:sanctum'); // Add this middleware
+
+
+// Forgot password - send reset code
+Route::post('/forgot-password', function (Request $request) {
+    $request->validate(['email' => 'required|email']);
+    
+    $user = User::where('email', $request->email)->first();
+    
+    if (!$user) {
+        return response()->json([
+            'message' => 'If this email exists, a reset code has been sent.'
+        ]);
+    }
+    
+    // Generate 6-digit reset code
+    $resetCode = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+    
+    // Store code in cache for 15 minutes with email
+    Cache::put('password_reset_' . $user->email, [
+        'code' => $resetCode,
+        'user_id' => $user->id
+    ], 900);
+    
+    // Send code via email
+    Mail::raw("Your password reset code is: $resetCode\n\nThis code will expire in 15 minutes.", function($message) use ($user) {
+        $message->to($user->email)
+                ->subject('Password Reset Code');
+    });
+    
+    return response()->json([
+        'message' => 'Reset code sent to your email.',
+        'email' => $user->email
+    ]);
+});
+
+// Verify reset code
+Route::post('/verify-reset-code', function (Request $request) {
+    $request->validate([
+        'email' => 'required|email',
+        'code' => 'required|string|size:6'
+    ]);
+    
+    $cacheKey = 'password_reset_' . $request->email;
+    $cachedData = Cache::get($cacheKey);
+    
+    if (!$cachedData || $cachedData['code'] !== $request->code) {
+        return response()->json([
+            'message' => 'Invalid or expired reset code'
+        ], 400);
+    }
+    
+    // Generate a temporary token for password reset
+    $tempToken = bin2hex(random_bytes(32));
+    Cache::put('reset_token_' . $tempToken, $cachedData['user_id'], 900);
+    
+    return response()->json([
+        'message' => 'Code verified successfully',
+        'reset_token' => $tempToken,
+        'user_id' => $cachedData['user_id']
+    ]);
+});
+
+// Reset password with token
+Route::post('/reset-password', function (Request $request) {
+    $request->validate([
+        'reset_token' => 'required|string',
+        'password' => 'required|string|min:8|confirmed'
+    ]);
+    
+    $cacheKey = 'reset_token_' . $request->reset_token;
+    $userId = Cache::get($cacheKey);
+    
+    if (!$userId) {
+        return response()->json([
+            'message' => 'Invalid or expired reset token'
+        ], 400);
+    }
+    
+    $user = User::find($userId);
+    
+    if (!$user) {
+        return response()->json(['message' => 'User not found'], 404);
+    }
+    
+    $user->password = Hash::make($request->password);
+    $user->save();
+    
+    // Clear cache
+    Cache::forget($cacheKey);
+    
+    return response()->json([
+        'message' => 'Password reset successfully!'
+    ]);
 });

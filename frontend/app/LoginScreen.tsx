@@ -21,18 +21,42 @@ export default function () {
                     password,
                     device_name: `${Platform.OS} ${Platform.Version}`,
                 });
-            console.log('here at Login')
 
             const user = await loadUser();
-            console.log('user:', user);
             setUser(user);
             console.log("send it to TABS");
-            
-            router.push('/(tabs)');
-        } catch (e) {
-            if (e.response?.status === 422) {
-                setErrors(e.response.data.errors)
+            if (user.email_verified_at === null) {
+                router.push({
+                    pathname: '/VerificationScreen',
+                    params: { email: email }
+                });
+                return;
             }
+            router.push('/(tabs)');
+        } catch (e: any) {
+        console.error('Login failed:', e);                    // ← Add this!
+        console.log('Full error:', e.message, e.code, e.config?.url);
+
+        // if (axios.isAxiosError(e)) {
+            if (e.response) {
+            // Server responded (e.g. 422, 401, 500)
+            console.log('Response error:', e.response.status, e.response.data);
+            if (e.response.status === 422) {
+                setErrors(e.response.data.errors || {});
+            } else {
+                setErrors({ general: e.response.data.message || 'Server error' });
+            }
+            } else if (e.request) {
+            // No response received → network issue
+            console.log('Network-level failure - request was:', e.request);
+            setErrors({ general: 'Network error - check connection or server' });
+            } else {
+            // Something else (setup error)
+            setErrors({ general: e.message || 'Unknown error' });
+            }
+        // } else {
+        //     setErrors({ general: 'Unexpected error' });
+        // }
         }
     }
 
@@ -65,10 +89,23 @@ export default function () {
 
                 <Button title="login" onPress={handleLogin} />
 
+                {errors.general && (
+                    <Text style={styles.errorText}>{errors.general}</Text>
+                )}
+                
+
                 <Link href={'/ForgotPasswordScreen'} >
                     <Text style={styles.buttonText}>Forgot Password</Text>
                 </Link>
 
+                <View style={styles.loginLink}>
+                    <Text>Don't have an account? </Text>
+                    <Link href="/RegisterScreen" asChild>
+                        <TouchableOpacity>
+                            <Text style={styles.linkText}>Register</Text>
+                        </TouchableOpacity>
+                    </Link>
+                </View>
             </View>
         </ SafeAreaView>
     )
@@ -100,5 +137,18 @@ const styles = StyleSheet.create({
         fontSize: 22,
         fontWeight: '500',
       },
-
+    errorText: {
+        color: 'red',
+        textAlign: 'center',
+        marginTop: 10,
+    },
+    loginLink: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        marginTop: 20,
+    },
+    linkText: {
+        color: 'blue',
+        fontWeight: '600',
+    },
   });

@@ -5,9 +5,9 @@ import { createContext } from "react";
 
 interface AuthContextType {
   user: null | {
-    profile_photo: any; id: string; name: string; email: string 
+    profile_photo: any; id: string; name: string; email: string; email_verified_at?: string | null
 };
-  setUser: (user: null | { id: string; name: string; email: string }) => void;
+  setUser: (user: null | { id: string; name: string; email: string; email_verified_at?: string | null }) => void;
   logout: () => Promise<void>; // Add logout function to context
 }
 

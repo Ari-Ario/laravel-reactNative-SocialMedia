@@ -3,12 +3,13 @@
 import axios from "@/services/axios";
 import { getToken, setToken } from "./TokenService";
 import getApiBase from "./getApiBase";
+import { router } from "expo-router";
 
-const API_BASE = getApiBase(); // One single source of truth
+const API_BASE = getApiBase() + '/api'; // One single source of truth
 
 export async function login(credentials: any) {
   try {
-    const { data } = await axios.post(`${API_BASE}/login`, credentials);
+    const { data } = await axios.post(`/login`, credentials);
     await setToken(data.token);
     return data;
   } catch (error) {
@@ -18,7 +19,7 @@ export async function login(credentials: any) {
 
 export async function register(registerInfo: any) {
   try {
-    const { data } = await axios.post(`${API_BASE}/register`, registerInfo);
+    const { data } = await axios.post(`/register`, registerInfo);
     await setToken(data.token);
     return data;
   } catch (error) {
@@ -26,12 +27,29 @@ export async function register(registerInfo: any) {
   }
 }
 
+// Add verification functions
+export const verifyEmailCode = async (userId: number, code: string) => {
+    const response = await axios.post('/verify-email-code', {
+        user_id: userId,
+        code: code
+    });
+    return response.data;
+};
+
+export const resendVerificationCode = async (userId: number) => {
+    const response = await axios.post('/resend-verification-code', {
+        user_id: userId
+    });
+    return response.data;
+};
+
+
 export async function loadUser() {
   try {
     const token = await getToken();
     if (!token) throw new Error('No authentication token found');
 
-    const response = await axios.get(`${API_BASE}/user`);
+    const response = await axios.get(`/user`);
     const userData = response.data.user || response.data;
 
     if (!userData?.id) {
@@ -48,7 +66,7 @@ export async function loadUser() {
 
 export async function sendPasswordResetLink(email: string) {
   try {
-    const { data } = await axios.post(`${API_BASE}/forgot-password`, { email });
+    const { data } = await axios.post(`/forgot-password`, { email });
     return data.status;
   } catch (error) {
     console.error('Reset Password failed:', error);
@@ -60,8 +78,9 @@ export async function logout() {
   try {
     const token = await getToken();
     if (token) {
-      await axios.post(`${API_BASE}/logout`, {});
+      await axios.post(`/logout`, {});
     }
+    router.replace('/Login');
   } catch (error) {
     console.error('Logout API error:', error);
   } finally {

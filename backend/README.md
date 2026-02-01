@@ -1,6 +1,8 @@
 ## Showing laravel.Log
 tail -f storage/logs/laravel.log
 
+## serve with host or just without numbers
+php artisan serve --host=0.0.0.0 --port=8000
 
 ## seeding
 

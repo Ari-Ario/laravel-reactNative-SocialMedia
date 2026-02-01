@@ -4,6 +4,7 @@ import { Link, router, Stack, useRouter } from 'expo-router';
 import { useState, useEffect, useContext } from "react";
 import AuthContext from "@/context/AuthContext";
 import LoginScreen from "../LoginScreen";
+import VerificationScreen from "../VerificationScreen";
 import PostListItem from '@/components/PostListItem';
 import FloatingActionButton from '@/components/FloatingActionButton';
 import getApiBaseImage from "@/services/getApiBaseImage";
@@ -233,7 +234,18 @@ const handleCommentSubmit = async (postId: number, content: string, parentId?: n
     </TouchableOpacity>
   );
 
-  if (!user) return <><Stack.Screen name="Login" component={LoginScreen} /></>;
+useEffect(() => {
+  if (!user) {
+    router.replace('/LoginScreen');
+    return;
+  }
+
+  if (!user.email_verified_at) {
+    router.replace('/VerificationScreen');
+    return;
+  }
+}, [user]);
+
   if (loading && !refreshing) return <View style={styles.loadingContainer}><ActivityIndicator size="large" /></View>;
 
   return (

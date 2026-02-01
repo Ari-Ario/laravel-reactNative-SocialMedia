@@ -15,6 +15,7 @@ import { loadUser } from '@/services/AuthService';
 import { getToken } from '@/services/TokenService';
 import LoginScreen from './LoginScreen';
 import RegisterScreen from './RegisterScreen';
+import VerificationScreen from './VerificationScreen';
 import { usePathname } from 'expo-router';
 import { ProfileViewProvider } from '@/context/ProfileViewContext';
 import { GlobalModals } from '@/components/GlobalModals';
@@ -67,27 +68,31 @@ export default function RootLayout() {
   const pathname = usePathname();
 
   // ... rest of your existing pathname logic (UNCHANGED)
-  useEffect(() => {
+useEffect(() => {
     if (!isReady) return;
 
     // Allowed routes that should NOT redirect to tabs
     const allowedRoutes = [
-      '/story/',
-      '/post/', 
-      '/profile-preview/',
-      '/CreatPost/',
-      '/chats/',
-      '/spaces/',  // ADD THIS: Allow spaces with IDs
-      '/LoginScreen',
-      '/',
-      '/settings',
-      '/chatbot',
-      '/chatbotTraining',
+        '/story/',
+        '/post/', 
+        '/profile-preview/',
+        '/CreatPost/',
+        '/chats/',
+        '/spaces/',
+        '/LoginScreen',
+        '/RegisterScreen',
+        '/ForgotPasswordScreen',
+        '/ResetPasswordScreen',
+        '/VerificationScreen',
+        '/',
+        '/settings',
+        '/chatbot',
+        '/chatbotTraining',
     ];
 
     // Check if current path starts with any allowed route
     const isAllowedRoute = allowedRoutes.some(route => 
-      pathname?.startsWith(route)
+        pathname?.startsWith(route)
     );
 
     if (!user) {
@@ -98,29 +103,41 @@ export default function RootLayout() {
         router.replace('/RegisterScreen');
       } else if (pathname?.startsWith('/ForgotPasswordScreen')) {
         router.replace('/ForgotPasswordScreen');
+      } else if (pathname?.startsWith('/VerificationScreen')) {
+        router.replace('/VerificationScreen');
+      } else if (!pathname || pathname === '/ResetPasswordScreen') {
+        router.replace('/ResetPasswordScreen');
       } else {
         router.replace('/');
       }
       return;
     }
 
-    // User is logged in, check routing
+    // User is logged in
     if (pathname === '/' || pathname === '/LoginScreen') {
-      // Redirect from login/root to home
-      router.replace('/(tabs)');
-      return;
+        router.replace('/(tabs)');
+        return;
+    }
+
+    // Check if email is verified
+    if (!user.email_verified_at) {
+        // If email not verified, only allow VerificationScreen
+        if (pathname !== '/VerificationScreen') {
+            router.replace('/VerificationScreen');
+            return;
+        }
     }
 
     // If it's an allowed route, let it through
     if (isAllowedRoute) {
-      return;
+        return;
     }
 
     // Default: redirect to tabs for any other route
     if (!pathname?.startsWith('/(tabs)')) {
-      router.replace('/(tabs)');
+        router.replace('/(tabs)');
     }
-  }, [isReady, user, pathname]);
+}, [isReady, user, pathname]);
 
   if (!isReady) {
     return (
@@ -175,6 +192,15 @@ export default function RootLayout() {
                 name="ForgotPasswordScreen"
                 options={{ headerShown: false }}
               />
+              <Stack.Screen
+                name="ResetPasswordScreen"
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="VerificationScreen"
+                options={{ headerShown: false }}
+              />
+
               <Stack.Screen
                 name="(tabs)"
                 options={{ headerShown: false }}

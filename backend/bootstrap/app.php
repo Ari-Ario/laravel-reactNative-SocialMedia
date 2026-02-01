@@ -16,7 +16,21 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
+        $middleware->validateCsrfTokens(except: [
+            'login',
+            'api/*', // Or disable for all API routes
+        ]);
 
+        // Protect API routes except login/register/verification
+        $middleware->group('api', [
+            \Illuminate\Routing\Middleware\SubstituteBindings::class,
+        ]);
+        
+        $middleware->group('api.verified', [
+            \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+        ]);
+        
         $middleware->web(append: [
             HandleAppearance::class,
             HandleInertiaRequests::class,

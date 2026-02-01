@@ -57,6 +57,10 @@ useEffect(() => {
 
 const loadSpaceDetails = async () => {
   console.log('loadSpaceDetails called');
+  if (!token || !user) {
+    console.log('Cannot load space details: no token or user');
+    return;
+  }
   try {
     const spaceData = await collaborationService.fetchSpaceDetails(id as string);
     console.log('Space data loaded:', spaceData);

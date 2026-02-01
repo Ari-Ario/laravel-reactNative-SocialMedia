@@ -3,20 +3,17 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 const getApiBase = (): string => {
-  const androidUrl = Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL_ANDROID || Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL || '';
-  const iosUrl = Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL_IOS || Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL || '';
-  const defaultUrl = Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL || '';
-
+  const defaultUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
+  
   if (Platform.OS === 'android') {
-    return androidUrl;
+    return process.env.EXPO_PUBLIC_API_URL_ANDROID + '/api' || defaultUrl;
   }
-
   if (Platform.OS === 'ios') {
-    return iosUrl;
+    return process.env.EXPO_PUBLIC_API_URL_IOS + '/api' || defaultUrl;
   }
-
-  // Web and physical devices (or fallback)
-  return defaultUrl;
+  
+  // web / fallback
+  return defaultUrl + '/api';
 };
 
 export default getApiBase;

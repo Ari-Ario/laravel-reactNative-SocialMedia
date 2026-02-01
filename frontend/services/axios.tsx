@@ -1,20 +1,34 @@
+// services/axios.js
 import axiosLib from 'axios';
 import { getToken } from './TokenService';
-import { Constants } from 'expo-constants';
+import getApiBase from './getApiBase';
 
+const baseURL = getApiBase();
 const axios = axiosLib.create({
-  baseURL: 'http://127.0.0.1:8000/api',
+  baseURL,
   headers: {
     Accept: "application/json",
+    "Content-Type": "application/json",
   },
 });
 
 axios.interceptors.request.use(async (req) => {
-  const token = await getToken();
-
-  if (token !== null) {
-    req.headers["Authorization"] =`Bearer ${token}`;
+    console.log('Axios Request:', {
+    url: req.url,
+    fullUrl: req.baseURL + req.url,
+    headers: req.headers
+  });
+  // Only add token for non-auth endpoints
+  const authEndpoints = ['/login', '/register', '/forgot-password', '/reset-password'];
+  const isAuthRequest = authEndpoints.some(endpoint => req.url?.includes(endpoint));
+  
+  if (!isAuthRequest) {
+    const token = await getToken();
+    if (token) {
+      req.headers["Authorization"] = `Bearer ${token}`;
+    }
   }
+  
   return req;
 });
 

@@ -1,87 +1,106 @@
-import { useState, useContext } from "react";
-import { SafeAreaView ,View, Text, StyleSheet, Button, TouchableOpacity, Platform } from 'react-native';
-import axios from "@/services/axios";
-import FormTextField from "@/components/FormTextField";
-import { login, loadUser } from "@/services/AuthService";
-import { router } from 'expo-router';
-import AuthContext from "@/context/AuthContext";
-import { sendPasswordResetLink } from "@/services/AuthService";
+import React, { useState } from 'react';
+import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
+import { Link, router } from 'expo-router';
+import axios from '@/services/axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export default function () {
-
-    const [email, setEmail] = useState("");
-    const [errors, setErrors] = useState("");
-    const [resetStatus, setResetStatus] = useState("");
-
-    async function handleForgotPassword() {
-        setErrors({});
-        setResetStatus("");
-        try {
-            const status = await sendPasswordResetLink(email);
-            setResetStatus(status);
-            console.log('here at ResetPage: ', status)
-
-        } catch (e) {
-            if (e.response?.status === 422) {
-                setErrors(e.response.data.errors)
-            }
+export default function ForgotPasswordScreen() {
+    const [email, setEmail] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState('');
+    
+    const handleSendCode = async () => {
+        if (!email) {
+            setMessage('Please enter your email');
+            return;
         }
-    }
+        
+        setLoading(true);
+        setMessage('');
+        
+        try {
+            const response = await axios.post('/forgot-password', { email });
+            await AsyncStorage.setItem('reset_password_email', email);
 
+            if (response.data.message) {
+                // Navigate to reset code screen
+                router.push({
+                    pathname: '/ResetPasswordScreen',
+                    params: { email }
+                });
+            }
+        } catch (error: any) {
+            setMessage(error.response?.data?.message || 'Failed to send reset code');
+        } finally {
+            setLoading(false);
+        }
+    };
+    
     return (
-        <SafeAreaView style={styles.wrapper}>
-            <View>
-                <TouchableOpacity 
-                    style={styles.button}
-                    onPress={() => router.replace('/LoginScreen')}
-                >
-                    <Text style={styles.buttonText}>◀ Back to Login</Text>
-                </TouchableOpacity>
-            </View>
+        <View style={styles.container}>
+            <Text style={styles.title}>Reset Password</Text>
+            <Text style={styles.subtitle}>
+                Enter your email to receive a reset code
+            </Text>
             
-            <View style={styles.container}>
-                { resetStatus && <Text style={styles.resetStatus}> {resetStatus} </Text>}
-                <FormTextField label="Email address:" 
-                value={email} 
-                onChangeText={(text) => setEmail(text)} 
-                keyboardType="email-address" 
-                errors={errors.email}
-                />
-
-                <Button title="Setpassword" onPress={handleForgotPassword} />
-                        
-            </View>
-        </ SafeAreaView>
-    )
+            <TextInput
+                style={styles.input}
+                placeholder="Email"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+            />
+            
+            {message ? <Text style={styles.message}>{message}</Text> : null}
+            
+            <Button
+                title={loading ? "Sending..." : "Send Reset Code"}
+                onPress={handleSendCode}
+                disabled={loading}
+            />
+            
+            <Link href="/Login" style={styles.link}>
+                Back to Login
+            </Link>
+        </View>
+    );
 }
 
 const styles = StyleSheet.create({
-    wrapper: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-        backgroundColor: '#fff',
-    },
     container: {
+        flex: 1,
         padding: 20,
-        rowGap: 16,
-        width: 300,
+        justifyContent: 'center',
     },
-    button: {
-        top: 0,
-        left: 0,
-        width: '100%',
-        // alignItems: 'left',
-        marginBottom: 0,
-      },
-      buttonText: {
-        color: "blue",
-        fontSize: 22,
-        fontWeight: '500',
-      },
-      resetStatus: {
-        color: "green",
+    title: {
+        fontSize: 24,
+        fontWeight: 'bold',
         marginBottom: 10,
-      }
-  });
+        textAlign: 'center',
+    },
+    subtitle: {
+        fontSize: 16,
+        color: '#666',
+        marginBottom: 30,
+        textAlign: 'center',
+    },
+    input: {
+        borderWidth: 1,
+        borderColor: '#ddd',
+        borderRadius: 8,
+        padding: 12,
+        marginBottom: 20,
+        fontSize: 16,
+    },
+    message: {
+        textAlign: 'center',
+        marginBottom: 20,
+        color: '#666',
+    },
+    link: {
+        marginTop: 20,
+        textAlign: 'center',
+        color: 'blue',
+    },
+});
