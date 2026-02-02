@@ -193,6 +193,7 @@ export default function TabLayout() {
                 tabBarIcon: ({ color }) => <FontAwesome size={28} name="android" color={color} />,
               }}
             />
+            {(user?.email_verified_at && user?.ai_admin !== null) && (
             <Tabs.Screen
               name="chatbotTraining"
               options={{
@@ -200,6 +201,21 @@ export default function TabLayout() {
                 tabBarIcon: ({ color }) => <FontAwesome size={28} name="server" color={color} />,
               }}
             />
+            )}
+
+  {/* Conditionally hide the entire tab button */}
+  {/* <Tabs.Screen
+    name="chatbotTraining"
+    options={{
+      title: 'Chatbot Training',
+      tabBarIcon: ({ color }) => <FontAwesome size={28} name="server" color={color} />,
+      tabBarButton: (props) => 
+        user?.ai_admin === 1 ? (
+          <TouchableOpacity {...props} />
+        ) : null,
+    }}
+  /> */}
+  
             <Tabs.Screen
               name="settings"
               options={{
