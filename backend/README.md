@@ -10,13 +10,9 @@ php artisan make:command RefreshStories
 or by Table-name
 php artisan db:seed --class=StoriesTableSeeder
 
-## broadcast testing for comment
+## it needs curl for pusher 7
 
-curl -X POST http://localhost:8000/api/posts/60/comment \
-  -H "Authorization: Bearer 3dfsoacOoyKEFKiIHBuLSeIGqB09XMe75lMRWX6P3bf8d3fd" \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json" \
-  -d '{"content": "Testing clean Laravel broadcast only"}'
+sudo apt install php8.4-curl
 
 ## python packages installation for AI
 pip install fastapi uvicorn sentence-transformers faiss-cpu transformers torch wikipedia wikipedia-api

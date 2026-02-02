@@ -2,6 +2,7 @@
 
 return [
     'default' => env('BROADCAST_DRIVER', 'pusher'),
+    // 'default' => 'log',
 
     'connections' => [
         'pusher' => [
