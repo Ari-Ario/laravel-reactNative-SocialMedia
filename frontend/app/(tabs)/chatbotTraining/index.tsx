@@ -317,8 +317,7 @@ form: {
     borderColor: '#ddd',
     borderRadius: 5,
     backgroundColor: '#FAF9F6',
-    shadowRadius: 1,
-    shadowColor: 'black',
+    boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
 },
 input: {
     borderWidth: 1,

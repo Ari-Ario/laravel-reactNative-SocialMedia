@@ -131,10 +131,7 @@ const styles = StyleSheet.create({
     zIndex: 1000,
     backgroundColor: 'white',
     borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
     elevation: 5,
   },
   toastContent: {

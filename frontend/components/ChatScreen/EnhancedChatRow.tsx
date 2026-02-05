@@ -6,6 +6,10 @@ import { useState, useContext } from 'react';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import CollaborationService, { CollaborationSpace } from '@/services/CollaborationService';
 import AuthContext from '@/context/AuthContext';
+import Avatar from '@/components/Image/Avatar';
+import axios from '@/services/axios';
+import { getToken } from '@/services/TokenService';
+import getApiBase from '@/services/getApiBase';
 
 interface EnhancedChatRowProps {
   id: string;
@@ -48,8 +52,8 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
   const [showContactMenu, setShowContactMenu] = useState(false);
   const collaborationService = CollaborationService.getInstance();
   const { user } = useContext(AuthContext);
-
-
+  const API_BASE = getApiBase();
+  const token = getToken();
   // Handle contact press - open collaboration menu
   const handleContactPress = () => {
     if (type === 'contact') {
@@ -61,9 +65,9 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
   const handleStartChat = async () => {
     try {
       // First check if conversation already exists
-      const existingConversations = await axios.get(`${process.env.EXPO_PUBLIC_API_URL}/api/conversations`, {
+      const existingConversations = await axios.get(`${API_BASE}/conversations`, {
         params: { participant_id: user_id },
-        headers: { Authorization: `Bearer ${user?.token}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
       
       let conversationId;
@@ -73,11 +77,11 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
         conversationId = existingConversations.data[0].id;
       } else {
         // Create new conversation
-        const newConversation = await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/api/conversations`, {
+        const newConversation = await axios.post(`${API_BASE}/conversations`, {
           type: 'private',
           participant_ids: [parseInt(user_id)],
         }, {
-          headers: { Authorization: `Bearer ${user?.token}` },
+          headers: { Authorization: `Bearer ${token}` },
         });
         
         conversationId = newConversation.data.id;
@@ -103,31 +107,57 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
   };
 
   // Start a video call with contact
-  const handleStartVideoCall = async () => {
+const handleStartVideoCall = async () => {
+  try {
+    // Create space first
+    const space = await collaborationService.createSpace({
+      title: `Video call with ${name}`,
+      space_type: 'meeting',
+      description: `Private video call between ${user?.name} and ${name}`,
+    });
+
+    // Join the space (you're the creator, so you're automatically joined)
+    // No need to call joinSpace() for creator
+    
+    // Send invitation to the other user
     try {
-      // Create a meeting space
-      const space = await collaborationService.createSpace({
-        title: `Meeting with ${name}`,
-        space_type: 'meeting',
-        ai_personality: 'helpful',
-        ai_capabilities: ['summarize', 'moderate'],
-      });
-      
-      // Invite the contact to the space
-      await collaborationService.inviteToSpace(space.id, [parseInt(user_id)], 'participant', `Join my video call!`);
-      
-      // Start the call
-      await collaborationService.startCall(space.id, 'video');
-      
-      // Navigate to the space
-      router.push(`/spaces/${space.id}`);
-      
-      setShowContactMenu(false);
-    } catch (error) {
-      console.error('Error starting video call:', error);
-      Alert.alert('Error', 'Failed to start video call');
+      await collaborationService.inviteToSpace(space.id, [parseInt(id)], 'participant', 
+        `${user?.name} wants to start a video call with you!`);
+    } catch (inviteError: any) {
+      // If invite fails due to permission, try to just join them directly
+      if (inviteError.message?.includes('permission')) {
+        console.log('Using direct join instead of invitation');
+        // As creator, you can add them directly
+        await collaborationService.updateSpace(space.id, {
+          // You might need a different endpoint for direct adding
+        });
+      } else {
+        throw inviteError;
+      }
     }
-  };
+
+    // Start the call
+    const callData = await collaborationService.startCall(space.id, 'video');
+    
+    // Navigate to space with call active
+    router.push(`/(spaces)/${space.id}?call=${callData.call.id}`);
+    
+  } catch (error: any) {
+    console.error('Error starting video call:', error);
+    
+    let errorMessage = 'Failed to start video call.';
+    
+    if (error.response?.status === 403) {
+      errorMessage = 'You need to be a space participant to start calls.';
+    } else if (error.response?.status === 422) {
+      errorMessage = 'Invalid request. Please check your input.';
+    } else if (error.message?.includes('permission')) {
+      errorMessage = 'You do not have permission to invite users.';
+    }
+    
+    Alert.alert('Error', errorMessage, [{ text: 'OK' }]);
+  }
+};
 
   // Start a voice call with contact
   const handleStartVoiceCall = async () => {
@@ -322,7 +352,7 @@ const renderContactContent = () => (
         source={{
           uri: avatar
             ? `${getApiBaseImage()}/storage/${avatar}`
-            : 'https://via.placeholder.com/50',
+            : 'https://picsum.photos/200',
         }}
         style={styles.avatar}
       />
@@ -431,7 +461,7 @@ const renderContactContent = () => (
             </View>
           ) : (
             <Image 
-              source={{ uri: avatar ? `${getApiBaseImage()}/storage/${avatar}` : 'https://via.placeholder.com/50' }} 
+              source={{ uri: avatar ? `${getApiBaseImage()}/storage/${avatar}` : 'https://picsum.photos/200' }} 
               style={styles.avatar}
             />
           )}

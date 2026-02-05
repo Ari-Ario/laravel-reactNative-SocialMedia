@@ -1,9 +1,10 @@
 // components/AI/AICollaborationAssistant.tsx
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, Pressable, Animated, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Pressable, Animated, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import * as Haptics from 'expo-haptics';
+import getApiBase from '@/services/getApiBase';
 
 interface AIAssistantProps {
   spaceId: string;
@@ -25,7 +26,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
   const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
   const [chatHistory, setChatHistory] = useState<any[]>([]);
   const [userInput, setUserInput] = useState('');
-  
+  const API_BASE = getApiBase();
   const slideAnim = useRef(new Animated.Value(300)).current;
 
   // Load AI capabilities from space settings
@@ -111,7 +112,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
     
     try {
       // First, check your existing chatbot_training for direct matches
-      const trainingResponse = await axios.post('/api/ai/query-training', {
+      const trainingResponse = await axios.post(`${API_BASE}/ai/query-training`, {
         query,
         context: {
           space_type: spaceType,
@@ -168,7 +169,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
     });
     
     // Also add to space as a summary card
-    await axios.post(`/api/spaces/${spaceId}/add-summary`, {
+    await axios.post(`${API_BASE}/spaces/${spaceId}/add-summary`, {
       summary: summary.text,
       generated_by: 'ai'
     });
@@ -208,6 +209,9 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
       tension: 50,
       friction: 10
     }).start();
+    if (Platform.OS !== 'web') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 

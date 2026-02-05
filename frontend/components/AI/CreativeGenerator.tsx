@@ -1,8 +1,16 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
-  ScrollView, StyleSheet, Animated, Alert,
-  ActivityIndicator, Dimensions
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  Animated,
+  Alert,
+  ActivityIndicator,
+  Dimensions,
+  SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -33,32 +41,46 @@ interface Idea {
   metadata?: any;
 }
 
-export const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
+interface CreativeMode {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  color: string;
+}
+
+const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
   spaceId,
   context,
-  onClose
+  onClose,
 }) => {
   const router = useRouter();
-  const [creativeModes] = useState([
-    { id: 'brainstorm', name: 'Brainstorm', icon: 'flash' },
-    { id: 'story-continue', name: 'Story', icon: 'book' },
-    { id: 'problem-solve', name: 'Solve', icon: 'bulb' },
-    { id: 'design-thinking', name: 'Design', icon: 'pencil' },
-    { id: 'debate', name: 'Debate', icon: 'chatbubbles' },
-    { id: 'roleplay', name: 'Roleplay', icon: 'person' },
-  ]);
   
-  const [activeMode, setActiveMode] = useState('brainstorm');
+  const creativeModes: CreativeMode[] = [
+    { id: 'brainstorm', name: 'Brainstorm', icon: 'flash', description: 'Generate creative ideas', color: '#4ECDC4' },
+    { id: 'story-continue', name: 'Story', icon: 'book', description: 'Continue collaborative stories', color: '#F38181' },
+    { id: 'problem-solve', name: 'Solve', icon: 'bulb', description: 'Find solutions to problems', color: '#FFD166' },
+    { id: 'design-thinking', name: 'Design', icon: 'pencil', description: 'Design thinking exercises', color: '#06D6A0' },
+    { id: 'debate', name: 'Debate', icon: 'chatbubbles', description: 'Constructive debate topics', color: '#118AB2' },
+    { id: 'roleplay', name: 'Roleplay', icon: 'person', description: 'Role-playing scenarios', color: '#EF476F' },
+  ];
+  
+  const [activeMode, setActiveMode] = useState<CreativeMode>(creativeModes[0]);
   const [generatedContent, setGeneratedContent] = useState<Idea[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [voiceInput, setVoiceInput] = useState('');
+  const [recordingTime, setRecordingTime] = useState(0);
   
   const collaborationService = CollaborationService.getInstance();
   const scrollViewRef = useRef<ScrollView>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Animation refs for each idea card
+  const ideaAnimations = useRef<Map<string, Animated.Value>>(new Map());
 
   // Initialize animations
   useEffect(() => {
@@ -67,23 +89,35 @@ export const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
       duration: 500,
       useNativeDriver: true,
     }).start();
-    
-    // Pulse animation for recording
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.2,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
+
+    return () => {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
+    };
   }, []);
+
+  // Animation for recording
+  useEffect(() => {
+    if (isRecording) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.2,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      pulseAnim.setValue(1);
+    }
+  }, [isRecording]);
 
   const startVoiceIdeation = async () => {
     try {
@@ -96,20 +130,31 @@ export const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
       });
 
       const newRecording = new Audio.Recording();
-      await newRecording.prepareToRecordAsync(Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY);
+      await newRecording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
       await newRecording.startAsync();
       
       setRecording(newRecording);
       setIsRecording(true);
+      setRecordingTime(0);
       
-      if (Platform.OS !== 'web') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      } else {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      }
+      
+      // Start timer
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime(prev => {
+          if (prev >= 10) {
+            stopVoiceIdeation();
+            return 10;
+          }
+          return prev + 1;
+        });
+      }, 1000);
       
       // Auto-stop after 10 seconds
       setTimeout(() => {
@@ -118,7 +163,7 @@ export const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
       
     } catch (error) {
       console.error('Failed to start recording:', error);
-      Alert.alert('Error', 'Failed to start recording');
+      Alert.alert('Error', 'Failed to start recording. Please try again.');
     }
   };
 
@@ -126,13 +171,19 @@ export const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
     if (!recording) return;
     
     try {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+      
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
       setIsRecording(false);
       setRecording(null);
       
-      // Generate ideas from voice
-      await generateIdeasFromVoice(uri!);
+      if (uri) {
+        await generateIdeasFromVoice(uri);
+      }
       
     } catch (error) {
       console.error('Failed to stop recording:', error);
@@ -144,30 +195,49 @@ export const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
     setIsGenerating(true);
     
     try {
-      // In a real app, you'd send the audio to your backend
-      // For now, we'll simulate AI response
+      // Mock implementation - replace with actual AI service
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      const mockIdeas = [
+      const mockIdeas: Idea[] = [
         {
-          id: Date.now().toString(),
-          content: "What if we created a visual mind map of all our conversations?",
+          id: `voice_${Date.now()}`,
+          content: "What if we created a visual mind map to organize all our conversation topics?",
           type: 'voice-idea',
           mood: 'creative' as const,
           timestamp: new Date().toISOString(),
-          metadata: { source: 'voice', length: '5s' }
+          metadata: { source: 'voice', duration: `${recordingTime}s` }
         },
         {
-          id: (Date.now() + 1).toString(),
-          content: "We could organize a weekly brainstorming session every Friday",
+          id: `voice_${Date.now() + 1}`,
+          content: "We could schedule weekly brainstorming sessions every Friday at 3 PM",
           type: 'voice-idea',
           mood: 'positive' as const,
           timestamp: new Date().toISOString(),
-          metadata: { source: 'voice', length: '5s' }
+          metadata: { source: 'voice', duration: `${recordingTime}s` }
         }
       ];
       
+      // Initialize animation for each new idea
+      mockIdeas.forEach(idea => {
+        ideaAnimations.current.set(idea.id, new Animated.Value(0));
+      });
+      
       setGeneratedContent(prev => [...mockIdeas, ...prev]);
+      
+      // Animate new ideas in
+      setTimeout(() => {
+        mockIdeas.forEach(idea => {
+          const anim = ideaAnimations.current.get(idea.id);
+          if (anim) {
+            Animated.spring(anim, {
+              toValue: 1,
+              tension: 50,
+              friction: 7,
+              useNativeDriver: true,
+            }).start();
+          }
+        });
+      }, 100);
       
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       
@@ -183,57 +253,198 @@ export const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
     setIsGenerating(true);
     
     try {
-      // Query AI for alternate perspectives
-      const response = await collaborationService.queryAI(
-        spaceId,
-        `Generate 3 alternate perspectives for: ${context.type === 'chat' ? 'chat conversations' : 'collaboration'}`,
-        { context, mode: activeMode }
-      );
+      // Use actual spaceId, not "global"
+      const actualSpaceId = spaceId && spaceId !== 'global' ? spaceId : undefined;
       
-      const newIdea: Idea = {
-        id: Date.now().toString(),
-        content: "Alternate perspectives generated:",
-        type: 'alternate-realities',
-        mood: 'analytical',
-        timestamp: new Date().toISOString(),
-        metadata: { realities: response.ai_response }
-      };
-      
-      setGeneratedContent(prev => [newIdea, ...prev]);
+      if (!actualSpaceId) {
+        // Generate mock data if no spaceId
+        const mockRealities = [
+          "What if we approached this from an optimistic perspective where everything goes perfectly?",
+          "Consider the pessimistic view - what are the potential challenges and how can we mitigate them?",
+          "From a radically creative angle, what if we combined this with completely unrelated concepts?"
+        ];
+        
+        const newIdea: Idea = {
+          id: `realities_${Date.now()}`,
+          content: "Alternate perspectives generated:\n\n• " + mockRealities.join("\n\n• "),
+          type: 'alternate-realities',
+          mood: 'analytical',
+          timestamp: new Date().toISOString(),
+          metadata: { 
+            realities: mockRealities,
+            generatedAt: new Date().toISOString()
+          }
+        };
+        
+        ideaAnimations.current.set(newIdea.id, new Animated.Value(0));
+        setGeneratedContent(prev => [newIdea, ...prev]);
+        
+        setTimeout(() => {
+          const anim = ideaAnimations.current.get(newIdea.id);
+          if (anim) {
+            Animated.spring(anim, {
+              toValue: 1,
+              tension: 50,
+              friction: 7,
+              useNativeDriver: true,
+            }).start();
+          }
+        }, 100);
+        
+      } else {
+        // Use actual AI query
+        const response = await collaborationService.queryAI(
+          actualSpaceId,
+          `Generate 3 alternate perspectives for: ${context.type === 'chat' ? 'chat conversations' : 'collaboration'}`,
+          { 
+            context, 
+            mode: activeMode.id,
+            requestType: 'alternate_perspectives'
+          },
+          'generate_perspectives'
+        );
+        
+        const newIdea: Idea = {
+          id: `realities_${Date.now()}`,
+          content: response.ai_response || "Alternate perspectives generated",
+          type: 'alternate-realities',
+          mood: 'analytical',
+          timestamp: new Date().toISOString(),
+          metadata: { 
+            response,
+            generatedAt: new Date().toISOString()
+          }
+        };
+        
+        ideaAnimations.current.set(newIdea.id, new Animated.Value(0));
+        setGeneratedContent(prev => [newIdea, ...prev]);
+        
+        setTimeout(() => {
+          const anim = ideaAnimations.current.get(newIdea.id);
+          if (anim) {
+            Animated.spring(anim, {
+              toValue: 1,
+              tension: 50,
+              friction: 7,
+              useNativeDriver: true,
+            }).start();
+          }
+        }, 100);
+      }
       
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating alternate realities:', error);
-      Alert.alert('Error', 'Failed to generate alternate perspectives');
+      
+      // Provide fallback content
+      const fallbackIdea: Idea = {
+        id: `fallback_${Date.now()}`,
+        content: "Try looking at this from different angles:\n\n1. The Optimist: Everything works perfectly\n2. The Realist: Practical considerations\n3. The Innovator: Radical new approaches",
+        type: 'alternate-realities',
+        mood: 'analytical',
+        timestamp: new Date().toISOString(),
+      };
+      
+      ideaAnimations.current.set(fallbackIdea.id, new Animated.Value(0));
+      setGeneratedContent(prev => [fallbackIdea, ...prev]);
+      
+      setTimeout(() => {
+        const anim = ideaAnimations.current.get(fallbackIdea.id);
+        if (anim) {
+          Animated.spring(anim, {
+            toValue: 1,
+            tension: 50,
+            friction: 7,
+            useNativeDriver: true,
+          }).start();
+        }
+      }, 100);
+      
     } finally {
       setIsGenerating(false);
     }
   };
 
   const startCollaborativeStory = async () => {
+    setIsGenerating(true);
+    
     try {
-      const response = await collaborationService.queryAI(
-        spaceId,
-        "Start a collaborative story. First sentence should be engaging and open-ended.",
-        { context, mode: 'story-continue' }
-      );
+      // Use actual spaceId, not "global"
+      const actualSpaceId = spaceId && spaceId !== 'global' ? spaceId : undefined;
       
-      const storyIdea: Idea = {
-        id: Date.now().toString(),
-        content: response.ai_response || "Once upon a time in a digital realm...",
-        type: 'story-start',
-        mood: 'creative',
-        timestamp: new Date().toISOString(),
-        contributors: ['AI'],
-        metadata: { nextPrompt: 'Continue the story...' }
-      };
+      if (!actualSpaceId) {
+        // Mock story start
+        const storyStart = "In a world where ideas take physical form, a group of collaborators discovered a mysterious glowing artifact that responded to their collective creativity...";
+        
+        const storyIdea: Idea = {
+          id: `story_${Date.now()}`,
+          content: storyStart,
+          type: 'story-start',
+          mood: 'creative',
+          timestamp: new Date().toISOString(),
+          contributors: ['AI'],
+          metadata: { 
+            nextPrompt: 'What happens when they touch the artifact?',
+            storySeed: 'mysterious_artifact'
+          }
+        };
+        
+        ideaAnimations.current.set(storyIdea.id, new Animated.Value(0));
+        setGeneratedContent(prev => [storyIdea, ...prev]);
+        
+      } else {
+        // Use actual AI query
+        const response = await collaborationService.queryAI(
+          actualSpaceId,
+          "Start a collaborative story. First sentence should be engaging and open-ended, suitable for multiple people to continue.",
+          { 
+            context, 
+            mode: 'story-continue',
+            storyType: 'collaborative',
+            maxLength: 100
+          },
+          'start_story'
+        );
+        
+        const storyIdea: Idea = {
+          id: `story_${Date.now()}`,
+          content: response.ai_response || "Once upon a time in a collaborative digital realm...",
+          type: 'story-start',
+          mood: 'creative',
+          timestamp: new Date().toISOString(),
+          contributors: ['AI'],
+          metadata: { 
+            nextPrompt: 'Continue the story...',
+            response
+          }
+        };
+        
+        ideaAnimations.current.set(storyIdea.id, new Animated.Value(0));
+        setGeneratedContent(prev => [storyIdea, ...prev]);
+      }
       
-      setGeneratedContent(prev => [storyIdea, ...prev]);
+      // Animate the new story idea
+      setTimeout(() => {
+        const newIdeaId = `story_${Date.now()}`;
+        const anim = ideaAnimations.current.get(newIdeaId);
+        if (anim) {
+          Animated.spring(anim, {
+            toValue: 1,
+            tension: 50,
+            friction: 7,
+            useNativeDriver: true,
+          }).start();
+        }
+      }, 100);
+      
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       
     } catch (error) {
       console.error('Error starting story:', error);
       Alert.alert('Error', 'Failed to start collaborative story');
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -243,22 +454,19 @@ export const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
       neutral: '#95E1D3',
       creative: '#F38181',
       analytical: '#AA96DA',
+      energetic: '#FFD166',
+      calm: '#118AB2',
     };
     return moodColors[mood || 'neutral'] || '#4ECDC4';
   };
 
+  const getModeIcon = (modeId: string): string => {
+    const mode = creativeModes.find(m => m.id === modeId);
+    return mode?.icon || 'sparkles';
+  };
+
   const renderIdeaCard = (idea: Idea, index: number) => {
-    const cardAnim = useRef(new Animated.Value(0)).current;
-    
-    useEffect(() => {
-      Animated.spring(cardAnim, {
-        toValue: 1,
-        tension: 50,
-        friction: 7,
-        delay: index * 100,
-        useNativeDriver: true,
-      }).start();
-    }, []);
+    const anim = ideaAnimations.current.get(idea.id) || new Animated.Value(1);
     
     return (
       <Animated.View 
@@ -266,9 +474,9 @@ export const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
         style={[
           styles.ideaCard,
           {
-            opacity: cardAnim,
+            opacity: anim,
             transform: [{
-              translateY: cardAnim.interpolate({
+              translateY: anim.interpolate({
                 inputRange: [0, 1],
                 outputRange: [50, 0]
               })
@@ -278,7 +486,9 @@ export const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
       >
         <View style={styles.ideaHeader}>
           <View style={[styles.moodIndicator, { backgroundColor: getMoodColor(idea.mood) }]} />
-          <Text style={styles.ideaType}>{idea.type.replace('-', ' ')}</Text>
+          <Text style={styles.ideaType}>
+            {idea.type.replace('-', ' ').toUpperCase()}
+          </Text>
           <Text style={styles.ideaTime}>
             {new Date(idea.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </Text>
@@ -286,7 +496,7 @@ export const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
         
         <Text style={styles.ideaText}>{idea.content}</Text>
         
-        {idea.contributors && (
+        {idea.contributors && idea.contributors.length > 0 && (
           <View style={styles.contributors}>
             <Ionicons name="people" size={14} color="#666" />
             <Text style={styles.contributorText}>
@@ -304,21 +514,28 @@ export const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
             }}
           >
             <Ionicons name="heart-outline" size={18} color="#FF6B6B" />
+            <Text style={styles.actionButtonText}>Save</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
             style={styles.actionButton}
             onPress={() => {
               // Share idea
+              Alert.alert('Share Idea', 'Share this idea with others?', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Share', onPress: () => {
+                  // Implement sharing
+                }}
+              ]);
             }}
           >
             <Ionicons name="arrow-redo-outline" size={18} color="#45B7D1" />
+            <Text style={styles.actionButtonText}>Share</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
             style={styles.actionButton}
             onPress={() => {
-              // Create space from idea
               Alert.alert(
                 'Create Space',
                 'Create a collaboration space from this idea?',
@@ -327,7 +544,10 @@ export const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
                   { text: 'Create', onPress: () => {
                     router.push({
                       pathname: '/(spaces)/create',
-                      params: { idea: idea.content }
+                      params: { 
+                        idea: idea.content.substring(0, 100),
+                        ideaType: idea.type 
+                      }
                     });
                     onClose();
                   }}
@@ -336,15 +556,29 @@ export const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
             }}
           >
             <Ionicons name="cube-outline" size={18} color="#4ECDC4" />
-            <Text style={styles.actionText}>Create Space</Text>
+            <Text style={styles.actionButtonText}>Use</Text>
           </TouchableOpacity>
         </View>
+        
+        {idea.metadata?.source === 'voice' && (
+          <View style={styles.voiceMetadata}>
+            <Ionicons name="mic" size={12} color="#666" />
+            <Text style={styles.voiceMetadataText}>
+              Voice input • {idea.metadata.duration}
+            </Text>
+          </View>
+        )}
       </Animated.View>
     );
   };
 
+  const handleModeSelect = (mode: CreativeMode) => {
+    setActiveMode(mode);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onClose} style={styles.backButton}>
@@ -359,7 +593,10 @@ export const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
         
         <TouchableOpacity 
           style={styles.helpButton}
-          onPress={() => Alert.alert('Help', 'Generate creative ideas using different modes. Try voice input for spontaneous ideas!')}
+          onPress={() => Alert.alert(
+            'Creative Generator Help',
+            'Generate creative ideas using different modes:\n\n• Voice Ideas: Record your thoughts\n• Perspectives: Get alternate viewpoints\n• Story: Start collaborative narratives\n\nTap any idea to save, share, or create a space from it.'
+          )}
         >
           <Ionicons name="help-circle" size={24} color="#fff" />
         </TouchableOpacity>
@@ -377,21 +614,24 @@ export const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
             key={mode.id}
             style={[
               styles.modeButton,
-              activeMode === mode.id && styles.activeModeButton
+              activeMode.id === mode.id && { backgroundColor: mode.color + '20' }
             ]}
-            onPress={() => setActiveMode(mode.id)}
+            onPress={() => handleModeSelect(mode)}
           >
             <View style={[
               styles.modeIconContainer,
-              activeMode === mode.id && styles.activeModeIcon
+              activeMode.id === mode.id && { backgroundColor: mode.color }
             ]}>
               <Ionicons name={mode.icon as any} size={22} color="#fff" />
             </View>
             <Text style={[
               styles.modeText,
-              activeMode === mode.id && styles.activeModeText
+              activeMode.id === mode.id && { color: mode.color, fontWeight: '600' }
             ]}>
               {mode.name}
+            </Text>
+            <Text style={styles.modeDescription} numberOfLines={1}>
+              {mode.description}
             </Text>
           </TouchableOpacity>
         ))}
@@ -405,10 +645,18 @@ export const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
             { transform: [{ scale: pulseAnim }] }
           ]}
         >
-          <View style={styles.recordingDot} />
-          <Text style={styles.recordingText}>Recording... Speak your ideas</Text>
-          <TouchableOpacity onPress={stopVoiceIdeation}>
+          <View style={styles.recordingInfo}>
+            <View style={styles.recordingDot} />
+            <Text style={styles.recordingText}>
+              Recording... {recordingTime}s
+            </Text>
+          </View>
+          <TouchableOpacity 
+            onPress={stopVoiceIdeation}
+            style={styles.stopButton}
+          >
             <Ionicons name="stop-circle" size={28} color="#FF6B6B" />
+            <Text style={styles.stopButtonText}>Stop</Text>
           </TouchableOpacity>
         </Animated.View>
       )}
@@ -417,23 +665,34 @@ export const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
       <ScrollView 
         ref={scrollViewRef}
         style={styles.contentArea}
-        contentContainerStyle={styles.contentAreaContent}
+        contentContainerStyle={[
+          styles.contentAreaContent,
+          generatedContent.length === 0 && styles.emptyContentArea
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {isGenerating && (
           <View style={styles.generatingContainer}>
-            <ActivityIndicator size="large" color="#45B7D1" />
-            <Text style={styles.generatingText}>Generating creative ideas...</Text>
+            <ActivityIndicator size="large" color={activeMode.color} />
+            <Text style={styles.generatingText}>
+              Generating {activeMode.name.toLowerCase()} ideas...
+            </Text>
           </View>
         )}
 
-        {generatedContent.length === 0 ? (
+        {generatedContent.length === 0 && !isGenerating ? (
           <View style={styles.emptyState}>
             <Ionicons name="bulb-outline" size={80} color="#333" />
             <Text style={styles.emptyTitle}>No ideas yet</Text>
             <Text style={styles.emptyDescription}>
-              Tap on a mode and generate ideas using voice or AI
+              Tap a mode and generate ideas using voice or AI
             </Text>
+            <View style={styles.emptyTips}>
+              <Text style={styles.emptyTipsTitle}>Tips:</Text>
+              <Text style={styles.emptyTip}>• Use voice for spontaneous ideas</Text>
+              <Text style={styles.emptyTip}>• Try different modes for varied perspectives</Text>
+              <Text style={styles.emptyTip}>• Save ideas you want to revisit</Text>
+            </View>
           </View>
         ) : (
           generatedContent.map((idea, index) => renderIdeaCard(idea, index))
@@ -445,7 +704,7 @@ export const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
         <TouchableOpacity 
           style={[
             styles.controlButton,
-            isRecording && styles.controlButtonActive
+            isRecording && { backgroundColor: '#FF6B6B20' }
           ]}
           onPress={isRecording ? stopVoiceIdeation : startVoiceIdeation}
           disabled={isGenerating}
@@ -457,7 +716,10 @@ export const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
               color={isRecording ? "#FF6B6B" : "#fff"} 
             />
           </Animated.View>
-          <Text style={styles.controlText}>
+          <Text style={[
+            styles.controlText,
+            isRecording && { color: '#FF6B6B' }
+          ]}>
             {isRecording ? 'Stop' : 'Voice'}
           </Text>
         </TouchableOpacity>
@@ -483,15 +745,32 @@ export const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
         <TouchableOpacity 
           style={styles.controlButton}
           onPress={() => {
-            setGeneratedContent([]);
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            if (generatedContent.length > 0) {
+              Alert.alert(
+                'Clear Ideas',
+                'Are you sure you want to clear all generated ideas?',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { 
+                    text: 'Clear', 
+                    style: 'destructive',
+                    onPress: () => {
+                      setGeneratedContent([]);
+                      ideaAnimations.current.clear();
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    }
+                  }
+                ]
+              );
+            }
           }}
+          disabled={isGenerating || isRecording}
         >
-          <Ionicons name="refresh" size={24} color="#fff" />
+          <Ionicons name="trash" size={24} color="#fff" />
           <Text style={styles.controlText}>Clear</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -545,11 +824,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 6,
     paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-  },
-  activeModeButton: {
-    backgroundColor: '#333',
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    minWidth: 100,
   },
   modeIconContainer: {
     width: 44,
@@ -560,40 +837,53 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 6,
   },
-  activeModeIcon: {
-    backgroundColor: '#45B7D1',
-  },
   modeText: {
-    color: '#999',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  activeModeText: {
     color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  modeDescription: {
+    color: '#999',
+    fontSize: 10,
+    textAlign: 'center',
   },
   recordingIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     backgroundColor: 'rgba(255, 107, 107, 0.1)',
     marginHorizontal: 16,
     marginVertical: 12,
-    padding: 12,
+    padding: 16,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#FF6B6B',
+  },
+  recordingInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   recordingDot: {
     width: 12,
     height: 12,
     borderRadius: 6,
     backgroundColor: '#FF6B6B',
-    marginRight: 8,
+    marginRight: 12,
   },
   recordingText: {
-    flex: 1,
     color: '#FF6B6B',
-    fontSize: 14,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  stopButton: {
+    alignItems: 'center',
+  },
+  stopButtonText: {
+    color: '#FF6B6B',
+    fontSize: 12,
+    marginTop: 2,
     fontWeight: '500',
   },
   contentArea: {
@@ -604,6 +894,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingBottom: 100,
   },
+  emptyContentArea: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   generatingContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -612,12 +906,12 @@ const styles = StyleSheet.create({
   generatingText: {
     color: '#fff',
     fontSize: 16,
-    marginTop: 12,
+    marginTop: 16,
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
+    paddingVertical: 40,
   },
   emptyTitle: {
     color: '#fff',
@@ -630,7 +924,26 @@ const styles = StyleSheet.create({
     color: '#999',
     fontSize: 16,
     textAlign: 'center',
+    marginBottom: 24,
     paddingHorizontal: 32,
+  },
+  emptyTips: {
+    backgroundColor: '#1a1a1a',
+    padding: 16,
+    borderRadius: 12,
+    width: '80%',
+  },
+  emptyTipsTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  emptyTip: {
+    color: '#999',
+    fontSize: 14,
+    marginBottom: 4,
+    marginLeft: 8,
   },
   ideaCard: {
     backgroundColor: '#1a1a1a',
@@ -654,14 +967,13 @@ const styles = StyleSheet.create({
   ideaType: {
     flex: 1,
     color: '#fff',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
-    textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   ideaTime: {
     color: '#666',
-    fontSize: 12,
+    fontSize: 11,
   },
   ideaText: {
     color: '#fff',
@@ -691,11 +1003,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 16,
   },
-  actionText: {
-    color: '#4ECDC4',
+  actionButtonText: {
+    color: '#fff',
     fontSize: 12,
     marginLeft: 4,
     fontWeight: '500',
+  },
+  voiceMetadata: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  voiceMetadataText: {
+    color: '#666',
+    fontSize: 11,
+    marginLeft: 4,
   },
   controls: {
     flexDirection: 'row',
@@ -718,9 +1040,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#333',
     minWidth: 70,
-  },
-  controlButtonActive: {
-    backgroundColor: 'rgba(255, 107, 107, 0.2)',
   },
   controlText: {
     color: '#fff',

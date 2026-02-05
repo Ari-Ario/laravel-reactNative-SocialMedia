@@ -73,6 +73,33 @@ export interface AIInteraction {
   created_at: string;
 }
 
+export interface CollaborativeActivity {
+  id: number;
+  space_id: string;
+  created_by: number;
+  activity_type: string;
+  title: string;
+  description?: string;
+  match_type?: string;
+  match_score?: number;
+  suggested_duration?: number;
+  actual_duration?: number;
+  status: 'proposed' | 'active' | 'completed' | 'cancelled' | 'archived';
+  metadata?: any;
+  outcomes?: any;
+  notes?: string;
+  proposed_at: string;
+  started_at?: string;
+  completed_at?: string;
+  cancelled_at?: string;
+  creator?: {
+    id: number;
+    name: string;
+    profile_photo?: string;
+  };
+  participants?: any[];
+}
+
 class CollaborationService {
   private static instance: CollaborationService;
   private pusher: Pusher | null = null;
@@ -319,7 +346,7 @@ private getMockSpace(spaceId: string): CollaborationSpace {
 
   async inviteToSpace(spaceId: string, userIds: number[], role?: string, message?: string): Promise<void> {
     try {
-      await axios.post(`${this.baseURL}/spaces/${spaceId}/invite`, {
+      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/invite`, {
         user_ids: userIds,
         role,
         message,
@@ -327,9 +354,35 @@ private getMockSpace(spaceId: string): CollaborationSpace {
         headers: this.getHeaders(),
       });
 
+      console.log('Invitation response:', response.data);
+      
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+      // If you want to automatically add participants (old behavior), use join instead
+      // For now, we're just sending invitations
+    } catch (error: any) {
+      console.error('Error inviting to space:', error.response?.data || error.message);
+      
+      if (error.response?.status === 403) {
+        throw new Error('You do not have permission to invite users to this space');
+      }
+      
+      throw error;
+    }
+  }
+
+  // Add a method to accept invitations
+  async acceptSpaceInvitation(spaceId: string): Promise<any> {
+    try {
+      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/accept-invitation`, {}, {
+        headers: this.getHeaders(),
+      });
+
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+      return response.data;
     } catch (error) {
-      console.error('Error inviting to space:', error);
+      console.error('Error accepting space invitation:', error);
       throw error;
     }
   }
@@ -466,25 +519,72 @@ private getMockSpace(spaceId: string): CollaborationSpace {
   // 🤖 AI ASSISTANT
 
   async queryAI(spaceId: string, query: string, context?: any, action?: string): Promise<AIInteraction> {
-    try {
-      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/ai-query`, {
-        query,
-        context,
-        action,
-      }, {
-        headers: this.getHeaders(),
-      });
+      try {
+          // Handle "global" space ID - use a mock response
+          if (spaceId === 'global' || !spaceId) {
+              console.log('Using mock AI response for global space');
+              return this.getMockAIResponse(query, context, action);
+          }
+          
+          const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/ai-query`, {
+              query,
+              context,
+              action,
+          }, {
+              headers: this.getHeaders(),
+          });
 
-      await this.triggerHapticSuccess();
+          await this.triggerHapticSuccess();
+          
+          return {
+              ...response.data,
+              created_at: new Date().toISOString(),
+          };
+      } catch (error) {
+          console.error('Error querying AI:', error);
+          
+          // Fallback to mock response
+          return this.getMockAIResponse(query, context, action);
+      }
+  }
+
+  private getMockAIResponse(query: string, context?: any, action?: string): AIInteraction {
+      const mockResponses: Record<string, string> = {
+          'brainstorm': "Let's brainstorm! How about we explore: 1) Customer journey mapping, 2) SWOT analysis, 3) Mind mapping our key ideas?",
+          'story-continue': "As the team ventured deeper into the digital realm, they discovered that their collective thoughts began to manifest as shimmering structures around them...",
+          'problem-solve': "To solve this, consider: 1) Breaking it into smaller parts, 2) Looking at it from different perspectives, 3) Gathering more data before deciding.",
+          'design-thinking': "For design thinking: 1) Empathize with users, 2) Define the core problem, 3) Ideate solutions, 4) Prototype, 5) Test and iterate.",
+          'alternate_perspectives': "Three perspectives:\n1. The Optimist: Everything works perfectly\n2. The Pragmatist: What's realistically achievable\n3. The Innovator: Radical new approaches",
+          'start_story': "In a world where collaboration created reality, a group discovered their shared thoughts could shape their environment...",
+      };
+      
+      let response = mockResponses[action || ''] || 
+                    "I'm here to help with your creative collaboration! Based on your context, I suggest focusing on clear communication and regular check-ins.";
+      
+      if (query.toLowerCase().includes('perspective') || action === 'generate_perspectives') {
+          response = mockResponses['alternate_perspectives'];
+      }
+      
+      if (query.toLowerCase().includes('story') || action === 'start_story') {
+          response = mockResponses['start_story'];
+      }
       
       return {
-        ...response.data,
-        created_at: new Date().toISOString(),
+          id: `mock_${Date.now()}`,
+          space_id: 'global',
+          user_id: 0,
+          interaction_type: action || 'query',
+          user_input: query,
+          ai_response: response,
+          training_match_id: null,
+          context_data: context,
+          was_helpful: null,
+          user_feedback: null,
+          confidence_score: 0.85,
+          response_time_ms: 100,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
       };
-    } catch (error) {
-      console.error('Error querying AI:', error);
-      throw error;
-    }
   }
 
   async getAISuggestions(spaceId: string): Promise<any[]> {
@@ -753,6 +853,89 @@ private getMockSpace(spaceId: string): CollaborationSpace {
       return response.data;
     } catch (error) {
       console.error('Error suggesting story continuation:', error);
+      throw error;
+    }
+  }
+
+
+  // 🎯 COLLABORATIVE ACTIVITIES
+  async createCollaborativeActivity(activityData: {
+    space_id: string;
+    activity_type: string;
+    title: string;
+    description?: string;
+    match_type?: string;
+    match_score?: number;
+    suggested_duration?: number;
+    participant_ids?: number[];
+    metadata?: any;
+  }): Promise<CollaborativeActivity> {
+    try {
+      const response = await axios.post(`${this.baseURL}/collaborative-activities`, activityData, {
+        headers: this.getHeaders(),
+        
+      });
+
+      await this.triggerHapticSuccess();
+      
+      return response.data.activity;
+    } catch (error) {
+      console.error('Error creating collaborative activity:', error);
+      throw error;
+    }
+  }
+
+  async getSpaceActivities(spaceId: string, page = 1, limit = 20): Promise<{
+    activities: CollaborativeActivity[];
+    total: number;
+    current_page: number;
+  }> {
+    try {
+      const response = await axios.get(`${this.baseURL}/collaborative-activities/space/${spaceId}`, {
+        headers: this.getHeaders(),
+        params: { page, limit }
+      });
+      
+      return {
+        activities: response.data.activities.data || response.data.activities,
+        total: response.data.total || response.data.activities.total || 0,
+        current_page: response.data.current_page || page,
+      };
+    } catch (error) {
+      console.error('Error fetching space activities:', error);
+      throw error;
+    }
+  }
+
+  async updateActivityStatus(activityId: number, data: {
+    status: 'proposed' | 'active' | 'completed' | 'cancelled' | 'archived';
+    notes?: string;
+    actual_duration?: number;
+    outcomes?: any;
+  }): Promise<CollaborativeActivity> {
+    try {
+      const response = await axios.post(`${this.baseURL}/collaborative-activities/${activityId}/status`, data, {
+        headers: this.getHeaders(),
+      });
+
+      await this.triggerHapticLight();
+      
+      return response.data.activity;
+    } catch (error) {
+      console.error('Error updating activity status:', error);
+      throw error;
+    }
+  }
+
+  async getSpaceActivityStatistics(spaceId: string): Promise<any> {
+    try {
+      const response = await axios.get(`${this.baseURL}/collaborative-activities/space/${spaceId}/statistics`, {
+        headers: this.getHeaders(),
+      });
+      
+      return response.data.statistics;
+    } catch (error) {
+      console.error('Error fetching activity statistics:', error);
       throw error;
     }
   }

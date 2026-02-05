@@ -25,7 +25,7 @@ const ContactRow = ({
     <Pressable style={styles.container}>
       <View style={styles.avatarContainer}>
         <Image 
-          source={{ uri: avatar || 'https://via.placeholder.com/50' }} 
+          source={{ uri: avatar || 'https://picsum.photos/200' }} 
           style={styles.avatar}
         />
         {isOnline && <View style={styles.onlineIndicator} />}

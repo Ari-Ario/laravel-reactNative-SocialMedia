@@ -22,7 +22,7 @@ import AuthContext from '@/context/AuthContext';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { useProfileView } from '@/context/ProfileViewContext';
 import { usePostStore } from '@/stores/postStore';
-import { Video } from 'expo-video';
+import { Video } from 'expo-av';
 import { MediaViewer } from '@/components/MediaViewer';
 import { usePostListService } from '@/services/PostListService';
 import { PostActionButtons } from '@/components/PostActionButtons';
@@ -151,7 +151,7 @@ const submitComment = async () => {
           }}
         >
           <Image 
-            source={{ uri: `${getApiBaseImage()}/storage/${chatUser.profile_photo}` || 'https://via.placeholder.com/50' }} 
+            source={{ uri: `${getApiBaseImage()}/storage/${chatUser.profile_photo}` || 'https://picsum.photos/200' }} 
             style={styles.headerAvatar}
           />
           <View style={styles.userDetails}>

@@ -1,16 +1,22 @@
+// app/(tabs)/chats/index.tsx
 import {
   View, StyleSheet, ActivityIndicator, SectionList,
   TextInput, TouchableOpacity, Text, Modal, Alert,
-  RefreshControl, Animated,
+  RefreshControl, Animated, ScrollView,
   Platform
 } from "react-native";
-import { router } from 'expo-router';
+import OfflineService from '@/services/OfflineServiceChat';
+import RealTimeService from '@/services/RealTimeServiceChat';
+import NotificationService from '@/services/NotificationServiceChat';
+import SearchService, { SearchResult } from '@/services/SearchServiceChat';
+
+import { router, useFocusEffect } from 'expo-router';
 import { useState, useEffect, useContext, useMemo, useCallback, useRef } from "react";
 import AuthContext from "@/context/AuthContext";
 import { usePostStore } from '@/stores/postStore';
 import EnhancedChatRow from '@/components/ChatScreen/EnhancedChatRow';
 import { Ionicons } from '@expo/vector-icons';
-import CollaborationService, { CollaborationSpace } from '@/services/CollaborationService';
+import CollaborationService, { CollaborationSpace, CollaborativeActivity } from '@/services/CollaborationService';
 import * as Haptics from 'expo-haptics';
 import { getToken } from "@/services/TokenService";
 import getApiBase from "@/services/getApiBase";
@@ -18,8 +24,10 @@ import axios from '@/services/axios';
 import { useSpaceStore } from '@/stores/spaceStore';
 import { SynchronicityEngine } from '@/services/SynchronicityEngine';
 import { DatabaseIntegrator } from '@/services/DatabaseIntegrator';
-import { CreativeGenerator } from '@/components/AI/CreativeGenerator';
 import debounce from 'lodash/debounce';
+import CreativeGenerator from "@/components/AI/CreativeGenerator";
+import CollaborativeActivities from "@/components/ChatScreen/CollaborativeActivities";
+import { id } from "rn-emoji-keyboard";
 
 interface Chat {
   id: string;
@@ -36,15 +44,28 @@ interface Chat {
   conversationId?: number;
   email?: string;
   username?: string;
+  // For search results integration
+  isSearchResult?: boolean;
+  searchRelevance?: number;
+  searchType?: string;
 }
 
 interface SectionData {
   title: string;
   data: Chat[];
-  type: 'spaces' | 'chats' | 'contacts';
+  type: 'spaces' | 'chats' | 'contacts' | 'search';
+  isSearchSection?: boolean;
 }
 
 const ChatPage = () => {
+  const notificationService = NotificationService.getInstance();
+  const searchService = SearchService.getInstance();
+  const realTimeService = RealTimeService.getInstance();
+  const offlineService = OfflineService.getInstance();
+  
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
   const { user } = useContext(AuthContext);
   const { posts } = usePostStore();
   const [chats, setChats] = useState<Chat[]>([]);
@@ -64,6 +85,20 @@ const ChatPage = () => {
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-50)).current;
+  const searchInputRef = useRef<TextInput>(null);
+
+  const [activitiesCount, setActivitiesCount] = useState(0);
+  const [activities, setActivities] = useState<CollaborativeActivity[]>([]);
+  const [showActivities, setShowActivities] = useState(false);
+  // Configure notifications
+  useEffect(() => {
+    notificationService.configure();
+    notificationService.clearBadgeCount();
+    
+    return () => {
+      // Optional cleanup
+    };
+  }, []);
 
   // Initialize token
   useEffect(() => {
@@ -84,6 +119,60 @@ const ChatPage = () => {
     }
   }, [user]);
 
+  // Initialize real-time service
+  useEffect(() => {
+    if (user?.id) {
+      realTimeService.initialize(user.id);
+      
+      const handleNewSpace = (data: any) => {
+        if (data.space && !spaces.some(s => s.id === data.space.id)) {
+          const newChat: Chat = {
+            id: data.space.id,
+            name: data.space.title,
+            lastMessage: getSpaceDescription(data.space),
+            timestamp: 'Just now',
+            unreadCount: 0,
+            user_id: data.space.creator_id.toString(),
+            type: 'space',
+            spaceData: data.space,
+          };
+          
+          setSpaces(prev => [newChat, ...prev]);
+          if (Platform.OS !== 'web') {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          }
+          
+          // Show notification
+          notificationService.scheduleLocalNotification({
+            title: 'New Space Created',
+            body: `${data.space.title} is ready`,
+            data: {
+              type: 'space_created',
+              spaceId: data.space.id,
+            },
+          });
+        }
+      };
+    }
+    
+    return () => {
+      // Cleanup
+    };
+  }, [user?.id]);
+
+  // Add real-time refresh on focus
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        loadAllData();
+      }
+      
+      return () => {
+        // Optional cleanup
+      };
+    }, [user])
+  );
+  
   // Load all data
   useEffect(() => {
     if (user && token) {
@@ -115,7 +204,8 @@ const ChatPage = () => {
       await Promise.all([
         fetchChatsAndContacts(),
         fetchUserSpaces(),
-        getAISuggestion()
+        getAISuggestion(),
+        fetchActivitiesCount()
       ]);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -125,10 +215,38 @@ const ChatPage = () => {
     }
   };
 
+const fetchActivitiesCount = async () => {
+  if (!user?.id) return;
+  
+  try {
+    // Fetch spaces first
+    const userSpaces = await collaborationService.fetchUserSpaces(user.id);
+    
+    // Count activities across all spaces
+    let totalActivities = 0;
+    let allActivities: CollaborativeActivity[] = [];
+    
+    for (const space of userSpaces) {
+      try {
+        const result = await collaborationService.getSpaceActivities(space.id);
+        totalActivities += result.total;
+        allActivities = [...allActivities, ...result.activities];
+      } catch (error) {
+        // Some spaces might not have activities yet
+        console.log(`No activities for space ${space.id}`);
+      }
+    }
+    
+    setActivitiesCount(totalActivities);
+    setActivities(allActivities);
+  } catch (error) {
+    console.error('Error fetching activities count:', error);
+  }
+};
   // Debounced search
   const debouncedSearch = useCallback(
     debounce((query: string) => {
-      setSearchQuery(query);
+      handleSearch(query);
     }, 300),
     []
   );
@@ -170,7 +288,7 @@ const ChatPage = () => {
       
       try {
         // Try followers endpoint first
-        const followersResponse = await axios.get(`${API_BASE}/followers`, {
+        const followersResponse = await axios.get(`${API_BASE}/profile/followers`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         
@@ -179,7 +297,7 @@ const ChatPage = () => {
         console.log('Followers endpoint failed, trying following...');
         
         try {
-          const followingResponse = await axios.get(`${API_BASE}/following`, {
+          const followingResponse = await axios.get(`${API_BASE}/profile/following`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           
@@ -341,9 +459,27 @@ const ChatPage = () => {
       });
       
       setSpaces(spaceChats);
+      
+      // Cache the result
+      await offlineService.cacheUserSpaces(user.id, spaceChats);
     } catch (error) {
       console.error('Error fetching spaces:', error);
-      Alert.alert('Error', 'Failed to load collaboration spaces');
+      
+      // Try to load from cache
+      const cachedSpaces = await offlineService.getCachedUserSpaces(user.id);
+      if (cachedSpaces && !refreshing) {
+        setSpaces(cachedSpaces);
+      }
+      
+      if (!offlineService.isConnected()) {
+        Alert.alert(
+          'Offline Mode',
+          'Showing cached data. Connect to internet for updates.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to load collaboration spaces');
+      }
     }
   };
 
@@ -378,60 +514,83 @@ const ChatPage = () => {
     }
   };
 
-  // Memoized filtered data with animations
-  const filteredData = useMemo(() => {
-    const query = searchQuery.toLowerCase();
-    
-    let filteredSpaces = spaces;
-    let filteredChats = chats;
-    let filteredContacts = contacts;
+  // Enhanced filtered data with search results integration
+const filteredData = useMemo(() => {
+  const query = searchQuery.toLowerCase();
+  
+  let filteredSpaces = spaces;
+  let filteredChats = chats;
+  let filteredContacts = contacts;
 
-    if (query.trim()) {
-      filteredSpaces = spaces.filter(item =>
-        item.name.toLowerCase().includes(query) ||
-        item.spaceData?.description?.toLowerCase().includes(query)
-      );
-      
-      filteredChats = chats.filter(item =>
-        item.name.toLowerCase().includes(query) ||
-        item.lastMessage?.toLowerCase().includes(query)
-      );
-
-      filteredContacts = contacts.filter(item =>
-        item.name.toLowerCase().includes(query) ||
-        item.email?.toLowerCase().includes(query) ||
-        item.username?.toLowerCase().includes(query)
-      );
-    }
-
-    const sections: SectionData[] = [];
+  if (query.trim()) {
+    filteredSpaces = spaces.filter(item =>
+      item.name.toLowerCase().includes(query) ||
+      item.spaceData?.description?.toLowerCase().includes(query)
+    );
     
-    if (filteredSpaces.length > 0) {
-      sections.push({ 
-        title: '🎯 Collaboration Spaces', 
-        data: filteredSpaces,
-        type: 'spaces' 
-      });
-    }
-    
-    if (filteredChats.length > 0) {
-      sections.push({ 
-        title: '💬 Recent Chats', 
-        data: filteredChats,
-        type: 'chats' 
-      });
-    }
-    
-    if (filteredContacts.length > 0) {
-      sections.push({ 
-        title: '👥 Contacts', 
-        data: filteredContacts,
-        type: 'contacts' 
-      });
-    }
+    filteredChats = chats.filter(item =>
+      item.name.toLowerCase().includes(query) ||
+      item.lastMessage?.toLowerCase().includes(query)
+    );
 
-    return sections;
-  }, [searchQuery, chats, contacts, spaces]);
+    filteredContacts = contacts.filter(item =>
+      item.name.toLowerCase().includes(query) ||
+      item.email?.toLowerCase().includes(query) ||
+      item.username?.toLowerCase().includes(query)
+    );
+  }
+
+  const sections: SectionData[] = [];
+  
+  // Add regular sections FIRST
+  if (filteredSpaces.length > 0) {
+    sections.push({ 
+      title: '🎯 Collaboration Spaces', 
+      data: filteredSpaces,
+      type: 'spaces' 
+    });
+  }
+  
+  if (filteredChats.length > 0) {
+    sections.push({ 
+      title: '💬 Recent Chats', 
+      data: filteredChats,
+      type: 'chats' 
+    });
+  }
+  
+  if (filteredContacts.length > 0) {
+    sections.push({ 
+      title: '👥 Contacts', 
+      data: filteredContacts,
+      type: 'contacts' 
+    });
+  }
+  
+  // Add search results section LAST when there's a search
+  if (searchQuery.trim() && searchResults.length > 0) {
+    sections.push({ 
+      title: 'All Search Results', 
+      data: searchResults.map(result => ({
+        id: result.id,
+        name: result.title,
+        lastMessage: result.description,
+        timestamp: result.timestamp || 'Just now',
+        avatar: result.avatar,
+        user_id: result.data?.id?.toString() || result.id,
+        type: result.type as 'chat' | 'contact' | 'space',
+        spaceData: result.type === 'space' ? result.data : undefined,
+        isSearchResult: true,
+        searchRelevance: result.relevance,
+        searchType: result.type,
+      })),
+      type: 'search',
+      isSearchSection: true,
+    });
+  }
+
+  return sections;
+}, [searchQuery, chats, contacts, spaces, searchResults]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -440,7 +599,9 @@ const ChatPage = () => {
         fetchChatsAndContacts(),
         fetchUserSpaces()
       ]);
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (Platform.OS !== 'web') {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
     } catch (error) {
       console.error('Refresh error:', error);
     } finally {
@@ -449,47 +610,231 @@ const ChatPage = () => {
   };
 
   const handleCreateSpace = async (spaceType: CollaborationSpace['space_type']) => {
-    try {
-      const space = await collaborationService.createSpace({
-        title: `New ${spaceType.charAt(0).toUpperCase() + spaceType.slice(1)}`,
-        space_type: spaceType,
-        ai_personality: 'helpful',
-        ai_capabilities: ['summarize', 'suggest'],
-      });
-      
-      if (Platform.OS !== 'web') {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const createSpaceOperation = async () => {
+      try {
+        const space = await collaborationService.createSpace({
+          title: `New ${spaceType.charAt(0).toUpperCase() + spaceType.slice(1)}`,
+          space_type: spaceType,
+          ai_personality: 'helpful',
+          ai_capabilities: ['summarize', 'suggest'],
+        });
+        
+        if (Platform.OS !== 'web') {
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+        
+        // Add to spaces list
+        const newSpaceChat: Chat = {
+          id: space.id,
+          name: space.title,
+          lastMessage: getSpaceDescription(space),
+          timestamp: 'Just now',
+          unreadCount: 0,
+          avatar: space.creator?.profile_photo,
+          isOnline: true,
+          user_id: space.creator_id.toString(),
+          type: 'space',
+          spaceData: space,
+        };
+        
+        setSpaces(prev => [newSpaceChat, ...prev]);
+        setShowSpaceTypes(false);
+        
+        // Navigate to the new space
+        router.push(`/(spaces)/${space.id}`);
+        
+      } catch (error) {
+        console.error('Error creating space:', error);
+        Alert.alert('Error', 'Failed to create space. Please try again.');
       }
+    };
+    
+    if (offlineService.isConnected()) {
+      await createSpaceOperation();
+    } else {
+      offlineService.queueOperation(createSpaceOperation);
       
-      // Add to spaces list
-      const newSpaceChat: Chat = {
-        id: space.id,
-        name: space.title,
-        lastMessage: getSpaceDescription(space),
+      // Show local preview
+      const tempSpace: Chat = {
+        id: `temp_${Date.now()}`,
+        name: `New ${spaceType}`,
+        lastMessage: 'Creating... (offline)',
         timestamp: 'Just now',
         unreadCount: 0,
-        avatar: space.creator?.profile_photo,
-        isOnline: true,
-        user_id: space.creator_id.toString(),
+        avatar: null,
+        isOnline: false,
+        user_id: user?.id?.toString() || '0',
         type: 'space',
-        spaceData: space,
+        spaceData: {
+          id: `temp_${Date.now()}`,
+          title: `New ${spaceType}`,
+          space_type: spaceType,
+          is_live: false,
+        } as any,
       };
       
-      setSpaces(prev => [newSpaceChat, ...prev]);
+      setSpaces(prev => [tempSpace, ...prev]);
       setShowSpaceTypes(false);
       
-      // Navigate to the new space
-      router.push(`/(spaces)/${space.id}`);
-      
-    } catch (error) {
-      console.error('Error creating space:', error);
-      Alert.alert('Error', 'Failed to create space. Please try again.');
+      Alert.alert(
+        'Offline Mode',
+        'Space will be created when you reconnect to the internet.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
   const handleClearSearch = () => {
     setSearchQuery('');
+    setSearchResults([]);
+    setIsSearching(false);
     debouncedSearch.cancel();
+    searchInputRef.current?.blur();
+  };
+
+  // Update search handler
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    
+    if (!query.trim() || !user?.id) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+    
+    setIsSearching(true);
+    
+    try {
+      console.log('Searching for:', query);
+      const results = await searchService.searchAll(query, user.id);
+      console.log('Search results:', results.length);
+      setSearchResults(results);
+      
+      // Cache results for offline use
+      searchService.cacheSearchData(user.id, results);
+    } catch (error) {
+      console.error('Search error:', error);
+      
+      // Fallback to local search
+      const allItems = [
+        ...spaces.map(item => ({ ...item, type: 'space' })),
+        ...chats.map(item => ({ ...item, type: 'chat' })),
+        ...contacts.map(item => ({ ...item, type: 'contact' })),
+      ];
+      
+      const localResults = await searchService.localSearch(query, allItems);
+      setSearchResults(localResults);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+  
+  // Search Result Row Component
+  const SearchResultRow = ({ item, index }: { 
+    item: Chat; 
+    index: number; 
+  }) => {
+    const getSearchIcon = (type: string) => {
+      const icons: Record<string, string> = {
+        space: 'cube',
+        chat: 'chatbubbles',
+        contact: 'person',
+        message: 'document-text',
+        post: 'newspaper',
+      };
+      return icons[type] || 'search';
+    };
+
+    const getSearchColor = (type: string) => {
+      const colors: Record<string, string> = {
+        space: '#007AFF',
+        chat: '#4CAF50',
+        contact: '#FF6B6B',
+        message: '#FFA726',
+        post: '#9C27B0',
+      };
+      return colors[type] || '#666';
+    };
+
+    const handlePress = () => {
+      if (item.searchType === 'space') {
+        router.push(`/(spaces)/${item.id}`);
+      } else if (item.searchType === 'chat') {
+        router.push(`/(tabs)/chats/${item.id}`);
+      } else if (item.searchType === 'contact') {
+        router.push({
+          pathname: '/(tabs)/chats/[id]',
+          params: { id: item.id, contact: JSON.stringify(item) }
+        });
+      }
+      handleClearSearch();
+    };
+
+    return (
+      <TouchableOpacity
+        style={[
+          styles.searchResultItem,
+          index % 2 === 0 && styles.searchResultItemEven
+        ]}
+        onPress={handlePress}
+        activeOpacity={0.7}
+      >
+        <View style={styles.searchResultContent}>
+          <View style={[
+            styles.searchResultIcon,
+            { backgroundColor: `${getSearchColor(item.searchType || '')}15` }
+          ]}>
+            <Ionicons
+              name={getSearchIcon(item.searchType || '')}
+              size={20}
+              color={getSearchColor(item.searchType || '')}
+            />
+          </View>
+          
+          <View style={styles.searchResultText}>
+            <Text style={styles.searchResultTitle}>
+              {item.name}
+            </Text>
+            {item.lastMessage && (
+              <Text style={styles.searchResultDescription} numberOfLines={1}>
+                {item.lastMessage}
+              </Text>
+            )}
+            <View style={styles.searchResultMeta}>
+              <Text style={styles.searchResultType}>
+                {item.searchType?.charAt(0).toUpperCase() + item.searchType?.slice(1)}
+              </Text>
+              <View style={styles.relevanceBadge}>
+                <Text style={styles.relevanceText}>
+                  {Math.round((item.searchRelevance || 0) * 100)}% match
+                </Text>
+              </View>
+            </View>
+          </View>
+          
+          <Ionicons name="chevron-forward" size={20} color="#ccc" />
+        </View>
+      </TouchableOpacity>
+    );
+  };
+  
+  const handleSearchResultTap = (result: SearchResult) => {
+    switch (result.type) {
+      case 'space':
+        router.push(`/(spaces)/${result.id}`);
+        break;
+      case 'chat':
+        router.push(`/(tabs)/chats/${result.id}`);
+        break;
+      case 'contact':
+        // Start chat with contact
+        router.push({
+          pathname: '/(tabs)/chats/[id]',
+          params: { id: result.id, contact: JSON.stringify(result.data) }
+        });
+        break;
+    }
+    handleClearSearch();
   };
 
   // Render loading skeleton
@@ -514,7 +859,7 @@ const ChatPage = () => {
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      {/* Header with AI suggestion */}
+      {/* AI Suggestion */}
       {aiSuggestion && (
         <TouchableOpacity 
           style={styles.aiSuggestionContainer}
@@ -534,12 +879,18 @@ const ChatPage = () => {
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
         <TextInput
+          ref={searchInputRef}
           style={styles.searchInput}
           placeholder="Search chats, spaces, contacts..."
           value={searchQuery}
-          onChangeText={debouncedSearch}
-          clearButtonMode="never"
+          // onChangeText={debouncedSearch}
+          onChangeText={handleSearch}
+          clearButtonMode="while-editing"
           returnKeyType="search"
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="default"
+          autoFocus={false}
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity onPress={handleClearSearch} style={styles.closeButton}>
@@ -547,6 +898,14 @@ const ChatPage = () => {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Search Loading Indicator */}
+      {isSearching && (
+        <View style={styles.searchingContainer}>
+          <ActivityIndicator size="small" color="#007AFF" />
+          <Text style={styles.searchingText}>Searching...</Text>
+        </View>
+      )}
 
       {/* Action Buttons Row */}
       <View style={styles.actionRow}>
@@ -566,12 +925,23 @@ const ChatPage = () => {
           <Text style={styles.actionButtonText}>Ideas</Text>
         </TouchableOpacity>
         
+        {/* Activities Button with Badge */}
         <TouchableOpacity 
           style={styles.actionButton}
-          onPress={() => router.push('/(tabs)/contacts')}
+          onPress={() => setShowActivities(true)}
         >
-          <Ionicons name="people" size={20} color="#007AFF" />
-          <Text style={styles.actionButtonText}>Contacts</Text>
+          <View style={styles.buttonIconContainer}>
+            <Ionicons name="people" size={20} color="#007AFF" />
+            {/* Badge for activities count */}
+            {activitiesCount > 0 && (
+              <View style={styles.badgeContainer}>
+                <Text style={styles.badgeText}>
+                  {activitiesCount > 99 ? '99+' : activitiesCount}
+                </Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.actionButtonText}>Activities</Text>
         </TouchableOpacity>
       </View>
 
@@ -616,39 +986,101 @@ const ChatPage = () => {
           onClose={() => setShowCreativeGenerator(false)}
         />
       </Modal>
+{/* Collaborative Activities Modal - ADD THIS */}
+<Modal
+  visible={showActivities}
+  animationType="slide"
+  presentationStyle="pageSheet"
+  onRequestClose={() => setShowActivities(false)}
+>
+  <CollaborativeActivities
+    spaces={spaces.map(s => s.spaceData).filter(Boolean)}
+    activities={activities}
+    activitiesCount={activitiesCount}
+    onClose={() => setShowActivities(false)}
+    onActivitySelect={(activity) => {
+      // Navigate to the space containing this activity
+      const space = spaces.find(s => s.spaceData?.id === activity.space_id);
+      if (space) {
+        router.push(`/(spaces)/${activity.space_id}?activity=${activity.id}`);
+      } else {
+        Alert.alert('Error', 'Could not find the space for this activity');
+      }
+    }}
+  />
+</Modal>
 
-      {/* Main List */}
+      {/* Main List with Integrated Search Results */}
       <SectionList
         sections={filteredData}
-        keyExtractor={(item) => `${item.type}-${item.id}`}
-        renderItem={({ item, index }) => (
-          <EnhancedChatRow 
-            {...item} 
-            index={index}
-            onLongPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              Alert.alert(
-                item.name,
-                `Type: ${item.type}\nLast activity: ${item.timestamp}`,
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  { text: 'View', onPress: () => {
-                    if (item.type === 'chat') {
-                      router.push(`/(tabs)/chats/${item.id}`);
-                    } else if (item.type === 'space') {
-                      router.push(`/(spaces)/${item.id}`);
-                    }
-                  }},
-                  { text: 'Message', onPress: () => {
-                    // Start new conversation
-                  }}
-                ]
-              );
-            }}
-          />
-        )}
-        renderSectionHeader={({ section: { title, data, type } }) => {
+        keyExtractor={(item, index) => `${item.type}-${item.id}-${index}-${item.isSearchResult ? 'search' : ''}`}
+        renderItem={({ item, index, section }) => {
+          // Render search results differently
+          if (section.isSearchSection) {
+            return (
+              <SearchResultRow
+                item={item}
+                index={index}
+              />
+            );
+          }
+          
+          // Regular rows
+          return (
+            <EnhancedChatRow 
+              {...item} 
+              index={index}
+              onLongPress={() => {
+                if (Platform.OS !== 'web') {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                }
+                Alert.alert(
+                  item.name,
+                  `Type: ${item.type}\nLast activity: ${item.timestamp}`,
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'View', onPress: () => {
+                      if (item.type === 'chat') {
+                        router.push(`/(tabs)/chats/${item.id}`);
+                      } else if (item.type === 'space') {
+                        router.push(`/(spaces)/${item.id}`);
+                      }
+                    }},
+                    { text: 'Message', onPress: () => {
+                      // Start new conversation
+                    }}
+                  ]
+                );
+              }}
+            />
+            
+          );
+        }}
+        renderSectionHeader={({ section: { title, data, isSearchSection } }) => {
           if (data.length === 0) return null;
+          
+          // Special styling for search results section
+          if (isSearchSection) {
+            return (
+              <View style={styles.searchSectionHeader}>
+                <View style={styles.searchSectionHeaderContent}>
+                  <Ionicons name="search" size={18} color="#007AFF" />
+                  <Text style={styles.searchSectionHeaderText}>{title}</Text>
+                  <TouchableOpacity 
+                    onPress={handleClearSearch}
+                    style={styles.clearSearchButton}
+                  >
+                    <Text style={styles.clearSearchText}>Clear</Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.searchSectionCount}>
+                  {data.length} results • Tap to select
+                </Text>
+              </View>
+            );
+          }
+          
+          // Regular section headers
           return (
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionHeaderText}>{title}</Text>
@@ -656,7 +1088,13 @@ const ChatPage = () => {
             </View>
           );
         }}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ItemSeparatorComponent={({ section }) => {
+          // Different separator for search results
+          if (section.isSearchSection) {
+            return <View style={styles.searchSeparator} />;
+          }
+          return <View style={styles.separator} />;
+        }}
         contentContainerStyle={styles.listContent}
         style={styles.list}
         refreshControl={
@@ -724,6 +1162,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
+  activitiesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  activitiesButtonText: {
+    marginLeft: 8,
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  loading: {
+    marginTop: 50,
+  },
   aiSuggestionContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -748,10 +1202,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#f5f5f5',
     marginHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 8,
     borderRadius: 12,
     paddingHorizontal: 12,
     height: 44,
+  },
+  searchingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+  searchingText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#666',
   },
   searchIcon: {
     marginRight: 8,
@@ -759,12 +1225,112 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    height: '100%',
     color: '#333',
+    height: '100%',
   },
   closeButton: {
     padding: 4,
   },
+  
+  // Search Section Header
+  searchSectionHeader: {
+    backgroundColor: '#f8f9ff',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e7ff',
+  },
+  searchSectionHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  searchSectionHeaderText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#007AFF',
+    marginLeft: 8,
+    flex: 1,
+  },
+  clearSearchButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    backgroundColor: '#e0e7ff',
+    borderRadius: 12,
+  },
+  clearSearchText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  searchSectionCount: {
+    fontSize: 12,
+    color: '#666',
+  },
+  
+  // Search Result Item
+  searchResultItem: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  searchResultItemEven: {
+    backgroundColor: '#fafafa',
+  },
+  searchResultContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  searchResultIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  searchResultText: {
+    flex: 1,
+  },
+  searchResultTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  searchResultDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 6,
+  },
+  searchResultMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  searchResultType: {
+    fontSize: 12,
+    color: '#999',
+    marginRight: 8,
+    textTransform: 'capitalize',
+  },
+  relevanceBadge: {
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  relevanceText: {
+    fontSize: 11,
+    color: '#666',
+    fontWeight: '500',
+  },
+  searchSeparator: {
+    height: 1,
+    backgroundColor: '#f0f0f0',
+    marginLeft: 68,
+  },
+  
   actionRow: {
     flexDirection: 'row',
     marginHorizontal: 16,
@@ -912,6 +1478,35 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  
+  // Old modal styles (kept for reference but not used in new design)
+  searchResultsModal: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  searchResultsContainer: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+  },
+  searchResultsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  searchResultsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  searchResultsList: {
+    maxHeight: 400,
   },
 });
 

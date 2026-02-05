@@ -17,6 +17,8 @@ use App\Http\Controllers\StoryController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\SpaceController;
 use App\Http\Controllers\AIController;
+use App\Http\Controllers\SynchronicityController;
+use App\Http\Controllers\CollaborativeActivityController;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -34,7 +36,6 @@ Route::group(["middleware" => ["auth:sanctum"]], function() {
     Route::get('/user', [AuthenticatedSessionController::class, 'getUser']);
     Route::get('/profiles/{user}', [ProfileController::class, 'show']);
     Route::post('/profiles/{user}/follow', [ProfileController::class, 'follow']);
-
 
     Route::post('/chatbot', [ChatbotController::class, 'handleMessage']);
     Route::post('/test-csrf', fn () => [1, 2, 3]);
@@ -99,21 +100,16 @@ Route::group(["middleware" => ["auth:sanctum"]], function() {
     // Route::get('/notifications/missed', [NotificationController::class, 'missedNotifications'] );
 });
 
-// Route::post('/forgot-password', [PasswordResetLinkController::class, 'store']);
-// Route::get('/reset-password/{token}', [PasswordResetController::class, 'showResetForm'])->name('password.reset');
 
-// Route::post('/login', [AuthenticatedSessionController::class, 'login']);
-// routes/web.php
 Route::get('/admin/chatbot/train', [ChatbotTrainingController::class, 'show']);
 Route::post('/admin/chatbot/train', [ChatbotTrainingController::class, 'store']);
-
-
 
 
 Route::middleware(['auth:sanctum'])->group(function () {
     // Notifications endpoint
     Route::get('/notifications/missed', [NotificationController::class, 'missedNotifications']);
-    
+    Route::post('/search', [SpaceController::class, 'search']);
+
     // Collaboration Spaces (keep your existing spaces routes)
     Route::prefix('spaces')->group(function () {
         Route::get('/', [SpaceController::class, 'index']);
@@ -124,6 +120,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/{id}/join', [SpaceController::class, 'join']);
         Route::post('/{id}/leave', [SpaceController::class, 'leave']);
         Route::post('/{id}/invite', [SpaceController::class, 'invite']);
+        Route::post('/{id}/accept-invitation', [SpaceController::class, 'acceptInvitation']);
         Route::post('/{id}/start-call', [SpaceController::class, 'startCall']);
         Route::post('/{id}/end-call', [SpaceController::class, 'endCall']);
         Route::post('/{id}/share-screen', [SpaceController::class, 'shareScreen']);
@@ -163,6 +160,21 @@ Route::prefix('stories')->middleware('auth:sanctum')->group(function () {
 // User spaces
 Route::get('/users/{id}/spaces', [SpaceController::class, 'getUserSpaces'])->middleware('auth:sanctum');
 
+// Synchronicity routes
+Route::middleware('auth:sanctum')->prefix('synchronicity')->group(function () {
+    Route::post('/find-matches', [SynchronicityController::class, 'findMatches']);
+    Route::post('/events', [SynchronicityController::class, 'storeEvent']);
+    Route::get('/space/{spaceId}/matches', [SynchronicityController::class, 'getSpaceMatches']);
+});
+
+// Collaborative Activities Routes
+Route::middleware('auth:sanctum')->prefix('collaborative-activities')->group(function () {
+    Route::post('/', [CollaborativeActivityController::class, 'store']);
+    Route::get('/space/{spaceId}', [CollaborativeActivityController::class, 'getSpaceActivities']);
+    Route::post('/{activityId}/status', [CollaborativeActivityController::class, 'updateStatus']);
+    Route::post('/{activityId}/participants', [CollaborativeActivityController::class, 'updateParticipants']);
+    Route::get('/space/{spaceId}/statistics', [CollaborativeActivityController::class, 'getSpaceStatistics']);
+});
 
 // Authentication routes
 Route::post('/login', function (Request $request) {

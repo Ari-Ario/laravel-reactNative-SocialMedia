@@ -78,7 +78,7 @@ const RenderComments = ({
         <View style={styles.commentHeader}>
           <TouchableOpacity onPress={() => onProfilePress(item.user.id)}>
             <Image
-              source={{ uri: `${getApiBaseImage()}/storage/${item.user.profile_photo}` || 'https://via.placeholder.com/32' }}
+              source={{ uri: `${getApiBaseImage()}/storage/${item.user.profile_photo}` || 'https://picsum.photos/200' }}
               style={styles.commentAvatar}
             />
             <Text style={styles.commentUsername}>{item.user.name}</Text>

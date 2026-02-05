@@ -8,12 +8,21 @@ use App\Models\Conversation;
 use App\Models\Post;
 use App\Models\Story;
 use App\Models\MagicEvent;
+use App\Models\User;
+use App\Models\Message;
+
 use App\Models\AiInteraction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use App\Notifications\SpaceInvitationNotification;
+
+use App\Events\SpaceUpdated;
+use App\Events\MagicEventTriggered;
+use App\Events\ParticipantJoined;
+use App\Events\ParticipantLeft;
 
 class SpaceController extends Controller
 {
@@ -191,6 +200,9 @@ class SpaceController extends Controller
 
             DB::commit();
 
+            // Broadcast event
+            // broadcast(new SpaceUpdated($space, auth()->id()))->toOthers();
+
             return response()->json([
                 'space' => $space->load(['creator']),
                 'message' => 'Space created successfully'
@@ -211,51 +223,73 @@ class SpaceController extends Controller
      */
     public function show($id)
     {
-        try {
-            $user = Auth::user();
-            
-            // Check if user can access this space
-            $participation = SpaceParticipation::where('space_id', $id)
-                ->where('user_id', $user->id)
-                ->first();
-            
-            if (!$participation) {
-                return response()->json([
-                    'message' => 'You do not have access to this space'
-                ], 403);
+        $space = CollaborationSpace::with([
+            'creator',
+            'participations.user',
+            'magicEvents' => function($query) {
+                $query->where('has_been_discovered', false)
+                      ->orWhere('created_at', '>', now()->subHours(24));
             }
-            
-            $space = CollaborationSpace::with([
-                'creator',
-                'linkedConversation',
-                'linkedPost',
-                'linkedStory',
-                'participations.user',
-                'magicEvents' => function($query) {
-                    $query->where('has_been_discovered', false)
-                        ->orderBy('created_at', 'desc')
-                        ->limit(5);
-                }
-            ])->findOrFail($id);
-            
-            // Update last active time for participant
-            $participation->update([
-                'last_active_at' => now(),
-                'presence_data->is_online' => true,
-            ]);
-            
-            return response()->json([
-                'space' => $space,
-                'participation' => $participation,
-            ]);
-            
-        } catch (\Exception $e) {
-            \Log::error('Error fetching space details: ' . $e->getMessage());
-            return response()->json([
-                'message' => 'Error fetching space details',
-                'error' => $e->getMessage()
-            ], 500);
+        ])->findOrFail($id);
+
+        $participation = $space->participations()
+            ->where('user_id', auth()->id())
+            ->first();
+
+        // Update last active
+        if ($participation) {
+            $participation->update(['last_active_at' => now()]);
         }
+
+        return response()->json([
+            'space' => $space,
+            'participation' => $participation,
+            'participants' => $space->participations()->with('user')->get(),
+            'magic_events' => $space->magicEvents
+        ]);
+    }
+
+    // Helper: Get all spaces for a specific user
+    public function getUserSpaces($userId)
+    {
+        $spaces = CollaborationSpace::where('creator_id', $userId)
+            ->orWhereHas('participants', function($query) use ($userId) {
+                $query->where('user_id', $userId);
+            })
+            ->with(['creator', 'participants.user'])
+            ->orderBy('updated_at', 'desc')
+            ->get();
+
+        // Format for frontend
+        $formattedSpaces = $spaces->map(function($space) use ($userId) {
+            $participation = $space->participations()->where('user_id', $userId)->first();
+            
+            return [
+                'id' => $space->id,
+                'title' => $space->title,
+                'space_type' => $space->space_type,
+                'description' => $space->description,
+                'creator_id' => $space->creator_id,
+                'creator' => $space->creator,
+                'settings' => $space->settings,
+                'content_state' => $space->content_state,
+                'activity_metrics' => $space->activity_metrics,
+                'evolution_level' => $space->evolution_level,
+                'unlocked_features' => $space->unlocked_features,
+                'is_live' => $space->is_live,
+                'has_ai_assistant' => $space->has_ai_assistant,
+                'ai_personality' => $space->ai_personality,
+                'ai_capabilities' => $space->ai_capabilities,
+                'participants_count' => $space->participants()->count(),
+                'participants' => $space->participants()->with('user')->get(),
+                'my_role' => $participation ? $participation->role : null,
+                'my_permissions' => $participation ? $participation->permissions : null,
+                'created_at' => $space->created_at,
+                'updated_at' => $space->updated_at,
+            ];
+        });
+
+        return response()->json(['spaces' => $formattedSpaces]);
     }
 
     /**
@@ -424,7 +458,10 @@ class SpaceController extends Controller
             'title', 'description', 'settings', 
             'ai_personality', 'ai_capabilities', 'content_state'
         ]));
-        
+
+        // Broadcast update event
+        broadcast(new SpaceUpdated($space, auth()->id()))->toOthers();
+
         return response()->json([
             'space' => $space,
             'message' => 'Space updated successfully'
@@ -434,297 +471,487 @@ class SpaceController extends Controller
     /**
      * Join a space
      */
-    public function join(Request $request, $id)
+    public function join($id)
     {
-        $user = Auth::user();
         $space = CollaborationSpace::findOrFail($id);
         
-        // Check if already participant
-        $existing = SpaceParticipation::where('space_id', $id)
-            ->where('user_id', $user->id)
+        // Check if already joined
+        $existing = $space->participations()
+            ->where('user_id', auth()->id())
             ->first();
             
         if ($existing) {
             return response()->json([
-                'message' => 'Already a participant',
                 'participation' => $existing,
+                'message' => 'Already joined'
             ]);
         }
         
-        // Check if space requires invitation
-        if ($space->settings['require_invitation'] ?? false) {
-            return response()->json([
-                'message' => 'This space requires an invitation',
-            ], 403);
-        }
-        
-        // Create participation
-        $participation = SpaceParticipation::create([
-            'space_id' => $space->id,
-            'user_id' => $user->id,
+        $participation = $space->participations()->create([
+            'user_id' => auth()->id(),
             'role' => 'participant',
-            'permissions' => $this->getDefaultParticipantPermissions(),
-            'presence_data' => [
-                'is_online' => true,
-                'device' => $request->header('User-Agent'),
-                'last_seen' => now(),
-            ],
+            'permissions' => ['read' => true, 'write' => true],
+            'last_active_at' => now(),
         ]);
         
-        // Update space metrics
-        $space->update([
-            'activity_metrics->participant_count' => ($space->activity_metrics['participant_count'] ?? 0) + 1,
-        ]);
-        
-        // Create magic event for new participant
-        $this->createMagicEvent($space->id, 'participant_joined', [
-            'user_id' => $user->id,
-            'role' => 'participant',
-        ]);
+        // Broadcast participant joined
+        broadcast(new ParticipantJoined($space, auth()->user()))->toOthers();
         
         return response()->json([
-            'participation' => $participation,
-            'space' => $space,
-            'message' => 'Joined space successfully'
-        ], 201);
+            'participation' => $participation->load('user'),
+            'message' => 'Successfully joined space'
+        ]);
     }
 
     /**
      * Invite users to space
      */
-    public function invite(Request $request, $id)
+    public function leave($id)
     {
-        $user = Auth::user();
-        
-        // Check if user has permission to invite
-        $participation = SpaceParticipation::where('space_id', $id)
-            ->where('user_id', $user->id)
-            ->where(function($query) {
-                $query->where('role', 'owner')
-                    ->orWhere('role', 'moderator')
-                    ->orWhereJsonContains('permissions->can_invite', true);
-            })
-            ->firstOrFail();
-        
-        $request->validate([
-            'user_ids' => 'required|array',
-            'user_ids.*' => 'exists:users,id',
-            'role' => 'nullable|in:participant,moderator,viewer',
-            'message' => 'nullable|string',
-        ]);
-        
         $space = CollaborationSpace::findOrFail($id);
-        $invited = [];
         
-        foreach ($request->user_ids as $userId) {
-            // Skip if already participant
-            if (SpaceParticipation::where('space_id', $id)->where('user_id', $userId)->exists()) {
-                continue;
-            }
+        $participation = $space->participations()
+            ->where('user_id', auth()->id())
+            ->first();
             
-            $participation = SpaceParticipation::create([
-                'space_id' => $space->id,
-                'user_id' => $userId,
-                'role' => $request->role ?? 'participant',
-                'permissions' => $this->getDefaultParticipantPermissions(),
-                'presence_data' => [
-                    'is_online' => false,
-                    'invited_at' => now(),
-                    'invited_by' => $user->id,
-                ],
-            ]);
-            
-            $invited[] = $userId;
-            
-            // Create notification for invited user
-            // (You'll need to implement your notification system)
+        if ($participation) {
+            // Broadcast before deleting
+            broadcast(new ParticipantLeft($space, auth()->user()))->toOthers();
+            $participation->delete();
         }
         
         return response()->json([
-            'invited_users' => $invited,
-            'message' => 'Invitations sent successfully'
+            'message' => 'Successfully left space'
         ]);
     }
 
-    /**
-     * Start a video/audio call in space
-     */
+    public function invite(Request $request, $id)
+    {
+        $request->validate([
+            'user_ids' => 'required|array',
+            'user_ids.*' => 'exists:users,id',
+            'role' => 'sometimes|in:viewer,participant,moderator',
+            'message' => 'sometimes|string|max:500'
+        ]);
+        
+        $space = CollaborationSpace::findOrFail($id);
+        $inviter = auth()->user();
+        
+        // Check if user has permission to invite
+        $currentParticipation = $space->participations()
+            ->where('user_id', auth()->id())
+            ->first();
+            
+        if (!$currentParticipation || !in_array($currentParticipation->role, ['owner', 'moderator'])) {
+            return response()->json([
+                'message' => 'You do not have permission to invite users to this space'
+            ], 403);
+        }
+        
+        $invited = [];
+        foreach ($request->user_ids as $userId) {
+            // Check if already in space
+            $existing = $space->participations()
+                ->where('user_id', $userId)
+                ->first();
+                
+            if (!$existing) {
+                // Don't create participation yet - just send invitation
+                $invited[] = $userId;
+                
+                // Send notification to user
+                $user = User::find($userId);
+                if ($user) {
+                    $user->notify(new \App\Notifications\SpaceInvitationNotification($space, $inviter, $request->message));
+                }
+            } else {
+                // User is already in space
+                $invited[] = $userId;
+            }
+        }
+        
+        return response()->json([
+            'invited' => $invited,
+            'message' => count($invited) . ' invitation(s) sent successfully'
+        ]);
+    }
+
+    // Add this new method to handle invitation acceptance
+    public function acceptInvitation($id)
+    {
+        $space = CollaborationSpace::findOrFail($id);
+        $userId = auth()->id();
+        
+        // Check if already in space
+        $existing = $space->participations()
+            ->where('user_id', $userId)
+            ->first();
+            
+        if ($existing) {
+            return response()->json([
+                'participation' => $existing,
+                'message' => 'Already joined this space'
+            ]);
+        }
+        
+        // Create participation
+        $participation = $space->participations()->create([
+            'user_id' => $userId,
+            'role' => 'participant',
+            'permissions' => ['read' => true, 'write' => true],
+            'last_active_at' => now(),
+        ]);
+        
+        // Broadcast participant joined
+        broadcast(new ParticipantJoined($space, auth()->user()))->toOthers();
+        
+        return response()->json([
+            'participation' => $participation->load('user'),
+            'space' => $space->load(['creator', 'participations.user']),
+            'message' => 'Successfully joined the space'
+        ]);
+    }
+
     public function startCall(Request $request, $id)
     {
-        $user = Auth::user();
-        
-        // Check if user is participant
-        $participation = SpaceParticipation::where('space_id', $id)
-            ->where('user_id', $user->id)
-            ->firstOrFail();
-        
         $request->validate([
-            'call_type' => 'required|in:audio,video,screen_share',
-            'participants' => 'nullable|array',
+            'call_type' => 'required|in:audio,video,screen_share'
         ]);
         
         $space = CollaborationSpace::findOrFail($id);
         
-        // Update space live status
+        // Check if user is a participant
+        $participation = $space->participations()
+            ->where('user_id', auth()->id())
+            ->first();
+            
+        if (!$participation) {
+            return response()->json([
+                'message' => 'You must be a participant in the space to start a call'
+            ], 403);
+        }
+        
+        // Generate UUID for call
+        $callId = \Illuminate\Support\Str::uuid()->toString();
+        
+        // Create call record
+        $call = \App\Models\Call::create([
+            'id' => $callId,
+            'conversation_id' => $space->linked_conversation_id,
+            'initiator_id' => auth()->id(),
+            'type' => $request->call_type,
+            'status' => 'ringing',
+            'participants' => [auth()->id()],
+            'started_at' => now(),
+            'is_web_compatible' => true,
+        ]);
+        
+        // Update space activity
         $space->update([
             'is_live' => true,
             'current_focus' => 'call',
-            'live_participants' => [
-                $user->id => [
-                    'joined_at' => now(),
-                    'call_type' => $request->call_type,
-                    'is_active' => true,
-                ]
-            ],
+            'live_participants' => [auth()->id()]
         ]);
         
-        // Update user's participation
-        $participation->update([
-            'audio_video_state' => [
-                'in_call' => true,
-                'call_type' => $request->call_type,
-                'mic_enabled' => $request->call_type !== 'screen_share',
-                'camera_enabled' => $request->call_type === 'video',
-                'screen_share' => $request->call_type === 'screen_share',
-            ],
+        // Add the initiator as a participant in the pivot table
+        $call->users()->attach(auth()->id(), [
+            'joined_at' => now(),
+            'role' => 'initiator'
         ]);
         
-        // Create magic event for call start
-        $this->createMagicEvent($space->id, 'call_started', [
-            'call_type' => $request->call_type,
-            'initiated_by' => $user->id,
-        ]);
+        // Broadcast call started event
+        broadcast(new CallStarted($space, $call, auth()->user()))->toOthers();
         
         return response()->json([
-            'space' => $space,
-            'call_data' => [
-                'call_id' => Str::uuid(),
-                'type' => $request->call_type,
-                'initiator' => $user->id,
-                'space_id' => $space->id,
-                'participants' => $space->live_participants,
-            ],
-            'message' => 'Call started'
+            'call' => $call->load('initiator'),
+            'space' => $space->fresh(['participations.user']),
+            'message' => 'Call started successfully'
         ]);
     }
 
     /**
      * Query AI assistant
      */
-    public function aiQuery(Request $request, $id)
-    {
-        $user = Auth::user();
+    // public function aiQuery(Request $request, $id)
+    // {
+    //     $user = Auth::user();
         
-        // Check if user is participant
-        $participation = SpaceParticipation::where('space_id', $id)
-            ->where('user_id', $user->id)
-            ->firstOrFail();
+    //     // Check if user is participant
+    //     $participation = SpaceParticipation::where('space_id', $id)
+    //         ->where('user_id', $user->id)
+    //         ->firstOrFail();
         
-        $request->validate([
-            'query' => 'required|string',
-            'context' => 'nullable|array',
-            'action' => 'nullable|in:summarize,suggest,brainstorm,moderate,inspire',
-        ]);
+    //     $request->validate([
+    //         'query' => 'required|string',
+    //         'context' => 'nullable|array',
+    //         'action' => 'nullable|in:summarize,suggest,brainstorm,moderate,inspire',
+    //     ]);
         
-        $space = CollaborationSpace::findOrFail($id);
+    //     $space = CollaborationSpace::findOrFail($id);
         
-        // Check if AI assistant is enabled
-        if (!$space->has_ai_assistant) {
-            return response()->json([
-                'message' => 'AI assistant is not enabled for this space',
-            ], 403);
-        }
+    //     // Check if AI assistant is enabled
+    //     if (!$space->has_ai_assistant) {
+    //         return response()->json([
+    //             'message' => 'AI assistant is not enabled for this space',
+    //         ], 403);
+    //     }
         
-        // Prepare context
-        $context = array_merge($request->context ?? [], [
-            'space_type' => $space->space_type,
-            'space_title' => $space->title,
-            'participant_count' => $space->participants()->count(),
-            'user_id' => $user->id,
-            'user_role' => $participation->role,
-        ]);
+    //     // Prepare context
+    //     $context = array_merge($request->context ?? [], [
+    //         'space_type' => $space->space_type,
+    //         'space_title' => $space->title,
+    //         'participant_count' => $space->participants()->count(),
+    //         'user_id' => $user->id,
+    //         'user_role' => $participation->role,
+    //     ]);
         
-        // Query AI (first check chatbot_training, then fallback)
-        $aiResponse = $this->queryAI($request->query, $context, $request->action);
+    //     // Query AI (first check chatbot_training, then fallback)
+    //     $aiResponse = $this->queryAI($request->query, $context, $request->action);
         
-        // Log the interaction
-        $interaction = AiInteraction::create([
-            'id' => Str::uuid(),
-            'space_id' => $space->id,
-            'user_id' => $user->id,
-            'interaction_type' => $request->action ?? 'query',
-            'user_input' => $request->query,
-            'ai_response' => $aiResponse['response'],
-            'context_data' => $context,
-            'confidence_score' => $aiResponse['confidence'],
-            'response_time_ms' => $aiResponse['response_time'],
-        ]);
+    //     // Log the interaction
+    //     $interaction = AiInteraction::create([
+    //         'id' => Str::uuid(),
+    //         'space_id' => $space->id,
+    //         'user_id' => $user->id,
+    //         'interaction_type' => $request->action ?? 'query',
+    //         'user_input' => $request->query,
+    //         'ai_response' => $aiResponse['response'],
+    //         'context_data' => $context,
+    //         'confidence_score' => $aiResponse['confidence'],
+    //         'response_time_ms' => $aiResponse['response_time'],
+    //     ]);
         
-        // Update space AI learning data
-        $this->updateAILearningData($space, $interaction);
+    //     // Update space AI learning data
+    //     $this->updateAILearningData($space, $interaction);
         
-        // Check if this triggers any magic
-        $this->checkForMagicFromAI($space, $interaction);
+    //     // Check if this triggers any magic
+    //     $this->checkForMagicFromAI($space, $interaction);
         
-        return response()->json([
-            'response' => $aiResponse['response'],
-            'confidence' => $aiResponse['confidence'],
-            'suggested_actions' => $aiResponse['suggested_actions'] ?? [],
-            'interaction_id' => $interaction->id,
-            'message' => 'AI response generated',
-        ]);
-    }
+    //     return response()->json([
+    //         'response' => $aiResponse['response'],
+    //         'confidence' => $aiResponse['confidence'],
+    //         'suggested_actions' => $aiResponse['suggested_actions'] ?? [],
+    //         'interaction_id' => $interaction->id,
+    //         'message' => 'AI response generated',
+    //     ]);
+    // }
 
     /**
      * Trigger a magic event manually
      */
     public function triggerMagic(Request $request, $id)
     {
-        $user = Auth::user();
-        
-        // Check if user is participant
-        $participation = SpaceParticipation::where('space_id', $id)
-            ->where('user_id', $user->id)
-            ->firstOrFail();
-        
         $request->validate([
-            'event_type' => 'required|in:evolution_unlock,collective_insight,breakthrough,synchronicity',
-            'data' => 'nullable|array',
+            'event_type' => 'required|string|max:255',
+            'data' => 'sometimes|array'
         ]);
         
-        $event = $this->createMagicEvent($id, $request->event_type, array_merge(
-            $request->data ?? [],
-            ['triggered_by' => $user->id]
-        ));
+        $space = CollaborationSpace::findOrFail($id);
+        
+        // Check emergence triggers
+        $shouldTrigger = $this->checkEmergenceTriggers($space, $request->event_type);
+        
+        if (!$shouldTrigger) {
+            return response()->json([
+                'message' => 'Emergence conditions not met'
+            ], 400);
+        }
+        
+        $event = MagicEvent::create([
+            'space_id' => $space->id,
+            'triggered_by' => auth()->id(),
+            'event_type' => $request->event_type,
+            'event_data' => $request->data ?? [],
+            'context' => [
+                'space_type' => $space->space_type,
+                'participant_count' => $space->participations()->count(),
+                'activity_level' => $space->activity_metrics['level'] ?? 1,
+            ],
+            'impact' => [],
+            'has_been_discovered' => false,
+            'discovery_path' => ['triggered_by_user' => auth()->id()],
+            'interactions' => [],
+        ]);
+        
+        // Update space
+        $space->update([
+            'last_magic_at' => now(),
+            'evolution_level' => $space->evolution_level + 1
+        ]);
+        
+        // Broadcast magic event
+        broadcast(new MagicEventTriggered($space, $event))->toOthers();
         
         return response()->json([
             'event' => $event,
+            'space' => $space->fresh(),
             'message' => 'Magic event triggered'
         ]);
     }
 
-    /**
-     * Get AI suggestions for the space
-     */
     public function getAISuggestions($id)
     {
-        $user = Auth::user();
-        
-        // Check if user is participant
-        $participation = SpaceParticipation::where('space_id', $id)
-            ->where('user_id', $user->id)
-            ->firstOrFail();
-        
         $space = CollaborationSpace::findOrFail($id);
         
-        // Generate suggestions based on space activity
-        $suggestions = $this->generateAISuggestions($space, $participation);
+        $suggestions = [];
+        
+        // Check space activity for suggestions
+        $participantCount = $space->participations()->count();
+        $activity = $space->activity_metrics ?? [];
+        
+        // Suggestion 1: Icebreaker if new space
+        if ($space->created_at->diffInMinutes(now()) < 10 && $participantCount > 1) {
+            $suggestions[] = [
+                'type' => 'icebreaker',
+                'title' => 'Icebreaker Question',
+                'content' => 'What\'s one thing you\'re excited about this week?',
+                'action' => 'send_message',
+                'priority' => 'high'
+            ];
+        }
+        
+        // Suggestion 2: Summarize if many messages
+        if (($activity['message_count'] ?? 0) > 20) {
+            $suggestions[] = [
+                'type' => 'summary',
+                'title' => 'Summarize Conversation',
+                'content' => 'Would you like me to summarize the key points so far?',
+                'action' => 'generate_summary',
+                'priority' => 'medium'
+            ];
+        }
+        
+        // Suggestion 3: Brainstorming prompt
+        if ($space->space_type === 'brainstorm' && ($activity['idea_count'] ?? 0) < 5) {
+            $suggestions[] = [
+                'type' => 'brainstorm_prompt',
+                'title' => 'Brainstorming Prompt',
+                'content' => 'What if we approached this from a completely different perspective?',
+                'action' => 'suggest_prompt',
+                'priority' => 'high'
+            ];
+        }
+        
+        // Suggestion 4: Document structure
+        if ($space->space_type === 'document' && empty($activity['document_structure'])) {
+            $suggestions[] = [
+                'type' => 'document_outline',
+                'title' => 'Document Outline',
+                'content' => 'Would you like me to suggest a structure for this document?',
+                'action' => 'create_outline',
+                'priority' => 'medium'
+            ];
+        }
         
         return response()->json([
             'suggestions' => $suggestions,
-            'space_energy' => $space->activity_metrics['energy_level'] ?? 50,
-            'next_check' => now()->addMinutes(5)->toISOString(),
+            'space_type' => $space->space_type,
+            'activity_level' => $activity['level'] ?? 1
         ]);
+    }
+
+    public function aiQuery(Request $request, $id)
+    {
+        $request->validate([
+            'query' => 'required|string',
+            'context' => 'sometimes|array',
+            'action' => 'sometimes|string'
+        ]);
+        
+        $space = CollaborationSpace::findOrFail($id);
+        
+        // Check chatbot training for matching responses
+        $training = \App\Models\ChatbotTraining::where('space_types', 'like', "%{$space->space_type}%")
+            ->orWhere('collaboration_context', $space->space_type)
+            ->where('is_active', true)
+            ->orderBy('success_rate', 'desc')
+            ->orderBy('usage_count', 'desc')
+            ->first();
+        
+        $response = $training ? $training->response : 'I\'m here to help with your collaboration!';
+        
+        // Log interaction
+        $interaction = \App\Models\AIInteraction::create([
+            'space_id' => $space->id,
+            'user_id' => auth()->id(),
+            'interaction_type' => $request->action ?? 'query',
+            'user_input' => $request->query,
+            'ai_response' => $response,
+            'training_match_id' => $training?->id,
+            'context_data' => array_merge($request->context ?? [], [
+                'space_type' => $space->space_type,
+                'space_id' => $space->id
+            ]),
+            'confidence_score' => $training ? 0.85 : 0.5,
+            'response_time_ms' => rand(100, 500),
+        ]);
+        
+        // Update training usage
+        if ($training) {
+            $training->increment('usage_count');
+        }
+        
+        return response()->json([
+            'response' => $response,
+            'interaction_id' => $interaction->id,
+            'confidence' => $interaction->confidence_score,
+            'suggestion_followup' => $this->generateFollowupSuggestion($space, $request->query)
+        ]);
+    }
+
+    private function checkEmergenceTriggers(CollaborationSpace $space, $eventType)
+    {
+        $triggers = $space->emergence_triggers ?? [];
+        $activity = $space->activity_metrics ?? [];
+        
+        // Check if space has any triggers
+        if (empty($triggers)) {
+            return false;
+        }
+        
+        // Check time-based triggers
+        foreach ($triggers as $trigger) {
+            if ($trigger['type'] === 'time' && $trigger['condition'] === 'night') {
+                $hour = now()->hour;
+                if ($hour >= 22 || $hour <= 6) {
+                    return true;
+                }
+            }
+            
+            if ($trigger['type'] === 'activity' && isset($activity[$trigger['metric']])) {
+                if ($activity[$trigger['metric']] >= $trigger['threshold']) {
+                    return true;
+                }
+            }
+            
+            if ($trigger['type'] === 'participant_count') {
+                $count = $space->participations()->count();
+                if ($count >= $trigger['min'] && $count <= ($trigger['max'] ?? PHP_INT_MAX)) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+
+    private function generateFollowupSuggestion(CollaborationSpace $space, $query)
+    {
+        $keywords = strtolower($query);
+        
+        if (str_contains($keywords, 'brainstorm') || str_contains($keywords, 'idea')) {
+            return 'Would you like me to generate some creative prompts for your brainstorming session?';
+        }
+        
+        if (str_contains($keywords, 'summarize') || str_contains($keywords, 'recap')) {
+            return 'I can summarize the key points and action items from this discussion.';
+        }
+        
+        if (str_contains($keywords, 'meeting') || str_contains($keywords, 'agenda')) {
+            return 'Would you like me to help create a meeting agenda or take notes?';
+        }
+        
+        return null;
     }
 
     /**
@@ -831,5 +1058,198 @@ class SpaceController extends Controller
         ];
         
         return $states[$spaceType] ?? [];
+    }
+
+
+
+    /**
+     * Search across spaces, chats, contacts, messages, and posts
+     */
+    public function search(Request $request)
+    {
+        // \Log::info('Search request received', $request->all());
+        
+        try {
+            $request->validate([
+                'query' => 'required|string|min:2|max:100',
+                'types' => 'sometimes|array',
+                'types.*' => 'in:spaces,chats,contacts,messages,posts',
+                'limit' => 'sometimes|integer|min:1|max:100',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // \Log::error('Search validation failed', $e->errors());
+            return response()->json([
+                'error' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        }
+
+        $query = $request->input('query');
+        $types = $request->input('types', ['spaces', 'chats', 'contacts', 'messages', 'posts']);
+        $limit = $request->input('limit', 20);
+        $userId = auth()->id();
+
+        // \Log::info('Searching for', [
+        //     'query' => $query,
+        //     'types' => $types,
+        //     'user_id' => $userId
+        // ]);
+
+        $results = [];
+
+        // Search spaces
+        if (in_array('spaces', $types)) {
+            try {
+                $spaces = CollaborationSpace::where(function($q) use ($query, $userId) {
+                        $q->where('title', 'like', "%{$query}%")
+                          ->orWhere('description', 'like', "%{$query}%");
+                    })
+                    ->where(function($q) use ($userId) {
+                        $q->where('creator_id', $userId)
+                          ->orWhereHas('participations', function($q) use ($userId) {
+                              $q->where('user_id', $userId);
+                          });
+                    })
+                    ->with('creator')
+                    ->limit($limit)
+                    ->get();
+
+                foreach ($spaces as $space) {
+                    $results[] = [
+                        'id' => $space->id,
+                        'type' => 'space',
+                        'title' => $space->title,
+                        'description' => $space->description,
+                        'avatar' => $space->creator?->profile_photo,
+                        'timestamp' => $space->updated_at,
+                        'relevance' => $this->calculateRelevance($space->title, $query),
+                        'data' => [
+                            'id' => $space->id,
+                            'title' => $space->title,
+                            'space_type' => $space->space_type,
+                            'creator' => $space->creator,
+                        ],
+                    ];
+                }
+                
+                // \Log::info('Found spaces', ['count' => $spaces->count()]);
+            } catch (\Exception $e) {
+                \Log::error('Error searching spaces', ['error' => $e->getMessage()]);
+            }
+        }
+
+        // Search contacts (users)
+        if (in_array('contacts', $types)) {
+            try {
+                $contacts = User::where('id', '!=', $userId)
+                    ->where(function($q) use ($query) {
+                        $q->where('name', 'like', "%{$query}%")
+                          ->orWhere('username', 'like', "%{$query}%")
+                          ->orWhere('email', 'like', "%{$query}%");
+                    })
+                    ->limit($limit)
+                    ->get();
+
+                foreach ($contacts as $contact) {
+                    $results[] = [
+                        'id' => $contact->id,
+                        'type' => 'contact',
+                        'title' => $contact->name,
+                        'description' => $contact->username ? "@{$contact->username}" : $contact->email,
+                        'avatar' => $contact->profile_photo,
+                        'timestamp' => null,
+                        'relevance' => $this->calculateRelevance($contact->name, $query),
+                        'data' => [
+                            'id' => $contact->id,
+                            'name' => $contact->name,
+                            'username' => $contact->username,
+                            'email' => $contact->email,
+                            'profile_photo' => $contact->profile_photo,
+                        ],
+                    ];
+                }
+                
+                \Log::info('Found contacts', ['count' => $contacts->count()]);
+            } catch (\Exception $e) {
+                \Log::error('Error searching contacts', ['error' => $e->getMessage()]);
+            }
+        }
+
+        // Search chats (from messages with other users)
+        if (in_array('chats', $types)) {
+            try {
+                $chats = User::whereHas('conversations.messages', function($q) use ($userId) {
+                        $q->whereHas('conversation.users', function($q) use ($userId) {
+                            $q->where('users.id', $userId);
+                        });
+                    })
+                    ->where('id', '!=', $userId)
+                    ->where(function($q) use ($query) {
+                        $q->where('name', 'like', "%{$query}%")
+                          ->orWhere('username', 'like', "%{$query}%");
+                    })
+                    ->limit($limit)
+                    ->get();
+
+                foreach ($chats as $chat) {
+                    $results[] = [
+                        'id' => $chat->id,
+                        'type' => 'chat',
+                        'title' => $chat->name,
+                        'description' => "Chat with @{$chat->username}",
+                        'avatar' => $chat->profile_photo,
+                        'timestamp' => null,
+                        'relevance' => $this->calculateRelevance($chat->name, $query),
+                        'data' => [
+                            'id' => $chat->id,
+                            'name' => $chat->name,
+                            'username' => $chat->username,
+                            'profile_photo' => $chat->profile_photo,
+                        ],
+                    ];
+                }
+                
+                \Log::info('Found chats', ['count' => $chats->count()]);
+            } catch (\Exception $e) {
+                \Log::error('Error searching chats', ['error' => $e->getMessage()]);
+            }
+        }
+
+        // Sort by relevance
+        usort($results, function($a, $b) {
+            return $b['relevance'] <=> $a['relevance'];
+        });
+
+        // Limit results
+        $results = array_slice($results, 0, $limit);
+
+        \Log::info('Search completed', [
+            'total_results' => count($results),
+            'query' => $query
+        ]);
+
+        return response()->json([
+            'results' => $results,
+            'query' => $query,
+            'total' => count($results),
+        ]);
+    }
+
+    private function calculateRelevance($text, $query)
+    {
+        $text = strtolower($text ?? '');
+        $query = strtolower($query);
+        
+        if (strpos($text, $query) === 0) {
+            return 1.0; // Starts with query
+        }
+        
+        if (strpos($text, $query) !== false) {
+            return 0.8; // Contains query
+        }
+        
+        // Calculate similarity
+        similar_text($text, $query, $percent);
+        return $percent / 100;
     }
 }
