@@ -1,10 +1,15 @@
 // services/UnifiedSpaceService.ts
+
+import axios from 'axios';
+import { Audio } from 'expo-av';
+import { pusher } from '@/services/PusherService';
+import { currentUser } from '@/stores/auth';
+
 export class UnifiedSpaceService {
   // Using ONLY your existing packages:
   // @pusher/pusher-websocket-react-native - Real-time
   // expo-av - Audio/Video
   // expo-camera - Video capture
-  // expo-video - Playback
   // expo-image-picker - Media selection
   // expo-haptics - Tactile feedback
   // axios - API calls
@@ -70,7 +75,6 @@ export class UnifiedSpaceService {
     // Handle incoming voice
     channel.bind('voice-data', async (data) => {
       if (data.userId !== currentUser.id) {
-        // Play remote audio
         const sound = new Audio.Sound();
         await sound.loadAsync({ uri: data.audioUrl });
         await sound.playAsync();
@@ -81,14 +85,15 @@ export class UnifiedSpaceService {
     return {
       startSpeaking: async () => {
         const recording = new Audio.Recording();
-        await recording.prepareToRecordAsync(Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY);
+        await recording.prepareToRecordAsync(
+          Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY
+        );
         await recording.startAsync();
         
-        // Stream via Pusher (simplified - in production, use proper streaming)
+        // Stream via Pusher (simplified)
         setInterval(async () => {
           const uri = recording.getURI();
           if (uri) {
-            // Send compressed audio chunk
             pusher.trigger(`voice-${spaceId}`, 'voice-data', {
               userId: currentUser.id,
               audioUrl: uri,
@@ -96,6 +101,9 @@ export class UnifiedSpaceService {
             });
           }
         }, 1000);
+      },
+      stopSpeaking: async () => {
+        await recording.stopAndUnloadAsync();
       }
     };
   }

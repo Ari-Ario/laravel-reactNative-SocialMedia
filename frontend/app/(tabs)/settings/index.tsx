@@ -10,7 +10,8 @@ import {
   Image,
   Modal,
   Alert,
-  Platform
+  Platform,
+  Button
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import BoxedIcon from '@/components/BoxedIcon';
@@ -20,7 +21,7 @@ import { logout } from "@/services/AuthService";
 import { useContext } from "react";
 import { uploadProfilePhoto, deleteProfilePhoto, requestCameraPermission, updateUserName } from '@/services/SettingService';
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, CameraType } from 'expo-camera';
+import { CameraView, useCameraPermissions, CameraType } from 'expo-camera';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { loadUser } from '@/services/AuthService';
 import { router } from 'expo-router';
@@ -28,26 +29,29 @@ import { router } from 'expo-router';
 const Page = () => {
   const { user, setUser } = useContext(AuthContext);
   const [showPhotoOptions, setShowPhotoOptions] = useState(false);
-  const [cameraVisible, setCameraVisible] = useState(false);
-  // const [cameraType, setCameraType] = useState<CameraType>(CameraType.back);
-  const [cameraType, setCameraType] = useState<CameraType>(CameraType?.back || CameraType?.front);
-  const cameraRef = useRef<Camera>(null);
   const [editNameVisible, setEditNameVisible] = useState(false);
   const [newName, setNewName] = useState(user?.name || '');
   const [saving, setSaving] = useState(false);
-
+  
+  // Camera states for web
+  const [cameraVisible, setCameraVisible] = useState(false);
+  const [cameraType, setCameraType] = useState<CameraType>(CameraType);
+  const cameraRef = useRef<any>(null);
+  
+  // Use the new Camera permissions hook
+  const [permission, requestPermission] = useCameraPermissions();
 
   const devices = [
-    { name: 'Broadcast Lists', icon: 'megaphone', backgroundColor: '#25D366' }, // WhatsApp Green
-    { name: 'Starred Messages', icon: 'star', backgroundColor: '#FFD700' },     // Gold
+    { name: 'Broadcast Lists', icon: 'megaphone', backgroundColor: '#25D366' },
+    { name: 'Starred Messages', icon: 'star', backgroundColor: '#FFD700' },
     { name: 'Linked Devices', icon: 'laptop-outline', backgroundColor: '#25D366' },
   ];
 
   const items = [
-    { name: 'Account', icon: 'key', backgroundColor: '#075E54' },               // WhatsApp Dark Green
+    { name: 'Account', icon: 'key', backgroundColor: '#075E54' },
     { name: 'Privacy', icon: 'lock-closed', backgroundColor: '#33A5D1' },
     { name: 'Chats', icon: 'logo-whatsapp', backgroundColor: '#25D366' },
-    { name: 'Notifications', icon: 'notifications', backgroundColor: '#FF3B30' }, // iOS red
+    { name: 'Notifications', icon: 'notifications', backgroundColor: '#FF3B30' },
     { name: 'Storage and Data', icon: 'repeat', backgroundColor: '#25D366' },
   ];
 
@@ -56,17 +60,16 @@ const Page = () => {
     { name: 'Tell a Friend', icon: 'heart', backgroundColor: '#FF3B30' },
   ];
 
-
   const handleLogout = async () => {
     try {
         await logout();
-        setUser(null); // This will trigger the redirect in the effect below
+        setUser(null);
         if (!user || (user === null)) {
           router.replace('/LoginScreen');
         }
     } catch (error) {
         console.error("Logout failed:", error);
-        setUser(null); // Ensure logout even if API fails
+        setUser(null);
     }
   };
 
@@ -97,7 +100,6 @@ const Page = () => {
     if (!result.canceled && result.assets.length > 0) {
       try {
         await uploadProfilePhoto(result.assets[0].uri);
-        // refresh user profile UI if needed
         const refreshedUser = await loadUser();
         setUser(refreshedUser);
       } catch (error) {
@@ -107,28 +109,57 @@ const Page = () => {
     }
   };
 
-
   const handleTakePhoto = async () => {
     setShowPhotoOptions(false);
-    const permission = await requestCameraPermission();
     
-    if (!permission) {
-      Alert.alert('Permission required', 'We need access to your camera');
+    // Check if we're on web or mobile
+    if (Platform.OS === 'web') {
+      // On web: Use custom camera UI with CameraView
+      setCameraVisible(true);
+      return;
+    }
+    
+    // On mobile: use ImagePicker.launchCameraAsync
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission required', 'We need access to your camera to take a photo.');
       return;
     }
 
-    setCameraVisible(true);
-  };
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
 
-  const handleCapturePhoto = async () => {
-    if (cameraRef.current) {
-      const photo = await cameraRef.current.takePictureAsync();
-      setCameraVisible(false);
-      await uploadProfilePhoto(photo.uri);
-      // Update user context or refetch user data
+    if (!result.canceled && result.assets.length > 0) {
+      try {
+        await uploadProfilePhoto(result.assets[0].uri);
+        const refreshedUser = await loadUser();
+        setUser(refreshedUser);
+      } catch (error) {
+        console.error('Camera photo upload error:', error);
+        Alert.alert('Upload Failed', 'Could not upload the taken photo.');
+      }
     }
   };
 
+  // Web-specific camera capture using CameraView
+  const handleWebCameraCapture = async () => {
+    if (cameraRef.current) {
+      try {
+        const photo = await cameraRef.current.takePictureAsync();
+        setCameraVisible(false);
+        await uploadProfilePhoto(photo.uri);
+        const refreshedUser = await loadUser();
+        setUser(refreshedUser);
+      } catch (error) {
+        console.error('Error taking photo:', error);
+        Alert.alert('Error', 'Failed to capture photo. Please try again.');
+      }
+    }
+  };
 
   const handleDeletePhoto = async () => {
     setShowPhotoOptions(false);
@@ -157,7 +188,6 @@ const Page = () => {
         Alert.alert('Success', 'Profile photo deleted successfully');
       }
 
-      // Refresh user context or re-fetch user data if necessary
       const refreshedUser = await loadUser();
       if (refreshedUser && refreshedUser.id) {
         setTimeout(() => {
@@ -177,7 +207,6 @@ const Page = () => {
     }
   };
 
-
   const renderProfilePhoto = () => {
     if (user?.profile_photo) {
       return (
@@ -194,6 +223,71 @@ const Page = () => {
         </View>
       );
     }
+  };
+
+  // Render camera permission request if needed
+  const renderWebCamera = () => {
+    if (!permission) {
+      // Camera permissions are still loading
+      return (
+        <View style={styles.permissionContainer}>
+          <Text style={styles.permissionText}>Loading camera...</Text>
+        </View>
+      );
+    }
+
+    if (!permission.granted) {
+      // Camera permissions are not granted yet
+      return (
+        <View style={styles.permissionContainer}>
+          <Text style={styles.permissionText}>We need your permission to use the camera</Text>
+          <TouchableOpacity 
+            style={styles.permissionButton}
+            onPress={requestPermission}
+          >
+            <Text style={styles.permissionButtonText}>Grant Permission</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.closeCameraButton}
+            onPress={() => setCameraVisible(false)}
+          >
+            <Text style={styles.closeCameraText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    // Permission granted, show camera
+    return (
+      <CameraView 
+        style={StyleSheet.absoluteFill}
+        facing={cameraType}
+        ref={cameraRef}
+      >
+        <View style={styles.cameraControls}>
+          <TouchableOpacity 
+            style={styles.cameraButton}
+            onPress={() => setCameraVisible(false)}
+          >
+            <Ionicons name="close" size={30} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.captureButton}
+            onPress={handleWebCameraCapture}
+          >
+            <View style={styles.captureInner} />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.cameraButton}
+            onPress={() => setCameraType(
+              cameraType === CameraType.back ? CameraType.front : CameraType.back
+            )}
+          >
+            <Ionicons name="camera-reverse" size={30} color="white" />
+          </TouchableOpacity>
+        </View>
+      </CameraView>
+    );
   };
 
   return (
@@ -219,7 +313,6 @@ const Page = () => {
             <Ionicons name="create-outline" size={20} color="black" style={{ paddingLeft: 10, }} />
           </View>
         </TouchableOpacity>
-
       </View>
 
       {/* Photo Options Modal */}
@@ -259,6 +352,13 @@ const Page = () => {
         </TouchableOpacity>
       </Modal>
 
+      {/* Web Camera Modal - ONLY on web */}
+      {Platform.OS === 'web' && cameraVisible && (
+        <View style={[StyleSheet.absoluteFill, styles.webCameraContainer]}>
+          {renderWebCamera()}
+        </View>
+      )}
+
       {/* Change Name Modal */}
       <Modal
         visible={editNameVisible}
@@ -267,7 +367,6 @@ const Page = () => {
         onRequestClose={() => setEditNameVisible(false)}
       >
         <View style={{ flex: 1, backgroundColor: 'white' }}>
-          {/* Header */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderColor: '#ccc' }}>
             <TouchableOpacity onPress={() => setEditNameVisible(false)}>
               <Text style={{ color: '#1DA1F2', fontSize: 16 }}>Cancel</Text>
@@ -277,7 +376,7 @@ const Page = () => {
               onPress={async () => {
                 setSaving(true);
                 try {
-                  const response = await updateUserName(newName); // See next step
+                  const response = await updateUserName(newName);
                   const updated = await loadUser();
                   setUser(updated);
                   setEditNameVisible(false);
@@ -300,7 +399,6 @@ const Page = () => {
             </TouchableOpacity>
           </View>
 
-          {/* Text area */}
           <View style={{ padding: 16 }}>
             <TextInput
               value={newName}
@@ -319,42 +417,6 @@ const Page = () => {
         </View>
       </Modal>
 
-
-      {/* Camera Modal */}
-      {cameraVisible && (
-        <View style={StyleSheet.absoluteFill}>
-          <Camera 
-            style={StyleSheet.absoluteFill}
-            type={cameraType}
-            ref={cameraRef}
-          >
-            <View style={styles.cameraControls}>
-              <TouchableOpacity 
-                style={styles.cameraButton}
-                onPress={() => setCameraVisible(false)}
-              >
-                <Ionicons name="close" size={30} color="white" />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.captureButton}
-                onPress={handleCapturePhoto}
-              >
-                <View style={styles.captureInner} />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.cameraButton}
-                onPress={() => setCameraType(
-                  cameraType === CameraType.back ? CameraType.front : CameraType.back
-                )}
-              >
-                <Ionicons name="camera-reverse" size={30} color="white" />
-              </TouchableOpacity>
-            </View>
-          </Camera>
-        </View>
-      )}
-
-      
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.scrollContainer}>
         <View style={styles.block}>
           <FlatList
@@ -400,7 +462,6 @@ const styles = StyleSheet.create({
       justifyContent: 'center',
       alignItems: 'center',    
       width: '100%'
-      // backgroundColor: Colors.background,
   },
   profileSection: {
     alignItems: 'center',
@@ -462,6 +523,47 @@ const styles = StyleSheet.create({
   deleteOption: {
     borderBottomWidth: 0,
   },
+  webCameraContainer: {
+    zIndex: 9999,
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'black',
+  },
+  permissionContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  permissionText: {
+    color: 'white',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  permissionButton: {
+    backgroundColor: '#25D366',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  permissionButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  closeCameraButton: {
+    backgroundColor: '#FF3B30',
+    padding: 12,
+    borderRadius: 8,
+  },
+  closeCameraText: {
+    color: 'white',
+    fontSize: 16,
+  },
   cameraControls: {
     flex: 1,
     backgroundColor: 'transparent',
@@ -472,6 +574,9 @@ const styles = StyleSheet.create({
   },
   cameraButton: {
     alignSelf: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 20,
+    padding: 8,
   },
   captureButton: {
     alignSelf: 'center',
@@ -483,6 +588,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
+    backgroundColor: 'transparent',
   },
   captureInner: {
     width: 60,
@@ -491,7 +597,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
   scrollContainer: {
-    // paddingVertical: 20,
     minWidth: 350,
     width: 500,
     ...(Platform.OS === 'ios' && {

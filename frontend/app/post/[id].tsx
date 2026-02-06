@@ -25,7 +25,7 @@ import getApiBaseImage from '@/services/getApiBaseImage';
 import { Ionicons } from '@expo/vector-icons';
 import AuthContext from '@/context/AuthContext';
 import EmojiPicker from 'rn-emoji-keyboard';
-import { Video } from 'expo-video';
+import { Video, Audio } from 'expo-av';
 import { usePostListService } from '@/services/PostListService';
 
 const PostDetailScreen = () => {
@@ -373,7 +373,7 @@ useEffect(() => {
                       style={styles.singleMedia}
                       resizeMode="cover"
                       shouldPlay={false}
-                      isMuted
+                      isMuted={true}
                       useNativeControls={false}
                     />
                   ) : (
@@ -398,7 +398,7 @@ useEffect(() => {
                           style={styles.multiMediaContent}
                           resizeMode="cover"
                           shouldPlay={false}
-                          isMuted
+                          isMuted={true}
                           useNativeControls={false}
                         />
                       ) : (

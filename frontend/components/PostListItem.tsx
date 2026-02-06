@@ -26,7 +26,7 @@ import getApiBaseImage from '@/services/getApiBaseImage';
 import { useProfileView } from '@/context/ProfileViewContext';
 import { useModal } from '@/context/ModalContext';
 import { usePostStore } from '@/stores/postStore';
-import { Video } from 'expo-video';
+import { Video } from 'expo-av';
 import { MediaViewer } from './MediaViewer';
 import React from 'react';
 import { PostActionButtons } from './PostActionButtons';
@@ -158,7 +158,7 @@ export default function PostListItem({
                   style={styles.singleMedia}
                   resizeMode="cover"
                   shouldPlay={false}
-                  isMuted
+                  isMuted={true}
                   useNativeControls={false}
                 />
               ) : (
@@ -183,7 +183,7 @@ export default function PostListItem({
                       style={styles.multiMediaContent}
                       resizeMode="cover"
                       shouldPlay={false}
-                      isMuted
+                      isMuted={true}
                       useNativeControls={false}
                     />
                   ) : (

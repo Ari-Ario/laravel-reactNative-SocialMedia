@@ -8,8 +8,8 @@ import {
   Dimensions,
   Animated,
 } from 'react-native';
-import { Camera, Video, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
-import { Audio } from 'expo-audio';
+import { Camera, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
+import { Audio, Video } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useParticipantsStore } from '@/stores/participantsStore';
@@ -58,14 +58,11 @@ export const ImmersiveCallView: React.FC<{ spaceId: string }> = ({ spaceId }) =>
   };
 
   const updateAudioSpatialization = () => {
-    // Calculate volume based on "distance" from user
     storeParticipants.forEach(participant => {
       const pos = audioPositions.current.get(participant.id);
       if (pos) {
         const distance = Math.sqrt(pos.x ** 2 + pos.y ** 2);
         const volume = Math.max(0.1, 1 - distance / 400);
-        
-        // In a real app, you'd adjust WebRTC audio volume here
         console.log(`Adjusting volume for ${participant.name}: ${volume}`);
       }
     });
@@ -73,30 +70,25 @@ export const ImmersiveCallView: React.FC<{ spaceId: string }> = ({ spaceId }) =>
 
   const startScreenShare = async () => {
     setIsSharingScreen(true);
-    
-    // Capture screen frames (simplified - use expo-camera or react-native-view-shot)
     setInterval(async () => {
-      // Take screenshot
+      // Capture screen frames
       // Broadcast via Pusher
     }, 200);
   };
 
   const addARFilter = async (filter: string) => {
-    // Apply AR filters using expo-camera
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
-    // Filter types: 'glasses', 'hat', 'sparkles', 'rainbow'
     console.log(`Applying ${filter} filter`);
   };
 
   const startVoiceTranscription = async () => {
-    // Real-time voice transcription using expo-av
     const recording = new Audio.Recording();
-    await recording.prepareToRecordAsync(Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY);
+    await recording.prepareToRecordAsync(
+      Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY
+    );
     await recording.startAsync();
     
     // Process audio chunks for transcription
-    // Send to backend for AI processing
   };
 
   return (
@@ -122,14 +114,15 @@ export const ImmersiveCallView: React.FC<{ spaceId: string }> = ({ spaceId }) =>
             <View style={styles.participantInfo}>
               <Text style={styles.participantName}>{participant.name}</Text>
               <View style={styles.audioIndicator}>
-                <View style={[
-                  styles.audioLevel,
-                  { width: Math.random() * 30 + 10 }
-                ]} />
+                <View
+                  style={[
+                    styles.audioLevel,
+                    { width: Math.random() * 30 + 10 }
+                  ]}
+                />
               </View>
             </View>
-            
-            {/* AR Filter Badge */}
+
             {participant.arFilter && (
               <View style={styles.arBadge}>
                 <Ionicons name={getFilterIcon(participant.arFilter)} size={12} />
@@ -141,35 +134,35 @@ export const ImmersiveCallView: React.FC<{ spaceId: string }> = ({ spaceId }) =>
 
       {/* Controls */}
       <View style={styles.controls}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.controlButton, !isCameraOn && styles.controlButtonOff]}
           onPress={() => setIsCameraOn(!isCameraOn)}
         >
-          <Ionicons name={isCameraOn ? "videocam" : "videocam-off"} size={24} color="#fff" />
+          <Ionicons name={isCameraOn ? 'videocam' : 'videocam-off'} size={24} color="#fff" />
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={[styles.controlButton, !isMicOn && styles.controlButtonOff]}
           onPress={() => setIsMicOn(!isMicOn)}
         >
-          <Ionicons name={isMicOn ? "mic" : "mic-off"} size={24} color="#fff" />
+          <Ionicons name={isMicOn ? 'mic' : 'mic-off'} size={24} color="#fff" />
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={[styles.controlButton, isSharingScreen && styles.controlButtonActive]}
           onPress={startScreenShare}
         >
           <Ionicons name="share" size={24} color="#fff" />
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.controlButton}
           onPress={() => addARFilter('sparkles')}
         >
           <Ionicons name="sparkles" size={24} color="#fff" />
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.controlButton}
           onPress={startVoiceTranscription}
         >
@@ -179,7 +172,9 @@ export const ImmersiveCallView: React.FC<{ spaceId: string }> = ({ spaceId }) =>
 
       {/* AI Meeting Assistant Overlay */}
       <View style={styles.aiOverlay}>
-        <Text style={styles.aiText}>🎙️ Meeting Summary: Discussing project timeline...</Text>
+        <Text style={styles.aiText}>
+          🎙️ Meeting Summary: Discussing project timeline...
+        </Text>
       </View>
     </View>
   );

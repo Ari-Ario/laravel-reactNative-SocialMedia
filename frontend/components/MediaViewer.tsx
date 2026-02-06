@@ -9,7 +9,7 @@ import {
   TouchableWithoutFeedback,
   TouchableOpacity,
 } from 'react-native';
-import { Video } from 'expo-video';
+import { Video } from 'expo-av';
 import { PanGestureHandler, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,

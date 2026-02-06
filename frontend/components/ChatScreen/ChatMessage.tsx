@@ -1,7 +1,7 @@
 // components/ChatMessage.tsx
 import React, { useMemo } from 'react';
 import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { Video } from 'expo-video';
+import { Video } from 'expo-av';
 import { PostActionButtons } from '../PostActionButtons';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { Ionicons } from '@expo/vector-icons';
@@ -83,7 +83,7 @@ const ChatMessage = ({ item, user, service, onMenuPress, onCommentPress }: ChatM
                       style={styles.singleMedia}
                       resizeMode="cover"
                       shouldPlay={false}
-                      isMuted
+                      isMuted={true}
                       useNativeControls={false}
                     />
                   ) : (
@@ -111,7 +111,7 @@ const ChatMessage = ({ item, user, service, onMenuPress, onCommentPress }: ChatM
                           style={styles.multiMediaContent}
                           resizeMode="cover"
                           shouldPlay={false}
-                          isMuted
+                          isMuted={true}
                           useNativeControls={false}
                         />
                       ) : (
