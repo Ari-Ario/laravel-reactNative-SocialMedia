@@ -10,16 +10,16 @@ import {
   Image, 
   Alert,
   Modal,
-  ActivityIndicator
+  ActivityIndicator,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Camera, CameraType } from 'expo-camera';
+import { Camera, CameraType, CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { createPost, updatePost } from '@/services/PostService';
 import { useLocalSearchParams, router } from 'expo-router';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { deletePostMedia, fetchPosts } from '@/services/PostService';
-import { Platform } from 'react-native';
 import { usePostStore } from '@/stores/postStore';
 
 interface CreatePostProps {
@@ -40,12 +40,17 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
   const [caption, setCaption] = useState('');
   const [media, setMedia] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [cameraPermission, setCameraPermission] = useState(null);
   const [cameraVisible, setCameraVisible] = useState(false);
-  const [cameraType, setCameraType] = useState<CameraType>(CameraType?.back || CameraType?.front);
-  const cameraRef = useRef(null);
+  const [cameraType, setCameraType] = useState<CameraType>(CameraType);
+  
+  // Use CameraView ref for web, Camera ref for mobile
+  const cameraRef = useRef<any>(null);
+  
   const [deleteStatus, setDeleteStatus] = useState<{visible: boolean, message: string}>({visible: false, message: ''});
   const postStore = usePostStore();
+  
+  // Use the modern camera permissions hook for web
+  const [permission, requestPermission] = useCameraPermissions();
 
   // Initialize with edit data if available
     useEffect(() => {
@@ -65,15 +70,6 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
     }
     }, [isEditing, params.caption, params.media]); // ✅ SAFE: only reruns when values actually change
 
-
-  // Request camera permission
-  useEffect(() => {
-    (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setCameraPermission(status === 'granted');
-    })();
-  }, []);
-
   const pickMedia = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.All,
@@ -87,28 +83,62 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
   };
 
   const takePhoto = async () => {
-    if (cameraPermission !== 'granted') {
-      Alert.alert('Permission required', 'Camera permission is needed to take photos');
+    // For web: use CameraView with permission handling
+    if (Platform.OS === 'web') {
+      if (!permission) {
+        // Permissions are still loading
+        Alert.alert('Camera', 'Camera permissions are loading...');
+        return;
+      }
+      
+      if (!permission.granted) {
+        // Request permission
+        const response = await requestPermission();
+        if (!response.granted) {
+          Alert.alert('Permission required', 'Camera permission is needed to take photos');
+          return;
+        }
+      }
+      
+      setCameraVisible(true);
       return;
     }
-    setCameraVisible(true);
+    
+    // For mobile: use traditional Camera permission
+    if (Platform.OS !== 'web') {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission required', 'Camera permission is needed to take photos');
+        return;
+      }
+      setCameraVisible(true);
+    }
   };
 
   const capturePhoto = async () => {
     if (cameraRef.current) {
       try {
         const photo = await cameraRef.current.takePictureAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [1, 1],        
           quality: 1,
-          skipProcessing: true,
+          // skipProcessing: true,
         });
         setMedia([...media, { uri: photo.uri, type: 'image' }]);
         setCameraVisible(false);
       } catch (error) {
         console.error('Error taking photo:', error);
+        Alert.alert('Error', 'Failed to capture photo. Please try again.');
       }
     }
   };
 
+  const toggleCameraType = () => {
+    setCameraType(current => (
+      current === ImagePicker.CameraType.back ? ImagePicker.CameraType.front : ImagePicker.CameraType.back
+    ));
+  };
 
   const removeMedia = async (index: number) => {
     const item = media[index];
@@ -142,8 +172,6 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
   };
 
 const handleSubmit = async () => {
-    // if (!caption.trim() || media.length === 0) {
-
   if (!caption.trim()) {
     Alert.alert('Error', 'Please add a caption or media');
     return;
@@ -163,51 +191,60 @@ const handleSubmit = async () => {
       });
     }
 
-    const uploadPromises = media
-      .filter(item => !item.id && !item._deleted)
-      .map(async (item, index) => {
-        let file;
-
-        if (Platform.OS === 'web') {
-          const response = await fetch(item.uri);
-          const blob = await response.blob();
-          file = new File([blob], `media-${index}.${item.uri.split('.').pop()}`, {
-            type: item.type || 'image/jpeg',
-          });
-        } else {
-          const fileType = item.uri.split('.').pop();
-          const fileName = item.fileName || `media-${Date.now()}.${fileType}`;
-
-          file = {
-            uri: item.uri,
-            name: fileName,
-            type: item.type || `image/${fileType}`,
-          };
-        }
-
-        formData.append(`media[${index}]`, file);
-      });
-
-    await Promise.all(uploadPromises);
+    // Handle media uploads
+    const newMedia = media.filter(item => !item.id && !item._deleted);
+    
+    for (let i = 0; i < newMedia.length; i++) {
+      const item = newMedia[i];
+      
+      if (Platform.OS === 'web') {
+        // Web: Convert to File object
+        const response = await fetch(item.uri);
+        const blob = await response.blob();
+        const file = new File([blob], `media-${i}.${item.uri.split('.').pop()}`, {
+          type: item.type || 'image/jpeg',
+        });
+        formData.append(`media[${i}]`, file);
+      } else {
+        // Android/iOS: Use the correct React Native file structure
+        // Get file extension from URI
+        const uri = item.uri;
+        const fileName = uri.split('/').pop(); // Get filename from URI
+        const match = /\.(\w+)$/.exec(fileName);
+        const fileType = match ? `image/${match[1]}` : 'image/jpeg';
+        
+        // For React Native, we need to create a proper file object
+        const file = {
+          uri: uri,
+          name: fileName || `media-${Date.now()}.jpg`,
+          type: fileType,
+        };
+        
+        // Append to FormData - use bracket notation for array
+        formData.append(`media[${i}]`, file);
+      }
+    }
 
     const post = isEditing && params.postId
       ? await updatePost(Number(params.postId), formData)
       : await createPost(formData);
 
     if (isEditing && params.postId) {
-      // console.log("arrived at update of PostStore")
       postStore.updatePost(post);
     } else {
       console.log("arrived at create of PostStore")
       postStore.addPost(post);
     }
+    
     if (onPostCreated) {
-      onPostCreated(post); // ✅ This will now work
+      onPostCreated(post);
     }
-    handleClose(); // ✅ Let Zustand update the store
+    
+    handleClose();
   } catch (error) {
     console.error('Error creating/updating post:', error);
-    Alert.alert('Error', `Failed to ${isEditing ? 'update' : 'create'} post`);
+    console.error('Error details:', error.response?.data || error.message);
+    Alert.alert('Error', `Failed to ${isEditing ? 'update' : 'create'} post: ${error.message}`);
   } finally {
     setIsUploading(false);
   }
@@ -225,39 +262,112 @@ const handleClose = () => {
   onClose(); // Call the original onClose prop
 };
 
-  if (cameraVisible) {
-    return (
-      <View style={styles.cameraContainer}>
-        <Camera 
-          style={styles.camera} 
-          type={cameraType}
-          ref={cameraRef}
-        >
-          <View style={styles.cameraButtons}>
-            <TouchableOpacity 
-              style={styles.cameraButton}
-              onPress={() => setCameraVisible(false)}
-            >
-              <Ionicons name="close" size={30} color="white" />
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.captureButton}
-              onPress={capturePhoto}
-            >
-              <View style={styles.captureButtonInner} />
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.cameraButton}
-              onPress={toggleCameraType}
-            >
-              <Ionicons name="camera-reverse" size={30} color="white" />
-            </TouchableOpacity>
+  const renderCameraView = () => {
+    if (Platform.OS === 'web') {
+      // Web camera view with permission handling
+      if (!permission) {
+        return (
+          <View style={styles.cameraContainer}>
+            <View style={[styles.camera, { justifyContent: 'center', alignItems: 'center' }]}>
+              <Text style={{ color: 'white' }}>Checking camera permissions...</Text>
+            </View>
           </View>
-        </Camera>
-      </View>
-    );
+        );
+      }
+      
+      if (!permission.granted) {
+        return (
+          <View style={styles.cameraContainer}>
+            <View style={[styles.camera, { justifyContent: 'center', alignItems: 'center' }]}>
+              <Text style={{ color: 'white', marginBottom: 20 }}>Camera permission is required</Text>
+              <TouchableOpacity 
+                style={styles.permissionButton}
+                onPress={requestPermission}
+              >
+                <Text style={{ color: 'white', fontWeight: 'bold' }}>Grant Permission</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.permissionButton, { backgroundColor: '#666', marginTop: 10 }]}
+                onPress={() => setCameraVisible(false)}
+              >
+                <Text style={{ color: 'white' }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        );
+      }
+      
+      return (
+        <View style={styles.cameraContainer}>
+          <CameraView 
+            style={styles.camera} 
+            facing={cameraType}
+            ref={cameraRef}
+          >
+            <View style={styles.cameraButtons}>
+              <TouchableOpacity 
+                style={styles.cameraButton}
+                onPress={() => setCameraVisible(false)}
+              >
+                <Ionicons name="close" size={30} color="white" />
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.captureButton}
+                onPress={capturePhoto}
+              >
+                <View style={styles.captureButtonInner} />
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.cameraButton}
+                onPress={toggleCameraType}
+              >
+                <Ionicons name="camera-reverse" size={30} color="white" />
+              </TouchableOpacity>
+            </View>
+          </CameraView>
+        </View>
+      );
+    } else {
+      // Mobile camera view
+      return (
+        <View style={[styles.cameraContainer, StyleSheet.absoluteFill]}>
+          <CameraView 
+            style={styles.camera} 
+            facing={cameraType}
+            ref={cameraRef}
+          >
+            <View style={styles.cameraButtons}>
+              <TouchableOpacity 
+                style={styles.cameraButton}
+                onPress={() => setCameraVisible(false)}
+              >
+                <Ionicons name="close" size={30} color="white" />
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.captureButton}
+                onPress={capturePhoto}
+              >
+                <View style={styles.captureButtonInner} />
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.cameraButton}
+                onPress={toggleCameraType}
+              >
+                <Ionicons name="camera-reverse" size={30} color="white" />
+              </TouchableOpacity>
+            </View>
+          </CameraView>
+        </View>
+      );
+    }
+  };
+
+  if (cameraVisible) {
+    return renderCameraView();
   }
 
   return (
@@ -356,6 +466,12 @@ const styles = StyleSheet.create({
   },
   cameraContainer: {
     flex: 1,
+    zIndex: 9999,
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 40,
     backgroundColor: 'black',
   },
   camera: {
@@ -386,6 +502,13 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     backgroundColor: 'white',
+  },
+  permissionButton: {
+    backgroundColor: '#1DA1F2',
+    padding: 12,
+    borderRadius: 8,
+    minWidth: 150,
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',

@@ -13,23 +13,31 @@ const axios = axiosLib.create({
 });
 
 axios.interceptors.request.use(async (req) => {
-    console.log('Axios Request:', {
+  const fullUrl =
+    req.url?.startsWith('http')
+      ? req.url
+      : `${req.baseURL}${req.url}`;
+
+  console.log('Axios Request:', {
     url: req.url,
-    fullUrl: req.baseURL + req.url,
-    headers: req.headers
+    fullUrl,
+    headers: req.headers,
   });
-  // Only add token for non-auth endpoints
+
   const authEndpoints = ['/login', '/register', '/forgot-password', '/reset-password'];
-  const isAuthRequest = authEndpoints.some(endpoint => req.url?.includes(endpoint));
-  
+  const isAuthRequest = authEndpoints.some(endpoint =>
+    req.url?.includes(endpoint)
+  );
+
   if (!isAuthRequest) {
     const token = await getToken();
     if (token) {
-      req.headers["Authorization"] = `Bearer ${token}`;
+      req.headers.Authorization = `Bearer ${token}`;
     }
   }
-  
+
   return req;
 });
+
 
 export default axios;

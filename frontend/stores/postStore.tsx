@@ -669,9 +669,7 @@ handleCommentReaction: (data) => {
 
   handlePostUpdated: (data) => {
     const { posts } = get();
-    
-    console.log('✅ Received post update data:', data); // Log the data to inspect it
-    
+        
     const updatedPosts = posts.map(post => {
       if (post.id === data.postId) {
         console.log('✅ Updating post via real-time:', data.postId);

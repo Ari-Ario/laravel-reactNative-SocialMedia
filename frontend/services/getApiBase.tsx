@@ -1,19 +1,25 @@
 // services/getApiBase.ts or wherever you keep it
 
 import { Platform } from 'react-native';
-import Constants from 'expo-constants';
+
 const getApiBase = (): string => {
-  const defaultUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
-  
-  if (Platform.OS === 'android') {
-    return process.env.EXPO_PUBLIC_API_URL_ANDROID + '/api' || defaultUrl;
+  const fallback = 'http://localhost:8000';
+
+  let base =
+    Platform.OS === 'android'
+      ? process.env.EXPO_PUBLIC_API_URL_ANDROID
+      : Platform.OS === 'ios'
+      ? process.env.EXPO_PUBLIC_API_URL_IOS
+      : process.env.EXPO_PUBLIC_API_URL;
+
+  if (!base) {
+    base = fallback;
   }
-  if (Platform.OS === 'ios') {
-    return process.env.EXPO_PUBLIC_API_URL_IOS + '/api' || defaultUrl;
-  }
-  
-  // web / fallback
-  return defaultUrl + '/api';
+
+  // ensure NO trailing slash
+  base = base.replace(/\/$/, '');
+
+  return `${base}/api`;
 };
 
 export default getApiBase;

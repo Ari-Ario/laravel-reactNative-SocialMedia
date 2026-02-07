@@ -135,6 +135,7 @@ const Page = () => {
 
     if (!result.canceled && result.assets.length > 0) {
       try {
+        console.log(result.assets[0].uri)
         await uploadProfilePhoto(result.assets[0].uri);
         const refreshedUser = await loadUser();
         setUser(refreshedUser);
