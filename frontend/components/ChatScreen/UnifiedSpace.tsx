@@ -10,12 +10,10 @@ import {
   GestureResponderEvent,
 } from 'react-native';
 import { 
-  Camera, 
   Audio, 
   Video,
-  useCameraPermissions,
-  useMicrophonePermissions 
 } from 'expo-av';
+import { Camera, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import { ResizeMode } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';

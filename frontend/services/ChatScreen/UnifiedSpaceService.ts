@@ -2,8 +2,11 @@
 
 import axios from 'axios';
 import { Audio } from 'expo-av';
-import { pusher } from '@/services/PusherService';
-import { currentUser } from '@/stores/auth';
+// import { pusher } from '@/services/PusherService';
+import pusher from 'pusher-js'
+// import { currentUser } from '@/stores/auth';
+import AuthContext from '@/context/AuthContext';
+import { useContext } from 'react';
 
 export class UnifiedSpaceService {
   // Using ONLY your existing packages:
@@ -17,6 +20,8 @@ export class UnifiedSpaceService {
   // react-native-gifted-chat - Chat UI
 
   static async createSpace(type: string, options: any) {
+    const currentUser = useContext(AuthContext);
+
     // Create any type of collaboration space
     const response = await axios.post('/api/spaces', {
       space_type: type,

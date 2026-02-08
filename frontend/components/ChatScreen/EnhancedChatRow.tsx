@@ -4,7 +4,7 @@ import { Link, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useContext } from 'react';
 import getApiBaseImage from '@/services/getApiBaseImage';
-import CollaborationService, { CollaborationSpace } from '@/services/CollaborationService';
+import CollaborationService, { CollaborationSpace } from '@/services/ChatScreen/CollaborationService';
 import AuthContext from '@/context/AuthContext';
 import Avatar from '@/components/Image/Avatar';
 import axios from '@/services/axios';

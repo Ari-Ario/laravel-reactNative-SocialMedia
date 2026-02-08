@@ -14,7 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 // import DateTimePicker from '@react-native-community/datetimepicker';
 import { format, addHours, nextMonday } from 'date-fns';
-import CollaborationService from '@/services/CollaborationService';
+import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import * as Haptics from 'expo-haptics';
 
 interface CreateActivityModalProps {

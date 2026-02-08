@@ -18,7 +18,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useContext, useCallback } from 'react';
 import AuthContext from '@/context/AuthContext';
-import CollaborationService, { CollaborativeActivity } from '@/services/CollaborationService';
+import CollaborationService, { CollaborativeActivity } from '@/services/ChatScreen/CollaborationService';
 import { AICollaborationAssistant } from '@/components/AI/AICollaborationAssistant';
 import * as Haptics from 'expo-haptics';
 import { getToken } from '@/services/TokenService';

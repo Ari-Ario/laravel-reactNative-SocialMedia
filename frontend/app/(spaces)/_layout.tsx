@@ -7,7 +7,7 @@ export default function SpaceLayout() {
       <Stack.Screen 
         name="[id]" 
         options={{ 
-          headerShown: true,
+          headerShown: false,
           title: 'Space',
           headerBackTitle: 'Back'
         }} 

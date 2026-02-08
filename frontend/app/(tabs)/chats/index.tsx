@@ -5,10 +5,10 @@ import {
   RefreshControl, Animated, ScrollView,
   Platform
 } from "react-native";
-import OfflineService from '@/services/OfflineServiceChat';
-import RealTimeService from '@/services/RealTimeServiceChat';
-import NotificationService from '@/services/NotificationServiceChat';
-import SearchService, { SearchResult } from '@/services/SearchServiceChat';
+import OfflineService from '@/services/ChatScreen/OfflineServiceChat';
+import RealTimeService from '@/services/ChatScreen/RealTimeServiceChat';
+import NotificationService from '@/services/ChatScreen/NotificationServiceChat';
+import SearchService, { SearchResult } from '@/services/ChatScreen/SearchServiceChat';
 
 import { router, useFocusEffect } from 'expo-router';
 import { useState, useEffect, useContext, useMemo, useCallback, useRef } from "react";
@@ -16,14 +16,14 @@ import AuthContext from "@/context/AuthContext";
 import { usePostStore } from '@/stores/postStore';
 import EnhancedChatRow from '@/components/ChatScreen/EnhancedChatRow';
 import { Ionicons } from '@expo/vector-icons';
-import CollaborationService, { CollaborationSpace, CollaborativeActivity } from '@/services/CollaborationService';
+import CollaborationService, { CollaborationSpace, CollaborativeActivity } from '@/services/ChatScreen/CollaborationService';
 import * as Haptics from 'expo-haptics';
 import { getToken } from "@/services/TokenService";
 import getApiBase from "@/services/getApiBase";
 import axios from '@/services/axios';
 import { useSpaceStore } from '@/stores/spaceStore';
-import { SynchronicityEngine } from '@/services/SynchronicityEngine';
-import { DatabaseIntegrator } from '@/services/DatabaseIntegrator';
+import { SynchronicityEngine } from '@/services/ChatScreen/SynchronicityEngine';
+import { DatabaseIntegrator } from '@/services/ChatScreen/DatabaseIntegrator';
 import debounce from 'lodash/debounce';
 import CreativeGenerator from "@/components/AI/CreativeGenerator";
 import CollaborativeActivities from "@/components/ChatScreen/CollaborativeActivities";

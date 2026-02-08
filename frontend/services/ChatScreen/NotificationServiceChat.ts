@@ -2,8 +2,8 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { Alert } from 'react-native';
-import getApiBase from './getApiBase';
-import { getToken } from './TokenService';
+import getApiBase from '@/services/getApiBase';
+import { getToken } from '@/services/TokenService';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({

@@ -1,7 +1,7 @@
 // services/ContactService.ts
 import axios from '@/services/axios';
-import getApiBase from './getApiBase';
-import { getToken } from './TokenService';
+import getApiBase from '@/services/getApiBase';
+import { getToken } from '@/services/TokenService';
 
 class ContactService {
   private static instance: ContactService;
@@ -37,7 +37,7 @@ class ContactService {
     const response = await axios.get(`${this.baseURL}/followers`, {
       headers: this.getHeaders(),
     });
-
+    console.log('All Followers', response.data)
     return response.data;
   }
 
@@ -48,6 +48,7 @@ class ContactService {
     const response = await axios.get(`${this.baseURL}/following`, {
       headers: this.getHeaders(),
     });
+    console.log('All Followings', response.data)
 
     return response.data;
   }

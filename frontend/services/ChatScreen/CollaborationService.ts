@@ -4,8 +4,8 @@ import { Platform, Alert } from 'react-native';
 import * as Haptics from 'expo-haptics';
 // import Pusher from '@pusher/pusher-websocket-react-native';
 import Pusher from "pusher-js";
-import getApiBase from './getApiBase';
-import { getToken } from "./TokenService";
+import getApiBase from '@/services/getApiBase';
+import { getToken } from "@/services/TokenService";
 
 export interface CollaborationSpace {
   id: string;

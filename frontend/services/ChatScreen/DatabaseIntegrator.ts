@@ -1,5 +1,5 @@
 // services/DatabaseIntegrator.ts
-import CollaborationService from './CollaborationService';
+import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import axios from 'axios';
 export class DatabaseIntegrator {
   static async syncAllFeatures(userId: number) {

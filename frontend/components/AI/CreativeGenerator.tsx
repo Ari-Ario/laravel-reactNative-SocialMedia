@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
-import CollaborationService from '@/services/CollaborationService';
+import CollaborationService from '@/services/ChatScreen/CollaborationService';
 
 const { width } = Dimensions.get('window');
 

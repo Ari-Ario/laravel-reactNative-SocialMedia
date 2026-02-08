@@ -12,7 +12,8 @@ import { Camera, useCameraPermissions, useMicrophonePermissions } from 'expo-cam
 import { Audio, Video } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useParticipantsStore } from '@/stores/participantsStore';
+// import { useCollaborationStore } from '@/stores/participantsStore';
+import { useCollaborationStore } from '@/stores/collaborationStore';
 
 export const ImmersiveCallView: React.FC<{ spaceId: string }> = ({ spaceId }) => {
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
@@ -22,7 +23,7 @@ export const ImmersiveCallView: React.FC<{ spaceId: string }> = ({ spaceId }) =>
   const [isSharingScreen, setIsSharingScreen] = useState(false);
   const [participants, setParticipants] = useState<any[]>([]);
   
-  const { participants: storeParticipants } = useParticipantsStore();
+  const { participants: storeParticipants } = useCollaborationStore();
   const audioPositions = useRef<Map<string, { x: number; y: number }>>(new Map());
 
   useEffect(() => {

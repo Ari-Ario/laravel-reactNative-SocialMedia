@@ -1,8 +1,8 @@
 // services/RealTimeServiceChat.ts
 import Pusher, { Channel } from 'pusher-js';
 import { Platform } from 'react-native';
-import { getToken } from './TokenService';
-import getApiBase from './getApiBase';
+import { getToken } from '@/services/TokenService';
+import getApiBase from '@/services/getApiBase';
 
 type EventCallback = (data: any) => void;
 

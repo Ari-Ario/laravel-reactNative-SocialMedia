@@ -1,5 +1,5 @@
 // components/Magic/QuantumEntanglement.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,

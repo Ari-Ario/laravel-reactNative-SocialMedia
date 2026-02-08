@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import CollaborationService, { CollaborativeActivity } from '@/services/CollaborationService';
+import CollaborationService, { CollaborativeActivity } from '@/services/ChatScreen/CollaborationService';
 import * as Haptics from 'expo-haptics';
 import { Calendar, CalendarList, Agenda, LocaleConfig } from 'react-native-calendars';
 import { format, parseISO, isToday, isTomorrow, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';

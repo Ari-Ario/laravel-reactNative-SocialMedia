@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import CollaborationService from '@/services/CollaborationService';
+import CollaborationService from '@/services/ChatScreen/CollaborationService';
 
 interface MorphingSpaceProps {
   spaceId: string;

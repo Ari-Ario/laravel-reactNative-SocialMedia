@@ -1,8 +1,8 @@
 // services/SearchServiceChat.ts
 import Fuse from 'fuse.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getToken } from './TokenService';
-import getApiBase from './getApiBase';
+import { getToken } from '@/services/TokenService';
+import getApiBase from '@/services/getApiBase';
 
 export interface SearchResult {
   id: string;

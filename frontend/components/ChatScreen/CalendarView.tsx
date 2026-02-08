@@ -12,7 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
 import { format, parseISO, addDays } from 'date-fns';
 import * as CalendarService from 'expo-calendar';
-import CollaborationService, { CollaborativeActivity } from '@/services/CollaborationService';
+import CollaborationService, { CollaborativeActivity } from '@/services/ChatScreen/CollaborationService';
 
 interface CalendarViewProps {
   spaceId: string;

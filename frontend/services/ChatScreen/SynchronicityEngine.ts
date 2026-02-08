@@ -1,9 +1,9 @@
 // services/SynchronicityEngine.ts
 import axios from '@/services/axios';
-import getApiBase from './getApiBase';
-import { getToken } from './TokenService';
+import getApiBase from '@/services/getApiBase';
+import { getToken } from '@/services/TokenService';
 import * as Haptics from 'expo-haptics';
-import CollaborationService, { CollaborationSpace } from '@/services/CollaborationService';
+import CollaborationService, { CollaborationSpace } from '@/services/ChatScreen/CollaborationService';
 
 export interface SynchronicityMatch {
   type: 'user' | 'idea' | 'pattern' | 'timing';
