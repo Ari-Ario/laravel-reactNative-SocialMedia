@@ -30,36 +30,62 @@ class PusherService {
         return false;
       }
 
-      // ✅ FIX: Check environment variables properly
       const pusherKey = process.env.EXPO_PUBLIC_PUSHER_APP_KEY;
       const pusherCluster = process.env.EXPO_PUBLIC_PUSHER_APP_CLUSTER;
       const apiUrl = process.env.EXPO_PUBLIC_API_URL;
 
       if (!pusherKey || !pusherCluster || !apiUrl) {
-        console.error('❌ Pusher environment variables missing:', {
-          hasKey: !!pusherKey,
-          hasCluster: !!pusherCluster,
-          hasApiUrl: !!apiUrl
-        });
+        console.error('❌ Pusher environment variables missing');
         return false;
       }
 
       console.log('🔄 Initializing Pusher connection...');
       this.connectionAttempts++;
 
-      // ✅ FIX: Web platform configuration
+      // ✅ FIX: Add authorizer for presence channels
       this.pusher = new Pusher(pusherKey, {
         cluster: pusherCluster,
         forceTLS: true,
-        authEndpoint: `${apiUrl}/broadcasting/auth`,
-        auth: {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
+        authorizer: (channel, options) => {
+          return {
+            authorize: (socketId, callback) => {
+              console.log(`🔐 Authorizing channel: ${channel.name} with socket: ${socketId}`);
+              console.log(`🔐 Using token: ${token.substring(0, 20)}...`); // Log partial token
+              
+              fetch(`${apiUrl}/broadcasting/auth`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Accept': 'application/json',
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  socket_id: socketId,
+                  channel_name: channel.name
+                })
+              })
+              .then(response => {
+                console.log(`📡 Auth response status: ${response.status}`);
+                if (!response.ok) {
+                  return response.text().then(text => {
+                    console.error(`❌ Auth failed with status ${response.status}:`, text);
+                    throw new Error(`Auth failed: ${response.status} - ${text}`);
+                  });
+                }
+                return response.json();
+              })
+              .then(data => {
+                console.log(`✅ Channel authorized: ${channel.name}`);
+                callback(null, data);
+              })
+              .catch(error => {
+                console.error(`❌ Channel authorization failed: ${channel.name}`, error);
+                callback(error, null);
+              });
+            }
+          };
         },
-        // ✅ FIX: Web-specific configuration
+        // Web-specific configuration
         wsHost: `ws-${pusherCluster}.pusher.com`,
         wsPort: 80,
         wssPort: 443,

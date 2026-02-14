@@ -218,6 +218,10 @@ const ChatPage = () => {
 const fetchActivitiesCount = async () => {
   if (!user?.id) return;
   
+  // ✅ ADD THIS GUARD
+  if (fetchActivitiesCount.pending) return;
+  fetchActivitiesCount.pending = true;
+
   try {
     // Fetch spaces first
     const userSpaces = await collaborationService.fetchUserSpaces(user.id);
@@ -241,6 +245,8 @@ const fetchActivitiesCount = async () => {
     setActivities(allActivities);
   } catch (error) {
     console.error('Error fetching activities count:', error);
+  } finally {
+    fetchActivitiesCount.pending = false;
   }
 };
   // Debounced search

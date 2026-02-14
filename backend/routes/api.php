@@ -19,6 +19,8 @@ use App\Http\Controllers\SpaceController;
 use App\Http\Controllers\AIController;
 use App\Http\Controllers\SynchronicityController;
 use App\Http\Controllers\CollaborativeActivityController;
+use App\Http\Controllers\MessagesController;
+use Illuminate\Support\Facades\Broadcast;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -28,6 +30,9 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Support\Facades\Event;
 
+Route::post('/broadcasting/auth', function (Request $request) {
+    return Broadcast::auth($request);
+})->middleware('auth:sanctum');
 
 Route::group(["middleware" => ["auth:sanctum"]], function() {
 
@@ -116,6 +121,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/', [SpaceController::class, 'store']);
         Route::get('/{id}', [SpaceController::class, 'show']);
         Route::put('/{id}', [SpaceController::class, 'update']);
+        Route::put('/{id}/content', [SpaceController::class, 'updateContentState']);
         Route::delete('/{id}', [SpaceController::class, 'destroy']);
         Route::post('/{id}/join', [SpaceController::class, 'join']);
         Route::post('/{id}/leave', [SpaceController::class, 'leave']);
@@ -128,7 +134,35 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/{id}/participants', [SpaceController::class, 'getParticipants']);
         Route::get('/{id}/ai-suggestions', [SpaceController::class, 'getAISuggestions']);
         Route::post('/{id}/ai-query', [SpaceController::class, 'aiQuery']);
+        Route::post('/{id}/upload-media', [SpaceController::class, 'uploadMedia']);
+        Route::post('/{id}/send-message', [SpaceController::class, 'sendMessage']);
     });
+    Route::post('/spaces/{id}/call/signal', [SpaceController::class, 'callSignal']);
+    Route::post('/spaces/{id}/call/mute', [SpaceController::class, 'callMute']);
+    Route::post('/spaces/{id}/call/video', [SpaceController::class, 'callVideo']);
+    Route::post('/spaces/{id}/call/screen-share', [SpaceController::class, 'callScreenShare']);
+});
+
+// Message routes
+Route::middleware('auth:sanctum')->prefix('messages')->group(function () {
+    Route::get('/', [MessagesController::class, 'index']);
+    Route::post('/', [MessagesController::class, 'store']);
+    Route::put('/{id}', [MessagesController::class, 'update']);
+    Route::delete('/{id}', [MessagesController::class, 'destroy']);
+    Route::post('/{id}/react', [MessagesController::class, 'react']);
+    Route::delete('/{id}/reaction', [MessagesController::class, 'deleteReaction']);
+});
+
+// Notification routes
+Route::middleware('auth:sanctum')->prefix('notifications')->group(function () {
+    Route::get('/missed', [NotificationController::class, 'missedNotifications']);
+    Route::post('/register-device', [NotificationController::class, 'registerDevice']);
+    Route::post('/unregister-device', [NotificationController::class, 'unregisterDevice']);
+    Route::post('/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::post('/read-all', [NotificationController::class, 'markAllAsRead']);
+    Route::delete('/clear', [NotificationController::class, 'clearAll']);
+    Route::get('/preferences', [NotificationController::class, 'getPreferences']);
+    Route::put('/preferences', [NotificationController::class, 'updatePreferences']);
 });
 
 Route::prefix('ai')->middleware('auth:sanctum')->group(function () {
@@ -175,6 +209,7 @@ Route::middleware('auth:sanctum')->prefix('collaborative-activities')->group(fun
     Route::post('/{activityId}/participants', [CollaborativeActivityController::class, 'updateParticipants']);
     Route::get('/space/{spaceId}/statistics', [CollaborativeActivityController::class, 'getSpaceStatistics']);
 });
+
 
 // Authentication routes
 Route::post('/login', function (Request $request) {

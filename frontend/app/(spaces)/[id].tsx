@@ -25,6 +25,9 @@ import { getToken } from '@/services/TokenService';
 import CalendarView from '@/components/ChatScreen/CalendarView';
 import CreateActivityModal from '@/components/ChatScreen/CreateActivityModal';
 import CalendarPrompt from '@/components/ChatScreen/CalendarPrompt';
+import ImmersiveCallView from '@/components/ChatScreen/ImmersiveCallView';
+import MediaUploader from '@/services/ChatScreen/MediaUploader';
+import MessageList from '@/components/ChatScreen/MessageList';
 
 const SpaceDetailScreen = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -40,7 +43,8 @@ const SpaceDetailScreen = () => {
   const [showCalendarPrompt, setShowCalendarPrompt] = useState(false);
   const [showCreateActivity, setShowCreateActivity] = useState(false);
   const params = useLocalSearchParams(); // ✅ top level
-  
+  const [showMediaUploader, setShowMediaUploader] = useState(false);
+
   const collaborationService = CollaborationService.getInstance();
   const windowHeight = Dimensions.get('window').height;
 
@@ -170,47 +174,56 @@ useEffect(() => {
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!content.trim() || !space) return;
+const handleSendMessage = async () => {
+  if (!content.trim() || !space) return;
+  
+  try {
+    // ✅ FIX: Use sendMessage instead of updateContentState
+    const message = await collaborationService.sendMessage(id as string, {
+      content: content.trim(),
+      type: 'text',
+    });
     
-    try {
-      const currentContent = space.content_state?.messages || [];
-      const newMessage = {
-        id: Date.now().toString(),
-        user_id: user?.id,
-        user_name: user?.name,
-        content: content.trim(),
-        timestamp: new Date().toISOString(),
-      };
-      
-      const updatedContent = {
-        ...space.content_state,
-        messages: [...currentContent, newMessage],
-      };
-      
-      await collaborationService.updateContentState(id as string, updatedContent);
-      setContent('');
-      
-      if (Platform.OS !== 'web') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Update local state optimistically
+    setSpace(prev => ({
+      ...prev,
+      content_state: {
+        ...prev.content_state,
+        messages: [...(prev.content_state?.messages || []), message]
       }
-    } catch (error) {
-      console.error('Error sending message:', error);
-      Alert.alert('Error', 'Failed to send message');
+    }));
+    
+    setContent('');
+    
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-  };
+  } catch (error) {
+    console.error('Error sending message:', error);
+    Alert.alert('Error', 'Failed to send message');
+  }
+};
 
-  const handleStartCall = async (type: 'audio' | 'video') => {
-    try {
-      await collaborationService.startCall(id as string, type);
-      Alert.alert('Call Started', `Starting ${type} call...`);
-      // Switch to meeting tab
-      setActiveTab('meeting');
-    } catch (error) {
-      console.error('Error starting call:', error);
-      Alert.alert('Error', 'Failed to start call');
-    }
-  };
+const handleStartCall = async (type: 'audio' | 'video') => {
+  try {
+    const call = await collaborationService.startCall(id as string, type);
+    
+    // Update space state to show call is active
+    setSpace(prev => ({
+      ...prev,
+      is_live: true,
+      current_focus: 'call',
+    }));
+    
+    // Switch to meeting tab
+    setActiveTab('meeting');
+    
+    Alert.alert('Call Started', `Starting ${type} call...`);
+  } catch (error) {
+    console.error('Error starting call:', error);
+    Alert.alert('Error', 'Failed to start call');
+  }
+};
 
   const handleInviteUser = async () => {
     if (!inviteUserId.trim()) return;
@@ -251,36 +264,39 @@ useEffect(() => {
     switch (activeTab) {
       case 'chat':
         return (
-          <View style={styles.chatArea}>
-            <ScrollView style={styles.chatContainer}>
-              {(space?.content_state?.messages || []).map((message: any) => (
-                <View 
-                  key={message.id} 
-                  style={[
-                    styles.messageBubble,
-                    message.user_id === user?.id ? styles.myMessage : styles.theirMessage
-                  ]}
-                >
-                  <Text style={styles.messageAuthor}>
-                    {message.user_id === user?.id ? 'You' : message.user_name || 'User'}
-                  </Text>
-                  <Text style={styles.messageText}>{message.content}</Text>
-                  <Text style={styles.messageTime}>
-                    {new Date(message.timestamp).toLocaleTimeString([], { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    })}
-                  </Text>
-                </View>
-              ))}
-              {(space?.content_state?.messages || []).length === 0 && (
-                <View style={styles.emptyChat}>
-                  <Ionicons name="chatbubble-outline" size={48} color="#ccc" />
-                  <Text style={styles.emptyChatText}>No messages yet</Text>
-                  <Text style={styles.emptyChatSubtext}>Be the first to say hello!</Text>
-                </View>
-              )}
-            </ScrollView>
+          <View style={styles.chatContainer}>
+            <MessageList 
+              spaceId={id}
+              currentUserId={user?.id || 0}
+            />
+            
+            {/* Message Input Bar */}
+            <View style={styles.chatInputContainer}>
+              <TouchableOpacity 
+                onPress={() => setShowMediaUploader(true)}
+                style={styles.mediaButton}
+              >
+                <Ionicons name="attach" size={24} color="#007AFF" />
+              </TouchableOpacity>
+              
+              <TextInput
+                style={styles.messageInput}
+                placeholder={`Message in ${space?.title || 'space'}...`}
+                value={content}
+                onChangeText={setContent}
+                multiline
+                maxLength={500}
+                placeholderTextColor="#999"
+              />
+              
+              <TouchableOpacity 
+                style={[styles.sendButton, !content.trim() && styles.sendButtonDisabled]}
+                onPress={handleSendMessage}
+                disabled={!content.trim()}
+              >
+                <Ionicons name="send" size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
           </View>
         );
         
@@ -299,6 +315,12 @@ useEffect(() => {
         );
         
       case 'meeting':
+        // If there's an active call, show immersive view
+        if (space?.is_live && space?.current_focus === 'call') {
+          return <ImmersiveCallView spaceId={id} />;
+        }
+        
+        // Otherwise show the call start screen
         return (
           <View style={styles.meetingContainer}>
             <Ionicons name="videocam" size={64} color="#007AFF" />
@@ -522,26 +544,7 @@ useEffect(() => {
       )}
 
       {/* Action Bar */}
-      {activeTab === 'chat' && (
-        <View style={styles.actionBar}>
-          <TextInput
-            style={styles.messageInput}
-            placeholder={`Message in ${space?.title || 'space'}...`}
-            value={content}
-            onChangeText={setContent}
-            multiline
-            maxLength={500}
-            placeholderTextColor="#999"
-          />
-          <TouchableOpacity 
-            style={[styles.sendButton, !content.trim() && styles.sendButtonDisabled]}
-            onPress={handleSendMessage}
-            disabled={!content.trim()}
-          >
-            <Ionicons name="send" size={20} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      )}
+
 
       {/* Invite Modal */}
       <Modal
@@ -621,7 +624,18 @@ useEffect(() => {
         onClose={() => setShowCreateActivity(false)}
         onActivityCreated={loadSpaceDetails}
       />
-
+      <MediaUploader
+        spaceId={id as string}
+        isVisible={showMediaUploader}
+        onClose={() => setShowMediaUploader(false)}
+        onUploadComplete={(media) => {
+          console.log('Media uploaded:', media);
+          // You could automatically send a message with the media
+          if (activeTab === 'chat') {
+            setContent(`Check out this file: ${media.url || media.file_name}`);
+          }
+        }}
+      />
     </SafeAreaView>
   );
 };
@@ -729,8 +743,48 @@ const styles = StyleSheet.create({
   },
   chatContainer: {
     flex: 1,
-    padding: 16,
+    backgroundColor: '#fff',
   },
+  
+  chatInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  
+  messageInput: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginHorizontal: 8,
+    fontSize: 16,
+    maxHeight: 100,
+  },
+  
+  sendButton: {
+    backgroundColor: '#007AFF',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  sendButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  
+  mediaButton: {
+    padding: 8,
+  },
+  
+
   messageBubble: {
     maxWidth: '80%',
     padding: 12,
@@ -967,6 +1021,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  mediaButton: {
+    padding: 8,
+    marginRight: 8,
   },
 });
 

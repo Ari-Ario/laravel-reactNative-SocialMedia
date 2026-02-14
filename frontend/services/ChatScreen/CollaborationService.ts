@@ -1,11 +1,10 @@
-// services/CollaborationService.ts
 import axios from "@/services/axios";
 import { Platform, Alert } from 'react-native';
 import * as Haptics from 'expo-haptics';
-// import Pusher from '@pusher/pusher-websocket-react-native';
 import Pusher from "pusher-js";
 import getApiBase from '@/services/getApiBase';
 import { getToken } from "@/services/TokenService";
+import PusherService from "@/services/PusherService";
 
 export interface CollaborationSpace {
   id: string;
@@ -101,15 +100,22 @@ export interface CollaborativeActivity {
 }
 
 class CollaborationService {
+    static setToken(token: Promise<any>) {
+        throw new Error('Method not implemented.');
+    }
+    static setUserId(id: Promise<any>) {
+        throw new Error('Method not implemented.');
+    }
   private static instance: CollaborationService;
-  private pusher: Pusher | null = null;
+  private pusherService: typeof PusherService;
   private spaceSubscriptions: Map<string, any> = new Map();
   private userToken: string | null = null;
   private baseURL: string;
 
   private constructor() {
-    // this.baseURL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
     this.baseURL = getApiBase() || 'http://localhost:8000/api';
+    // ✅ FIX: Use the existing PusherService singleton - DO NOT create a new one
+    this.pusherService = PusherService;
   }
 
   static getInstance(): CollaborationService {
@@ -129,6 +135,51 @@ class CollaborationService {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
+  }
+
+  /**
+   * ✅ FIXED: Just check if PusherService is ready - NEVER initialize it again
+   * This prevents duplicate connections and auth errors
+   */
+  private async ensurePusherInitialized(): Promise<boolean> {
+    try {
+        // Use the imported PusherService singleton directly
+        this.pusherService = PusherService;
+        
+        // ✅ FIX: Only check if it's ready - DON'T initialize
+        // The PusherService is already initialized in app/(tabs)/index.tsx
+        if (this.pusherService.isReady()) {
+            console.log('✅ Pusher already initialized and ready (CollaborationService)');
+            return true;
+        }
+        
+        // ✅ FIX: If not ready, wait a bit and check again
+        // This gives time for the main app to initialize Pusher
+        console.log('⏳ Waiting for Pusher to be initialized...');
+        
+        // Wait up to 3 seconds for Pusher to be initialized
+        for (let i = 0; i < 6; i++) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            if (this.pusherService.isReady()) {
+                console.log('✅ Pusher became ready after wait');
+                return true;
+            }
+        }
+        
+        console.warn('⚠️ Pusher not ready after waiting - continuing without real-time');
+        return false;
+    } catch (error) {
+        console.error('❌ Failed to check Pusher initialization:', error);
+        return false;
+    }
+  }
+
+  /**
+   * ✅ FIXED: Get the pusher instance from PusherService without creating a new one
+   */
+  private getPusherInstance(): Pusher | null {
+    // Access the pusher instance from the singleton
+    return (this.pusherService as any).pusher || null;
   }
 
   // 🔥 CORE SPACE OPERATIONS
@@ -155,119 +206,122 @@ class CollaborationService {
     }
   }
 
-// services/CollaborationService.ts - UPDATED fetchSpaceDetails method
-async fetchSpaceDetails(spaceId: string): Promise<CollaborationSpace> {
-  if (!this.userToken) {
-    return;
-    // this.userToken = await getToken();
-  }
-  try {
-    console.log(`Fetching space details for: ${spaceId}`);
-    
-    const response = await axios.get(`${this.baseURL}/spaces/${spaceId}`, {
-      headers: this.getHeaders(),
-    });
-    
-    console.log('Space API response:', response.data);
-    
-    // Your API returns { space: {...}, participation: {...} }
-    const apiSpace = response.data.space || response.data;
-    const participation = response.data.participation;
-    
-    return {
-      id: apiSpace.id,
-      title: apiSpace.title,
-      description: apiSpace.description,
-      space_type: apiSpace.space_type,
-      creator_id: apiSpace.creator_id,
-      settings: apiSpace.settings || {},
-      content_state: apiSpace.content_state || this.getInitialContentState(apiSpace.space_type),
-      activity_metrics: apiSpace.activity_metrics || {},
-      evolution_level: apiSpace.evolution_level || 1,
-      unlocked_features: apiSpace.unlocked_features || [],
-      is_live: apiSpace.is_live || false,
-      has_ai_assistant: apiSpace.has_ai_assistant || false,
-      ai_personality: apiSpace.ai_personality,
-      ai_capabilities: apiSpace.ai_capabilities || [],
-      linked_conversation_id: apiSpace.linked_conversation_id,
-      linked_post_id: apiSpace.linked_post_id,
-      linked_story_id: apiSpace.linked_story_id,
-      participants_count: response.data.participants?.length || 0,
-      participants: response.data.participants || [],
-      magic_events: response.data.magic_events || [],
-      my_role: participation?.role,
-      my_permissions: participation?.permissions,
-      creator: apiSpace.creator,
-      created_at: apiSpace.created_at,
-      updated_at: apiSpace.updated_at,
-    };
-  } catch (error: any) {
-    console.error('Error fetching space details:', error.response?.data || error.message);
-    
-    // If 404, create a mock space for testing
-    if (error.response?.status === 404) {
-      console.log('Space not found, returning mock data for testing');
-      return this.getMockSpace(spaceId);
+  async fetchSpaceDetails(spaceId: string): Promise<CollaborationSpace> {
+    if (!this.userToken) {
+      const token = await getToken();
+      if (token) {
+        this.userToken = token;
+      } else {
+        throw new Error('No authentication token available');
+      }
     }
     
-    throw error;
-  }
-}
-
-// Add this helper method for testing
-private getMockSpace(spaceId: string): CollaborationSpace {
-  return {
-    id: spaceId,
-    title: 'Test Collaboration Space',
-    description: 'A test space for development',
-    space_type: 'chat',
-    creator_id: 1,
-    settings: {
-      allow_guests: true,
-      max_participants: 10,
-    },
-    content_state: {
-      messages: [
-        {
-          id: '1',
-          user_id: 1,
-          content: 'Welcome to the collaboration space!',
-          timestamp: new Date().toISOString(),
-        }
-      ]
-    },
-    activity_metrics: {},
-    evolution_level: 1,
-    unlocked_features: [],
-    is_live: false,
-    has_ai_assistant: true,
-    ai_personality: 'helpful',
-    ai_capabilities: ['summarize', 'suggest'],
-    participants_count: 2,
-    participants: [
-      {
-        id: 1,
-        user_id: 1,
-        role: 'owner',
-        user: {
-          id: 1,
-          name: 'You',
-          profile_photo: null,
-        }
+    try {
+      console.log(`Fetching space details for: ${spaceId}`);
+      
+      const response = await axios.get(`${this.baseURL}/spaces/${spaceId}`, {
+        headers: this.getHeaders(),
+      });
+      
+      console.log('Space API response:', response.data);
+      
+      const apiSpace = response.data.space || response.data;
+      const participation = response.data.participation;
+      
+      return {
+        id: apiSpace.id,
+        title: apiSpace.title,
+        description: apiSpace.description,
+        space_type: apiSpace.space_type,
+        creator_id: apiSpace.creator_id,
+        settings: apiSpace.settings || {},
+        content_state: apiSpace.content_state || this.getInitialContentState(apiSpace.space_type),
+        activity_metrics: apiSpace.activity_metrics || {},
+        evolution_level: apiSpace.evolution_level || 1,
+        unlocked_features: apiSpace.unlocked_features || [],
+        is_live: apiSpace.is_live || false,
+        has_ai_assistant: apiSpace.has_ai_assistant || false,
+        ai_personality: apiSpace.ai_personality,
+        ai_capabilities: apiSpace.ai_capabilities || [],
+        linked_conversation_id: apiSpace.linked_conversation_id,
+        linked_post_id: apiSpace.linked_post_id,
+        linked_story_id: apiSpace.linked_story_id,
+        participants_count: response.data.participants?.length || 0,
+        participants: response.data.participants || [],
+        magic_events: response.data.magic_events || [],
+        my_role: participation?.role,
+        my_permissions: participation?.permissions,
+        creator: apiSpace.creator,
+        created_at: apiSpace.created_at,
+        updated_at: apiSpace.updated_at,
+      };
+    } catch (error: any) {
+      console.error('Error fetching space details:', error.response?.data || error.message);
+      
+      if (error.response?.status === 404) {
+        console.log('Space not found, returning mock data for testing');
+        return this.getMockSpace(spaceId);
       }
-    ],
-    magic_events: [],
-    my_role: 'owner',
-    my_permissions: { can_edit: true, can_invite: true },
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
-}
+      
+      throw error;
+    }
+  }
+
+  private getInitialContentState(spaceType: string): any {
+    return { messages: [] };
+  }
+
+  private getMockSpace(spaceId: string): CollaborationSpace {
+    return {
+      id: spaceId,
+      title: 'Test Collaboration Space',
+      description: 'A test space for development',
+      space_type: 'chat',
+      creator_id: 1,
+      settings: {
+        allow_guests: true,
+        max_participants: 10,
+      },
+      content_state: {
+        messages: [
+          {
+            id: '1',
+            user_id: 1,
+            content: 'Welcome to the collaboration space!',
+            timestamp: new Date().toISOString(),
+          }
+        ]
+      },
+      activity_metrics: {},
+      evolution_level: 1,
+      unlocked_features: [],
+      is_live: false,
+      has_ai_assistant: true,
+      ai_personality: 'helpful',
+      ai_capabilities: ['summarize', 'suggest'],
+      participants_count: 2,
+      participants: [
+        {
+          id: 1,
+          user_id: 1,
+          role: 'owner',
+          user: {
+            id: 1,
+            name: 'You',
+            profile_photo: null,
+          }
+        }
+      ],
+      magic_events: [],
+      my_role: 'owner',
+      my_permissions: { can_edit: true, can_invite: true },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+  }
 
   private async triggerHapticSuccess() {
     if (Platform.OS === 'web') {
-      // Web fallback - you could play a sound or just skip
-      console.log('Haptic feedback would trigger here on mobile');
       return;
     }
     
@@ -280,7 +334,6 @@ private getMockSpace(spaceId: string): CollaborationSpace {
 
   private async triggerHapticWarning() {
     if (Platform.OS === 'web') {
-      console.log('Haptic feedback would trigger here on mobile');
       return;
     }
     
@@ -293,7 +346,6 @@ private getMockSpace(spaceId: string): CollaborationSpace {
 
   private async triggerHapticLight() {
     if (Platform.OS === 'web') {
-      console.log('Haptic feedback would trigger here on mobile');
       return;
     }
     
@@ -346,32 +398,35 @@ private getMockSpace(spaceId: string): CollaborationSpace {
 
   async inviteToSpace(spaceId: string, userIds: number[], role?: string, message?: string): Promise<void> {
     try {
-      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/invite`, {
-        user_ids: userIds,
-        role,
-        message,
-      }, {
-        headers: this.getHeaders(),
-      });
+        const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/invite`, {
+            user_ids: userIds,
+            role,
+            message,
+        }, {
+            headers: this.getHeaders(),
+        });
 
-      console.log('Invitation response:', response.data);
-      
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      
-      // If you want to automatically add participants (old behavior), use join instead
-      // For now, we're just sending invitations
+        console.log('Invitation response:', response.data);
+        
+        try {
+            if (Platform.OS !== 'web') {
+                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }
+        } catch (hapticsError) {
+            console.warn('Haptics feedback failed:', hapticsError);
+        }
+        
     } catch (error: any) {
-      console.error('Error inviting to space:', error.response?.data || error.message);
-      
-      if (error.response?.status === 403) {
-        throw new Error('You do not have permission to invite users to this space');
-      }
-      
-      throw error;
+        console.error('Error inviting to space:', error.response?.data || error.message);
+        
+        if (error.response?.status === 403) {
+            throw new Error('You do not have permission to invite users to this space');
+        }
+        
+        throw error;
     }
   }
 
-  // Add a method to accept invitations
   async acceptSpaceInvitation(spaceId: string): Promise<any> {
     try {
       const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/accept-invitation`, {}, {
@@ -387,7 +442,7 @@ private getMockSpace(spaceId: string): CollaborationSpace {
     }
   }
 
-  // 🎮 REAL-TIME COLLABORATION
+  // 🎮 REAL-TIME COLLABORATION - USING EXISTING PUSHER CONNECTION
 
   async subscribeToSpace(spaceId: string, callbacks: {
     onSpaceUpdate?: (space: CollaborationSpace) => void;
@@ -395,72 +450,218 @@ private getMockSpace(spaceId: string): CollaborationSpace {
     onContentUpdate?: (contentState: any) => void;
     onMagicEvent?: (event: MagicEvent) => void;
     onVoiceActivity?: (data: any) => void;
+    onWebRTCOffer?: (data: any) => void;
+    onWebRTCAnswer?: (data: any) => void;
+    onWebRTCIceCandidate?: (data: any) => void;
+    onCallStarted?: (data: any) => void;
+    onCallEnded?: (data: any) => void;
+    onParticipantLeft?: (data: any) => void;
+    onScreenShareStarted?: (data: any) => void;
+    onScreenShareEnded?: (data: any) => void;
+    onMuteStateChanged?: (data: any) => void;
+    onVideoStateChanged?: (data: any) => void;
   }) {
-    if (!this.pusher) {
-      this.initializePusher();
-    }
+    try {
+        // ✅ FIX: Only check if Pusher is ready - DON'T initialize
+        const initialized = await this.ensurePusherInitialized();
+        if (!initialized) {
+            console.error('Pusher not ready for space subscription - will retry in 2 seconds');
+            // Retry after 2 seconds
+            setTimeout(() => {
+                this.subscribeToSpace(spaceId, callbacks);
+            }, 2000);
+            return;
+        }
 
-    const channel = this.pusher!.subscribe(`space-${spaceId}`);
-    this.spaceSubscriptions.set(spaceId, channel);
+        // Get the Pusher instance from the service
+        const pusher = this.getPusherInstance();
+        if (!pusher) {
+            console.error('Pusher instance not available');
+            return;
+        }
 
-    // Bind event handlers
-    if (callbacks.onSpaceUpdate) {
-      channel.bind('space-updated', callbacks.onSpaceUpdate);
-    }
-    
-    if (callbacks.onParticipantUpdate) {
-      channel.bind('participant-updated', callbacks.onParticipantUpdate);
-      channel.bind('participant-joined', callbacks.onParticipantUpdate);
-      channel.bind('participant-left', callbacks.onParticipantUpdate);
-    }
-    
-    if (callbacks.onContentUpdate) {
-      channel.bind('content-updated', callbacks.onContentUpdate);
-    }
-    
-    if (callbacks.onMagicEvent) {
-      channel.bind('magic-triggered', callbacks.onMagicEvent);
-    }
-    
-    if (callbacks.onVoiceActivity) {
-      channel.bind('voice-activity', callbacks.onVoiceActivity);
+        const channelName = `presence-space.${spaceId}`;
+        console.log(`📡 Subscribing to space channel: ${channelName}`);
+
+        // Check if already subscribed
+        if (this.spaceSubscriptions.has(spaceId)) {
+            console.log(`📡 Already subscribed to space ${spaceId}`);
+            return;
+        }
+
+        // Subscribe to the channel
+        const channel = pusher.subscribe(channelName);
+        this.spaceSubscriptions.set(spaceId, channel);
+
+        // Bind to channel events
+        channel.bind('pusher:subscription_succeeded', () => {
+            console.log(`✅ Successfully subscribed to space: ${spaceId}`);
+        });
+
+        channel.bind('pusher:subscription_error', (error: any) => {
+            console.error(`❌ Subscription error for space ${spaceId}:`, error);
+        });
+
+        if (callbacks.onSpaceUpdate) {
+            channel.bind('space-updated', (data: any) => {
+                console.log(`🔄 Space updated event received for ${spaceId}`);
+                callbacks.onSpaceUpdate?.(data.space || data);
+            });
+        }
+        
+        if (callbacks.onParticipantUpdate) {
+            channel.bind('participant-joined', (data: any) => {
+                console.log(`👤 Participant joined space ${spaceId}:`, data.user?.name);
+                callbacks.onParticipantUpdate?.(data);
+            });
+            
+            channel.bind('participant-left', (data: any) => {
+                console.log(`👤 Participant left space ${spaceId}:`, data.user?.name);
+                callbacks.onParticipantUpdate?.(data);
+                callbacks.onParticipantLeft?.(data);
+            });
+            
+            channel.bind('participant-updated', (data: any) => {
+                console.log(`👤 Participant updated in space ${spaceId}`);
+                callbacks.onParticipantUpdate?.(data);
+            });
+        }
+        
+        if (callbacks.onContentUpdate) {
+            channel.bind('content-updated', (data: any) => {
+                console.log(`📝 Content updated in space ${spaceId}`);
+                callbacks.onContentUpdate?.(data.content_state || data);
+            });
+        }
+        
+        if (callbacks.onMagicEvent) {
+            channel.bind('magic-triggered', (data: any) => {
+                console.log(`✨ Magic event triggered in space ${spaceId}:`, data.event?.event_type);
+                callbacks.onMagicEvent?.(data.event || data);
+            });
+        }
+        
+        if (callbacks.onVoiceActivity) {
+            channel.bind('voice-activity', callbacks.onVoiceActivity);
+        }
+
+        if (callbacks.onWebRTCOffer) {
+            channel.bind('client-webrtc-offer', (data: any) => {
+                console.log(`📞 WebRTC offer received in space ${spaceId}`);
+                callbacks.onWebRTCOffer?.(data);
+            });
+        }
+        
+        if (callbacks.onWebRTCAnswer) {
+            channel.bind('client-webrtc-answer', (data: any) => {
+                console.log(`📞 WebRTC answer received in space ${spaceId}`);
+                callbacks.onWebRTCAnswer?.(data);
+            });
+        }
+        
+        if (callbacks.onWebRTCIceCandidate) {
+            channel.bind('client-webrtc-ice-candidate', (data: any) => {
+                console.log(`📞 WebRTC ICE candidate received in space ${spaceId}`);
+                callbacks.onWebRTCIceCandidate?.(data);
+            });
+        }
+
+        if (callbacks.onCallStarted) {
+            channel.bind('call-started', (data: any) => {
+                console.log(`📞 Call started in space ${spaceId}`);
+                callbacks.onCallStarted?.(data);
+            });
+        }
+        
+        if (callbacks.onCallEnded) {
+            channel.bind('call-ended', (data: any) => {
+                console.log(`📞 Call ended in space ${spaceId}`);
+                callbacks.onCallEnded?.(data);
+            });
+        }
+
+        if (callbacks.onScreenShareStarted) {
+            channel.bind('screen-share-started', (data: any) => {
+                console.log(`🖥️ Screen share started in space ${spaceId}`);
+                callbacks.onScreenShareStarted?.(data);
+            });
+        }
+        
+        if (callbacks.onScreenShareEnded) {
+            channel.bind('screen-share-ended', (data: any) => {
+                console.log(`🖥️ Screen share ended in space ${spaceId}`);
+                callbacks.onScreenShareEnded?.(data);
+            });
+        }
+
+        if (callbacks.onMuteStateChanged) {
+            channel.bind('mute-state-changed', (data: any) => {
+                console.log(`🔇 Mute state changed in space ${spaceId}`);
+                callbacks.onMuteStateChanged?.(data);
+            });
+        }
+        
+        if (callbacks.onVideoStateChanged) {
+            channel.bind('video-state-changed', (data: any) => {
+                console.log(`📹 Video state changed in space ${spaceId}`);
+                callbacks.onVideoStateChanged?.(data);
+            });
+        }
+
+        console.log(`📡 Successfully subscribed to space ${spaceId} with ${Object.keys(callbacks).length} callbacks`);
+        
+    } catch (error) {
+        console.error('Error subscribing to space:', error);
+        throw error;
     }
   }
 
   async unsubscribeFromSpace(spaceId: string) {
-    const channel = this.spaceSubscriptions.get(spaceId);
-    if (channel) {
-      channel.unsubscribe();
-      this.spaceSubscriptions.delete(spaceId);
+    try {
+        const pusher = this.getPusherInstance();
+        if (!pusher) return;
+
+        const channel = this.spaceSubscriptions.get(spaceId);
+        
+        if (channel) {
+            const channelName = `presence-space.${spaceId}`;
+            
+            channel.unbind_all();
+            pusher.unsubscribe(channelName);
+            this.spaceSubscriptions.delete(spaceId);
+            
+            console.log(`📡 Unsubscribed from space ${spaceId}`);
+        }
+    } catch (error) {
+        console.error('Error unsubscribing from space:', error);
     }
   }
 
   async updateContentState(spaceId: string, contentState: any): Promise<void> {
     try {
-      await axios.put(`${this.baseURL}/spaces/${spaceId}`, {
-        content_state: contentState,
-      }, {
-        headers: this.getHeaders(),
-      });
+        const response = await axios.put(`${this.baseURL}/spaces/${spaceId}/content`, {
+            content_state: contentState,
+        }, {
+            headers: this.getHeaders(),
+        });
 
-      // Optionally broadcast via Pusher
-      this.broadcastContentUpdate(spaceId, contentState);
+        this.broadcastContentUpdate(spaceId, contentState);
+        await this.triggerHapticSuccess();
+        
     } catch (error) {
-      console.error('Error updating content state:', error);
-      throw error;
+        console.error('Error updating content state:', error);
+        throw error;
     }
   }
 
   async updateCursorPosition(spaceId: string, cursorState: any): Promise<void> {
     try {
-      // Update local participation
       await axios.put(`${this.baseURL}/spaces/${spaceId}/cursor`, {
         cursor_state: cursorState,
       }, {
         headers: this.getHeaders(),
       });
 
-      // Broadcast to other participants
       this.broadcastCursorUpdate(spaceId, cursorState);
     } catch (error) {
       console.error('Error updating cursor:', error);
@@ -472,19 +673,40 @@ private getMockSpace(spaceId: string): CollaborationSpace {
 
   async startCall(spaceId: string, callType: 'audio' | 'video' | 'screen_share'): Promise<any> {
     try {
-      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/start-call`, {
-        call_type: callType,
-      }, {
-        headers: this.getHeaders(),
-      });
+        const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/start-call`, {
+            call_type: callType,
+        }, {
+            headers: this.getHeaders(),
+        });
 
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      
-      return response.data.call_data;
+        try {
+            if (Platform.OS !== 'web') {
+                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }
+        } catch (hapticsError) {
+            console.warn('Haptics feedback failed:', hapticsError);
+        }
+        
+        return response.data;
     } catch (error) {
-      console.error('Error starting call:', error);
-      throw error;
+        console.error('Error starting call:', error);
+        throw error;
     }
+  }
+
+  async sendWebRTCSignal(spaceId: string, signalData: any): Promise<void> {
+      try {
+          const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/call/signal`, signalData, {
+              headers: this.getHeaders(),
+          });
+          
+          if (response.status !== 200) {
+              throw new Error('Failed to send WebRTC signal');
+          }
+      } catch (error) {
+          console.error('Error sending WebRTC signal:', error);
+          throw error;
+      }
   }
 
   async endCall(spaceId: string, callId: string): Promise<void> {
@@ -508,7 +730,6 @@ private getMockSpace(spaceId: string): CollaborationSpace {
         headers: this.getHeaders(),
       });
 
-      // Broadcast screen share state
       this.broadcastScreenShareState(spaceId, isSharing);
     } catch (error) {
       console.error('Error toggling screen share:', error);
@@ -520,7 +741,6 @@ private getMockSpace(spaceId: string): CollaborationSpace {
 
   async queryAI(spaceId: string, query: string, context?: any, action?: string): Promise<AIInteraction> {
       try {
-          // Handle "global" space ID - use a mock response
           if (spaceId === 'global' || !spaceId) {
               console.log('Using mock AI response for global space');
               return this.getMockAIResponse(query, context, action);
@@ -542,8 +762,6 @@ private getMockSpace(spaceId: string): CollaborationSpace {
           };
       } catch (error) {
           console.error('Error querying AI:', error);
-          
-          // Fallback to mock response
           return this.getMockAIResponse(query, context, action);
       }
   }
@@ -755,13 +973,13 @@ private getMockSpace(spaceId: string): CollaborationSpace {
 
   // 🛠️ PRIVATE HELPERS
 
+  /**
+   * ❌ REMOVED: initializePusher method - we use PusherService instead
+   * This prevents duplicate connections
+   */
   private initializePusher() {
-    this.pusher = new Pusher({
-      apiKey: process.env.EXPO_PUBLIC_PUSHER_KEY!,
-      cluster: process.env.EXPO_PUBLIC_PUSHER_CLUSTER!,
-      authEndpoint: `${this.baseURL}/broadcasting/auth`,
-      forceTLS: true,
-    });
+    console.warn('⚠️ initializePusher is deprecated - using PusherService instead');
+    // Do nothing - we use PusherService
   }
 
   private broadcastContentUpdate(spaceId: string, contentState: any) {
@@ -798,8 +1016,7 @@ private getMockSpace(spaceId: string): CollaborationSpace {
   }
 
   private getCurrentUserId(): number {
-    // This should get from your auth context
-    return 0; // Replace with actual user ID
+    return 0;
   }
 
   // 🔍 UTILITIES
@@ -809,11 +1026,10 @@ private getMockSpace(spaceId: string): CollaborationSpace {
       const space = await this.fetchSpaceDetails(spaceId);
       const { activity_metrics, participants_count, evolution_level } = space;
 
-      // Check conditions for magic events
       const conditions = [
         participants_count >= 3 && (activity_metrics?.energy_level || 0) > 70,
         activity_metrics?.total_interactions > 50,
-        new Date().getHours() >= 22 || new Date().getHours() <= 6, // Late night
+        new Date().getHours() >= 22 || new Date().getHours() <= 6,
       ];
 
       if (conditions.some(condition => condition)) {
@@ -856,7 +1072,6 @@ private getMockSpace(spaceId: string): CollaborationSpace {
       throw error;
     }
   }
-
 
   // 🎯 COLLABORATIVE ACTIVITIES
   async createCollaborativeActivity(activityData: {
@@ -939,6 +1154,54 @@ private getMockSpace(spaceId: string): CollaborationSpace {
       throw error;
     }
   }
+
+  // Message handling functions
+  async sendMessage(spaceId: string, messageData: {
+    content: string;
+    type?: 'text' | 'image' | 'video' | 'file' | 'voice';
+    file_path?: string;
+    metadata?: any;
+  }): Promise<any> {
+    try {
+      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/send-message`, messageData, {
+        headers: this.getHeaders(),
+      });
+
+      await this.triggerHapticSuccess();
+      
+      return response.data.message;
+    } catch (error) {
+      console.error('Error sending message:', error);
+      throw error;
+    }
+  }
+
+  async reactToMessage(messageId: string, reaction: string): Promise<void> {
+    try {
+      await axios.post(`${this.baseURL}/messages/${messageId}/react`, {
+        reaction,
+      }, {
+        headers: this.getHeaders(),
+      });
+    } catch (error) {
+      console.error('Error reacting to message:', error);
+      throw error;
+    }
+  }
+
+  async getMessageReactions(messageId: string): Promise<any[]> {
+    try {
+      const response = await axios.get(`${this.baseURL}/messages/${messageId}/reactions`, {
+        headers: this.getHeaders(),
+      });
+      
+      return response.data.reactions;
+    } catch (error) {
+      console.error('Error getting message reactions:', error);
+      throw error;
+    }
+  }
+
 }
 
 export default CollaborationService;

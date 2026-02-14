@@ -201,47 +201,54 @@ class ProfileController extends Controller
         }
     }
 
-    // Followers list
-    public function followers(Request $request) {
-        $user = $request->user();
-        
-        $followers = \App\Models\Follower::where('following_id', $user->id)
-            ->with('follower')
-            ->get()
-            ->map(function ($follower) {
-                return [
-                    'id' => $follower->follower->id,
-                    'name' => $follower->follower->name,
-                    'email' => $follower->follower->email,
-                    'username' => $follower->follower->username,
-                    'profile_photo' => $follower->follower->profile_photo,
-                    'is_online' => $follower->follower->is_online, // You might need to add this field
-                    'created_at' => $follower->created_at,
-                ];
-            });
-        
-        return response()->json($followers);
-    }
-    // Following list
-    public function following(Request $request) {
-        $user = $request->user();
-        
-        $following = \App\Models\Follower::where('follower_id', $user->id)
-            ->with('following')
-            ->get()
-            ->map(function ($follow) {
-                return [
-                    'id' => $follow->following->id,
-                    'name' => $follow->following->name,
-                    'email' => $follow->following->email,
-                    'username' => $follow->following->username,
-                    'profile_photo' => $follow->following->profile_photo,
-                    'is_online' => $follow->following->is_online,
-                    'created_at' => $follow->created_at,
-                ];
-            });
-        
-        return response()->json($following);
-    }
+/**
+ * Get users who follow the authenticated user
+ * These are people who have this user in their 'following' list
+ */
+public function followers(Request $request) {
+    $user = $request->user();
+    
+    // Using the CORRECT relationship from your User model
+    $followers = $user->followers()
+        ->get()
+        ->map(function ($follower) {
+            return [
+                'id' => $follower->id,
+                'name' => $follower->name,
+                'email' => $follower->email,
+                'username' => $follower->username,
+                'profile_photo' => $follower->profile_photo,
+                'is_online' => $follower->is_online ?? false,
+                'created_at' => $follower->pivot->created_at, // Get timestamp from pivot table
+            ];
+        });
+    
+    return response()->json($followers);
+}
+
+/**
+ * Get users that the authenticated user follows
+ * These are people this user has in their 'following' list
+ */
+public function following(Request $request) {
+    $user = $request->user();
+    
+    // Using the CORRECT relationship from your User model
+    $following = $user->following()
+        ->get()
+        ->map(function ($followed) {
+            return [
+                'id' => $followed->id,
+                'name' => $followed->name,
+                'email' => $followed->email,
+                'username' => $followed->username,
+                'profile_photo' => $followed->profile_photo,
+                'is_online' => $followed->is_online ?? false,
+                'created_at' => $followed->pivot->created_at, // Get timestamp from pivot table
+            ];
+        });
+    
+    return response()->json($following);
+}
 
 }

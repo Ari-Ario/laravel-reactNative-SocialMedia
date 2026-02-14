@@ -1,5 +1,5 @@
 <?php
-// app/Models/CollaborationSpace.php
+// app/Models/Collaborationpresence-space.php
 
 namespace App\Models;
 

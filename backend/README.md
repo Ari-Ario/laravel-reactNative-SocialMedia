@@ -49,3 +49,12 @@ uvicorn main:app --reload --host 127.0.0.1 --port 8001
 ## in case the images are not shown:
 
 php artisan storage:link
+
+
+## clear backend:
+
+php artisan config:clear
+php artisan route:clear
+php artisan cache:clear
+php artisan view:clear
+php artisan optimize:clear

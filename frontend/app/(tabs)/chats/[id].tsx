@@ -31,6 +31,7 @@ import PostMenu from '@/components/PostMenu';
 import ReportPost from '@/components/ReportPost';
 import RenderComments from '@/components/RenderComments';
 import { commentOnPost, reactToComment, deleteReactionFromComment } from '@/services/PostService';
+import MessageList from '@/components/ChatScreen/MessageList';
 
 const ChatDetailScreen = () => {
   const { id } = useLocalSearchParams();
@@ -166,7 +167,7 @@ const submitComment = async () => {
       </View>
 
       {/* Messages List - Now using Zustand posts directly */}
-      <FlatList
+      {/* <FlatList
         data={chatPosts}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
@@ -186,6 +187,10 @@ const submitComment = async () => {
         )}
         contentContainerStyle={styles.messagesList}
         inverted={false}
+      /> */}
+      <MessageList 
+        conversationId={parseInt(id)} 
+        currentUserId={user?.id || 0} 
       />
 
       {/* Media Viewer */}

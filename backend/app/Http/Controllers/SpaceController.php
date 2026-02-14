@@ -10,12 +10,14 @@ use App\Models\Story;
 use App\Models\MagicEvent;
 use App\Models\User;
 use App\Models\Message;
+use App\Models\Call;
 
 use App\Models\AiInteraction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use App\Notifications\SpaceInvitationNotification;
 
@@ -23,7 +25,9 @@ use App\Events\SpaceUpdated;
 use App\Events\MagicEventTriggered;
 use App\Events\ParticipantJoined;
 use App\Events\ParticipantLeft;
-
+use App\Events\CallStarted;
+use App\Events\CallEnded;
+use App\Events\ScreenShareToggled;
 class SpaceController extends Controller
 {
     /**
@@ -433,41 +437,89 @@ class SpaceController extends Controller
     /**
      * Update space
      */
-    public function update(Request $request, $id)
-    {
-        $user = Auth::user();
-        
-        // Check if user has permission to update
-        $participation = SpaceParticipation::where('space_id', $id)
-            ->where('user_id', $user->id)
-            ->whereIn('role', ['owner', 'moderator'])
-            ->firstOrFail();
-        
-        $space = CollaborationSpace::findOrFail($id);
-        
-        $request->validate([
-            'title' => 'sometimes|string|max:255',
-            'description' => 'nullable|string',
-            'settings' => 'nullable|array',
-            'ai_personality' => 'nullable|in:helpful,creative,analytical,playful',
-            'ai_capabilities' => 'nullable|array',
-            'content_state' => 'nullable|array',
-        ]);
-        
-        $space->update($request->only([
-            'title', 'description', 'settings', 
-            'ai_personality', 'ai_capabilities', 'content_state'
-        ]));
+public function update(Request $request, $id)
+{
+    $user = Auth::user();
+    
+    // Check if user has permission to update
+    $participation = SpaceParticipation::where('space_id', $id)
+        ->where('user_id', $user->id)
+        ->whereIn('role', ['owner', 'moderator'])
+        ->firstOrFail();
+    
+    $space = CollaborationSpace::with(['creator', 'participations.user'])->findOrFail($id);
+    
+    $request->validate([
+        'title' => 'sometimes|string|max:255',
+        'description' => 'nullable|string',
+        'settings' => 'nullable|array',
+        'ai_personality' => 'nullable|in:helpful,creative,analytical,playful',
+        'ai_capabilities' => 'nullable|array',
+        'content_state' => 'nullable|array',
+    ]);
+    
+    $space->update($request->only([
+        'title', 'description', 'settings', 
+        'ai_personality', 'ai_capabilities', 'content_state'
+    ]));
 
-        // Broadcast update event
-        broadcast(new SpaceUpdated($space, auth()->id()))->toOthers();
+    // Refresh the space to get updated data
+    $space->refresh();
 
+    // Broadcast update event - make sure space is not null
+    broadcast(new SpaceUpdated($space, $user->id))->toOthers();
+
+    return response()->json([
+        'space' => $space,
+        'message' => 'Space updated successfully'
+    ]);
+}
+/**
+ * Update only content state
+ */
+public function updateContentState(Request $request, $id)
+{
+    $user = Auth::user();
+    
+    // Check if user is a participant
+    $participation = SpaceParticipation::where('space_id', $id)
+        ->where('user_id', $user->id)
+        ->first();
+    
+    if (!$participation) {
         return response()->json([
-            'space' => $space,
-            'message' => 'Space updated successfully'
-        ]);
+            'message' => 'You must be a participant to update content'
+        ], 403);
     }
-
+    
+    $request->validate([
+        'content_state' => 'required|array',
+    ]);
+    
+    $space = CollaborationSpace::findOrFail($id);
+    
+    // Update only content_state
+    $space->update([
+        'content_state' => $request->content_state,
+        'updated_at' => now(),
+    ]);
+    
+    // Update user's last active time
+    $participation->update([
+        'last_active_at' => now(),
+    ]);
+    
+    // Refresh the space
+    $space->refresh()->load('creator');
+    
+    // Broadcast update
+    broadcast(new SpaceUpdated($space, $user->id, ['content_state' => true]))->toOthers();
+    
+    return response()->json([
+        'space' => $space,
+        'message' => 'Content updated successfully'
+    ]);
+}
     /**
      * Join a space
      */
@@ -612,63 +664,431 @@ class SpaceController extends Controller
         ]);
     }
 
-    public function startCall(Request $request, $id)
+/**
+ * Start a call in space
+ */
+public function startCall(Request $request, $id)
+{
+    $request->validate([
+        'call_type' => 'required|in:audio,video,screen_share'
+    ]);
+
+    $space = CollaborationSpace::with('participations.user')->findOrFail($id);
+
+    // Check participation
+    $participation = $space->participations()
+        ->where('user_id', auth()->id())
+        ->first();
+
+    if (!$participation) {
+        return response()->json([
+            'message' => 'You must be a participant in the space to start a call'
+        ], 403);
+    }
+
+    // Ensure conversation exists
+    if (!$space->linked_conversation_id) {
+        $conversation = \App\Models\Conversation::create([
+            'type' => 'meeting',
+            'name' => $space->title,
+            'has_meeting_mode' => true,
+        ]);
+
+        $space->update([
+            'linked_conversation_id' => $conversation->id,
+        ]);
+
+        $space->refresh();
+    }
+
+    // Check for existing active call
+    $existingCall = Call::where('conversation_id', $space->linked_conversation_id) // ✅ FIX: Use Call model
+        ->where('status', 'active')
+        ->first();
+
+    if ($existingCall) {
+        return response()->json([
+            'call' => $existingCall->load('initiator'),
+            'space' => $space->fresh(['participations.user']),
+            'message' => 'Joining existing call'
+        ]);
+    }
+
+    // Create call with UUID
+    $callId = \Illuminate\Support\Str::uuid()->toString();
+    $participantIds = $space->participations()->pluck('user_id')->toArray();
+    
+    $call = Call::create([ // ✅ FIX: Use Call model
+        'id' => $callId,
+        'conversation_id' => $space->linked_conversation_id,
+        'initiator_id' => auth()->id(),
+        'type' => $request->call_type,
+        'status' => 'active',
+        'participants' => $participantIds,
+        'started_at' => now(),
+        'is_web_compatible' => true,
+    ]);
+
+    $space->update([
+        'is_live' => true,
+        'current_focus' => 'call',
+        'live_participants' => $participantIds
+    ]);
+
+    // Notify all participants
+    foreach ($participantIds as $participantId) {
+        if ($participantId != auth()->id()) {
+            $user = User::find($participantId);
+            
+            broadcast(new CallStarted($space, $call, auth()->user(), $user->id))->toOthers();
+        }
+    }
+
+    broadcast(new CallStarted($space, $call, auth()->user()))->toOthers();
+
+    return response()->json([
+        'call' => $call->load('initiator'),
+        'space' => $space->fresh(['participations.user']),
+        'message' => 'Call started successfully'
+    ]);
+}
+
+/**
+ * Handle WebRTC signaling
+ */
+public function callSignal(Request $request, $id)
+{
+    $request->validate([
+        'type' => 'required|in:offer,answer,ice-candidate',
+        'target_user_id' => 'required|exists:users,id',
+        'call_id' => 'required|string',
+        'offer' => 'sometimes|array',
+        'answer' => 'sometimes|array',
+        'candidate' => 'sometimes|array',
+    ]);
+    
+    $space = CollaborationSpace::findOrFail($id);
+    $user = auth()->user();
+    
+    // Broadcast signal to target user
+    broadcast(new WebRTCSignal(
+        $space,
+        $user,
+        $request->target_user_id,
+        $request->type,
+        $request->only(['offer', 'answer', 'candidate']),
+        $request->call_id
+    ))->toOthers();
+    
+    return response()->json(['success' => true]);
+}
+
+/**
+ * Handle mute state change
+ */
+public function callMute(Request $request, $id)
+{
+    $request->validate([
+        'is_muted' => 'required|boolean',
+        'call_id' => 'required|string',
+    ]);
+    
+    $space = CollaborationSpace::findOrFail($id);
+    $user = auth()->user();
+    
+    // Update user's participation
+    $participation = SpaceParticipation::where('space_id', $id)
+        ->where('user_id', $user->id)
+        ->first();
+    
+    if ($participation) {
+        $audioVideoState = $participation->audio_video_state ?? [];
+        $audioVideoState['is_muted'] = $request->is_muted;
+        $participation->update(['audio_video_state' => $audioVideoState]);
+    }
+    
+    // Broadcast mute state to space
+    broadcast(new \App\Events\MuteStateChanged($space, $user, $request->is_muted))->toOthers();
+    
+    return response()->json(['success' => true]);
+}
+
+/**
+ * Handle video state change
+ */
+public function callVideo(Request $request, $id)
+{
+    $request->validate([
+        'has_video' => 'required|boolean',
+        'call_id' => 'required|string',
+    ]);
+    
+    $space = CollaborationSpace::findOrFail($id);
+    $user = auth()->user();
+    
+    // Update user's participation
+    $participation = SpaceParticipation::where('space_id', $id)
+        ->where('user_id', $user->id)
+        ->first();
+    
+    if ($participation) {
+        $audioVideoState = $participation->audio_video_state ?? [];
+        $audioVideoState['has_video'] = $request->has_video;
+        $participation->update(['audio_video_state' => $audioVideoState]);
+    }
+    
+    // Broadcast video state to space
+    broadcast(new \App\Events\VideoStateChanged($space, $user, $request->has_video))->toOthers();
+    
+    return response()->json(['success' => true]);
+}
+
+/**
+ * Handle screen share state change
+ */
+public function callScreenShare(Request $request, $id)
+{
+    $request->validate([
+        'is_sharing' => 'required|boolean',
+        'call_id' => 'required|string',
+    ]);
+    
+    $space = CollaborationSpace::findOrFail($id);
+    $user = auth()->user();
+    
+    // Update user's participation
+    $participation = SpaceParticipation::where('space_id', $id)
+        ->where('user_id', $user->id)
+        ->first();
+    
+    if ($participation) {
+        $audioVideoState = $participation->audio_video_state ?? [];
+        $audioVideoState['is_sharing_screen'] = $request->is_sharing;
+        $participation->update(['audio_video_state' => $audioVideoState]);
+    }
+    
+    // Broadcast screen share state to space
+    broadcast(new \App\Events\ScreenShareToggled($space, $user, $request->is_sharing))->toOthers();
+    
+    return response()->json(['success' => true]);
+}
+
+    /**
+     * End a call in space
+     */
+public function endCall(Request $request, $id)
+{
+    $request->validate([
+        'call_id' => 'required|string'
+    ]);
+    
+    try {
+        $space = CollaborationSpace::findOrFail($id);
+        
+        // Find the call - it might be a UUID string, not auto-increment ID
+        $call = Call::where('id', $request->call_id)->first();
+        
+        if (!$call) {
+            return response()->json([
+                'message' => 'Call not found'
+            ], 404);
+        }
+        
+        // Update call status
+        $call->update([
+            'status' => 'ended',
+            'ended_at' => now(),
+            'duration_seconds' => $call->started_at ? now()->diffInSeconds($call->started_at) : 0,
+        ]);
+        
+        // Update space
+        $space->update([
+            'is_live' => false,
+            'current_focus' => null,
+            'live_participants' => [],
+        ]);
+        
+        // Broadcast call ended
+        broadcast(new CallEnded($space, $call))->toOthers();
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Call ended successfully',
+            'duration' => $call->duration_seconds,
+        ]);
+        
+    } catch (\Exception $e) {
+        \Log::error('Error ending call:', [
+            'space_id' => $id,
+            'call_id' => $request->call_id,
+            'error' => $e->getMessage()
+        ]);
+        
+        return response()->json([
+            'message' => 'Failed to end call',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
+    
+    /**
+     * Toggle screen sharing
+     */
+    public function shareScreen(Request $request, $id)
     {
         $request->validate([
-            'call_type' => 'required|in:audio,video,screen_share'
+            'is_sharing' => 'required|boolean'
         ]);
         
         $space = CollaborationSpace::findOrFail($id);
+        $user = auth()->user();
+        
+        // Update user's participation
+        $participation = $space->participations()
+            ->where('user_id', $user->id)
+            ->first();
+            
+        if ($participation) {
+            $audioVideoState = $participation->audio_video_state ?? [];
+            $audioVideoState['is_sharing_screen'] = $request->is_sharing;
+            
+            $participation->update([
+                'audio_video_state' => $audioVideoState,
+            ]);
+        }
+        
+        // Broadcast screen share state
+        broadcast(new ScreenShareToggled($space, $user, $request->is_sharing))->toOthers();
+        
+        return response()->json([
+            'is_sharing' => $request->is_sharing,
+            'message' => 'Screen share state updated'
+        ]);
+    }
+    
+    /**
+     * Upload media to space
+     */
+    public function uploadMedia(Request $request, $id)
+    {
+        $request->validate([
+            'file' => 'required|file|max:102400', // 100MB max
+            'type' => 'required|in:image,video,document,audio',
+        ]);
+        
+        $space = CollaborationSpace::findOrFail($id);
+        $user = auth()->user();
+        
+        // Store the file
+        $file = $request->file('file');
+        $path = $file->store("spaces/{$space->id}/media", 'public');
+        
+        // Create media record
+        $media = \App\Models\Media::create([
+            'user_id' => $user->id,
+            'file_path' => $path,
+            'file_name' => $file->getClientOriginalName(),
+            'mime_type' => $file->getMimeType(),
+            'file_size' => $file->getSize(),
+            'metadata' => [
+                'space_id' => $space->id,
+                'uploaded_at' => now()->toISOString(),
+                'type' => $request->type,
+            ],
+        ]);
+        
+        // Add to space content state if it's a message
+        if ($request->has('message_content')) {
+            $contentState = $space->content_state ?? [];
+            $messages = $contentState['messages'] ?? [];
+            
+            $messages[] = [
+                'id' => \Str::uuid(),
+                'user_id' => $user->id,
+                'content' => $request->message_content,
+                'type' => $request->type,
+                'file_path' => $path,
+                'metadata' => $media->metadata,
+                'created_at' => now()->toISOString(),
+            ];
+            
+            $contentState['messages'] = $messages;
+            $space->update(['content_state' => $contentState]);
+        }
+        
+        return response()->json([
+            'media' => $media,
+            'url' => Storage::url($path),
+            'message' => 'Media uploaded successfully'
+        ]);
+    }
+    
+    /**
+     * Send a message in space
+     */
+    public function sendMessage(Request $request, $id)
+    {
+        $request->validate([
+            'content' => 'required|string',
+            'type' => 'sometimes|in:text,image,video,document,voice',
+            'file_path' => 'sometimes|string',
+            'metadata' => 'sometimes|array',
+        ]);
+        
+        $space = CollaborationSpace::findOrFail($id);
+        $user = auth()->user();
         
         // Check if user is a participant
         $participation = $space->participations()
-            ->where('user_id', auth()->id())
+            ->where('user_id', $user->id)
             ->first();
             
         if (!$participation) {
             return response()->json([
-                'message' => 'You must be a participant in the space to start a call'
+                'message' => 'You must be a participant to send messages'
             ], 403);
         }
         
-        // Generate UUID for call
-        $callId = \Illuminate\Support\Str::uuid()->toString();
+        // Update space content state
+        $contentState = $space->content_state ?? [];
+        $messages = $contentState['messages'] ?? [];
         
-        // Create call record
-        $call = \App\Models\Call::create([
-            'id' => $callId,
-            'conversation_id' => $space->linked_conversation_id,
-            'initiator_id' => auth()->id(),
-            'type' => $request->call_type,
-            'status' => 'ringing',
-            'participants' => [auth()->id()],
-            'started_at' => now(),
-            'is_web_compatible' => true,
-        ]);
+        $message = [
+            'id' => \Str::uuid(),
+            'user_id' => $user->id,
+            'content' => $request->content,
+            'type' => $request->type ?? 'text',
+            'file_path' => $request->file_path,
+            'metadata' => $request->metadata ?? [],
+            'created_at' => now()->toISOString(),
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'profile_photo' => $user->profile_photo,
+            ],
+        ];
         
-        // Update space activity
+        $messages[] = $message;
+        $contentState['messages'] = $messages;
+        
         $space->update([
-            'is_live' => true,
-            'current_focus' => 'call',
-            'live_participants' => [auth()->id()]
+            'content_state' => $contentState,
+            'updated_at' => now(),
         ]);
         
-        // Add the initiator as a participant in the pivot table
-        $call->users()->attach(auth()->id(), [
-            'joined_at' => now(),
-            'role' => 'initiator'
+        // Update user's last active time
+        $participation->update([
+            'last_active_at' => now(),
         ]);
         
-        // Broadcast call started event
-        broadcast(new CallStarted($space, $call, auth()->user()))->toOthers();
+        // Broadcast message
+        broadcast(new SpaceUpdated($space, $user))->toOthers();
         
         return response()->json([
-            'call' => $call->load('initiator'),
-            'space' => $space->fresh(['participations.user']),
-            'message' => 'Call started successfully'
+            'message' => $message,
+            'space' => $space->fresh(),
         ]);
     }
-
     /**
      * Query AI assistant
      */
