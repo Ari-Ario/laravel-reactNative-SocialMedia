@@ -6,16 +6,18 @@ import {
   TouchableOpacity,
   Text,
   Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import MessageBubble from './MessageBubble';
+import CollaborationService from '@/services/ChatScreen/CollaborationService';
 
 interface Message {
   id: string;
-  conversation_id: number;
+  conversation_id?: number;
   user_id: number;
+  user_name?: string;
   content: string;
   type: 'text' | 'image' | 'video' | 'file' | 'voice';
   metadata?: any;
@@ -52,7 +54,18 @@ const MessageList: React.FC<MessageListProps> = ({
 
   useEffect(() => {
     loadMessages();
-    subscribeToMessages();
+    
+    // ✅ FIX: Subscribe to real-time messages
+    if (spaceId) {
+      subscribeToMessages();
+    }
+    
+    return () => {
+      // Cleanup subscription
+      if (spaceId) {
+        collaborationService.unsubscribeFromSpace(spaceId);
+      }
+    };
   }, [spaceId, conversationId]);
 
   const loadMessages = async () => {
@@ -80,19 +93,49 @@ const MessageList: React.FC<MessageListProps> = ({
     }
   };
 
-  // const subscribeToMessages = () => {
-  //   if (!spaceId) return;
+  const subscribeToMessages = () => {
+    if (!spaceId) return;
     
-  //   collaborationService.subscribeToSpace(spaceId, {
-  //     onContentUpdate: (contentState) => {
-  //       if (contentState.messages) {
-  //         setMessages(contentState.messages.sort((a, b) => 
-  //           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-  //         ));
-  //       }
-  //     },
-  //   });
-  // };
+    collaborationService.subscribeToSpace(spaceId, {
+      onMessage: (data: any) => {
+        console.log('📨 New message received:', data);
+        
+        const newMessage = data.message || data;
+        
+        setMessages(prev => {
+          if (prev.some(m => m.id === newMessage.id)) {
+            return prev;
+          }
+          
+          const updated = [...prev, newMessage].sort((a, b) => 
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+          
+          // Scroll to bottom on new message
+          setTimeout(() => {
+            flatListRef.current?.scrollToEnd({ animated: true });
+          }, 100);
+          
+          return updated;
+        });
+        
+        // ✅ FIX: Add platform check for haptics
+        if (newMessage.user_id !== currentUserId && Platform.OS !== 'web') {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(err => 
+            console.warn('Haptics error:', err)
+          );
+        }
+      },
+      
+      onContentUpdate: (contentState) => {
+        if (contentState.messages) {
+          setMessages(contentState.messages.sort((a, b) => 
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          ));
+        }
+      },
+    });
+  };
 
   const handleMessagePress = async (message: Message) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -103,7 +146,7 @@ const MessageList: React.FC<MessageListProps> = ({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
       'Message Options',
-      `From: ${message.user?.name || 'User'}\nTime: ${new Date(message.created_at).toLocaleTimeString()}`,
+      `From: ${message.user?.name || message.user_name || 'User'}\nTime: ${new Date(message.created_at).toLocaleTimeString()}`,
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Reply', onPress: () => handleReply(message) },
@@ -150,8 +193,7 @@ const MessageList: React.FC<MessageListProps> = ({
       ));
       
       // Send to backend
-      // await collaborationService.reactToMessage(message.id, reaction);
-      
+      await collaborationService.reactToMessage(message.id, reaction);
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (error) {
       console.error('Error reacting:', error);
@@ -182,7 +224,6 @@ const MessageList: React.FC<MessageListProps> = ({
   };
 
   const submitReport = async (message: Message, reason: string) => {
-    // Implement report logic
     console.log('Report:', message.id, reason);
   };
 
@@ -212,7 +253,6 @@ const MessageList: React.FC<MessageListProps> = ({
         renderItem={renderMessage}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        inverted={false}
         showsVerticalScrollIndicator={false}
         onEndReached={() => {
           // Load more messages

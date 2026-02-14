@@ -1,4 +1,5 @@
 <?php
+// app/Events/MessageSent.php
 
 namespace App\Events;
 
@@ -9,50 +10,60 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-use App\Models\Conversation;
-use App\Models\Message;
-use App\Models\User;
 
 class MessageSent implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $conversation;
     public $message;
+    public $spaceId;
     public $user;
 
-    public function __construct(Conversation $conversation, Message $message, User $user)
+    /**
+     * Create a new event instance.
+     */
+    public function __construct($message, $spaceId, $user)
     {
-        $this->conversation = $conversation;
         $this->message = $message;
+        $this->spaceId = $spaceId;
         $this->user = $user;
     }
 
-    public function broadcastOn()
+    /**
+     * Get the channels the event should broadcast on.
+     *
+     * @return array<int, \Illuminate\Broadcasting\Channel>
+     */
+    public function broadcastOn(): array
     {
         return [
-            new PresenceChannel('conversation.' . $this->conversation->id),
-            new PrivateChannel('user.' . $this->user->id),
+            // ✅ FIX: Use presence-space channel to match your frontend
+            new PresenceChannel('space.' . $this->spaceId),
         ];
     }
 
-    public function broadcastAs()
+    /**
+     * The event's broadcast name.
+     */
+    public function broadcastAs(): string
     {
         return 'message.sent';
     }
 
-    public function broadcastWith()
+    /**
+     * Get the data to broadcast.
+     *
+     * @return array<string, mixed>
+     */
+    public function broadcastWith(): array
     {
         return [
-            'message' => [
-                'id' => $this->message->id,
-                'content' => $this->message->content,
-                'type' => $this->message->type,
-                'user_id' => $this->message->user_id,
-                'user' => $this->message->user,
-                'created_at' => $this->message->created_at->toISOString(),
+            'message' => $this->message,
+            'space_id' => $this->spaceId,
+            'user' => [
+                'id' => $this->user->id,
+                'name' => $this->user->name,
             ],
-            'conversation_id' => $this->conversation->id,
             'timestamp' => now()->toISOString(),
         ];
     }

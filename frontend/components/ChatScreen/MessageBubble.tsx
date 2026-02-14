@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Avatar from '@/components/Image/Avatar';
+import getApiBaseImage from '@/services/getApiBaseImage';
 
 interface MessageBubbleProps {
   message: {
@@ -133,7 +134,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       {!isCurrentUser && showAvatar && (
         <View style={styles.avatarContainer}>
           <Avatar
-            source={message.user?.profile_photo}
+            source={ `${getApiBaseImage()}/storage/${message.user?.profile_photo || 'default-avatar.png'}`}
             size={32}
             name={message.user?.name}
             showStatus={false}

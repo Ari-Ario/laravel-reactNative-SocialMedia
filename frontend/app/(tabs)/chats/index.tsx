@@ -6,7 +6,6 @@ import {
   Platform
 } from "react-native";
 import OfflineService from '@/services/ChatScreen/OfflineServiceChat';
-import RealTimeService from '@/services/ChatScreen/RealTimeServiceChat';
 import NotificationService from '@/services/ChatScreen/NotificationServiceChat';
 import SearchService, { SearchResult } from '@/services/ChatScreen/SearchServiceChat';
 
@@ -60,7 +59,6 @@ interface SectionData {
 const ChatPage = () => {
   const notificationService = NotificationService.getInstance();
   const searchService = SearchService.getInstance();
-  const realTimeService = RealTimeService.getInstance();
   const offlineService = OfflineService.getInstance();
   
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -119,48 +117,49 @@ const ChatPage = () => {
     }
   }, [user]);
 
-  // Initialize real-time service
-  useEffect(() => {
-    if (user?.id) {
-      realTimeService.initialize(user.id);
+  // Initialize real-time service not used but collaborationService.subscribeToSpace(spaceId, is used instead, it asks Pusherservice
+  // useEffect(() => {
+  //   if (user?.id) {
+  //     realTimeService.initialize(user.id);
       
-      const handleNewSpace = (data: any) => {
-        if (data.space && !spaces.some(s => s.id === data.space.id)) {
-          const newChat: Chat = {
-            id: data.space.id,
-            name: data.space.title,
-            lastMessage: getSpaceDescription(data.space),
-            timestamp: 'Just now',
-            unreadCount: 0,
-            user_id: data.space.creator_id.toString(),
-            type: 'space',
-            spaceData: data.space,
-          };
+  //     const handleNewSpace = (data: any) => {
+  //       if (data.space && !spaces.some(s => s.id === data.space.id)) {
+  //         const newChat: Chat = {
+  //           id: data.space.id,
+  //           name: data.space.title,
+  //           lastMessage: getSpaceDescription(data.space),
+  //           timestamp: 'Just now',
+  //           unreadCount: 0,
+  //           user_id: data.space.creator_id.toString(),
+  //           type: 'space',
+  //           spaceData: data.space,
+  //         };
           
-          setSpaces(prev => [newChat, ...prev]);
-          if (Platform.OS !== 'web') {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          }
+  //         setSpaces(prev => [newChat, ...prev]);
+  //         if (Platform.OS !== 'web') {
+  //           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  //         }
           
-          // Show notification
-          notificationService.scheduleLocalNotification({
-            title: 'New Space Created',
-            body: `${data.space.title} is ready`,
-            data: {
-              type: 'space_created',
-              spaceId: data.space.id,
-            },
-          });
-        }
-      };
-    }
+  //         // Show notification
+  //         notificationService.scheduleLocalNotification({
+  //           title: 'New Space Created',
+  //           body: `${data.space.title} is ready`,
+  //           data: {
+  //             type: 'space_created',
+  //             spaceId: data.space.id,
+  //           },
+  //         });
+  //       }
+  //     };
+  //   }
     
-    return () => {
-      // Cleanup
-    };
-  }, [user?.id]);
+  //   return () => {
+  //     // Cleanup
+  //   };
+  // }, [user?.id]);
 
   // Add real-time refresh on focus
+  
   useFocusEffect(
     useCallback(() => {
       if (user) {

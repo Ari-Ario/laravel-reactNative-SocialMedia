@@ -450,6 +450,7 @@ class CollaborationService {
     onContentUpdate?: (contentState: any) => void;
     onMagicEvent?: (event: MagicEvent) => void;
     onVoiceActivity?: (data: any) => void;
+    onMessage?: (data: any) => void; // ✅ Message callback added here
     onWebRTCOffer?: (data: any) => void;
     onWebRTCAnswer?: (data: any) => void;
     onWebRTCIceCandidate?: (data: any) => void;
@@ -527,6 +528,13 @@ class CollaborationService {
             });
         }
         
+        if (callbacks.onMessage) {
+          channel.bind('message.sent', (data: any) => {
+            console.log(`📨 Message received in space ${spaceId}`);
+            callbacks.onMessage?.(data);
+          });
+        }
+
         if (callbacks.onContentUpdate) {
             channel.bind('content-updated', (data: any) => {
                 console.log(`📝 Content updated in space ${spaceId}`);

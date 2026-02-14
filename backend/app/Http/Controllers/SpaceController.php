@@ -1054,8 +1054,9 @@ public function endCall(Request $request, $id)
         $messages = $contentState['messages'] ?? [];
         
         $message = [
-            'id' => \Str::uuid(),
+            'id' => (string) \Str::uuid(),
             'user_id' => $user->id,
+            'user_name' => $user->name,
             'content' => $request->content,
             'type' => $request->type ?? 'text',
             'file_path' => $request->file_path,
@@ -1081,8 +1082,16 @@ public function endCall(Request $request, $id)
             'last_active_at' => now(),
         ]);
         
-        // Broadcast message
-        broadcast(new SpaceUpdated($space, $user))->toOthers();
+        // ✅ FIX: Broadcast to presence channel only, not to private-user
+        try {
+            broadcast(new \App\Events\MessageSent($message, $space->id, $user))->toOthers();
+        } catch (\Exception $e) {
+            \Log::error('Failed to broadcast message:', [
+                'error' => $e->getMessage(),
+                'space_id' => $space->id
+            ]);
+            // Don't fail the request if broadcast fails
+        }
         
         return response()->json([
             'message' => $message,

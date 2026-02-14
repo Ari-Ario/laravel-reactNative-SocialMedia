@@ -1,3 +1,7 @@
+// it is not used and PusherService is used instead, throeugh collaborationService.subscribeToSpace(spaceId,
+// but we want to keep it around for now in case we need to add any custom logic later on.
+// services/ChatScreen/RealTimeServiceChat.ts
+
 import Pusher, { Channel } from 'pusher-js';
 import { Platform } from 'react-native';
 import { getToken } from '@/services/TokenService';
