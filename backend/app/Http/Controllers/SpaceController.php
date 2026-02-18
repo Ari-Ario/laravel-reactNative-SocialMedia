@@ -205,7 +205,7 @@ class SpaceController extends Controller
             DB::commit();
 
             // Broadcast event
-            // broadcast(new SpaceUpdated($space, auth()->id()))->toOthers();
+            broadcast(new SpaceUpdated($space, auth()->id(), ['type' => 'created']))->toOthers();
 
             return response()->json([
                 'space' => $space->load(['creator']),

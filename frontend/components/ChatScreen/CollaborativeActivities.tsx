@@ -22,6 +22,7 @@ import { format, parseISO, isToday, isTomorrow, addDays, startOfWeek, endOfWeek,
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
+import CreateActivityModal from './CreateActivityModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -78,11 +79,11 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
 
   const updateCalendarMarks = () => {
     const markedDates: any = {};
-    
+
     activities.forEach(activity => {
       if (activity.scheduled_start) {
         const date = format(parseISO(activity.scheduled_start), 'yyyy-MM-dd');
-        
+
         if (!markedDates[date]) {
           markedDates[date] = {
             marked: true,
@@ -99,7 +100,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
             }
           };
         }
-        
+
         markedDates[date].activities.push(activity);
         markedDates[date].dots.push({
           color: getStatusColor(activity.status),
@@ -107,7 +108,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
         });
       }
     });
-    
+
     // Mark today
     const today = format(new Date(), 'yyyy-MM-dd');
     if (!markedDates[today]) {
@@ -123,15 +124,15 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
         }
       };
     }
-    
+
     setCalendarMarked(markedDates);
   };
 
   const getActivitiesForDate = (date: string) => {
-    return activities.filter(activity => 
-      activity.scheduled_start && 
+    return activities.filter(activity =>
+      activity.scheduled_start &&
       format(parseISO(activity.scheduled_start), 'yyyy-MM-dd') === date
-    ).sort((a, b) => 
+    ).sort((a, b) =>
       new Date(a.scheduled_start).getTime() - new Date(b.scheduled_start).getTime()
     );
   };
@@ -195,7 +196,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
         status: 'active',
         notes: 'Activity started',
       });
-      
+
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       console.error('Error starting activity:', error);
@@ -206,9 +207,9 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
   const renderActivityCard = (activity: CollaborativeActivity, index: number) => {
     const spaceInfo = getSpaceInfo(activity.space_id);
     const activityDate = activity.scheduled_start ? parseISO(activity.scheduled_start) : null;
-    
+
     return (
-      <Animated.View 
+      <Animated.View
         entering={FadeInDown.delay(index * 50)}
         style={styles.activityCard}
       >
@@ -221,12 +222,14 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
               activity.description || 'No description provided',
               [
                 { text: 'Cancel', style: 'cancel' },
-                { text: 'Go to Space', onPress: () => {
-                  router.push(`/(spaces)/${activity.space_id}?activity=${activity.id}`);
-                  onClose();
-                }},
+                {
+                  text: 'Go to Space', onPress: () => {
+                    router.push(`/(spaces)/${activity.space_id}?activity=${activity.id}`);
+                    onClose();
+                  }
+                },
                 { text: 'Start Now', onPress: () => startActivity(activity) },
-                { text: 'Add to Calendar', onPress: () => {} },
+                { text: 'Add to Calendar', onPress: () => { } },
               ]
             );
           }}
@@ -238,7 +241,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
               <View style={[styles.timelineDot, { backgroundColor: getStatusColor(activity.status) }]} />
               {index < activities.length - 1 && <View style={styles.timelineLine} />}
             </View>
-            
+
             <View style={styles.activityContent}>
               <View style={styles.activityHeader}>
                 <View style={[styles.statusBadge, { backgroundColor: getStatusColor(activity.status) + '20' }]}>
@@ -246,7 +249,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
                     {activity.status.toUpperCase()}
                   </Text>
                 </View>
-                
+
                 <View style={styles.spaceTag}>
                   <View style={[styles.spaceDot, { backgroundColor: spaceInfo.color }]} />
                   <Text style={styles.spaceName} numberOfLines={1}>
@@ -254,17 +257,17 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
                   </Text>
                 </View>
               </View>
-              
+
               <Text style={styles.activityTitle} numberOfLines={1}>
                 {activity.title}
               </Text>
-              
+
               {activity.description && (
                 <Text style={styles.activityDescription} numberOfLines={2}>
                   {activity.description}
                 </Text>
               )}
-              
+
               <View style={styles.activityMeta}>
                 <View style={styles.metaItem}>
                   <Ionicons name="time" size={14} color="#666" />
@@ -272,14 +275,14 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
                     {activityDate ? format(activityDate, 'h:mm a') : 'No time set'}
                   </Text>
                 </View>
-                
+
                 <View style={styles.metaItem}>
                   <Ionicons name="timer" size={14} color="#666" />
                   <Text style={styles.metaText}>
                     {activity.duration_minutes || 60}m
                   </Text>
                 </View>
-                
+
                 <View style={styles.metaItem}>
                   <Ionicons name={getActivityIcon(activity.activity_type)} size={14} color="#666" />
                   <Text style={styles.metaText}>
@@ -287,28 +290,28 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
                   </Text>
                 </View>
               </View>
-              
+
               {/* Quick actions */}
               <View style={styles.quickActions}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.quickAction}
                   onPress={() => router.push(`/(spaces)/${activity.space_id}?activity=${activity.id}`)}
                 >
                   <Ionicons name="enter" size={16} color="#007AFF" />
                   <Text style={styles.quickActionText}>Join</Text>
                 </TouchableOpacity>
-                
-                <TouchableOpacity 
+
+                <TouchableOpacity
                   style={styles.quickAction}
                   onPress={() => startActivity(activity)}
                 >
                   <Ionicons name="play" size={16} color="#4CAF50" />
                   <Text style={styles.quickActionText}>Start</Text>
                 </TouchableOpacity>
-                
-                <TouchableOpacity 
+
+                <TouchableOpacity
                   style={styles.quickAction}
-                  onPress={() => {/* Add to calendar */}}
+                  onPress={() => {/* Add to calendar */ }}
                 >
                   <Ionicons name="calendar" size={16} color="#FFA726" />
                   <Text style={styles.quickActionText}>Calendar</Text>
@@ -323,7 +326,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
 
   const renderCalendarDay = (day: any) => {
     const dateActivities = getActivitiesForDate(day.dateString);
-    
+
     return (
       <TouchableOpacity
         style={[
@@ -339,11 +342,11 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
         ]}>
           {day.day}
         </Text>
-        
+
         {dateActivities.length > 0 && (
           <View style={styles.calendarDayDots}>
             {dateActivities.slice(0, 3).map((activity, index) => (
-              <View 
+              <View
                 key={index}
                 style={[
                   styles.calendarDayDot,
@@ -392,15 +395,15 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
           textDayHeaderFontSize: 12,
         }}
         renderArrow={(direction) => (
-          <Ionicons 
-            name={direction === 'left' ? 'chevron-back' : 'chevron-forward'} 
-            size={20} 
-            color="#007AFF" 
+          <Ionicons
+            name={direction === 'left' ? 'chevron-back' : 'chevron-forward'}
+            size={20}
+            color="#007AFF"
           />
         )}
         dayComponent={({ date, state }: any) => renderCalendarDay({ date, state, ...date })}
       />
-      
+
       <View style={styles.calendarDayHeader}>
         <Text style={styles.calendarDayTitle}>
           {format(parseISO(selectedDate), 'EEEE, MMMM d')}
@@ -415,7 +418,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
           {getActivitiesForDate(selectedDate).length} sessions
         </Text>
       </View>
-      
+
       <ScrollView style={styles.calendarDayActivities}>
         {getActivitiesForDate(selectedDate).length > 0 ? (
           getActivitiesForDate(selectedDate).map((activity, index) => (
@@ -435,13 +438,13 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
                   {format(parseISO(activity.scheduled_start), 'a')}
                 </Text>
               </View>
-              
+
               <View style={styles.calendarEventContent}>
                 <Text style={styles.calendarEventTitle}>{activity.title}</Text>
                 <Text style={styles.calendarEventDescription} numberOfLines={1}>
                   {activity.description}
                 </Text>
-                
+
                 <View style={styles.calendarEventMeta}>
                   <View style={styles.calendarEventSpace}>
                     <View style={[styles.spaceDotSmall, { backgroundColor: getSpaceInfo(activity.space_id).color }]} />
@@ -449,7 +452,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
                       {getSpaceInfo(activity.space_id).name}
                     </Text>
                   </View>
-                  
+
                   <View style={styles.calendarEventDuration}>
                     <Ionicons name="timer" size={12} color="#666" />
                     <Text style={styles.calendarEventDurationText}>
@@ -458,8 +461,8 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
                   </View>
                 </View>
               </View>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={styles.calendarEventAction}
                 onPress={() => router.push(`/(spaces)/${activity.space_id}?activity=${activity.id}`)}
               >
@@ -490,22 +493,22 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
 
   const renderListView = () => (
     <ScrollView
-     style={styles.listContainer}
-     showsVerticalScrollIndicator={false}
-     key={filterStatus}
-     >
+      style={styles.listContainer}
+      showsVerticalScrollIndicator={false}
+      key={filterStatus}
+    >
       <View style={styles.upcomingSection}>
         <Text style={styles.sectionTitle}>Upcoming Sessions</Text>
         <Text style={styles.sectionSubtitle}>
           {activities.filter(a => a.status === 'scheduled' || a.status === 'proposed').length} sessions scheduled
         </Text>
       </View>
-      
+
       {activities
         .filter(activity => activity.status === 'scheduled' || activity.status === 'proposed')
         .sort((a, b) => new Date(a.scheduled_start).getTime() - new Date(b.scheduled_start).getTime())
         .map((activity, index) => renderActivityCard(activity, index))}
-      
+
       {activities.filter(a => a.status === 'active').length > 0 && (
         <View style={styles.activeSection}>
           <Text style={styles.sectionTitle}>Active Now</Text>
@@ -514,11 +517,11 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
           </Text>
         </View>
       )}
-      
+
       {activities
         .filter(activity => activity.status === 'active')
         .map((activity, index) => renderActivityCard(activity, index))}
-      
+
       {activities.filter(a => a.status === 'completed').length > 0 && (
         <View style={styles.completedSection}>
           <Text style={styles.sectionTitle}>Completed</Text>
@@ -527,7 +530,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
           </Text>
         </View>
       )}
-      
+
       {activities
         .filter(activity => activity.status === 'completed')
         .slice(0, 5) // Only show 5 most recent
@@ -538,21 +541,21 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
   return (
     <Animated.View entering={FadeIn.duration(300)} style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      
+
       {/* Header */}
       <BlurView intensity={90} tint="light" style={styles.header}>
         <TouchableOpacity onPress={onClose} style={styles.backButton}>
           <Ionicons name="chevron-back" size={28} color="#333" />
         </TouchableOpacity>
-        
+
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Collaborative Sessions</Text>
           <Text style={styles.headerSubtitle}>
             {activitiesCount} total • {activities.filter(a => a.status === 'scheduled').length} upcoming
           </Text>
         </View>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.createButton}
           onPress={() => setShowCreateModal(true)}
         >
@@ -573,10 +576,10 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
           style={[styles.viewToggleButton, viewMode === 'list' && styles.viewToggleButtonActive]}
           onPress={() => setViewMode('list')}
         >
-          <Ionicons 
-            name="list" 
-            size={20} 
-            color={viewMode === 'list' ? '#007AFF' : '#666'} 
+          <Ionicons
+            name="list"
+            size={20}
+            color={viewMode === 'list' ? '#007AFF' : '#666'}
           />
           <Text style={[
             styles.viewToggleText,
@@ -585,15 +588,15 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
             List
           </Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
           style={[styles.viewToggleButton, viewMode === 'calendar' && styles.viewToggleButtonActive]}
           onPress={() => setViewMode('calendar')}
         >
-          <Ionicons 
-            name="calendar" 
-            size={20} 
-            color={viewMode === 'calendar' ? '#007AFF' : '#666'} 
+          <Ionicons
+            name="calendar"
+            size={20}
+            color={viewMode === 'calendar' ? '#007AFF' : '#666'}
           />
           <Text style={[
             styles.viewToggleText,
@@ -605,8 +608,8 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
       </View>
 
       {/* Status Filter */}
-      <ScrollView 
-        horizontal 
+      <ScrollView
+        horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.statusFilter}
         contentContainerStyle={styles.statusFilterContent}
@@ -645,7 +648,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
       {viewMode === 'calendar' ? renderCalendarView() : renderListView()}
 
       {/* Floating Create Button */}
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.floatingCreateButton}
         onPress={() => {
           setShowActivities(false);

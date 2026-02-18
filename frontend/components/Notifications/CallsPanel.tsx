@@ -1,57 +1,59 @@
-// Update your FollowerPanel component
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, Modal } from 'react-native';
+// components/Notifications/CallsPanel.tsx
+import React from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  FlatList, 
+  Image, 
+  Modal 
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { Notification } from '@/types/Notification';
 import getApiBaseImage from '@/services/getApiBaseImage';
-import { followUser } from '@/services/UserService';
-import { useProfileView } from '@/context/ProfileViewContext';
+import { router } from 'expo-router';
 
-type FollowersPanelProps = {
+type CallsPanelProps = {
   visible: boolean;
   onClose: () => void;
 };
 
-const FollowersPanel = ({ visible, onClose }: FollowersPanelProps) => {
+const CallsPanel = ({ visible, onClose }: CallsPanelProps) => {
   const { 
-    getFollowerNotifications, 
+    getCalls, 
     markAsRead, 
-    removeNotification, 
-    markAllFollowerNotificationsAsRead,
-    getUnreadFollowerCount 
+    removeNotification 
   } = useNotificationStore();
-  
-  const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
-  const [loading, setLoading] = useState<Record<string, boolean>>({});
 
-  // Use getter methods to get filtered notifications
-  const followerNotifications = getFollowerNotifications();
-  const unreadFollowerCount = getUnreadFollowerCount();
+  const calls = getCalls();
 
-  const renderFollowerItem = ({ item }: { item: Notification }) => (
-    console.log('Rendering follower item:', item),
+  const handleCallPress = (item: Notification) => {
+    if (!item.isRead) {
+      markAsRead(item.id);
+    }
+    
+    if (item.spaceId || item.data?.space_id) {
+      const spaceId = item.spaceId || item.data?.space_id;
+      router.push({
+        pathname: '/(spaces)/[id]',
+        params: { id: spaceId, tab: 'meeting' }
+      });
+    }
+    onClose();
+  };
+
+  const renderCallItem = ({ item }: { item: Notification }) => (
     <TouchableOpacity 
-      style={[styles.followerItem, !item.isRead && styles.unreadFollower]}
-      onPress={() => {
-        if (!item.isRead) {
-          markAsRead(item.id);
-        }
-        if (item.userId) {
-          setProfileViewUserId(item.userId.toString());
-          setProfilePreviewVisible(true);
-          onClose();
-        }
-      }}
+      style={[styles.callItem, !item.isRead && styles.unreadCall]}
+      onPress={() => handleCallPress(item)}
     >
       <TouchableOpacity 
         style={styles.Foto}
-        onPress={() => {
-          if (item.userId) {
-            setProfileViewUserId(item.userId.toString());
-            setProfilePreviewVisible(true);
-            onClose();
-          }
+        onPress={(e) => {
+          e.stopPropagation();
+          // Optional: navigate to user profile
         }}
       >
         <Image
@@ -63,20 +65,35 @@ const FollowersPanel = ({ visible, onClose }: FollowersPanelProps) => {
         />
       </TouchableOpacity>
 
-      <View style={styles.followerContent}>
+      <View style={styles.callContent}>
         <View style={styles.textContent}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Ionicons 
-              name={item.type === 'new_follower' ? 'person-add-outline' : 'person-remove-outline'} 
-              size={20} 
-              color={item.type === 'new_follower' ? '#5856D6' : '#FF3B30'} 
-            />
-            <Text style={styles.followerTitle}>{item.title}</Text>
-            <Text style={styles.followerTime}>
+          <View style={styles.titleRow}>
+            <View style={styles.titleWithIcon}>
+              <Ionicons 
+                name={item.type === 'call_ended' ? 'call-outline' : 'call'} 
+                size={16} 
+                color={item.type === 'call_ended' ? '#8E8E93' : '#4CD964'} 
+              />
+              <Text style={styles.callTitle}>{item.title}</Text>
+            </View>
+            <Text style={styles.callTime}>
               {formatTimeAgo(item.createdAt)}
             </Text>
           </View>
-          <Text style={styles.followerMessage}>{item.message}</Text>
+          <Text style={styles.callMessage}>{item.message}</Text>
+          
+          {item.data?.call?.type && (
+            <View style={styles.metadataContainer}>
+              <Ionicons 
+                name={item.data.call.type === 'video' ? 'videocam' : 'call'} 
+                size={12} 
+                color="#4CD964" 
+              />
+              <Text style={styles.metadataText}>
+                {item.data.call.type === 'video' ? 'Video call' : 'Audio call'}
+              </Text>
+            </View>
+          )}
         </View>
       </View>
       <TouchableOpacity 
@@ -117,29 +134,26 @@ const FollowersPanel = ({ visible, onClose }: FollowersPanelProps) => {
       <View style={styles.panelContainer}>
         <View style={styles.panelHeader}>
           <Text style={styles.panelTitle}>
-            Followers {followerNotifications.length > 0 ? `(${followerNotifications.length})` : ''}
+            Calls {calls.length > 0 ? `(${calls.length})` : ''}
           </Text>
-          <TouchableOpacity onPress={() => {
-            markAllFollowerNotificationsAsRead();
-            onClose();
-          }} style={styles.closeButton}>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <Ionicons name="close" size={24} color="#000" />
           </TouchableOpacity>
         </View>
-        {followerNotifications.length === 0 ? (
+        {calls.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="person-add-outline" size={48} color="#ccc" />
-            <Text style={styles.emptyText}>No follower notifications</Text>
+            <Ionicons name="call-outline" size={48} color="#ccc" />
+            <Text style={styles.emptyText}>No call notifications</Text>
             <Text style={styles.emptySubtext}>
-              New follower notifications will appear here in real-time
+              Incoming calls will appear here
             </Text>
           </View>
         ) : (
           <FlatList
-            data={followerNotifications}
-            renderItem={renderFollowerItem}
+            data={calls}
+            renderItem={renderCallItem}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.followersList}
+            contentContainerStyle={styles.callsList}
           />
         )}
       </View>
@@ -181,20 +195,20 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: 4,
   },
-  followersList: {
+  callsList: {
     flexGrow: 1,
   },
-  followerItem: {
+  callItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
+    padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f5f5f5',
   },
-  unreadFollower: {
+  unreadCall: {
     backgroundColor: '#f8f9fa',
   },
-  followerContent: {
+  callContent: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -204,21 +218,42 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
   },
-  followerTitle: {
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  titleWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  callTitle: {
     fontWeight: '600',
     fontSize: 14,
-    marginBottom: 2,
+    flex: 1,
   },
-  followerMessage: {
+  callMessage: {
     fontSize: 12,
     color: '#666',
     marginBottom: 4,
   },
-  followerTime: {
+  callTime: {
     fontSize: 10,
     color: '#999',
-    marginLeft: 'auto',
-    paddingRight: 10,
+    marginLeft: 8,
+  },
+  metadataContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    gap: 4,
+  },
+  metadataText: {
+    fontSize: 11,
+    color: '#666',
   },
   deleteButton: {
     padding: 4,
@@ -251,23 +286,6 @@ const styles = StyleSheet.create({
     marginRight: 10,
     alignSelf: 'flex-start',
   },
-  followButton: {
-    backgroundColor: '#3897f0',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 5,
-  },
-  followingButton: {
-    backgroundColor: '#efefef',
-  },
-  followButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  followingButtonText: {
-    color: 'black',
-  },
 });
 
-export default FollowersPanel;
+export default CallsPanel;

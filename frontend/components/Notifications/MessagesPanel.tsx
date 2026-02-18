@@ -1,85 +1,108 @@
-// Update your FollowerPanel component
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, Modal } from 'react-native';
+// components/Notifications/MessagesPanel.tsx
+import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  Image,
+  Modal
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { Notification } from '@/types/Notification';
 import getApiBaseImage from '@/services/getApiBaseImage';
-import { followUser } from '@/services/UserService';
+import { router } from 'expo-router';
 import { useProfileView } from '@/context/ProfileViewContext';
 
-type FollowersPanelProps = {
+type MessagesPanelProps = {
   visible: boolean;
   onClose: () => void;
 };
 
-const FollowersPanel = ({ visible, onClose }: FollowersPanelProps) => {
-  const { 
-    getFollowerNotifications, 
-    markAsRead, 
-    removeNotification, 
-    markAllFollowerNotificationsAsRead,
-    getUnreadFollowerCount 
+const MessagesPanel = ({ visible, onClose }: MessagesPanelProps) => {
+  const {
+    getMessages,
+    markAsRead,
+    removeNotification
   } = useNotificationStore();
-  
+
   const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
-  const [loading, setLoading] = useState<Record<string, boolean>>({});
+  const messages = getMessages();
 
-  // Use getter methods to get filtered notifications
-  const followerNotifications = getFollowerNotifications();
-  const unreadFollowerCount = getUnreadFollowerCount();
+  const handleMessagePress = (item: Notification) => {
+    if (!item.isRead) {
+      markAsRead(item.id);
+    }
 
-  const renderFollowerItem = ({ item }: { item: Notification }) => (
-    console.log('Rendering follower item:', item),
-    <TouchableOpacity 
-      style={[styles.followerItem, !item.isRead && styles.unreadFollower]}
-      onPress={() => {
-        if (!item.isRead) {
-          markAsRead(item.id);
-        }
-        if (item.userId) {
-          setProfileViewUserId(item.userId.toString());
-          setProfilePreviewVisible(true);
-          onClose();
-        }
-      }}
+    if (item.spaceId || item.data?.space_id) {
+      const spaceId = item.spaceId || item.data?.space_id;
+      router.push({
+        pathname: '/(spaces)/[id]',
+        params: { id: spaceId, tab: 'chat' }
+      });
+    } else if (item.userId) {
+      router.push({
+        pathname: '/(tabs)/chats/[id]',
+        params: { id: item.userId.toString() }
+      });
+    }
+    onClose();
+  };
+
+  const renderMessageItem = ({ item }: { item: Notification }) => (
+    <TouchableOpacity
+      style={[styles.messageItem, !item.isRead && styles.unreadMessage]}
+      onPress={() => handleMessagePress(item)}
     >
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.Foto}
-        onPress={() => {
+        onPress={(e) => {
+          e.stopPropagation();
           if (item.userId) {
             setProfileViewUserId(item.userId.toString());
             setProfilePreviewVisible(true);
-            onClose();
           }
         }}
       >
         <Image
-          source={{ 
-            uri: item.avatar ? `${getApiBaseImage()}/storage/${item.avatar}` : undefined 
+          source={{
+            uri: item.avatar ? `${getApiBaseImage()}/storage/${item.avatar}` : undefined
           }}
           defaultSource={require('@/assets/images/favicon.png')}
           style={styles.avatar}
         />
       </TouchableOpacity>
 
-      <View style={styles.followerContent}>
+      <View style={styles.messageContent}>
         <View style={styles.textContent}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Ionicons 
-              name={item.type === 'new_follower' ? 'person-add-outline' : 'person-remove-outline'} 
-              size={20} 
-              color={item.type === 'new_follower' ? '#5856D6' : '#FF3B30'} 
-            />
-            <Text style={styles.followerTitle}>{item.title}</Text>
-            <Text style={styles.followerTime}>
+          <View style={styles.titleRow}>
+            <View style={styles.titleWithIcon}>
+              <Ionicons name="chatbubble" size={16} color="#007AFF" />
+              <Text style={styles.messageTitle}>{item.title}</Text>
+            </View>
+            <Text style={styles.messageTime}>
               {formatTimeAgo(item.createdAt)}
             </Text>
           </View>
-          <Text style={styles.followerMessage}>{item.message}</Text>
+          <Text style={styles.messagePreview}>
+            {typeof item.message === 'string'
+              ? item.message
+              : (item.message as any)?.content
+              ?? (item.message as any)?.text
+              ?? 'New message received'}
+          </Text>
+
+          {item.data?.space?.title && (
+            <View style={styles.metadataContainer}>
+              <Ionicons name="cube" size={12} color="#5856D6" />
+              <Text style={styles.metadataText}>in {item.data.space.title}</Text>
+            </View>
+          )}
         </View>
       </View>
-      <TouchableOpacity 
+      <TouchableOpacity
         onPress={() => removeNotification(item.id)}
         style={styles.deleteButton}
       >
@@ -109,7 +132,7 @@ const FollowersPanel = ({ visible, onClose }: FollowersPanelProps) => {
       transparent={true}
       onRequestClose={onClose}
     >
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.backdrop}
         activeOpacity={1}
         onPress={onClose}
@@ -117,29 +140,26 @@ const FollowersPanel = ({ visible, onClose }: FollowersPanelProps) => {
       <View style={styles.panelContainer}>
         <View style={styles.panelHeader}>
           <Text style={styles.panelTitle}>
-            Followers {followerNotifications.length > 0 ? `(${followerNotifications.length})` : ''}
+            Messages {messages.length > 0 ? `(${messages.length})` : ''}
           </Text>
-          <TouchableOpacity onPress={() => {
-            markAllFollowerNotificationsAsRead();
-            onClose();
-          }} style={styles.closeButton}>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <Ionicons name="close" size={24} color="#000" />
           </TouchableOpacity>
         </View>
-        {followerNotifications.length === 0 ? (
+        {messages.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="person-add-outline" size={48} color="#ccc" />
-            <Text style={styles.emptyText}>No follower notifications</Text>
+            <Ionicons name="chatbubbles-outline" size={48} color="#ccc" />
+            <Text style={styles.emptyText}>No message notifications</Text>
             <Text style={styles.emptySubtext}>
-              New follower notifications will appear here in real-time
+              New messages will appear here
             </Text>
           </View>
         ) : (
           <FlatList
-            data={followerNotifications}
-            renderItem={renderFollowerItem}
+            data={messages}
+            renderItem={renderMessageItem}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.followersList}
+            contentContainerStyle={styles.messagesList}
           />
         )}
       </View>
@@ -181,20 +201,20 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: 4,
   },
-  followersList: {
+  messagesList: {
     flexGrow: 1,
   },
-  followerItem: {
+  messageItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
+    padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f5f5f5',
   },
-  unreadFollower: {
+  unreadMessage: {
     backgroundColor: '#f8f9fa',
   },
-  followerContent: {
+  messageContent: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -204,21 +224,42 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
   },
-  followerTitle: {
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  titleWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  messageTitle: {
     fontWeight: '600',
     fontSize: 14,
-    marginBottom: 2,
+    flex: 1,
   },
-  followerMessage: {
+  messagePreview: {
     fontSize: 12,
     color: '#666',
     marginBottom: 4,
   },
-  followerTime: {
+  messageTime: {
     fontSize: 10,
     color: '#999',
-    marginLeft: 'auto',
-    paddingRight: 10,
+    marginLeft: 8,
+  },
+  metadataContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    gap: 4,
+  },
+  metadataText: {
+    fontSize: 11,
+    color: '#666',
   },
   deleteButton: {
     padding: 4,
@@ -251,23 +292,6 @@ const styles = StyleSheet.create({
     marginRight: 10,
     alignSelf: 'flex-start',
   },
-  followButton: {
-    backgroundColor: '#3897f0',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 5,
-  },
-  followingButton: {
-    backgroundColor: '#efefef',
-  },
-  followButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  followingButtonText: {
-    color: 'black',
-  },
 });
 
-export default FollowersPanel;
+export default MessagesPanel;

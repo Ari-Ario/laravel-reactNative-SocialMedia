@@ -28,6 +28,8 @@ import CalendarPrompt from '@/components/ChatScreen/CalendarPrompt';
 import ImmersiveCallView from '@/components/ChatScreen/ImmersiveCallView';
 import MediaUploader from '@/services/ChatScreen/MediaUploader';
 import MessageList from '@/components/ChatScreen/MessageList';
+import { useNotificationStore } from '@/stores/notificationStore';
+import { useCollaborationStore } from '@/stores/collaborationStore';
 
 const SpaceDetailScreen = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -47,12 +49,6 @@ const SpaceDetailScreen = () => {
 
   const collaborationService = CollaborationService.getInstance();
   const windowHeight = Dimensions.get('window').height;
-
-  // Debug logging
-  useEffect(() => {
-    console.log('SpaceDetailScreen mounted with id:', id);
-    console.log('User:', user?.id);
-  }, [id, user]);
 
   useEffect(() => {
     if (id && user) {
@@ -125,45 +121,117 @@ useEffect(() => {
     }
   };
 
-  const subscribeToSpace = async () => {
-    try {
-      await collaborationService.subscribeToSpace(id as string, {
-        onSpaceUpdate: (updatedSpace) => {
-          console.log('Space updated:', updatedSpace.title);
-          setSpace(updatedSpace);
-        },
-        onParticipantUpdate: (participant) => {
-          setParticipants(prev => {
-            const existingIndex = prev.findIndex(p => p.user_id === participant.user_id);
-            if (existingIndex >= 0) {
-              const updated = [...prev];
-              updated[existingIndex] = participant;
-              return updated;
-            } else {
-              return [...prev, participant];
-            }
-          });
-        },
-        onContentUpdate: (contentState) => {
-          setSpace(prev => ({ 
-            ...prev, 
-            content_state: contentState,
-            updated_at: new Date().toISOString()
-          }));
-        },
-        onMagicEvent: (event) => {
-          console.log('Magic event received:', event.event_type);
-          setMagicEvents(prev => [event, ...prev]);
-          if (Platform.OS !== 'web') {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+const subscribeToSpace = async () => {
+  try {
+    await collaborationService.subscribeToSpace(id as string, {
+      onSpaceUpdate: (updatedSpace) => {
+        console.log('Space updated:', updatedSpace.title);
+        setSpace(updatedSpace);
+      },
+      onParticipantUpdate: (participant) => {
+        setParticipants(prev => {
+          const existingIndex = prev.findIndex(p => p.user_id === participant.user_id);
+          if (existingIndex >= 0) {
+            const updated = [...prev];
+            updated[existingIndex] = participant;
+            return updated;
+          } else {
+            return [...prev, participant];
           }
-        },
-      });
-      console.log('Subscribed to space updates');
-    } catch (error) {
-      console.error('Error subscribing to space:', error);
-    }
-  };
+        });
+        
+        // ✅ ADD THIS: Send to notification store when someone joins
+        if (toString(participant.user_id) !== user?.id) {
+          useNotificationStore.getState().addNotification({
+            type: 'participant_joined',
+            title: 'New Participant',
+            message: `${participant.user?.name || 'Someone'} joined the space`,
+            data: participant,
+            spaceId: id,
+            userId: participant.user_id,
+            avatar: participant.user?.profile_photo,
+            createdAt: new Date()
+          });
+        }
+      },
+      onContentUpdate: (contentState) => {
+        setSpace(prev => ({ 
+          ...prev, 
+          content_state: contentState,
+          updated_at: new Date().toISOString()
+        }));
+      },
+      onMagicEvent: (event) => {
+        console.log('Magic event received:', event.event_type);
+        setMagicEvents(prev => [event, ...prev]);
+        if (Platform.OS !== 'web') {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+        
+        // ✅ ADD THIS: Send to notification store
+        useNotificationStore.getState().addNotification({
+          type: 'magic_event',
+          title: '✨ Magic Event!',
+          message: `A magical event occurred in the space`,
+          data: event,
+          spaceId: id,
+          userId: event.triggered_by,
+          createdAt: new Date()
+        });
+      },
+      // ✅ ADD THESE MISSING CALLBACKS:
+      onCallStarted: (data) => {
+        console.log('Call started:', data);
+        useNotificationStore.getState().addNotification({
+          type: 'call_started',
+          title: 'Call Started',
+          message: `${data.user?.name || 'Someone'} started a call`,
+          data: data,
+          spaceId: id,
+          userId: data.user?.id,
+          avatar: data.user?.profile_photo,
+          createdAt: new Date()
+        });
+      },
+      onCallEnded: (data) => {
+        console.log('Call ended:', data);
+        useNotificationStore.getState().addNotification({
+          type: 'call_ended',
+          title: 'Call Ended',
+          message: `The call has ended`,
+          data: data,
+          spaceId: id,
+          createdAt: new Date()
+        });
+      },
+      onScreenShareStarted: (data) => {
+        console.log('Screen share started:', data);
+        useNotificationStore.getState().addNotification({
+          type: 'screen_share',
+          title: 'Screen Sharing',
+          message: `${data.user?.name || 'Someone'} started sharing screen`,
+          data: data,
+          spaceId: id,
+          userId: data.user?.id,
+          avatar: data.user?.profile_photo,
+          createdAt: new Date()
+        });
+      },
+      onScreenShareEnded: (data) => {
+        console.log('Screen share ended:', data);
+      },
+      onMuteStateChanged: (data) => {
+        console.log('Mute state changed:', data);
+      },
+      onVideoStateChanged: (data) => {
+        console.log('Video state changed:', data);
+      },
+    });
+    console.log('Subscribed to space updates');
+  } catch (error) {
+    console.error('Error subscribing to space:', error);
+  }
+};
 
   const unsubscribeFromSpace = () => {
     try {
@@ -178,7 +246,6 @@ const handleSendMessage = async () => {
   if (!content.trim() || !space) return;
   
   try {
-    // ✅ FIX: Use sendMessage instead of updateContentState
     const message = await collaborationService.sendMessage(id as string, {
       content: content.trim(),
       type: 'text',
@@ -192,6 +259,11 @@ const handleSendMessage = async () => {
         messages: [...(prev.content_state?.messages || []), message]
       }
     }));
+    
+    // ✅ FIX: Use the store function
+    if (message.user_id !== user?.id) {
+      useCollaborationStore.getState().incrementUnreadCount(id);
+    }
     
     setContent('');
     

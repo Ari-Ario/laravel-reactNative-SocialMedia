@@ -1,57 +1,80 @@
-// Update your FollowerPanel component
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, Modal } from 'react-native';
+// components/Notifications/ActivitiesPanel.tsx
+import React from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  FlatList, 
+  Image, 
+  Modal 
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { Notification } from '@/types/Notification';
 import getApiBaseImage from '@/services/getApiBaseImage';
-import { followUser } from '@/services/UserService';
-import { useProfileView } from '@/context/ProfileViewContext';
+import { router } from 'expo-router';
 
-type FollowersPanelProps = {
+type ActivitiesPanelProps = {
   visible: boolean;
   onClose: () => void;
 };
 
-const FollowersPanel = ({ visible, onClose }: FollowersPanelProps) => {
+const ActivitiesPanel = ({ visible, onClose }: ActivitiesPanelProps) => {
   const { 
-    getFollowerNotifications, 
+    getActivities, 
     markAsRead, 
-    removeNotification, 
-    markAllFollowerNotificationsAsRead,
-    getUnreadFollowerCount 
+    removeNotification 
   } = useNotificationStore();
-  
-  const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
-  const [loading, setLoading] = useState<Record<string, boolean>>({});
 
-  // Use getter methods to get filtered notifications
-  const followerNotifications = getFollowerNotifications();
-  const unreadFollowerCount = getUnreadFollowerCount();
+  const activities = getActivities();
 
-  const renderFollowerItem = ({ item }: { item: Notification }) => (
-    console.log('Rendering follower item:', item),
+  const getActivityIcon = (type: string) => {
+    switch (type) {
+      case 'participant_joined': return 'person-add';
+      case 'magic_event': return 'sparkles';
+      case 'screen_share': return 'desktop';
+      case 'activity_created': return 'calendar';
+      default: return 'notifications';
+    }
+  };
+
+  const getActivityColor = (type: string) => {
+    switch (type) {
+      case 'participant_joined': return '#FF9500';
+      case 'magic_event': return '#FF2D55';
+      case 'screen_share': return '#5856D6';
+      case 'activity_created': return '#FF9500';
+      default: return '#8E8E93';
+    }
+  };
+
+  const handleActivityPress = (item: Notification) => {
+    if (!item.isRead) {
+      markAsRead(item.id);
+    }
+    
+    if (item.spaceId || item.data?.space_id) {
+      const spaceId = item.spaceId || item.data?.space_id;
+      const tab = item.type === 'activity_created' ? 'calendar' : 'chat';
+      router.push({
+        pathname: '/(spaces)/[id]',
+        params: { id: spaceId, tab }
+      });
+    }
+    onClose();
+  };
+
+  const renderActivityItem = ({ item }: { item: Notification }) => (
     <TouchableOpacity 
-      style={[styles.followerItem, !item.isRead && styles.unreadFollower]}
-      onPress={() => {
-        if (!item.isRead) {
-          markAsRead(item.id);
-        }
-        if (item.userId) {
-          setProfileViewUserId(item.userId.toString());
-          setProfilePreviewVisible(true);
-          onClose();
-        }
-      }}
+      style={[styles.activityItem, !item.isRead && styles.unreadActivity]}
+      onPress={() => handleActivityPress(item)}
     >
       <TouchableOpacity 
         style={styles.Foto}
-        onPress={() => {
-          if (item.userId) {
-            setProfileViewUserId(item.userId.toString());
-            setProfilePreviewVisible(true);
-            onClose();
-          }
+        onPress={(e) => {
+          e.stopPropagation();
+          // Optional: navigate to user profile
         }}
       >
         <Image
@@ -63,20 +86,22 @@ const FollowersPanel = ({ visible, onClose }: FollowersPanelProps) => {
         />
       </TouchableOpacity>
 
-      <View style={styles.followerContent}>
+      <View style={styles.activityContent}>
         <View style={styles.textContent}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Ionicons 
-              name={item.type === 'new_follower' ? 'person-add-outline' : 'person-remove-outline'} 
-              size={20} 
-              color={item.type === 'new_follower' ? '#5856D6' : '#FF3B30'} 
-            />
-            <Text style={styles.followerTitle}>{item.title}</Text>
-            <Text style={styles.followerTime}>
+          <View style={styles.titleRow}>
+            <View style={styles.titleWithIcon}>
+              <Ionicons 
+                name={getActivityIcon(item.type)} 
+                size={16} 
+                color={getActivityColor(item.type)} 
+              />
+              <Text style={styles.activityTitle}>{item.title}</Text>
+            </View>
+            <Text style={styles.activityTime}>
               {formatTimeAgo(item.createdAt)}
             </Text>
           </View>
-          <Text style={styles.followerMessage}>{item.message}</Text>
+          <Text style={styles.activityMessage}>{item.message}</Text>
         </View>
       </View>
       <TouchableOpacity 
@@ -117,29 +142,26 @@ const FollowersPanel = ({ visible, onClose }: FollowersPanelProps) => {
       <View style={styles.panelContainer}>
         <View style={styles.panelHeader}>
           <Text style={styles.panelTitle}>
-            Followers {followerNotifications.length > 0 ? `(${followerNotifications.length})` : ''}
+            Activities {activities.length > 0 ? `(${activities.length})` : ''}
           </Text>
-          <TouchableOpacity onPress={() => {
-            markAllFollowerNotificationsAsRead();
-            onClose();
-          }} style={styles.closeButton}>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <Ionicons name="close" size={24} color="#000" />
           </TouchableOpacity>
         </View>
-        {followerNotifications.length === 0 ? (
+        {activities.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="person-add-outline" size={48} color="#ccc" />
-            <Text style={styles.emptyText}>No follower notifications</Text>
+            <Ionicons name="sparkles-outline" size={48} color="#ccc" />
+            <Text style={styles.emptyText}>No activity notifications</Text>
             <Text style={styles.emptySubtext}>
-              New follower notifications will appear here in real-time
+              Magic events and activities will appear here
             </Text>
           </View>
         ) : (
           <FlatList
-            data={followerNotifications}
-            renderItem={renderFollowerItem}
+            data={activities}
+            renderItem={renderActivityItem}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.followersList}
+            contentContainerStyle={styles.activitiesList}
           />
         )}
       </View>
@@ -181,20 +203,20 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: 4,
   },
-  followersList: {
+  activitiesList: {
     flexGrow: 1,
   },
-  followerItem: {
+  activityItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
+    padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f5f5f5',
   },
-  unreadFollower: {
+  unreadActivity: {
     backgroundColor: '#f8f9fa',
   },
-  followerContent: {
+  activityContent: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -204,21 +226,32 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
   },
-  followerTitle: {
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  titleWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  activityTitle: {
     fontWeight: '600',
     fontSize: 14,
-    marginBottom: 2,
+    flex: 1,
   },
-  followerMessage: {
+  activityMessage: {
     fontSize: 12,
     color: '#666',
     marginBottom: 4,
   },
-  followerTime: {
+  activityTime: {
     fontSize: 10,
     color: '#999',
-    marginLeft: 'auto',
-    paddingRight: 10,
+    marginLeft: 8,
   },
   deleteButton: {
     padding: 4,
@@ -251,23 +284,6 @@ const styles = StyleSheet.create({
     marginRight: 10,
     alignSelf: 'flex-start',
   },
-  followButton: {
-    backgroundColor: '#3897f0',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 5,
-  },
-  followingButton: {
-    backgroundColor: '#efefef',
-  },
-  followButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  followingButtonText: {
-    color: 'black',
-  },
 });
 
-export default FollowersPanel;
+export default ActivitiesPanel;

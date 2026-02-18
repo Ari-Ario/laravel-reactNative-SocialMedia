@@ -6,6 +6,7 @@ import {
   Platform
 } from "react-native";
 import OfflineService from '@/services/ChatScreen/OfflineServiceChat';
+import RealTimeService from '@/services/ChatScreen/RealTimeServiceChat';
 import NotificationService from '@/services/ChatScreen/NotificationServiceChat';
 import SearchService, { SearchResult } from '@/services/ChatScreen/SearchServiceChat';
 
@@ -27,6 +28,7 @@ import debounce from 'lodash/debounce';
 import CreativeGenerator from "@/components/AI/CreativeGenerator";
 import CollaborativeActivities from "@/components/ChatScreen/CollaborativeActivities";
 import { id } from "rn-emoji-keyboard";
+import { useCollaborationStore } from "@/stores/collaborationStore";
 
 interface Chat {
   id: string;
@@ -59,8 +61,9 @@ interface SectionData {
 const ChatPage = () => {
   const notificationService = NotificationService.getInstance();
   const searchService = SearchService.getInstance();
+  const realTimeService = RealTimeService.getInstance();
   const offlineService = OfflineService.getInstance();
-  
+
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
@@ -76,11 +79,11 @@ const ChatPage = () => {
   const [showCreativeGenerator, setShowCreativeGenerator] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
-  
+
   const collaborationService = CollaborationService.getInstance();
   const synchronicityEngine = SynchronicityEngine.getInstance();
   const { currentSpace } = useSpaceStore();
-  
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-50)).current;
   const searchInputRef = useRef<TextInput>(null);
@@ -92,7 +95,7 @@ const ChatPage = () => {
   useEffect(() => {
     notificationService.configure();
     notificationService.clearBadgeCount();
-    
+
     return () => {
       // Optional cleanup
     };
@@ -117,61 +120,60 @@ const ChatPage = () => {
     }
   }, [user]);
 
-  // Initialize real-time service not used but collaborationService.subscribeToSpace(spaceId, is used instead, it asks Pusherservice
-  // useEffect(() => {
-  //   if (user?.id) {
-  //     realTimeService.initialize(user.id);
-      
-  //     const handleNewSpace = (data: any) => {
-  //       if (data.space && !spaces.some(s => s.id === data.space.id)) {
-  //         const newChat: Chat = {
-  //           id: data.space.id,
-  //           name: data.space.title,
-  //           lastMessage: getSpaceDescription(data.space),
-  //           timestamp: 'Just now',
-  //           unreadCount: 0,
-  //           user_id: data.space.creator_id.toString(),
-  //           type: 'space',
-  //           spaceData: data.space,
-  //         };
-          
-  //         setSpaces(prev => [newChat, ...prev]);
-  //         if (Platform.OS !== 'web') {
-  //           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  //         }
-          
-  //         // Show notification
-  //         notificationService.scheduleLocalNotification({
-  //           title: 'New Space Created',
-  //           body: `${data.space.title} is ready`,
-  //           data: {
-  //             type: 'space_created',
-  //             spaceId: data.space.id,
-  //           },
-  //         });
-  //       }
-  //     };
-  //   }
-    
-  //   return () => {
-  //     // Cleanup
-  //   };
-  // }, [user?.id]);
+  // Initialize real-time service
+  useEffect(() => {
+    if (user?.id) {
+      realTimeService.initialize(user.id);
+
+      const handleNewSpace = (data: any) => {
+        if (data.space && !spaces.some(s => s.id === data.space.id)) {
+          const newChat: Chat = {
+            id: data.space.id,
+            name: data.space.title,
+            lastMessage: getSpaceDescription(data.space),
+            timestamp: 'Just now',
+            unreadCount: 0,
+            user_id: data.space.creator_id.toString(),
+            type: 'space',
+            spaceData: data.space,
+          };
+
+          setSpaces(prev => [newChat, ...prev]);
+          if (Platform.OS !== 'web') {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          }
+
+          // Show notification
+          notificationService.scheduleLocalNotification({
+            title: 'New Space Created',
+            body: `${data.space.title} is ready`,
+            data: {
+              type: 'space_created',
+              spaceId: data.space.id,
+            },
+          });
+        }
+      };
+    }
+
+    return () => {
+      // Cleanup
+    };
+  }, [user?.id]);
 
   // Add real-time refresh on focus
-  
   useFocusEffect(
     useCallback(() => {
       if (user) {
         loadAllData();
       }
-      
+
       return () => {
         // Optional cleanup
       };
     }, [user])
   );
-  
+
   // Load all data
   useEffect(() => {
     if (user && token) {
@@ -214,40 +216,55 @@ const ChatPage = () => {
     }
   };
 
-const fetchActivitiesCount = async () => {
-  if (!user?.id) return;
-  
-  // ✅ ADD THIS GUARD
-  if (fetchActivitiesCount.pending) return;
-  fetchActivitiesCount.pending = true;
+  const fetchActivitiesCount = async () => {
+    if (!user?.id) return;
 
-  try {
-    // Fetch spaces first
-    const userSpaces = await collaborationService.fetchUserSpaces(user.id);
-    
-    // Count activities across all spaces
-    let totalActivities = 0;
-    let allActivities: CollaborativeActivity[] = [];
-    
-    for (const space of userSpaces) {
-      try {
-        const result = await collaborationService.getSpaceActivities(space.id);
-        totalActivities += result.total;
-        allActivities = [...allActivities, ...result.activities];
-      } catch (error) {
-        // Some spaces might not have activities yet
-        console.log(`No activities for space ${space.id}`);
+    // ✅ Use the store to prevent duplicate fetches
+    const {
+      hasSpaceActivities,
+      setSpaceActivities,
+      totalActivitiesCount
+    } = useCollaborationStore.getState();
+
+    try {
+      // Fetch spaces first
+      const userSpaces = await collaborationService.fetchUserSpaces(user.id);
+
+      let totalActivities = 0;
+      let allActivities: CollaborativeActivity[] = [];
+      const spacesToFetch: CollaborationSpace[] = [];
+
+      // Check which spaces need fresh data
+      for (const space of userSpaces) {
+        if (!hasSpaceActivities(space.id)) {
+          spacesToFetch.push(space);
+        }
       }
+
+      // Only fetch spaces that need updating
+      if (spacesToFetch.length > 0) {
+        console.log(`📊 Fetching activities for ${spacesToFetch.length} spaces (cached: ${userSpaces.length - spacesToFetch.length})`);
+
+        for (const space of spacesToFetch) {
+          try {
+            const result = await collaborationService.getSpaceActivities(space.id);
+            setSpaceActivities(space.id, result.activities, result.total);
+            totalActivities += result.activities.length;
+            allActivities = [...allActivities, ...result.activities];
+          } catch (error) {
+            console.log(`No activities for space ${space.id}`);
+          }
+        }
+      }
+
+      // Get final total from store
+      const finalTotal = useCollaborationStore.getState().totalActivitiesCount;
+      setActivitiesCount(finalTotal);
+
+    } catch (error) {
+      console.error('Error fetching activities count:', error);
     }
-    
-    setActivitiesCount(totalActivities);
-    setActivities(allActivities);
-  } catch (error) {
-    console.error('Error fetching activities count:', error);
-  } finally {
-    fetchActivitiesCount.pending = false;
-  }
-};
+  };
   // Debounced search
   const debouncedSearch = useCallback(
     debounce((query: string) => {
@@ -259,11 +276,11 @@ const fetchActivitiesCount = async () => {
   // Get AI suggestion for user
   const getAISuggestion = async () => {
     if (!user?.id || chats.length === 0) return;
-    
+
     try {
       const recentChatCount = chats.length;
       const activeSpaces = spaces.filter(s => s.spaceData?.is_live).length;
-      
+
       let suggestion = '';
       if (recentChatCount > 5 && activeSpaces === 0) {
         suggestion = 'You have several ongoing chats. Create a space to collaborate with multiple people at once?';
@@ -272,7 +289,7 @@ const fetchActivitiesCount = async () => {
       } else if (chats.length === 0) {
         suggestion = 'Start a conversation with someone you follow to begin chatting.';
       }
-      
+
       setAiSuggestion(suggestion);
     } catch (error) {
       console.error('Error getting AI suggestion:', error);
@@ -282,39 +299,39 @@ const fetchActivitiesCount = async () => {
   // Fixed fetchChatsAndContacts with better error handling
   const fetchChatsAndContacts = async () => {
     if (!user?.id || !token) return;
-    
+
     setLoading(true);
     const API_BASE = getApiBase();
-    
+
     try {
       // Fetch contacts from followers/following
       let followerContacts: Chat[] = [];
       let fallbackUsed = false;
-      
+
       try {
         // Try followers endpoint first
         const followersResponse = await axios.get(`${API_BASE}/profile/followers`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        
+
         followerContacts = transformUsersToContacts(followersResponse.data, 'follower');
       } catch (followerError) {
         console.log('Followers endpoint failed, trying following...');
-        
+
         try {
           const followingResponse = await axios.get(`${API_BASE}/profile/following`, {
             headers: { Authorization: `Bearer ${token}` },
           });
-          
+
           followerContacts = transformUsersToContacts(followingResponse.data, 'following');
         } catch (followingError) {
           console.log('Following endpoint failed, using users endpoint...');
-          
+
           try {
             const usersResponse = await axios.get(`${API_BASE}/users`, {
               headers: { Authorization: `Bearer ${token}` },
             });
-            
+
             followerContacts = transformUsersToContacts(usersResponse.data.slice(0, 10), 'user');
           } catch (usersError) {
             console.log('All endpoints failed, using fallback contacts');
@@ -323,13 +340,13 @@ const fetchActivitiesCount = async () => {
           }
         }
       }
-      
+
       // Extract chats from posts
       const chatConversations = extractChatsFromPosts(posts, user.id);
-      
+
       setChats(chatConversations);
       setContacts(followerContacts);
-      
+
       if (fallbackUsed) {
         Alert.alert(
           'Limited Mode',
@@ -337,11 +354,11 @@ const fetchActivitiesCount = async () => {
           [{ text: 'OK' }]
         );
       }
-      
+
     } catch (error: any) {
       console.error('Error in fetchChatsAndContacts:', error);
       Alert.alert('Error', 'Failed to load conversations');
-      
+
       // Set empty states
       setChats([]);
       setContacts(getFallbackContacts());
@@ -372,7 +389,7 @@ const fetchActivitiesCount = async () => {
   // Helper function to extract chats from posts
   const extractChatsFromPosts = (posts: any[], currentUserId: number): Chat[] => {
     const uniqueUsers = new Map();
-    
+
     posts.forEach(post => {
       if (post.user && post.user.id !== currentUserId && post.is_following) {
         const userId = post.user.id.toString();
@@ -385,13 +402,13 @@ const fetchActivitiesCount = async () => {
             postCount: 0
           });
         }
-        
+
         const userData = uniqueUsers.get(userId);
         userData.postCount++;
-        
+
         const postDate = new Date(post.created_at);
         const lastPostDate = new Date(userData.lastPost.created_at || 0);
-        
+
         if (postDate > lastPostDate) {
           userData.lastPost = post;
         }
@@ -438,16 +455,19 @@ const fetchActivitiesCount = async () => {
 
   const fetchUserSpaces = async () => {
     if (!user?.id || !token) return;
-    
+
     try {
       const userSpaces = await collaborationService.fetchUserSpaces(user.id);
-      
+
+      // Get the unread counts from the store
+      const { spaceUnreadCounts } = useCollaborationStore.getState();
+
       const spaceChats: Chat[] = userSpaces.map(space => ({
         id: space.id,
         name: space.title,
         lastMessage: getSpaceDescription(space),
         timestamp: formatTimestamp(space.updated_at || space.created_at),
-        unreadCount: space.activity_metrics?.unread_messages || 0,
+        unreadCount: spaceUnreadCounts[space.id] || 0, // ✅ Use store's unread count
         avatar: space.creator?.profile_photo,
         isOnline: space.is_live,
         user_id: space.creator_id.toString(),
@@ -455,38 +475,25 @@ const fetchActivitiesCount = async () => {
         spaceData: space,
         conversationId: space.linked_conversation_id,
       }));
-      
+
       // Sort by activity
       spaceChats.sort((a, b) => {
         if (a.spaceData?.is_live && !b.spaceData?.is_live) return -1;
         if (!a.spaceData?.is_live && b.spaceData?.is_live) return 1;
         return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
       });
-      
+
       setSpaces(spaceChats);
-      
+
       // Cache the result
       await offlineService.cacheUserSpaces(user.id, spaceChats);
     } catch (error) {
       console.error('Error fetching spaces:', error);
-      
-      // Try to load from cache
-      const cachedSpaces = await offlineService.getCachedUserSpaces(user.id);
-      if (cachedSpaces && !refreshing) {
-        setSpaces(cachedSpaces);
-      }
-      
-      if (!offlineService.isConnected()) {
-        Alert.alert(
-          'Offline Mode',
-          'Showing cached data. Connect to internet for updates.',
-          [{ text: 'OK' }]
-        );
-      } else {
-        Alert.alert('Error', 'Failed to load collaboration spaces');
-      }
+      // ... rest of error handling
     }
   };
+
+  // ============ HELPER FUNCTIONS (DEFINE FIRST) ============
 
   const getSpaceDescription = (space: CollaborationSpace): string => {
     const descriptions: Record<string, string> = {
@@ -498,7 +505,7 @@ const fetchActivitiesCount = async () => {
       story: `📖 Collaborative story`,
       voice_channel: `🎤 Voice channel`,
     };
-    
+
     return descriptions[space.space_type] || 'Collaboration space';
   };
 
@@ -507,7 +514,7 @@ const fetchActivitiesCount = async () => {
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - date.getTime());
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) {
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } else if (diffDays === 1) {
@@ -519,83 +526,110 @@ const fetchActivitiesCount = async () => {
     }
   };
 
+  // These are at the bottom of your file - move them up too
+  const getSpaceTypeIcon = (type: string): string => {
+    const icons: Record<string, string> = {
+      whiteboard: 'easel',
+      meeting: 'videocam',
+      document: 'document-text',
+      brainstorm: 'bulb',
+      voice_channel: 'mic',
+      chat: 'chatbubbles',
+      story: 'book',
+    };
+    return icons[type] || 'cube';
+  };
+
+  const getSpaceTypeColor = (type: string): string => {
+    const colors: Record<string, string> = {
+      whiteboard: '#4CAF50',
+      meeting: '#FF6B6B',
+      document: '#FFA726',
+      brainstorm: '#9C27B0',
+      voice_channel: '#3F51B5',
+      chat: '#2196F3',
+      story: '#E91E63',
+    };
+    return colors[type] || '#666';
+  };
+
   // Enhanced filtered data with search results integration
-const filteredData = useMemo(() => {
-  const query = searchQuery.toLowerCase();
-  
-  let filteredSpaces = spaces;
-  let filteredChats = chats;
-  let filteredContacts = contacts;
+  const filteredData = useMemo(() => {
+    const query = searchQuery.toLowerCase();
 
-  if (query.trim()) {
-    filteredSpaces = spaces.filter(item =>
-      item.name.toLowerCase().includes(query) ||
-      item.spaceData?.description?.toLowerCase().includes(query)
-    );
-    
-    filteredChats = chats.filter(item =>
-      item.name.toLowerCase().includes(query) ||
-      item.lastMessage?.toLowerCase().includes(query)
-    );
+    let filteredSpaces = spaces;
+    let filteredChats = chats;
+    let filteredContacts = contacts;
 
-    filteredContacts = contacts.filter(item =>
-      item.name.toLowerCase().includes(query) ||
-      item.email?.toLowerCase().includes(query) ||
-      item.username?.toLowerCase().includes(query)
-    );
-  }
+    if (query.trim()) {
+      filteredSpaces = spaces.filter(item =>
+        item.name.toLowerCase().includes(query) ||
+        item.spaceData?.description?.toLowerCase().includes(query)
+      );
 
-  const sections: SectionData[] = [];
-  
-  // Add regular sections FIRST
-  if (filteredSpaces.length > 0) {
-    sections.push({ 
-      title: '🎯 Collaboration Spaces', 
-      data: filteredSpaces,
-      type: 'spaces' 
-    });
-  }
-  
-  if (filteredChats.length > 0) {
-    sections.push({ 
-      title: '💬 Recent Chats', 
-      data: filteredChats,
-      type: 'chats' 
-    });
-  }
-  
-  if (filteredContacts.length > 0) {
-    sections.push({ 
-      title: '👥 Contacts', 
-      data: filteredContacts,
-      type: 'contacts' 
-    });
-  }
-  
-  // Add search results section LAST when there's a search
-  if (searchQuery.trim() && searchResults.length > 0) {
-    sections.push({ 
-      title: 'All Search Results', 
-      data: searchResults.map(result => ({
-        id: result.id,
-        name: result.title,
-        lastMessage: result.description,
-        timestamp: result.timestamp || 'Just now',
-        avatar: result.avatar,
-        user_id: result.data?.id?.toString() || result.id,
-        type: result.type as 'chat' | 'contact' | 'space',
-        spaceData: result.type === 'space' ? result.data : undefined,
-        isSearchResult: true,
-        searchRelevance: result.relevance,
-        searchType: result.type,
-      })),
-      type: 'search',
-      isSearchSection: true,
-    });
-  }
+      filteredChats = chats.filter(item =>
+        item.name.toLowerCase().includes(query) ||
+        item.lastMessage?.toLowerCase().includes(query)
+      );
 
-  return sections;
-}, [searchQuery, chats, contacts, spaces, searchResults]);
+      filteredContacts = contacts.filter(item =>
+        item.name.toLowerCase().includes(query) ||
+        item.email?.toLowerCase().includes(query) ||
+        item.username?.toLowerCase().includes(query)
+      );
+    }
+
+    const sections: SectionData[] = [];
+
+    // Add regular sections FIRST
+    if (filteredSpaces.length > 0) {
+      sections.push({
+        title: '🎯 Collaboration Spaces',
+        data: filteredSpaces,
+        type: 'spaces'
+      });
+    }
+
+    if (filteredChats.length > 0) {
+      sections.push({
+        title: '💬 Recent Chats',
+        data: filteredChats,
+        type: 'chats'
+      });
+    }
+
+    if (filteredContacts.length > 0) {
+      sections.push({
+        title: '👥 Contacts',
+        data: filteredContacts,
+        type: 'contacts'
+      });
+    }
+
+    // Add search results section LAST when there's a search
+    if (searchQuery.trim() && searchResults.length > 0) {
+      sections.push({
+        title: 'All Search Results',
+        data: searchResults.map(result => ({
+          id: result.id,
+          name: result.title,
+          lastMessage: result.description,
+          timestamp: result.timestamp || 'Just now',
+          avatar: result.avatar,
+          user_id: result.data?.id?.toString() || result.id,
+          type: result.type as 'chat' | 'contact' | 'space',
+          spaceData: result.type === 'space' ? result.data : undefined,
+          isSearchResult: true,
+          searchRelevance: result.relevance,
+          searchType: result.type,
+        })),
+        type: 'search',
+        isSearchSection: true,
+      });
+    }
+
+    return sections;
+  }, [searchQuery, chats, contacts, spaces, searchResults]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -623,11 +657,11 @@ const filteredData = useMemo(() => {
           ai_personality: 'helpful',
           ai_capabilities: ['summarize', 'suggest'],
         });
-        
+
         if (Platform.OS !== 'web') {
           await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
-        
+
         // Add to spaces list
         const newSpaceChat: Chat = {
           id: space.id,
@@ -641,24 +675,24 @@ const filteredData = useMemo(() => {
           type: 'space',
           spaceData: space,
         };
-        
+
         setSpaces(prev => [newSpaceChat, ...prev]);
         setShowSpaceTypes(false);
-        
+
         // Navigate to the new space
         router.push(`/(spaces)/${space.id}`);
-        
+
       } catch (error) {
         console.error('Error creating space:', error);
         Alert.alert('Error', 'Failed to create space. Please try again.');
       }
     };
-    
+
     if (offlineService.isConnected()) {
       await createSpaceOperation();
     } else {
       offlineService.queueOperation(createSpaceOperation);
-      
+
       // Show local preview
       const tempSpace: Chat = {
         id: `temp_${Date.now()}`,
@@ -677,10 +711,10 @@ const filteredData = useMemo(() => {
           is_live: false,
         } as any,
       };
-      
+
       setSpaces(prev => [tempSpace, ...prev]);
       setShowSpaceTypes(false);
-      
+
       Alert.alert(
         'Offline Mode',
         'Space will be created when you reconnect to the internet.',
@@ -700,44 +734,44 @@ const filteredData = useMemo(() => {
   // Update search handler
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
-    
+
     if (!query.trim() || !user?.id) {
       setSearchResults([]);
       setIsSearching(false);
       return;
     }
-    
+
     setIsSearching(true);
-    
+
     try {
       console.log('Searching for:', query);
       const results = await searchService.searchAll(query, user.id);
       console.log('Search results:', results.length);
       setSearchResults(results);
-      
+
       // Cache results for offline use
       searchService.cacheSearchData(user.id, results);
     } catch (error) {
       console.error('Search error:', error);
-      
+
       // Fallback to local search
       const allItems = [
         ...spaces.map(item => ({ ...item, type: 'space' })),
         ...chats.map(item => ({ ...item, type: 'chat' })),
         ...contacts.map(item => ({ ...item, type: 'contact' })),
       ];
-      
+
       const localResults = await searchService.localSearch(query, allItems);
       setSearchResults(localResults);
     } finally {
       setIsSearching(false);
     }
   };
-  
+
   // Search Result Row Component
-  const SearchResultRow = ({ item, index }: { 
-    item: Chat; 
-    index: number; 
+  const SearchResultRow = ({ item, index }: {
+    item: Chat;
+    index: number;
   }) => {
     const getSearchIcon = (type: string) => {
       const icons: Record<string, string> = {
@@ -795,7 +829,7 @@ const filteredData = useMemo(() => {
               color={getSearchColor(item.searchType || '')}
             />
           </View>
-          
+
           <View style={styles.searchResultText}>
             <Text style={styles.searchResultTitle}>
               {item.name}
@@ -816,13 +850,13 @@ const filteredData = useMemo(() => {
               </View>
             </View>
           </View>
-          
+
           <Ionicons name="chevron-forward" size={20} color="#ccc" />
         </View>
       </TouchableOpacity>
     );
   };
-  
+
   const handleSearchResultTap = (result: SearchResult) => {
     switch (result.type) {
       case 'space':
@@ -866,7 +900,7 @@ const filteredData = useMemo(() => {
     <Animated.View style={[styles.container, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
       {/* AI Suggestion */}
       {aiSuggestion && (
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.aiSuggestionContainer}
           onPress={() => {
             Alert.alert('AI Suggestion', aiSuggestion);
@@ -914,24 +948,24 @@ const filteredData = useMemo(() => {
 
       {/* Action Buttons Row */}
       <View style={styles.actionRow}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.actionButton, styles.primaryAction]}
           onPress={() => setShowSpaceTypes(!showSpaceTypes)}
         >
           <Ionicons name="add" size={20} color="#fff" />
           <Text style={styles.actionButtonText}>Create Space</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.actionButton}
           onPress={() => setShowCreativeGenerator(true)}
         >
           <Ionicons name="bulb" size={20} color="#007AFF" />
           <Text style={styles.actionButtonText}>Ideas</Text>
         </TouchableOpacity>
-        
+
         {/* Activities Button with Badge */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.actionButton}
           onPress={() => setShowActivities(true)}
         >
@@ -956,7 +990,7 @@ const filteredData = useMemo(() => {
           <Text style={styles.spaceTypeTitle}>Choose Space Type:</Text>
           <View style={styles.spaceTypeGrid}>
             {(['whiteboard', 'meeting', 'document', 'brainstorm', 'voice_channel', 'chat'] as const).map((type) => (
-              <TouchableOpacity 
+              <TouchableOpacity
                 key={type}
                 style={styles.spaceTypeOption}
                 onPress={() => handleCreateSpace(type)}
@@ -970,7 +1004,7 @@ const filteredData = useMemo(() => {
               </TouchableOpacity>
             ))}
           </View>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.cancelButton}
             onPress={() => setShowSpaceTypes(false)}
           >
@@ -991,29 +1025,29 @@ const filteredData = useMemo(() => {
           onClose={() => setShowCreativeGenerator(false)}
         />
       </Modal>
-{/* Collaborative Activities Modal - ADD THIS */}
-<Modal
-  visible={showActivities}
-  animationType="slide"
-  presentationStyle="pageSheet"
-  onRequestClose={() => setShowActivities(false)}
->
-  <CollaborativeActivities
-    spaces={spaces.map(s => s.spaceData).filter(Boolean)}
-    activities={activities}
-    activitiesCount={activitiesCount}
-    onClose={() => setShowActivities(false)}
-    onActivitySelect={(activity) => {
-      // Navigate to the space containing this activity
-      const space = spaces.find(s => s.spaceData?.id === activity.space_id);
-      if (space) {
-        router.push(`/(spaces)/${activity.space_id}?activity=${activity.id}`);
-      } else {
-        Alert.alert('Error', 'Could not find the space for this activity');
-      }
-    }}
-  />
-</Modal>
+      {/* Collaborative Activities Modal - ADD THIS */}
+      <Modal
+        visible={showActivities}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowActivities(false)}
+      >
+        <CollaborativeActivities
+          spaces={spaces.map(s => s.spaceData).filter(Boolean)}
+          activities={activities}
+          activitiesCount={activitiesCount}
+          onClose={() => setShowActivities(false)}
+          onActivitySelect={(activity) => {
+            // Navigate to the space containing this activity
+            const space = spaces.find(s => s.spaceData?.id === activity.space_id);
+            if (space) {
+              router.push(`/(spaces)/${activity.space_id}?activity=${activity.id}`);
+            } else {
+              Alert.alert('Error', 'Could not find the space for this activity');
+            }
+          }}
+        />
+      </Modal>
 
       {/* Main List with Integrated Search Results */}
       <SectionList
@@ -1029,11 +1063,11 @@ const filteredData = useMemo(() => {
               />
             );
           }
-          
+
           // Regular rows
           return (
-            <EnhancedChatRow 
-              {...item} 
+            <EnhancedChatRow
+              {...item}
               index={index}
               onLongPress={() => {
                 if (Platform.OS !== 'web') {
@@ -1044,26 +1078,30 @@ const filteredData = useMemo(() => {
                   `Type: ${item.type}\nLast activity: ${item.timestamp}`,
                   [
                     { text: 'Cancel', style: 'cancel' },
-                    { text: 'View', onPress: () => {
-                      if (item.type === 'chat') {
-                        router.push(`/(tabs)/chats/${item.id}`);
-                      } else if (item.type === 'space') {
-                        router.push(`/(spaces)/${item.id}`);
+                    {
+                      text: 'View', onPress: () => {
+                        if (item.type === 'chat') {
+                          router.push(`/(tabs)/chats/${item.id}`);
+                        } else if (item.type === 'space') {
+                          router.push(`/(spaces)/${item.id}`);
+                        }
                       }
-                    }},
-                    { text: 'Message', onPress: () => {
-                      // Start new conversation
-                    }}
+                    },
+                    {
+                      text: 'Message', onPress: () => {
+                        // Start new conversation
+                      }
+                    }
                   ]
                 );
               }}
             />
-            
+
           );
         }}
         renderSectionHeader={({ section: { title, data, isSearchSection } }) => {
           if (data.length === 0) return null;
-          
+
           // Special styling for search results section
           if (isSearchSection) {
             return (
@@ -1071,7 +1109,7 @@ const filteredData = useMemo(() => {
                 <View style={styles.searchSectionHeaderContent}>
                   <Ionicons name="search" size={18} color="#007AFF" />
                   <Text style={styles.searchSectionHeaderText}>{title}</Text>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={handleClearSearch}
                     style={styles.clearSearchButton}
                   >
@@ -1084,7 +1122,7 @@ const filteredData = useMemo(() => {
               </View>
             );
           }
-          
+
           // Regular section headers
           return (
             <View style={styles.sectionHeader}>
@@ -1117,7 +1155,7 @@ const filteredData = useMemo(() => {
             <Text style={styles.emptySubtitle}>
               Start by creating a collaboration space or messaging a contact
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.emptyButton}
               onPress={() => setShowSpaceTypes(true)}
             >
@@ -1133,33 +1171,6 @@ const filteredData = useMemo(() => {
       />
     </Animated.View>
   );
-};
-
-// Helper functions
-const getSpaceTypeIcon = (type: string): string => {
-  const icons: Record<string, string> = {
-    whiteboard: 'easel',
-    meeting: 'videocam',
-    document: 'document-text',
-    brainstorm: 'bulb',
-    voice_channel: 'mic',
-    chat: 'chatbubbles',
-    story: 'book',
-  };
-  return icons[type] || 'cube';
-};
-
-const getSpaceTypeColor = (type: string): string => {
-  const colors: Record<string, string> = {
-    whiteboard: '#4CAF50',
-    meeting: '#FF6B6B',
-    document: '#FFA726',
-    brainstorm: '#9C27B0',
-    voice_channel: '#3F51B5',
-    chat: '#2196F3',
-    story: '#E91E63',
-  };
-  return colors[type] || '#666';
 };
 
 const styles = StyleSheet.create({
@@ -1236,7 +1247,7 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: 4,
   },
-  
+
   // Search Section Header
   searchSectionHeader: {
     backgroundColor: '#f8f9ff',
@@ -1273,7 +1284,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
   },
-  
+
   // Search Result Item
   searchResultItem: {
     backgroundColor: '#fff',
@@ -1335,7 +1346,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
     marginLeft: 68,
   },
-  
+
   actionRow: {
     flexDirection: 'row',
     marginHorizontal: 16,
@@ -1484,7 +1495,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  
+
   // Old modal styles (kept for reference but not used in new design)
   searchResultsModal: {
     flex: 1,

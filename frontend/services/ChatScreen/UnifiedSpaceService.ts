@@ -12,12 +12,16 @@ export class UnifiedSpaceService {
   // Using ONLY your existing packages:
   // @pusher/pusher-websocket-react-native - Real-time
   // expo-av - Audio/Video
-  // expo-camera - Video capture
-  // expo-image-picker - Media selection
   // expo-haptics - Tactile feedback
   // axios - API calls
   // zustand - State management
   // react-native-gifted-chat - Chat UI
+
+  // Fetch all spaces (globally)
+  static async fetchAllSpaces() {
+    const response = await axios.get('/api/spaces');
+    return response.data.spaces;
+  }
 
   static async createSpace(type: string, options: any) {
     const currentUser = useContext(AuthContext);
@@ -32,13 +36,13 @@ export class UnifiedSpaceService {
       linked_post_id: options.postId,
       linked_story_id: options.storyId,
     });
-    
+
     // Subscribe to real-time channel
     const channel = pusher.subscribe(`presence-space.${response.data.id}`);
-    
+
     // Setup event handlers based on type
     this.setupSpaceHandlers(type, channel, response.data.id);
-    
+
     return response.data;
   }
 
@@ -49,7 +53,7 @@ export class UnifiedSpaceService {
       max_participants: type === 'meeting' ? 10 : 50,
       recording_enabled: false,
       web_access_link: null,
-      
+
       // Type-specific
       chat: { reactions: true, threads: false },
       meeting: { video_on_join: false, raise_hand: true },
@@ -58,7 +62,7 @@ export class UnifiedSpaceService {
       brainstorm: { anonymous_ideas: false, voting: true },
       voice_channel: { spatial_audio: true, noise_suppression: true },
     };
-    
+
     return settings[type] || {};
   }
 
@@ -66,17 +70,17 @@ export class UnifiedSpaceService {
   static async setupVoiceChannel(spaceId: string) {
     const { status } = await Audio.requestPermissionsAsync();
     if (status !== 'granted') return;
-    
+
     // Create audio session
     await Audio.setAudioModeAsync({
       allowsRecordingIOS: true,
       playsInSilentModeIOS: true,
       staysActiveInBackground: true,
     });
-    
+
     // Subscribe to voice activity
     const channel = pusher.subscribe(`presence-space.${spaceId}`);
-    
+
     // Handle incoming voice
     channel.bind('voice-data', async (data) => {
       if (data.userId !== currentUser.id) {
@@ -85,7 +89,7 @@ export class UnifiedSpaceService {
         await sound.playAsync();
       }
     });
-    
+
     // Send voice data
     return {
       startSpeaking: async () => {
@@ -94,7 +98,7 @@ export class UnifiedSpaceService {
           Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY
         );
         await recording.startAsync();
-        
+
         // Stream via Pusher (simplified)
         setInterval(async () => {
           const uri = recording.getURI();
@@ -113,3 +117,6 @@ export class UnifiedSpaceService {
     };
   }
 }
+
+export default UnifiedSpaceService;
+

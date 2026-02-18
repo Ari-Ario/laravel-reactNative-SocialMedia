@@ -113,17 +113,32 @@ const MessageList: React.FC<MessageListProps> = ({
           
           // Scroll to bottom on new message
           setTimeout(() => {
-            flatListRef.current?.scrollToEnd({ animated: true });
+            try {
+              flatListRef.current?.scrollToEnd({ animated: true });
+            } catch (scrollError) {
+              console.warn('Scroll error:', scrollError);
+            }
           }, 100);
           
           return updated;
         });
         
-        // ✅ FIX: Add platform check for haptics
-        if (newMessage.user_id !== currentUserId && Platform.OS !== 'web') {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(err => 
-            console.warn('Haptics error:', err)
-          );
+        // ✅ FIX: Add comprehensive platform and availability check for haptics
+        if (newMessage.user_id !== currentUserId) {
+          // Only attempt haptics on native platforms
+          if (Platform.OS !== 'web') {
+            try {
+              // Dynamic import to avoid web issues
+              import('expo-haptics').then(Haptics => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                  .catch(err => console.warn('Haptics error:', err));
+              }).catch(err => {
+                console.warn('Haptics module not available:', err);
+              });
+            } catch (error) {
+              console.warn('Haptics not available:', error);
+            }
+          }
         }
       },
       

@@ -1,5 +1,5 @@
 // app/(tabs)/index.tsx
-import { View, Text, Pressable, StyleSheet, Button, ActivityIndicator, ScrollView, FlatList, Image, TouchableOpacity, Alert } from "react-native";
+import { View, Text, Pressable, StyleSheet, Button, ActivityIndicator, ScrollView, FlatList, Image, TouchableOpacity, Alert, Platform } from "react-native";
 import { Link, router, Stack, useRouter } from 'expo-router';
 import { useState, useEffect, useContext } from "react";
 import AuthContext from "@/context/AuthContext";
@@ -22,6 +22,12 @@ import { getToken } from "@/services/TokenService";
 import PusherService from "@/services/PusherService";
 import { NotificationPanel } from "@/components/Notifications/NotificationPanel";
 import FollowersPanel from "@/components/Notifications/FollowersPanel";
+import CallsPanel from '@/components/Notifications/CallsPanel';
+import MessagesPanel from '@/components/Notifications/MessagesPanel';
+import SpacesPanel from '@/components/Notifications/SpacesPanel';
+import ActivitiesPanel from '@/components/Notifications/ActivitiesPanel';
+import RealTimeService from '@/services/ChatScreen/RealTimeServiceChat';
+import CollaborationService from '@/services/ChatScreen/CollaborationService';
 
 type StoryGroup = {
   user: {
@@ -46,18 +52,31 @@ const HomePage = () => {
   const [storyGroups, setStoryGroups] = useState<StoryGroup[]>([]);
   const { posts, setPosts } = usePostStore();
   const [isTokenReady, setIsTokenReady] = useState(false);
-  const { 
-    isNotificationPanelVisible, 
+  const {
+    isNotificationPanelVisible,
     setNotificationPanelVisible,
     isFollowersPanelVisible,
     setIsFollowersPanelVisible,
     unreadCount,
-    unreadFollowerCount ,
+    unreadFollowerCount,
+    // Add these new selectors from your store
+    unreadCallCount,
+    unreadMessageCount,
+    unreadSpaceCount,
+    unreadActivityCount,
     initializeRealtime,
     disconnectRealtime,
     addNotification,
     setCurrentUserId
   } = useNotificationStore();
+  const [activeNotificationType, setActiveNotificationType] = useState<"all" | "regular" | "spaces" | "calls" | "messages" | "activities" | null>(null);
+  const realTimeService = RealTimeService.getInstance();
+  const collaborationService = CollaborationService.getInstance();
+
+  const [isCallsPanelVisible, setCallsPanelVisible] = useState(false);
+  const [isMessagesPanelVisible, setMessagesPanelVisible] = useState(false);
+  const [isSpacesPanelVisible, setSpacesPanelVisible] = useState(false);
+  const [isActivitiesPanelVisible, setActivitiesPanelVisible] = useState(false);
 
   // ✅ FIX: Simplified real-time initialization
   useEffect(() => {
@@ -68,15 +87,15 @@ const HomePage = () => {
         const token = await getToken();
         if (token && user?.id && isMounted) {
           setIsTokenReady(true);
-          
+
           console.log('🔐 Initializing real-time systems for user:', user.id);
-          
+
           // Set user ID first
           setCurrentUserId(user.id);
-          
+
           // Initialize notification real-time
           const success = initializeRealtime(token, user.id);
-          
+
           if (success) {
             console.log('✅ Notification real-time initialized successfully');
           } else {
@@ -105,14 +124,15 @@ const HomePage = () => {
     };
   }, [user?.id]);
 
+
   // Subscribe to posts only when token is ready and posts exist
   useEffect(() => {
     if (isTokenReady && posts.length > 0) {
       console.log('🏠 Setting up real-time subscriptions for', posts.length, 'posts');
-      
+
       const postIds = posts.map(post => post.id);
       usePostStore.getState().subscribeToPosts(postIds);
-      
+
       return () => {
         console.log('🏠 Cleaning up post subscriptions');
         usePostStore.getState().unsubscribeFromAllPosts();
@@ -120,8 +140,170 @@ const HomePage = () => {
     }
   }, [posts.length, isTokenReady]);
 
-  // Make sure your handlers are properly connected:
+  // ✅ Global space fetch + per-space real-time subscriptions
+  useEffect(() => {
+    if (!isTokenReady || !user?.id) return;
 
+    let subscribedSpaceIds: string[] = [];
+
+    const setupSpaceSubscriptions = async () => {
+      try {
+        // ✅ Ensure CollaborationService has the auth token (critical on Android)
+        const token = await getToken();
+        if (token) {
+          await collaborationService.setToken(token);
+        }
+
+        console.log('🌐 Fetching all spaces for global subscription...');
+        const userSpaces = await collaborationService.fetchUserSpaces(user.id);
+        console.log(`🌐 Found ${userSpaces.length} spaces to subscribe to`);
+
+        subscribedSpaceIds = userSpaces.map(s => s.id);
+
+        userSpaces.forEach(space => {
+          // ✅ Use collaborationService (not PusherService directly) so callbacks
+          // are properly added even when the channel already exists from chats/index.tsx
+          collaborationService.subscribeToSpace(space.id, {
+            onMessage: (data: any) => {
+              // The backend sends the message as an object under data.message or directly
+              const msgObj = data?.message || data;
+
+              // Check sender ID from multiple possible locations
+              // Use loose equality (==) to handle string vs number ID mismatch
+              const senderId = msgObj?.sender_id ?? msgObj?.user_id ?? data?.sender_id ?? data?.user_id;
+
+              if (senderId == user.id) return;
+
+              console.log(`💬 New message in space "${space.title}":`, data);
+
+              // Extract content safely
+              const msgText: string =
+                typeof msgObj?.content === 'string' ? msgObj.content :
+                  typeof data?.content === 'string' ? data.content :
+                    typeof msgObj?.text === 'string' ? msgObj.text :
+                      'New message received';
+
+              addNotification({
+                type: 'new_message',
+                title: `New message in ${space.title}`,
+                message: msgText,
+                userId: senderId, // ✅ Pass at top level for global filtering
+                spaceId: space.id, // ✅ Pass at top level
+                data: { messageId: msgObj?.id },
+                createdAt: new Date(),
+              });
+            },
+            onCallStarted: (data: any) => {
+              const callerId = data.caller_id || data.user_id;
+              if (callerId == user.id) return;
+
+              console.log(`📞 Call started in space "${space.title}":`, data);
+              addNotification({
+                type: 'call_started',
+                title: `Call started in ${space.title}`,
+                message: data.caller_name ? `${data.caller_name} started a call` : 'A call has started',
+                userId: Number(callerId), // Ensure number
+                spaceId: space.id,
+                data: { ...data },
+                createdAt: new Date(),
+              });
+            },
+            onCallEnded: (data: any) => {
+              console.log(`📵 Call ended in space "${space.title}":`, data);
+              addNotification({
+                type: 'call_ended',
+                title: `Call ended in ${space.title}`,
+                message: 'The call has ended',
+                spaceId: space.id,
+                data: { ...data },
+                createdAt: new Date(),
+              });
+            },
+            onParticipantUpdate: (data: any) => {
+              const participantId = data.user_id || data.id;
+              if (participantId == user.id) return;
+              // Only notify for join events (not leave/update)
+              if (data?.type === 'left') return;
+
+              console.log(`👋 Participant joined space "${space.title}":`, data);
+              addNotification({
+                type: 'participant_joined',
+                title: `Someone joined ${space.title}`,
+                message: data.user_name ? `${data.user_name} joined the space` : 'A new participant joined',
+                userId: Number(participantId),
+                spaceId: space.id,
+                data: { ...data },
+                createdAt: new Date(),
+              });
+            },
+            onMagicEvent: (data: any) => {
+              const triggerId = data.triggered_by || data.user_id;
+              if (triggerId == user.id) return;
+
+              console.log(`✨ Magic event in space "${space.title}":`, data);
+              addNotification({
+                type: 'magic_event',
+                title: `Magic event in ${space.title}`,
+                message: data.description || 'A magic event occurred',
+                userId: Number(triggerId),
+                spaceId: space.id,
+                data: { ...data },
+                createdAt: new Date(),
+              });
+            },
+            onScreenShareStarted: (data: any) => {
+              const sharerId = data.user_id || data.id;
+              if (sharerId == user.id) return;
+
+              console.log(`🖥️ Screen share started in space "${space.title}":`, data);
+              addNotification({
+                type: 'screen_share',
+                title: `Screen share in ${space.title}`,
+                message: data.user_name ? `${data.user_name} is sharing their screen` : 'Screen sharing started',
+                userId: Number(sharerId),
+                spaceId: space.id,
+                data: { ...data },
+                createdAt: new Date(),
+              });
+            },
+          });
+        });
+
+        // Also subscribe to the global 'spaces' channel for newly created spaces
+        PusherService.subscribeToAllSpaces((data: any) => {
+          console.log('🌐 New space created globally:', data);
+          if (data?.space) {
+            const creatorId = data.space.creator_id;
+            if (creatorId == user.id) return;
+
+            addNotification({
+              type: 'space_updated',
+              title: 'New Space Available',
+              message: `"${data.space.title}" space was created`,
+              userId: Number(creatorId),
+              spaceId: data.space.id,
+              data: { ...data },
+              createdAt: new Date(),
+            });
+          }
+        });
+
+        console.log('✅ Global space subscriptions set up successfully');
+      } catch (error) {
+        console.error('❌ Error setting up global space subscriptions:', error);
+      }
+    };
+
+    setupSpaceSubscriptions();
+
+    return () => {
+      console.log('🧹 Cleaning up space subscriptions');
+      subscribedSpaceIds.forEach(spaceId => {
+        collaborationService.unsubscribeFromSpace(spaceId);
+      });
+      PusherService.unsubscribeFromChannel('spaces');
+    };
+  }, [isTokenReady, user?.id]);
 
   // Load posts when component mounts
   useEffect(() => {
@@ -147,8 +329,8 @@ const HomePage = () => {
       setLoading(true);
       const postsData = await fetchPosts();
       setPosts(postsData); // ✅ Zustand
-      
-      console.log(posts);
+
+      console.log('Posts loaded at Home index:', postsData);
     } catch (error) {
       Alert.alert('Error', 'Something went wrong while fetching posts');
     } finally {
@@ -185,15 +367,15 @@ const HomePage = () => {
   };
 
   // In parent component (FeedScreen/ProfileScreen)
-const handleCommentSubmit = async (postId: number, content: string, parentId?: number) => {
-  try {
-    // Directly return the comment from your PostService
-    return await commentOnPost(postId, content, parentId);
-  } catch (error) {
-    console.error('Comment submission failed:', error);
-    throw error;
-  }
-};
+  const handleCommentSubmit = async (postId: number, content: string, parentId?: number) => {
+    try {
+      // Directly return the comment from your PostService
+      return await commentOnPost(postId, content, parentId);
+    } catch (error) {
+      console.error('Comment submission failed:', error);
+      throw error;
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -212,11 +394,6 @@ const handleCommentSubmit = async (postId: number, content: string, parentId?: n
     }
   };
 
-  // useEffect(() => {
-  //   if (user === undefined) return;
-  //   if (user === null) router.replace('/LoginScreen');
-  // }, [user]);
-
   const handleProfilePress = (userId: string) => {
     setProfileViewUserId(userId);
     setProfilePreviewVisible(true);
@@ -234,68 +411,127 @@ const handleCommentSubmit = async (postId: number, content: string, parentId?: n
     </TouchableOpacity>
   );
 
-useEffect(() => {
-  if (!user) {
-    router.replace('/LoginScreen');
-    return;
-  }
+  useEffect(() => {
+    if (!user) {
+      router.replace('/LoginScreen');
+      return;
+    }
 
-  if (!user.email_verified_at) {
-    router.replace('/VerificationScreen');
-    return;
-  }
-}, [user]);
+    if (!user.email_verified_at) {
+      router.replace('/VerificationScreen');
+      return;
+    }
+  }, [user]);
 
   if (loading && !refreshing) return <View style={styles.loadingContainer}><ActivityIndicator size="large" /></View>;
 
   return (
     <AuthContext.Provider value={{ user, setUser }}>
       <View style={styles.container}>
-        {/* ADD NOTIFICATION PANEL */}
+        {/* Notification Panels */}
         <NotificationPanel
           visible={isNotificationPanelVisible}
-          onClose={() => setNotificationPanelVisible(false)}
+          onClose={() => {
+            setNotificationPanelVisible(false);
+            setActiveNotificationType(null);
+          }}
+          initialType={activeNotificationType || 'all'}
         />
+
         <FollowersPanel
           visible={isFollowersPanelVisible}
           onClose={() => setIsFollowersPanelVisible(false)}
         />
 
-        {/* Your existing header */}
+        <CallsPanel
+          visible={isCallsPanelVisible}
+          onClose={() => setCallsPanelVisible(false)}
+        />
+        <MessagesPanel
+          visible={isMessagesPanelVisible}
+          onClose={() => setMessagesPanelVisible(false)}
+        />
+        <SpacesPanel
+          visible={isSpacesPanelVisible}
+          onClose={() => setSpacesPanelVisible(false)}
+        />
+        <ActivitiesPanel
+          visible={isActivitiesPanelVisible}
+          onClose={() => setActivitiesPanelVisible(false)}
+        />
+        {/* Enhanced Header with Multiple Notification Icons */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>Home</Text>
-
             <View style={styles.headerIcons}>
-              {/* Regular Notifications Icon */}
-              <TouchableOpacity 
-                style={styles.notificationBell}
-                onPress={() => {
-                  console.log('🔔 Opening notification panel, unread count:', unreadCount);
-                  setNotificationPanelVisible(true);
-                }}
+              {/* Calls Icon */}
+              <TouchableOpacity
+                style={styles.notificationIconContainer}
+                onPress={() => setCallsPanelVisible(true)}
               >
-                <Ionicons name="notifications-outline" size={24} color="#000" />
-                {unreadCount > 0 && (
-                  <View style={styles.badge}>
+                <Ionicons name="call-outline" size={24} color="#4CD964" />
+                {unreadCallCount > 0 && (
+                  <View style={[styles.badge, styles.callBadge]}>
                     <Text style={styles.badgeText}>
-                      {unreadCount > 99 ? '99+' : unreadCount}
+                      {unreadCallCount > 99 ? '99+' : unreadCallCount}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              {/* Messages Icon */}
+              <TouchableOpacity
+                style={styles.notificationIconContainer}
+                onPress={() => setMessagesPanelVisible(true)}
+              >
+                <Ionicons name="chatbubble-outline" size={24} color="#007AFF" />
+                {unreadMessageCount > 0 && (
+                  <View style={[styles.badge, styles.messageBadge]}>
+                    <Text style={styles.badgeText}>
+                      {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              {/* Spaces Icon */}
+              <TouchableOpacity
+                style={styles.notificationIconContainer}
+                onPress={() => setSpacesPanelVisible(true)}
+              >
+                <Ionicons name="cube-outline" size={24} color="#5856D6" />
+                {unreadSpaceCount > 0 && (
+                  <View style={[styles.badge, styles.spaceBadge]}>
+                    <Text style={styles.badgeText}>
+                      {unreadSpaceCount > 99 ? '99+' : unreadSpaceCount}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              {/* Activities Icon */}
+              <TouchableOpacity
+                style={styles.notificationIconContainer}
+                onPress={() => setActivitiesPanelVisible(true)}
+              >
+                <Ionicons name="sparkles-outline" size={24} color="#FF2D55" />
+                {unreadActivityCount > 0 && (
+                  <View style={[styles.badge, styles.activityBadge]}>
+                    <Text style={styles.badgeText}>
+                      {unreadActivityCount > 99 ? '99+' : unreadActivityCount}
                     </Text>
                   </View>
                 )}
               </TouchableOpacity>
 
               {/* Followers Icon */}
-              <TouchableOpacity 
-                style={styles.notificationBell}
-                onPress={() => {
-                  console.log('👥 Opening followers panel, unread count:', unreadFollowerCount);
-                  setIsFollowersPanelVisible(true);
-                }}
+              <TouchableOpacity
+                style={styles.notificationIconContainer}
+                onPress={() => setIsFollowersPanelVisible(true)}
               >
                 <Ionicons name="people-outline" size={24} color="#000" />
                 {unreadFollowerCount > 0 && (
-                  <View style={styles.badge}>
+                  <View style={[styles.badge, styles.followerBadge]}>
                     <Text style={styles.badgeText}>
                       {unreadFollowerCount > 99 ? '99+' : unreadFollowerCount}
                     </Text>
@@ -303,9 +539,22 @@ useEffect(() => {
                 )}
               </TouchableOpacity>
 
-              {/* Other icons... */}
-            </View>
+              {/* Regular Notifications Icon */}
+              <TouchableOpacity
+                style={styles.notificationIconContainer}
+                onPress={() => setNotificationPanelVisible(true)}
+              >
+                <Ionicons name="notifications-outline" size={24} color="#000" />
+                {unreadCount > 0 && (
+                  <View style={[styles.badge, styles.regularBadge]}>
+                    <Text style={styles.badgeText}>
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
 
+            </View>
           </View>
         </View>
 
@@ -339,28 +588,28 @@ useEffect(() => {
           </View>
 
         </View>
-        
-          <FlatList
-            data={posts}
-            renderItem={({ item }) => (
-              <View style={styles.postContainer}>
-                <PostListItem
-                  post={item}
-                  onReact={reactToPost}
-                  onCommentSubmit={handleCommentSubmit}
-                  onRepost={handleRepost}
-                  onShare={sharePost}
-                  onBookmark={bookmarkPost}
-                  setIsCreateModalVisible={setIsCreateModalVisible}
-                />
-              </View>
-            )}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-            onRefresh={handleRefresh}
-            refreshing={refreshing}
-            keyExtractor={(item) => item.id.toString()}
-          />
+
+        <FlatList
+          data={posts}
+          renderItem={({ item }) => (
+            <View style={styles.postContainer}>
+              <PostListItem
+                post={item}
+                onReact={reactToPost}
+                onCommentSubmit={handleCommentSubmit}
+                onRepost={handleRepost}
+                onShare={sharePost}
+                onBookmark={bookmarkPost}
+                setIsCreateModalVisible={setIsCreateModalVisible}
+              />
+            </View>
+          )}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          onRefresh={handleRefresh}
+          refreshing={refreshing}
+          keyExtractor={(item) => item.id.toString()}
+        />
 
         <FloatingActionButton onPress={() => {
           router.setParams({ postId: null });
@@ -471,7 +720,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
-storiesContainer: {
+  storiesContainer: {
     // paddingVertical: 10,
     // borderBottomWidth: 1,
     // borderBottomColor: '#eee',
@@ -537,9 +786,6 @@ storiesContainer: {
     borderWidth: 2,
     borderColor: 'white',
   },
-  viewedStoryBorder: {
-    borderColor: '#999',
-  },
 
 
   headerContent: {
@@ -560,35 +806,57 @@ storiesContainer: {
     marginLeft: 15,
     position: 'relative',
   },
+  notificationIconContainer: {
+    position: 'relative',
+    marginLeft: 12,
+  },
   badge: {
     position: 'absolute',
-    top: -5,
-    right: -5,
-    backgroundColor: 'red',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+    top: -4,
+    right: -6,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 3,
+  },
+  callBadge: {
+    backgroundColor: '#4CD964',
+  },
+  messageBadge: {
+    backgroundColor: '#007AFF',
+  },
+  spaceBadge: {
+    backgroundColor: '#5856D6',
+  },
+  activityBadge: {
+    backgroundColor: '#FF2D55',
+  },
+  regularBadge: {
+    backgroundColor: '#FF9500',
+  },
+  followerBadge: {
+    backgroundColor: '#FF3B30',
   },
   badgeText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
   },
 
   // Add to your styles
-testButton: {
-  backgroundColor: '#007AFF',
-  padding: 10,
-  borderRadius: 5,
-  margin: 10,
-  alignItems: 'center'
-},
-testButtonText: {
-  color: 'white',
-  fontWeight: 'bold'
-}
+  testButton: {
+    backgroundColor: '#007AFF',
+    padding: 10,
+    borderRadius: 5,
+    margin: 10,
+    alignItems: 'center'
+  },
+  testButtonText: {
+    color: 'white',
+    fontWeight: 'bold'
+  }
 });
 
 export default HomePage;
