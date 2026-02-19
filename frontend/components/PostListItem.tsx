@@ -1,11 +1,11 @@
 // components/PostListItem.tsx
-import { 
-  View, 
-  Image, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  FlatList, 
+import {
+  View,
+  Image,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
   TextInput,
   ScrollView,
   Modal,
@@ -44,8 +44,8 @@ interface PostListItemProps {
   onBookmark: (postId: number) => void;
 }
 
-export default function PostListItem({ 
-  post, 
+export default function PostListItem({
+  post,
   onReact,
   onReactComment,
   onCommentSubmit,
@@ -105,12 +105,12 @@ export default function PostListItem({
         <View style={styles.header}>
 
           <View style={styles.infoFoto}>
-            <TouchableOpacity 
-            style={styles.Foto}
-            onPress={() => {
-              service.setProfileViewUserId(post.user.id);
-              service.setProfilePreviewVisible(true);
-            }}
+            <TouchableOpacity
+              style={styles.Foto}
+              onPress={() => {
+                service.setProfileViewUserId(post.user.id);
+                service.setProfilePreviewVisible(true);
+              }}
             >
               <Image
                 source={{ uri: `${getApiBaseImage()}/storage/${post.user.profile_photo}` || '@/assets/favicon.png' }}
@@ -134,14 +134,14 @@ export default function PostListItem({
                 )}
               </View>
             </View>
-            
+
           </View>
 
-          <TouchableOpacity 
-              style={styles.menuButton}
-              onPress={service.handleMenuPress}
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={service.handleMenuPress}
           >
-              <Ionicons name="ellipsis-horizontal" size={20} />
+            <Ionicons name="ellipsis-horizontal" size={20} />
           </TouchableOpacity>
         </View>
 
@@ -172,7 +172,7 @@ export default function PostListItem({
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {sortedMedia.map((media, index) => (
-                <TouchableOpacity 
+                <TouchableOpacity
                   key={`${media.id}-${index}`}
                   onPress={() => service.openMediaViewer(index)}
                   style={styles.multiMediaItem}
@@ -273,7 +273,7 @@ export default function PostListItem({
             styles.commentsSheet,
             service.isFullScreen && styles.fullScreenSheet
           ]}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.sheetHandleContainer}
               onPress={() => service.setIsFullScreen(!service.isFullScreen)}
             >
@@ -354,20 +354,20 @@ export default function PostListItem({
       />
 
       <PostMenu
-          visible={service.menuVisible}
-          onClose={() => service.setMenuVisible(false)}
-          onDelete={() => service.handleDelete(post.id)}
-          onEdit={() => service.handleEdit(post)}
-          onReport={service.handleReport}
-          isOwner={isOwner}
-          anchorPosition={service.menuPosition}
+        visible={service.menuVisible}
+        onClose={() => service.setMenuVisible(false)}
+        onDelete={() => service.handleDelete(post.id)}
+        onEdit={() => service.handleEdit(post)}
+        onReport={service.handleReport}
+        isOwner={isOwner}
+        anchorPosition={service.menuPosition}
       />
 
       <ReportPost
-          visible={service.reportVisible}
-          postId={post.id}
-          onClose={() => service.setReportVisible(false)}
-          onReportSubmitted={service.handleReportSubmitted}
+        visible={service.reportVisible}
+        postId={post.id}
+        onClose={() => service.setReportVisible(false)}
+        onReportSubmitted={service.handleReportSubmitted}
       />
     </View>
   );
@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   singleMedia: {
-    aspectRatio: 16/9,
+    aspectRatio: 16 / 9,
     width: '100%',
   },
   singleMediaContent: {
@@ -539,11 +539,18 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 20,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px -3px 6px rgba(0, 0, 0, 0.2)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -3 },
+        shadowOpacity: 0.2,
+        shadowRadius: 6,
+        elevation: 20,
+      }
+    }),
   },
   fullScreenSheet: {
     height: '100%',
@@ -576,7 +583,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: "center",
     paddingLeft: 10,
-    paddingRight:10,
+    paddingRight: 10,
     backgroundColor: 'white',
     position: 'absolute',
     bottom: 0,
@@ -609,11 +616,18 @@ const styles = StyleSheet.create({
   },
   emojiPicker: {
     borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+      }
+    }),
     zIndex: 999,
     position: 'absolute'
   },

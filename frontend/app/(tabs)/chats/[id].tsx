@@ -1,11 +1,11 @@
 // app/(tabs)/chats/[id].tsx
-import { 
-  View, 
-  Image, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  FlatList, 
+import {
+  View,
+  Image,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
   TextInput,
   ScrollView,
   Modal,
@@ -39,7 +39,7 @@ const ChatDetailScreen = () => {
   const service = usePostListService(user);
   const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
   const { posts, updateCommentReactions, removeCommentReaction } = usePostStore();
-  
+
   const [inputText, setInputText] = useState('');
   const [chatUser, setChatUser] = useState<any>(null);
   const [selectedPost, setSelectedPost] = useState<any>(null);
@@ -56,27 +56,27 @@ const ChatDetailScreen = () => {
 
   const sendMessage = () => {
     if (!inputText.trim()) return;
-    
+
     // Create a new post/message
-    
+
     // For now, we'll just add to local state since it's a chat message
     // In a real app, you'd send this to your backend and update Zustand
     setInputText('');
   };
 
-// app/(tabs)/chats/[id].tsx
-const submitComment = async () => {
-  if (!service.commentText.trim() || !selectedPost) return;
-  
-  try {
-    // Call the service's submitComment method with the correct parameters
-    await service.submitComment(selectedPost.id, commentOnPost);
-    
-  } catch (error: any) {
-    console.error('Comment error:', error);
-    Alert.alert("Error", error.message || "Failed to post comment");
-  }
-};
+  // app/(tabs)/chats/[id].tsx
+  const submitComment = async () => {
+    if (!service.commentText.trim() || !selectedPost) return;
+
+    try {
+      // Call the service's submitComment method with the correct parameters
+      await service.submitComment(selectedPost.id, commentOnPost);
+
+    } catch (error: any) {
+      console.error('Comment error:', error);
+      Alert.alert("Error", error.message || "Failed to post comment");
+    }
+  };
 
   // Add these functions to handle comment reactions properly
   const handleReactComment = async (emoji: string, commentId: number) => {
@@ -84,7 +84,7 @@ const submitComment = async () => {
 
     try {
       const response = await reactToComment(selectedPost.id, commentId, emoji);
-      
+
       if (response?.reaction) {
         // Update Zustand store with the server response
         updateCommentReactions(
@@ -105,7 +105,7 @@ const submitComment = async () => {
 
     try {
       const response = await deleteReactionFromComment(commentId);
-      
+
       // Update Zustand store
       removeCommentReaction(
         selectedPost.id,
@@ -133,7 +133,7 @@ const submitComment = async () => {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={90}
@@ -143,16 +143,16 @@ const submitComment = async () => {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#007AFF" />
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.userInfo}
           onPress={() => {
             setProfileViewUserId(chatUser.id.toString());
             setProfilePreviewVisible(true);
           }}
         >
-          <Image 
-            source={{ uri: `${getApiBaseImage()}/storage/${chatUser.profile_photo}` || 'https://picsum.photos/200' }} 
+          <Image
+            source={{ uri: `${getApiBaseImage()}/storage/${chatUser.profile_photo}` || 'https://picsum.photos/200' }}
             style={styles.headerAvatar}
           />
           <View style={styles.userDetails}>
@@ -188,9 +188,9 @@ const submitComment = async () => {
         contentContainerStyle={styles.messagesList}
         inverted={false}
       /> */}
-      <MessageList 
-        conversationId={parseInt(id)} 
-        currentUserId={user?.id || 0} 
+      <MessageList
+        conversationId={parseInt(id)}
+        currentUserId={user?.id || 0}
       />
 
       {/* Media Viewer */}
@@ -208,15 +208,15 @@ const submitComment = async () => {
           service.handleReact(emoji, chatPosts[0]?.id);
         }}
         onDeleteReaction={() => service.deletePostReaction(chatPosts[0]?.id)}
-        onRepost={() => {}}
-        onShare={() => {}}
-        onBookmark={() => {}}
+        onRepost={() => { }}
+        onShare={() => { }}
+        onBookmark={() => { }}
         onCommentPress={() => {
           setSelectedPost(chatPosts[0]);
           // console.log(selectedPost);
           service.setShowComments(!service.showComments);
         }}
-        onDoubleTap={() => {}}
+        onDoubleTap={() => { }}
         currentReactingItem={service.currentReactingItem}
         setCurrentReactingItem={service.setCurrentReactingItem}
         setIsEmojiPickerOpen={service.setIsEmojiPickerOpen}
@@ -233,7 +233,7 @@ const submitComment = async () => {
         <TouchableOpacity style={styles.attachmentButton}>
           <Ionicons name="attach" size={24} color="#007AFF" />
         </TouchableOpacity>
-        
+
         <TextInput
           style={styles.input}
           value={inputText}
@@ -242,7 +242,7 @@ const submitComment = async () => {
           placeholderTextColor="#999"
           multiline
         />
-        
+
         {inputText.trim() ? (
           <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
             <Ionicons name="send" size={24} color="#007AFF" />
@@ -290,7 +290,7 @@ const submitComment = async () => {
             styles.commentsSheet,
             service.isFullScreen && styles.fullScreenSheet
           ]}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.sheetHandleContainer}
               onPress={() => service.setIsFullScreen(!service.isFullScreen)}
             >
@@ -451,14 +451,21 @@ const styles = StyleSheet.create({
   },
   emojiPicker: {
     borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+      }
+    }),
   },
 
-    commentsBackdrop: {
+  commentsBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.3)',
   },
@@ -472,11 +479,18 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 20,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px -3px 6px rgba(0, 0, 0, 0.2)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -3 },
+        shadowOpacity: 0.2,
+        shadowRadius: 6,
+        elevation: 20,
+      }
+    }),
   },
   fullScreenSheet: {
     height: '100%',
@@ -560,7 +574,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingLeft: 10,
-    paddingRight:10,
+    paddingRight: 10,
     backgroundColor: 'white',
     position: 'absolute',
     bottom: 0,

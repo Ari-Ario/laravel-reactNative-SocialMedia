@@ -208,7 +208,7 @@ const CalendarPrompt: React.FC<CalendarPromptProps> = ({
     const tomorrow = new Date(now);
     tomorrow.setDate(tomorrow.getDate() + 1);
     tomorrow.setHours(10, 0, 0, 0); // 10 AM tomorrow
-    
+
     const friday = new Date(now);
     const daysUntilFriday = (5 - now.getDay() + 7) % 7 || 7;
     friday.setDate(friday.getDate() + daysUntilFriday);
@@ -296,18 +296,18 @@ const CalendarPrompt: React.FC<CalendarPromptProps> = ({
                 {/* Ripple effects */}
                 {renderRipple()}
                 {renderRipple()}
-                
+
                 {/* Animated calendar icon */}
                 <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
                   <Ionicons name="calendar" size={64} color="#fff" />
                 </Animated.View>
-                
+
                 {/* Space icon overlay */}
                 <View style={styles.spaceIconOverlay}>
-                  <Ionicons 
-                    name={getSpaceIcon(spaceType) as any} 
-                    size={24} 
-                    color="#fff" 
+                  <Ionicons
+                    name={getSpaceIcon(spaceType) as any}
+                    size={24}
+                    color="#fff"
                   />
                 </View>
               </View>
@@ -315,7 +315,7 @@ const CalendarPrompt: React.FC<CalendarPromptProps> = ({
 
             {/* Content */}
             <View style={styles.content}>
-              <MotiText 
+              <MotiText
                 from={{ opacity: 0, translateY: 20 }}
                 animate={{ opacity: 1, translateY: 0 }}
                 transition={{ type: 'timing', duration: 500, delay: 200 }}
@@ -324,7 +324,7 @@ const CalendarPrompt: React.FC<CalendarPromptProps> = ({
                 Schedule Your First Session?
               </MotiText>
 
-              <MotiText 
+              <MotiText
                 from={{ opacity: 0, translateY: 20 }}
                 animate={{ opacity: 1, translateY: 0 }}
                 transition={{ type: 'timing', duration: 500, delay: 300 }}
@@ -333,7 +333,7 @@ const CalendarPrompt: React.FC<CalendarPromptProps> = ({
                 <Text style={styles.highlight}>{spaceTitle}</Text> is ready for collaboration
               </MotiText>
 
-              <MotiText 
+              <MotiText
                 from={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ type: 'timing', duration: 500, delay: 400 }}
@@ -343,7 +343,7 @@ const CalendarPrompt: React.FC<CalendarPromptProps> = ({
               </MotiText>
 
               {/* Quick suggestions */}
-              <MotiView 
+              <MotiView
                 from={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ type: 'spring', delay: 500 }}
@@ -371,7 +371,7 @@ const CalendarPrompt: React.FC<CalendarPromptProps> = ({
               </MotiView>
 
               {/* Stats */}
-              <MotiView 
+              <MotiView
                 from={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ type: 'timing', duration: 500, delay: 600 }}
@@ -425,7 +425,7 @@ const CalendarPrompt: React.FC<CalendarPromptProps> = ({
               </View>
 
               {/* Never show again toggle */}
-              <MotiView 
+              <MotiView
                 from={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ type: 'timing', duration: 500, delay: 700 }}
@@ -473,9 +473,20 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     maxHeight: height * 0.85,
-    boxShadow: '0 -4px 20px rgba(0,0,0,0.15)',
     elevation: 20,
     overflow: 'hidden',
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+      }
+    }),
   },
   headerGradient: {
     paddingVertical: 40,

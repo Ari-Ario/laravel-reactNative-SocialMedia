@@ -1,10 +1,10 @@
 // app/(spaces)/[id].tsx
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  ScrollView, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
   SafeAreaView,
   Dimensions,
   Alert,
@@ -55,30 +55,30 @@ const SpaceDetailScreen = () => {
       loadSpaceDetails();
       subscribeToSpace();
     }
-    
+
     return () => {
       unsubscribeFromSpace();
     };
   }, [id, user]);
 
 
-useEffect(() => {
-  if (space?.id) {
-    if (params.justCreated === 'true') {
-      const groupSpaces = ['meeting', 'brainstorm', 'workshop', 'document', 'whiteboard'];
+  useEffect(() => {
+    if (space?.id) {
+      if (params.justCreated === 'true') {
+        const groupSpaces = ['meeting', 'brainstorm', 'workshop', 'document', 'whiteboard'];
 
-      if (groupSpaces.includes(space.space_type)) {
-        if (participants.length > 2 || space.space_type !== 'voice_channel') {
-          const timer = setTimeout(() => {
-            setShowCalendarPrompt(true);
-          }, 1500);
+        if (groupSpaces.includes(space.space_type)) {
+          if (participants.length > 2 || space.space_type !== 'voice_channel') {
+            const timer = setTimeout(() => {
+              setShowCalendarPrompt(true);
+            }, 1500);
 
-          return () => clearTimeout(timer); // cleanup
+            return () => clearTimeout(timer); // cleanup
+          }
         }
       }
     }
-  }
-}, [space?.id, space?.space_type, participants.length, params.justCreated]);
+  }, [space?.id, space?.space_type, participants.length, params.justCreated]);
 
   // Check if this is a newly created space
   // const params = useLocalSearchParams(); // ✅ top level
@@ -94,16 +94,16 @@ useEffect(() => {
         type: spaceData.space_type,
         participants: spaceData.participants?.length
       });
-      
+
       setSpace(spaceData);
       setParticipants(spaceData.participants || []);
       setMagicEvents(spaceData.magic_events || []);
-      
+
       // Set default tab based on space type
       if (spaceData.space_type && ['chat', 'whiteboard', 'meeting', 'document', 'brainstorm'].includes(spaceData.space_type)) {
         setActiveTab(spaceData.space_type as any);
       }
-      
+
 
       if (params.justCreated === 'true') {
         const groupSpaces = ['meeting', 'brainstorm', 'workshop', 'document', 'whiteboard'];
@@ -121,117 +121,118 @@ useEffect(() => {
     }
   };
 
-const subscribeToSpace = async () => {
-  try {
-    await collaborationService.subscribeToSpace(id as string, {
-      onSpaceUpdate: (updatedSpace) => {
-        console.log('Space updated:', updatedSpace.title);
-        setSpace(updatedSpace);
-      },
-      onParticipantUpdate: (participant) => {
-        setParticipants(prev => {
-          const existingIndex = prev.findIndex(p => p.user_id === participant.user_id);
-          if (existingIndex >= 0) {
-            const updated = [...prev];
-            updated[existingIndex] = participant;
-            return updated;
-          } else {
-            return [...prev, participant];
+  const subscribeToSpace = async () => {
+    try {
+      await collaborationService.subscribeToSpace(id as string, {
+        onSpaceUpdate: (updatedSpace) => {
+          console.log('Space updated:', updatedSpace.title);
+          setSpace(updatedSpace);
+        },
+        onParticipantUpdate: (participant) => {
+          setParticipants(prev => {
+            const existingIndex = prev.findIndex(p => p.user_id === participant.user_id);
+            if (existingIndex >= 0) {
+              const updated = [...prev];
+              updated[existingIndex] = participant;
+              return updated;
+            } else {
+              return [...prev, participant];
+            }
+          });
+
+          // ✅ FIX: Use template literals for robust ID comparison
+          if (`${participant.user_id}` !== `${user?.id}`) {
+            useNotificationStore.getState().addNotification({
+              type: 'participant_joined',
+              title: 'New Participant',
+              message: `${participant.user?.name || 'Someone'} joined the space`,
+              data: participant,
+              spaceId: id,
+              userId: participant.user_id,
+              avatar: participant.user?.profile_photo,
+              createdAt: new Date()
+            });
           }
-        });
-        
-        // ✅ ADD THIS: Send to notification store when someone joins
-        if (toString(participant.user_id) !== user?.id) {
+        },
+        onContentUpdate: (contentState) => {
+          setSpace(prev => ({
+            ...prev,
+            content_state: contentState,
+            updated_at: new Date().toISOString()
+          }));
+        },
+        onMagicEvent: (event) => {
+          console.log('Magic event received:', event.event_type);
+          setMagicEvents(prev => [event, ...prev]);
+          if (Platform.OS !== 'web') {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          }
+
+          // ✅ ADD THIS: Send to notification store
           useNotificationStore.getState().addNotification({
-            type: 'participant_joined',
-            title: 'New Participant',
-            message: `${participant.user?.name || 'Someone'} joined the space`,
-            data: participant,
+            type: 'magic_event',
+            title: '✨ Magic Event!',
+            message: `A magical event occurred in the space`,
+            data: event,
             spaceId: id,
-            userId: participant.user_id,
-            avatar: participant.user?.profile_photo,
+            userId: event.triggered_by,
             createdAt: new Date()
           });
-        }
-      },
-      onContentUpdate: (contentState) => {
-        setSpace(prev => ({ 
-          ...prev, 
-          content_state: contentState,
-          updated_at: new Date().toISOString()
-        }));
-      },
-      onMagicEvent: (event) => {
-        console.log('Magic event received:', event.event_type);
-        setMagicEvents(prev => [event, ...prev]);
-        if (Platform.OS !== 'web') {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
-        
-        // ✅ ADD THIS: Send to notification store
-        useNotificationStore.getState().addNotification({
-          type: 'magic_event',
-          title: '✨ Magic Event!',
-          message: `A magical event occurred in the space`,
-          data: event,
-          spaceId: id,
-          userId: event.triggered_by,
-          createdAt: new Date()
-        });
-      },
-      // ✅ ADD THESE MISSING CALLBACKS:
-      onCallStarted: (data) => {
-        console.log('Call started:', data);
-        useNotificationStore.getState().addNotification({
-          type: 'call_started',
-          title: 'Call Started',
-          message: `${data.user?.name || 'Someone'} started a call`,
-          data: data,
-          spaceId: id,
-          userId: data.user?.id,
-          avatar: data.user?.profile_photo,
-          createdAt: new Date()
-        });
-      },
-      onCallEnded: (data) => {
-        console.log('Call ended:', data);
-        useNotificationStore.getState().addNotification({
-          type: 'call_ended',
-          title: 'Call Ended',
-          message: `The call has ended`,
-          data: data,
-          spaceId: id,
-          createdAt: new Date()
-        });
-      },
-      onScreenShareStarted: (data) => {
-        console.log('Screen share started:', data);
-        useNotificationStore.getState().addNotification({
-          type: 'screen_share',
-          title: 'Screen Sharing',
-          message: `${data.user?.name || 'Someone'} started sharing screen`,
-          data: data,
-          spaceId: id,
-          userId: data.user?.id,
-          avatar: data.user?.profile_photo,
-          createdAt: new Date()
-        });
-      },
-      onScreenShareEnded: (data) => {
-        console.log('Screen share ended:', data);
-      },
-      onMuteStateChanged: (data) => {
-        console.log('Mute state changed:', data);
-      },
-      onVideoStateChanged: (data) => {
-        console.log('Video state changed:', data);
-      },
-    });
-    console.log('Subscribed to space updates');
-  } catch (error) {
-    console.error('Error subscribing to space:', error);
-  }
-};
+        },
+        // ✅ ADD THESE MISSING CALLBACKS:
+        onCallStarted: (data) => {
+          console.log('Call started:', data);
+          useNotificationStore.getState().addNotification({
+            type: 'call_started',
+            title: 'Call Started',
+            message: `${data.user?.name || 'Someone'} started a call`,
+            data: data,
+            spaceId: id,
+            userId: data.user?.id,
+            avatar: data.user?.profile_photo,
+            createdAt: new Date()
+          });
+        },
+        onCallEnded: (data) => {
+          console.log('Call ended:', data);
+          useNotificationStore.getState().addNotification({
+            type: 'call_ended',
+            title: 'Call Ended',
+            message: `The call has ended`,
+            data: data,
+            spaceId: id,
+            userId: data.user?.id || data.user_id, // ✅ Pass at top level
+            createdAt: new Date()
+          });
+        },
+        onScreenShareStarted: (data) => {
+          console.log('Screen share started:', data);
+          useNotificationStore.getState().addNotification({
+            type: 'screen_share',
+            title: 'Screen Sharing',
+            message: `${data.user?.name || 'Someone'} started sharing screen`,
+            data: data,
+            spaceId: id,
+            userId: data.user?.id,
+            avatar: data.user?.profile_photo,
+            createdAt: new Date()
+          });
+        },
+        onScreenShareEnded: (data) => {
+          console.log('Screen share ended:', data);
+        },
+        onMuteStateChanged: (data) => {
+          console.log('Mute state changed:', data);
+        },
+        onVideoStateChanged: (data) => {
+          console.log('Video state changed:', data);
+        },
+      });
+      console.log('Subscribed to space updates');
+    } catch (error) {
+      console.error('Error subscribing to space:', error);
+    }
+  };
 
   const unsubscribeFromSpace = () => {
     try {
@@ -242,64 +243,64 @@ const subscribeToSpace = async () => {
     }
   };
 
-const handleSendMessage = async () => {
-  if (!content.trim() || !space) return;
-  
-  try {
-    const message = await collaborationService.sendMessage(id as string, {
-      content: content.trim(),
-      type: 'text',
-    });
-    
-    // Update local state optimistically
-    setSpace(prev => ({
-      ...prev,
-      content_state: {
-        ...prev.content_state,
-        messages: [...(prev.content_state?.messages || []), message]
-      }
-    }));
-    
-    // ✅ FIX: Use the store function
-    if (message.user_id !== user?.id) {
-      useCollaborationStore.getState().incrementUnreadCount(id);
-    }
-    
-    setContent('');
-    
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-  } catch (error) {
-    console.error('Error sending message:', error);
-    Alert.alert('Error', 'Failed to send message');
-  }
-};
+  const handleSendMessage = async () => {
+    if (!content.trim() || !space) return;
 
-const handleStartCall = async (type: 'audio' | 'video') => {
-  try {
-    const call = await collaborationService.startCall(id as string, type);
-    
-    // Update space state to show call is active
-    setSpace(prev => ({
-      ...prev,
-      is_live: true,
-      current_focus: 'call',
-    }));
-    
-    // Switch to meeting tab
-    setActiveTab('meeting');
-    
-    Alert.alert('Call Started', `Starting ${type} call...`);
-  } catch (error) {
-    console.error('Error starting call:', error);
-    Alert.alert('Error', 'Failed to start call');
-  }
-};
+    try {
+      const message = await collaborationService.sendMessage(id as string, {
+        content: content.trim(),
+        type: 'text',
+      });
+
+      // Update local state optimistically
+      setSpace(prev => ({
+        ...prev,
+        content_state: {
+          ...prev.content_state,
+          messages: [...(prev.content_state?.messages || []), message]
+        }
+      }));
+
+      // ✅ FIX: Use the store function
+      if (message.user_id !== user?.id) {
+        useCollaborationStore.getState().incrementUnreadCount(id);
+      }
+
+      setContent('');
+
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      Alert.alert('Error', 'Failed to send message');
+    }
+  };
+
+  const handleStartCall = async (type: 'audio' | 'video') => {
+    try {
+      const call = await collaborationService.startCall(id as string, type);
+
+      // Update space state to show call is active
+      setSpace(prev => ({
+        ...prev,
+        is_live: true,
+        current_focus: 'call',
+      }));
+
+      // Switch to meeting tab
+      setActiveTab('meeting');
+
+      Alert.alert('Call Started', `Starting ${type} call...`);
+    } catch (error) {
+      console.error('Error starting call:', error);
+      Alert.alert('Error', 'Failed to start call');
+    }
+  };
 
   const handleInviteUser = async () => {
     if (!inviteUserId.trim()) return;
-    
+
     try {
       await collaborationService.inviteToSpace(id as string, [parseInt(inviteUserId)]);
       setShowInviteModal(false);
@@ -314,7 +315,7 @@ const handleStartCall = async (type: 'audio' | 'video') => {
   const handleDiscoverMagic = async (eventId: string) => {
     try {
       await collaborationService.discoverMagicEvent(eventId);
-      setMagicEvents(prev => prev.map(event => 
+      setMagicEvents(prev => prev.map(event =>
         event.id === eventId ? { ...event, has_been_discovered: true } : event
       ));
       Alert.alert('Magic Discovered!', 'You found a hidden surprise!');
@@ -337,20 +338,20 @@ const handleStartCall = async (type: 'audio' | 'video') => {
       case 'chat':
         return (
           <View style={styles.chatContainer}>
-            <MessageList 
+            <MessageList
               spaceId={id}
               currentUserId={user?.id || 0}
             />
-            
+
             {/* Message Input Bar */}
             <View style={styles.chatInputContainer}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => setShowMediaUploader(true)}
                 style={styles.mediaButton}
               >
                 <Ionicons name="attach" size={24} color="#007AFF" />
               </TouchableOpacity>
-              
+
               <TextInput
                 style={styles.messageInput}
                 placeholder={`Message in ${space?.title || 'space'}...`}
@@ -360,8 +361,8 @@ const handleStartCall = async (type: 'audio' | 'video') => {
                 maxLength={500}
                 placeholderTextColor="#999"
               />
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={[styles.sendButton, !content.trim() && styles.sendButtonDisabled]}
                 onPress={handleSendMessage}
                 disabled={!content.trim()}
@@ -371,7 +372,7 @@ const handleStartCall = async (type: 'audio' | 'video') => {
             </View>
           </View>
         );
-        
+
       case 'whiteboard':
         return (
           <View style={styles.whiteboardContainer}>
@@ -385,13 +386,13 @@ const handleStartCall = async (type: 'audio' | 'video') => {
             </TouchableOpacity>
           </View>
         );
-        
+
       case 'meeting':
         // If there's an active call, show immersive view
         if (space?.is_live && space?.current_focus === 'call') {
           return <ImmersiveCallView spaceId={id} />;
         }
-        
+
         // Otherwise show the call start screen
         return (
           <View style={styles.meetingContainer}>
@@ -401,15 +402,15 @@ const handleStartCall = async (type: 'audio' | 'video') => {
               Start a video call with {participants.length} participants
             </Text>
             <View style={styles.meetingActions}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.callButton, styles.videoButton]}
                 onPress={() => handleStartCall('video')}
               >
                 <Ionicons name="videocam" size={24} color="#fff" />
                 <Text style={styles.callButtonText}>Start Video Call</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={[styles.callButton, styles.audioButton]}
                 onPress={() => handleStartCall('audio')}
               >
@@ -486,8 +487,8 @@ const handleStartCall = async (type: 'audio' | 'video') => {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#007AFF" />
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.headerContent}
           onPress={() => Alert.alert(
             'Space Info',
@@ -508,26 +509,26 @@ const handleStartCall = async (type: 'audio' | 'video') => {
             </Text>
           </View>
         </TouchableOpacity>
-        
+
         <View style={styles.headerActions}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.headerButton}
             onPress={() => setShowInviteModal(true)}
           >
             <Ionicons name="person-add" size={22} color="#007AFF" />
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.headerButton}
             onPress={() => Alert.alert(
               'Space Actions',
               'What would you like to do?',
               [
                 { text: 'Cancel', style: 'cancel' },
-                { text: 'Space Settings', onPress: () => {} },
-                { text: 'View Participants', onPress: () => {} },
-                { text: 'Export Content', onPress: () => {} },
-                { text: 'Leave Space', style: 'destructive', onPress: () => {} },
+                { text: 'Space Settings', onPress: () => { } },
+                { text: 'View Participants', onPress: () => { } },
+                { text: 'Export Content', onPress: () => { } },
+                { text: 'Leave Space', style: 'destructive', onPress: () => { } },
               ]
             )}
           >
@@ -537,9 +538,9 @@ const handleStartCall = async (type: 'audio' | 'video') => {
       </View>
 
       {/* Tab Navigation */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false} 
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
         style={styles.tabContainer}
         contentContainerStyle={styles.tabContent}
       >
@@ -553,7 +554,7 @@ const handleStartCall = async (type: 'audio' | 'video') => {
           { id: 'files', icon: 'folder-outline', label: 'Files' },
           { id: 'ai', icon: 'sparkles', label: 'AI' },
         ].map((tab) => (
-          <TouchableOpacity 
+          <TouchableOpacity
             key={tab.id}
             style={[styles.tab, activeTab === tab.id && styles.activeTab]}
             onPress={() => {
@@ -563,13 +564,13 @@ const handleStartCall = async (type: 'audio' | 'video') => {
               }
             }}
           >
-            <Ionicons 
-              name={tab.icon as any} 
-              size={20} 
-              color={activeTab === tab.id ? '#007AFF' : '#666'} 
+            <Ionicons
+              name={tab.icon as any}
+              size={20}
+              color={activeTab === tab.id ? '#007AFF' : '#666'}
             />
             <Text style={[
-              styles.tabText, 
+              styles.tabText,
               activeTab === tab.id && styles.activeTabText
             ]}>
               {tab.label}
@@ -581,13 +582,13 @@ const handleStartCall = async (type: 'audio' | 'video') => {
       {/* Main Content Area */}
       <View style={styles.contentArea}>
         {renderContent()}
-        
+
         {/* Magic Events Floating Orbs */}
         {magicEvents
           .filter(event => !event.has_been_discovered)
           .slice(0, 3)
           .map((event, index) => (
-            <TouchableOpacity 
+            <TouchableOpacity
               key={event.id}
               style={[
                 styles.magicOrb,
@@ -636,11 +637,11 @@ const handleStartCall = async (type: 'audio' | 'video') => {
                 <Ionicons name="close" size={24} color="#666" />
               </TouchableOpacity>
             </View>
-            
+
             <Text style={styles.modalDescription}>
               Enter the user ID of the person you want to invite to "{space?.title}"
             </Text>
-            
+
             <TextInput
               style={styles.modalInput}
               placeholder="Enter user ID"
@@ -649,9 +650,9 @@ const handleStartCall = async (type: 'audio' | 'video') => {
               keyboardType="number-pad"
               autoFocus
             />
-            
+
             <View style={styles.modalButtons}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonCancel]}
                 onPress={() => {
                   setShowInviteModal(false);
@@ -660,8 +661,8 @@ const handleStartCall = async (type: 'audio' | 'video') => {
               >
                 <Text style={styles.modalButtonTextCancel}>Cancel</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonConfirm, !inviteUserId.trim() && styles.modalButtonDisabled]}
                 onPress={handleInviteUser}
                 disabled={!inviteUserId.trim()}
@@ -817,7 +818,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
-  
+
   chatInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -827,7 +828,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
   },
-  
+
   messageInput: {
     flex: 1,
     backgroundColor: '#f5f5f5',
@@ -838,7 +839,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     maxHeight: 100,
   },
-  
+
   sendButton: {
     backgroundColor: '#007AFF',
     width: 44,
@@ -847,15 +848,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  
+
   sendButtonDisabled: {
     backgroundColor: '#ccc',
   },
-  
+
   mediaButton: {
     padding: 8,
   },
-  
+
 
   messageBubble: {
     maxWidth: '80%',
@@ -994,8 +995,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF6B6B',
     justifyContent: 'center',
     alignItems: 'center',
-    boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)',
     elevation: 8,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+      }
+    }),
   },
   actionBar: {
     flexDirection: 'row',

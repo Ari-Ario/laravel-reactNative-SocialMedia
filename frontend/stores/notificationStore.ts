@@ -322,35 +322,48 @@ export const useNotificationStore = create<NotificationStore>()(
       },
 
 
-      // Add getter methods
+      // Add getter methods with self-filtering safety net
       getCalls: () => {
-        const { notifications } = get();
-        return notifications.filter(n => isCallNotification(n.type));
+        const { notifications, currentUserId } = get();
+        return notifications.filter(n =>
+          isCallNotification(n.type) &&
+          !(n.userId && currentUserId && n.userId == currentUserId)
+        );
       },
 
       getMessages: () => {
-        const { notifications } = get();
-        return notifications.filter(n => isMessageNotification(n.type));
+        const { notifications, currentUserId } = get();
+        return notifications.filter(n =>
+          isMessageNotification(n.type) &&
+          !(n.userId && currentUserId && n.userId == currentUserId)
+        );
       },
 
       getSpaces: () => {
-        const { notifications } = get();
-        return notifications.filter(n => isSpaceNotification(n.type));
+        const { notifications, currentUserId } = get();
+        return notifications.filter(n =>
+          isSpaceNotification(n.type) &&
+          !(n.userId && currentUserId && n.userId == currentUserId)
+        );
       },
 
       getActivities: () => {
-        const { notifications } = get();
-        return notifications.filter(n => isActivityNotification(n.type));
+        const { notifications, currentUserId } = get();
+        return notifications.filter(n =>
+          isActivityNotification(n.type) &&
+          !(n.userId && currentUserId && n.userId == currentUserId)
+        );
       },
 
       getRegularFiltered: () => {
-        const { notifications } = get();
+        const { notifications, currentUserId } = get();
         return notifications.filter(n =>
           !isFollowerNotification(n.type) &&
           !isCallNotification(n.type) &&
           !isMessageNotification(n.type) &&
           !isSpaceNotification(n.type) &&
-          !isActivityNotification(n.type)
+          !isActivityNotification(n.type) &&
+          !(n.userId && currentUserId && n.userId == currentUserId)
         );
       },
 

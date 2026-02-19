@@ -1,13 +1,14 @@
 // components/Notifications/ActivitiesPanel.tsx
 import React from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  FlatList, 
-  Image, 
-  Modal 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  Image,
+  Modal,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotificationStore } from '@/stores/notificationStore';
@@ -21,10 +22,10 @@ type ActivitiesPanelProps = {
 };
 
 const ActivitiesPanel = ({ visible, onClose }: ActivitiesPanelProps) => {
-  const { 
-    getActivities, 
-    markAsRead, 
-    removeNotification 
+  const {
+    getActivities,
+    markAsRead,
+    removeNotification
   } = useNotificationStore();
 
   const activities = getActivities();
@@ -53,7 +54,7 @@ const ActivitiesPanel = ({ visible, onClose }: ActivitiesPanelProps) => {
     if (!item.isRead) {
       markAsRead(item.id);
     }
-    
+
     if (item.spaceId || item.data?.space_id) {
       const spaceId = item.spaceId || item.data?.space_id;
       const tab = item.type === 'activity_created' ? 'calendar' : 'chat';
@@ -66,11 +67,11 @@ const ActivitiesPanel = ({ visible, onClose }: ActivitiesPanelProps) => {
   };
 
   const renderActivityItem = ({ item }: { item: Notification }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={[styles.activityItem, !item.isRead && styles.unreadActivity]}
       onPress={() => handleActivityPress(item)}
     >
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.Foto}
         onPress={(e) => {
           e.stopPropagation();
@@ -78,8 +79,8 @@ const ActivitiesPanel = ({ visible, onClose }: ActivitiesPanelProps) => {
         }}
       >
         <Image
-          source={{ 
-            uri: item.avatar ? `${getApiBaseImage()}/storage/${item.avatar}` : undefined 
+          source={{
+            uri: item.avatar ? `${getApiBaseImage()}/storage/${item.avatar}` : undefined
           }}
           defaultSource={require('@/assets/images/favicon.png')}
           style={styles.avatar}
@@ -90,10 +91,10 @@ const ActivitiesPanel = ({ visible, onClose }: ActivitiesPanelProps) => {
         <View style={styles.textContent}>
           <View style={styles.titleRow}>
             <View style={styles.titleWithIcon}>
-              <Ionicons 
-                name={getActivityIcon(item.type)} 
-                size={16} 
-                color={getActivityColor(item.type)} 
+              <Ionicons
+                name={getActivityIcon(item.type)}
+                size={16}
+                color={getActivityColor(item.type)}
               />
               <Text style={styles.activityTitle}>{item.title}</Text>
             </View>
@@ -104,7 +105,7 @@ const ActivitiesPanel = ({ visible, onClose }: ActivitiesPanelProps) => {
           <Text style={styles.activityMessage}>{item.message}</Text>
         </View>
       </View>
-      <TouchableOpacity 
+      <TouchableOpacity
         onPress={() => removeNotification(item.id)}
         style={styles.deleteButton}
       >
@@ -134,7 +135,7 @@ const ActivitiesPanel = ({ visible, onClose }: ActivitiesPanelProps) => {
       transparent={true}
       onRequestClose={onClose}
     >
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.backdrop}
         activeOpacity={1}
         onPress={onClose}
@@ -182,11 +183,18 @@ const styles = StyleSheet.create({
     bottom: 100,
     backgroundColor: 'white',
     borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+      }
+    }),
   },
   panelHeader: {
     flexDirection: 'row',

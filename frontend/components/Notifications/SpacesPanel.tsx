@@ -1,13 +1,14 @@
 // components/Notifications/SpacesPanel.tsx
 import React from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  FlatList, 
-  Image, 
-  Modal 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  Image,
+  Modal,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotificationStore } from '@/stores/notificationStore';
@@ -21,10 +22,10 @@ type SpacesPanelProps = {
 };
 
 const SpacesPanel = ({ visible, onClose }: SpacesPanelProps) => {
-  const { 
-    getSpaces, 
-    markAsRead, 
-    removeNotification 
+  const {
+    getSpaces,
+    markAsRead,
+    removeNotification
   } = useNotificationStore();
 
   const spaces = getSpaces();
@@ -33,13 +34,13 @@ const SpacesPanel = ({ visible, onClose }: SpacesPanelProps) => {
     if (!item.isRead) {
       markAsRead(item.id);
     }
-    
+
     if (item.spaceId || item.data?.space_id || item.data?.space?.id) {
       const spaceId = item.spaceId || item.data?.space_id || item.data?.space?.id;
       router.push({
         pathname: '/(spaces)/[id]',
-        params: { 
-          id: spaceId, 
+        params: {
+          id: spaceId,
           ...(item.type === 'space_invitation' ? { justInvited: 'true' } : {})
         }
       });
@@ -48,11 +49,11 @@ const SpacesPanel = ({ visible, onClose }: SpacesPanelProps) => {
   };
 
   const renderSpaceItem = ({ item }: { item: Notification }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={[styles.spaceItem, !item.isRead && styles.unreadSpace]}
       onPress={() => handleSpacePress(item)}
     >
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.Foto}
         onPress={(e) => {
           e.stopPropagation();
@@ -60,8 +61,8 @@ const SpacesPanel = ({ visible, onClose }: SpacesPanelProps) => {
         }}
       >
         <Image
-          source={{ 
-            uri: item.avatar ? `${getApiBaseImage()}/storage/${item.avatar}` : undefined 
+          source={{
+            uri: item.avatar ? `${getApiBaseImage()}/storage/${item.avatar}` : undefined
           }}
           defaultSource={require('@/assets/images/favicon.png')}
           style={styles.avatar}
@@ -72,10 +73,10 @@ const SpacesPanel = ({ visible, onClose }: SpacesPanelProps) => {
         <View style={styles.textContent}>
           <View style={styles.titleRow}>
             <View style={styles.titleWithIcon}>
-              <Ionicons 
-                name={item.type === 'space_invitation' ? 'people' : 'cube'} 
-                size={16} 
-                color="#5856D6" 
+              <Ionicons
+                name={item.type === 'space_invitation' ? 'people' : 'cube'}
+                size={16}
+                color="#5856D6"
               />
               <Text style={styles.spaceTitle}>{item.title}</Text>
             </View>
@@ -84,7 +85,7 @@ const SpacesPanel = ({ visible, onClose }: SpacesPanelProps) => {
             </Text>
           </View>
           <Text style={styles.spaceMessage}>{item.message}</Text>
-          
+
           {item.data?.space?.title && (
             <View style={styles.metadataContainer}>
               <Ionicons name="cube" size={12} color="#5856D6" />
@@ -93,7 +94,7 @@ const SpacesPanel = ({ visible, onClose }: SpacesPanelProps) => {
           )}
         </View>
       </View>
-      <TouchableOpacity 
+      <TouchableOpacity
         onPress={() => removeNotification(item.id)}
         style={styles.deleteButton}
       >
@@ -123,7 +124,7 @@ const SpacesPanel = ({ visible, onClose }: SpacesPanelProps) => {
       transparent={true}
       onRequestClose={onClose}
     >
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.backdrop}
         activeOpacity={1}
         onPress={onClose}
@@ -171,11 +172,18 @@ const styles = StyleSheet.create({
     bottom: 100,
     backgroundColor: 'white',
     borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+      }
+    }),
   },
   panelHeader: {
     flexDirection: 'row',

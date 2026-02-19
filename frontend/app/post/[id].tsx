@@ -1,12 +1,12 @@
 // app/post/[id].tsx
 import React, { useEffect, useState, useRef, useContext } from 'react';
-import { 
-  View, 
-  Text, 
-  Image, 
-  ScrollView, 
-  StyleSheet, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  Image,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
   ActivityIndicator,
   TextInput,
   KeyboardAvoidingView,
@@ -67,50 +67,50 @@ const PostDetailScreen = () => {
           setLoading(false);
         }
       };
-      
+
       fetchPost();
     }
   }, [postId, post, addPost]);
 
   // Handle comment highlighting when highlightCommentId changes
-useEffect(() => {
-  if (highlightCommentId) {
-    setHighlightedCommentId(highlightCommentId as string);
-    setShowComments(true); // FORCE SHOW COMMENTS
+  useEffect(() => {
+    if (highlightCommentId) {
+      setHighlightedCommentId(highlightCommentId as string);
+      setShowComments(true); // FORCE SHOW COMMENTS
 
-    // Animate highlight
-    Animated.sequence([
-      Animated.timing(highlightAnimation, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }),
-      Animated.timing(highlightAnimation, {
-        toValue: 0,
-        duration: 2000,
-        useNativeDriver: true,
-      }),
-    ]).start();
+      // Animate highlight
+      Animated.sequence([
+        Animated.timing(highlightAnimation, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(highlightAnimation, {
+          toValue: 0,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ]).start();
 
-    setTimeout(() => {
-      commentsSectionRef.current?.measure((x, y, width, height, pageX, pageY) => {
-        scrollViewRef.current?.scrollTo({ y: pageY - 100, animated: true });
-      });
-    }, 300);
-  }
-}, [highlightCommentId]);
+      setTimeout(() => {
+        commentsSectionRef.current?.measure((x, y, width, height, pageX, pageY) => {
+          scrollViewRef.current?.scrollTo({ y: pageY - 100, animated: true });
+        });
+      }, 300);
+    }
+  }, [highlightCommentId]);
 
-  console.log('📱 PostDetailScreen opened with:', { 
-    id: postId, 
+  console.log('📱 PostDetailScreen opened with:', {
+    id: postId,
     highlightCommentId,
     postFound: !!post,
-    loading 
+    loading
   });
 
   // Handle post reaction
   const handleReact = async (emoji: string) => {
     if (!post) return;
-    
+
     try {
       await reactToPost(post.id, emoji);
       // Refresh post data
@@ -140,7 +140,7 @@ useEffect(() => {
   // Handle delete post reaction
   const handleDeletePostReaction = async () => {
     if (!post) return;
-    
+
     try {
       await deleteReactionFromPost(post.id);
       // Refresh post data
@@ -200,7 +200,7 @@ useEffect(() => {
     try {
       await commentOnPost(postId, commentText.trim());
       setCommentText('');
-      
+
       // Refresh post data to get updated comments
       const postData = await fetchPostById(postId);
       if (postData) {
@@ -242,7 +242,7 @@ useEffect(() => {
   // Get grouped reactions for post
   const getGroupedReactions = () => {
     if (!post?.reactions) return [];
-    
+
     const reactionMap = new Map();
     post.reactions.forEach(reaction => {
       const existing = reactionMap.get(reaction.emoji) || { count: 0, user_ids: [] };
@@ -253,10 +253,10 @@ useEffect(() => {
     });
 
     return Array.from(reactionMap.entries())
-      .map(([emoji, { count, user_ids }]) => ({ 
-        emoji, 
+      .map(([emoji, { count, user_ids }]) => ({
+        emoji,
         count,
-        user_ids 
+        user_ids
       }))
       .sort((a, b) => b.count - a.count);
   };
@@ -297,14 +297,14 @@ useEffect(() => {
   const userHasReacted = hasUserReacted();
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       {/* Header with Back Button */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
         >
@@ -315,19 +315,19 @@ useEffect(() => {
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
       >
         {/* Post Header */}
         <View style={styles.postHeader}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.userInfo}
             onPress={() => handleProfilePress(post.user.id.toString())}
           >
             <Image
-              source={{ 
+              source={{
                 uri: `${getApiBaseImage()}/storage/${post.user.profile_photo}`,
                 cache: 'force-cache'
               }}
@@ -419,25 +419,25 @@ useEffect(() => {
         {/* Post Actions */}
         <View style={styles.postActions}>
           <View style={styles.leftActions}>
-            { groupedReactions.length === 0 && (
+            {groupedReactions.length === 0 && (
 
-            <TouchableOpacity 
-              style={styles.actionButton} 
-              onPress={() => {
-                setCurrentReactingItem({ postId: post.id });
-                setIsEmojiPickerOpen(true);
-              }}
-            >
-              <Ionicons 
-                name={userHasReacted ? "heart" : "heart-outline"} 
-                size={28} 
-                color={userHasReacted ? "#ff3040" : "#000"} 
-              />
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => {
+                  setCurrentReactingItem({ postId: post.id });
+                  setIsEmojiPickerOpen(true);
+                }}
+              >
+                <Ionicons
+                  name={userHasReacted ? "heart" : "heart-outline"}
+                  size={28}
+                  color={userHasReacted ? "#ff3040" : "#000"}
+                />
+              </TouchableOpacity>
             )
             }
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.actionButton}
               onPress={() => {
                 setShowComments(true);
@@ -524,10 +524,10 @@ useEffect(() => {
             <Text style={styles.commentsTitle}>
               Comments • {post.comments_count || 0}
             </Text>
-            <Ionicons 
-              name={showComments ? "chevron-up" : "chevron-down"} 
-              size={20} 
-              color="#666" 
+            <Ionicons
+              name={showComments ? "chevron-up" : "chevron-down"}
+              size={20}
+              color="#666"
             />
           </TouchableOpacity>
 
@@ -535,10 +535,10 @@ useEffect(() => {
             <Animated.View style={[styles.highlightContainer, { backgroundColor: interpolatedBackgroundColor }]}>
               <RenderComments
                 user={user}
-                service={{ 
-                  setCurrentReactingComment: setCurrentReactingComment, 
-                  setCurrentReactingItem: setCurrentReactingItem, 
-                  setIsEmojiPickerOpen: setIsEmojiPickerOpen 
+                service={{
+                  setCurrentReactingComment: setCurrentReactingComment,
+                  setCurrentReactingItem: setCurrentReactingItem,
+                  setIsEmojiPickerOpen: setIsEmojiPickerOpen
                 }}
                 postId={post.id}
                 onProfilePress={handleProfilePress}
@@ -556,8 +556,8 @@ useEffect(() => {
       {/* Comment Input */}
       <View style={styles.commentInputContainer}>
         <Image
-          source={{ 
-            uri: user?.profile_photo 
+          source={{
+            uri: user?.profile_photo
               ? `${getApiBaseImage()}/storage/${user.profile_photo}`
               : require('@/assets/images/favicon.png')
           }}
@@ -572,9 +572,9 @@ useEffect(() => {
           multiline
           maxLength={500}
         />
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[
-            styles.postButton, 
+            styles.postButton,
             (!commentText.trim() || isSubmitting) && styles.postButtonDisabled
           ]}
           onPress={handleSubmitComment}
@@ -706,7 +706,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   singleMedia: {
-    aspectRatio: 16/9,
+    aspectRatio: 16 / 9,
     width: '100%',
   },
   singleMediaContent: {
@@ -875,11 +875,18 @@ const styles = StyleSheet.create({
   },
   emojiPicker: {
     borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+      }
+    }),
   },
   commentsHeader: {
     flexDirection: 'row',

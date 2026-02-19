@@ -48,18 +48,18 @@ const MessageList: React.FC<MessageListProps> = ({
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
-  
+
   const collaborationService = CollaborationService.getInstance();
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
     loadMessages();
-    
+
     // ✅ FIX: Subscribe to real-time messages
     if (spaceId) {
       subscribeToMessages();
     }
-    
+
     return () => {
       // Cleanup subscription
       if (spaceId) {
@@ -72,7 +72,7 @@ const MessageList: React.FC<MessageListProps> = ({
     try {
       setLoading(true);
       let messageList: Message[] = [];
-      
+
       if (spaceId) {
         const space = await collaborationService.fetchSpaceDetails(spaceId);
         if (space.content_state?.messages) {
@@ -82,8 +82,8 @@ const MessageList: React.FC<MessageListProps> = ({
         // Fetch from conversation messages endpoint
         // You'll need to implement this endpoint
       }
-      
-      setMessages(messageList.sort((a, b) => 
+
+      setMessages(messageList.sort((a, b) =>
         new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       ));
     } catch (error) {
@@ -95,22 +95,22 @@ const MessageList: React.FC<MessageListProps> = ({
 
   const subscribeToMessages = () => {
     if (!spaceId) return;
-    
+
     collaborationService.subscribeToSpace(spaceId, {
       onMessage: (data: any) => {
         console.log('📨 New message received:', data);
-        
+
         const newMessage = data.message || data;
-        
+
         setMessages(prev => {
           if (prev.some(m => m.id === newMessage.id)) {
             return prev;
           }
-          
-          const updated = [...prev, newMessage].sort((a, b) => 
+
+          const updated = [...prev, newMessage].sort((a, b) =>
             new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
           );
-          
+
           // Scroll to bottom on new message
           setTimeout(() => {
             try {
@@ -119,10 +119,10 @@ const MessageList: React.FC<MessageListProps> = ({
               console.warn('Scroll error:', scrollError);
             }
           }, 100);
-          
+
           return updated;
         });
-        
+
         // ✅ FIX: Add comprehensive platform and availability check for haptics
         if (newMessage.user_id !== currentUserId) {
           // Only attempt haptics on native platforms
@@ -141,10 +141,10 @@ const MessageList: React.FC<MessageListProps> = ({
           }
         }
       },
-      
+
       onContentUpdate: (contentState) => {
         if (contentState.messages) {
-          setMessages(contentState.messages.sort((a, b) => 
+          setMessages(contentState.messages.sort((a, b) =>
             new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
           ));
         }
@@ -153,7 +153,13 @@ const MessageList: React.FC<MessageListProps> = ({
   };
 
   const handleMessagePress = async (message: Message) => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (Platform.OS !== 'web') {
+      try {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch (error) {
+        console.warn('Haptics error:', error);
+      }
+    }
     setSelectedMessage(selectedMessage === message.id ? null : message.id);
   };
 
@@ -194,19 +200,19 @@ const MessageList: React.FC<MessageListProps> = ({
   const handleReact = async (message: Message, reaction: string) => {
     try {
       // Update local state optimistically
-      setMessages(prev => prev.map(msg => 
-        msg.id === message.id 
+      setMessages(prev => prev.map(msg =>
+        msg.id === message.id
           ? {
-              ...msg,
-              reactions: [...(msg.reactions || []), {
-                user_id: currentUserId,
-                reaction,
-                created_at: new Date().toISOString(),
-              }]
-            }
+            ...msg,
+            reactions: [...(msg.reactions || []), {
+              user_id: currentUserId,
+              reaction,
+              created_at: new Date().toISOString(),
+            }]
+          }
           : msg
       ));
-      
+
       // Send to backend
       await collaborationService.reactToMessage(message.id, reaction);
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -244,7 +250,7 @@ const MessageList: React.FC<MessageListProps> = ({
 
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
     const isCurrentUser = item.user_id === currentUserId;
-    const showAvatar = index === 0 || 
+    const showAvatar = index === 0 ||
       messages[index - 1]?.user_id !== item.user_id ||
       new Date(item.created_at).getTime() - new Date(messages[index - 1]?.created_at).getTime() > 5 * 60 * 1000;
 

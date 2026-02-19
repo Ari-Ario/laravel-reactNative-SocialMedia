@@ -1,5 +1,5 @@
 // components/ChatScreen/EnhancedChatRow.tsx
-import { View, Text, Image, StyleSheet, Pressable, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, Image, StyleSheet, Pressable, Alert, TouchableOpacity, Platform } from 'react-native';
 import { Link, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useContext } from 'react';
@@ -30,13 +30,13 @@ interface EnhancedChatRowProps {
   username?: string;
 }
 
-export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({ 
-  id, 
-  name, 
-  lastMessage, 
-  timestamp, 
-  unreadCount = 0, 
-  avatar, 
+export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
+  id,
+  name,
+  lastMessage,
+  timestamp,
+  unreadCount = 0,
+  avatar,
   isOnline = false,
   isPinned = false,
   user_id,
@@ -69,9 +69,9 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
         params: { participant_id: user_id },
         headers: { Authorization: `Bearer ${token}` },
       });
-      
+
       let conversationId;
-      
+
       if (existingConversations.data.length > 0) {
         // Use existing conversation
         conversationId = existingConversations.data[0].id;
@@ -83,10 +83,10 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
         }, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        
+
         conversationId = newConversation.data.id;
       }
-      
+
       // Create a collaboration space for the chat
       const space = await collaborationService.createSpace({
         title: `Chat with ${name}`,
@@ -95,10 +95,10 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
         ai_personality: 'helpful',
         ai_capabilities: ['summarize', 'suggest', 'moderate'],
       });
-      
+
       // Navigate to the space
       router.push(`/spaces/${space.id}`);
-      
+
       setShowContactMenu(false);
     } catch (error) {
       console.error('Error starting chat:', error);
@@ -107,57 +107,57 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
   };
 
   // Start a video call with contact
-const handleStartVideoCall = async () => {
-  try {
-    // Create space first
-    const space = await collaborationService.createSpace({
-      title: `Video call with ${name}`,
-      space_type: 'meeting',
-      description: `Private video call between ${user?.name} and ${name}`,
-    });
-
-    // Join the space (you're the creator, so you're automatically joined)
-    // No need to call joinSpace() for creator
-    
-    // Send invitation to the other user
+  const handleStartVideoCall = async () => {
     try {
-      await collaborationService.inviteToSpace(space.id, [parseInt(id)], 'participant', 
-        `${user?.name} wants to start a video call with you!`);
-    } catch (inviteError: any) {
-      // If invite fails due to permission, try to just join them directly
-      if (inviteError.message?.includes('permission')) {
-        console.log('Using direct join instead of invitation');
-        // As creator, you can add them directly
-        await collaborationService.updateSpace(space.id, {
-          // You might need a different endpoint for direct adding
-        });
-      } else {
-        throw inviteError;
-      }
-    }
+      // Create space first
+      const space = await collaborationService.createSpace({
+        title: `Video call with ${name}`,
+        space_type: 'meeting',
+        description: `Private video call between ${user?.name} and ${name}`,
+      });
 
-    // Start the call
-    const callData = await collaborationService.startCall(space.id, 'video');
-    
-    // Navigate to space with call active
-    router.push(`/(spaces)/${space.id}?call=${callData.call.id}`);
-    
-  } catch (error: any) {
-    console.error('Error starting video call:', error);
-    
-    let errorMessage = 'Failed to start video call.';
-    
-    if (error.response?.status === 403) {
-      errorMessage = 'You need to be a space participant to start calls.';
-    } else if (error.response?.status === 422) {
-      errorMessage = 'Invalid request. Please check your input.';
-    } else if (error.message?.includes('permission')) {
-      errorMessage = 'You do not have permission to invite users.';
+      // Join the space (you're the creator, so you're automatically joined)
+      // No need to call joinSpace() for creator
+
+      // Send invitation to the other user
+      try {
+        await collaborationService.inviteToSpace(space.id, [parseInt(id)], 'participant',
+          `${user?.name} wants to start a video call with you!`);
+      } catch (inviteError: any) {
+        // If invite fails due to permission, try to just join them directly
+        if (inviteError.message?.includes('permission')) {
+          console.log('Using direct join instead of invitation');
+          // As creator, you can add them directly
+          await collaborationService.updateSpace(space.id, {
+            // You might need a different endpoint for direct adding
+          });
+        } else {
+          throw inviteError;
+        }
+      }
+
+      // Start the call
+      const callData = await collaborationService.startCall(space.id, 'video');
+
+      // Navigate to space with call active
+      router.push(`/(spaces)/${space.id}?call=${callData.call.id}`);
+
+    } catch (error: any) {
+      console.error('Error starting video call:', error);
+
+      let errorMessage = 'Failed to start video call.';
+
+      if (error.response?.status === 403) {
+        errorMessage = 'You need to be a space participant to start calls.';
+      } else if (error.response?.status === 422) {
+        errorMessage = 'Invalid request. Please check your input.';
+      } else if (error.message?.includes('permission')) {
+        errorMessage = 'You do not have permission to invite users.';
+      }
+
+      Alert.alert('Error', errorMessage, [{ text: 'OK' }]);
     }
-    
-    Alert.alert('Error', errorMessage, [{ text: 'OK' }]);
-  }
-};
+  };
 
   // Start a voice call with contact
   const handleStartVoiceCall = async () => {
@@ -169,16 +169,16 @@ const handleStartVideoCall = async () => {
         ai_personality: 'helpful',
         ai_capabilities: ['summarize', 'moderate'],
       });
-      
+
       // Invite the contact
       await collaborationService.inviteToSpace(space.id, [parseInt(user_id)], 'participant', `Join my voice chat!`);
-      
+
       // Start audio call
       await collaborationService.startCall(space.id, 'audio');
-      
+
       // Navigate to the space
       router.push(`/spaces/${space.id}`);
-      
+
       setShowContactMenu(false);
     } catch (error) {
       console.error('Error starting voice call:', error);
@@ -195,9 +195,9 @@ const handleStartVideoCall = async () => {
         ai_personality: 'creative',
         ai_capabilities: ['suggest', 'inspire'],
       });
-      
+
       await collaborationService.inviteToSpace(space.id, [parseInt(user_id)], 'participant', `Let's collaborate on a whiteboard!`);
-      
+
       router.push(`/spaces/${space.id}`);
       setShowContactMenu(false);
     } catch (error) {
@@ -209,7 +209,7 @@ const handleStartVideoCall = async () => {
 
   const getSpaceIcon = () => {
     if (!spaceData) return 'chatbubble-outline';
-    
+
     const icons: Record<string, string> = {
       chat: 'chatbubble-outline',
       whiteboard: 'easel-outline',
@@ -219,14 +219,14 @@ const handleStartVideoCall = async () => {
       story: 'book-outline',
       voice_channel: 'mic-outline',
     };
-    
+
     return icons[spaceData.space_type] || 'chatbubble-outline';
   };
 
   const handleStartCollaboration = async (collabType: string) => {
     try {
       let space;
-      
+
       switch (collabType) {
         case 'whiteboard':
           space = await collaborationService.createSpace({
@@ -235,7 +235,7 @@ const handleStartVideoCall = async () => {
             linked_conversation_id: conversationId ? parseInt(conversationId) : undefined,
           });
           break;
-          
+
         case 'meeting':
           space = await collaborationService.createSpace({
             title: `Meeting with ${name}`,
@@ -243,7 +243,7 @@ const handleStartVideoCall = async () => {
             linked_conversation_id: conversationId ? parseInt(conversationId) : undefined,
           });
           break;
-          
+
         case 'brainstorm':
           space = await collaborationService.createSpace({
             title: `Brainstorm with ${name}`,
@@ -251,7 +251,7 @@ const handleStartVideoCall = async () => {
             linked_conversation_id: conversationId ? parseInt(conversationId) : undefined,
           });
           break;
-          
+
         case 'document':
           space = await collaborationService.createSpace({
             title: `Document: ${name}`,
@@ -259,7 +259,7 @@ const handleStartVideoCall = async () => {
             linked_post_id: postId,
           });
           break;
-          
+
         case 'story':
           space = await collaborationService.createSpace({
             title: `Story: ${name}`,
@@ -267,7 +267,7 @@ const handleStartVideoCall = async () => {
             linked_story_id: storyId,
           });
           break;
-          
+
         case 'voice':
           space = await collaborationService.createSpace({
             title: `Voice chat with ${name}`,
@@ -275,17 +275,17 @@ const handleStartVideoCall = async () => {
             linked_conversation_id: conversationId ? parseInt(conversationId) : undefined,
           });
           break;
-          
+
         default:
           console.warn('Unknown collaboration type:', collabType);
           return;
       }
-      
+
       if (space) {
         console.log('Space created, navigating to:', `/spaces/${space.id}`);
         router.push(`/(spaces)/${space.id}`);
       }
-      
+
       setShowCollaborationMenu(false);
     } catch (error) {
       console.error('Error starting collaboration:', error);
@@ -297,20 +297,20 @@ const handleStartVideoCall = async () => {
     if (e && e.preventDefault) {
       e.preventDefault();
     }
-    
+
     console.log('EnhancedChatRow pressed:', { type, id, name });
-    
+
     switch (type) {
       case 'space':
         console.log('Navigating to space:', `/spaces/${id}`);
         router.push(`/(spaces)/${id}`);
         break;
-        
+
       case 'chat':
         console.log('Navigating to chat:', `/(tabs)/chats/${id}`);
         router.push(`/(tabs)/chats/${id}`);
         break;
-        
+
       case 'contact':
         console.log('Would open new chat with contact:', id);
         // For now, just show a message or create a new chat
@@ -340,116 +340,116 @@ const handleStartVideoCall = async () => {
   };
 
 
-// Render contact-specific content
-const renderContactContent = () => (
-  <Pressable
-    style={styles.container}
-    onPress={handleContactPress}
-    onLongPress={() => setShowContactMenu(true)}
-  >
-    <View style={styles.avatarContainer}>
-      <Image
-        source={{
-          uri: avatar
-            ? `${getApiBaseImage()}/storage/${avatar}`
-            : 'https://picsum.photos/200',
-        }}
-        style={styles.avatar}
-      />
-      {isOnline && <View style={styles.onlineIndicator} />}
-    </View>
-
-    <View style={styles.content}>
-      <View style={styles.header}>
-        <Text style={styles.name} numberOfLines={1}>
-          {name}
-          {username && (
-            <Text style={styles.username}> @{username}</Text>
-          )}
-        </Text>
-        <Text style={styles.timestamp}>{timestamp}</Text>
+  // Render contact-specific content
+  const renderContactContent = () => (
+    <Pressable
+      style={styles.container}
+      onPress={handleContactPress}
+      onLongPress={() => setShowContactMenu(true)}
+    >
+      <View style={styles.avatarContainer}>
+        <Image
+          source={{
+            uri: avatar
+              ? `${getApiBaseImage()}/storage/${avatar}`
+              : 'https://picsum.photos/200',
+          }}
+          style={styles.avatar}
+        />
+        {isOnline && <View style={styles.onlineIndicator} />}
       </View>
 
-      <View style={styles.footer}>
-        <Text
-          style={[styles.lastMessage, styles.contactMessage]}
-          numberOfLines={1}
-        >
-          {lastMessage || 'Available for chat'}
-        </Text>
+      <View style={styles.content}>
+        <View style={styles.header}>
+          <Text style={styles.name} numberOfLines={1}>
+            {name}
+            {username && (
+              <Text style={styles.username}> @{username}</Text>
+            )}
+          </Text>
+          <Text style={styles.timestamp}>{timestamp}</Text>
+        </View>
 
-        <View style={styles.contactActions}>
-          <TouchableOpacity
-            style={styles.contactActionButton}
-            onPress={handleStartVideoCall}
+        <View style={styles.footer}>
+          <Text
+            style={[styles.lastMessage, styles.contactMessage]}
+            numberOfLines={1}
           >
-            <Ionicons name="videocam" size={18} color="#007AFF" />
-          </TouchableOpacity>
+            {lastMessage || 'Available for chat'}
+          </Text>
 
-          <TouchableOpacity
-            style={styles.contactActionButton}
-            onPress={handleStartVoiceCall}
-          >
-            <Ionicons name="call" size={18} color="#007AFF" />
-          </TouchableOpacity>
+          <View style={styles.contactActions}>
+            <TouchableOpacity
+              style={styles.contactActionButton}
+              onPress={handleStartVideoCall}
+            >
+              <Ionicons name="videocam" size={18} color="#007AFF" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.contactActionButton}
+              onPress={handleStartVoiceCall}
+            >
+              <Ionicons name="call" size={18} color="#007AFF" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
-    </View>
 
-    {/* Contact Action Menu */}
-    {showContactMenu && (
-      <View style={styles.contactMenu}>
-        <TouchableOpacity
-          style={styles.contactMenuItem}
-          onPress={handleStartChat}
-        >
-          <Ionicons name="chatbubble-outline" size={20} color="#007AFF" />
-          <Text style={styles.contactMenuText}>Start Chat</Text>
-        </TouchableOpacity>
+      {/* Contact Action Menu */}
+      {showContactMenu && (
+        <View style={styles.contactMenu}>
+          <TouchableOpacity
+            style={styles.contactMenuItem}
+            onPress={handleStartChat}
+          >
+            <Ionicons name="chatbubble-outline" size={20} color="#007AFF" />
+            <Text style={styles.contactMenuText}>Start Chat</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.contactMenuItem}
-          onPress={handleStartVideoCall}
-        >
-          <Ionicons name="videocam-outline" size={20} color="#007AFF" />
-          <Text style={styles.contactMenuText}>Video Call</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.contactMenuItem}
+            onPress={handleStartVideoCall}
+          >
+            <Ionicons name="videocam-outline" size={20} color="#007AFF" />
+            <Text style={styles.contactMenuText}>Video Call</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.contactMenuItem}
-          onPress={handleStartVoiceCall}
-        >
-          <Ionicons name="call-outline" size={20} color="#007AFF" />
-          <Text style={styles.contactMenuText}>Voice Call</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.contactMenuItem}
+            onPress={handleStartVoiceCall}
+          >
+            <Ionicons name="call-outline" size={20} color="#007AFF" />
+            <Text style={styles.contactMenuText}>Voice Call</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.contactMenuItem}
-          onPress={handleStartWhiteboard}
-        >
-          <Ionicons name="easel-outline" size={20} color="#007AFF" />
-          <Text style={styles.contactMenuText}>Whiteboard</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.contactMenuItem}
+            onPress={handleStartWhiteboard}
+          >
+            <Ionicons name="easel-outline" size={20} color="#007AFF" />
+            <Text style={styles.contactMenuText}>Whiteboard</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.contactMenuItem, styles.contactMenuClose]}
-          onPress={() => setShowContactMenu(false)}
-        >
-          <Ionicons name="close" size={20} color="#666" />
-          <Text style={styles.contactMenuText}>Close</Text>
-        </TouchableOpacity>
-      </View>
-    )}
-  </Pressable>
-);
+          <TouchableOpacity
+            style={[styles.contactMenuItem, styles.contactMenuClose]}
+            onPress={() => setShowContactMenu(false)}
+          >
+            <Ionicons name="close" size={20} color="#666" />
+            <Text style={styles.contactMenuText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </Pressable>
+  );
 
   // Render content based on type
   const renderContent = () => {
     const spaceType = spaceData?.space_type || 'chat';
     const spaceBgColor = getSpaceBackgroundColor(spaceType);
-    
+
     return (
-      <Pressable 
+      <Pressable
         style={styles.container}
         onPress={handlePress}
         onLongPress={handleLongPress}
@@ -460,14 +460,14 @@ const renderContactContent = () => (
               <Ionicons name={getSpaceIcon()} size={24} color="#fff" />
             </View>
           ) : (
-            <Image 
-              source={{ uri: avatar ? `${getApiBaseImage()}/storage/${avatar}` : 'https://picsum.photos/200' }} 
+            <Image
+              source={{ uri: avatar ? `${getApiBaseImage()}/storage/${avatar}` : 'https://picsum.photos/200' }}
               style={styles.avatar}
             />
           )}
-          
+
           {isOnline && <View style={styles.onlineIndicator} />}
-          
+
           {type === 'space' && spaceData?.is_live && (
             <View style={styles.liveIndicator}>
               <View style={styles.liveDot} />
@@ -475,7 +475,7 @@ const renderContactContent = () => (
             </View>
           )}
         </View>
-        
+
         <View style={styles.content}>
           <View style={styles.header}>
             <Text style={styles.name} numberOfLines={1}>
@@ -486,13 +486,13 @@ const renderContactContent = () => (
             </Text>
             <Text style={styles.timestamp}>{timestamp}</Text>
           </View>
-          
+
           <View style={styles.footer}>
-            <Text 
+            <Text
               style={[
-                styles.lastMessage, 
+                styles.lastMessage,
                 type === 'contact' && styles.contactMessage
-              ]} 
+              ]}
               numberOfLines={1}
             >
               {type === 'space' ? (
@@ -510,7 +510,7 @@ const renderContactContent = () => (
                 lastMessage || (type === 'contact' ? 'Available for chat' : 'Start a conversation...')
               )}
             </Text>
-            
+
             {type === 'chat' ? (
               unreadCount > 0 && (
                 <View style={styles.badge}>
@@ -525,7 +525,7 @@ const renderContactContent = () => (
               <Ionicons name="chatbubble-outline" size={20} color="#007AFF" />
             )}
           </View>
-          
+
           {/* Evolution level indicator for spaces */}
           {type === 'space' && spaceData?.evolution_level > 1 && (
             <View style={styles.evolutionIndicator}>
@@ -540,35 +540,35 @@ const renderContactContent = () => (
         {type === 'chat' && isPinned && (
           <Ionicons name="pin" size={16} color="#666" style={styles.pinIcon} />
         )}
-        
+
         {/* Collaboration quick menu */}
         {showCollaborationMenu && (
           <View style={styles.collaborationMenu}>
-            <Pressable 
+            <Pressable
               style={styles.collabMenuItem}
               onPress={() => handleStartCollaboration('whiteboard')}
             >
               <Ionicons name="easel-outline" size={20} color="#007AFF" />
               <Text style={styles.collabMenuText}>Whiteboard</Text>
             </Pressable>
-            
-            <Pressable 
+
+            <Pressable
               style={styles.collabMenuItem}
               onPress={() => handleStartCollaboration('meeting')}
             >
               <Ionicons name="videocam-outline" size={20} color="#007AFF" />
               <Text style={styles.collabMenuText}>Meeting</Text>
             </Pressable>
-            
-            <Pressable 
+
+            <Pressable
               style={styles.collabMenuItem}
               onPress={() => handleStartCollaboration('brainstorm')}
             >
               <Ionicons name="bulb-outline" size={20} color="#007AFF" />
               <Text style={styles.collabMenuText}>Brainstorm</Text>
             </Pressable>
-            
-            <Pressable 
+
+            <Pressable
               style={styles.collabMenuItem}
               onPress={() => handleStartCollaboration('voice')}
             >
@@ -723,11 +723,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+      }
+    }),
     zIndex: 1000,
     minWidth: 150,
   },
@@ -742,56 +749,63 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-username: {
-  fontSize: 13,
-  color: '#666',
-  fontWeight: '400',
-},
+  username: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '400',
+  },
 
-contactActions: {
-  flexDirection: 'row',
-  alignItems: 'center',
-},
+  contactActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
 
-contactActionButton: {
-  marginLeft: 8,
-},
+  contactActionButton: {
+    marginLeft: 8,
+  },
 
-contactMenu: {
-  position: 'absolute',
-  top: 70,
-  right: 16,
-  backgroundColor: '#fff',
-  borderRadius: 12,
-  paddingVertical: 8,
-  paddingHorizontal: 4,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.25,
-  shadowRadius: 4,
-  elevation: 6,
-  zIndex: 2000,
-  minWidth: 180,
-},
+  contactMenu: {
+    position: 'absolute',
+    top: 70,
+    right: 16,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.25)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 6,
+      }
+    }),
+    zIndex: 2000,
+    minWidth: 180,
+  },
 
-contactMenuItem: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  paddingVertical: 10,
-  paddingHorizontal: 12,
-},
+  contactMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
 
-contactMenuText: {
-  marginLeft: 10,
-  fontSize: 14,
-  color: '#333',
-},
+  contactMenuText: {
+    marginLeft: 10,
+    fontSize: 14,
+    color: '#333',
+  },
 
-contactMenuClose: {
-  borderTopWidth: StyleSheet.hairlineWidth,
-  borderTopColor: '#eee',
-  marginTop: 4,
-},
+  contactMenuClose: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#eee',
+    marginTop: 4,
+  },
 
 });
 

@@ -7,6 +7,7 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
@@ -28,7 +29,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   onCreateActivity,
 }) => {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [calendarEvents, setCalendarEvents] = useState<{[key: string]: any}>({});
+  const [calendarEvents, setCalendarEvents] = useState<{ [key: string]: any }>({});
   const [activities, setActivities] = useState<CollaborativeActivity[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -43,16 +44,16 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     try {
       const result = await collaborationService.getSpaceActivities(spaceId);
       setActivities(result.activities);
-      
+
       // Format for calendar
-      const markedDates: {[key: string]: any} = {};
+      const markedDates: { [key: string]: any } = {};
       result.activities.forEach(activity => {
         if (activity.scheduled_start) {
           const date = format(new Date(activity.scheduled_start), 'yyyy-MM-dd');
           if (!markedDates[date]) {
             markedDates[date] = {
               marked: true,
-              dots: [{color: getStatusColor(activity.status)}],
+              dots: [{ color: getStatusColor(activity.status) }],
               activities: []
             };
           }
@@ -81,7 +82,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
       const calendars = await CalendarService.getCalendarsAsync();
       const defaultCalendar = calendars.find(c => c.isPrimary) || calendars[0];
-      
+
       const eventId = await CalendarService.createEventAsync(defaultCalendar.id, {
         title: activity.title,
         startDate: new Date(activity.scheduled_start),
@@ -106,7 +107,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Add to Calendar', onPress: () => handleAddToDeviceCalendar(activity) },
-        { text: 'View Details', onPress: () => {} },
+        { text: 'View Details', onPress: () => { } },
       ]
     );
   };
@@ -125,7 +126,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   const renderCalendarItem = (activity: CollaborativeActivity) => (
     <TouchableOpacity
       key={activity.id}
-      style={[styles.calendarEvent, {borderLeftColor: getStatusColor(activity.status)}]}
+      style={[styles.calendarEvent, { borderLeftColor: getStatusColor(activity.status) }]}
       onPress={() => handleActivityPress(activity)}
       onLongPress={() => handleAddToDeviceCalendar(activity)}
     >
@@ -149,7 +150,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           </Text>
         </View>
       </View>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.calendarEventAction}
         onPress={() => handleAddToDeviceCalendar(activity)}
       >
@@ -194,12 +195,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           textMonthFontSize: 16,
         }}
       />
-      
+
       <View style={styles.calendarHeader}>
         <Text style={styles.calendarTitle}>
           {format(parseISO(selectedDate), 'EEEE, MMMM d')}
         </Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.addEventButton}
           onPress={onCreateActivity}
         >
@@ -207,7 +208,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           <Text style={styles.addEventButtonText}>Schedule</Text>
         </TouchableOpacity>
       </View>
-      
+
       <ScrollView style={styles.calendarEventsList}>
         {todaysActivities.length > 0 ? (
           todaysActivities.map(renderCalendarItem)
@@ -218,7 +219,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
             <Text style={styles.emptyCalendarSubtext}>
               Schedule your first collaboration session
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.scheduleFirstButton}
               onPress={onCreateActivity}
             >
@@ -288,8 +289,19 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderLeftWidth: 4,
     borderLeftColor: '#007AFF',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
     elevation: 2,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+      }
+    }),
   },
   calendarEventTime: {
     alignItems: 'center',

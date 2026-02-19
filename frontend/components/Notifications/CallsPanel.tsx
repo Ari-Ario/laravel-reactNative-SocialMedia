@@ -1,13 +1,14 @@
 // components/Notifications/CallsPanel.tsx
 import React from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  FlatList, 
-  Image, 
-  Modal 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  Image,
+  Modal,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotificationStore } from '@/stores/notificationStore';
@@ -21,10 +22,10 @@ type CallsPanelProps = {
 };
 
 const CallsPanel = ({ visible, onClose }: CallsPanelProps) => {
-  const { 
-    getCalls, 
-    markAsRead, 
-    removeNotification 
+  const {
+    getCalls,
+    markAsRead,
+    removeNotification
   } = useNotificationStore();
 
   const calls = getCalls();
@@ -33,7 +34,7 @@ const CallsPanel = ({ visible, onClose }: CallsPanelProps) => {
     if (!item.isRead) {
       markAsRead(item.id);
     }
-    
+
     if (item.spaceId || item.data?.space_id) {
       const spaceId = item.spaceId || item.data?.space_id;
       router.push({
@@ -45,11 +46,11 @@ const CallsPanel = ({ visible, onClose }: CallsPanelProps) => {
   };
 
   const renderCallItem = ({ item }: { item: Notification }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={[styles.callItem, !item.isRead && styles.unreadCall]}
       onPress={() => handleCallPress(item)}
     >
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.Foto}
         onPress={(e) => {
           e.stopPropagation();
@@ -57,8 +58,8 @@ const CallsPanel = ({ visible, onClose }: CallsPanelProps) => {
         }}
       >
         <Image
-          source={{ 
-            uri: item.avatar ? `${getApiBaseImage()}/storage/${item.avatar}` : undefined 
+          source={{
+            uri: item.avatar ? `${getApiBaseImage()}/storage/${item.avatar}` : undefined
           }}
           defaultSource={require('@/assets/images/favicon.png')}
           style={styles.avatar}
@@ -69,10 +70,10 @@ const CallsPanel = ({ visible, onClose }: CallsPanelProps) => {
         <View style={styles.textContent}>
           <View style={styles.titleRow}>
             <View style={styles.titleWithIcon}>
-              <Ionicons 
-                name={item.type === 'call_ended' ? 'call-outline' : 'call'} 
-                size={16} 
-                color={item.type === 'call_ended' ? '#8E8E93' : '#4CD964'} 
+              <Ionicons
+                name={item.type === 'call_ended' ? 'call-outline' : 'call'}
+                size={16}
+                color={item.type === 'call_ended' ? '#8E8E93' : '#4CD964'}
               />
               <Text style={styles.callTitle}>{item.title}</Text>
             </View>
@@ -81,13 +82,13 @@ const CallsPanel = ({ visible, onClose }: CallsPanelProps) => {
             </Text>
           </View>
           <Text style={styles.callMessage}>{item.message}</Text>
-          
+
           {item.data?.call?.type && (
             <View style={styles.metadataContainer}>
-              <Ionicons 
-                name={item.data.call.type === 'video' ? 'videocam' : 'call'} 
-                size={12} 
-                color="#4CD964" 
+              <Ionicons
+                name={item.data.call.type === 'video' ? 'videocam' : 'call'}
+                size={12}
+                color="#4CD964"
               />
               <Text style={styles.metadataText}>
                 {item.data.call.type === 'video' ? 'Video call' : 'Audio call'}
@@ -96,7 +97,7 @@ const CallsPanel = ({ visible, onClose }: CallsPanelProps) => {
           )}
         </View>
       </View>
-      <TouchableOpacity 
+      <TouchableOpacity
         onPress={() => removeNotification(item.id)}
         style={styles.deleteButton}
       >
@@ -126,7 +127,7 @@ const CallsPanel = ({ visible, onClose }: CallsPanelProps) => {
       transparent={true}
       onRequestClose={onClose}
     >
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.backdrop}
         activeOpacity={1}
         onPress={onClose}
@@ -174,11 +175,18 @@ const styles = StyleSheet.create({
     bottom: 100,
     backgroundColor: 'white',
     borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+      }
+    }),
   },
   panelHeader: {
     flexDirection: 'row',

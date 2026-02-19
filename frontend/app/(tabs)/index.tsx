@@ -214,6 +214,7 @@ const HomePage = () => {
                 type: 'call_ended',
                 title: `Call ended in ${space.title}`,
                 message: 'The call has ended',
+                userId: data.user_id || data.caller_id, // ✅ Pass at top level
                 spaceId: space.id,
                 data: { ...data },
                 createdAt: new Date(),

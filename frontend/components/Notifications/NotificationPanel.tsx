@@ -1,14 +1,15 @@
 // components/Notifications/NotificationPanel.tsx
 import React, { useEffect, useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  FlatList, 
-  StyleSheet, 
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  StyleSheet,
   Modal,
   Image,
   ScrollView,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotificationStore, NOTIFICATION_TYPES, getNotificationIcon, getNotificationColor, isChatNotification } from '@/stores/notificationStore';
@@ -31,9 +32,9 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   onClose,
   initialType = 'all', // Default to 'all' instead of 'regular'
 }) => {
-  const { 
-    getRegularNotifications, 
-    markAsRead, 
+  const {
+    getRegularNotifications,
+    markAsRead,
     removeNotification,
     getCalls,
     getMessages,
@@ -41,12 +42,12 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
     getActivities,
     getRegularFiltered,
   } = useNotificationStore();
-  
+
   const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
   const { addPost } = usePostStore();
-  
+
   const [activeFilter, setActiveFilter] = useState<'all' | 'calls' | 'messages' | 'spaces' | 'activities' | 'regular'>(initialType);
-  
+
   useEffect(() => {
     if (initialType) {
       setActiveFilter(initialType);
@@ -77,7 +78,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
           ...getActivities(),
         ];
         // Sort by date (newest first)
-        return allNotifications.sort((a, b) => 
+        return allNotifications.sort((a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
     }
@@ -88,14 +89,14 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
 
   const handleNotificationPress = async (item: Notification) => {
     console.log('🔔 Notification pressed:', item.type, 'data:', item.data);
-    
+
     if (!item.isRead) {
       markAsRead(item.id);
     }
 
     try {
       // ============= CHAT & SPACE NOTIFICATIONS =============
-      
+
       // Space invitation
       if (item.type === NOTIFICATION_TYPES.SPACE_INVITATION) {
         const spaceId = item.data?.space?.id || item.spaceId || item.data?.space_id;
@@ -108,7 +109,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
           return;
         }
       }
-      
+
       // Call started
       if (item.type === NOTIFICATION_TYPES.CALL_STARTED) {
         const spaceId = item.spaceId || item.data?.space_id;
@@ -121,7 +122,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
           return;
         }
       }
-      
+
       // New message
       if (item.type === NOTIFICATION_TYPES.NEW_MESSAGE) {
         const spaceId = item.spaceId || item.data?.space_id;
@@ -133,7 +134,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
           onClose();
           return;
         }
-        
+
         // If it's a direct message (not in a space)
         const userId = item.userId || item.data?.user?.id;
         if (userId) {
@@ -145,7 +146,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
           return;
         }
       }
-      
+
       // Participant joined
       if (item.type === NOTIFICATION_TYPES.PARTICIPANT_JOINED) {
         const spaceId = item.spaceId || item.data?.space_id;
@@ -158,7 +159,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
           return;
         }
       }
-      
+
       // Magic event
       if (item.type === NOTIFICATION_TYPES.MAGIC_EVENT) {
         const spaceId = item.spaceId || item.data?.space_id;
@@ -166,16 +167,16 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         if (spaceId) {
           router.push({
             pathname: '/(spaces)/[id]',
-            params: { 
-              id: spaceId, 
-              highlightMagic: eventId ? eventId.toString() : 'true' 
+            params: {
+              id: spaceId,
+              highlightMagic: eventId ? eventId.toString() : 'true'
             }
           });
           onClose();
           return;
         }
       }
-      
+
       // Screen share
       if (item.type === NOTIFICATION_TYPES.SCREEN_SHARE) {
         const spaceId = item.spaceId || item.data?.space_id;
@@ -188,7 +189,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
           return;
         }
       }
-      
+
       // Activity created
       if (item.type === NOTIFICATION_TYPES.ACTIVITY_CREATED) {
         const spaceId = item.spaceId || item.data?.space_id;
@@ -201,7 +202,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
           return;
         }
       }
-      
+
       // Space updated
       if (item.type === NOTIFICATION_TYPES.SPACE_UPDATED) {
         const spaceId = item.spaceId || item.data?.space_id;
@@ -214,7 +215,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
           return;
         }
       }
-      
+
       // Call ended (maybe just log, no navigation needed)
       if (item.type === NOTIFICATION_TYPES.CALL_ENDED) {
         // Just mark as read, no navigation
@@ -223,12 +224,12 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
       }
 
       // ============= EXISTING NOTIFICATIONS =============
-      
+
       if (item.type === 'post_deleted') {
         onClose();
         return;
       }
-      
+
       if (['training_needed', NOTIFICATION_TYPES.CHATBOT_TRAINING].includes(item.type)) {
         router.replace({
           pathname: '/(tabs)/chatbotTraining',
@@ -266,8 +267,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
       }
 
       // Profile navigation for user-related notifications
-      if (item.userId && !isChatNotification(item.type) && 
-          !['new_follower', 'user_unfollowed', 'new-follower', 'user-unfollowed'].includes(item.type)) {
+      if (item.userId && !isChatNotification(item.type) &&
+        !['new_follower', 'user_unfollowed', 'new-follower', 'user-unfollowed'].includes(item.type)) {
         try {
           await fetchProfile(item.userId.toString());
         } catch (err) {
@@ -301,12 +302,12 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
       if (!item.avatar) {
         return require('@/assets/images/favicon.png');
       }
-      
+
       const avatarString = String(item.avatar).trim();
       if (!avatarString) {
         return require('@/assets/images/favicon.png');
       }
-      
+
       return { uri: `${getApiBaseImage()}/storage/${avatarString}` };
     };
 
@@ -315,11 +316,11 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
     const iconColor = getNotificationColor(item.type);
 
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.notificationItem, !item.isRead && styles.unreadNotification]}
         onPress={() => handleNotificationPress(item)}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.Foto}
           onPress={(e) => {
             e.stopPropagation();
@@ -349,7 +350,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             </View>
 
             <Text style={styles.notificationMessage}>{item.message}</Text>
-            
+
             {/* Show additional info for chat notifications */}
             {item.type === NOTIFICATION_TYPES.SPACE_INVITATION && item.data?.space?.title && (
               <View style={styles.metadataContainer}>
@@ -357,20 +358,20 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 <Text style={styles.metadataText}>Space: {item.data.space.title}</Text>
               </View>
             )}
-            
+
             {item.type === NOTIFICATION_TYPES.CALL_STARTED && item.data?.call?.type && (
               <View style={styles.metadataContainer}>
-                <Ionicons 
-                  name={item.data.call.type === 'video' ? 'videocam' : 'call'} 
-                  size={12} 
-                  color="#4CD964" 
+                <Ionicons
+                  name={item.data.call.type === 'video' ? 'videocam' : 'call'}
+                  size={12}
+                  color="#4CD964"
                 />
                 <Text style={styles.metadataText}>
                   {item.data.call.type === 'video' ? 'Video call' : 'Audio call'} started
                 </Text>
               </View>
             )}
-            
+
             {item.type === NOTIFICATION_TYPES.MAGIC_EVENT && (
               <View style={styles.metadataContainer}>
                 <Ionicons name="sparkles" size={12} color="#FF2D55" />
@@ -379,7 +380,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             )}
           </View>
         </View>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={(e) => {
             e.stopPropagation();
             removeNotification(item.id);
@@ -407,8 +408,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   };
 
   const renderFilterTabs = () => (
-    <ScrollView 
-      horizontal 
+    <ScrollView
+      horizontal
       showsHorizontalScrollIndicator={false}
       style={styles.filterTabs}
       contentContainerStyle={styles.filterTabsContent}
@@ -496,12 +497,12 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
       onRequestClose={onClose}
       statusBarTranslucent={true}
     >
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.backdrop}
         activeOpacity={1}
         onPress={onClose}
       />
-      
+
       <View style={styles.panelContainer}>
         <View style={styles.panelHeader}>
           <Text style={styles.panelTitle}>
@@ -549,9 +550,20 @@ const styles = StyleSheet.create({
     bottom: 100,
     backgroundColor: 'white',
     borderRadius: 16,
-    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
     elevation: 5,
     overflow: 'hidden',
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+      }
+    }),
   },
   panelHeader: {
     flexDirection: 'row',

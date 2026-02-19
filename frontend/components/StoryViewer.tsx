@@ -32,13 +32,13 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
         setLoading(true);
         const data = await fetchUserStories(userId);
         setStories(data);
-        
+
         // Find the index of the initial story
         const initialIndex = data.findIndex(story => story.id === initialStoryId);
         const firstUnviewedIndex = data.findIndex(story => !story.viewed);
         setCurrentStoryIndex(
-          firstUnviewedIndex !== -1 ? firstUnviewedIndex : 
-          initialIndex !== -1 ? initialIndex : 0
+          firstUnviewedIndex !== -1 ? firstUnviewedIndex :
+            initialIndex !== -1 ? initialIndex : 0
         );
       } catch (error) {
         console.error('Error loading stories:', error);
@@ -59,8 +59,8 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
         markStoryAsViewed(currentStory.id)
           .then(() => {
             // Update local state to reflect viewed status
-            setStories(prevStories => 
-              prevStories.map((story, idx) => 
+            setStories(prevStories =>
+              prevStories.map((story, idx) =>
                 idx === currentStoryIndex ? { ...story, viewed: true } : story
               )
             );
@@ -151,19 +151,21 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
         {stories.map((story, index) => (
           <View key={story.id} style={styles.progressBarBackground}>
             {index === currentStoryIndex ? (
-              <Animated.View 
+              <Animated.View
                 style={[
                   styles.progressBar,
-                  { width: progressAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['0%', '100%']
-                  })}
+                  {
+                    width: progressAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0%', '100%']
+                    })
+                  }
                 ]}
               />
             ) : (
               <View style={[
                 styles.progressBar,
-                { 
+                {
                   width: `${index < currentStoryIndex ? 100 : 0}%`,
                   backgroundColor: index < currentStoryIndex ? '#fff' : 'rgba(255,255,255,0.3)'
                 }
@@ -176,7 +178,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.userInfo}>
-          <Image 
+          <Image
             source={{ uri: `${getApiBaseImage()}/storage/${currentStory.user.profile_photo}` }}
             style={styles.userImage}
           />
@@ -189,22 +191,22 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
 
       {/* Story content - Wrapped in new ScrollView container */}
       <View style={styles.scrollWrapper}>
-        <ScrollView 
-          horizontal 
+        <ScrollView
+          horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.contentContainer}
             activeOpacity={1}
             onPress={handleSwipe}
           >
-            <Image 
+            <Image
               source={{ uri: `${getApiBaseImage()}/storage/${currentStory.media_path}` }}
               style={styles.storyImage}
               resizeMode="contain"
             />
-            
+
             {currentStory.caption && (
               <View style={styles.captionContainer}>
                 <Text style={styles.caption}>{currentStory.caption}</Text>
@@ -302,9 +304,6 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     textAlign: 'center',
-    // textShadowColor: 'rgba(0,0,0,0.5)',
-    // textShadowOffset: { width: 1, height: 1 },
-    // textShadowRadius: 2,
   },
   footer: {
     flexDirection: 'row',

@@ -1,5 +1,5 @@
 // Update your FollowerPanel component
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, Modal, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { useNotificationStore } from '@/stores/notificationStore';
@@ -14,14 +14,14 @@ type FollowersPanelProps = {
 };
 
 const FollowersPanel = ({ visible, onClose }: FollowersPanelProps) => {
-  const { 
-    getFollowerNotifications, 
-    markAsRead, 
-    removeNotification, 
+  const {
+    getFollowerNotifications,
+    markAsRead,
+    removeNotification,
     markAllFollowerNotificationsAsRead,
-    getUnreadFollowerCount 
+    getUnreadFollowerCount
   } = useNotificationStore();
-  
+
   const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
   const [loading, setLoading] = useState<Record<string, boolean>>({});
 
@@ -31,7 +31,7 @@ const FollowersPanel = ({ visible, onClose }: FollowersPanelProps) => {
 
   const renderFollowerItem = ({ item }: { item: Notification }) => (
     console.log('Rendering follower item:', item),
-    <TouchableOpacity 
+    <TouchableOpacity
       style={[styles.followerItem, !item.isRead && styles.unreadFollower]}
       onPress={() => {
         if (!item.isRead) {
@@ -44,7 +44,7 @@ const FollowersPanel = ({ visible, onClose }: FollowersPanelProps) => {
         }
       }}
     >
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.Foto}
         onPress={() => {
           if (item.userId) {
@@ -55,8 +55,8 @@ const FollowersPanel = ({ visible, onClose }: FollowersPanelProps) => {
         }}
       >
         <Image
-          source={{ 
-            uri: item.avatar ? `${getApiBaseImage()}/storage/${item.avatar}` : undefined 
+          source={{
+            uri: item.avatar ? `${getApiBaseImage()}/storage/${item.avatar}` : undefined
           }}
           defaultSource={require('@/assets/images/favicon.png')}
           style={styles.avatar}
@@ -66,10 +66,10 @@ const FollowersPanel = ({ visible, onClose }: FollowersPanelProps) => {
       <View style={styles.followerContent}>
         <View style={styles.textContent}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Ionicons 
-              name={item.type === 'new_follower' ? 'person-add-outline' : 'person-remove-outline'} 
-              size={20} 
-              color={item.type === 'new_follower' ? '#5856D6' : '#FF3B30'} 
+            <Ionicons
+              name={item.type === 'new_follower' ? 'person-add-outline' : 'person-remove-outline'}
+              size={20}
+              color={item.type === 'new_follower' ? '#5856D6' : '#FF3B30'}
             />
             <Text style={styles.followerTitle}>{item.title}</Text>
             <Text style={styles.followerTime}>
@@ -79,7 +79,7 @@ const FollowersPanel = ({ visible, onClose }: FollowersPanelProps) => {
           <Text style={styles.followerMessage}>{item.message}</Text>
         </View>
       </View>
-      <TouchableOpacity 
+      <TouchableOpacity
         onPress={() => removeNotification(item.id)}
         style={styles.deleteButton}
       >
@@ -109,7 +109,7 @@ const FollowersPanel = ({ visible, onClose }: FollowersPanelProps) => {
       transparent={true}
       onRequestClose={onClose}
     >
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.backdrop}
         activeOpacity={1}
         onPress={onClose}
@@ -160,11 +160,18 @@ const styles = StyleSheet.create({
     bottom: 100,
     backgroundColor: 'white',
     borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+      }
+    }),
   },
   panelHeader: {
     flexDirection: 'row',

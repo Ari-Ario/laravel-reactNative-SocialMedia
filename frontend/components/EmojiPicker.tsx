@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useContext } from 'react';
+import { View, TouchableOpacity, StyleSheet, Platform, Text } from 'react-native';
 import EmojiPicker from 'rn-emoji-keyboard';
+import AuthContext from '@/context/AuthContext';
 
 const emojis = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
-export default function PostReactions({ postId }) {
+export default function PostReactions({ post, postId }: { post: any, postId: number }) {
   const [isOpen, setIsOpen] = useState(false);
-  const { user } = useAuth();
+  const { user } = useContext(AuthContext);
 
   const handleReact = async (emoji) => {
     try {
@@ -18,7 +19,7 @@ export default function PostReactions({ postId }) {
         },
         body: JSON.stringify({ emoji })
       });
-      
+
       if (!response.ok) throw new Error('Reaction failed');
     } catch (error) {
       console.error('Error reacting:', error);
@@ -30,7 +31,7 @@ export default function PostReactions({ postId }) {
       <TouchableOpacity onPress={() => setIsOpen(true)}>
         <Text style={styles.reactionButton}>😊 Add Reaction</Text>
       </TouchableOpacity>
-      
+
       <EmojiPicker
         open={isOpen}
         onClose={() => setIsOpen(false)}
@@ -39,14 +40,14 @@ export default function PostReactions({ postId }) {
           setIsOpen(false);
         }}
         emojiSize={28}
-        containerStyle={styles.emojiPicker}
+      // containerStyle={styles.emojiPicker} // 🚩 Potentially problematic prop
       />
-      
+
       {/* Display existing reactions */}
       <View style={styles.reactionsContainer}>
-        {post.reaction_counts?.map((reaction) => (
-          <TouchableOpacity 
-            key={reaction.emoji} 
+        {post?.reaction_counts?.map((reaction) => (
+          <TouchableOpacity
+            key={reaction.emoji}
             onPress={() => handleReact(reaction.emoji)}
             style={styles.reaction}
           >
@@ -91,10 +92,17 @@ const styles = StyleSheet.create({
   },
   emojiPicker: {
     borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+      }
+    }),
   },
 });
