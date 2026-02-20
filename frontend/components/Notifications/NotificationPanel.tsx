@@ -9,7 +9,7 @@ import {
   Modal,
   Image,
   ScrollView,
-  Platform
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotificationStore, NOTIFICATION_TYPES, getNotificationIcon, getNotificationColor, isChatNotification } from '@/stores/notificationStore';
@@ -30,7 +30,7 @@ interface NotificationPanelProps {
 export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   visible,
   onClose,
-  initialType = 'all', // Default to 'all' instead of 'regular'
+  initialType = 'all',
 }) => {
   const {
     getRegularNotifications,
@@ -69,7 +69,6 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         return getRegularFiltered();
       case 'all':
       default:
-        // For 'all', combine regular + calls + messages + spaces + activities
         const allNotifications = [
           ...getRegularFiltered(),
           ...getCalls(),
@@ -77,7 +76,6 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
           ...getSpaces(),
           ...getActivities(),
         ];
-        // Sort by date (newest first)
         return allNotifications.sort((a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
@@ -96,135 +94,94 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
 
     try {
       // ============= CHAT & SPACE NOTIFICATIONS =============
-
-      // Space invitation
       if (item.type === NOTIFICATION_TYPES.SPACE_INVITATION) {
         const spaceId = item.data?.space?.id || item.spaceId || item.data?.space_id;
         if (spaceId) {
-          router.push({
-            pathname: '/(spaces)/[id]',
-            params: { id: spaceId, justInvited: 'true' }
-          });
+          router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, justInvited: 'true' } });
           onClose();
           return;
         }
       }
 
-      // Call started
       if (item.type === NOTIFICATION_TYPES.CALL_STARTED) {
         const spaceId = item.spaceId || item.data?.space_id;
         if (spaceId) {
-          router.push({
-            pathname: '/(spaces)/[id]',
-            params: { id: spaceId, tab: 'meeting' }
-          });
+          router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'meeting' } });
           onClose();
           return;
         }
       }
 
-      // New message
       if (item.type === NOTIFICATION_TYPES.NEW_MESSAGE) {
         const spaceId = item.spaceId || item.data?.space_id;
         if (spaceId) {
-          router.push({
-            pathname: '/(spaces)/[id]',
-            params: { id: spaceId, tab: 'chat' }
-          });
+          router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'chat' } });
           onClose();
           return;
         }
-
-        // If it's a direct message (not in a space)
         const userId = item.userId || item.data?.user?.id;
         if (userId) {
-          router.push({
-            pathname: '/(tabs)/chats/[id]',
-            params: { id: userId.toString() }
-          });
+          router.push({ pathname: '/(tabs)/chats/[id]', params: { id: userId.toString() } });
           onClose();
           return;
         }
       }
 
-      // Participant joined
       if (item.type === NOTIFICATION_TYPES.PARTICIPANT_JOINED) {
         const spaceId = item.spaceId || item.data?.space_id;
         if (spaceId) {
-          router.push({
-            pathname: '/(spaces)/[id]',
-            params: { id: spaceId, tab: 'chat' }
-          });
+          router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'chat' } });
           onClose();
           return;
         }
       }
 
-      // Magic event
       if (item.type === NOTIFICATION_TYPES.MAGIC_EVENT) {
         const spaceId = item.spaceId || item.data?.space_id;
         const eventId = item.data?.event?.id || item.data?.eventId;
         if (spaceId) {
           router.push({
             pathname: '/(spaces)/[id]',
-            params: {
-              id: spaceId,
-              highlightMagic: eventId ? eventId.toString() : 'true'
-            }
+            params: { id: spaceId, highlightMagic: eventId ? eventId.toString() : 'true' },
           });
           onClose();
           return;
         }
       }
 
-      // Screen share
       if (item.type === NOTIFICATION_TYPES.SCREEN_SHARE) {
         const spaceId = item.spaceId || item.data?.space_id;
         if (spaceId) {
-          router.push({
-            pathname: '/(spaces)/[id]',
-            params: { id: spaceId, tab: 'meeting' }
-          });
+          router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'meeting' } });
           onClose();
           return;
         }
       }
 
-      // Activity created
       if (item.type === NOTIFICATION_TYPES.ACTIVITY_CREATED) {
         const spaceId = item.spaceId || item.data?.space_id;
         if (spaceId) {
-          router.push({
-            pathname: '/(spaces)/[id]',
-            params: { id: spaceId, tab: 'calendar' }
-          });
+          router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'calendar' } });
           onClose();
           return;
         }
       }
 
-      // Space updated
       if (item.type === NOTIFICATION_TYPES.SPACE_UPDATED) {
         const spaceId = item.spaceId || item.data?.space_id;
         if (spaceId) {
-          router.push({
-            pathname: '/(spaces)/[id]',
-            params: { id: spaceId }
-          });
+          router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId } });
           onClose();
           return;
         }
       }
 
-      // Call ended (maybe just log, no navigation needed)
       if (item.type === NOTIFICATION_TYPES.CALL_ENDED) {
-        // Just mark as read, no navigation
         onClose();
         return;
       }
 
-      // ============= EXISTING NOTIFICATIONS =============
-
+      // ============= RESTORED POST-RELATED NOTIFICATIONS =============
       if (item.type === 'post_deleted') {
         onClose();
         return;
@@ -252,7 +209,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         if (postData?.data) addPost(postData.data);
         router.push({
           pathname: `/post/${item.postId}`,
-          params: { highlightCommentId: item.commentId.toString() }
+          params: { highlightCommentId: item.commentId.toString() },
         });
         onClose();
         return;
@@ -266,7 +223,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         return;
       }
 
-      // Profile navigation for user-related notifications
+      // ============= PROFILE NAVIGATION =============
       if (item.userId && !isChatNotification(item.type) &&
         !['new_follower', 'user_unfollowed', 'new-follower', 'user-unfollowed'].includes(item.type)) {
         try {
@@ -288,7 +245,6 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   };
 
   const handleAvatarPress = (item: Notification) => {
-    console.log('🖼️ Avatar pressed for user:', item.userId);
     if (item.userId) {
       setProfileViewUserId(item.userId.toString());
       setProfilePreviewVisible(true);
@@ -297,17 +253,10 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   };
 
   const renderNotificationItem = ({ item }: { item: Notification }) => {
-    // Safe avatar URL handling
     const getAvatarSource = () => {
-      if (!item.avatar) {
-        return require('@/assets/images/favicon.png');
-      }
-
+      if (!item.avatar) return require('@/assets/images/favicon.png');
       const avatarString = String(item.avatar).trim();
-      if (!avatarString) {
-        return require('@/assets/images/favicon.png');
-      }
-
+      if (!avatarString) return require('@/assets/images/favicon.png');
       return { uri: `${getApiBaseImage()}/storage/${avatarString}` };
     };
 
@@ -331,9 +280,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             source={avatarSource}
             style={styles.avatar}
             defaultSource={require('@/assets/images/favicon.png')}
-            onError={(e) => {
-              console.log('🖼️ Image load error for avatar:', item.avatar);
-            }}
+            onError={() => console.log('🖼️ Avatar load error:', item.avatar)}
           />
         </TouchableOpacity>
 
@@ -353,7 +300,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
               {typeof item.message === 'object' ? JSON.stringify(item.message) : item.message}
             </Text>
 
-            {/* Show additional info for chat notifications */}
+            {/* Metadata for chat notifications */}
             {item.type === NOTIFICATION_TYPES.SPACE_INVITATION && item.data?.space?.title && (
               <View style={styles.metadataContainer}>
                 <Ionicons name="people" size={12} color="#666" />
@@ -363,11 +310,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
 
             {item.type === NOTIFICATION_TYPES.CALL_STARTED && item.data?.call?.type && (
               <View style={styles.metadataContainer}>
-                <Ionicons
-                  name={item.data.call.type === 'video' ? 'videocam' : 'call'}
-                  size={12}
-                  color="#4CD964"
-                />
+                <Ionicons name={item.data.call.type === 'video' ? 'videocam' : 'call'} size={12} color="#4CD964" />
                 <Text style={styles.metadataText}>
                   {item.data.call.type === 'video' ? 'Video call' : 'Audio call'} started
                 </Text>
@@ -382,6 +325,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             )}
           </View>
         </View>
+
         <TouchableOpacity
           onPress={(e) => {
             e.stopPropagation();
@@ -416,18 +360,13 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
       style={styles.filterTabs}
       contentContainerStyle={styles.filterTabsContent}
     >
-      <TouchableOpacity
-        style={[styles.filterTab, activeFilter === 'all' && styles.activeFilterTab]}
-        onPress={() => setActiveFilter('all')}
-      >
+      {/* All tabs (same as before) */}
+      <TouchableOpacity style={[styles.filterTab, activeFilter === 'all' && styles.activeFilterTab]} onPress={() => setActiveFilter('all')}>
         <Ionicons name="apps" size={16} color={activeFilter === 'all' ? '#007AFF' : '#666'} />
         <Text style={[styles.filterTabText, activeFilter === 'all' && styles.activeFilterText]}>All</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[styles.filterTab, activeFilter === 'calls' && styles.activeFilterTab]}
-        onPress={() => setActiveFilter('calls')}
-      >
+      <TouchableOpacity style={[styles.filterTab, activeFilter === 'calls' && styles.activeFilterTab]} onPress={() => setActiveFilter('calls')}>
         <Ionicons name="call" size={16} color={activeFilter === 'calls' ? '#4CD964' : '#666'} />
         <Text style={[styles.filterTabText, activeFilter === 'calls' && styles.activeFilterText]}>Calls</Text>
         {getCalls().filter(n => !n.isRead).length > 0 && (
@@ -437,10 +376,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[styles.filterTab, activeFilter === 'messages' && styles.activeFilterTab]}
-        onPress={() => setActiveFilter('messages')}
-      >
+      <TouchableOpacity style={[styles.filterTab, activeFilter === 'messages' && styles.activeFilterTab]} onPress={() => setActiveFilter('messages')}>
         <Ionicons name="chatbubble" size={16} color={activeFilter === 'messages' ? '#007AFF' : '#666'} />
         <Text style={[styles.filterTabText, activeFilter === 'messages' && styles.activeFilterText]}>Messages</Text>
         {getMessages().filter(n => !n.isRead).length > 0 && (
@@ -450,10 +386,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[styles.filterTab, activeFilter === 'spaces' && styles.activeFilterTab]}
-        onPress={() => setActiveFilter('spaces')}
-      >
+      <TouchableOpacity style={[styles.filterTab, activeFilter === 'spaces' && styles.activeFilterTab]} onPress={() => setActiveFilter('spaces')}>
         <Ionicons name="cube" size={16} color={activeFilter === 'spaces' ? '#5856D6' : '#666'} />
         <Text style={[styles.filterTabText, activeFilter === 'spaces' && styles.activeFilterText]}>Spaces</Text>
         {getSpaces().filter(n => !n.isRead).length > 0 && (
@@ -463,10 +396,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[styles.filterTab, activeFilter === 'activities' && styles.activeFilterTab]}
-        onPress={() => setActiveFilter('activities')}
-      >
+      <TouchableOpacity style={[styles.filterTab, activeFilter === 'activities' && styles.activeFilterTab]} onPress={() => setActiveFilter('activities')}>
         <Ionicons name="sparkles" size={16} color={activeFilter === 'activities' ? '#FF2D55' : '#666'} />
         <Text style={[styles.filterTabText, activeFilter === 'activities' && styles.activeFilterText]}>Activities</Text>
         {getActivities().filter(n => !n.isRead).length > 0 && (
@@ -476,10 +406,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[styles.filterTab, activeFilter === 'regular' && styles.activeFilterTab]}
-        onPress={() => setActiveFilter('regular')}
-      >
+      <TouchableOpacity style={[styles.filterTab, activeFilter === 'regular' && styles.activeFilterTab]} onPress={() => setActiveFilter('regular')}>
         <Ionicons name="notifications" size={16} color={activeFilter === 'regular' ? '#000' : '#666'} />
         <Text style={[styles.filterTabText, activeFilter === 'regular' && styles.activeFilterText]}>Regular</Text>
         {getRegularFiltered().filter(n => !n.isRead).length > 0 && (
@@ -492,18 +419,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   );
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={onClose}
-      statusBarTranslucent={true}
-    >
-      <TouchableOpacity
-        style={styles.backdrop}
-        activeOpacity={1}
-        onPress={onClose}
-      />
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose} statusBarTranslucent>
+      <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
 
       <View style={styles.panelContainer}>
         <View style={styles.panelHeader}>
@@ -517,32 +434,32 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
 
         {renderFilterTabs()}
 
-        {totalCount > 0 ? (
-          <FlatList
-            data={filteredNotifications}
-            renderItem={renderNotificationItem}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-          />
-        ) : (
-          <View style={styles.emptyState}>
-            <Ionicons name="notifications-off-outline" size={48} color="#ccc" />
-            <Text style={styles.emptyText}>No notifications yet</Text>
-            <Text style={styles.emptySubtext}>
-              New notifications will appear here in real-time
-            </Text>
-          </View>
-        )}
+        {/* Fixed container to prevent jumping when switching tabs */}
+        <View style={{ flex: 1 }}>
+          {totalCount > 0 ? (
+            <FlatList
+              data={filteredNotifications}
+              renderItem={renderNotificationItem}
+              keyExtractor={(item) => item.id}
+              extraData={activeFilter}           // ← prevents jump
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+            />
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="notifications-off-outline" size={48} color="#ccc" />
+              <Text style={styles.emptyText}>No notifications yet</Text>
+              <Text style={styles.emptySubtext}>New notifications will appear here in real-time</Text>
+            </View>
+          )}
+        </View>
       </View>
     </Modal>
   );
 };
+
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
   panelContainer: {
     position: 'absolute',
     top: 90,
@@ -553,18 +470,9 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     overflow: 'hidden',
     ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.15,
-        shadowRadius: 24,
-      },
-      android: {
-        elevation: 10,
-      },
-      web: {
-        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
-      },
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 24 },
+      android: { elevation: 10 },
+      web: { boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)' },
     }),
   },
   panelHeader: {
@@ -575,14 +483,8 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
-    backgroundColor: '#ffffff',
   },
-  panelTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    letterSpacing: -0.3,
-  },
+  panelTitle: { fontSize: 20, fontWeight: '700', color: '#1a1a1a' },
   closeButton: {
     padding: 6,
     borderRadius: 20,
@@ -592,17 +494,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  filterTabs: {
-    maxHeight: 64,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    backgroundColor: '#ffffff',
-  },
-  filterTabsContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 8,
-  },
+  filterTabs: { maxHeight: 64, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+  filterTabsContent: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
   filterTab: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -612,23 +505,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
     marginRight: 8,
     gap: 6,
-    position: 'relative',
-    borderWidth: 1,
-    borderColor: 'transparent',
   },
-  activeFilterTab: {
-    backgroundColor: '#e8f0fe',
-    borderColor: '#007AFF',
-  },
-  filterTabText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#666',
-  },
-  activeFilterText: {
-    color: '#007AFF',
-    fontWeight: '600',
-  },
+  activeFilterTab: { backgroundColor: '#e8f0fe', borderColor: '#007AFF', borderWidth: 1 },
+  filterTabText: { fontSize: 13, fontWeight: '500', color: '#666' },
+  activeFilterText: { color: '#007AFF', fontWeight: '600' },
   filterBadge: {
     position: 'absolute',
     top: -4,
@@ -642,15 +522,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#ffffff',
   },
-  filterBadgeText: {
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: '700',
-  },
-  listContent: {
-    flexGrow: 1,
-    paddingVertical: 8,
-  },
+  filterBadgeText: { color: '#fff', fontSize: 9, fontWeight: '700' },
+  listContent: { flexGrow: 1, paddingVertical: 8 },
   notificationItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -659,52 +532,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f5f5f5',
     minHeight: 80,
-    backgroundColor: '#ffffff',
   },
-  unreadNotification: {
-    backgroundColor: '#f8faff',
-    borderLeftWidth: 3,
-    borderLeftColor: '#007AFF',
-  },
-  notificationContent: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  textContent: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  titleWithIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-  },
-  notificationTitle: {
-    fontWeight: '600',
-    fontSize: 15,
-    color: '#1a1a1a',
-    flex: 1,
-  },
-  notificationMessage: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 6,
-    lineHeight: 18,
-  },
-  notificationTime: {
-    fontSize: 11,
-    color: '#999',
-    marginLeft: 8,
-    fontWeight: '400',
-  },
+  unreadNotification: { backgroundColor: '#f8faff', borderLeftWidth: 3, borderLeftColor: '#007AFF' },
+  notificationContent: { flex: 1, flexDirection: 'row', alignItems: 'flex-start' },
+  textContent: { flex: 1, marginLeft: 12 },
+  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  titleWithIcon: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
+  notificationTitle: { fontWeight: '600', fontSize: 15, color: '#1a1a1a', flex: 1 },
+  notificationMessage: { fontSize: 13, color: '#666', marginBottom: 6, lineHeight: 18 },
+  notificationTime: { fontSize: 11, color: '#999', marginLeft: 8 },
   metadataContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -716,11 +552,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignSelf: 'flex-start',
   },
-  metadataText: {
-    fontSize: 11,
-    color: '#555',
-    fontWeight: '500',
-  },
+  metadataText: { fontSize: 11, color: '#555', fontWeight: '500' },
   deleteButton: {
     padding: 6,
     marginLeft: 8,
@@ -738,43 +570,17 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
     paddingHorizontal: 32,
   },
-  emptyText: {
-    marginTop: 16,
-    color: '#666',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  emptySubtext: {
-    marginTop: 8,
-    color: '#999',
-    fontSize: 14,
-    textAlign: 'center',
-    paddingHorizontal: 20,
-    lineHeight: 20,
-  },
-  Foto: {
-    alignSelf: 'flex-start',
-  },
+  emptyText: { marginTop: 16, color: '#666', fontSize: 18, fontWeight: '600' },
+  emptySubtext: { marginTop: 8, color: '#999', fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  Foto: { alignSelf: 'flex-start' },
   avatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
     marginRight: 12,
-    alignSelf: 'flex-start',
     backgroundColor: '#f0f0f0',
     borderWidth: 2,
     borderColor: '#fff',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
   },
 });
 

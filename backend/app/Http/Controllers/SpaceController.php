@@ -1681,4 +1681,184 @@ public function endCall(Request $request, $id)
         similar_text($text, $query, $percent);
         return $percent / 100;
     }
+
+
+    /**
+     * Update participant role in a space
+     */
+    public function updateParticipantRole(Request $request, $id, $userId)
+    {
+        $request->validate([
+            'role' => 'required|in:owner,moderator,participant,viewer',
+        ]);
+
+        $space = CollaborationSpace::findOrFail($id);
+        $currentUser = auth()->user();
+
+        // Check if current user has permission to change roles
+        $currentParticipation = $space->participations()
+            ->where('user_id', $currentUser->id)
+            ->first();
+
+        if (!$currentParticipation) {
+            return response()->json([
+                'message' => 'You are not a participant in this space'
+            ], 403);
+        }
+
+        // Only owners and moderators can change roles
+        if (!in_array($currentParticipation->role, ['owner', 'moderator'])) {
+            return response()->json([
+                'message' => 'You do not have permission to change roles'
+            ], 403);
+        }
+
+        // Only owners can create other owners
+        if ($request->role === 'owner' && $currentParticipation->role !== 'owner') {
+            return response()->json([
+                'message' => 'Only owners can assign the owner role'
+            ], 403);
+        }
+
+        // Find the target participant
+        $targetParticipation = $space->participations()
+            ->where('user_id', $userId)
+            ->first();
+
+        if (!$targetParticipation) {
+            return response()->json([
+                'message' => 'User is not a participant in this space'
+            ], 404);
+        }
+
+        // Cannot change role of owner unless you are an owner
+        if ($targetParticipation->role === 'owner' && $currentParticipation->role !== 'owner') {
+            return response()->json([
+                'message' => 'Only owners can modify other owners'
+            ], 403);
+        }
+
+        // Update the role
+        $targetParticipation->update([
+            'role' => $request->role,
+            'permissions' => $this->getPermissionsForRole($request->role),
+        ]);
+
+        // Broadcast the change
+        broadcast(new \App\Events\ParticipantUpdated($space, $targetParticipation->user, $request->role))->toOthers();
+
+        return response()->json([
+            'message' => 'Role updated successfully',
+            'participant' => $targetParticipation->load('user'),
+        ]);
+    }
+
+    /**
+     * Get permissions for a specific role
+     */
+    private function getPermissionsForRole(string $role): array
+    {
+        $permissions = [
+            'owner' => [
+                'can_edit_space' => true,
+                'can_invite' => true,
+                'can_remove' => true,
+                'can_change_roles' => true,
+                'can_start_calls' => true,
+                'can_share_screen' => true,
+                'can_trigger_magic' => true,
+                'can_configure_ai' => true,
+                'can_delete_space' => true,
+            ],
+            'moderator' => [
+                'can_edit_space' => false,
+                'can_invite' => true,
+                'can_remove' => true,
+                'can_change_roles' => false,
+                'can_start_calls' => true,
+                'can_share_screen' => true,
+                'can_trigger_magic' => true,
+                'can_configure_ai' => false,
+                'can_delete_space' => false,
+            ],
+            'participant' => [
+                'can_edit_space' => false,
+                'can_invite' => false,
+                'can_remove' => false,
+                'can_change_roles' => false,
+                'can_start_calls' => true,
+                'can_share_screen' => true,
+                'can_trigger_magic' => false,
+                'can_configure_ai' => false,
+                'can_delete_space' => false,
+            ],
+            'viewer' => [
+                'can_edit_space' => false,
+                'can_invite' => false,
+                'can_remove' => false,
+                'can_change_roles' => false,
+                'can_start_calls' => false,
+                'can_share_screen' => false,
+                'can_trigger_magic' => false,
+                'can_configure_ai' => false,
+                'can_delete_space' => false,
+            ],
+        ];
+
+        return $permissions[$role] ?? $permissions['participant'];
+    }
+    /**
+     * Remove a participant from a space
+     */
+    public function removeParticipant($id, $userId)
+    {
+        $space = CollaborationSpace::findOrFail($id);
+        $currentUser = auth()->user();
+
+        // Check if current user has permission to remove participants
+        $currentParticipation = $space->participations()
+            ->where('user_id', $currentUser->id)
+            ->first();
+
+        if (!$currentParticipation || !in_array($currentParticipation->role, ['owner', 'moderator'])) {
+            return response()->json([
+                'message' => 'You do not have permission to remove participants'
+            ], 403);
+        }
+
+        // Cannot remove owner unless you are an owner
+        $targetParticipation = $space->participations()
+            ->where('user_id', $userId)
+            ->first();
+
+        if (!$targetParticipation) {
+            return response()->json([
+                'message' => 'User is not a participant'
+            ], 404);
+        }
+
+        if ($targetParticipation->role === 'owner' && $currentParticipation->role !== 'owner') {
+            return response()->json([
+                'message' => 'Only owners can remove other owners'
+            ], 403);
+        }
+
+        // Cannot remove yourself
+        if ($userId == $currentUser->id) {
+            return response()->json([
+                'message' => 'Use the leave endpoint to leave the space'
+            ], 400);
+        }
+
+        // Remove the participant
+        $targetParticipation->delete();
+
+        // Broadcast the removal
+        broadcast(new \App\Events\ParticipantLeft($space, User::find($userId)))->toOthers();
+
+        return response()->json([
+            'message' => 'Participant removed successfully'
+        ]);
+    }
+
 }

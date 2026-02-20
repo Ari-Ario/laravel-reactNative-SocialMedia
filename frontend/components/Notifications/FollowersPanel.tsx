@@ -1,12 +1,17 @@
-// Update your FollowerPanel component
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, Modal, Platform } from 'react-native';
+// components/Notifications/FollowersPanel.tsx
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, Modal, Platform, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { Notification } from '@/types/Notification';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { followUser } from '@/services/UserService';
 import { useProfileView } from '@/context/ProfileViewContext';
+import axios from "@/services/axios";
+import { getToken } from "@/services/TokenService";
+import getApiBase from "@/services/getApiBase";
+
+const API_BASE = getApiBase();
 
 type FollowersPanelProps = {
   visible: boolean;
@@ -24,29 +29,107 @@ const FollowersPanel = ({ visible, onClose }: FollowersPanelProps) => {
 
   const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
   const [loading, setLoading] = useState<Record<string, boolean>>({});
+  const [isFollowingMap, setIsFollowingMap] = useState<Record<string, boolean>>({});
+  const [checkingStatus, setCheckingStatus] = useState<Record<string, boolean>>({});
 
   // Use getter methods to get filtered notifications
   const followerNotifications = getFollowerNotifications();
   const unreadFollowerCount = getUnreadFollowerCount();
 
-  const renderFollowerItem = ({ item }: { item: Notification }) => (
-    console.log('Rendering follower item:', item),
-    <TouchableOpacity
-      style={[styles.followerItem, !item.isRead && styles.unreadFollower]}
-      onPress={() => {
-        if (!item.isRead) {
-          markAsRead(item.id);
-        }
-        if (item.userId) {
-          setProfileViewUserId(item.userId.toString());
-          setProfilePreviewVisible(true);
-          onClose();
-        }
-      }}
-    >
+  // Check follow status for all users when panel opens
+  useEffect(() => {
+    if (visible && followerNotifications.length > 0) {
+      checkAllFollowStatus();
+    }
+  }, [visible]);
+
+  const checkAllFollowStatus = async () => {
+    const token = await getToken();
+
+    for (const item of followerNotifications) {
+      if (item.userId && item.type === 'new_follower') {
+        await checkSingleFollowStatus(item, token);
+      }
+    }
+  };
+
+  const checkSingleFollowStatus = async (item: Notification, token: string | null) => {
+    if (!item.userId || checkingStatus[item.id]) return;
+
+    setCheckingStatus(prev => ({ ...prev, [item.id]: true }));
+
+    try {
+      // Use the existing profile/following API endpoint
+      const response = await axios.get(`${API_BASE}/profile/following`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      // The response should be an array of users you're following
+      const followingList = response.data;
+
+      // Check if this user ID is in the following list
+      const isFollowing = followingList.some(
+        (followedUser: any) =>
+          followedUser.id?.toString() === item.userId?.toString() ||
+          followedUser.user_id?.toString() === item.userId?.toString() ||
+          followedUser.following_id?.toString() === item.userId?.toString()
+      );
+
+      setIsFollowingMap(prev => ({ ...prev, [item.userId!]: isFollowing }));
+    } catch (error) {
+      console.error('Error checking follow status:', error);
+      // Default to false on error
+      setIsFollowingMap(prev => ({ ...prev, [item.userId!]: false }));
+    } finally {
+      setCheckingStatus(prev => ({ ...prev, [item.id]: false }));
+    }
+  };
+
+  // Handle follow back (only for new_follower notifications)
+  const handleFollowBack = async (item: Notification) => {
+    if (!item.userId) {
+      Alert.alert('Error', 'User ID not found');
+      return;
+    }
+
+    setLoading(prev => ({ ...prev, [item.id]: true }));
+
+    try {
+      await followUser(item.userId.toString(), 'follow');
+
+      // Update local state to show following
+      setIsFollowingMap(prev => ({ ...prev, [item.userId!]: true }));
+      markAsRead(item.id);
+
+      Alert.alert('Success', `You are now following ${item.title || 'this user'}`);
+
+    } catch (error: any) {
+      console.error('Follow back failed:', error);
+      Alert.alert(
+        'Failed to Follow Back',
+        error.response?.data?.message ||
+        error.message ||
+        'Please try again later.'
+      );
+    } finally {
+      setLoading(prev => ({ ...prev, [item.id]: false }));
+    }
+  };
+
+  const renderFollowerItem = ({ item }: { item: Notification }) => {
+    const isFollowing = isFollowingMap[item.userId!] || false;
+    const isLoading = loading[item.id] || false;
+    const isChecking = checkingStatus[item.id] || false;
+
+    return (
       <TouchableOpacity
-        style={styles.Foto}
+        style={[styles.followerItem, !item.isRead && styles.unreadFollower]}
         onPress={() => {
+          if (!item.isRead) {
+            markAsRead(item.id);
+          }
           if (item.userId) {
             setProfileViewUserId(item.userId.toString());
             setProfilePreviewVisible(true);
@@ -54,39 +137,83 @@ const FollowersPanel = ({ visible, onClose }: FollowersPanelProps) => {
           }
         }}
       >
-        <Image
-          source={{
-            uri: item.avatar ? `${getApiBaseImage()}/storage/${item.avatar}` : undefined
+        <TouchableOpacity
+          style={styles.Foto}
+          onPress={() => {
+            if (item.userId) {
+              setProfileViewUserId(item.userId.toString());
+              setProfilePreviewVisible(true);
+              onClose();
+            }
           }}
-          defaultSource={require('@/assets/images/favicon.png')}
-          style={styles.avatar}
-        />
-      </TouchableOpacity>
+        >
+          <Image
+            source={{
+              uri: item.avatar ? `${getApiBaseImage()}/storage/${item.avatar}` : undefined
+            }}
+            defaultSource={require('@/assets/images/favicon.png')}
+            style={styles.avatar}
+          />
+        </TouchableOpacity>
 
-      <View style={styles.followerContent}>
-        <View style={styles.textContent}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Ionicons
-              name={item.type === 'new_follower' ? 'person-add-outline' : 'person-remove-outline'}
-              size={20}
-              color={item.type === 'new_follower' ? '#5856D6' : '#FF3B30'}
-            />
-            <Text style={styles.followerTitle}>{item.title}</Text>
-            <Text style={styles.followerTime}>
-              {formatTimeAgo(item.createdAt)}
-            </Text>
+        <View style={styles.followerContent}>
+          <View style={styles.textContent}>
+            <View style={styles.titleRow}>
+              <Ionicons
+                name={item.type === 'new_follower' ? 'person-add-outline' : 'person-remove-outline'}
+                size={20}
+                color={item.type === 'new_follower' ? '#5856D6' : '#FF3B30'}
+              />
+              <Text style={styles.followerTitle}>{item.title}</Text>
+              <Text style={styles.followerTime}>
+                {formatTimeAgo(item.createdAt)}
+              </Text>
+            </View>
+            <Text style={styles.followerMessage}>{item.message}</Text>
           </View>
-          <Text style={styles.followerMessage}>{item.message}</Text>
         </View>
-      </View>
-      <TouchableOpacity
-        onPress={() => removeNotification(item.id)}
-        style={styles.deleteButton}
-      >
-        <Ionicons name="close" size={16} color="#999" />
+
+        {/* FOLLOW BACK BUTTON - only for new_follower */}
+        {item.type === 'new_follower' && (
+          <View style={styles.buttonContainer}>
+            {isChecking ? (
+              <ActivityIndicator size="small" color="#3897f0" style={styles.followButton} />
+            ) : (
+              <TouchableOpacity
+                style={[
+                  styles.followButton,
+                  isFollowing && styles.followingButton
+                ]}
+                onPress={() => handleFollowBack(item)}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={isFollowing ? 'black' : 'white'}
+                  />
+                ) : (
+                  <Text style={[
+                    styles.followButtonText,
+                    isFollowing && styles.followingButtonText
+                  ]}>
+                    {isFollowing ? 'Following' : 'Follow Back'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        <TouchableOpacity
+          onPress={() => removeNotification(item.id)}
+          style={styles.deleteButton}
+        >
+          <Ionicons name="close" size={16} color="#999" />
+        </TouchableOpacity>
       </TouchableOpacity>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   const formatTimeAgo = (date: Date) => {
     const now = new Date();
@@ -194,7 +321,7 @@ const styles = StyleSheet.create({
   followerItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
+    padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f5f5f5',
   },
@@ -211,21 +338,47 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
   followerTitle: {
     fontWeight: '600',
     fontSize: 14,
-    marginBottom: 2,
+    flex: 1,
   },
   followerMessage: {
     fontSize: 12,
     color: '#666',
-    marginBottom: 4,
   },
   followerTime: {
     fontSize: 10,
     color: '#999',
     marginLeft: 'auto',
-    paddingRight: 10,
+  },
+  buttonContainer: {
+    marginRight: 8,
+  },
+  followButton: {
+    backgroundColor: '#3897f0',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 5,
+    minWidth: 85,
+    alignItems: 'center',
+  },
+  followingButton: {
+    backgroundColor: '#efefef',
+  },
+  followButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
+  followingButtonText: {
+    color: 'black',
   },
   deleteButton: {
     padding: 4,
@@ -252,28 +405,11 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     marginRight: 10,
     alignSelf: 'flex-start',
-  },
-  followButton: {
-    backgroundColor: '#3897f0',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 5,
-  },
-  followingButton: {
-    backgroundColor: '#efefef',
-  },
-  followButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  followingButtonText: {
-    color: 'black',
   },
 });
 

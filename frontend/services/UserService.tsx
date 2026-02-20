@@ -5,13 +5,13 @@ import getApiBase from "./getApiBase";
 const API_BASE = getApiBase();
 
 export async function fetchUserProfile(userId) {
-    const token = await getToken();
-    const response = await axios.get(`${API_BASE}/users/${userId}`, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    });
-    return response.data;
+  const token = await getToken();
+  const response = await axios.get(`${API_BASE}/users/${userId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return response.data;
 }
 
 

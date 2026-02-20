@@ -1155,6 +1155,107 @@ class CollaborationService {
     }
   }
 
+  // handling 3 dot menu on (spaces)/[id].tsx
+
+  async updateSpace(spaceId: string, data: {
+    title?: string;
+    description?: string;
+    settings?: any;
+    ai_personality?: string;
+    ai_capabilities?: string[];
+  }): Promise<CollaborationSpace> {
+    try {
+      const response = await axios.put(`${this.baseURL}/spaces/${spaceId}`, data, {
+        headers: this.getHeaders(),
+      });
+
+      await this.triggerHapticSuccess();
+
+      return response.data.space;
+    } catch (error) {
+      console.error('Error updating space:', error);
+      throw error;
+    }
+  }
+
+  async updateParticipantRole(spaceId: string, userId: number, role: string): Promise<void> {
+    try {
+      await axios.post(`${this.baseURL}/spaces/${spaceId}/participants/${userId}/role`, {
+        role,
+      }, {
+        headers: this.getHeaders(),
+      });
+
+      await this.triggerHapticSuccess();
+    } catch (error) {
+      console.error('Error updating participant role:', error);
+      throw error;
+    }
+  }
+
+  async removeParticipant(spaceId: string, userId: number): Promise<void> {
+    try {
+      await axios.delete(`${this.baseURL}/spaces/${spaceId}/participants/${userId}`, {
+        headers: this.getHeaders(),
+      });
+
+      await this.triggerHapticWarning();
+    } catch (error) {
+      console.error('Error removing participant:', error);
+      throw error;
+    }
+  }
+
+  async leaveSpace(spaceId: string): Promise<void> {
+    try {
+      await axios.post(`${this.baseURL}/spaces/${spaceId}/leave`, {}, {
+        headers: this.getHeaders(),
+      });
+
+      await this.triggerHapticWarning();
+    } catch (error) {
+      console.error('Error leaving space:', error);
+      throw error;
+    }
+  }
+
+  async deleteSpace(spaceId: string): Promise<void> {
+    try {
+      await axios.delete(`${this.baseURL}/spaces/${spaceId}`, {
+        headers: this.getHeaders(),
+      });
+
+      await this.triggerHapticWarning();
+    } catch (error) {
+      console.error('Error deleting space:', error);
+      throw error;
+    }
+  }
+
+  async uploadSpacePhoto(spaceId: string, photoUri: string): Promise<string> {
+    try {
+      const formData = new FormData();
+      formData.append('photo', {
+        uri: photoUri,
+        type: 'image/jpeg',
+        name: `space-${spaceId}-${Date.now()}.jpg`,
+      } as any);
+
+      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/photo`, formData, {
+        headers: {
+          ...this.getHeaders(),
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      await this.triggerHapticSuccess();
+
+      return response.data.photo_url;
+    } catch (error) {
+      console.error('Error uploading space photo:', error);
+      throw error;
+    }
+  }
 }
 
 export default CollaborationService;

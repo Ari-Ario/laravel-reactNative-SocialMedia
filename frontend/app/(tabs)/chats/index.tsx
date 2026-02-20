@@ -91,6 +91,11 @@ const ChatPage = () => {
   const [activitiesCount, setActivitiesCount] = useState(0);
   const [activities, setActivities] = useState<CollaborativeActivity[]>([]);
   const [showActivities, setShowActivities] = useState(false);
+
+  const [showSpaceNameInput, setShowSpaceNameInput] = useState(false);
+  const [selectedSpaceType, setSelectedSpaceType] = useState<CollaborationSpace['space_type'] | null>(null);
+  const [newSpaceName, setNewSpaceName] = useState('');
+
   // Configure notifications
   useEffect(() => {
     notificationService.configure();
@@ -649,11 +654,21 @@ const ChatPage = () => {
   };
 
   const handleCreateSpace = async (spaceType: CollaborationSpace['space_type']) => {
+    // Show name input modal first
+    setSelectedSpaceType(spaceType);
+    setNewSpaceName(`New ${spaceType.charAt(0).toUpperCase() + spaceType.slice(1)}`);
+    setShowSpaceNameInput(true);
+  };
+
+  // Add new function to actually create space after name input
+  const confirmCreateSpace = async () => {
+    if (!selectedSpaceType) return;
+
     const createSpaceOperation = async () => {
       try {
         const space = await collaborationService.createSpace({
-          title: `New ${spaceType.charAt(0).toUpperCase() + spaceType.slice(1)}`,
-          space_type: spaceType,
+          title: newSpaceName.trim() || `New ${selectedSpaceType.charAt(0).toUpperCase() + selectedSpaceType.slice(1)}`,
+          space_type: selectedSpaceType,
           ai_personality: 'helpful',
           ai_capabilities: ['summarize', 'suggest'],
         });
@@ -678,6 +693,9 @@ const ChatPage = () => {
 
         setSpaces(prev => [newSpaceChat, ...prev]);
         setShowSpaceTypes(false);
+        setShowSpaceNameInput(false);
+        setSelectedSpaceType(null);
+        setNewSpaceName('');
 
         // Navigate to the new space
         router.push(`/(spaces)/${space.id}`);
@@ -692,29 +710,7 @@ const ChatPage = () => {
       await createSpaceOperation();
     } else {
       offlineService.queueOperation(createSpaceOperation);
-
-      // Show local preview
-      const tempSpace: Chat = {
-        id: `temp_${Date.now()}`,
-        name: `New ${spaceType}`,
-        lastMessage: 'Creating... (offline)',
-        timestamp: 'Just now',
-        unreadCount: 0,
-        avatar: null,
-        isOnline: false,
-        user_id: user?.id?.toString() || '0',
-        type: 'space',
-        spaceData: {
-          id: `temp_${Date.now()}`,
-          title: `New ${spaceType}`,
-          space_type: spaceType,
-          is_live: false,
-        } as any,
-      };
-
-      setSpaces(prev => [tempSpace, ...prev]);
-      setShowSpaceTypes(false);
-
+      setShowSpaceNameInput(false);
       Alert.alert(
         'Offline Mode',
         'Space will be created when you reconnect to the internet.',
@@ -1025,6 +1021,69 @@ const ChatPage = () => {
           onClose={() => setShowCreativeGenerator(false)}
         />
       </Modal>
+
+      {/* Space Name Input Modal */}
+      <Modal
+        visible={showSpaceNameInput}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {
+          setShowSpaceNameInput(false);
+          setSelectedSpaceType(null);
+          setNewSpaceName('');
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.nameInputModal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Name Your Space</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowSpaceNameInput(false);
+                  setSelectedSpaceType(null);
+                  setNewSpaceName('');
+                }}
+              >
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalDescription}>
+              Choose a name for your {selectedSpaceType} space
+            </Text>
+
+            <TextInput
+              style={styles.nameInput}
+              placeholder="Space name"
+              value={newSpaceName}
+              onChangeText={setNewSpaceName}
+              autoFocus
+              maxLength={50}
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonCancel]}
+                onPress={() => {
+                  setShowSpaceNameInput(false);
+                  setSelectedSpaceType(null);
+                  setNewSpaceName('');
+                }}
+              >
+                <Text style={styles.modalButtonTextCancel}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonConfirm]}
+                onPress={confirmCreateSpace}
+              >
+                <Text style={styles.modalButtonTextConfirm}>Create Space</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Collaborative Activities Modal - ADD THIS */}
       <Modal
         visible={showActivities}
@@ -1433,9 +1492,9 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontWeight: '600',
   },
-  loading: {
-    marginTop: 100,
-  },
+  // loading: {
+  //   marginTop: 100,
+  // },
   list: {
     flex: 1,
   },
@@ -1530,6 +1589,94 @@ const styles = StyleSheet.create({
   },
   searchResultsList: {
     maxHeight: 400,
+  },
+  nameInputModal: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+  },
+  nameInput: {
+    fontSize: 16,
+    padding: 12,
+    backgroundColor: '#f8f8f8',
+    borderRadius: 8,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 16,
+  },
+  modalInput: {
+    fontSize: 16,
+    padding: 12,
+    backgroundColor: '#f8f8f8',
+    borderRadius: 8,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  modalButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalCancelButton: {
+    backgroundColor: '#f0f0f0',
+  },
+  modalCancelButtonText: {
+    color: '#333',
+  },
+  modalConfirmButton: {
+    backgroundColor: '#007AFF',
+  },
+  modalConfirmButtonText: {
+    color: '#fff',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  modalHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  modalHeaderCloseButton: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
   },
 });
 

@@ -8,13 +8,15 @@ import {
   FlatList,
   Image,
   Modal,
-  Platform
+  Platform,
+  Alert,                    // ← ADDED
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { Notification } from '@/types/Notification';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { router } from 'expo-router';
+import CollaborationService from '@/services/ChatScreen/CollaborationService';
 
 type SpacesPanelProps = {
   visible: boolean;
@@ -94,6 +96,45 @@ const SpacesPanel = ({ visible, onClose }: SpacesPanelProps) => {
           )}
         </View>
       </View>
+
+      {/* ACCEPT BUTTON - only for space invitations */}
+      {item.type === 'space_invitation' && (
+        <TouchableOpacity
+          style={styles.acceptButton}
+          onPress={async (e) => {
+            e.stopPropagation();
+            const spaceId = item.spaceId || item.data?.space_id || item.data?.space?.id;
+            if (!spaceId) {
+              Alert.alert('Error', 'Space ID not found');
+              return;
+            }
+
+            try {
+              await CollaborationService.getInstance().acceptSpaceInvitation(spaceId.toString());
+
+              markAsRead(item.id);
+              removeNotification(item.id);
+
+              router.push({
+                pathname: '/(spaces)/[id]',
+                params: { id: spaceId.toString() }
+              });
+              onClose();
+            } catch (error: any) {
+              console.error('Accept invitation failed:', error);
+              Alert.alert(
+                'Failed to Accept',
+                error.response?.data?.message ||
+                error.message ||
+                'Please try again later.'
+              );
+            }
+          }}
+        >
+          <Text style={styles.acceptButtonText}>Accept</Text>
+        </TouchableOpacity>
+      )}
+
       <TouchableOpacity
         onPress={() => removeNotification(item.id)}
         style={styles.deleteButton}
@@ -263,6 +304,22 @@ const styles = StyleSheet.create({
   deleteButton: {
     padding: 4,
   },
+
+  /* ==================== ADDED STYLES ==================== */
+  acceptButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginRight: 8,
+  },
+  acceptButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  /* ==================================================== */
+
   emptyState: {
     flex: 1,
     justifyContent: 'center',
