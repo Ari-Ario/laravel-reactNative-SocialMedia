@@ -29,6 +29,7 @@ interface MessageBubbleProps {
   isSelected: boolean;
   onPress: () => void;
   onLongPress: () => void;
+  onLongPressWithPosition?: (message: any, x: number, y: number) => void;
 }
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({
@@ -40,9 +41,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   onLongPress,
 }) => {
   const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return new Date(timestamp).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
 
@@ -61,7 +62,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             )}
           </View>
         );
-        
+
       case 'voice':
         return (
           <View style={styles.voiceContainer}>
@@ -82,7 +83,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             </View>
           </View>
         );
-        
+
       default:
         return (
           <Text style={[
@@ -97,12 +98,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   const renderReactions = () => {
     if (!message.reactions || message.reactions.length === 0) return null;
-    
+
     const reactionCounts: Record<string, number> = {};
     message.reactions.forEach(r => {
       reactionCounts[r.reaction] = (reactionCounts[r.reaction] || 0) + 1;
     });
-    
+
     return (
       <View style={[
         styles.reactionsContainer,
@@ -124,7 +125,16 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     <TouchableOpacity
       activeOpacity={0.7}
       onPress={onPress}
-      onLongPress={onLongPress}
+      onLongPress={(event) => {
+        if (onLongPressWithPosition) {
+          event.currentTarget.measure((x, y, width, height, pageX, pageY) => {
+            onLongPressWithPosition(message, pageX + width / 2, pageY);
+          });
+        } else if (onLongPress) {
+          onLongPress();
+        }
+      }}
+      delayLongPress={200}
       style={[
         styles.container,
         isCurrentUser ? styles.currentUserContainer : styles.otherUserContainer,
@@ -134,14 +144,14 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       {!isCurrentUser && showAvatar && (
         <View style={styles.avatarContainer}>
           <Avatar
-            source={ `${getApiBaseImage()}/storage/${message.user?.profile_photo || 'default-avatar.png'}`}
+            source={`${getApiBaseImage()}/storage/${message.user?.profile_photo || 'default-avatar.png'}`}
             size={32}
             name={message.user?.name}
             showStatus={false}
           />
         </View>
       )}
-      
+
       <View style={[
         styles.bubbleContainer,
         isCurrentUser ? styles.currentUserBubble : styles.otherUserBubble
@@ -149,25 +159,25 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         {!isCurrentUser && showAvatar && (
           <Text style={styles.userName}>{message.user?.name}</Text>
         )}
-        
+
         {renderContent()}
-        
+
         <View style={styles.messageFooter}>
           <Text style={styles.timestamp}>
             {formatTime(message.created_at)}
           </Text>
           {isCurrentUser && (
-            <Ionicons 
-              name="checkmark-done" 
-              size={12} 
-              color={message.metadata?.read ? "#007AFF" : "#999"} 
+            <Ionicons
+              name="checkmark-done"
+              size={12}
+              color={message.metadata?.read ? "#007AFF" : "#999"}
             />
           )}
         </View>
-        
+
         {renderReactions()}
       </View>
-      
+
       {isCurrentUser && showAvatar && (
         <View style={styles.avatarContainer}>
           <Avatar

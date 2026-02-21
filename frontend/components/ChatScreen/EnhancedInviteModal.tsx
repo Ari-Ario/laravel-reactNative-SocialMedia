@@ -309,8 +309,9 @@ const EnhancedInviteModal: React.FC<EnhancedInviteModalProps> = ({
                     ]
                 );
             }
-
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            if (Platform.OS !== 'web') {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }
 
         } catch (error) {
             console.error('Error sending invites:', error);

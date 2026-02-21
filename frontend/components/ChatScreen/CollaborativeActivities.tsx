@@ -197,8 +197,9 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
         status: 'active',
         notes: 'Activity started',
       });
-
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
     } catch (error) {
       console.error('Error starting activity:', error);
       Alert.alert('Error', 'Failed to start activity');

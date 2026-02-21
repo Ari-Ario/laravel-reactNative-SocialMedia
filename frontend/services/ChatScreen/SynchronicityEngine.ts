@@ -4,6 +4,7 @@ import getApiBase from '@/services/getApiBase';
 import { getToken } from '@/services/TokenService';
 import * as Haptics from 'expo-haptics';
 import CollaborationService, { CollaborationSpace } from '@/services/ChatScreen/CollaborationService';
+import { Platform } from 'react-native';
 
 export interface SynchronicityMatch {
   type: 'user' | 'idea' | 'pattern' | 'timing';
@@ -56,7 +57,7 @@ class SynchronicityEngine {
 
   async findSerendipitousMatches(spaceId: string, participants: any[] = []): Promise<SynchronicityMatch[]> {
     if (!spaceId) return [];
-    
+
     try {
       // Try backend endpoint first
       const response = await axios.post(
@@ -68,12 +69,12 @@ class SynchronicityEngine {
         },
         { headers: this.getHeaders() }
       );
-      
+
       if (response.data?.matches) {
         this.activeMatches.set(spaceId, response.data.matches);
         return response.data.matches;
       }
-      
+
     } catch (error: any) {
       // If endpoint doesn't exist (404), use local matching
       if (error.response?.status === 404) {
@@ -82,14 +83,14 @@ class SynchronicityEngine {
       }
       console.error('Error finding matches:', error);
     }
-    
+
     // Fallback to local matching
     return this.generateLocalMatches(spaceId, participants);
   }
 
   private generateLocalMatches(spaceId: string, participants: any[]): SynchronicityMatch[] {
     const matches: SynchronicityMatch[] = [];
-    
+
     // Generate timing-based matches
     const hour = new Date().getHours();
     if (hour === 10 || hour === 15 || hour === 21) {
@@ -102,13 +103,13 @@ class SynchronicityEngine {
         description: 'Peak collaboration time detected'
       });
     }
-    
+
     // Generate user synergy matches
     if (participants.length >= 2) {
-      const userSkills = participants.flatMap(p => 
+      const userSkills = participants.flatMap(p =>
         p.user?.preferences?.synergy_traits || ['creative', 'analytical']
       );
-      
+
       const uniqueSkills = [...new Set(userSkills)];
       if (uniqueSkills.length >= 3) {
         matches.push({
@@ -121,7 +122,7 @@ class SynchronicityEngine {
         });
       }
     }
-    
+
     // Random idea match
     if (Math.random() > 0.5) {
       const ideas = [
@@ -132,7 +133,7 @@ class SynchronicityEngine {
         'strategic planning'
       ];
       const randomIdea = ideas[Math.floor(Math.random() * ideas.length)];
-      
+
       matches.push({
         type: 'idea',
         matchId: `idea_${Date.now()}`,
@@ -142,7 +143,7 @@ class SynchronicityEngine {
         description: `Perfect time for a ${randomIdea}`
       });
     }
-    
+
     // Pattern-based match (simulated)
     if (participants.length > 0) {
       matches.push({
@@ -150,14 +151,14 @@ class SynchronicityEngine {
         matchId: `pattern_${Date.now()}`,
         score: 0.75,
         confidence: 0.85,
-        data: { 
+        data: {
           patternType: 'engagement_peak',
           suggestedAction: 'deep_collaboration'
         },
         description: 'Optimal engagement pattern detected'
       });
     }
-    
+
     this.activeMatches.set(spaceId, matches);
     return matches;
   }
@@ -177,7 +178,7 @@ class SynchronicityEngine {
           confidence: match.confidence,
         }
       };
-      
+
       // Try to save to backend
       try {
         await axios.post(
@@ -189,18 +190,20 @@ class SynchronicityEngine {
         // Endpoint might not exist, that's okay
         console.log('Synchronicity events endpoint not available');
       }
-      
+
       // Trigger haptic feedback
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      
+      if (Platform.OS !== 'web') {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+
       // Notify callbacks
       this.notifyEventCallbacks(event);
-      
+
       // Initiate activity if score is high
       if (match.score > 0.7) {
         await this.initiateCollaborativeActivity(spaceId, match);
       }
-      
+
     } catch (error) {
       console.error('Error triggering synchronicity event:', error);
     }
@@ -225,7 +228,7 @@ class SynchronicityEngine {
   private async initiateCollaborativeActivity(spaceId: string, match: SynchronicityMatch) {
     try {
       const collaborationService = CollaborationService.getInstance();
-      
+
       const activityData = {
         space_id: spaceId,
         activity_type: this.getActivityTypeFromMatch(match),
@@ -239,24 +242,24 @@ class SynchronicityEngine {
           triggered_at: new Date().toISOString(),
         },
       };
-      
+
       try {
         // Try to create activity via API
         const activity = await collaborationService.createCollaborativeActivity(activityData);
-        
+
         console.log('Created collaborative activity:', activity.title);
-        
+
         // Show success notification
         this.showActivityNotification(match, activity);
-        
+
       } catch (error: any) {
         // If API fails (404 or other), log it but don't crash
         console.log('Could not create collaborative activity via API:', error.message);
-        
+
         // Show fallback notification
         this.showActivityNotification(match);
       }
-      
+
     } catch (error) {
       console.error('Error initiating collaborative activity:', error);
     }
@@ -284,7 +287,7 @@ class SynchronicityEngine {
       pattern: ['Focused Work Session', 'Pattern Analysis', 'Deep Dive'],
       timing: ['Optimal Time Collaboration', 'Peak Productivity Session'],
     };
-    
+
     const titles = baseTitles[match.type] || ['Collaborative Activity'];
     return titles[Math.floor(Math.random() * titles.length)];
   }
@@ -306,13 +309,13 @@ class SynchronicityEngine {
 
   private showActivityNotification(match: SynchronicityMatch, activity?: any) {
     const notificationTitle = activity ? 'Activity Created!' : 'Synchronicity Detected';
-    const notificationBody = activity 
+    const notificationBody = activity
       ? `"${activity.title}" has been created. Tap to start!`
       : `${match.description} Tap to create an activity.`;
-    
+
     // You would integrate with your notification service here
     console.log('Notification:', notificationTitle, '-', notificationBody);
-    
+
     // Example using Alert for now
     // Alert.alert(notificationTitle, notificationBody, [
     //   { text: 'Later', style: 'cancel' },
@@ -347,7 +350,7 @@ class SynchronicityEngine {
   private showActivityNotification(match: SynchronicityMatch) {
     // This would typically show a notification
     console.log('Activity suggested:', match.description);
-    
+
     // You could integrate with your notification service here
     // Example: NotificationService.scheduleLocalNotification(...)
   }
@@ -373,7 +376,7 @@ class SynchronicityEngine {
   async getSpaceMatches(spaceId: string): Promise<SynchronicityMatch[]> {
     const cached = this.activeMatches.get(spaceId);
     if (cached) return cached;
-    
+
     return await this.findSerendipitousMatches(spaceId);
   }
 
@@ -388,7 +391,7 @@ class SynchronicityEngine {
   // New method: Check for emerging patterns
   async checkForEmergingPatterns(spaceId: string, activityData: any): Promise<SynchronicityMatch[]> {
     const patterns: SynchronicityMatch[] = [];
-    
+
     // Check message frequency
     if (activityData.messageCount > 20 && activityData.timeSpanMinutes < 10) {
       patterns.push({
@@ -404,7 +407,7 @@ class SynchronicityEngine {
         description: 'High engagement detected - perfect for brainstorming!'
       });
     }
-    
+
     // Check participant diversity
     if (activityData.uniqueParticipants >= 3 && activityData.timeZoneCount >= 2) {
       patterns.push({
@@ -420,7 +423,7 @@ class SynchronicityEngine {
         description: 'Diverse team detected - great for creative problem solving!'
       });
     }
-    
+
     // Check time of day patterns
     const hour = new Date().getHours();
     if ((hour >= 9 && hour <= 11) || (hour >= 14 && hour <= 16)) {
@@ -437,14 +440,14 @@ class SynchronicityEngine {
         description: 'Peak productivity time - ideal for focused work'
       });
     }
-    
+
     if (patterns.length > 0) {
       this.activeMatches.set(spaceId, [
         ...(this.activeMatches.get(spaceId) || []),
         ...patterns
       ]);
     }
-    
+
     return patterns;
   }
 }

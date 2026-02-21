@@ -572,6 +572,8 @@ class PusherService {
     onMagicEvent?: (data: any) => void;
     onScreenShareStarted?: (data: any) => void;
     onScreenShareEnded?: (data: any) => void;
+    onPollCreated?: (poll: any) => void;
+    onPollUpdated?: (poll: any) => void;
   }): boolean {
     if (!this.pusher || !this.isInitialized) {
       console.warn('⚠️ Pusher not initialized. Skipping space subscription.');
@@ -624,7 +626,19 @@ class PusherService {
     if (callbacks.onScreenShareEnded) {
       channel.bind('screen_share.ended', callbacks.onScreenShareEnded);
     }
+    if (callbacks.onPollCreated) {
+      channel.bind('poll.created', (data: any) => {
+        console.log(`📊 Poll created in space ${spaceId}:`, data.poll.question);
+        callbacks.onPollCreated?.(data.poll);
+      });
+    }
 
+    if (callbacks.onPollUpdated) {
+      channel.bind('poll.updated', (data: any) => {
+        console.log(`📊 Poll updated in space ${spaceId}`);
+        callbacks.onPollUpdated?.(data.poll);
+      });
+    }
     channel.bind('pusher:subscription_succeeded', () => {
       console.log(`✅ Successfully subscribed to space: ${channelName}`);
     });

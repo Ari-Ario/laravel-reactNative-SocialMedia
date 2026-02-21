@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Dimensions,
   SafeAreaView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -55,7 +56,7 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
   onClose,
 }) => {
   const router = useRouter();
-  
+
   const creativeModes: CreativeMode[] = [
     { id: 'brainstorm', name: 'Brainstorm', icon: 'flash', description: 'Generate creative ideas', color: '#4ECDC4' },
     { id: 'story-continue', name: 'Story', icon: 'book', description: 'Continue collaborative stories', color: '#F38181' },
@@ -64,7 +65,7 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
     { id: 'debate', name: 'Debate', icon: 'chatbubbles', description: 'Constructive debate topics', color: '#118AB2' },
     { id: 'roleplay', name: 'Roleplay', icon: 'person', description: 'Role-playing scenarios', color: '#EF476F' },
   ];
-  
+
   const [activeMode, setActiveMode] = useState<CreativeMode>(creativeModes[0]);
   const [generatedContent, setGeneratedContent] = useState<Idea[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -72,7 +73,7 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [voiceInput, setVoiceInput] = useState('');
   const [recordingTime, setRecordingTime] = useState(0);
-  
+
   const collaborationService = CollaborationService.getInstance();
   const scrollViewRef = useRef<ScrollView>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -138,13 +139,13 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
       const newRecording = new Audio.Recording();
       await newRecording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
       await newRecording.startAsync();
-      
+
       setRecording(newRecording);
       setIsRecording(true);
       setRecordingTime(0);
-      
+
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      
+
       // Start timer
       recordingTimerRef.current = setInterval(() => {
         setRecordingTime(prev => {
@@ -155,12 +156,12 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
           return prev + 1;
         });
       }, 1000);
-      
+
       // Auto-stop after 10 seconds
       setTimeout(() => {
         stopVoiceIdeation();
       }, 10000);
-      
+
     } catch (error) {
       console.error('Failed to start recording:', error);
       Alert.alert('Error', 'Failed to start recording. Please try again.');
@@ -169,22 +170,22 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
 
   const stopVoiceIdeation = async () => {
     if (!recording) return;
-    
+
     try {
       if (recordingTimerRef.current) {
         clearInterval(recordingTimerRef.current);
         recordingTimerRef.current = null;
       }
-      
+
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
       setIsRecording(false);
       setRecording(null);
-      
+
       if (uri) {
         await generateIdeasFromVoice(uri);
       }
-      
+
     } catch (error) {
       console.error('Failed to stop recording:', error);
       Alert.alert('Error', 'Failed to process recording');
@@ -193,11 +194,11 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
 
   const generateIdeasFromVoice = async (audioUri: string) => {
     setIsGenerating(true);
-    
+
     try {
       // Mock implementation - replace with actual AI service
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
+
       const mockIdeas: Idea[] = [
         {
           id: `voice_${Date.now()}`,
@@ -216,14 +217,14 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
           metadata: { source: 'voice', duration: `${recordingTime}s` }
         }
       ];
-      
+
       // Initialize animation for each new idea
       mockIdeas.forEach(idea => {
         ideaAnimations.current.set(idea.id, new Animated.Value(0));
       });
-      
+
       setGeneratedContent(prev => [...mockIdeas, ...prev]);
-      
+
       // Animate new ideas in
       setTimeout(() => {
         mockIdeas.forEach(idea => {
@@ -238,9 +239,10 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
           }
         });
       }, 100);
-      
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+
     } catch (error) {
       console.error('Error generating ideas:', error);
       Alert.alert('Error', 'Failed to generate ideas from voice');
@@ -251,11 +253,11 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
 
   const generateAlternateRealities = async () => {
     setIsGenerating(true);
-    
+
     try {
       // Use actual spaceId, not "global"
       const actualSpaceId = spaceId && spaceId !== 'global' ? spaceId : undefined;
-      
+
       if (!actualSpaceId) {
         // Generate mock data if no spaceId
         const mockRealities = [
@@ -263,22 +265,22 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
           "Consider the pessimistic view - what are the potential challenges and how can we mitigate them?",
           "From a radically creative angle, what if we combined this with completely unrelated concepts?"
         ];
-        
+
         const newIdea: Idea = {
           id: `realities_${Date.now()}`,
           content: "Alternate perspectives generated:\n\n• " + mockRealities.join("\n\n• "),
           type: 'alternate-realities',
           mood: 'analytical',
           timestamp: new Date().toISOString(),
-          metadata: { 
+          metadata: {
             realities: mockRealities,
             generatedAt: new Date().toISOString()
           }
         };
-        
+
         ideaAnimations.current.set(newIdea.id, new Animated.Value(0));
         setGeneratedContent(prev => [newIdea, ...prev]);
-        
+
         setTimeout(() => {
           const anim = ideaAnimations.current.get(newIdea.id);
           if (anim) {
@@ -290,35 +292,35 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
             }).start();
           }
         }, 100);
-        
+
       } else {
         // Use actual AI query
         const response = await collaborationService.queryAI(
           actualSpaceId,
           `Generate 3 alternate perspectives for: ${context.type === 'chat' ? 'chat conversations' : 'collaboration'}`,
-          { 
-            context, 
+          {
+            context,
             mode: activeMode.id,
             requestType: 'alternate_perspectives'
           },
           'generate_perspectives'
         );
-        
+
         const newIdea: Idea = {
           id: `realities_${Date.now()}`,
           content: response.ai_response || "Alternate perspectives generated",
           type: 'alternate-realities',
           mood: 'analytical',
           timestamp: new Date().toISOString(),
-          metadata: { 
+          metadata: {
             response,
             generatedAt: new Date().toISOString()
           }
         };
-        
+
         ideaAnimations.current.set(newIdea.id, new Animated.Value(0));
         setGeneratedContent(prev => [newIdea, ...prev]);
-        
+
         setTimeout(() => {
           const anim = ideaAnimations.current.get(newIdea.id);
           if (anim) {
@@ -331,12 +333,14 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
           }
         }, 100);
       }
-      
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      
+
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+
     } catch (error: any) {
       console.error('Error generating alternate realities:', error);
-      
+
       // Provide fallback content
       const fallbackIdea: Idea = {
         id: `fallback_${Date.now()}`,
@@ -345,10 +349,10 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
         mood: 'analytical',
         timestamp: new Date().toISOString(),
       };
-      
+
       ideaAnimations.current.set(fallbackIdea.id, new Animated.Value(0));
       setGeneratedContent(prev => [fallbackIdea, ...prev]);
-      
+
       setTimeout(() => {
         const anim = ideaAnimations.current.get(fallbackIdea.id);
         if (anim) {
@@ -360,7 +364,7 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
           }).start();
         }
       }, 100);
-      
+
     } finally {
       setIsGenerating(false);
     }
@@ -368,15 +372,15 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
 
   const startCollaborativeStory = async () => {
     setIsGenerating(true);
-    
+
     try {
       // Use actual spaceId, not "global"
       const actualSpaceId = spaceId && spaceId !== 'global' ? spaceId : undefined;
-      
+
       if (!actualSpaceId) {
         // Mock story start
         const storyStart = "In a world where ideas take physical form, a group of collaborators discovered a mysterious glowing artifact that responded to their collective creativity...";
-        
+
         const storyIdea: Idea = {
           id: `story_${Date.now()}`,
           content: storyStart,
@@ -384,29 +388,29 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
           mood: 'creative',
           timestamp: new Date().toISOString(),
           contributors: ['AI'],
-          metadata: { 
+          metadata: {
             nextPrompt: 'What happens when they touch the artifact?',
             storySeed: 'mysterious_artifact'
           }
         };
-        
+
         ideaAnimations.current.set(storyIdea.id, new Animated.Value(0));
         setGeneratedContent(prev => [storyIdea, ...prev]);
-        
+
       } else {
         // Use actual AI query
         const response = await collaborationService.queryAI(
           actualSpaceId,
           "Start a collaborative story. First sentence should be engaging and open-ended, suitable for multiple people to continue.",
-          { 
-            context, 
+          {
+            context,
             mode: 'story-continue',
             storyType: 'collaborative',
             maxLength: 100
           },
           'start_story'
         );
-        
+
         const storyIdea: Idea = {
           id: `story_${Date.now()}`,
           content: response.ai_response || "Once upon a time in a collaborative digital realm...",
@@ -414,16 +418,16 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
           mood: 'creative',
           timestamp: new Date().toISOString(),
           contributors: ['AI'],
-          metadata: { 
+          metadata: {
             nextPrompt: 'Continue the story...',
             response
           }
         };
-        
+
         ideaAnimations.current.set(storyIdea.id, new Animated.Value(0));
         setGeneratedContent(prev => [storyIdea, ...prev]);
       }
-      
+
       // Animate the new story idea
       setTimeout(() => {
         const newIdeaId = `story_${Date.now()}`;
@@ -437,9 +441,9 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
           }).start();
         }
       }, 100);
-      
+
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      
+
     } catch (error) {
       console.error('Error starting story:', error);
       Alert.alert('Error', 'Failed to start collaborative story');
@@ -467,9 +471,9 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
 
   const renderIdeaCard = (idea: Idea, index: number) => {
     const anim = ideaAnimations.current.get(idea.id) || new Animated.Value(1);
-    
+
     return (
-      <Animated.View 
+      <Animated.View
         key={idea.id}
         style={[
           styles.ideaCard,
@@ -493,9 +497,9 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
             {new Date(idea.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </Text>
         </View>
-        
+
         <Text style={styles.ideaText}>{idea.content}</Text>
-        
+
         {idea.contributors && idea.contributors.length > 0 && (
           <View style={styles.contributors}>
             <Ionicons name="people" size={14} color="#666" />
@@ -504,9 +508,9 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
             </Text>
           </View>
         )}
-        
+
         <View style={styles.ideaActions}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -516,24 +520,26 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
             <Ionicons name="heart-outline" size={18} color="#FF6B6B" />
             <Text style={styles.actionButtonText}>Save</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => {
               // Share idea
               Alert.alert('Share Idea', 'Share this idea with others?', [
                 { text: 'Cancel', style: 'cancel' },
-                { text: 'Share', onPress: () => {
-                  // Implement sharing
-                }}
+                {
+                  text: 'Share', onPress: () => {
+                    // Implement sharing
+                  }
+                }
               ]);
             }}
           >
             <Ionicons name="arrow-redo-outline" size={18} color="#45B7D1" />
             <Text style={styles.actionButtonText}>Share</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => {
               Alert.alert(
@@ -541,16 +547,18 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
                 'Create a collaboration space from this idea?',
                 [
                   { text: 'Cancel', style: 'cancel' },
-                  { text: 'Create', onPress: () => {
-                    router.push({
-                      pathname: '/(spaces)/create',
-                      params: { 
-                        idea: idea.content.substring(0, 100),
-                        ideaType: idea.type 
-                      }
-                    });
-                    onClose();
-                  }}
+                  {
+                    text: 'Create', onPress: () => {
+                      router.push({
+                        pathname: '/(spaces)/create',
+                        params: {
+                          idea: idea.content.substring(0, 100),
+                          ideaType: idea.type
+                        }
+                      });
+                      onClose();
+                    }
+                  }
                 ]
               );
             }}
@@ -559,7 +567,7 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
             <Text style={styles.actionButtonText}>Use</Text>
           </TouchableOpacity>
         </View>
-        
+
         {idea.metadata?.source === 'voice' && (
           <View style={styles.voiceMetadata}>
             <Ionicons name="mic" size={12} color="#666" />
@@ -585,13 +593,13 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
           <Ionicons name="chevron-back" size={28} color="#fff" />
           <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
-        
+
         <View style={styles.headerCenter}>
           <Ionicons name="sparkles" size={24} color="#FFD700" />
           <Text style={styles.headerTitle}>Creative Generator</Text>
         </View>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.helpButton}
           onPress={() => Alert.alert(
             'Creative Generator Help',
@@ -603,9 +611,9 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
       </View>
 
       {/* Mode Selector */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false} 
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
         style={styles.modeSelector}
         contentContainerStyle={styles.modeSelectorContent}
       >
@@ -639,7 +647,7 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
 
       {/* Voice Recording Indicator */}
       {isRecording && (
-        <Animated.View 
+        <Animated.View
           style={[
             styles.recordingIndicator,
             { transform: [{ scale: pulseAnim }] }
@@ -651,7 +659,7 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
               Recording... {recordingTime}s
             </Text>
           </View>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={stopVoiceIdeation}
             style={styles.stopButton}
           >
@@ -662,7 +670,7 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
       )}
 
       {/* Generated Content */}
-      <ScrollView 
+      <ScrollView
         ref={scrollViewRef}
         style={styles.contentArea}
         contentContainerStyle={[
@@ -701,7 +709,7 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
 
       {/* Controls */}
       <View style={styles.controls}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[
             styles.controlButton,
             isRecording && { backgroundColor: '#FF6B6B20' }
@@ -710,10 +718,10 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
           disabled={isGenerating}
         >
           <Animated.View style={isRecording && { transform: [{ scale: pulseAnim }] }}>
-            <Ionicons 
-              name={isRecording ? "stop" : "mic"} 
-              size={24} 
-              color={isRecording ? "#FF6B6B" : "#fff"} 
+            <Ionicons
+              name={isRecording ? "stop" : "mic"}
+              size={24}
+              color={isRecording ? "#FF6B6B" : "#fff"}
             />
           </Animated.View>
           <Text style={[
@@ -723,8 +731,8 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
             {isRecording ? 'Stop' : 'Voice'}
           </Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.controlButton}
           onPress={generateAlternateRealities}
           disabled={isGenerating || isRecording}
@@ -732,8 +740,8 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
           <Ionicons name="git-branch" size={24} color="#fff" />
           <Text style={styles.controlText}>Perspectives</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.controlButton}
           onPress={startCollaborativeStory}
           disabled={isGenerating || isRecording}
@@ -741,8 +749,8 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
           <Ionicons name="book" size={24} color="#fff" />
           <Text style={styles.controlText}>Story</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.controlButton}
           onPress={() => {
             if (generatedContent.length > 0) {
@@ -751,8 +759,8 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
                 'Are you sure you want to clear all generated ideas?',
                 [
                   { text: 'Cancel', style: 'cancel' },
-                  { 
-                    text: 'Clear', 
+                  {
+                    text: 'Clear',
                     style: 'destructive',
                     onPress: () => {
                       setGeneratedContent([]);

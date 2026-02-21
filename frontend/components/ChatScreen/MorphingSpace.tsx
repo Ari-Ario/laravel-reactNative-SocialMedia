@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Text,
   StyleSheet,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -35,11 +36,11 @@ export const MorphingSpace: React.FC<MorphingSpaceProps> = ({
   }, [currentType]);
 
   const checkForMorphSuggestions = async () => {
-    const analysis = await collaborationService.queryAI(spaceId, 
+    const analysis = await collaborationService.queryAI(spaceId,
       "Analyze current activity and suggest space type morphs", {
-        current_type: currentType,
-        action: 'morph_suggestion'
-      }
+      current_type: currentType,
+      action: 'morph_suggestion'
+    }
     );
 
     if (analysis.suggested_morphs) {
@@ -49,10 +50,10 @@ export const MorphingSpace: React.FC<MorphingSpaceProps> = ({
 
   const initiateMorph = async (newType: string) => {
     setIsMorphing(true);
-    
+
     // Haptic sequence: build anticipation
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    
+
     // Transform animation
     Animated.sequence([
       Animated.timing(morphAnim, {
@@ -68,10 +69,12 @@ export const MorphingSpace: React.FC<MorphingSpaceProps> = ({
     ]).start(async () => {
       // Update backend
       await collaborationService.updateSpace(spaceId, { space_type: newType });
-      
+
       // Haptic confirmation
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      
+      if (Platform.OS !== 'web') {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+
       onMorphComplete(newType);
       setIsMorphing(false);
     });

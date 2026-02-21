@@ -35,6 +35,11 @@ import { useCollaborationStore } from '@/stores/collaborationStore';
 import Avatar from '@/components/Image/Avatar';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import EnhancedInviteModal from '@/components/ChatScreen/EnhancedInviteModal';
+import PollViewer from '@/components/ChatScreen/PollViewer';
+import PollComponent from '@/components/ChatScreen/PollComponent';
+
+// Import the InviteRecipient type
+import { InviteRecipient } from '@/components/ChatScreen/EnhancedInviteModal';
 
 const SpaceDetailScreen = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -42,13 +47,13 @@ const SpaceDetailScreen = () => {
   const [space, setSpace] = useState<any>(null);
   const [participants, setParticipants] = useState<any[]>([]);
   const [magicEvents, setMagicEvents] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'chat' | 'whiteboard' | 'meeting' | 'document' | 'brainstorm' | 'calendar' | 'files' | 'ai'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'whiteboard' | 'meeting' | 'document' | 'brainstorm' | 'calendar' | 'files' | 'ai' | 'polls'>('chat');
   const [content, setContent] = useState<string>('');
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showCalendarPrompt, setShowCalendarPrompt] = useState(false);
   const [showCreateActivity, setShowCreateActivity] = useState(false);
-  const params = useLocalSearchParams(); // ✅ top level
+  const params = useLocalSearchParams();
   const [showMediaUploader, setShowMediaUploader] = useState(false);
 
   // Dropdown menu states
@@ -58,8 +63,8 @@ const SpaceDetailScreen = () => {
   const [spaceMenuPosition, setSpaceMenuPosition] = useState({ top: 0, right: 0 });
 
   // Refs for button measurements
-  const callButtonRef = useRef<TouchableOpacity>(null);
-  const spaceButtonRef = useRef<TouchableOpacity>(null);
+  const callButtonRef = useRef<any>(null);
+  const spaceButtonRef = useRef<any>(null);
 
   const collaborationService = CollaborationService.getInstance();
   const windowHeight = Dimensions.get('window').height;
@@ -76,6 +81,11 @@ const SpaceDetailScreen = () => {
   const [selectedParticipant, setSelectedParticipant] = useState<any>(null);
   const [showRoleModal, setShowRoleModal] = useState(false);
 
+  // poll states
+  const [showPollCreator, setShowPollCreator] = useState(false);
+  const [polls, setPolls] = useState<any[]>([]);
+  const [hasInitialTabSet, setHasInitialTabSet] = useState(false); // ✅ Add this flag
+
   useEffect(() => {
     if (id && user) {
       loadSpaceDetails();
@@ -87,6 +97,12 @@ const SpaceDetailScreen = () => {
     };
   }, [id, user]);
 
+  // Separate effect for loading polls when tab changes
+  useEffect(() => {
+    if (activeTab === 'polls' && space) {
+      loadPolls();
+    }
+  }, [activeTab, space?.id]);
 
   useEffect(() => {
     if (space?.id) {
@@ -99,15 +115,12 @@ const SpaceDetailScreen = () => {
               setShowCalendarPrompt(true);
             }, 1500);
 
-            return () => clearTimeout(timer); // cleanup
+            return () => clearTimeout(timer);
           }
         }
       }
     }
   }, [space?.id, space?.space_type, participants.length, params.justCreated]);
-
-  // Check if this is a newly created space
-  // const params = useLocalSearchParams(); // ✅ top level
 
   const loadSpaceDetails = async () => {
     console.log('Loading space details for ID:', id);
@@ -125,11 +138,11 @@ const SpaceDetailScreen = () => {
       setParticipants(spaceData.participants || []);
       setMagicEvents(spaceData.magic_events || []);
 
-      // Set default tab based on space type
-      if (spaceData.space_type && ['chat', 'whiteboard', 'meeting', 'document', 'brainstorm'].includes(spaceData.space_type)) {
+      // ✅ FIX: Set default tab based on space type ONLY ONCE
+      if (!hasInitialTabSet && spaceData.space_type && ['chat', 'whiteboard', 'meeting', 'document', 'brainstorm'].includes(spaceData.space_type)) {
         setActiveTab(spaceData.space_type as any);
+        setHasInitialTabSet(true); // Mark that initial tab has been set
       }
-
 
       if (params.justCreated === 'true') {
         const groupSpaces = ['meeting', 'brainstorm', 'workshop', 'document', 'whiteboard'];
@@ -144,6 +157,28 @@ const SpaceDetailScreen = () => {
       Alert.alert('Error', 'Failed to load space details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Add poll loading function
+  const loadPolls = async () => {
+    try {
+      const spacePolls = await collaborationService.getPolls(id);
+      setPolls(prev => {
+        // Create a map of existing polls
+        const pollMap = new Map(prev.map(p => [p.id, p]));
+
+        // Update with new data
+        spacePolls.forEach(poll => {
+          pollMap.set(poll.id, poll);
+        });
+
+        // Convert back to array and sort by date
+        return Array.from(pollMap.values())
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      });
+    } catch (error) {
+      console.error('Error loading polls:', error);
     }
   };
 
@@ -166,7 +201,6 @@ const SpaceDetailScreen = () => {
             }
           });
 
-          // ✅ FIX: Use template literals for robust ID comparison
           if (`${participant.user_id}` !== `${user?.id}`) {
             useNotificationStore.getState().addNotification({
               type: 'participant_joined',
@@ -187,6 +221,42 @@ const SpaceDetailScreen = () => {
             updated_at: new Date().toISOString()
           }));
         },
+
+        // poll events
+        onPollCreated: (poll) => {
+          console.log('📊 New poll received:', poll);
+          setPolls(prev => {
+            if (prev.some(p => p.id === poll.id)) {
+              return prev;
+            }
+            return [poll, ...prev];
+          });
+
+          useNotificationStore.getState().addNotification({
+            type: 'poll_created',
+            title: '📊 New Poll',
+            message: `${poll.creator?.name || 'Someone'} created a poll: ${poll.question.substring(0, 50)}${poll.question.length > 50 ? '...' : ''}`,
+            data: poll,
+            spaceId: id,
+            userId: poll.created_by,
+            createdAt: new Date()
+          });
+
+          if (Platform.OS !== 'web') {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          }
+        },
+
+        onPollUpdated: (poll) => {
+          console.log('📊 Poll updated:', poll.id);
+          setPolls(prev => {
+            const updated = prev.map(p =>
+              p.id === poll.id ? poll : p
+            );
+            return activeTab === 'polls' ? [...updated] : updated;
+          });
+        },
+
         onMagicEvent: (event) => {
           console.log('Magic event received:', event.event_type);
           setMagicEvents(prev => [event, ...prev]);
@@ -194,7 +264,6 @@ const SpaceDetailScreen = () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           }
 
-          // ✅ ADD THIS: Send to notification store
           useNotificationStore.getState().addNotification({
             type: 'magic_event',
             title: '✨ Magic Event!',
@@ -205,7 +274,6 @@ const SpaceDetailScreen = () => {
             createdAt: new Date()
           });
         },
-        // ✅ ADD THESE MISSING CALLBACKS:
         onCallStarted: (data) => {
           console.log('Call started:', data);
           useNotificationStore.getState().addNotification({
@@ -227,7 +295,7 @@ const SpaceDetailScreen = () => {
             message: `The call has ended`,
             data: data,
             spaceId: id,
-            userId: data.user?.id || data.user_id, // ✅ Pass at top level
+            userId: data.user?.id || data.user_id,
             createdAt: new Date()
           });
         },
@@ -299,7 +367,6 @@ const SpaceDetailScreen = () => {
   };
 
   const handleUpdateSpacePhoto = async () => {
-    // This would integrate with your media uploader
     setShowMediaUploader(true);
   };
 
@@ -307,7 +374,6 @@ const SpaceDetailScreen = () => {
     try {
       await collaborationService.updateParticipantRole(id as string, participantId, newRole);
 
-      // Update local state
       setParticipants(prev => prev.map(p =>
         p.user_id === participantId ? { ...p, role: newRole } : p
       ));
@@ -409,7 +475,6 @@ const SpaceDetailScreen = () => {
         type: 'text',
       });
 
-      // Update local state optimistically
       setSpace(prev => ({
         ...prev,
         content_state: {
@@ -418,7 +483,6 @@ const SpaceDetailScreen = () => {
         }
       }));
 
-      // ✅ FIX: Use the store function
       if (message.user_id !== user?.id) {
         useCollaborationStore.getState().incrementUnreadCount(id);
       }
@@ -438,14 +502,12 @@ const SpaceDetailScreen = () => {
     try {
       const call = await collaborationService.startCall(id as string, type);
 
-      // Update space state to show call is active
       setSpace(prev => ({
         ...prev,
         is_live: true,
         current_focus: 'call',
       }));
 
-      // Switch to meeting tab
       setActiveTab('meeting');
       setShowCallMenu(false);
 
@@ -457,41 +519,32 @@ const SpaceDetailScreen = () => {
   };
 
   const handleInviteUsers = async (recipients: InviteRecipient[]) => {
-    // Extract user IDs from valid recipients
     const userIds = recipients
       .filter(r => r.type !== 'space' && r.userData?.id)
       .map(r => r.userData.id);
 
-    // Extract space IDs from space invites
     const spaceIds = recipients
       .filter(r => r.type === 'space' && r.userData?.id)
       .map(r => r.userData.id);
 
     try {
-      // Invite users to the space
       if (userIds.length > 0) {
         await collaborationService.inviteToSpace(id as string, userIds, 'participant');
       }
 
-      // For space invites, you might want to create a connection between spaces
-      // This would require a new backend endpoint
       if (spaceIds.length > 0) {
-        // You could call a new endpoint here to link spaces
         console.log('Would link spaces:', spaceIds);
       }
 
-      // Show success message
       Alert.alert(
         'Success',
-        `Invited ${userIds.length} user(s) to the space${spaceIds.length > 0 ? ` and linked ${spaceIds.length} space(s)` : ''
-        }`,
+        `Invited ${userIds.length} user(s) to the space${spaceIds.length > 0 ? ` and linked ${spaceIds.length} space(s)` : ''}`,
         [{ text: 'OK' }]
       );
-
     } catch (error) {
       console.error('Error inviting users:', error);
       Alert.alert('Error', 'Failed to send some invites. Please try again.');
-      throw error; // Re-throw to show in the modal
+      throw error;
     }
   };
 
@@ -507,10 +560,9 @@ const SpaceDetailScreen = () => {
     }
   };
 
-  // Function to measure button position and show menu
   const measureCallButton = () => {
     if (callButtonRef.current) {
-      callButtonRef.current.measure((x, y, width, height, pageX, pageY) => {
+      callButtonRef.current.measure((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
         setCallMenuPosition({
           top: pageY + height + 5,
           right: windowWidth - (pageX + width),
@@ -522,7 +574,7 @@ const SpaceDetailScreen = () => {
 
   const measureSpaceButton = () => {
     if (spaceButtonRef.current) {
-      spaceButtonRef.current.measure((x, y, width, height, pageX, pageY) => {
+      spaceButtonRef.current.measure((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
         setSpaceMenuPosition({
           top: pageY + height + 5,
           right: windowWidth - (pageX + width),
@@ -564,7 +616,6 @@ const SpaceDetailScreen = () => {
               currentUserId={user?.id || 0}
             />
 
-            {/* Message Input Bar */}
             <View style={styles.chatInputContainer}>
               <TouchableOpacity
                 onPress={() => setShowMediaUploader(true)}
@@ -608,13 +659,45 @@ const SpaceDetailScreen = () => {
           </View>
         );
 
+      case 'polls':
+        return (
+          <ScrollView style={styles.pollsContainer}>
+            <TouchableOpacity
+              style={styles.createPollButton}
+              onPress={() => setShowPollCreator(true)}
+            >
+              <Ionicons name="add-circle" size={24} color="#007AFF" />
+              <Text style={styles.createPollText}>Create New Poll</Text>
+            </TouchableOpacity>
+
+            {polls.length === 0 ? (
+              <View style={styles.emptyPolls}>
+                <Ionicons name="bar-chart" size={64} color="#ccc" />
+                <Text style={styles.emptyPollsTitle}>No polls yet</Text>
+                <Text style={styles.emptyPollsSubtext}>
+                  Create your first poll to gather opinions
+                </Text>
+              </View>
+            ) : (
+              polls.map(poll => (
+                <PollViewer
+                  key={poll.id}
+                  poll={poll}
+                  spaceId={id}
+                  currentUserId={user?.id || 0}
+                  currentUserRole={space?.my_role}
+                  onRefresh={loadPolls}
+                />
+              ))
+            )}
+          </ScrollView>
+        );
+
       case 'meeting':
-        // If there's an active call, show immersive view
         if (space?.is_live && space?.current_focus === 'call') {
           return <ImmersiveCallView spaceId={id} />;
         }
 
-        // Otherwise show the call start screen
         return (
           <View style={styles.meetingContainer}>
             <Ionicons name="videocam" size={64} color="#007AFF" />
@@ -732,7 +815,6 @@ const SpaceDetailScreen = () => {
         </TouchableOpacity>
 
         <View style={styles.headerActions}>
-          {/* Invite Button */}
           <TouchableOpacity
             style={styles.headerButton}
             onPress={() => setShowInviteModal(true)}
@@ -740,7 +822,6 @@ const SpaceDetailScreen = () => {
             <Ionicons name="person-add" size={22} color="#007AFF" />
           </TouchableOpacity>
 
-          {/* Call Button with Dropdown */}
           <TouchableOpacity
             ref={callButtonRef}
             style={styles.headerButton}
@@ -749,7 +830,6 @@ const SpaceDetailScreen = () => {
             <Ionicons name="videocam" size={22} color="#007AFF" />
           </TouchableOpacity>
 
-          {/* Space Options Button with Dropdown */}
           <TouchableOpacity
             ref={spaceButtonRef}
             style={styles.headerButton}
@@ -800,19 +880,6 @@ const SpaceDetailScreen = () => {
               <Ionicons name="call" size={20} color="#4CAF50" />
               <Text style={styles.menuItemText}>Audio Call</Text>
             </TouchableOpacity>
-
-            <View style={styles.menuDivider} />
-
-            {/* <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setShowCallMenu(false);
-                setShowParticipantsModal(true);
-              }}
-            >
-              <Ionicons name="people" size={20} color="#FFA726" />
-              <Text style={styles.menuItemText}>All Participants</Text>
-            </TouchableOpacity> */}
           </Animated.View>
         </>
       )}
@@ -911,6 +978,7 @@ const SpaceDetailScreen = () => {
         contentContainerStyle={styles.tabContent}
       >
         {[
+          { id: 'polls', icon: 'bar-chart', label: 'Polls' },
           { id: 'chat', icon: 'chatbubble-outline', label: 'Chat' },
           { id: 'whiteboard', icon: 'easel-outline', label: 'Whiteboard' },
           { id: 'meeting', icon: 'videocam-outline', label: 'Meeting' },
@@ -944,6 +1012,18 @@ const SpaceDetailScreen = () => {
           </TouchableOpacity>
         ))}
       </ScrollView>
+
+      <PollComponent
+        spaceId={id}
+        currentUserId={user?.id || 0}
+        currentUserRole={space?.my_role}
+        isVisible={showPollCreator}
+        onClose={() => setShowPollCreator(false)}
+        onPollCreated={() => {
+          loadPolls();
+          setShowPollCreator(false);
+        }}
+      />
 
       {/* Main Content Area */}
       <View style={styles.contentArea}>
@@ -982,10 +1062,6 @@ const SpaceDetailScreen = () => {
         />
       )}
 
-      {/* Action Bar */}
-
-
-      {/* Invite Modal */}
       {/* Enhanced Invite Modal */}
       <EnhancedInviteModal
         visible={showInviteModal}
@@ -994,7 +1070,6 @@ const SpaceDetailScreen = () => {
         onClose={() => setShowInviteModal(false)}
         onInvite={handleInviteUsers}
       />
-
 
       {/* Space Settings Modal */}
       <Modal
@@ -1013,7 +1088,6 @@ const SpaceDetailScreen = () => {
             </View>
 
             <ScrollView style={styles.settingsScrollView}>
-              {/* Space Photo */}
               <View style={styles.settingsSection}>
                 <Text style={styles.settingsSectionTitle}>Space Photo</Text>
                 <TouchableOpacity
@@ -1031,7 +1105,6 @@ const SpaceDetailScreen = () => {
                 </TouchableOpacity>
               </View>
 
-              {/* Space Name */}
               <View style={styles.settingsSection}>
                 <Text style={styles.settingsSectionTitle}>Space Name</Text>
                 <View style={styles.settingsRow}>
@@ -1045,7 +1118,6 @@ const SpaceDetailScreen = () => {
                 </View>
               </View>
 
-              {/* Space Description */}
               <View style={styles.settingsSection}>
                 <Text style={styles.settingsSectionTitle}>Description</Text>
                 <TextInput
@@ -1059,7 +1131,6 @@ const SpaceDetailScreen = () => {
                 />
               </View>
 
-              {/* Space Type (Read-only) */}
               <View style={styles.settingsSection}>
                 <Text style={styles.settingsSectionTitle}>Space Type</Text>
                 <View style={styles.infoRow}>
@@ -1070,7 +1141,6 @@ const SpaceDetailScreen = () => {
                 </View>
               </View>
 
-              {/* Created Info */}
               <View style={styles.settingsSection}>
                 <Text style={styles.settingsSectionTitle}>Created</Text>
                 <Text style={styles.infoText}>
@@ -1081,7 +1151,6 @@ const SpaceDetailScreen = () => {
                 </Text>
               </View>
 
-              {/* Stats */}
               <View style={styles.settingsSection}>
                 <Text style={styles.settingsSectionTitle}>Stats</Text>
                 <View style={styles.statsRow}>
@@ -1291,13 +1360,13 @@ const SpaceDetailScreen = () => {
         onClose={() => setShowCreateActivity(false)}
         onActivityCreated={loadSpaceDetails}
       />
+
       <MediaUploader
         spaceId={id as string}
         isVisible={showMediaUploader}
         onClose={() => setShowMediaUploader(false)}
         onUploadComplete={(media) => {
           console.log('Media uploaded:', media);
-          // You could automatically send a message with the media
           if (activeTab === 'chat') {
             setContent(`Check out this file: ${media.url || media.file_name}`);
           }
@@ -1306,6 +1375,7 @@ const SpaceDetailScreen = () => {
     </SafeAreaView>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
@@ -1946,6 +2016,46 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#f0f0f0',
     marginVertical: 4,
+  },
+  pollsContainer: {
+    flex: 1,
+    padding: 16,
+  },
+  createPollButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#007AFF10',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+    borderStyle: 'dashed',
+    marginBottom: 16,
+  },
+  createPollText: {
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  emptyPolls: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyPollsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 16,
+  },
+  emptyPollsSubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 32,
   },
 });
 

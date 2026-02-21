@@ -451,11 +451,95 @@ class CollaborationService {
         headers: this.getHeaders(),
       });
 
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      try {
+        if (Platform.OS !== 'web') {
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+      } catch (hapticsError) {
+        console.warn('Haptics feedback failed:', hapticsError);
+      }
 
       return response.data;
     } catch (error) {
       console.error('Error accepting space invitation:', error);
+      throw error;
+    }
+  }
+
+  // Poll management
+  async createPoll(spaceId: string, pollData: any): Promise<any> {
+    try {
+      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/polls`, pollData, {
+        headers: this.getHeaders(),
+      });
+      await this.triggerHapticSuccess();
+      return response.data.poll;
+    } catch (error) {
+      console.error('Error creating poll:', error);
+      throw error;
+    }
+  }
+
+  async getPolls(spaceId: string): Promise<any[]> {
+    try {
+      const response = await axios.get(`${this.baseURL}/spaces/${spaceId}/polls`, {
+        headers: this.getHeaders(),
+      });
+      return response.data.polls;
+    } catch (error) {
+      console.error('Error fetching polls:', error);
+      throw error;
+    }
+  }
+
+  async voteOnPoll(spaceId: string, pollId: string, optionIds: string[]): Promise<void> {
+    try {
+      await axios.post(`${this.baseURL}/spaces/${spaceId}/polls/${pollId}/vote`, {
+        option_ids: optionIds,
+      }, {
+        headers: this.getHeaders(),
+      });
+      await this.triggerHapticLight();
+    } catch (error) {
+      console.error('Error voting on poll:', error);
+      throw error;
+    }
+  }
+
+  async closePoll(spaceId: string, pollId: string): Promise<void> {
+    try {
+      await axios.post(`${this.baseURL}/spaces/${spaceId}/polls/${pollId}/close`, {}, {
+        headers: this.getHeaders(),
+      });
+      await this.triggerHapticWarning();
+    } catch (error) {
+      console.error('Error closing poll:', error);
+      throw error;
+    }
+  }
+
+  async forwardPoll(pollId: string, targetSpaceIds: string[]): Promise<void> {
+    try {
+      await axios.post(`${this.baseURL}/polls/${pollId}/forward`, {
+        target_space_ids: targetSpaceIds,
+      }, {
+        headers: this.getHeaders(),
+      });
+      await this.triggerHapticSuccess();
+    } catch (error) {
+      console.error('Error forwarding poll:', error);
+      throw error;
+    }
+  }
+
+  async getPollResults(spaceId: string, pollId: string): Promise<any> {
+    try {
+      const response = await axios.get(`${this.baseURL}/spaces/${spaceId}/polls/${pollId}/results`, {
+        headers: this.getHeaders(),
+      });
+      return response.data.results;
+    } catch (error) {
+      console.error('Error fetching poll results:', error);
       throw error;
     }
   }
@@ -481,6 +565,8 @@ class CollaborationService {
     onScreenShareEnded?: (data: any) => void;
     onMuteStateChanged?: (data: any) => void;
     onVideoStateChanged?: (data: any) => void;
+    onPollCreated?: (poll: any) => void;
+    onPollUpdated?: (poll: any) => void;
   }) {
     try {
       // ✅ FIX: Only check if Pusher is ready - DON'T initialize
@@ -810,8 +896,9 @@ class CollaborationService {
       await axios.post(`${this.baseURL}/magic-events/${eventId}/discover`, {}, {
         headers: this.getHeaders(),
       });
-
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (Platform.OS !== 'web') {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
     } catch (error) {
       console.error('Error discovering magic event:', error);
       throw error;
@@ -829,8 +916,9 @@ class CollaborationService {
       const response = await axios.post(`${this.baseURL}/posts/${postId}/make-collaborative`, options, {
         headers: this.getHeaders(),
       });
-
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (Platform.OS !== 'web') {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
 
       return response.data.space;
     } catch (error) {
@@ -857,8 +945,9 @@ class CollaborationService {
           'Content-Type': 'multipart/form-data',
         },
       });
-
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (Platform.OS !== 'web') {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
 
       return response.data.annotation;
     } catch (error) {
@@ -876,8 +965,9 @@ class CollaborationService {
       }, {
         headers: this.getHeaders(),
       });
-
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (Platform.OS !== 'web') {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
 
       return response.data.branch;
     } catch (error) {
@@ -895,8 +985,9 @@ class CollaborationService {
       const response = await axios.post(`${this.baseURL}/stories/${storyId}/make-collaborative`, options, {
         headers: this.getHeaders(),
       });
-
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (Platform.OS !== 'web') {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
 
       return response.data.space;
     } catch (error) {
@@ -914,8 +1005,9 @@ class CollaborationService {
       }, {
         headers: this.getHeaders(),
       });
-
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (Platform.OS !== 'web') {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
 
       return response.data.new_story;
     } catch (error) {

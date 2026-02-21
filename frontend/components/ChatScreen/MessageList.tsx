@@ -38,12 +38,14 @@ interface MessageListProps {
   spaceId?: string;
   conversationId?: number;
   currentUserId: number;
+  onMessageLongPress?: (message: any, x: number, y: number) => void;
 }
 
 const MessageList: React.FC<MessageListProps> = ({
   spaceId,
   conversationId,
   currentUserId,
+  onMessageLongPress,
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
@@ -261,7 +263,8 @@ const MessageList: React.FC<MessageListProps> = ({
         showAvatar={showAvatar}
         isSelected={selectedMessage === item.id}
         onPress={() => handleMessagePress(item)}
-        onLongPress={() => handleMessageLongPress(item)}
+        onLongPress={() => { }}
+        onLongPressWithPosition={onMessageLongPress}
       />
     );
   };

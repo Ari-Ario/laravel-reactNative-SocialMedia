@@ -7,6 +7,7 @@ import {
   Alert,
   Modal,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -29,7 +30,7 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({
 }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  
+
   const collaborationService = CollaborationService.getInstance();
 
   const pickImage = async () => {
@@ -98,7 +99,7 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({
     try {
       setUploading(true);
       setUploadProgress(0);
-      
+
       // Create FormData
       const formData = new FormData();
       formData.append('file', {
@@ -107,7 +108,7 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({
         name: fileName || `upload-${Date.now()}.jpg`,
       } as any);
       formData.append('type', type);
-      
+
       // Upload to backend
       const response = await fetch(`${collaborationService.baseURL}/spaces/${spaceId}/upload-media`, {
         method: 'POST',
@@ -117,22 +118,23 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({
         },
         body: formData,
       });
-      
+
       if (!response.ok) {
         throw new Error('Upload failed');
       }
-      
+
       const data = await response.json();
-      
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (Platform.OS !== 'web') {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
       Alert.alert('Success', 'File uploaded successfully');
-      
+
       if (onUploadComplete) {
         onUploadComplete(data.media);
       }
-      
+
       onClose();
-      
+
     } catch (error) {
       console.error('Upload error:', error);
       Alert.alert('Error', 'Failed to upload file');
@@ -202,18 +204,18 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({
               <Ionicons name="close" size={24} color="#666" />
             </TouchableOpacity>
           </View>
-          
+
           <ScrollView contentContainerStyle={styles.optionsContainer}>
             {uploading ? (
               <View style={styles.uploadingContainer}>
                 <Ionicons name="cloud-upload" size={48} color="#007AFF" />
                 <Text style={styles.uploadingText}>Uploading... {Math.round(uploadProgress)}%</Text>
                 <View style={styles.progressBar}>
-                  <View 
+                  <View
                     style={[
                       styles.progressFill,
                       { width: `${uploadProgress}%` }
-                    ]} 
+                    ]}
                   />
                 </View>
               </View>

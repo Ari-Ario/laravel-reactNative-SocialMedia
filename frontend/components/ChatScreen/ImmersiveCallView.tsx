@@ -64,7 +64,7 @@ const ImmersiveCallView: React.FC<{ spaceId: string }> = ({ spaceId }) => {
   const webRTCService = WebRTCService.getInstance();
   const { currentSpace } = useSpaceStore();
   const { user } = useContext(AuthContext);
-  
+
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [isMuted, setIsMuted] = useState(false);
@@ -88,7 +88,7 @@ const ImmersiveCallView: React.FC<{ spaceId: string }> = ({ spaceId }) => {
 
   // Animation for spinning icon
   const spinValue = useSharedValue(0);
-  
+
   const spinAnimation = useAnimatedStyle(() => {
     return {
       transform: [{ rotate: `${spinValue.value}deg` }],
@@ -152,36 +152,36 @@ const ImmersiveCallView: React.FC<{ spaceId: string }> = ({ spaceId }) => {
   }, [spaceId]);
 
 
-// Add this helper function:
-const safeHaptics = {
-  success: async () => {
-    if (Platform.OS !== 'web') {
-      try {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } catch (error) {
-        console.warn('Haptics success not available');
+  // Add this helper function:
+  const safeHaptics = {
+    success: async () => {
+      if (Platform.OS !== 'web') {
+        try {
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } catch (error) {
+          console.warn('Haptics success not available');
+        }
       }
-    }
-  },
-  warning: async () => {
-    if (Platform.OS !== 'web') {
-      try {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      } catch (error) {
-        console.warn('Haptics warning not available');
+    },
+    warning: async () => {
+      if (Platform.OS !== 'web') {
+        try {
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        } catch (error) {
+          console.warn('Haptics warning not available');
+        }
       }
-    }
-  },
-  impact: async (style = Haptics.ImpactFeedbackStyle.Light) => {
-    if (Platform.OS !== 'web') {
-      try {
-        await Haptics.impactAsync(style);
-      } catch (error) {
-        console.warn('Haptics impact not available');
+    },
+    impact: async (style = Haptics.ImpactFeedbackStyle.Light) => {
+      if (Platform.OS !== 'web') {
+        try {
+          await Haptics.impactAsync(style);
+        } catch (error) {
+          console.warn('Haptics impact not available');
+        }
       }
-    }
-  },
-};
+    },
+  };
 
   const initializeCall = async () => {
     try {
@@ -202,16 +202,16 @@ const safeHaptics = {
 
       // Initialize WebRTC service
       await webRTCService.initialize(user?.id || 0);
-      
+
       console.log('Starting call for space:', spaceId);
-      
+
       // Start call or join existing
       const response = await collaborationService.startCall(spaceId, 'video') as CallResponse;
-      
+
       // Handle response structure
       let callData;
       let spaceData;
-      
+
       if (response.call) {
         callData = response.call;
         spaceData = response.space;
@@ -219,18 +219,18 @@ const safeHaptics = {
         callData = response;
         spaceData = response.space || currentSpace;
       }
-      
+
       if (!callData || !callData.id) {
         console.error('Invalid call response:', response);
         throw new Error('Failed to get call information');
       }
-      
+
       setCallId(callData.id);
       setCallStatus('connecting');
-      
+
       // Check if this user is the initiator
       setIsInitiator(callData.initiator_id === user?.id);
-      
+
       // Set up participants from space data
       if (spaceData?.participants) {
         const participantList: Participant[] = spaceData.participants.map((p: any) => ({
@@ -257,15 +257,15 @@ const safeHaptics = {
         }));
         setParticipants(participantList);
       }
-      
+
       // Join the call
       await webRTCService.joinCall(spaceId, callData.id, isInitiator);
-      
+
       // Get local stream
       const stream = await webRTCService.getLocalStream(hasVideo, true);
       setLocalStream(stream);
       setCallStatus('connected');
-      
+
       // Set up local video if available (web only)
       if (Platform.OS === 'web') {
         const localVideo = videoRefs.current.get('local');
@@ -273,22 +273,22 @@ const safeHaptics = {
           localVideo.srcObject = stream;
         }
       }
-      
+
       // Start duration timer
       durationInterval.current = setInterval(() => {
         setCallDuration(prev => prev + 1);
       }, 1000);
-      
+
       // Set up WebRTC callbacks (web only)
       // if (Platform.OS === 'web') {
       webRTCService.onRemoteStream((userId: string, stream: MediaStream) => {
         console.log(`📞 Remote stream received from ${userId} on ${Platform.OS}`);
-        setParticipants(prev => prev.map(p => 
-          p.id === userId 
+        setParticipants(prev => prev.map(p =>
+          p.id === userId
             ? { ...p, stream, hasVideo: true }
             : p
         ));
-        
+
         // For web, attach to video element
         if (Platform.OS === 'web') {
           const video = videoRefs.current.get(userId);
@@ -308,25 +308,25 @@ const safeHaptics = {
       });
 
       webRTCService.onMuteStateChanged((userId: string, isMuted: boolean) => {
-        setParticipants(prev => prev.map(p => 
+        setParticipants(prev => prev.map(p =>
           p.id === userId ? { ...p, isMuted } : p
         ));
       });
 
       webRTCService.onVideoStateChanged((userId: string, hasVideo: boolean) => {
-        setParticipants(prev => prev.map(p => 
+        setParticipants(prev => prev.map(p =>
           p.id === userId ? { ...p, hasVideo } : p
         ));
       });
 
       webRTCService.onScreenShareStarted((userId: string) => {
-        setParticipants(prev => prev.map(p => 
+        setParticipants(prev => prev.map(p =>
           p.id === userId ? { ...p, isSharingScreen: true } : p
         ));
       });
 
       webRTCService.onScreenShareEnded((userId: string) => {
-        setParticipants(prev => prev.map(p => 
+        setParticipants(prev => prev.map(p =>
           p.id === userId ? { ...p, isSharingScreen: false } : p
         ));
       });
@@ -346,8 +346,8 @@ const safeHaptics = {
         }, 2000);
       }
       // }
-      
-      await safeHaptics.success();     
+
+      await safeHaptics.success();
     } catch (error) {
       console.error('Error initializing call:', error);
       Alert.alert('Error', 'Failed to start call. Please try again.');
@@ -355,55 +355,55 @@ const safeHaptics = {
   };
 
   // 📱 Renders video differently for web vs native
-const renderVideoElement = (participant: Participant, isLocal: boolean = false) => {
-  if (Platform.OS === 'web') {
-    // 🌐 WEB: Use HTML5 video element
-    return (
-      <video
-        ref={(el) => {
-          if (el) videoRefs.current.set(participant.id, el);
-        }}
-        autoPlay
-        playsInline
-        muted={isLocal}
-        style={isLocal ? styles.localVideo : styles.remoteVideo}
-      />
-    );
-  } else {
-    // 📱 REACT NATIVE: Use RTCView from react-native-webrtc
-    // This is a simplified version - you'll need to implement proper RTCView
-    return (
-      <View style={isLocal ? styles.localVideoPlaceholder : styles.remoteVideoPlaceholder}>
-        {participant.stream ? (
-          // If you have a real stream, use RTCView
-          // <RTCView streamURL={participant.stream.toURL()} style={styles.rtcView} />
-          <View style={styles.videoPlaceholder}>
-            <Ionicons name="videocam" size={40} color="#666" />
-            <Text style={styles.placeholderText}>
-              {participant.name} {isLocal ? '(You)' : ''}
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.avatarContainer}>
-            <Avatar
-              source={participant.avatar}
-              size={isLocal ? 60 : 120}
-              name={participant.name}
-            />
-            <Text style={styles.participantName}>
-              {participant.name} {isLocal ? '(You)' : ''}
-            </Text>
-          </View>
-        )}
-        {participant.isMuted && (
-          <View style={styles.mutedBadge}>
-            <Ionicons name="mic-off" size={16} color="#fff" />
-          </View>
-        )}
-      </View>
-    );
-  }
-};
+  const renderVideoElement = (participant: Participant, isLocal: boolean = false) => {
+    if (Platform.OS === 'web') {
+      // 🌐 WEB: Use HTML5 video element
+      return (
+        <video
+          ref={(el) => {
+            if (el) videoRefs.current.set(participant.id, el);
+          }}
+          autoPlay
+          playsInline
+          muted={isLocal}
+          style={isLocal ? styles.localVideo : styles.remoteVideo}
+        />
+      );
+    } else {
+      // 📱 REACT NATIVE: Use RTCView from react-native-webrtc
+      // This is a simplified version - you'll need to implement proper RTCView
+      return (
+        <View style={isLocal ? styles.localVideoPlaceholder : styles.remoteVideoPlaceholder}>
+          {participant.stream ? (
+            // If you have a real stream, use RTCView
+            // <RTCView streamURL={participant.stream.toURL()} style={styles.rtcView} />
+            <View style={styles.videoPlaceholder}>
+              <Ionicons name="videocam" size={40} color="#666" />
+              <Text style={styles.placeholderText}>
+                {participant.name} {isLocal ? '(You)' : ''}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.avatarContainer}>
+              <Avatar
+                source={participant.avatar}
+                size={isLocal ? 60 : 120}
+                name={participant.name}
+              />
+              <Text style={styles.participantName}>
+                {participant.name} {isLocal ? '(You)' : ''}
+              </Text>
+            </View>
+          )}
+          {participant.isMuted && (
+            <View style={styles.mutedBadge}>
+              <Ionicons name="mic-off" size={16} color="#fff" />
+            </View>
+          )}
+        </View>
+      );
+    }
+  };
 
   const flipCamera = async () => {
     if (Platform.OS !== 'web') {
@@ -421,7 +421,7 @@ const renderVideoElement = (participant: Participant, isLocal: boolean = false) 
       const newMuteState = !isMuted;
       setIsMuted(newMuteState);
       await webRTCService.toggleMute(newMuteState);
-      
+
       try {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       } catch (error) {
@@ -437,7 +437,7 @@ const renderVideoElement = (participant: Participant, isLocal: boolean = false) 
       const newVideoState = !hasVideo;
       setHasVideo(newVideoState);
       await webRTCService.toggleVideo(newVideoState);
-      
+
       try {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       } catch (error) {
@@ -462,9 +462,11 @@ const renderVideoElement = (participant: Participant, isLocal: boolean = false) 
         await webRTCService.stopScreenShare();
         setIsSharingScreen(false);
       }
-      
+
       try {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        if (Platform.OS !== 'web') {
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
       } catch (error) {
         console.warn('Haptics error:', error);
       }
@@ -477,17 +479,17 @@ const renderVideoElement = (participant: Participant, isLocal: boolean = false) 
   const endCall = async () => {
     try {
       setCallStatus('ended');
-      
+
       if (durationInterval.current) {
         clearInterval(durationInterval.current);
       }
-      
+
       await webRTCService.endCall();
-      
+
       if (callId) {
         await collaborationService.endCall(spaceId, callId);
       }
-      
+
       await safeHaptics.success();
 
       router.replace({
@@ -508,7 +510,7 @@ const renderVideoElement = (participant: Participant, isLocal: boolean = false) 
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    
+
     if (hrs > 0) {
       return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
@@ -538,7 +540,7 @@ const renderVideoElement = (participant: Participant, isLocal: boolean = false) 
           <Text style={styles.waitingSubtext}>
             Share the invitation link to invite others
           </Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.inviteButton}
             onPress={() => Alert.alert('Invite', 'Share this space link with others')}
           >
@@ -551,10 +553,10 @@ const renderVideoElement = (participant: Participant, isLocal: boolean = false) 
 
     // For 1:1 call, show large view with picture-in-picture
     if (participants.length === 2) {
-      const otherParticipant = participants.find(p => 
+      const otherParticipant = participants.find(p =>
         p.user_id.toString() !== user?.id?.toString()
       );
-      
+
       return (
         <View style={styles.oneOnOneContainer}>
           {/* Remote participant - full screen */}
@@ -578,14 +580,14 @@ const renderVideoElement = (participant: Participant, isLocal: boolean = false) 
                   </View>
                 </View>
               )}
-              
+
               {otherParticipant?.isMuted && (
                 <View style={styles.remoteMutedBadge}>
                   <Ionicons name="mic-off" size={16} color="#fff" />
                   <Text style={styles.mutedText}>Muted</Text>
                 </View>
               )}
-              
+
               {otherParticipant?.isSharingScreen && Platform.OS === 'web' && (
                 <View style={styles.remoteScreenShareBadge}>
                   <Ionicons name="desktop" size={16} color="#fff" />
@@ -594,7 +596,7 @@ const renderVideoElement = (participant: Participant, isLocal: boolean = false) 
               )}
             </View>
           )}
-          
+
           {/* Local participant - picture in picture */}
           <View style={styles.localVideoContainer}>
             {Platform.OS === 'web' && localStream ? (
@@ -677,7 +679,7 @@ const renderVideoElement = (participant: Participant, isLocal: boolean = false) 
     );
   };
 
-  const localParticipant = participants.find(p => 
+  const localParticipant = participants.find(p =>
     p.user_id === user?.id
   );
 
@@ -688,19 +690,19 @@ const renderVideoElement = (participant: Participant, isLocal: boolean = false) 
         <TouchableOpacity onPress={endCall} style={styles.backButton}>
           <Ionicons name="chevron-down" size={24} color="#fff" />
         </TouchableOpacity>
-        
+
         <View style={styles.headerInfo}>
           <Text style={styles.spaceTitle} numberOfLines={1}>
             {currentSpace?.title || 'Call'}
           </Text>
           <View style={styles.callInfo}>
-            <View 
+            <View
               style={[
-                styles.callStatusDot, 
-                callStatus === 'connected' 
-                  ? styles.callStatusConnected 
+                styles.callStatusDot,
+                callStatus === 'connected'
+                  ? styles.callStatusConnected
                   : styles.callStatusConnecting
-              ]} 
+              ]}
             />
             <Text style={styles.callDuration}>
               {formatDuration(callDuration)}
@@ -710,16 +712,16 @@ const renderVideoElement = (participant: Participant, isLocal: boolean = false) 
             </Text>
           </View>
         </View>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.moreButton}
           onPress={() => Alert.alert(
             'Call Options',
             'View participants, recording, or settings',
             [
               { text: 'Cancel', style: 'cancel' },
-              { 
-                text: 'Participants', 
+              {
+                text: 'Participants',
                 onPress: () => Alert.alert(
                   'Participants',
                   participants.map(p => `• ${p.name}${p.user_id === user?.id ? ' (You)' : ''}`).join('\n')
@@ -797,9 +799,9 @@ const renderVideoElement = (participant: Participant, isLocal: boolean = false) 
 
         {/* Additional Controls */}
         <View style={styles.additionalControls}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.additionalButton}
-            onPress={Platform.OS === 'web' 
+            onPress={Platform.OS === 'web'
               ? () => Alert.alert('Flip Camera', 'Camera flip coming soon for web!')
               : flipCamera
             }
@@ -807,16 +809,16 @@ const renderVideoElement = (participant: Participant, isLocal: boolean = false) 
             <Ionicons name="camera-reverse" size={20} color="#fff" />
             <Text style={styles.additionalButtonText}>Flip</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.additionalButton}
             onPress={() => Alert.alert('Chat', 'Open chat during call')}
           >
             <Ionicons name="chatbubble" size={20} color="#fff" />
             <Text style={styles.additionalButtonText}>Chat</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.additionalButton}
             onPress={() => Alert.alert('Raise Hand', 'Hand raised!')}
           >
@@ -824,7 +826,7 @@ const renderVideoElement = (participant: Participant, isLocal: boolean = false) 
             <Text style={styles.additionalButtonText}>Raise</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.additionalButton}
             onPress={() => Alert.alert('Invite', 'Share this space link with others')}
           >
@@ -832,7 +834,7 @@ const renderVideoElement = (participant: Participant, isLocal: boolean = false) 
             <Text style={styles.additionalButtonText}>Invite</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.additionalButton}
             onPress={() => Alert.alert('Record', 'Call recording coming soon!')}
           >
@@ -840,7 +842,7 @@ const renderVideoElement = (participant: Participant, isLocal: boolean = false) 
             <Text style={styles.additionalButtonText}>Record</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.additionalButton}
             onPress={() => Alert.alert('More', 'More options coming soon!')}
           >
@@ -1229,7 +1231,7 @@ const styles = StyleSheet.create({
   remoteNameLarge: {
     color: '#fff',
     fontSize: 24,
-    fontWeight: '600', 
+    fontWeight: '600',
   },
   remoteStatusContainer: {
     flexDirection: 'row',

@@ -21,6 +21,7 @@ use App\Http\Controllers\SynchronicityController;
 use App\Http\Controllers\CollaborativeActivityController;
 use App\Http\Controllers\MessagesController;
 use App\Http\Controllers\UserSearchController;
+use App\Http\Controllers\PollController;
 use Illuminate\Support\Facades\Broadcast;
 
 use App\Models\User;
@@ -148,12 +149,22 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('/{id}/send-message', [SpaceController::class , 'sendMessage']);
             Route::post('/{id}/participants/{userId}/role', [SpaceController::class , 'updateParticipantRole']);
             Route::delete('/{id}/participants/{userId}', [SpaceController::class , 'removeParticipant']);
+
+            // Poll routes
+            Route::get('/{id}/polls', [PollController::class , 'index']);
+            Route::post('/{id}/polls', [PollController::class , 'store']);
+            Route::get('/{id}/polls/{pollId}', [PollController::class , 'show']);
+            Route::post('/{id}/polls/{pollId}/vote', [PollController::class , 'vote']);
+            Route::post('/{id}/polls/{pollId}/close', [PollController::class , 'close']);
+            Route::get('/{id}/polls/{pollId}/results', [PollController::class , 'results']);
         }
         );
         Route::post('/spaces/{id}/call/signal', [SpaceController::class , 'callSignal']);
         Route::post('/spaces/{id}/call/mute', [SpaceController::class , 'callMute']);
         Route::post('/spaces/{id}/call/video', [SpaceController::class , 'callVideo']);
         Route::post('/spaces/{id}/call/screen-share', [SpaceController::class , 'callScreenShare']);
+        // forward poll to space
+        Route::post('/polls/{pollId}/forward', [PollController::class , 'forward']);
     });
 
 // Message routes
