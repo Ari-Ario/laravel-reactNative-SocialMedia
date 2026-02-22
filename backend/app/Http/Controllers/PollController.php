@@ -3,6 +3,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\PollDeleted;
 use App\Models\Poll;
 use App\Models\PollOption;
 use App\Models\PollVote;
@@ -516,6 +517,54 @@ class PollController extends Controller
         catch (\Exception $e) {
             \Log::error('Error getting poll results: ' . $e->getMessage());
             return response()->json(['message' => 'Error getting poll results'], 500);
+        }
+    }
+
+    /**
+     * Delete a poll permanently
+     */
+    public function destroy($spaceId, $pollId)
+    {
+        try {
+            $poll = Poll::where('space_id', $spaceId)
+                ->where('id', $pollId)
+                ->firstOrFail();
+
+            $user = auth()->user();
+
+            // Check if user has permission to delete (creator or moderator/owner)
+            $space = CollaborationSpace::findOrFail($spaceId);
+            $participation = SpaceParticipation::where('space_id', $spaceId)
+                ->where('user_id', $user->id)
+                ->first();
+
+            if ($poll->created_by !== $user->id && !in_array($participation->role, ['owner', 'moderator'])) {
+                return response()->json(['message' => 'Not authorized to delete this poll'], 403);
+            }
+
+            // Check if poll can be deleted (e.g., not already closed/deleted)
+            if ($poll->status === 'deleted') {
+                return response()->json(['message' => 'Poll already deleted'], 400);
+            }
+
+            // Permanently delete the poll and all related data (cascades to options and votes)
+            $poll->delete();
+
+            // Optionally broadcast deletion event
+            broadcast(new PollDeleted($pollId, $spaceId))->toOthers();
+
+            return response()->json([
+                'message' => 'Poll deleted successfully',
+                'poll_id' => $pollId
+            ]);
+
+        }
+        catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['message' => 'Poll not found'], 404);
+        }
+        catch (\Exception $e) {
+            \Log::error('Error deleting poll: ' . $e->getMessage());
+            return response()->json(['message' => 'Error deleting poll'], 500);
         }
     }
 }

@@ -574,6 +574,7 @@ class PusherService {
     onScreenShareEnded?: (data: any) => void;
     onPollCreated?: (poll: any) => void;
     onPollUpdated?: (poll: any) => void;
+    onPollDeleted?: (poll: any) => void;
   }): boolean {
     if (!this.pusher || !this.isInitialized) {
       console.warn('⚠️ Pusher not initialized. Skipping space subscription.');
@@ -630,6 +631,12 @@ class PusherService {
       channel.bind('poll.created', (data: any) => {
         console.log(`📊 Poll created in space ${spaceId}:`, data.poll.question);
         callbacks.onPollCreated?.(data.poll);
+      });
+    }
+    if (callbacks.onPollDeleted) {
+      channel.bind('poll.deleted', (data: any) => {
+        console.log(`🗑️ Poll deleted from space ${spaceId}:`, data.poll.id);
+        callbacks.onPollDeleted?.(data.poll_id);
       });
     }
 

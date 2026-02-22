@@ -543,7 +543,39 @@ class CollaborationService {
       throw error;
     }
   }
+  /**
+   * Delete a poll permanently
+   * @param spaceId - The ID of the space containing the poll
+   * @param pollId - The ID of the poll to delete
+   */
+  async deletePoll(spaceId: string, pollId: string): Promise<void> {
+    try {
+      // Using DELETE HTTP method for deletion
+      const response = await axios.delete(`${this.baseURL}/spaces/${spaceId}/polls/${pollId}`, {
+        headers: this.getHeaders(),
+      });
 
+      // Provide haptic feedback for deletion (warning style)
+      await this.triggerHapticWarning();
+
+      console.log(`Poll ${pollId} deleted successfully from space ${spaceId}`);
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Error deleting poll:', error.response?.data || error.message);
+
+      // Handle specific error cases
+      if (error.response?.status === 403) {
+        throw new Error('You do not have permission to delete this poll');
+      } else if (error.response?.status === 404) {
+        throw new Error('Poll not found or already deleted');
+      } else if (error.response?.status === 400) {
+        throw new Error(error.response.data.message || 'Cannot delete this poll');
+      }
+
+      throw new Error(error.response?.data?.message || 'Failed to delete poll');
+    }
+  }
   // 🎮 REAL-TIME COLLABORATION - USING EXISTING PUSHER CONNECTION
 
   async subscribeToSpace(spaceId: string, callbacks: {
@@ -567,6 +599,7 @@ class CollaborationService {
     onVideoStateChanged?: (data: any) => void;
     onPollCreated?: (poll: any) => void;
     onPollUpdated?: (poll: any) => void;
+    onPollDeleted?: (poll: any) => void;
   }) {
     try {
       // ✅ FIX: Only check if Pusher is ready - DON'T initialize
@@ -647,6 +680,23 @@ class CollaborationService {
       bind('video.state.changed', callbacks.onVideoStateChanged);
       bind('voice.activity', callbacks.onVoiceActivity);
 
+      // Poll events
+      bind('poll.created', (data) => {
+        console.log(`📊 Poll created in space ${spaceId}:`, data.poll?.question);
+        callbacks.onPollCreated?.(data.poll || data);
+      }, '📊 Poll created');
+
+      bind('poll.updated', (data) => {
+        console.log(`📊 Poll updated in space ${spaceId}`);
+        callbacks.onPollUpdated?.(data.poll || data);
+      }, '📊 Poll updated');
+
+      // ✅ ADD THIS - Poll deleted event
+      bind('poll.deleted', (data) => {
+        console.log(`🗑️ Poll deleted from space ${spaceId}:`, data.poll_id);
+        // The data contains poll_id, not poll object
+        callbacks.onPollDeleted?.(data.poll_id);
+      }, '🗑️ Poll deleted');
       console.log(`📡 Space ${spaceId} active handlers registered.`);
 
     } catch (error) {

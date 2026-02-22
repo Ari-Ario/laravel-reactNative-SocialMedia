@@ -247,6 +247,35 @@ const SpaceDetailScreen = () => {
           }
         },
 
+        onPollDeleted: (pollId) => {
+          console.log('🗑️ Poll deleted:', pollId);
+          setPolls(prev => {
+            // Filter out the deleted poll
+            const filtered = prev.filter(p => p.id !== pollId);
+
+            // If we're on the polls tab, force a re-render
+            if (activeTab === 'polls') {
+              return [...filtered];
+            }
+
+            return filtered;
+          });
+
+          // Optional: Show a notification
+          useNotificationStore.getState().addNotification({
+            type: 'poll_deleted',
+            title: '🗑️ Poll Deleted',
+            message: `A poll has been deleted`,
+            data: { pollId },
+            spaceId: id,
+            createdAt: new Date()
+          });
+
+          if (Platform.OS !== 'web') {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          }
+        },
+
         onPollUpdated: (poll) => {
           console.log('📊 Poll updated:', poll.id);
           setPolls(prev => {
@@ -1039,8 +1068,8 @@ const SpaceDetailScreen = () => {
               style={[
                 styles.magicOrb,
                 {
-                  top: 100 + (index * 80),
-                  right: 20,
+                  top: 80 + (index * 80),
+                  right: 10,
                   transform: [{ scale: 1 - (index * 0.1) }]
                 }
               ]}

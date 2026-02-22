@@ -36,7 +36,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
   // Watch for collaboration patterns to offer proactive help
   useEffect(() => {
     const patterns = detectCollaborationPatterns();
-    
+
     if (patterns.needsHelp && !isVisible) {
       offerProactiveHelp(patterns);
     }
@@ -53,7 +53,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
     // Check for collaboration stagnation
     const lastActivity = new Date(spaceData?.last_interaction_at);
     const minutesSinceActivity = (Date.now() - lastActivity.getTime()) / (1000 * 60);
-    
+
     if (minutesSinceActivity > 5 && participants.length > 1) {
       patterns.needsHelp = true;
       patterns.stuck = true;
@@ -75,7 +75,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
 
   const offerProactiveHelp = async (patterns: any) => {
     const suggestions = [];
-    
+
     if (patterns.stuck) {
       suggestions.push({
         type: 'icebreaker',
@@ -83,7 +83,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
         action: () => generateIcebreaker()
       });
     }
-    
+
     if (patterns.needsInspiration) {
       suggestions.push({
         type: 'inspiration',
@@ -91,7 +91,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
         action: () => suggestAlternatives()
       });
     }
-    
+
     if (patterns.needsSummary) {
       suggestions.push({
         type: 'summary',
@@ -99,7 +99,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
         action: () => generateSummary()
       });
     }
-    
+
     if (suggestions.length > 0) {
       setAiSuggestions(suggestions);
       showAssistant();
@@ -109,7 +109,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
   // Main AI query function
   const queryAI = async (query: string, context: any = {}) => {
     setAiThinking(true);
-    
+
     try {
       // First, check your existing chatbot_training for direct matches
       const trainingResponse = await axios.post(`${API_BASE}/ai/query-training`, {
@@ -139,7 +139,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
 
       // Log the interaction for learning
       await logAIInteraction(query, aiResponse);
-      
+
       // Add to chat history
       setChatHistory(prev => [...prev, {
         type: 'ai',
@@ -149,7 +149,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
       }]);
 
       return aiResponse;
-      
+
     } catch (error) {
       console.error('AI query failed:', error);
       return {
@@ -167,7 +167,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
       action: 'summarize',
       content: currentContent
     });
-    
+
     // Also add to space as a summary card
     await axios.post(`${API_BASE}/spaces/${spaceId}/add-summary`, {
       summary: summary.text,
@@ -180,7 +180,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
       action: 'brainstorm',
       current_approach: spaceData?.content_state?.current_idea
     });
-    
+
     // Add as brainstorm cards
     if (alternatives.suggested_actions) {
       alternatives.suggested_actions.forEach((alt: string) => {
@@ -195,7 +195,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
       participant_count: participants.length,
       space_type: spaceType
     });
-    
+
     // Add to chat
     addAIMessageToChat(icebreaker.text);
   };
@@ -228,7 +228,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
     <>
       {/* Floating AI Button */}
       {!isVisible && (
-        <Pressable 
+        <Pressable
           style={styles.floatingAIButton}
           onPress={showAssistant}
         >
@@ -238,7 +238,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
 
       {/* AI Assistant Panel */}
       {isVisible && (
-        <Animated.View 
+        <Animated.View
           style={[
             styles.aiPanel,
             { transform: [{ translateY: slideAnim }] }
@@ -263,7 +263,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
             <View style={styles.suggestionsSection}>
               <Text style={styles.sectionTitle}>Suggestions</Text>
               {aiSuggestions.map((suggestion, index) => (
-                <Pressable 
+                <Pressable
                   key={index}
                   style={styles.suggestionCard}
                   onPress={suggestion.action}
@@ -311,8 +311,8 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
             <Text style={styles.sectionTitle}>Ask Assistant</Text>
             <View style={styles.chatContainer}>
               {chatHistory.map((msg, index) => (
-                <View 
-                  key={index} 
+                <View
+                  key={index}
                   style={[
                     styles.chatBubble,
                     msg.type === 'ai' ? styles.aiBubble : styles.userBubble
@@ -326,7 +326,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
                   )}
                 </View>
               ))}
-              
+
               {aiThinking && (
                 <View style={styles.thinkingBubble}>
                   <Text style={styles.thinkingText}>Thinking</Text>
@@ -338,7 +338,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
                 </View>
               )}
             </View>
-            
+
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.input}
@@ -349,20 +349,20 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
                   if (userInput.trim()) {
                     const userMessage = userInput;
                     setUserInput('');
-                    
+
                     // Add user message to history
                     setChatHistory(prev => [...prev, {
                       type: 'user',
                       text: userMessage,
                       timestamp: new Date()
                     }]);
-                    
+
                     // Get AI response
                     await queryAI(userMessage);
                   }
                 }}
               />
-              <Pressable 
+              <Pressable
                 style={styles.sendButton}
                 onPress={async () => {
                   if (userInput.trim()) {
@@ -390,8 +390,8 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
 const styles = StyleSheet.create({
   floatingAIButton: {
     position: 'absolute',
-    bottom: 24,
-    right: 24,
+    bottom: 80,
+    right: 10,
     width: 56,
     height: 56,
     borderRadius: 28,

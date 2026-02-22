@@ -157,6 +157,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('/{id}/polls/{pollId}/vote', [PollController::class , 'vote']);
             Route::post('/{id}/polls/{pollId}/close', [PollController::class , 'close']);
             Route::get('/{id}/polls/{pollId}/results', [PollController::class , 'results']);
+            Route::delete('/{id}/polls/{pollId}', [PollController::class , 'destroy']);
         }
         );
         Route::post('/spaces/{id}/call/signal', [SpaceController::class , 'callSignal']);
