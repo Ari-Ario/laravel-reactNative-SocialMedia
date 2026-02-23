@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use App\Notifications\SpaceInvitationNotification;
 
+use App\Events\SpaceCreated;
 use App\Events\SpaceUpdated;
 use App\Events\MagicEventTriggered;
 use App\Events\ParticipantJoined;
@@ -28,6 +29,8 @@ use App\Events\ParticipantLeft;
 use App\Events\CallStarted;
 use App\Events\CallEnded;
 use App\Events\ScreenShareToggled;
+use App\Events\SpaceInvitationSent;
+
 class SpaceController extends Controller
 {
     /**
@@ -205,7 +208,7 @@ class SpaceController extends Controller
             DB::commit();
 
             // Broadcast event
-            broadcast(new SpaceUpdated($space, auth()->id(), ['type' => 'created']))->toOthers();
+            // event(new SpaceCreated($space, auth()->user()));
 
             return response()->json([
                 'space' => $space->load(['creator']),
@@ -602,22 +605,22 @@ public function updateContentState(Request $request, $id)
         
         $invited = [];
         foreach ($request->user_ids as $userId) {
-            // Check if already in space
             $existing = $space->participations()
                 ->where('user_id', $userId)
                 ->first();
                 
             if (!$existing) {
-                // Don't create participation yet - just send invitation
                 $invited[] = $userId;
                 
-                // Send notification to user
                 $user = User::find($userId);
                 if ($user) {
+                    // Send database notification
                     $user->notify(new \App\Notifications\SpaceInvitationNotification($space, $inviter, $request->message));
+                    
+                    // Broadcast real-time event
+                    broadcast(new SpaceInvitationSent($space, $inviter, $userId, $request->message))->toOthers();
                 }
             } else {
-                // User is already in space
                 $invited[] = $userId;
             }
         }

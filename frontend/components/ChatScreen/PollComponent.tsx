@@ -13,10 +13,15 @@ import {
     ActivityIndicator,
     Switch,
     Animated,
+    FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-// import DateTimePicker from '@react-native-community/datetimepicker';
+// Conditionally import DateTimePicker only on native platforms
+let DateTimePicker: any = null;
+// if (Platform.OS !== 'web') {
+//     DateTimePicker = require('@react-native-community/datetimepicker').default;
+// }
 import { useRouter } from 'expo-router';
 import Avatar from '@/components/Image/Avatar';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
@@ -73,6 +78,7 @@ interface PollComponentProps {
     isVisible: boolean;
     onClose: () => void;
     editPoll?: Poll; // For editing existing poll
+    isEditing?: boolean; // New prop to differentiate
 }
 
 const PollComponent: React.FC<PollComponentProps> = ({
@@ -86,6 +92,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
     isVisible,
     onClose,
     editPoll,
+    isEditing = false,
 }) => {
     const [question, setQuestion] = useState('');
     const [options, setOptions] = useState<string[]>(['', '']);
@@ -107,6 +114,8 @@ const PollComponent: React.FC<PollComponentProps> = ({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [selectedForwardSpaces, setSelectedForwardSpaces] = useState<Set<string>>(new Set());
     const [currentStep, setCurrentStep] = useState(1);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isLoadingSpaces, setIsLoadingSpaces] = useState(false);
 
     const router = useRouter();
     const fadeAnim = useState(new Animated.Value(0))[0];
@@ -140,23 +149,28 @@ const PollComponent: React.FC<PollComponentProps> = ({
                 if (editPoll.tags) setTags(editPoll.tags.join(', '));
             } else {
                 // Reset form
-                setQuestion('');
-                setOptions(['', '']);
-                setPollType('single');
-                setAllowMultipleVotes(false);
-                setAllowVoteChange(true);
-                setShowResults('after_vote');
-                setAnonymous(false);
-                setWeightedVoting(false);
-                setHasDeadline(false);
-                setDeadline(new Date(Date.now() + 86400000));
-                setQuorum('');
-                setMaxSelections('');
-                setTags('');
-                setSelectedForwardSpaces(new Set());
+                resetForm();
             }
         }
     }, [isVisible, editPoll]);
+
+    const resetForm = () => {
+        setQuestion('');
+        setOptions(['', '']);
+        setPollType('single');
+        setAllowMultipleVotes(false);
+        setAllowVoteChange(true);
+        setShowResults('after_vote');
+        setAnonymous(false);
+        setWeightedVoting(false);
+        setHasDeadline(false);
+        setDeadline(new Date(Date.now() + 86400000));
+        setQuorum('');
+        setMaxSelections('');
+        setTags('');
+        setSelectedForwardSpaces(new Set());
+        setCurrentStep(1);
+    };
 
     const safeHaptics = {
         impact: async (style: any = Haptics.ImpactFeedbackStyle.Light) => {
@@ -178,6 +192,54 @@ const PollComponent: React.FC<PollComponentProps> = ({
             }
         }
     };
+
+    // Compute diff between original and updated poll
+    const computePollDiff = (original: any, updated: any): string => {
+        const changes: string[] = [];
+
+        if (original.question !== updated.question) {
+            changes.push(`• Question changed from "${original.question}" to "${updated.question}"`);
+        }
+
+        const originalOptions = original.options.map((o: any) => o.text);
+        const updatedOptions = updated.options.map((o: any) => o.text);
+
+        if (JSON.stringify(originalOptions) !== JSON.stringify(updatedOptions)) {
+            changes.push(`• Options changed:`);
+            originalOptions.forEach((opt: string, idx: number) => {
+                if (updatedOptions[idx] && opt !== updatedOptions[idx]) {
+                    changes.push(`  - Option ${idx + 1}: "${opt}" → "${updatedOptions[idx]}"`);
+                }
+            });
+            if (updatedOptions.length > originalOptions.length) {
+                changes.push(`  - Added option: "${updatedOptions[updatedOptions.length - 1]}"`);
+            }
+            if (updatedOptions.length < originalOptions.length) {
+                changes.push(`  - Removed option: "${originalOptions[originalOptions.length - 1]}"`);
+            }
+        }
+
+        // Compare settings (simplified)
+        const settingsChanged = [];
+        if (original.settings.allowMultipleVotes !== updated.settings.allowMultipleVotes) settingsChanged.push('allowMultipleVotes');
+        if (original.settings.allowVoteChange !== updated.settings.allowVoteChange) settingsChanged.push('allowVoteChange');
+        if (original.settings.showResults !== updated.settings.showResults) settingsChanged.push('showResults');
+        if (original.settings.anonymous !== updated.settings.anonymous) settingsChanged.push('anonymous');
+        if (original.settings.weightedVoting !== updated.settings.weightedVoting) settingsChanged.push('weightedVoting');
+        if (original.settings.quorum !== updated.settings.quorum) settingsChanged.push('quorum');
+        if (original.settings.maxSelections !== updated.settings.maxSelections) settingsChanged.push('maxSelections');
+
+        if (settingsChanged.length > 0) {
+            changes.push(`• Settings updated: ${settingsChanged.join(', ')}`);
+        }
+
+        if (changes.length === 0) {
+            return "No significant changes detected.";
+        }
+
+        return changes.join('\n');
+    };
+
 
     const addOption = async () => {
         if (options.length < 10) {
@@ -215,10 +277,19 @@ const PollComponent: React.FC<PollComponentProps> = ({
 
         if (pollType === 'multiple' && maxSelections) {
             const max = parseInt(maxSelections);
+            if (isNaN(max) || max < 1) {
+                Alert.alert('Error', 'Max selections must be a positive number');
+                return false;
+            }
             if (max > validOptions.length) {
                 Alert.alert('Error', 'Max selections cannot exceed number of options');
                 return false;
             }
+        }
+
+        if (hasDeadline && deadline <= new Date()) {
+            Alert.alert('Error', 'Deadline must be in the future');
+            return false;
         }
 
         return true;
@@ -227,7 +298,6 @@ const PollComponent: React.FC<PollComponentProps> = ({
     const createPoll = async (): Promise<Poll> => {
         const validOptions = options.filter(o => o.trim().length > 0);
 
-        // Format options as array of objects with 'text' property
         const formattedOptions = validOptions.map(text => ({
             text: text.trim()
         }));
@@ -255,7 +325,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
                 anonymous,
                 weightedVoting,
                 ...(quorum ? { quorum: parseInt(quorum) } : {}),
-                ...(maxSelections ? { maxSelections: parseInt(maxSelections) } : {}),
+                ...(pollType === 'multiple' && maxSelections ? { maxSelections: parseInt(maxSelections, 10) } : {}),
             },
             ...(hasDeadline ? { deadline } : {}),
             status: 'active',
@@ -263,7 +333,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
             uniqueVoters: 0,
             createdAt: new Date(),
             updatedAt: new Date(),
-            ...(tags ? { tags: tags.split(',').map(t => t.trim()) } : {}),
+            ...(tags ? { tags: tags.split(',').map(t => t.trim()).filter(t => t) } : {}),
             ...(editPoll?.forwardedFrom ? { forwardedFrom: editPoll.forwardedFrom } : {}),
         };
 
@@ -276,21 +346,75 @@ const PollComponent: React.FC<PollComponentProps> = ({
         setIsSubmitting(true);
 
         try {
-            const poll = await createPoll();
-
-            // Save to backend via CollaborationService
-            // You'll need to add this method
-            const savedPoll = await collaborationService.createPoll(spaceId, {
+            const pollData = {
                 question: poll.question,
-                options: poll.options.map(opt => ({ text: opt.text })), // Send only text
+                options: poll.options.map(opt => ({ text: opt.text })),
                 type: poll.type,
-                settings: poll.settings,
-                deadline: poll.deadline,
-                tags: poll.tags,
-            });
+                settings: {
+                    allowMultipleVotes,
+                    allowVoteChange,
+                    showResults,
+                    anonymous,
+                    weightedVoting,
+                    ...(quorum ? { quorum: parseInt(quorum, 10) } : {}),
+                    ...(pollType === 'multiple' && maxSelections ? { maxSelections: parseInt(maxSelections, 10) } : {}),
+                },
+                deadline: hasDeadline ? deadline : undefined,
+                tags: tags ? tags.split(',').map(t => t.trim()).filter(t => t) : undefined,
+            };
 
-            // Forward to selected spaces
-            if (selectedForwardSpaces.size > 0) {
+            let savedPoll;
+            // When updating:
+            if (isEditing && editPoll) {
+                savedPoll = await collaborationService.updatePoll(spaceId, editPoll.id, pollData);
+            }
+
+            if (isEditing && editPoll) {
+                // Update existing poll
+                savedPoll = await collaborationService.updatePoll(spaceId, editPoll.id, {
+                    question: pollData.question,
+                    options: pollData.options.map(opt => ({ text: opt.text })),
+                    type: pollData.type,
+                    settings: pollData.settings,
+                    deadline: pollData.deadline,
+                    tags: pollData.tags,
+                });
+
+                // Compute diff and send update message
+                const diffMessage = computePollDiff(editPoll, savedPoll);
+                await collaborationService.sendMessage(spaceId, {
+                    content: `📊 Poll updated:\n${diffMessage}`,
+                    type: 'text',
+                    metadata: {
+                        isPollNotification: true,
+                        pollId: savedPoll.id,
+                        notificationType: 'poll_updated',
+                    },
+                });
+            } else {
+                // Create new poll
+                savedPoll = await collaborationService.createPoll(spaceId, {
+                    question: pollData.question,
+                    options: pollData.options.map(opt => ({ text: opt.text })),
+                    type: pollData.type,
+                    settings: pollData.settings,
+                    deadline: pollData.deadline,
+                    tags: pollData.tags,
+                });
+
+                // Send poll creation message
+                await collaborationService.sendMessage(spaceId, {
+                    content: `📊 **POLL**: ${pollData.question}`,
+                    type: 'poll',
+                    metadata: {
+                        pollId: savedPoll.id,
+                        pollData: pollData,
+                    },
+                });
+            }
+
+            // Forward to selected spaces (only for new polls? or also for updates?)
+            if (selectedForwardSpaces.size > 0 && !isEditing) {
                 const forwardTo = Array.from(selectedForwardSpaces);
                 await collaborationService.forwardPoll(savedPoll.id, forwardTo);
                 if (onPollForwarded) {
@@ -298,32 +422,48 @@ const PollComponent: React.FC<PollComponentProps> = ({
                 }
             }
 
-            await safeHaptics.notification();
+            await safeHaptics.notification(Haptics.NotificationFeedbackType.Success);
 
-
-            if (editPoll && onPollUpdated) {
+            if (isEditing && onPollUpdated) {
                 onPollUpdated(savedPoll);
             } else if (onPollCreated) {
                 onPollCreated(savedPoll);
             }
 
-            // Send poll as a message in the space
-            await collaborationService.sendMessage(spaceId, {
-                content: `📊 **POLL**: ${poll.question}`,
-                type: 'poll',
-                metadata: {
-                    pollId: savedPoll.id,
-                    pollData: poll,
-                },
-            });
-
+            resetForm();
             onClose();
-        } catch (error) {
-            console.error('Error creating poll:', error);
-            Alert.alert('Error', 'Failed to create poll');
+        } catch (error: any) {
+            console.error('Error creating/updating poll:', error);
+            if (error.response?.status === 422) {
+                const errors = error.response.data.errors;
+                const messages = Object.values(errors).flat().join('\n');
+                Alert.alert('Validation Error', messages);
+            } else {
+                Alert.alert('Error', error.response?.data?.message || 'Failed to save poll. Please try again.');
+            }
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    // Load available spaces for forwarding
+    const loadAvailableSpaces = async () => {
+        setIsLoadingSpaces(true);
+        try {
+            const userSpaces = await collaborationService.fetchUserSpaces(currentUserId);
+            const filtered = userSpaces.filter(s => s.id !== spaceId);
+            setAvailableSpaces(filtered);
+        } catch (error) {
+            console.error('Error loading spaces:', error);
+            Alert.alert('Error', 'Could not load spaces');
+        } finally {
+            setIsLoadingSpaces(false);
+        }
+    };
+
+    const handleOpenForwardModal = () => {
+        loadAvailableSpaces();
+        setShowForwardModal(true);
     };
 
     const renderStep1 = () => (
@@ -498,11 +638,11 @@ const PollComponent: React.FC<PollComponentProps> = ({
                 </TouchableOpacity>
             )}
 
-            {showDatePicker && Platform.OS !== 'web' && (
+            {showDatePicker && Platform.OS !== 'web' && DateTimePicker && (
                 <DateTimePicker
                     value={deadline}
                     mode="datetime"
-                    onChange={(event, selectedDate) => {
+                    onChange={(event: any, selectedDate?: Date) => {
                         setShowDatePicker(false);
                         if (selectedDate) setDeadline(selectedDate);
                     }}
@@ -538,7 +678,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
 
             <TouchableOpacity
                 style={styles.forwardButton}
-                onPress={() => setShowForwardModal(true)}
+                onPress={handleOpenForwardModal}
             >
                 <Ionicons name="share-social" size={20} color="#007AFF" />
                 <Text style={styles.forwardButtonText}>
@@ -667,23 +807,97 @@ const PollComponent: React.FC<PollComponentProps> = ({
                             </TouchableOpacity>
                         </View>
 
-                        <ScrollView style={styles.spacesList}>
-                            {/* This would be populated with actual spaces */}
-                            <Text style={styles.placeholderText}>Loading spaces...</Text>
-                        </ScrollView>
+                        <TextInput
+                            style={styles.searchInput}
+                            placeholder="Search spaces..."
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                            clearButtonMode="while-editing"
+                        />
 
-                        <TouchableOpacity
-                            style={styles.doneButton}
-                            onPress={() => setShowForwardModal(false)}
-                        >
-                            <Text style={styles.doneButtonText}>Done</Text>
-                        </TouchableOpacity>
+                        {isLoadingSpaces ? (
+                            <View style={styles.loadingContainer}>
+                                <ActivityIndicator size="large" color="#007AFF" />
+                                <Text style={styles.loadingText}>Loading spaces...</Text>
+                            </View>
+                        ) : (
+                            <FlatList
+                                data={availableSpaces.filter(s =>
+                                    s.title?.toLowerCase().includes(searchQuery.toLowerCase())
+                                )}
+                                keyExtractor={(item) => item.id}
+                                style={styles.spacesList}
+                                renderItem={({ item }) => (
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.spaceItem,
+                                            selectedForwardSpaces.has(item.id) && styles.spaceItemSelected
+                                        ]}
+                                        onPress={() => {
+                                            const newSelected = new Set(selectedForwardSpaces);
+                                            if (newSelected.has(item.id)) {
+                                                newSelected.delete(item.id);
+                                            } else {
+                                                newSelected.add(item.id);
+                                            }
+                                            setSelectedForwardSpaces(newSelected);
+                                        }}
+                                    >
+                                        <Avatar
+                                            source={item.creator?.profile_photo}
+                                            size={40}
+                                            name={item.title}
+                                        />
+                                        <View style={styles.spaceInfo}>
+                                            <Text style={styles.spaceTitle}>{item.title}</Text>
+                                            <Text style={styles.spaceType}>{item.space_type}</Text>
+                                        </View>
+                                        {selectedForwardSpaces.has(item.id) && (
+                                            <Ionicons name="checkmark-circle" size={24} color="#007AFF" />
+                                        )}
+                                    </TouchableOpacity>
+                                )}
+                                ListEmptyComponent={
+                                    <Text style={styles.emptyText}>No spaces available</Text>
+                                }
+                            />
+                        )}
+
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.modalButtonCancel]}
+                                onPress={() => {
+                                    setShowForwardModal(false);
+                                    setSelectedForwardSpaces(new Set());
+                                }}
+                            >
+                                <Text style={styles.modalButtonTextCancel}>Cancel</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[
+                                    styles.modalButton,
+                                    styles.modalButtonConfirm,
+                                    selectedForwardSpaces.size === 0 && styles.modalButtonDisabled
+                                ]}
+                                onPress={() => {
+                                    setShowForwardModal(false);
+                                    // No need to save here; selectedForwardSpaces is already set
+                                }}
+                                disabled={selectedForwardSpaces.size === 0}
+                            >
+                                <Text style={styles.modalButtonTextConfirm}>
+                                    Done ({selectedForwardSpaces.size})
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
             </Modal>
         </Modal>
     );
 };
+
 
 const styles = StyleSheet.create({
     modalOverlay: {
@@ -1012,6 +1226,90 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: '#007AFF',
+    },
+    loadingContainer: {
+        padding: 20,
+        alignItems: 'center',
+    },
+    loadingText: {
+        marginTop: 10,
+        color: '#666',
+    },
+    searchInput: {
+        fontSize: 16,
+        padding: 12,
+        backgroundColor: '#f8f8f8',
+        borderRadius: 8,
+        marginHorizontal: 16,
+        marginBottom: 16,
+    },
+    spacesList: {
+        maxHeight: 300,
+    },
+    spaceItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+    },
+    spaceItemSelected: {
+        backgroundColor: '#007AFF10',
+    },
+    spaceInfo: {
+        flex: 1,
+        marginLeft: 12,
+    },
+    spaceTitle: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: '#333',
+    },
+    spaceType: {
+        fontSize: 12,
+        color: '#999',
+        marginTop: 2,
+    },
+    emptyText: {
+        textAlign: 'center',
+        padding: 20,
+        color: '#999',
+    },
+    forwardModalContent: {
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        width: '90%',
+        maxHeight: '80%',
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        padding: 16,
+        gap: 12,
+    },
+    modalButton: {
+        flex: 1,
+        paddingVertical: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    modalButtonCancel: {
+        backgroundColor: '#f0f0f0',
+    },
+    modalButtonConfirm: {
+        backgroundColor: '#007AFF',
+    },
+    modalButtonDisabled: {
+        opacity: 0.5,
+    },
+    modalButtonTextCancel: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#666',
+    },
+    modalButtonTextConfirm: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#fff',
     },
 });
 

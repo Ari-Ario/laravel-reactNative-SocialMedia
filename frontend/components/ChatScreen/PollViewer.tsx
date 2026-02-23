@@ -13,6 +13,10 @@ import {
     TextInput,
     Dimensions,
     FlatList,
+    NativeSyntheticEvent,
+    NativeTouchEvent,
+    findNodeHandle,
+    UIManager,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -23,14 +27,15 @@ import Animated, {
     SlideOutDown,
     useAnimatedStyle,
     withSpring,
-    withTiming,
     useSharedValue,
 } from 'react-native-reanimated';
 import Avatar from '@/components/Image/Avatar';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import { safeHaptics } from '@/utils/haptics';
+import PollComponent from './PollComponent';
+import PollVotersModal from './PollVotersModal';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 interface PollViewerProps {
     poll: any;
@@ -41,6 +46,8 @@ interface PollViewerProps {
     onClosePoll?: (pollId: string) => void;
     onForward?: (pollId: string, targetSpaceIds: string[]) => void;
     onRefresh?: () => void;
+    onDelete?: (pollId: string) => void;
+    onEdit?: (pollId: string, updatedPoll: any) => void;
 }
 
 const PollViewer: React.FC<PollViewerProps> = ({
@@ -52,6 +59,8 @@ const PollViewer: React.FC<PollViewerProps> = ({
     onClosePoll,
     onForward,
     onRefresh,
+    onDelete,
+    onEdit,
 }) => {
     // State
     const [selectedOptions, setSelectedOptions] = useState<Set<string>>(new Set());
@@ -60,12 +69,16 @@ const PollViewer: React.FC<PollViewerProps> = ({
     const [localPoll, setLocalPoll] = useState<any>(poll);
     const [votingInProgress, setVotingInProgress] = useState(false);
     const [showMenu, setShowMenu] = useState(false);
-    const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const [showForwardModal, setShowForwardModal] = useState(false);
     const [availableSpaces, setAvailableSpaces] = useState<any[]>([]);
     const [selectedSpaces, setSelectedSpaces] = useState<Set<string>>(new Set());
     const [searchQuery, setSearchQuery] = useState('');
     const [isLoadingSpaces, setIsLoadingSpaces] = useState(false);
+    const [showShareResultsModal, setShowShareResultsModal] = useState(false);
+    const [shareMessage, setShareMessage] = useState('');
+    const [showEditPoll, setShowEditPoll] = useState(false);
+    const [showVotersModal, setShowVotersModal] = useState(false);
 
     // Refs
     const menuButtonRef = useRef<TouchableOpacity>(null);
@@ -76,11 +89,9 @@ const PollViewer: React.FC<PollViewerProps> = ({
     useEffect(() => {
         setLocalPoll(poll);
 
-        // Check if current user has voted
         const userVoted = checkIfUserVoted(poll);
         setHasVoted(userVoted);
 
-        // Clear selected options if user hasn't voted or vote change not allowed
         if (!userVoted || !poll.settings?.allowVoteChange) {
             setSelectedOptions(new Set());
         }
@@ -88,8 +99,8 @@ const PollViewer: React.FC<PollViewerProps> = ({
 
     // Helper to check if user voted
     const checkIfUserVoted = (pollData: any): boolean => {
-        return pollData.options?.some((opt: any) => {
-            // Check both voters array and votes array for compatibility
+        if (!pollData?.options) return false;
+        return pollData.options.some((opt: any) => {
             const voters = opt.voters || [];
             const votes = opt.votes || [];
 
@@ -115,7 +126,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
         if (settings.showResults === 'creator_only' && localPoll.created_by === currentUserId) return true;
         if (settings.showResults === 'after_deadline' &&
             localPoll.deadline && new Date() > new Date(localPoll.deadline)) return true;
-        return showResults; // Manual override
+        return showResults;
     };
 
     // Check if user can vote
@@ -127,17 +138,16 @@ const PollViewer: React.FC<PollViewerProps> = ({
         return true;
     };
 
-    // Handle option selection (direct vote)
+    // Handle option selection (direct vote for single, toggle for multiple)
     const handleSelectOption = async (optionId: string) => {
         if (!canVote()) return;
 
-        // For single choice polls, vote immediately
         if (localPoll.type === 'single') {
+            // Single choice: vote immediately
             setSelectedOptions(new Set([optionId]));
             await submitVote([optionId]);
-        }
-        // For multiple choice, toggle selection
-        else {
+        } else {
+            // Multiple choice: toggle selection
             const newSelected = new Set(selectedOptions);
 
             if (newSelected.has(optionId)) {
@@ -152,14 +162,8 @@ const PollViewer: React.FC<PollViewerProps> = ({
             }
 
             setSelectedOptions(newSelected);
-
-            // If this is the last selection and we're at max, auto-submit
-            if (localPoll.settings?.maxSelections &&
-                newSelected.size === localPoll.settings.maxSelections) {
-                await submitVote(Array.from(newSelected));
-            }
-
             safeHaptics.impact(Haptics.ImpactFeedbackStyle.Light);
+            // No auto-submit; user must press submit button
         }
     };
 
@@ -169,38 +173,34 @@ const PollViewer: React.FC<PollViewerProps> = ({
 
         setVotingInProgress(true);
 
+        // Optimistic update
+        const optimisticPoll = JSON.parse(JSON.stringify(localPoll));
+        optionIds.forEach(optId => {
+            const option = optimisticPoll.options.find((o: any) => o.id === optId);
+            if (option) {
+                if (!option.votes) option.votes = [];
+                if (!option.voters) option.voters = [];
+
+                option.votes.push({
+                    user_id: currentUserId,
+                    id: `temp_${Date.now()}`,
+                });
+
+                option.voters.push({
+                    userId: currentUserId,
+                    name: 'You',
+                });
+            }
+        });
+
+        optimisticPoll.total_votes = (optimisticPoll.total_votes || 0) + optionIds.length;
+        optimisticPoll.unique_voters = (optimisticPoll.unique_voters || 0) + (hasVoted ? 0 : 1);
+
+        setLocalPoll(optimisticPoll);
+        setHasVoted(true);
+
         try {
-            // Optimistic update
-            const updatedPoll = JSON.parse(JSON.stringify(localPoll));
-
-            optionIds.forEach(optId => {
-                const option = updatedPoll.options.find((o: any) => o.id === optId);
-                if (option) {
-                    if (!option.votes) option.votes = [];
-                    if (!option.voters) option.voters = [];
-
-                    // Add current user's vote
-                    option.votes.push({
-                        user_id: currentUserId,
-                        id: `temp_${Date.now()}`,
-                    });
-
-                    option.voters.push({
-                        userId: currentUserId,
-                        name: 'You',
-                    });
-                }
-            });
-
-            updatedPoll.total_votes = (updatedPoll.total_votes || 0) + optionIds.length;
-            updatedPoll.unique_voters = (updatedPoll.unique_voters || 0) + (hasVoted ? 0 : 1);
-
-            setLocalPoll(updatedPoll);
-            setHasVoted(true);
-
-            // Send to backend
             await collaborationService.voteOnPoll(spaceId, localPoll.id, optionIds);
-
             await safeHaptics.success();
 
             if (onVote) {
@@ -210,30 +210,50 @@ const PollViewer: React.FC<PollViewerProps> = ({
             if (onRefresh) {
                 onRefresh();
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error voting:', error);
-            Alert.alert('Error', 'Failed to submit vote');
             // Revert optimistic update
             setLocalPoll(poll);
             setHasVoted(checkIfUserVoted(poll));
+            // Show validation errors if any
+            if (error.response?.status === 422) {
+                const errors = error.response.data.errors;
+                const messages = Object.values(errors).flat().join('\n');
+                Alert.alert('Validation Error', messages);
+            } else {
+                Alert.alert('Error', 'Failed to submit vote. Please try again.');
+            }
         } finally {
             setVotingInProgress(false);
         }
     };
 
-    // Handle menu press
-    const handleMenuPress = () => {
-        if (menuButtonRef.current) {
-            menuButtonRef.current.measure((x, y, width, height, pageX, pageY) => {
-                setMenuPosition({
-                    top: pageY + height + 5,
-                    right: Dimensions.get('window').width - (pageX + width),
-                });
-                setShowMenu(true);
-                menuScale.value = withSpring(1);
-            });
+    // ==================== FIXED MENU PRESS - EXACT POSITIONING ====================
+    const handleMenuPress = (event: NativeSyntheticEvent<NativeTouchEvent>) => {
+        const { pageX, pageY } = event.nativeEvent;
+
+        // Calculate menu dimensions (you can adjust these values)
+        const menuWidth = 220;
+        const menuHeight = 200; // Approximate based on number of items
+
+        // Adjust position to keep menu on screen
+        let left = pageX - 20; // Offset slightly left from tap point
+        let top = pageY + 10;  // Offset slightly down from tap point
+
+        // Ensure menu doesn't go off screen
+        if (left + menuWidth > width) {
+            left = width - menuWidth - 10;
         }
+
+        if (top + menuHeight > height) {
+            top = pageY - menuHeight - 10;
+        }
+
+        setMenuPosition({ top, left });
+        setShowMenu(true);
+        menuScale.value = withSpring(1);
     };
+    // ==============================================================================
 
     // Close poll
     const handleClosePoll = () => {
@@ -259,6 +279,16 @@ const PollViewer: React.FC<PollViewerProps> = ({
                             if (onRefresh) {
                                 onRefresh();
                             }
+
+                            await collaborationService.sendMessage(spaceId, {
+                                content: `📊 Poll "${localPoll.question}" has been closed`,
+                                type: 'text',
+                                metadata: {
+                                    isPollNotification: true,
+                                    pollId: localPoll.id,
+                                    notificationType: 'poll_closed',
+                                },
+                            });
                         } catch (error) {
                             console.error('Error closing poll:', error);
                             Alert.alert('Error', 'Failed to close poll');
@@ -269,10 +299,104 @@ const PollViewer: React.FC<PollViewerProps> = ({
         );
     };
 
-    // View results
+    // Delete poll
+    const handleDeletePoll = () => {
+        setShowMenu(false);
+        Alert.alert(
+            'Delete Poll',
+            'Are you sure you want to permanently delete this poll? This action cannot be undone.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await collaborationService.deletePoll(spaceId, localPoll.id);
+                            await safeHaptics.warning();
+
+                            if (onDelete) {
+                                onDelete(localPoll.id);
+                            }
+
+                            Alert.alert('Success', 'Poll deleted successfully');
+                        } catch (error) {
+                            console.error('Error deleting poll:', error);
+                            Alert.alert('Error', 'Failed to delete poll');
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
+    // Edit poll
+    const handleEditPoll = () => {
+        setShowMenu(false);
+        setShowEditPoll(true);
+    };
+
+    // Handle poll update after edit
+    const handlePollUpdated = (updatedPoll: any) => {
+        setLocalPoll(updatedPoll);
+        setShowEditPoll(false);
+
+        if (onEdit) {
+            onEdit(updatedPoll.id, updatedPoll);
+        }
+
+        // Send update notification to chat
+        collaborationService.sendMessage(spaceId, {
+            content: `📊 Poll "${updatedPoll.question}" has been updated`,
+            type: 'text',
+            metadata: {
+                isPollNotification: true,
+                pollId: updatedPoll.id,
+                notificationType: 'poll_updated',
+            },
+        });
+    };
+
+    // View results (toggle results view)
     const handleViewResults = () => {
         setShowMenu(false);
         setShowResults(true);
+    };
+
+    // Share results
+    const handleShareResults = () => {
+        setShowMenu(false);
+
+        const results = calculatePercentages();
+        const message = `📊 Poll Results: ${localPoll.question}\n\n` +
+            results.map((opt: any) =>
+                `${opt.text}: ${opt.voteCount} votes (${opt.percentage}%)`
+            ).join('\n') +
+            `\n\nTotal votes: ${localPoll.total_votes || 0}`;
+
+        setShareMessage(message);
+        setShowShareResultsModal(true);
+    };
+
+    // Send results as message
+    const handleSendResults = async () => {
+        try {
+            await collaborationService.sendMessage(spaceId, {
+                content: shareMessage,
+                type: 'text',
+                metadata: {
+                    isPollResults: true,
+                    pollId: localPoll.id,
+                },
+            });
+
+            await safeHaptics.success();
+            Alert.alert('Success', 'Results shared to chat');
+            setShowShareResultsModal(false);
+        } catch (error) {
+            console.error('Error sharing results:', error);
+            Alert.alert('Error', 'Failed to share results');
+        }
     };
 
     // Forward poll
@@ -287,17 +411,17 @@ const PollViewer: React.FC<PollViewerProps> = ({
         setIsLoadingSpaces(true);
         try {
             const userSpaces = await collaborationService.fetchUserSpaces(currentUserId);
-            // Filter out current space
             const filtered = userSpaces.filter(s => s.id !== spaceId);
             setAvailableSpaces(filtered);
         } catch (error) {
             console.error('Error loading spaces:', error);
+            Alert.alert('Error', 'Could not load spaces for forwarding');
         } finally {
             setIsLoadingSpaces(false);
         }
     };
 
-    // Handle forward
+    // Handle forward with notifications
     const handleForward = async () => {
         if (selectedSpaces.size === 0) {
             Alert.alert('Error', 'Please select at least one space');
@@ -307,6 +431,18 @@ const PollViewer: React.FC<PollViewerProps> = ({
         try {
             const targetSpaceIds = Array.from(selectedSpaces);
             await collaborationService.forwardPoll(localPoll.id, targetSpaceIds);
+
+            for (const targetSpaceId of targetSpaceIds) {
+                await collaborationService.sendMessage(targetSpaceId, {
+                    content: `📊 Poll forwarded from another space: "${localPoll.question}"`,
+                    type: 'text',
+                    metadata: {
+                        isPollForward: true,
+                        pollId: localPoll.id,
+                        sourceSpaceId: spaceId,
+                    },
+                });
+            }
 
             await safeHaptics.success();
             Alert.alert(
@@ -329,24 +465,25 @@ const PollViewer: React.FC<PollViewerProps> = ({
 
     // Calculate percentages
     const calculatePercentages = () => {
+        if (!localPoll?.options) return [];
         const total = localPoll.total_votes || 0;
 
-        return localPoll.options?.map((opt: any) => {
+        return localPoll.options.map((opt: any) => {
             const voteCount = opt.votes?.length || 0;
             return {
                 ...opt,
                 percentage: total > 0 ? Math.round((voteCount / total) * 100) : 0,
                 voteCount,
             };
-        }) || [];
+        });
     };
 
     // Render option
     const renderOption = (option: any) => {
         const isSelected = selectedOptions.has(option.id);
-        const hasUserVoted = option.voters?.some((v: any) =>
+        const hasUserVoted = (option.voters || []).some((v: any) =>
             v.userId === currentUserId || v.id === currentUserId
-        ) || option.votes?.some((v: any) =>
+        ) || (option.votes || []).some((v: any) =>
             v.user_id === currentUserId || v === currentUserId
         );
 
@@ -406,14 +543,19 @@ const PollViewer: React.FC<PollViewerProps> = ({
         );
     };
 
-    const isCreator = localPoll.created_by === currentUserId;
+    const isCreator = localPoll?.created_by === currentUserId;
     const isModerator = currentUserRole === 'owner' || currentUserRole === 'moderator';
-    const canClose = (isCreator || isModerator) && localPoll.status === 'active';
-    const canForward = (isCreator || isModerator) && localPoll.status === 'active';
+    const hasVotes = (localPoll?.total_votes || 0) > 0;
+    const canClose = (isCreator || isModerator) && localPoll?.status === 'active';
+    const canForward = (isCreator || isModerator) && localPoll?.status === 'active';
+    const canEdit = isCreator && localPoll?.status === 'active' && !hasVotes; // Disable edit if any votes exist
+    const canDelete = isCreator || isModerator;
+    const canShareResults = localPoll?.status === 'closed' || !canVote();
 
     // Animated menu style
     const menuAnimatedStyle = useAnimatedStyle(() => ({
         transform: [{ scale: menuScale.value }],
+        opacity: menuScale.value,
     }));
 
     return (
@@ -421,44 +563,47 @@ const PollViewer: React.FC<PollViewerProps> = ({
             <View style={styles.container}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <View style={styles.creatorInfo}>
+                    <TouchableOpacity
+                        style={styles.creatorInfo}
+                        onPress={() => setShowVotersModal(true)} // Open voters modal on creator tap
+                    >
                         <Avatar
-                            source={localPoll.creator?.profile_photo}
+                            source={localPoll?.creator?.profile_photo}
                             size={32}
-                            name={localPoll.creator?.name || 'User'}
+                            name={localPoll?.creator?.name || 'User'}
                         />
                         <View style={styles.creatorText}>
                             <Text style={styles.creatorName}>
-                                {localPoll.creator?.name || 'User'}
+                                {localPoll?.creator?.name || 'User'}
                             </Text>
                             <Text style={styles.timestamp}>
-                                {localPoll.created_at
+                                {localPoll?.created_at
                                     ? new Date(localPoll.created_at).toLocaleString()
                                     : 'Just now'}
                             </Text>
                         </View>
-                    </View>
+                    </TouchableOpacity>
 
                     <View style={styles.headerRight}>
                         <View style={styles.badgeContainer}>
                             <View style={[
                                 styles.statusBadge,
-                                { backgroundColor: localPoll.status === 'active' ? '#4CAF5020' : '#FF6B6B20' }
+                                { backgroundColor: localPoll?.status === 'active' ? '#4CAF5020' : '#FF6B6B20' }
                             ]}>
                                 <Text style={[
                                     styles.statusText,
-                                    { color: localPoll.status === 'active' ? '#4CAF50' : '#FF6B6B' }
+                                    { color: localPoll?.status === 'active' ? '#4CAF50' : '#FF6B6B' }
                                 ]}>
-                                    {localPoll.status?.toUpperCase() || 'ACTIVE'}
+                                    {localPoll?.status?.toUpperCase() || 'ACTIVE'}
                                 </Text>
                             </View>
                             <View style={styles.typeBadge}>
-                                <Text style={styles.typeText}>{localPoll.type}</Text>
+                                <Text style={styles.typeText}>{localPoll?.type}</Text>
                             </View>
                         </View>
 
                         {/* Three dots menu */}
-                        {(canClose || canForward || isCreator) && (
+                        {(canClose || canForward || canEdit || canDelete || canShareResults) && (
                             <TouchableOpacity
                                 ref={menuButtonRef}
                                 style={styles.menuButton}
@@ -471,10 +616,10 @@ const PollViewer: React.FC<PollViewerProps> = ({
                 </View>
 
                 {/* Question */}
-                <Text style={styles.question}>{localPoll.question}</Text>
+                <Text style={styles.question}>{localPoll?.question}</Text>
 
                 {/* Deadline */}
-                {localPoll.deadline && (
+                {localPoll?.deadline && (
                     <View style={styles.deadlineContainer}>
                         <Ionicons
                             name={new Date(localPoll.deadline) < new Date() ? "alert-circle" : "time"}
@@ -497,26 +642,26 @@ const PollViewer: React.FC<PollViewerProps> = ({
                     {calculatePercentages().map(renderOption)}
                 </View>
 
-                {/* Stats */}
-                <View style={styles.statsContainer}>
+                {/* Stats - now clickable to open voters modal */}
+                <TouchableOpacity style={styles.statsContainer} onPress={() => setShowVotersModal(true)}>
                     <Text style={styles.statsText}>
-                        <Ionicons name="people" size={14} color="#666" /> {localPoll.unique_voters || 0} participant{(localPoll.unique_voters || 0) !== 1 ? 's' : ''}
+                        <Ionicons name="people" size={14} color="#666" /> {localPoll?.unique_voters || 0} participant{(localPoll?.unique_voters || 0) !== 1 ? 's' : ''}
                         {' • '}
-                        <Ionicons name="checkbox" size={14} color="#666" /> {localPoll.total_votes || 0} total votes
+                        <Ionicons name="checkbox" size={14} color="#666" /> {localPoll?.total_votes || 0} total votes
                     </Text>
-                    {localPoll.settings?.quorum && (
+                    {localPoll?.settings?.quorum && (
                         <Text style={[
                             styles.quorumText,
-                            (localPoll.unique_voters || 0) >= localPoll.settings.quorum && styles.quorumMet
+                            (localPoll?.unique_voters || 0) >= localPoll.settings.quorum && styles.quorumMet
                         ]}>
-                            Quorum: {localPoll.unique_voters || 0}/{localPoll.settings.quorum}
-                            {(localPoll.unique_voters || 0) >= localPoll.settings.quorum && ' ✓'}
+                            Quorum: {localPoll?.unique_voters || 0}/{localPoll.settings.quorum}
+                            {(localPoll?.unique_voters || 0) >= localPoll.settings.quorum && ' ✓'}
                         </Text>
                     )}
-                </View>
+                </TouchableOpacity>
 
                 {/* Tags */}
-                {localPoll.tags && localPoll.tags.length > 0 && (
+                {localPoll?.tags && localPoll.tags.length > 0 && (
                     <View style={styles.tagsContainer}>
                         {localPoll.tags.map((tag: string, idx: number) => (
                             <View key={idx} style={styles.tag}>
@@ -527,7 +672,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
                 )}
 
                 {/* Multiple choice submit button */}
-                {localPoll.type !== 'single' && selectedOptions.size > 0 && canVote() && (
+                {localPoll?.type !== 'single' && selectedOptions.size > 0 && canVote() && (
                     <TouchableOpacity
                         style={[styles.submitButton, votingInProgress && styles.submitButtonDisabled]}
                         onPress={() => submitVote(Array.from(selectedOptions))}
@@ -547,7 +692,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
                 )}
 
                 {/* Forwarded Info */}
-                {localPoll.forwarded_from && localPoll.forwarded_from.length > 0 && (
+                {localPoll?.forwarded_from && localPoll.forwarded_from.length > 0 && (
                     <View style={styles.forwardedContainer}>
                         <Ionicons name="share-social" size={14} color="#999" />
                         <Text style={styles.forwardedText}>
@@ -557,7 +702,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
                 )}
             </View>
 
-            {/* Dropdown Menu */}
+            {/* Dropdown Menu - FIXED POSITIONING */}
             {showMenu && (
                 <>
                     <TouchableOpacity
@@ -572,8 +717,9 @@ const PollViewer: React.FC<PollViewerProps> = ({
                             styles.dropdownMenu,
                             menuAnimatedStyle,
                             {
+                                position: 'absolute',
                                 top: menuPosition.top,
-                                right: menuPosition.right,
+                                left: menuPosition.left,
                             }
                         ]}
                     >
@@ -588,6 +734,17 @@ const PollViewer: React.FC<PollViewerProps> = ({
                             </TouchableOpacity>
                         )}
 
+                        {/* Share Results */}
+                        {canShareResults && (
+                            <TouchableOpacity
+                                style={styles.menuItem}
+                                onPress={handleShareResults}
+                            >
+                                <Ionicons name="share-social" size={20} color="#9C27B0" />
+                                <Text style={styles.menuItemText}>Share Results</Text>
+                            </TouchableOpacity>
+                        )}
+
                         {/* Forward */}
                         {canForward && (
                             <TouchableOpacity
@@ -599,21 +756,125 @@ const PollViewer: React.FC<PollViewerProps> = ({
                             </TouchableOpacity>
                         )}
 
+                        {/* Edit Poll - only shown if no votes */}
+                        {canEdit && (
+                            <TouchableOpacity
+                                style={styles.menuItem}
+                                onPress={handleEditPoll}
+                            >
+                                <Ionicons name="create" size={20} color="#FFA726" />
+                                <Text style={styles.menuItemText}>Edit Poll</Text>
+                            </TouchableOpacity>
+                        )}
+
                         {/* Close Poll */}
                         {canClose && (
                             <TouchableOpacity
-                                style={[styles.menuItem, styles.menuItemDestructive]}
+                                style={[styles.menuItem]}
                                 onPress={handleClosePoll}
                             >
                                 <Ionicons name="lock-closed" size={20} color="#FF6B6B" />
-                                <Text style={[styles.menuItemText, styles.menuItemTextDestructive]}>
+                                <Text style={[styles.menuItemText, { color: '#FF6B6B' }]}>
                                     Close Poll
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {/* Divider before destructive actions */}
+                        {canDelete && (canClose || canEdit || canForward) && (
+                            <View style={styles.menuDivider} />
+                        )}
+
+                        {/* Delete Poll */}
+                        {canDelete && (
+                            <TouchableOpacity
+                                style={[styles.menuItem, styles.menuItemDestructive]}
+                                onPress={handleDeletePoll}
+                            >
+                                <Ionicons name="trash" size={20} color="#FF6B6B" />
+                                <Text style={[styles.menuItemText, styles.menuItemTextDestructive]}>
+                                    Delete Poll
                                 </Text>
                             </TouchableOpacity>
                         )}
                     </Animated.View>
                 </>
             )}
+
+            {/* Edit Poll Modal */}
+            <Modal
+                visible={showEditPoll}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowEditPoll(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.editModalContainer}>
+                        <PollComponent
+                            spaceId={spaceId}
+                            currentUserId={currentUserId}
+                            currentUserRole={currentUserRole}
+                            isVisible={showEditPoll}
+                            onClose={() => setShowEditPoll(false)}
+                            onPollCreated={handlePollUpdated}
+                            editPoll={localPoll}
+                            isEditing={true}
+                        />
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Share Results Modal */}
+            <Modal
+                visible={showShareResultsModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowShareResultsModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <Animated.View
+                        entering={SlideInDown.springify().damping(15)}
+                        exiting={SlideOutDown}
+                        style={styles.modalContent}
+                    >
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Share Poll Results</Text>
+                            <TouchableOpacity onPress={() => setShowShareResultsModal(false)}>
+                                <Ionicons name="close" size={24} color="#666" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={styles.modalDescription}>
+                            Share results as a message in this space
+                        </Text>
+
+                        <TextInput
+                            style={styles.messageInput}
+                            value={shareMessage}
+                            onChangeText={setShareMessage}
+                            multiline
+                            numberOfLines={6}
+                            textAlignVertical="top"
+                        />
+
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.modalButtonCancel]}
+                                onPress={() => setShowShareResultsModal(false)}
+                            >
+                                <Text style={styles.modalButtonTextCancel}>Cancel</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.modalButtonConfirm]}
+                                onPress={handleSendResults}
+                            >
+                                <Text style={styles.modalButtonTextConfirm}>Send to Chat</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </Animated.View>
+                </View>
+            </Modal>
 
             {/* Forward Modal */}
             <Modal
@@ -655,7 +916,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
                         ) : (
                             <FlatList
                                 data={availableSpaces.filter(s =>
-                                    s.title.toLowerCase().includes(searchQuery.toLowerCase())
+                                    s.title?.toLowerCase().includes(searchQuery.toLowerCase())
                                 )}
                                 keyExtractor={(item) => item.id}
                                 style={styles.spacesList}
@@ -723,9 +984,18 @@ const PollViewer: React.FC<PollViewerProps> = ({
                     </Animated.View>
                 </View>
             </Modal>
+
+            {/* Voters Modal */}
+            <PollVotersModal
+                visible={showVotersModal}
+                onClose={() => setShowVotersModal(false)}
+                poll={localPoll}
+                currentUserId={currentUserId}
+            />
         </>
     );
 };
+
 
 const styles = StyleSheet.create({
     container: {
@@ -969,7 +1239,6 @@ const styles = StyleSheet.create({
         zIndex: 999,
     },
     dropdownMenu: {
-        position: 'absolute',
         backgroundColor: '#fff',
         borderRadius: 12,
         paddingVertical: 8,
@@ -994,9 +1263,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         gap: 12,
     },
-    menuItemDestructive: {
-        // No extra styling
-    },
+    menuItemDestructive: {},
     menuItemText: {
         fontSize: 14,
         color: '#333',
@@ -1005,10 +1272,19 @@ const styles = StyleSheet.create({
     menuItemTextDestructive: {
         color: '#FF6B6B',
     },
+    menuDivider: {
+        height: 1,
+        backgroundColor: '#f0f0f0',
+        marginVertical: 4,
+    },
     // Modal styles
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    editModalContainer: {
+        flex: 1,
         justifyContent: 'flex-end',
     },
     modalContent: {
@@ -1033,6 +1309,17 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#666',
         marginBottom: 16,
+    },
+    messageInput: {
+        fontSize: 16,
+        padding: 12,
+        backgroundColor: '#f8f8f8',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        marginBottom: 16,
+        minHeight: 120,
+        textAlignVertical: 'top',
     },
     searchInput: {
         fontSize: 16,

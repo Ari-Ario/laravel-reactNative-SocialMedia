@@ -37,17 +37,18 @@ class SpaceUpdated implements ShouldBroadcast
         if (!$this->space) {
             return []; // Return empty array if space is null
         }
-        
+        $followerIds = Auth::user()->followers()->pluck('users.id')->toArray();
+    
         return [
             new Channel('spaces'),
-            new PresenceChannel('presence-space.' . $this->space->id),
+            new PresenceChannel('space.' . $this->space->id),
             new PrivateChannel('user.' . $this->userId),
         ];
     }
 
     public function broadcastAs()
     {
-        return 'presence-space.updated';
+        return 'space.updated';
     }
 
     public function broadcastWith()

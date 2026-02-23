@@ -38,6 +38,16 @@ class SpaceInvitationNotification extends Notification implements ShouldQueue
     }
 
     /**
+     * Get the broadcast event name.
+     *
+     * @return string
+     */
+    public function broadcastAs(): string
+    {
+        return 'space-invitation';
+    }
+
+    /**
      * Get the mail representation of the notification.
      */
     public function toMail(object $notifiable): MailMessage

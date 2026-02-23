@@ -21,6 +21,7 @@ import axios from '@/services/axios';
 import { getToken } from '@/services/TokenService';
 import getApiBase from '@/services/getApiBase';
 import Avatar from '@/components/Image/Avatar';
+import { safeHaptics } from '@/utils/haptics';
 
 interface InviteRecipient {
     id?: string;
@@ -97,7 +98,7 @@ const EnhancedInviteModal: React.FC<EnhancedInviteModalProps> = ({
     };
 
     // Handle input change
-    const handleInputChange = (text: string) => {
+    const handleInputChange = async (text: string) => {
         setInputText(text);
 
         // Check if last character is comma
@@ -106,27 +107,27 @@ const EnhancedInviteModal: React.FC<EnhancedInviteModalProps> = ({
             if (newRecipients.length > 0) {
                 setRecipients(prev => [...prev, ...newRecipients]);
                 setInputText('');
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                await safeHaptics.impact()
             }
         }
     };
 
     // Handle input submit (when user presses enter/done)
-    const handleInputSubmit = () => {
+    const handleInputSubmit = async () => {
         if (inputText.trim()) {
             const newRecipients = parseInput(inputText);
             if (newRecipients.length > 0) {
                 setRecipients(prev => [...prev, ...newRecipients]);
                 setInputText('');
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                await safeHaptics.impact()
             }
         }
     };
 
     // Remove a recipient
-    const removeRecipient = (index: number) => {
+    const removeRecipient = async (index: number) => {
         setRecipients(prev => prev.filter((_, i) => i !== index));
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        await safeHaptics.impact()
     };
 
     // Clear all recipients
@@ -183,7 +184,7 @@ const EnhancedInviteModal: React.FC<EnhancedInviteModalProps> = ({
     }, [inputText]);
 
     // Add suggestion to recipients
-    const addSuggestion = (user: any) => {
+    const addSuggestion = async (user: any) => {
         const newRecipient: InviteRecipient = {
             identifier: user.email || user.phone || user.id.toString(),
             type: user.email ? 'email' : user.phone ? 'phone' : 'user_id',
@@ -197,7 +198,7 @@ const EnhancedInviteModal: React.FC<EnhancedInviteModalProps> = ({
         setInputText('');
         setSuggestions([]);
         setShowResults(false);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        await safeHaptics.impact();
     };
 
     // Validate all recipients before sending
@@ -310,7 +311,7 @@ const EnhancedInviteModal: React.FC<EnhancedInviteModalProps> = ({
                 );
             }
             if (Platform.OS !== 'web') {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                await safeHaptics.success();
             }
 
         } catch (error) {

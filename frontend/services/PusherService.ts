@@ -288,9 +288,9 @@ class PusherService {
       });
 
       // ==================== ADDITIONAL NOTIFICATIONS FOR CHAT PAGE ====================
-      // ==================== CHAT PAGE NOTIFICATIONS ====================
 
       // Space invitations
+      // Find this block (around line 200-215)
       channel.bind('space-invitation', (data: any) => {
         console.log('📨 Space invitation received:', data);
         const notification = {
@@ -304,7 +304,45 @@ class PusherService {
           createdAt: new Date()
         };
         console.log('📨 SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification); // ✅ ADD THIS LINE
+        onNotification(notification);
+      });
+
+
+      // Space invitations - listen for Laravel's BroadcastNotificationCreated
+      channel.bind('Illuminate\\Notifications\\Events\\BroadcastNotificationCreated', (data: any) => {
+        console.log('📨 Laravel notification received:', data);
+
+        // Check if this is a space invitation notification
+        if (data.type === 'App\\Notifications\\SpaceInvitationNotification' ||
+          data.type?.includes('SpaceInvitation')) {
+
+          const notification = {
+            id: data.id,
+            type: 'space_invitation',
+            title: 'Space Invitation',
+            message: `${data.data?.inviter_name || 'Someone'} invited you to join "${data.data?.space_title}"`,
+            data: data.data,
+            spaceId: data.data?.space_id,
+            userId: data.data?.inviter_id,
+            avatar: data.data?.inviter_avatar,
+            createdAt: new Date(data.created_at),
+            isRead: false,
+          };
+
+          console.log('📨 SENDING SPACE INVITATION TO STORE:', notification);
+          onNotification(notification);
+        }
+
+        // Also handle other notification types if needed
+        else if (data.type === 'App\\Notifications\\SomeOtherNotification') {
+          // Handle other notifications
+        }
+      });
+
+      // Optional: Keep this for backward compatibility
+      channel.bind('space-invitation', (data: any) => {
+        console.log('📨 Space invitation (legacy) received:', data);
+        // Handle legacy format if needed
       });
 
       // Call started
@@ -344,7 +382,7 @@ class PusherService {
       });
 
       // Participant joined space
-      channel.bind('participant-joined', (data: any) => {
+      channel.bind('participant.joined', (data: any) => {
         console.log('👤 Participant joined notification:', data);
         const notification = {
           type: data.type || 'participant_joined',
@@ -411,9 +449,30 @@ class PusherService {
         console.log('📅 SENDING TO NOTIFICATION STORE:', notification);
         onNotification(notification); // ✅ ADD THIS LINE
       });
+
+      channel.bind('space.created', (data: any) => {
+        console.log('🚀 New space created by someone you follow:', data);
+
+        const notification = {
+          type: 'space_created',
+          title: 'New Space Created',
+          message: `${data.creator?.name || 'Someone'} created a new space: "${data.space?.title}"`,
+          data: data,
+          spaceId: data.space?.id,
+          userId: data.creator?.id,
+          avatar: data.creator?.profile_photo,
+          createdAt: new Date()
+        };
+
+        console.log('🚀 SENDING TO NOTIFICATION STORE:', notification);
+        onNotification(notification);
+      });
       // ==================== END OF CHAT PAGE NOTIFICATIONS ====================
 
-
+      channel.bind('space-invitation', (data: any) => {
+        console.log('📨 Space invitation (legacy) received:', data);
+        // Handle legacy format if needed
+      });
       channel.bind('pusher:subscription_succeeded', () => {
         console.log(`✅ SUBSCRIBED TO USER NOTIFICATIONS: ${channelName}`);
       });
@@ -697,6 +756,76 @@ class PusherService {
     }
   }
 
+
+  // Add this method to PusherService.ts
+
+  /**
+   * Subscribe to private user channel for real-time events
+   */
+  subscribeToPrivateUser(userId: number, onEvent: (data: any) => void): boolean {
+    if (!this.pusher || !this.isInitialized) {
+      console.warn('⚠️ Pusher not initialized. Skipping private user subscription.');
+      return false;
+    }
+
+    try {
+      // Private channel format for Laravel
+      const channelName = `private-user.${userId}`;
+
+      if (this.channels.has(channelName)) {
+        console.log(`ℹ️ Already subscribed to private user channel: ${channelName}`);
+        return true;
+      }
+
+      console.log(`🔌 Subscribing to private user channel: ${channelName}`);
+      const channel = this.pusher.subscribe(channelName);
+
+      // Bind to your custom space.invitation event
+      channel.bind('space.invitation', (data: any) => {
+        console.log('📨 Space invitation received on private channel:', data);
+
+        const notification = {
+          id: data.id,
+          type: 'space_invitation',
+          title: 'Space Invitation',
+          message: `${data.inviter_name} invited you to join "${data.space_title}"`,
+          data: data,
+          spaceId: data.space_id,
+          userId: data.inviter_id,
+          avatar: data.inviter_avatar,
+          createdAt: new Date(data.timestamp),
+          isRead: false,
+        };
+
+        onEvent(notification);
+      });
+
+      // Also bind to the Laravel notification event if needed
+      channel.bind('space-invitation', (data: any) => {
+        console.log('📨 Laravel notification received on private channel:', data);
+        // Handle Laravel notification format if needed
+      });
+
+      channel.bind('pusher:subscription_succeeded', () => {
+        console.log(`✅ Successfully subscribed to private user: ${channelName}`);
+      });
+
+      channel.bind('pusher:subscription_error', (error: any) => {
+        console.error(`❌ Subscription error for private user ${channelName}:`, error);
+      });
+
+      channel.bind('space.invitation', (data: any) => {
+        console.log('📨 Space invitation received on private channel:', data);
+        // ... handles the event
+      });
+
+      this.channels.set(channelName, channel);
+      return true;
+    } catch (error) {
+      console.error(`❌ Error subscribing to private user channel:`, error);
+      return false;
+    }
+  }
   // Generic unsubscribe method
   unsubscribeFromChannel(channelName: string): void {
     const channel = this.channels.get(channelName);

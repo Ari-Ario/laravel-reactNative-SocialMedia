@@ -422,6 +422,7 @@ export const useNotificationStore = create<NotificationStore>()(
         get().setLastActiveTime(new Date().toISOString());
       },
 
+
       removeNotification: (notificationId) => {
         set((state) => {
           const inFollowerNotifications = state.followerNotifications.some(n => n.id === notificationId);
@@ -473,7 +474,11 @@ export const useNotificationStore = create<NotificationStore>()(
             console.log('🔔 PUSHER EVENT RECEIVED → ADDING TO STORE:', notificationData);
             get().addNotification(notificationData);
           });
-
+          // ✅ NEW: Subscribe to private user channel for your custom events
+          PusherService.subscribeToPrivateUser(userId, (notificationData) => {
+            console.log('🔔 PRIVATE CHANNEL EVENT → ADDING TO STORE:', notificationData);
+            get().addNotification(notificationData);
+          });
           get().fetchMissedNotifications(token, userId);
 
           set({ isConnected: true, currentUserId: userId });
@@ -487,6 +492,7 @@ export const useNotificationStore = create<NotificationStore>()(
         const { currentUserId } = get();
         if (currentUserId) {
           PusherService.unsubscribeFromUserNotifications(currentUserId);
+          PusherService.unsubscribeFromChannel(`private-user.${currentUserId}`); // Add this
         }
         PusherService.disconnect();
 
@@ -500,7 +506,7 @@ export const useNotificationStore = create<NotificationStore>()(
           const { lastActiveTime } = get();
           const apiUrl = getApiBase() || 'http://localhost:8000';
           const url = `${apiUrl}/notifications/missed`;
-          const tokken = await getToken();
+
           console.log('📬 Fetching missed notifications from:', url, 'since:', lastActiveTime);
 
           const response = await axios.get(url, {
@@ -511,34 +517,190 @@ export const useNotificationStore = create<NotificationStore>()(
             timeout: 10000,
           });
 
-          const missedNotifications = response.data;
-          console.log('📬 Found missed notifications:', missedNotifications);
+          const missedNotifications = response.data.notifications || response.data;
+          console.log('📬 Found missed notifications:', missedNotifications.length);
 
           if (missedNotifications.length > 0) {
             missedNotifications.forEach((notification: any) => {
-              get().addNotification({
-                ...notification,
-                createdAt: new Date(notification.createdAt),
+              // Extract type and data
+              const type = notification.type;
+              const notifData = notification.data || notification;
+
+              // Create properly formatted notification for store
+              let formattedNotification: any = {
+                id: notification.id,
+                type: type,
+                title: '',
+                message: '',
+                data: notifData,
+                isRead: !!notification.read_at,
+                createdAt: new Date(notification.created_at || notification.createdAt),
+              };
+
+              // 1. SPACE INVITATIONS
+              if (type === 'space-invitation') {
+                formattedNotification = {
+                  ...formattedNotification,
+                  type: 'space_invitation',
+                  title: 'Space Invitation',
+                  message: `${notifData.inviter_name || 'Someone'} invited you to join "${notifData.space_title || 'a space'}"`,
+                  spaceId: notifData.space_id,
+                  userId: notifData.inviter_id,
+                  avatar: notifData.inviter_avatar,
+                  data: notifData,
+                };
+              }
+
+              // 2. NEW FOLLOWERS (for FollowersPanel)
+              else if (type === 'App\\Events\\NewFollower') {
+                formattedNotification = {
+                  ...formattedNotification,
+                  type: 'new_follower',
+                  title: 'New Follower',
+                  message: `${notifData.followerName || 'Someone'} started following you`,
+                  userId: notifData.followerId,
+                  avatar: notifData.profile_photo,
+                  data: notifData,
+                };
+              }
+
+              // 3. COMMENTS
+              else if (type === 'App\\Events\\NewComment') {
+                const commentData = notifData.comment || notifData;
+                const commenter = commentData.user || {};
+
+                formattedNotification = {
+                  ...formattedNotification,
+                  type: 'comment',
+                  title: 'New Comment',
+                  message: `${commenter.name || 'Someone'} commented on your post`,
+                  postId: notifData.postId || commentData.post_id,
+                  commentId: commentData.id,
+                  userId: commenter.id || commentData.user_id,
+                  avatar: commenter.profile_photo,
+                  data: notifData,
+                };
+              }
+
+              // 4. REACTIONS
+              else if (type === 'App\\Events\\NewReaction') {
+                const reactionData = notifData.reaction || notifData;
+                const reactor = reactionData.user || {};
+
+                formattedNotification = {
+                  ...formattedNotification,
+                  type: 'reaction',
+                  title: 'New Reaction',
+                  message: `${reactor.name || 'Someone'} reacted to your post`,
+                  postId: notifData.postId || reactionData.post_id,
+                  userId: reactor.id || reactionData.user_id,
+                  avatar: reactor.profile_photo,
+                  data: notifData,
+                };
+              }
+
+              // 5. POST UPDATES
+              else if (type === 'App\\Events\\PostUpdated') {
+                formattedNotification = {
+                  ...formattedNotification,
+                  type: 'post_updated',
+                  title: 'Post Updated',
+                  message: notifData.message || 'A post was updated',
+                  postId: notifData.postId,
+                  userId: notifData.userId,
+                  avatar: notifData.avatar,
+                  data: notifData,
+                };
+              }
+
+              // 6. POST DELETED
+              else if (type === 'App\\Events\\PostDeleted') {
+                formattedNotification = {
+                  ...formattedNotification,
+                  type: 'post_deleted',
+                  title: 'Post Deleted',
+                  message: notifData.message || 'A post was deleted',
+                  postId: notifData.postId,
+                  data: notifData,
+                };
+              }
+
+              // 7. CALL STARTED
+              else if (type === 'call_started') {
+                formattedNotification = {
+                  ...formattedNotification,
+                  type: 'call_started',
+                  title: 'Call Started',
+                  message: notifData.message || 'A call has started',
+                  spaceId: notifData.spaceId || notifData.space_id,
+                  callId: notifData.callId || notifData.call?.id,
+                  userId: notifData.userId || notifData.user?.id,
+                  avatar: notifData.avatar || notifData.user?.profile_photo,
+                  data: notifData,
+                };
+              }
+
+              // 8. NEW MESSAGE
+              else if (type === 'new_message') {
+                formattedNotification = {
+                  ...formattedNotification,
+                  type: 'new_message',
+                  title: 'New Message',
+                  message: notifData.message || 'You have a new message',
+                  spaceId: notifData.spaceId || notifData.space_id,
+                  messageId: notifData.messageId || notifData.message?.id,
+                  userId: notifData.userId || notifData.user?.id,
+                  avatar: notifData.avatar || notifData.user?.profile_photo,
+                  data: notifData,
+                };
+              }
+
+              // 9. PARTICIPANT JOINED
+              else if (type === 'participant_joined') {
+                formattedNotification = {
+                  ...formattedNotification,
+                  type: 'participant_joined',
+                  title: 'New Participant',
+                  message: notifData.message || 'Someone joined the space',
+                  spaceId: notifData.spaceId || notifData.space_id,
+                  userId: notifData.userId || notifData.user?.id,
+                  avatar: notifData.avatar || notifData.user?.profile_photo,
+                  data: notifData,
+                };
+              }
+
+              // 10. MAGIC EVENT
+              else if (type === 'magic_event') {
+                formattedNotification = {
+                  ...formattedNotification,
+                  type: 'magic_event',
+                  title: '✨ Magic Event',
+                  message: notifData.message || 'A magical event occurred',
+                  spaceId: notifData.spaceId || notifData.space_id,
+                  eventId: notifData.eventId || notifData.event?.id,
+                  userId: notifData.userId || notifData.triggered_by,
+                  avatar: notifData.avatar,
+                  data: notifData,
+                };
+              }
+
+              // Add to store
+              console.log(`📬 Adding missed notification:`, {
+                id: formattedNotification.id,
+                type: formattedNotification.type,
+                title: formattedNotification.title,
+                hasUserId: !!formattedNotification.userId,
+                hasPostId: !!formattedNotification.postId,
+                hasSpaceId: !!formattedNotification.spaceId,
               });
+
+              get().addNotification(formattedNotification);
             });
           }
 
           get().setLastActiveTime(new Date().toISOString());
         } catch (error: any) {
-          console.error('❌ Error fetching missed notifications:', {
-            message: error.message,
-            code: error.code,
-            config: error.config,
-            response: error.response ? {
-              status: error.response.status,
-              data: error.response.data,
-            } : null,
-          });
-
-          if (error.code === 'ERR_NETWORK' && !get().isConnected) {
-            console.log('🔄 Retrying fetchMissedNotifications in 5 seconds...');
-            setTimeout(() => get().fetchMissedNotifications(token, userId), 5000);
-          }
+          console.error('❌ Error fetching missed notifications:', error);
         }
       },
 

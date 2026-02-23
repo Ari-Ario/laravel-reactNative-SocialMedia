@@ -480,6 +480,19 @@ class CollaborationService {
     }
   }
 
+  async updatePoll(spaceId: string, pollId: string, pollData: any): Promise<any> {
+    try {
+      const response = await axios.put(`${this.baseURL}/spaces/${spaceId}/polls/${pollId}`, pollData, {
+        headers: this.getHeaders(),
+      });
+      await this.triggerHapticSuccess();
+      return response.data.poll;
+    } catch (error) {
+      console.error('Error updating poll:', error);
+      throw error;
+    }
+  }
+
   async getPolls(spaceId: string): Promise<any[]> {
     try {
       const response = await axios.get(`${this.baseURL}/spaces/${spaceId}/polls`, {

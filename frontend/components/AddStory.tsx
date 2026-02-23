@@ -14,89 +14,89 @@ const AddStory = ({ visible, onClose, onStoryCreated }) => {
   const pickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-        Alert.alert('Permission required', 'We need access to your photos');
-        return;
+      Alert.alert('Permission required', 'We need access to your photos');
+      return;
     }
 
     let result;
-    
+
     if (Platform.OS === 'web') {
-        // Web implementation
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        
-        input.onchange = (e) => {
+      // Web implementation
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+
+      input.onchange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
+          const reader = new FileReader();
+          reader.onload = (event) => {
             setImage(event.target.result);
-            };
-            reader.readAsDataURL(file);
+          };
+          reader.readAsDataURL(file);
         }
-        };
-        
-        input.click();
-        return;
+      };
+
+      input.click();
+      return;
     } else {
-        // Mobile implementation
-        result = await ImagePicker.launchImageLibraryAsync({
+      // Mobile implementation
+      result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [9, 16],
         quality: 1,
-        });
+      });
     }
 
     if (!result?.canceled) {
-        setImage(Platform.OS === 'web' ? result : result.assets[0].uri);
+      setImage(Platform.OS === 'web' ? result : result.assets[0].uri);
     }
-    };
+  };
 
-const handleCreateStory = async () => {
-  if (!image) {
-    Alert.alert('Error', 'Please select an image first');
-    return;
-  }
-
-  try {
-    setUploading(true);
-    
-    const formData = new FormData();
-    
-    // Handle file differently for web vs native
-    if (Platform.OS === 'web') {
-      // For web platform
-      const response = await fetch(image);
-      const blob = await response.blob();
-      const file = new File([blob], 'story.jpg', {
-        type: 'image/jpeg',
-      });
-      formData.append('media', file);
-    } else {
-      // For mobile platforms
-      formData.append('media', {
-        uri: image,
-        name: 'story.jpg',
-        type: 'image/jpeg',
-      });
+  const handleCreateStory = async () => {
+    if (!image) {
+      Alert.alert('Error', 'Please select an image first');
+      return;
     }
-    
-    formData.append('caption', caption);
 
-    await createStory(formData);
-    onStoryCreated();
-    onClose();
-    setImage(null);
-    setCaption('');
-  } catch (error) {
-    console.error('Error creating story:', error);
-    Alert.alert('Error', 'Failed to create story');
-  } finally {
-    setUploading(false);
-  }
-};
+    try {
+      setUploading(true);
+
+      const formData = new FormData();
+
+      // Handle file differently for web vs native
+      if (Platform.OS === 'web') {
+        // For web platform
+        const response = await fetch(image);
+        const blob = await response.blob();
+        const file = new File([blob], 'story.jpg', {
+          type: 'image/jpeg',
+        });
+        formData.append('media', file);
+      } else {
+        // For mobile platforms
+        formData.append('media', {
+          uri: image,
+          name: 'story.jpg',
+          type: 'image/jpeg',
+        });
+      }
+
+      formData.append('caption', caption);
+
+      await createStory(formData);
+      onStoryCreated();
+      onClose();
+      setImage(null);
+      setCaption('');
+    } catch (error) {
+      console.error('Error creating story:', error);
+      Alert.alert('Error', 'Failed to create story');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <Modal visible={visible} onDismiss={onClose} contentContainerStyle={styles.modal}>
