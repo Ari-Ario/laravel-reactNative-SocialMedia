@@ -122,6 +122,26 @@ const PollComponent: React.FC<PollComponentProps> = ({
 
     const collaborationService = CollaborationService.getInstance();
 
+    // ============ PERMISSION SYSTEM ============
+    // Determine user permissions based on role and poll data
+    const isCreator = editPoll?.createdBy?.id === currentUserId;
+    const isModerator = currentUserRole === 'owner' || currentUserRole === 'moderator';
+    const hasVotes = (editPoll?.total_votes || 0) > 0;
+
+    // Permission matrix:
+    // | User Role        | Can Edit | Can Close | Can Forward | Can Delete (this space) | Can Delete (all spaces) |
+    // |------------------|----------|-----------|-------------|------------------------|-------------------------|
+    // | Creator          | ✅      | ✅       | ✅         | ✅                     | ✅                      |
+    // | Owner/Moderator  | ❌      | ✅       | ✅         | ✅                     | ❌                      |
+    // | Participant      | ❌      | ❌       | ❌         | ❌                     | ❌                      |
+
+    const canEdit = isCreator && !hasVotes && editPoll?.status === 'active';
+    const canClose = (isCreator || isModerator) && editPoll?.status === 'active';
+    const canForward = (isCreator || isModerator) && editPoll?.status === 'active';
+    const canDeleteInThisSpace = isCreator || isModerator;
+    const canDeleteAllSpaces = isCreator;
+    // ===========================================
+
     useEffect(() => {
         if (isVisible) {
             Animated.timing(fadeAnim, {
@@ -340,12 +360,17 @@ const PollComponent: React.FC<PollComponentProps> = ({
         return poll;
     };
 
+    // In PollComponent.tsx - CORRECTED handleSubmit function
     const handleSubmit = async () => {
         if (!validatePoll()) return;
 
         setIsSubmitting(true);
 
         try {
+            // Create poll data structure
+            const poll = await createPoll(); // This returns the poll structure with options, etc.
+
+            // Prepare data for API
             const pollData = {
                 question: poll.question,
                 options: poll.options.map(opt => ({ text: opt.text })),
@@ -364,27 +389,24 @@ const PollComponent: React.FC<PollComponentProps> = ({
             };
 
             let savedPoll;
-            // When updating:
-            if (isEditing && editPoll) {
-                savedPoll = await collaborationService.updatePoll(spaceId, editPoll.id, pollData);
-            }
 
             if (isEditing && editPoll) {
                 // Update existing poll
-                savedPoll = await collaborationService.updatePoll(spaceId, editPoll.id, {
-                    question: pollData.question,
-                    options: pollData.options.map(opt => ({ text: opt.text })),
-                    type: pollData.type,
-                    settings: pollData.settings,
-                    deadline: pollData.deadline,
-                    tags: pollData.tags,
-                });
+                savedPoll = await collaborationService.updatePoll(spaceId, editPoll.id, pollData);
 
-                // Compute diff and send update message
-                const diffMessage = computePollDiff(editPoll, savedPoll);
+                // Check if forwarded polls were deleted
+                if (savedPoll.forwarded_polls_deleted) {
+                    Alert.alert(
+                        'Forwarded Polls Deleted',
+                        `This poll was forwarded to ${savedPoll.forwarded_polls_deleted.length} other space(s). Those copies have been deleted. You can share the updated poll again if needed.`,
+                        [{ text: 'OK' }]
+                    );
+                }
+
+                // Send update notification to chat (simplified)
                 await collaborationService.sendMessage(spaceId, {
-                    content: `📊 Poll updated:\n${diffMessage}`,
-                    type: 'text',
+                    content: `📊 Poll "${pollData.question}" has been updated`,
+                    type: 'text',  // ✅ This is correct (already 'text')
                     metadata: {
                         isPollNotification: true,
                         pollId: savedPoll.id,
@@ -393,32 +415,26 @@ const PollComponent: React.FC<PollComponentProps> = ({
                 });
             } else {
                 // Create new poll
-                savedPoll = await collaborationService.createPoll(spaceId, {
-                    question: pollData.question,
-                    options: pollData.options.map(opt => ({ text: opt.text })),
-                    type: pollData.type,
-                    settings: pollData.settings,
-                    deadline: pollData.deadline,
-                    tags: pollData.tags,
-                });
+                savedPoll = await collaborationService.createPoll(spaceId, pollData);
 
                 // Send poll creation message
                 await collaborationService.sendMessage(spaceId, {
                     content: `📊 **POLL**: ${pollData.question}`,
-                    type: 'poll',
+                    type: 'text',  // ✅ Use 'text' type
                     metadata: {
+                        isPoll: true,
                         pollId: savedPoll.id,
-                        pollData: pollData,
+                        pollData: poll,
                     },
                 });
-            }
 
-            // Forward to selected spaces (only for new polls? or also for updates?)
-            if (selectedForwardSpaces.size > 0 && !isEditing) {
-                const forwardTo = Array.from(selectedForwardSpaces);
-                await collaborationService.forwardPoll(savedPoll.id, forwardTo);
-                if (onPollForwarded) {
-                    onPollForwarded(savedPoll.id, forwardTo);
+                // Forward to selected spaces (only for new polls)
+                if (selectedForwardSpaces.size > 0) {
+                    const forwardTo = Array.from(selectedForwardSpaces);
+                    await collaborationService.forwardPoll(savedPoll.id, forwardTo);
+                    if (onPollForwarded) {
+                        onPollForwarded(savedPoll.id, forwardTo);
+                    }
                 }
             }
 
@@ -434,7 +450,14 @@ const PollComponent: React.FC<PollComponentProps> = ({
             onClose();
         } catch (error: any) {
             console.error('Error creating/updating poll:', error);
-            if (error.response?.status === 422) {
+
+            if (error.response?.status === 400 && error.response.data?.has_votes) {
+                Alert.alert(
+                    'Cannot Edit',
+                    'This poll already has votes and cannot be edited. You can close it instead.',
+                    [{ text: 'OK' }]
+                );
+            } else if (error.response?.status === 422) {
                 const errors = error.response.data.errors;
                 const messages = Object.values(errors).flat().join('\n');
                 Alert.alert('Validation Error', messages);
@@ -445,7 +468,6 @@ const PollComponent: React.FC<PollComponentProps> = ({
             setIsSubmitting(false);
         }
     };
-
     // Load available spaces for forwarding
     const loadAvailableSpaces = async () => {
         setIsLoadingSpaces(true);
@@ -898,7 +920,6 @@ const PollComponent: React.FC<PollComponentProps> = ({
     );
 };
 
-
 const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
@@ -1274,12 +1295,6 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         padding: 20,
         color: '#999',
-    },
-    forwardModalContent: {
-        backgroundColor: '#fff',
-        borderRadius: 16,
-        width: '90%',
-        maxHeight: '80%',
     },
     modalButtons: {
         flexDirection: 'row',

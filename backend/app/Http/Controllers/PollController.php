@@ -132,6 +132,160 @@ class PollController extends Controller
         }
     }
 
+
+    /**
+     * Update an existing poll - now with cascade to forwarded polls
+     */
+    public function update(Request $request, $spaceId, $pollId)
+    {
+        \Log::info('Updating poll for space: ' . $spaceId, $request->all());
+
+        $validator = Validator::make($request->all(), [
+            'question' => 'required|string|max:500',
+            'options' => 'required|array|min:2|max:10',
+            'options.*.text' => 'required|string|max:200',
+            'type' => 'required|in:single,multiple,ranked,weighted',
+            'settings' => 'required|array',
+            'deadline' => 'nullable|date',
+            'tags' => 'nullable|array',
+        ]);
+
+        if ($validator->fails()) {
+            \Log::error('Validation failed:', $validator->errors()->toArray());
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        try {
+            $poll = Poll::where('space_id', $spaceId)
+                ->where('id', $pollId)
+                ->with(['options'])
+                ->firstOrFail();
+
+            $user = auth()->user();
+
+            // Check if user has permission to update (creator only, and no votes cast)
+            if ($poll->created_by !== $user->id) {
+                return response()->json(['message' => 'Only the creator can update this poll'], 403);
+            }
+
+            // Check if poll has any votes - prevent editing if votes exist
+            if ($poll->total_votes > 0) {
+                return response()->json([
+                    'message' => 'Cannot edit a poll that already has votes',
+                    'has_votes' => true
+                ], 400);
+            }
+
+            // Check if poll is still active
+            if ($poll->status !== 'active') {
+                return response()->json(['message' => 'Cannot edit a closed or archived poll'], 400);
+            }
+
+            DB::beginTransaction();
+
+            try {
+                // Find all forwarded copies of this poll
+                $forwardedPolls = Poll::where('parent_poll_id', $pollId)
+                    ->orWhereJsonContains('forwarded_from', $spaceId)
+                    ->get();
+
+                $forwardedSpaceIds = $forwardedPolls->pluck('space_id')->toArray();
+
+                // Delete all forwarded copies (they will be recreated if user chooses to share again)
+                if ($forwardedPolls->count() > 0) {
+                    foreach ($forwardedPolls as $forwardedPoll) {
+                        // Broadcast deletion event to each space
+                        broadcast(new PollDeleted($forwardedPoll->id, $forwardedPoll->space_id))->toOthers();
+                        $forwardedPoll->delete();
+                    }
+                }
+
+                // Update poll basic info
+                $poll->update([
+                    'question' => $request->question,
+                    'type' => $request->type,
+                    'settings' => $request->settings,
+                    'deadline' => $request->deadline,
+                    'tags' => $request->tags,
+                ]);
+
+                // Get existing option IDs for comparison
+                $existingOptionIds = $poll->options->pluck('id')->toArray();
+                $newOptionTexts = collect($request->options)->pluck('text')->toArray();
+
+                // Delete options that are no longer present
+                foreach ($poll->options as $index => $option) {
+                    if (!in_array($option->text, $newOptionTexts)) {
+                        $option->delete();
+                    }
+                }
+
+                // Update or create options
+                foreach ($request->options as $optionData) {
+                    // Try to find existing option with same text
+                    $existingOption = $poll->options->firstWhere('text', $optionData['text']);
+
+                    if ($existingOption) {
+                        // Update existing option (though text might be same)
+                        $existingOption->update([
+                            'text' => $optionData['text'],
+                        ]);
+                    } else {
+                        // Create new option
+                        PollOption::create([
+                            'id' => Str::uuid(),
+                            'poll_id' => $poll->id,
+                            'text' => $optionData['text'],
+                            'votes' => 0,
+                        ]);
+                    }
+                }
+
+                DB::commit();
+
+                // Refresh poll with relationships
+                $poll->refresh();
+                $poll->load(['creator', 'options']);
+
+                \Log::info('Poll updated successfully: ' . $poll->id);
+                
+                // Broadcast the updated poll to original space
+                broadcast(new PollUpdated($poll, $spaceId, $user->id))->toOthers();
+
+                // Prepare response with info about deleted forwarded polls
+                $responseData = [
+                    'poll' => $poll,
+                    'message' => 'Poll updated successfully',
+                ];
+
+                if (count($forwardedSpaceIds) > 0) {
+                    $responseData['forwarded_polls_deleted'] = $forwardedSpaceIds;
+                    $responseData['warning'] = 'This poll was forwarded to ' . count($forwardedSpaceIds) . 
+                        ' other space(s). Those copies have been deleted. You can share the updated poll again.';
+                }
+
+                return response()->json($responseData, 200);
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                \Log::error('Error updating poll transaction: ' . $e->getMessage(), [
+                    'trace' => $e->getTraceAsString(),
+                    'request' => $request->all()
+                ]);
+                throw $e;
+            }
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['message' => 'Poll not found'], 404);
+        } catch (\Exception $e) {
+            \Log::error('Error updating poll: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'request' => $request->all()
+            ]);
+            return response()->json(['message' => 'Error updating poll: ' . $e->getMessage()], 500);
+        }
+    }
+
     /**
      * Get a single poll
      */
@@ -521,7 +675,7 @@ class PollController extends Controller
     }
 
     /**
-     * Delete a poll permanently
+     * Delete a poll permanently - now with cascade to forwarded polls
      */
     public function destroy($spaceId, $pollId)
     {
@@ -532,37 +686,79 @@ class PollController extends Controller
 
             $user = auth()->user();
 
-            // Check if user has permission to delete (creator or moderator/owner)
+            // Check if user has permission to delete (creator or moderator/owner of THIS space)
             $space = CollaborationSpace::findOrFail($spaceId);
             $participation = SpaceParticipation::where('space_id', $spaceId)
                 ->where('user_id', $user->id)
                 ->first();
 
-            if ($poll->created_by !== $user->id && !in_array($participation->role, ['owner', 'moderator'])) {
+            // Allow deletion if user is creator OR (moderator/owner of the current space)
+            $isCreator = $poll->created_by === $user->id;
+            $isModerator = $participation && in_array($participation->role, ['owner', 'moderator']);
+
+            if (!$isCreator && !$isModerator) {
                 return response()->json(['message' => 'Not authorized to delete this poll'], 403);
             }
 
-            // Check if poll can be deleted (e.g., not already closed/deleted)
-            if ($poll->status === 'deleted') {
-                return response()->json(['message' => 'Poll already deleted'], 400);
+            DB::beginTransaction();
+
+            try {
+                // Find ALL forwarded copies of this poll across ALL spaces
+                // This includes polls that were forwarded from this poll
+                $forwardedPolls = Poll::where('parent_poll_id', $pollId)
+                    ->orWhereJsonContains('forwarded_from', $spaceId)
+                    ->get();
+
+                // Delete all forwarded copies first (they will be deleted from ALL spaces)
+                $forwardedCount = 0;
+                $deletedSpaces = [];
+                
+                if ($forwardedPolls->count() > 0) {
+                    foreach ($forwardedPolls as $forwardedPoll) {
+                        // Broadcast deletion event to each space before deleting
+                        broadcast(new PollDeleted($forwardedPoll->id, $forwardedPoll->space_id))->toOthers();
+                        $deletedSpaces[] = $forwardedPoll->space_id;
+                        $forwardedPoll->delete();
+                        $forwardedCount++;
+                    }
+                }
+
+                // Also find polls that have this poll as parent (child polls)
+                $childPolls = Poll::where('parent_poll_id', $pollId)->get();
+                foreach ($childPolls as $childPoll) {
+                    if (!$forwardedPolls->contains('id', $childPoll->id)) {
+                        broadcast(new PollDeleted($childPoll->id, $childPoll->space_id))->toOthers();
+                        $deletedSpaces[] = $childPoll->space_id;
+                        $childPoll->delete();
+                        $forwardedCount++;
+                    }
+                }
+
+                // Finally, delete the original poll
+                $poll->delete();
+
+                DB::commit();
+
+                // Broadcast deletion event for the original poll
+                broadcast(new PollDeleted($pollId, $spaceId))->toOthers();
+
+                $responseData = [
+                    'message' => 'Poll deleted successfully',
+                    'poll_id' => $pollId,
+                    'deleted_from_spaces' => array_unique($deletedSpaces),
+                    'total_copies_deleted' => $forwardedCount
+                ];
+
+                return response()->json($responseData);
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
             }
 
-            // Permanently delete the poll and all related data (cascades to options and votes)
-            $poll->delete();
-
-            // Optionally broadcast deletion event
-            broadcast(new PollDeleted($pollId, $spaceId))->toOthers();
-
-            return response()->json([
-                'message' => 'Poll deleted successfully',
-                'poll_id' => $pollId
-            ]);
-
-        }
-        catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json(['message' => 'Poll not found'], 404);
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             \Log::error('Error deleting poll: ' . $e->getMessage());
             return response()->json(['message' => 'Error deleting poll'], 500);
         }

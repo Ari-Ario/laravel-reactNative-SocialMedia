@@ -105,11 +105,13 @@ const PollViewer: React.FC<PollViewerProps> = ({
             const votes = opt.votes || [];
 
             const hasVoter = voters.some((v: any) =>
-                v.userId === currentUserId || v.id === currentUserId
+                String(v.userId) === String(currentUserId) || String(v.id) === String(currentUserId)
             );
 
             const hasVote = votes.some((v: any) =>
-                v.user_id === currentUserId || v.userId === currentUserId || v === currentUserId
+                String(v.user_id) === String(currentUserId) ||
+                String(v.userId) === String(currentUserId) ||
+                String(v) === String(currentUserId)
             );
 
             return hasVoter || hasVote;
@@ -302,9 +304,22 @@ const PollViewer: React.FC<PollViewerProps> = ({
     // Delete poll
     const handleDeletePoll = () => {
         setShowMenu(false);
+
+        const isCreator = String(localPoll?.created_by) === String(currentUserId);
+        const isModerator = currentUserRole === 'owner' || currentUserRole === 'moderator';
+
+        let title = 'Delete Poll';
+        let message = '';
+
+        if (isCreator) {
+            message = 'As the creator, deleting this poll will remove it from ALL spaces it was shared to. This action cannot be undone.';
+        } else if (isModerator) {
+            message = 'As a moderator, you can only delete this poll from the current space. The original creator\'s copy in other spaces will remain. This action cannot be undone.';
+        }
+
         Alert.alert(
-            'Delete Poll',
-            'Are you sure you want to permanently delete this poll? This action cannot be undone.',
+            title,
+            message,
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
@@ -312,17 +327,21 @@ const PollViewer: React.FC<PollViewerProps> = ({
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            await collaborationService.deletePoll(spaceId, localPoll.id);
-                            await safeHaptics.warning();
+                            console.log('🗑️ Attempting to delete poll:', localPoll.id);
+                            const result = await collaborationService.deletePoll(spaceId, localPoll.id);
+                            console.log('✅ Delete successful:', result);
 
-                            if (onDelete) {
-                                onDelete(localPoll.id);
+                            // Show appropriate message
+                            if (result.deleted_by === 'creator' && result.total_copies_deleted > 0) {
+                                Alert.alert('Success', `Poll deleted. ${result.total_copies_deleted} copies removed from other spaces.`);
+                            } else {
+                                Alert.alert('Success', 'Poll deleted successfully');
                             }
 
-                            Alert.alert('Success', 'Poll deleted successfully');
-                        } catch (error) {
-                            console.error('Error deleting poll:', error);
-                            Alert.alert('Error', 'Failed to delete poll');
+                            if (onDelete) onDelete(localPoll.id);
+                        } catch (error: any) {
+                            console.error('❌ Delete failed:', error);
+                            Alert.alert('Error', error.response?.data?.message || 'Failed to delete poll');
                         }
                     },
                 },
