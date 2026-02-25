@@ -9,6 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Avatar from '@/components/Image/Avatar';
 import getApiBaseImage from '@/services/getApiBaseImage';
+import PollViewer from './PollViewer';
 
 interface MessageBubbleProps {
   message: {
@@ -31,6 +32,11 @@ interface MessageBubbleProps {
   onPress: () => void;
   onLongPress: () => void;
   onLongPressWithPosition?: (message: any, x: number, y: number) => void;
+  onPollPress?: (poll: any) => void;
+  /** Required for InlinePollCard voting */
+  spaceId?: string;
+  currentUserId?: number;
+  currentUserRole?: string;
 }
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({
@@ -41,6 +47,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   onPress,
   onLongPress,
   onLongPressWithPosition,
+  onPollPress,
+  spaceId,
+  currentUserId,
+  currentUserRole,
 }) => {
   const formatTime = (timestamp: string) => {
     return new Date(timestamp).toLocaleTimeString([], {
@@ -86,28 +96,31 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           </View>
         );
 
-      case 'poll':
+      case 'poll': {
+        const pollData = message.poll || message.metadata?.pollData;
+        // ── Render InlinePollCard OUTSIDE the normal bubble wrapper ──────────
+        // Early return so we bypass the blue/grey bubble entirely.
+        if (pollData && spaceId && currentUserId) {
+          return (
+            <PollViewer
+              poll={pollData}
+              spaceId={spaceId}
+              currentUserId={currentUserId}
+              currentUserRole={currentUserRole || 'participant'}
+              onRefresh={() => { }}
+            />
+          );
+        }
+        // Fallback if no spaceId/userId context
         return (
-          <View style={styles.pollContainer}>
-            <View style={styles.pollHeader}>
-              <Ionicons name="bar-chart" size={20} color={isCurrentUser ? "#fff" : "#007AFF"} />
-              <Text style={[styles.pollQuestionText, isCurrentUser && styles.currentUserText]}>
-                {message.poll?.question || message.metadata?.question || 'Poll Attachment'}
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={[styles.viewPollButton, isCurrentUser ? styles.viewPollButtonCurrent : styles.viewPollButtonOther]}
-              onPress={() => {
-                // Future integration to open PollViewer overlay
-                console.log('Open poll', message.poll?.id || message.metadata?.poll_id);
-              }}
-            >
-              <Text style={[styles.viewPollButtonText, isCurrentUser && styles.viewPollButtonTextCurrent]}>
-                View Poll Options
-              </Text>
-            </TouchableOpacity>
+          <View style={styles.pollFallback}>
+            <Ionicons name="bar-chart" size={14} color="#007AFF" />
+            <Text style={styles.pollFallbackText}>
+              {pollData?.question || 'Poll'}
+            </Text>
           </View>
         );
+      }
 
       default:
         return (
@@ -145,6 +158,41 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       </View>
     );
   };
+
+  // ── Poll messages: render PollViewer directly (no bubble wrapper) ───────
+  // This makes polls look exactly like WhatsApp — a standalone card in the feed.
+  if (message.type === 'poll') {
+    const pollData = message.poll || message.metadata?.pollData;
+    if (pollData && spaceId && currentUserId) {
+      return (
+        <View
+          style={[
+            styles.container,
+            isCurrentUser ? styles.currentUserContainer : styles.otherUserContainer,
+          ]}
+        >
+          {!isCurrentUser && showAvatar && (
+            <View style={styles.avatarContainer}>
+              <Avatar
+                source={`${getApiBaseImage()}/storage/${message.user?.profile_photo || 'default-avatar.png'}`}
+                size={32}
+                name={message.user?.name}
+                showStatus={false}
+              />
+            </View>
+          )}
+          <PollViewer
+            poll={pollData}
+            spaceId={spaceId}
+            currentUserId={currentUserId}
+            currentUserRole="participant" // Default to participant for now, will pass correctly if needed
+            onRefresh={() => { }} // No-op, real-time updates handle this
+          />
+        </View>
+      );
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
 
   return (
     <TouchableOpacity
@@ -344,25 +392,45 @@ const styles = StyleSheet.create({
     marginLeft: 2,
   },
   pollContainer: {
-    minWidth: 150,
+    minWidth: 180,
+    maxWidth: 240,
   },
   pollHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    gap: 6,
     marginBottom: 8,
-    gap: 8,
+  },
+  pollIconBadge: {
+    backgroundColor: 'rgba(0, 122, 255, 0.12)',
+    borderRadius: 6,
+    padding: 4,
+  },
+  pollLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#007AFF',
+    letterSpacing: 1,
   },
   pollQuestionText: {
-    flex: 1,
     fontSize: 15,
     fontWeight: '600',
     color: '#333',
+    marginBottom: 4,
+  },
+  pollMeta: {
+    fontSize: 12,
+    color: '#888',
+    marginBottom: 8,
   },
   viewPollButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 8,
-    alignItems: 'center',
+    borderRadius: 10,
+    alignSelf: 'flex-start',
     marginTop: 4,
   },
   viewPollButtonOther: {
@@ -372,12 +440,24 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   viewPollButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
     color: '#007AFF',
   },
   viewPollButtonTextCurrent: {
     color: '#fff',
+  },
+  pollFallback: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    padding: 10,
+  },
+  pollFallbackText: {
+    fontSize: 14,
+    color: '#444',
+    fontWeight: '600',
+    flex: 1,
   },
 });
 

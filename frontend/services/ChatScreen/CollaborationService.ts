@@ -1266,7 +1266,7 @@ class CollaborationService {
   // Message handling functions
   async sendMessage(spaceId: string, messageData: {
     content: string;
-    type?: 'text' | 'image' | 'video' | 'file' | 'voice';
+    type?: 'text' | 'image' | 'video' | 'file' | 'voice' | 'poll';
     file_path?: string;
     metadata?: any;
   }): Promise<any> {

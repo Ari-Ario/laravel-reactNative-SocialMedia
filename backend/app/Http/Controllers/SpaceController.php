@@ -1039,7 +1039,7 @@ public function endCall(Request $request, $id)
     {
         $request->validate([
             'content' => 'required|string',
-            'type' => 'sometimes|in:text,image,video,document,voice',
+            'type' => 'sometimes|in:text,image,video,document,voice,poll',
             'file_path' => 'sometimes|string',
             'metadata' => 'sometimes|array',
         ]);

@@ -304,7 +304,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
     switch (type) {
       case 'space':
         console.log('Navigating to space:', `/spaces/${id}`);
-        router.push(`/(spaces)/${id}`);
+        router.push({ pathname: '/(spaces)/[id]', params: { id, tab: 'chat' } });
         break;
 
       case 'chat':

@@ -98,12 +98,19 @@ const SpaceDetailScreen = () => {
     };
   }, [id, user]);
 
-  // Separate effect for loading polls when tab changes
+  // Eagerly load polls when space loads (so banner + header badge show correctly)
+  // Also re-load when switching to polls tab
   useEffect(() => {
-    if (activeTab === 'polls' && space) {
+    if (space?.id) {
       loadPolls();
     }
-  }, [activeTab, space?.id]);
+  }, [space?.id]);
+
+  useEffect(() => {
+    if (activeTab === 'polls' && space?.id) {
+      loadPolls();
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     if (space?.id) {
@@ -139,10 +146,17 @@ const SpaceDetailScreen = () => {
       setParticipants(spaceData.participants || []);
       setMagicEvents(spaceData.magic_events || []);
 
-      // ✅ FIX: Set default tab based on space type ONLY ONCE
-      if (!hasInitialTabSet && spaceData.space_type && ['chat', 'whiteboard', 'meeting', 'document', 'brainstorm'].includes(spaceData.space_type)) {
-        setActiveTab(spaceData.space_type as any);
-        setHasInitialTabSet(true); // Mark that initial tab has been set
+      // ✅ FIX: Honor params.tab first (from navigation), then fall back to space_type, only run once
+      if (!hasInitialTabSet) {
+        const validTabs = ['chat', 'whiteboard', 'meeting', 'document', 'brainstorm', 'calendar', 'files', 'ai', 'polls'];
+        if (params.tab && validTabs.includes(params.tab as string)) {
+          // Navigation passed a specific tab, use it
+          setActiveTab(params.tab as any);
+        } else if (spaceData.space_type && validTabs.includes(spaceData.space_type)) {
+          // No tab param: default to space type
+          setActiveTab(spaceData.space_type as any);
+        }
+        setHasInitialTabSet(true);
       }
 
       if (params.justCreated === 'true') {
@@ -617,6 +631,9 @@ const SpaceDetailScreen = () => {
             setSpace={setSpace}
             setShowMediaUploader={setShowMediaUploader}
             setShowPollCreator={setShowPollCreator}
+            polls={polls}
+            currentUserRole={space?.my_role}
+            onNavigateToAllPolls={() => setActiveTab('polls')}
           />
         );
 
@@ -1418,6 +1435,25 @@ const styles = StyleSheet.create({
   },
   headerButton: {
     padding: 4,
+  },
+  pollsBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#FF3B30',
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: '#fff',
+  },
+  pollsBadgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '700',
   },
   tabContainer: {
     backgroundColor: '#fff',

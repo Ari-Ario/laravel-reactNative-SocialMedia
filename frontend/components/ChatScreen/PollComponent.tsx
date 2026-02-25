@@ -417,14 +417,14 @@ const PollComponent: React.FC<PollComponentProps> = ({
                 // Create new poll
                 savedPoll = await collaborationService.createPoll(spaceId, pollData);
 
-                // Send poll creation message
+                // ✅ Send as type 'poll' so it appears inline in chat (WhatsApp-style)
                 await collaborationService.sendMessage(spaceId, {
-                    content: `📊 **POLL**: ${pollData.question}`,
-                    type: 'text',  // ✅ Use 'text' type
+                    content: `📊 ${pollData.question}`,
+                    type: 'poll',
                     metadata: {
                         isPoll: true,
                         pollId: savedPoll.id,
-                        pollData: poll,
+                        pollData: savedPoll, // Real server poll with correct IDs
                     },
                 });
 
@@ -447,7 +447,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
             }
 
             resetForm();
-            onClose();
+            // Let the parent component handle the onClose() logic via onPollCreated() to avoid duplicate state updates
         } catch (error: any) {
             console.error('Error creating/updating poll:', error);
 
@@ -1264,7 +1264,7 @@ const styles = StyleSheet.create({
         marginHorizontal: 16,
         marginBottom: 16,
     },
-    spacesList: {
+    spacesListSearch: {
         maxHeight: 300,
     },
     spaceItem: {

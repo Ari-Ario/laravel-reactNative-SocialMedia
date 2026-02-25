@@ -19,7 +19,7 @@ interface Message {
   user_id: number;
   user_name?: string;
   content: string;
-  type: 'text' | 'image' | 'video' | 'file' | 'voice';
+  type: 'text' | 'image' | 'video' | 'file' | 'voice' | 'poll';
   metadata?: any;
   file_path?: string;
   mime_type?: string;
@@ -39,14 +39,19 @@ interface MessageListProps {
   spaceId?: string;
   conversationId?: number;
   currentUserId: number;
+  currentUserRole?: string;
   onMessageLongPress?: (message: any, x: number, y: number) => void;
+  onPollPress?: (poll: any) => void;
+  polls?: any[];
 }
-
 const MessageList: React.FC<MessageListProps> = ({
   spaceId,
   conversationId,
   currentUserId,
+  currentUserRole,
   onMessageLongPress,
+  onPollPress,
+  polls = [],
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,6 +75,29 @@ const MessageList: React.FC<MessageListProps> = ({
       }
     };
   }, [spaceId, conversationId]);
+
+  // Sycnhronize static embedded poll Data in messages with live Space API Polls
+  useEffect(() => {
+    if (!polls || polls.length === 0) return;
+
+    setMessages(prev => {
+      let hasChanges = false;
+      const updatedMessages = prev.map(msg => {
+        if (msg.type === 'poll' || msg.metadata?.isPoll) {
+          const pollId = msg.poll?.id || msg.metadata?.pollId || msg.metadata?.pollData?.id;
+          const livePoll = polls.find(p => String(p.id) === String(pollId));
+
+          if (livePoll && JSON.stringify(msg.poll) !== JSON.stringify(livePoll)) {
+            hasChanges = true;
+            return { ...msg, poll: livePoll };
+          }
+        }
+        return msg;
+      });
+
+      return hasChanges ? updatedMessages : prev;
+    });
+  }, [polls]);
 
   const loadMessages = async () => {
     try {
@@ -104,8 +132,9 @@ const MessageList: React.FC<MessageListProps> = ({
         console.log('📨 New message received:', data);
 
         let newMessage = data.message || data;
-        if (newMessage.metadata?.isPoll && newMessage.metadata?.pollData) {
-          newMessage = { ...newMessage, poll: newMessage.metadata.pollData };
+        // For poll messages: extract pollData from metadata into .poll
+        if (newMessage.type === 'poll' || (newMessage.metadata?.isPoll && newMessage.metadata?.pollData)) {
+          newMessage = { ...newMessage, poll: newMessage.metadata?.pollData ?? newMessage.poll };
         }
 
         setMessages(prev => {
@@ -146,8 +175,8 @@ const MessageList: React.FC<MessageListProps> = ({
       onContentUpdate: (contentState) => {
         if (contentState.messages) {
           const mappedMessages = contentState.messages.map((m: any) => {
-            if (m.metadata?.isPoll && m.metadata?.pollData) {
-              return { ...m, poll: m.metadata.pollData };
+            if (m.type === 'poll' || (m.metadata?.isPoll && m.metadata?.pollData)) {
+              return { ...m, poll: m.metadata?.pollData ?? m.poll };
             }
             return m;
           });
@@ -155,6 +184,16 @@ const MessageList: React.FC<MessageListProps> = ({
             new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
           ));
         }
+      },
+
+      onPollUpdated: (pollData) => {
+        console.log('🔄 Inline poll updating via socket:', pollData?.id);
+        setMessages(prev => prev.map(msg => {
+          if ((msg.type === 'poll' || msg.metadata?.isPoll) && msg.poll?.id === pollData?.id) {
+            return { ...msg, poll: pollData };
+          }
+          return msg;
+        }));
       },
     });
   };
@@ -269,10 +308,13 @@ const MessageList: React.FC<MessageListProps> = ({
         isSelected={selectedMessage === item.id}
         onPress={() => handleMessagePress(item)}
         onLongPress={() => { }}
-        onLongPressWithPosition={onMessageLongPress}
+        onPollPress={onPollPress}
+        spaceId={spaceId}
+        currentUserId={currentUserId}
+        currentUserRole={currentUserRole}
       />
     );
-  }, [currentUserId, messages, selectedMessage, handleMessagePress, onMessageLongPress]);
+  }, [currentUserId, currentUserRole, messages, selectedMessage, handleMessagePress, onMessageLongPress, onPollPress]);
 
   return (
     <View style={styles.container}>

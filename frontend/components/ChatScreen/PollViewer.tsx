@@ -82,7 +82,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
     const [showVotersModal, setShowVotersModal] = useState(false);
 
     // Refs
-    const menuButtonRef = useRef<TouchableOpacity>(null);
+    const menuButtonRef = useRef<any>(null);
     const collaborationService = CollaborationService.getInstance();
     const menuScale = useSharedValue(0);
 
@@ -178,6 +178,25 @@ const PollViewer: React.FC<PollViewerProps> = ({
 
         // Optimistic update
         const optimisticPoll = JSON.parse(JSON.stringify(localPoll));
+        let oldVotesRemoved = 0;
+
+        optimisticPoll.options.forEach((opt: any) => {
+            if (opt.votes) {
+                const initialLength = opt.votes.length;
+                opt.votes = opt.votes.filter((v: any) =>
+                    String(v.user_id) !== String(currentUserId) &&
+                    String(v.userId) !== String(currentUserId) &&
+                    String(v) !== String(currentUserId)
+                );
+                oldVotesRemoved += (initialLength - opt.votes.length);
+            }
+            if (opt.voters) {
+                opt.voters = opt.voters.filter((v: any) =>
+                    String(v.userId) !== String(currentUserId) && String(v.id) !== String(currentUserId)
+                );
+            }
+        });
+
         optionIds.forEach(optId => {
             const option = optimisticPoll.options.find((o: any) => o.id === optId);
             if (option) {
@@ -186,7 +205,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
 
                 option.votes.push({
                     user_id: currentUserId,
-                    id: `temp_${Date.now()}`,
+                    id: `temp_${Date.now()}_${Math.random()}`,
                 });
 
                 option.voters.push({
@@ -196,7 +215,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
             }
         });
 
-        optimisticPoll.total_votes = (optimisticPoll.total_votes || 0) + optionIds.length;
+        optimisticPoll.total_votes = (optimisticPoll.total_votes || 0) + optionIds.length - oldVotesRemoved;
         optimisticPoll.unique_voters = (optimisticPoll.unique_voters || 0) + (hasVoted ? 0 : 1);
 
         setLocalPoll(optimisticPoll);
@@ -232,29 +251,26 @@ const PollViewer: React.FC<PollViewerProps> = ({
     };
 
     // ==================== FIXED MENU PRESS - EXACT POSITIONING ====================
-    const handleMenuPress = (event: NativeSyntheticEvent<NativeTouchEvent>) => {
-        const { pageX, pageY } = event.nativeEvent;
+    const handleMenuPress = () => {
+        if (menuButtonRef.current) {
+            menuButtonRef.current.measure((x: number, y: number, w: number, h: number, pageX: number, pageY: number) => {
+                const menuWidth = 220;
+                const menuHeight = 200; // Approximate based on number of items
 
-        // Calculate menu dimensions (you can adjust these values)
-        const menuWidth = 220;
-        const menuHeight = 200; // Approximate based on number of items
+                // Adjust position to keep menu on screen
+                let left = pageX - menuWidth + w; // Align to the right edge of the button by default
+                let top = pageY + h + 5;  // Render slightly below the button
 
-        // Adjust position to keep menu on screen
-        let left = pageX - 20; // Offset slightly left from tap point
-        let top = pageY + 10;  // Offset slightly down from tap point
+                // Ensure menu doesn't go off screen
+                if (left < 10) left = 10;
+                if (left + menuWidth > width) left = width - menuWidth - 10;
+                if (top + menuHeight > height) top = pageY - menuHeight - 10;
 
-        // Ensure menu doesn't go off screen
-        if (left + menuWidth > width) {
-            left = width - menuWidth - 10;
+                setMenuPosition({ top, left });
+                setShowMenu(true);
+                menuScale.value = withSpring(1);
+            });
         }
-
-        if (top + menuHeight > height) {
-            top = pageY - menuHeight - 10;
-        }
-
-        setMenuPosition({ top, left });
-        setShowMenu(true);
-        menuScale.value = withSpring(1);
     };
     // ==============================================================================
 
@@ -329,11 +345,11 @@ const PollViewer: React.FC<PollViewerProps> = ({
                     onPress: async () => {
                         try {
                             console.log('🗑️ Attempting to delete poll:', localPoll.id);
-                            const result = await collaborationService.deletePoll(spaceId, localPoll.id);
+                            const result: any = await collaborationService.deletePoll(spaceId, localPoll.id);
                             console.log('✅ Delete successful:', result);
 
                             // Show appropriate message
-                            if (result.deleted_by === 'creator' && result.total_copies_deleted > 0) {
+                            if (result && result.deleted_by === 'creator' && result.total_copies_deleted > 0) {
                                 Alert.alert('Success', `Poll deleted. ${result.total_copies_deleted} copies removed from other spaces.`);
                             } else {
                                 Alert.alert('Success', 'Poll deleted successfully');
