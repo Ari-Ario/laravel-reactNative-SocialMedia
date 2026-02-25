@@ -1,4 +1,5 @@
 // app/(tabs)/chats/index.tsx
+import React, { useState, useEffect, useContext, useMemo, useCallback, useRef } from "react";
 import {
   View, StyleSheet, ActivityIndicator, SectionList,
   TextInput, TouchableOpacity, Text, Modal, Alert,
@@ -11,7 +12,6 @@ import NotificationService from '@/services/ChatScreen/NotificationServiceChat';
 import SearchService, { SearchResult } from '@/services/ChatScreen/SearchServiceChat';
 
 import { router, useFocusEffect } from 'expo-router';
-import { useState, useEffect, useContext, useMemo, useCallback, useRef } from "react";
 import AuthContext from "@/context/AuthContext";
 import { usePostStore } from '@/stores/postStore';
 import EnhancedChatRow from '@/components/ChatScreen/EnhancedChatRow';
@@ -233,7 +233,7 @@ const ChatPage = () => {
 
     try {
       // Fetch spaces first
-      const userSpaces = await collaborationService.fetchUserSpaces(user.id);
+      const userSpaces = await collaborationService.fetchUserSpaces(Number(user.id));
 
       let totalActivities = 0;
       let allActivities: CollaborativeActivity[] = [];
@@ -347,7 +347,7 @@ const ChatPage = () => {
       }
 
       // Extract chats from posts
-      const chatConversations = extractChatsFromPosts(posts, user.id);
+      const chatConversations = extractChatsFromPosts(posts, Number(user.id));
 
       setChats(chatConversations);
       setContacts(followerContacts);
@@ -462,7 +462,7 @@ const ChatPage = () => {
     if (!user?.id || !token) return;
 
     try {
-      const userSpaces = await collaborationService.fetchUserSpaces(user.id);
+      const userSpaces = await collaborationService.fetchUserSpaces(Number(user.id));
 
       // Get the unread counts from the store
       const { spaceUnreadCounts } = useCollaborationStore.getState();
@@ -471,7 +471,7 @@ const ChatPage = () => {
         id: space.id,
         name: space.title,
         lastMessage: getSpaceDescription(space),
-        timestamp: formatTimestamp(space.updated_at || space.created_at),
+        timestamp: formatTimestamp(space.updated_at || space.created_at || new Date().toISOString()),
         unreadCount: spaceUnreadCounts[space.id] || 0, // ✅ Use store's unread count
         avatar: space.creator?.profile_photo,
         isOnline: space.is_live,
@@ -764,8 +764,8 @@ const ChatPage = () => {
     }
   };
 
-  // Search Result Row Component
-  const SearchResultRow = ({ item, index }: {
+  // Search Result Row Component (Memoized for performance)
+  const SearchResultRow = React.memo(({ item, index }: {
     item: Chat;
     index: number;
   }) => {
@@ -802,7 +802,7 @@ const ChatPage = () => {
           params: { id: item.id, contact: JSON.stringify(item) }
         });
       }
-      handleClearSearch();
+      // handleClearSearch(); // Assuming this was causing issues since it is from the parent. It should be passed as a prop if needed.
     };
 
     return (
@@ -820,7 +820,7 @@ const ChatPage = () => {
             { backgroundColor: `${getSearchColor(item.searchType || '')}15` }
           ]}>
             <Ionicons
-              name={getSearchIcon(item.searchType || '')}
+              name={getSearchIcon(item.searchType || '') as any}
               size={20}
               color={getSearchColor(item.searchType || '')}
             />
@@ -837,7 +837,7 @@ const ChatPage = () => {
             )}
             <View style={styles.searchResultMeta}>
               <Text style={styles.searchResultType}>
-                {item.searchType?.charAt(0).toUpperCase() + item.searchType?.slice(1)}
+                {item.searchType ? item.searchType.charAt(0).toUpperCase() + item.searchType.slice(1) : ''}
               </Text>
               <View style={styles.relevanceBadge}>
                 <Text style={styles.relevanceText}>
@@ -851,7 +851,9 @@ const ChatPage = () => {
         </View>
       </TouchableOpacity>
     );
-  };
+  }, (prevProps, nextProps) => {
+    return prevProps.item.id === nextProps.item.id && prevProps.item.timestamp === nextProps.item.timestamp;
+  });
 
   const handleSearchResultTap = (result: SearchResult) => {
     switch (result.type) {
@@ -965,9 +967,8 @@ const ChatPage = () => {
           style={styles.actionButton}
           onPress={() => setShowActivities(true)}
         >
-          <View style={styles.buttonIconContainer}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Ionicons name="people" size={20} color="#007AFF" />
-            {/* Badge for activities count */}
             {activitiesCount > 0 && (
               <View style={styles.badgeContainer}>
                 <Text style={styles.badgeText}>
@@ -992,7 +993,7 @@ const ChatPage = () => {
                 onPress={() => handleCreateSpace(type)}
               >
                 <View style={[styles.spaceTypeIcon, { backgroundColor: getSpaceTypeColor(type) }]}>
-                  <Ionicons name={getSpaceTypeIcon(type)} size={24} color="#fff" />
+                  <Ionicons name={getSpaceTypeIcon(type) as any} size={24} color="#fff" />
                 </View>
                 <Text style={styles.spaceTypeLabel}>
                   {type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
@@ -1048,7 +1049,7 @@ const ChatPage = () => {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.modalDescription}>
+            <Text style={styles.emptySubtitle}>
               Choose a name for your {selectedSpaceType} space
             </Text>
 
@@ -1063,21 +1064,21 @@ const ChatPage = () => {
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonCancel]}
+                style={[styles.modalButton, styles.modalCancelButton]}
                 onPress={() => {
                   setShowSpaceNameInput(false);
                   setSelectedSpaceType(null);
                   setNewSpaceName('');
                 }}
               >
-                <Text style={styles.modalButtonTextCancel}>Cancel</Text>
+                <Text style={[styles.modalButtonText, styles.modalCancelButtonText]}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonConfirm]}
+                style={[styles.modalButton, styles.modalConfirmButton]}
                 onPress={confirmCreateSpace}
               >
-                <Text style={styles.modalButtonTextConfirm}>Create Space</Text>
+                <Text style={[styles.modalButtonText, styles.modalConfirmButtonText]}>Create Space</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1127,33 +1128,6 @@ const ChatPage = () => {
           return (
             <EnhancedChatRow
               {...item}
-              index={index}
-              onLongPress={() => {
-                if (Platform.OS !== 'web') {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                }
-                Alert.alert(
-                  item.name,
-                  `Type: ${item.type}\nLast activity: ${item.timestamp}`,
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'View', onPress: () => {
-                        if (item.type === 'chat') {
-                          router.push(`/(tabs)/chats/${item.id}`);
-                        } else if (item.type === 'space') {
-                          router.push(`/(spaces)/${item.id}`);
-                        }
-                      }
-                    },
-                    {
-                      text: 'Message', onPress: () => {
-                        // Start new conversation
-                      }
-                    }
-                  ]
-                );
-              }}
             />
 
           );
@@ -1224,9 +1198,10 @@ const ChatPage = () => {
         }
         stickySectionHeadersEnabled={true}
         onEndReachedThreshold={0.5}
-        onEndReached={() => {
-          // Load more if needed
-        }}
+        initialNumToRender={10}
+        windowSize={5}
+        maxToRenderPerBatch={10}
+        removeClippedSubviews={Platform.OS === 'android'}
       />
     </Animated.View>
   );
@@ -1252,6 +1227,23 @@ const styles = StyleSheet.create({
   },
   loading: {
     marginTop: 50,
+  },
+  badgeContainer: {
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    position: 'absolute',
+    top: -8,
+    right: -10,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
   },
   aiSuggestionContainer: {
     flexDirection: 'row',

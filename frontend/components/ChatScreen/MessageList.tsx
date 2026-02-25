@@ -109,7 +109,7 @@ const MessageList: React.FC<MessageListProps> = ({
             return prev;
           }
 
-          const updated = [...prev, newMessage].sort((a, b) =>
+          const updated = [...prev, newMessage].sort((a: Message, b: Message) =>
             new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
           );
 
@@ -130,13 +130,8 @@ const MessageList: React.FC<MessageListProps> = ({
           // Only attempt haptics on native platforms
           if (Platform.OS !== 'web') {
             try {
-              // Dynamic import to avoid web issues
-              import('expo-haptics').then(Haptics => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                  .catch(err => console.warn('Haptics error:', err));
-              }).catch(err => {
-                console.warn('Haptics module not available:', err);
-              });
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                .catch(err => console.warn('Haptics error:', err));
             } catch (error) {
               console.warn('Haptics not available:', error);
             }
@@ -146,7 +141,7 @@ const MessageList: React.FC<MessageListProps> = ({
 
       onContentUpdate: (contentState) => {
         if (contentState.messages) {
-          setMessages(contentState.messages.sort((a, b) =>
+          setMessages(contentState.messages.sort((a: Message, b: Message) =>
             new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
           ));
         }
@@ -250,7 +245,7 @@ const MessageList: React.FC<MessageListProps> = ({
     console.log('Report:', message.id, reason);
   };
 
-  const renderMessage = ({ item, index }: { item: Message; index: number }) => {
+  const renderMessage = React.useCallback(({ item, index }: { item: Message; index: number }) => {
     const isCurrentUser = item.user_id === currentUserId;
     const showAvatar = index === 0 ||
       messages[index - 1]?.user_id !== item.user_id ||
@@ -267,7 +262,7 @@ const MessageList: React.FC<MessageListProps> = ({
         onLongPressWithPosition={onMessageLongPress}
       />
     );
-  };
+  }, [currentUserId, messages, selectedMessage, handleMessagePress, onMessageLongPress]);
 
   return (
     <View style={styles.container}>
@@ -325,4 +320,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MessageList;
+export default React.memo(MessageList);

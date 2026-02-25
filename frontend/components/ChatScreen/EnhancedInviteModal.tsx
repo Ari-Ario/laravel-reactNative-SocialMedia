@@ -23,7 +23,7 @@ import getApiBase from '@/services/getApiBase';
 import Avatar from '@/components/Image/Avatar';
 import { safeHaptics } from '@/utils/haptics';
 
-interface InviteRecipient {
+export interface InviteRecipient {
     id?: string;
     identifier: string;
     type: 'user_id' | 'email' | 'phone' | 'space' | 'invalid';

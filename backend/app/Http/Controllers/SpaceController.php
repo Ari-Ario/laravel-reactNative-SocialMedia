@@ -41,18 +41,28 @@ class SpaceController extends Controller
         try {
             $user = Auth::user();
             
-            // Use the scope to get spaces where user is participant
+            // Use eager loading to prevent N+1 queries
+            // Select limited fields to avoid sending huge JSON blobs (like content_state) for list views
             $spaces = CollaborationSpace::forUser($user->id)
-                ->with(['creator', 'linkedConversation', 'linkedPost', 'linkedStory'])
-                ->withCount(['participations as participants_count'])
+                ->select([
+                    'id', 'title', 'description', 'space_type', 'creator_id',
+                    'is_live', 'has_ai_assistant', 'linked_conversation_id',
+                    'created_at', 'updated_at'
+                ])
+                ->with(['creator:id,name,profile_photo,username'])
+                ->withCount('participations')
                 ->orderBy('updated_at', 'desc')
-                ->get();
+                ->paginate(20);
             
-            // Get participation data for each space
-            $spacesWithParticipation = $spaces->map(function($space) use ($user) {
-                $participation = SpaceParticipation::where('space_id', $space->id)
-                    ->where('user_id', $user->id)
-                    ->first();
+            // Fetch the user's participation for these spaces in a single query
+            $spaceIds = $spaces->pluck('id')->toArray();
+            $participations = SpaceParticipation::whereIn('space_id', $spaceIds)
+                ->where('user_id', $user->id)
+                ->get()
+                ->keyBy('space_id');
+            
+            $spacesWithParticipation = $spaces->map(function($space) use ($participations) {
+                $participation = $participations->get($space->id);
                 
                 return [
                     'id' => $space->id,
@@ -60,33 +70,26 @@ class SpaceController extends Controller
                     'description' => $space->description,
                     'space_type' => $space->space_type,
                     'creator_id' => $space->creator_id,
-                    'settings' => $space->settings,
-                    'content_state' => $space->content_state,
-                    'activity_metrics' => $space->activity_metrics,
-                    'evolution_level' => $space->evolution_level,
-                    'unlocked_features' => $space->unlocked_features,
+                    // Omitted content_state and settings to keep payload small
                     'is_live' => $space->is_live,
                     'has_ai_assistant' => $space->has_ai_assistant,
-                    'ai_personality' => $space->ai_personality,
-                    'ai_capabilities' => $space->ai_capabilities,
                     'linked_conversation_id' => $space->linked_conversation_id,
-                    'linked_post_id' => $space->linked_post_id,
-                    'linked_story_id' => $space->linked_story_id,
-                    'participants_count' => $space->participants_count,
+                    'participants_count' => $space->participations_count, // From withCount
                     'creator' => $space->creator,
-                    'linked_conversation' => $space->linkedConversation,
-                    'linked_post' => $space->linkedPost,
-                    'linked_story' => $space->linkedStory,
                     'created_at' => $space->created_at,
                     'updated_at' => $space->updated_at,
                     'my_role' => $participation ? $participation->role : null,
-                    'my_permissions' => $participation ? $participation->permissions : null,
                     'is_online_in_space' => $participation ? ($participation->presence_data['is_online'] ?? false) : false,
                 ];
             });
             
             return response()->json([
                 'spaces' => $spacesWithParticipation,
+                'pagination' => [
+                    'current_page' => $spaces->currentPage(),
+                    'last_page' => $spaces->lastPage(),
+                    'total' => $spaces->total()
+                ]
             ]);
             
         } catch (\Exception $e) {
@@ -256,41 +259,44 @@ class SpaceController extends Controller
         ]);
     }
 
-    // Helper: Get all spaces for a specific user
     public function getUserSpaces($userId)
     {
         $spaces = CollaborationSpace::where('creator_id', $userId)
             ->orWhereHas('participants', function($query) use ($userId) {
                 $query->where('user_id', $userId);
             })
-            ->with(['creator', 'participants.user'])
+            ->select([
+                'id', 'title', 'space_type', 'description', 'creator_id', 
+                'is_live', 'has_ai_assistant',
+                'created_at', 'updated_at'
+            ])
+            ->with(['creator:id,name,profile_photo,username'])
+            ->withCount('participations')
             ->orderBy('updated_at', 'desc')
+            ->limit(50) // Prevent fetching thousands of records globally
             ->get();
 
+        // Get user participations in a single query
+        $spaceIds = $spaces->pluck('id')->toArray();
+        $participations = SpaceParticipation::whereIn('space_id', $spaceIds)
+            ->where('user_id', $userId)
+            ->get()
+            ->keyBy('space_id');
+
         // Format for frontend
-        $formattedSpaces = $spaces->map(function($space) use ($userId) {
-            $participation = $space->participations()->where('user_id', $userId)->first();
+        $formattedSpaces = $spaces->map(function($space) use ($participations) {
+            $participation = $participations->get($space->id);
             
             return [
                 'id' => $space->id,
                 'title' => $space->title,
                 'space_type' => $space->space_type,
-                'description' => $space->description,
                 'creator_id' => $space->creator_id,
                 'creator' => $space->creator,
-                'settings' => $space->settings,
-                'content_state' => $space->content_state,
-                'activity_metrics' => $space->activity_metrics,
-                'evolution_level' => $space->evolution_level,
-                'unlocked_features' => $space->unlocked_features,
                 'is_live' => $space->is_live,
                 'has_ai_assistant' => $space->has_ai_assistant,
-                'ai_personality' => $space->ai_personality,
-                'ai_capabilities' => $space->ai_capabilities,
-                'participants_count' => $space->participants()->count(),
-                'participants' => $space->participants()->with('user')->get(),
+                'participants_count' => $space->participations_count,
                 'my_role' => $participation ? $participation->role : null,
-                'my_permissions' => $participation ? $participation->permissions : null,
                 'created_at' => $space->created_at,
                 'updated_at' => $space->updated_at,
             ];

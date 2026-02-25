@@ -40,6 +40,7 @@ import PollComponent from '@/components/ChatScreen/PollComponent';
 
 // Import the InviteRecipient type
 import { InviteRecipient } from '@/components/ChatScreen/EnhancedInviteModal';
+import SpaceChatTab from '@/components/ChatScreen/SpaceChatTab';
 
 const SpaceDetailScreen = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -48,7 +49,6 @@ const SpaceDetailScreen = () => {
   const [participants, setParticipants] = useState<any[]>([]);
   const [magicEvents, setMagicEvents] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'chat' | 'whiteboard' | 'meeting' | 'document' | 'brainstorm' | 'calendar' | 'files' | 'ai' | 'polls'>('chat');
-  const [content, setContent] = useState<string>('');
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showCalendarPrompt, setShowCalendarPrompt] = useState(false);
@@ -215,7 +215,7 @@ const SpaceDetailScreen = () => {
           }
         },
         onContentUpdate: (contentState) => {
-          setSpace(prev => ({
+          setSpace((prev: any) => ({
             ...prev,
             content_state: contentState,
             updated_at: new Date().toISOString()
@@ -495,43 +495,13 @@ const SpaceDetailScreen = () => {
     setShowSpaceMenu(false);
   };
 
-  const handleSendMessage = async () => {
-    if (!content.trim() || !space) return;
 
-    try {
-      const message = await collaborationService.sendMessage(id as string, {
-        content: content.trim(),
-        type: 'text',
-      });
-
-      setSpace(prev => ({
-        ...prev,
-        content_state: {
-          ...prev.content_state,
-          messages: [...(prev.content_state?.messages || []), message]
-        }
-      }));
-
-      if (message.user_id !== user?.id) {
-        useCollaborationStore.getState().incrementUnreadCount(id);
-      }
-
-      setContent('');
-
-      if (Platform.OS !== 'web') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
-    } catch (error) {
-      console.error('Error sending message:', error);
-      Alert.alert('Error', 'Failed to send message');
-    }
-  };
 
   const handleStartCall = async (type: 'audio' | 'video') => {
     try {
       const call = await collaborationService.startCall(id as string, type);
 
-      setSpace(prev => ({
+      setSpace((prev: any) => ({
         ...prev,
         is_live: true,
         current_focus: 'call',
@@ -639,39 +609,13 @@ const SpaceDetailScreen = () => {
     switch (activeTab) {
       case 'chat':
         return (
-          <View style={styles.chatContainer}>
-            <MessageList
-              spaceId={id}
-              currentUserId={user?.id || 0}
-            />
-
-            <View style={styles.chatInputContainer}>
-              <TouchableOpacity
-                onPress={() => setShowMediaUploader(true)}
-                style={styles.mediaButton}
-              >
-                <Ionicons name="attach" size={24} color="#007AFF" />
-              </TouchableOpacity>
-
-              <TextInput
-                style={styles.messageInput}
-                placeholder={`Message in ${space?.title || 'space'}...`}
-                value={content}
-                onChangeText={setContent}
-                multiline
-                maxLength={500}
-                placeholderTextColor="#999"
-              />
-
-              <TouchableOpacity
-                style={[styles.sendButton, !content.trim() && styles.sendButtonDisabled]}
-                onPress={handleSendMessage}
-                disabled={!content.trim()}
-              >
-                <Ionicons name="send" size={20} color="#fff" />
-              </TouchableOpacity>
-            </View>
-          </View>
+          <SpaceChatTab
+            spaceId={id as string}
+            currentUserId={user?.id || 0}
+            space={space}
+            setSpace={setSpace}
+            setShowMediaUploader={setShowMediaUploader}
+          />
         );
 
       case 'whiteboard':
@@ -712,7 +656,7 @@ const SpaceDetailScreen = () => {
                 <PollViewer
                   key={poll.id}
                   poll={poll}
-                  spaceId={id}
+                  spaceId={id as string}
                   currentUserId={user?.id || 0}
                   currentUserRole={space?.my_role}
                   onRefresh={loadPolls}
@@ -724,7 +668,7 @@ const SpaceDetailScreen = () => {
 
       case 'meeting':
         if (space?.is_live && space?.current_focus === 'call') {
-          return <ImmersiveCallView spaceId={id} />;
+          return <ImmersiveCallView spaceId={id as string} />;
         }
 
         return (
@@ -1094,7 +1038,7 @@ const SpaceDetailScreen = () => {
       {/* Enhanced Invite Modal */}
       <EnhancedInviteModal
         visible={showInviteModal}
-        spaceId={id}
+        spaceId={id as string}
         spaceTitle={space?.title || 'Space'}
         onClose={() => setShowInviteModal(false)}
         onInvite={handleInviteUsers}
@@ -1163,7 +1107,7 @@ const SpaceDetailScreen = () => {
               <View style={styles.settingsSection}>
                 <Text style={styles.settingsSectionTitle}>Space Type</Text>
                 <View style={styles.infoRow}>
-                  <Ionicons name={getSpaceTypeIcon(space?.space_type)} size={20} color="#007AFF" />
+                  <Ionicons name={getSpaceTypeIcon(space?.space_type) as any} size={20} color="#007AFF" />
                   <Text style={styles.infoText}>
                     {space?.space_type?.charAt(0).toUpperCase() + space?.space_type?.slice(1)}
                   </Text>
@@ -1318,10 +1262,10 @@ const SpaceDetailScreen = () => {
               >
                 <View style={styles.roleOptionLeft}>
                   <Ionicons
-                    name={
+                    name={(
                       role === 'owner' ? 'crown' :
                         role === 'moderator' ? 'shield' : 'person'
-                    }
+                    ) as any}
                     size={20}
                     color={
                       role === 'owner' ? '#FFD700' :
@@ -1396,9 +1340,7 @@ const SpaceDetailScreen = () => {
         onClose={() => setShowMediaUploader(false)}
         onUploadComplete={(media) => {
           console.log('Media uploaded:', media);
-          if (activeTab === 'chat') {
-            setContent(`Check out this file: ${media.url || media.file_name}`);
-          }
+          // Currently not handling text insertion for chat tab here
         }}
       />
     </SafeAreaView>
