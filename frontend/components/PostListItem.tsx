@@ -32,6 +32,7 @@ import React from 'react';
 import { PostActionButtons } from './PostActionButtons';
 import { usePostListService } from '@/services/PostListService';
 import RenderComments from './RenderComments';
+import { createShadow } from '@/utils/styles';
 import PusherService from '@/services/PusherService';
 
 interface PostListItemProps {
@@ -539,17 +540,12 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 10,
-    ...Platform.select({
-      web: {
-        boxShadow: '0px -3px 6px rgba(0, 0, 0, 0.2)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -3 },
-        shadowOpacity: 0.2,
-        shadowRadius: 6,
-        elevation: 20,
-      }
+    ...createShadow({
+      width: 0,
+      height: -3,
+      opacity: 0.2,
+      radius: 6,
+      elevation: 20,
     }),
   },
   fullScreenSheet: {
@@ -616,17 +612,12 @@ const styles = StyleSheet.create({
   },
   emojiPicker: {
     borderRadius: 10,
-    ...Platform.select({
-      web: {
-        boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-      }
+    ...createShadow({
+      width: 0,
+      height: 2,
+      opacity: 0.25,
+      radius: 3.84,
+      elevation: 5,
     }),
     zIndex: 999,
     position: 'absolute'

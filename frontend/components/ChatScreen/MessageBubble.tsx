@@ -23,6 +23,7 @@ interface MessageBubbleProps {
     created_at: string;
     reactions?: any[];
     metadata?: any;
+    poll?: any;
   };
   isCurrentUser: boolean;
   showAvatar: boolean;
@@ -39,6 +40,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   isSelected,
   onPress,
   onLongPress,
+  onLongPressWithPosition,
 }) => {
   const formatTime = (timestamp: string) => {
     return new Date(timestamp).toLocaleTimeString([], {
@@ -81,6 +83,29 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                 />
               ))}
             </View>
+          </View>
+        );
+
+      case 'poll':
+        return (
+          <View style={styles.pollContainer}>
+            <View style={styles.pollHeader}>
+              <Ionicons name="bar-chart" size={20} color={isCurrentUser ? "#fff" : "#007AFF"} />
+              <Text style={[styles.pollQuestionText, isCurrentUser && styles.currentUserText]}>
+                {message.poll?.question || message.metadata?.question || 'Poll Attachment'}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.viewPollButton, isCurrentUser ? styles.viewPollButtonCurrent : styles.viewPollButtonOther]}
+              onPress={() => {
+                // Future integration to open PollViewer overlay
+                console.log('Open poll', message.poll?.id || message.metadata?.poll_id);
+              }}
+            >
+              <Text style={[styles.viewPollButtonText, isCurrentUser && styles.viewPollButtonTextCurrent]}>
+                View Poll Options
+              </Text>
+            </TouchableOpacity>
           </View>
         );
 
@@ -317,6 +342,42 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#666',
     marginLeft: 2,
+  },
+  pollContainer: {
+    minWidth: 150,
+  },
+  pollHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+    gap: 8,
+  },
+  pollQuestionText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333',
+  },
+  viewPollButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  viewPollButtonOther: {
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+  },
+  viewPollButtonCurrent: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  viewPollButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#007AFF',
+  },
+  viewPollButtonTextCurrent: {
+    color: '#fff',
   },
 });
 

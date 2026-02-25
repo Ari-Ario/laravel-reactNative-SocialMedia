@@ -32,6 +32,7 @@ import Animated, {
 import Avatar from '@/components/Image/Avatar';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import { safeHaptics } from '@/utils/haptics';
+import { createShadow } from '@/utils/styles';
 import PollComponent from './PollComponent';
 import PollVotersModal from './PollVotersModal';
 
@@ -1024,16 +1025,12 @@ const styles = StyleSheet.create({
         marginVertical: 8,
         borderWidth: 1,
         borderColor: '#f0f0f0',
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.05,
-                shadowRadius: 8,
-            },
-            android: {
-                elevation: 2,
-            },
+        ...createShadow({
+            width: 0,
+            height: 2,
+            opacity: 0.05,
+            radius: 8,
+            elevation: 2,
         }),
     },
     header: {
@@ -1262,16 +1259,12 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         paddingVertical: 8,
         minWidth: 200,
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.15,
-                shadowRadius: 8,
-            },
-            android: {
-                elevation: 5,
-            },
+        ...createShadow({
+            width: 0,
+            height: 2,
+            opacity: 0.15,
+            radius: 8,
+            elevation: 5,
         }),
         zIndex: 1000,
     },

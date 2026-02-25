@@ -14,6 +14,7 @@ import { Calendar } from 'react-native-calendars';
 import { format, parseISO, addDays } from 'date-fns';
 import * as CalendarService from 'expo-calendar';
 import CollaborationService, { CollaborativeActivity } from '@/services/ChatScreen/CollaborationService';
+import { createShadow } from '@/utils/styles';
 
 interface CalendarViewProps {
   spaceId: string;
@@ -289,18 +290,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderLeftWidth: 4,
     borderLeftColor: '#007AFF',
-    elevation: 2,
-    ...Platform.select({
-      web: {
-        boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-      }
+    ...createShadow({
+      width: 0,
+      height: 2,
+      opacity: 0.25,
+      radius: 3.84,
+      elevation: 5,
     }),
   },
   calendarEventTime: {

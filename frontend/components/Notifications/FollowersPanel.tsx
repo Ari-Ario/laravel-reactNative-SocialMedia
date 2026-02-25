@@ -1,6 +1,7 @@
 // components/Notifications/FollowersPanel.tsx
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, Modal, Platform, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { createShadow } from '@/utils/styles';
 import { useState, useEffect } from 'react';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { Notification } from '@/types/Notification';
@@ -287,17 +288,12 @@ const styles = StyleSheet.create({
     bottom: 100,
     backgroundColor: 'white',
     borderRadius: 16,
-    ...Platform.select({
-      web: {
-        boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-      }
+    ...createShadow({
+      width: 0,
+      height: 2,
+      opacity: 0.25,
+      radius: 3.84,
+      elevation: 5,
     }),
   },
   panelHeader: {

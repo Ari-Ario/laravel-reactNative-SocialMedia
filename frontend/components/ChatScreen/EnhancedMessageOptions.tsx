@@ -11,6 +11,7 @@ import {
     Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { createShadow } from '@/utils/styles';
 import * as Haptics from 'expo-haptics';
 
 const { width, height } = Dimensions.get('window');
@@ -246,11 +247,13 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         borderRadius: 16,
         padding: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 8,
+        ...createShadow({
+            width: 0,
+            height: 4,
+            opacity: 0.15,
+            radius: 12,
+            elevation: 8,
+        }),
         borderWidth: 1,
         borderColor: 'rgba(0,0,0,0.05)',
     },
@@ -264,11 +267,13 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
         borderLeftWidth: 1,
         borderColor: 'rgba(0,0,0,0.05)',
-        shadowColor: '#000',
-        shadowOffset: { width: -2, height: -2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 4,
+        ...createShadow({
+            width: -2,
+            height: -2,
+            opacity: 0.05,
+            radius: 4,
+            elevation: 4,
+        }),
     },
     messagePreview: {
         backgroundColor: '#f8f9fa',

@@ -2,6 +2,7 @@
 import React, { useEffect } from 'react';
 import { View, Text, Image, TouchableOpacity, Animated, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { createShadow } from '@/utils/styles';
 import { Notification } from '@/types/Notification';
 
 interface NotificationToastProps {
@@ -131,18 +132,12 @@ const styles = StyleSheet.create({
     zIndex: 1000,
     backgroundColor: 'white',
     borderRadius: 12,
-    elevation: 5,
-    ...Platform.select({
-      web: {
-        boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-      }
+    ...createShadow({
+      width: 0,
+      height: 2,
+      opacity: 0.25,
+      radius: 3.84,
+      elevation: 5,
     }),
   },
   toastContent: {

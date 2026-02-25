@@ -16,6 +16,7 @@ interface SpaceChatTabProps {
     space: any;
     setSpace: React.Dispatch<React.SetStateAction<any>>;
     setShowMediaUploader: (show: boolean) => void;
+    setShowPollCreator: (show: boolean) => void;
 }
 
 const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
@@ -24,6 +25,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
     space,
     setSpace,
     setShowMediaUploader,
+    setShowPollCreator,
 }) => {
     const [content, setContent] = useState<string>('');
     const collaborationService = CollaborationService.getInstance();
@@ -63,12 +65,20 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
             />
 
             <View style={styles.chatInputContainer}>
-                <TouchableOpacity
-                    onPress={() => setShowMediaUploader(true)}
-                    style={styles.mediaButton}
-                >
-                    <Ionicons name="attach" size={24} color="#007AFF" />
-                </TouchableOpacity>
+                <View style={styles.attachActions}>
+                    <TouchableOpacity
+                        onPress={() => setShowMediaUploader(true)}
+                        style={styles.actionButton}
+                    >
+                        <Ionicons name="attach" size={24} color="#007AFF" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => setShowPollCreator(true)}
+                        style={styles.actionButton}
+                    >
+                        <Ionicons name="bar-chart" size={24} color="#007AFF" />
+                    </TouchableOpacity>
+                </View>
 
                 <TextInput
                     style={styles.messageInput}
@@ -127,8 +137,12 @@ const styles = StyleSheet.create({
     sendButtonDisabled: {
         backgroundColor: '#ccc',
     },
-    mediaButton: {
-        padding: 8,
+    attachActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    actionButton: {
+        padding: 6,
     },
 });
 

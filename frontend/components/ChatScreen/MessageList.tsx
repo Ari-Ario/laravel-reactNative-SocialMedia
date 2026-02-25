@@ -32,6 +32,7 @@ interface Message {
     name: string;
     profile_photo?: string;
   };
+  poll?: any;
 }
 
 interface MessageListProps {
@@ -102,7 +103,10 @@ const MessageList: React.FC<MessageListProps> = ({
       onMessage: (data: any) => {
         console.log('📨 New message received:', data);
 
-        const newMessage = data.message || data;
+        let newMessage = data.message || data;
+        if (newMessage.metadata?.isPoll && newMessage.metadata?.pollData) {
+          newMessage = { ...newMessage, poll: newMessage.metadata.pollData };
+        }
 
         setMessages(prev => {
           if (prev.some(m => m.id === newMessage.id)) {
@@ -141,7 +145,13 @@ const MessageList: React.FC<MessageListProps> = ({
 
       onContentUpdate: (contentState) => {
         if (contentState.messages) {
-          setMessages(contentState.messages.sort((a: Message, b: Message) =>
+          const mappedMessages = contentState.messages.map((m: any) => {
+            if (m.metadata?.isPoll && m.metadata?.pollData) {
+              return { ...m, poll: m.metadata.pollData };
+            }
+            return m;
+          });
+          setMessages(mappedMessages.sort((a: Message, b: Message) =>
             new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
           ));
         }

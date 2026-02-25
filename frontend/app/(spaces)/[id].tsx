@@ -41,6 +41,7 @@ import PollComponent from '@/components/ChatScreen/PollComponent';
 // Import the InviteRecipient type
 import { InviteRecipient } from '@/components/ChatScreen/EnhancedInviteModal';
 import SpaceChatTab from '@/components/ChatScreen/SpaceChatTab';
+import { createShadow } from '@/utils/styles';
 
 const SpaceDetailScreen = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -615,6 +616,7 @@ const SpaceDetailScreen = () => {
             space={space}
             setSpace={setSpace}
             setShowMediaUploader={setShowMediaUploader}
+            setShowPollCreator={setShowPollCreator}
           />
         );
 
@@ -913,6 +915,17 @@ const SpaceDetailScreen = () => {
               style={styles.menuItem}
               onPress={() => {
                 setShowSpaceMenu(false);
+                setShowPollCreator(true);
+              }}
+            >
+              <Ionicons name="bar-chart-outline" size={20} color="#666" />
+              <Text style={styles.menuItemText}>Create Poll</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setShowSpaceMenu(false);
                 Alert.alert('Export', 'Export space content');
               }}
             >
@@ -951,10 +964,8 @@ const SpaceDetailScreen = () => {
         contentContainerStyle={styles.tabContent}
       >
         {[
-          { id: 'polls', icon: 'bar-chart', label: 'Polls' },
           { id: 'chat', icon: 'chatbubble-outline', label: 'Chat' },
           { id: 'whiteboard', icon: 'easel-outline', label: 'Whiteboard' },
-          { id: 'meeting', icon: 'videocam-outline', label: 'Meeting' },
           { id: 'calendar', icon: 'calendar-outline', label: 'Calendar' },
           ...(space?.space_type === 'document' ? [{ id: 'document', icon: 'document-text-outline', label: 'Document' }] : []),
           ...(space?.space_type === 'brainstorm' ? [{ id: 'brainstorm', icon: 'bulb-outline', label: 'Brainstorm' }] : []),
@@ -1630,18 +1641,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF6B6B',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 8,
-    ...Platform.select({
-      web: {
-        boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-      }
+    ...createShadow({
+      width: 0,
+      height: 2,
+      opacity: 0.25,
+      radius: 3.84,
+      elevation: 8,
     }),
   },
   actionBar: {
@@ -1958,11 +1963,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 8,
     minWidth: 200,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    ...createShadow({
+      width: 0,
+      height: 2,
+      opacity: 0.25,
+      radius: 3.84,
+      elevation: 5,
+    }),
     zIndex: 1000,
   },
   menuItem: {

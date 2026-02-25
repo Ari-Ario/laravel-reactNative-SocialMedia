@@ -10,6 +10,7 @@ import Avatar from '@/components/Image/Avatar';
 import axios from '@/services/axios';
 import { getToken } from '@/services/TokenService';
 import getApiBase from '@/services/getApiBase';
+import { createShadow } from '@/utils/styles';
 
 interface EnhancedChatRowProps {
   id: string;
@@ -723,17 +724,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 8,
-    ...Platform.select({
-      web: {
-        boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-      }
+    ...createShadow({
+      width: 0,
+      height: 2,
+      opacity: 0.25,
+      radius: 3.84,
+      elevation: 5,
     }),
     zIndex: 1000,
     minWidth: 150,
@@ -772,17 +768,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 8,
     paddingHorizontal: 4,
-    ...Platform.select({
-      web: {
-        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.25)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-        elevation: 6,
-      }
+    ...createShadow({
+      width: 0,
+      height: 2,
+      opacity: 0.25,
+      radius: 4,
+      elevation: 6,
     }),
     zIndex: 2000,
     minWidth: 180,

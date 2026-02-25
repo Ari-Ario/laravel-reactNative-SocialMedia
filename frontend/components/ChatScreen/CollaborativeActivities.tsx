@@ -17,6 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import CollaborationService, { CollaborativeActivity } from '@/services/ChatScreen/CollaborationService';
+import { createShadow } from '@/utils/styles';
 import * as Haptics from 'expo-haptics';
 import { Calendar, CalendarList, Agenda, LocaleConfig } from 'react-native-calendars';
 import { format, parseISO, isToday, isTomorrow, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
@@ -834,17 +835,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 16,
-    ...Platform.select({
-      web: {
-        boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.05)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 12,
-        elevation: 3,
-      }
+    ...createShadow({
+      width: 0,
+      height: 4,
+      opacity: 0.05,
+      radius: 12,
+      elevation: 3,
     }),
     borderWidth: 1,
     borderColor: '#f0f0f0',
@@ -1023,17 +1019,12 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
     borderLeftWidth: 4,
-    ...Platform.select({
-      web: {
-        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.05)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 2,
-      }
+    ...createShadow({
+      width: 0,
+      height: 2,
+      opacity: 0.05,
+      radius: 8,
+      elevation: 2,
     }),
   },
   calendarEventTime: {
@@ -1134,17 +1125,13 @@ const styles = StyleSheet.create({
     right: 20,
     borderRadius: 25,
     overflow: 'hidden',
-    ...Platform.select({
-      web: {
-        boxShadow: '0px 4px 12px rgba(0, 122, 255, 0.3)',
-      },
-      default: {
-        shadowColor: '#007AFF',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
-        elevation: 8,
-      }
+    ...createShadow({
+      color: '#007AFF',
+      width: 0,
+      height: 4,
+      opacity: 0.3,
+      radius: 12,
+      elevation: 8,
     }),
   },
   floatingCreateButtonGradient: {

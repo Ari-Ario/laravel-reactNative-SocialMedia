@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { createShadow } from '@/utils/styles';
 import { useNotificationStore, NOTIFICATION_TYPES, getNotificationIcon, getNotificationColor, isChatNotification } from '@/stores/notificationStore';
 import { Notification } from '@/types/Notification';
 import getApiBaseImage from '@/services/getApiBaseImage';
@@ -469,10 +470,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 24,
     overflow: 'hidden',
-    ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 24 },
-      android: { elevation: 10 },
-      web: { boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)' },
+    ...createShadow({
+      width: 0,
+      height: 8,
+      opacity: 0.15,
+      radius: 24,
+      elevation: 10,
     }),
   },
   panelHeader: {

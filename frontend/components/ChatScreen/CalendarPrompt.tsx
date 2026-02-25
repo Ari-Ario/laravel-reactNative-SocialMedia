@@ -17,6 +17,7 @@ import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import { createShadow } from '@/utils/styles';
 import { MotiView, MotiText } from 'moti';
 
 const { width, height } = Dimensions.get('window');
@@ -475,17 +476,12 @@ const styles = StyleSheet.create({
     maxHeight: height * 0.85,
     elevation: 20,
     overflow: 'hidden',
-    ...Platform.select({
-      web: {
-        boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-      }
+    ...createShadow({
+      width: 0,
+      height: 2,
+      opacity: 0.25,
+      radius: 3.84,
+      elevation: 5,
     }),
   },
   headerGradient: {
@@ -519,8 +515,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 3,
     borderColor: '#fff',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-    elevation: 4,
+    ...createShadow({
+      width: 0,
+      height: 2,
+      opacity: 0.2,
+      radius: 4,
+      elevation: 4,
+    }),
   },
   content: {
     padding: 24,
@@ -636,8 +637,14 @@ const styles = StyleSheet.create({
     flex: 2,
     borderRadius: 14,
     overflow: 'hidden',
-    boxShadow: '0 4px 12px rgba(0,122,255,0.3)',
-    elevation: 8,
+    ...createShadow({
+      color: '#007AFF',
+      width: 0,
+      height: 4,
+      opacity: 0.3,
+      radius: 12,
+      elevation: 8,
+    }),
   },
   buttonGradient: {
     flexDirection: 'row',

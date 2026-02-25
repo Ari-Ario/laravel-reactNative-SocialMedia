@@ -2,6 +2,7 @@ import React, { useState, useContext } from 'react';
 import { View, TouchableOpacity, StyleSheet, Platform, Text } from 'react-native';
 import EmojiPicker from 'rn-emoji-keyboard';
 import AuthContext from '@/context/AuthContext';
+import { createShadow } from '@/utils/styles';
 
 const emojis = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
@@ -92,17 +93,12 @@ const styles = StyleSheet.create({
   },
   emojiPicker: {
     borderRadius: 10,
-    ...Platform.select({
-      web: {
-        boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-      }
+    ...createShadow({
+      width: 0,
+      height: 2,
+      opacity: 0.25,
+      radius: 3.84,
+      elevation: 5,
     }),
   },
 });
