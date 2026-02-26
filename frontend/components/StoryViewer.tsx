@@ -208,9 +208,13 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
             />
 
             {currentStory.caption && (
-              <View style={styles.captionContainer}>
+              <ScrollView
+                style={styles.captionContainer}
+                contentContainerStyle={styles.captionInnerContainer}
+                showsVerticalScrollIndicator={false}
+              >
                 <Text style={styles.caption}>{currentStory.caption}</Text>
-              </View>
+              </ScrollView>
             )}
           </TouchableOpacity>
         </ScrollView>
@@ -296,14 +300,23 @@ const styles = StyleSheet.create({
   captionContainer: {
     position: 'absolute',
     bottom: 80,
-    left: 0,
-    right: 0,
-    padding: 20,
+    left: 20,
+    right: 20,
+    maxHeight: '40%',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  captionInnerContainer: {
+    padding: 16,
   },
   caption: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 15,
     textAlign: 'center',
+    fontWeight: '500',
+    lineHeight: 22,
   },
   footer: {
     flexDirection: 'row',

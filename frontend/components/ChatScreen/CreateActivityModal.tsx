@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -10,12 +10,23 @@ import {
   Alert,
   Platform,
   Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 // import DateTimePicker from '@react-native-community/datetimepicker';
-import { format, addHours, nextMonday } from 'date-fns';
+import { format } from 'date-fns';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  interpolate,
+  Extrapolate,
+  FadeIn,
+} from 'react-native-reanimated';
 
 interface CreateActivityModalProps {
   spaceId: string;
@@ -38,7 +49,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
   const [activityType, setActivityType] = useState('meeting');
   const [scheduledStart, setScheduledStart] = useState<Date>(() => {
     const date = defaultDate ? new Date(defaultDate) : new Date();
-    date.setHours(10, 0, 0, 0); // Default 10 AM
+    date.setHours(10, 0, 0, 0);
     return date;
   });
   const [duration, setDuration] = useState(60);
@@ -47,20 +58,34 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [maxParticipants, setMaxParticipants] = useState<number | undefined>();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const collaborationService = CollaborationService.getInstance();
 
+  // Animation values
+  const progress = useSharedValue(0);
+  const scale = useSharedValue(1);
+
+  useEffect(() => {
+    if (visible) {
+      progress.value = withTiming(1, { duration: 500 });
+    } else {
+      progress.value = 0;
+      setStep(1);
+      setIsSubmitting(false);
+    }
+  }, [visible]);
+
   const activityTypes = [
-    { id: 'meeting', name: 'Team Meeting', icon: 'people', color: '#007AFF' },
-    { id: 'brainstorm', name: 'Brainstorm', icon: 'bulb', color: '#4CAF50' },
-    { id: 'workshop', name: 'Workshop', icon: 'school', color: '#FF9800' },
-    { id: 'review', name: 'Review', icon: 'checkmark-circle', color: '#9C27B0' },
-    { id: 'planning', name: 'Planning', icon: 'calendar', color: '#3F51B5' },
-    { id: 'social', name: 'Social', icon: 'wine', color: '#E91E63' },
+    { id: 'meeting', name: 'Team Meeting', icon: 'people', color: '#6366f1' },
+    { id: 'brainstorm', name: 'Brainstorm', icon: 'bulb', color: '#10b981' },
+    { id: 'workshop', name: 'Workshop', icon: 'school', color: '#f59e0b' },
+    { id: 'review', name: 'Review', icon: 'checkmark-circle', color: '#8b5cf6' },
+    { id: 'planning', name: 'Planning', icon: 'calendar', color: '#3b82f6' },
+    { id: 'social', name: 'Social', icon: 'wine', color: '#ec4899' },
   ];
 
   const durationOptions = [15, 30, 45, 60, 90, 120];
-
   const quickTimes = [
     { label: 'Morning', time: '09:00' },
     { label: 'Lunch', time: '12:00' },
@@ -77,10 +102,12 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
       Alert.alert('Error', 'Please select a date and time');
       return;
     }
-    
     if (step < 3) {
       setStep(step + 1);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      scale.value = withSpring(1.1, {}, () => {
+        scale.value = withSpring(1);
+      });
     } else {
       handleCreateActivity();
     }
@@ -88,70 +115,33 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
 
   const handleCreateActivity = async () => {
     try {
-      const scheduledEnd = new Date(scheduledStart.getTime() + duration * 60000);
-      
-      await collaborationService.createCollaborativeActivity({
+      setIsSubmitting(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      // Simulate a short delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      const activityData = {
         space_id: spaceId,
-        activity_type: activityType,
         title,
         description,
+        activity_type: activityType,
         scheduled_start: scheduledStart.toISOString(),
-        scheduled_end: scheduledEnd.toISOString(),
         duration_minutes: duration,
         is_recurring: isRecurring,
-        recurrence_pattern: isRecurring ? recurrencePattern : undefined,
+        recurrence_pattern: isRecurring ? recurrencePattern : null,
         max_participants: maxParticipants,
-        metadata: {
-          created_via: 'calendar',
-          quick_schedule: true,
-        }
-      });
-      if (Platform.OS === 'web') {
-            // const Haptics = await import('expo-haptics');
-            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        } else {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
-        
-      Alert.alert(
-        'Session Scheduled!',
-        'Would you like to add this to your device calendar and notify participants?',
-        [
-          { text: 'Just Save', style: 'cancel', onPress: onClose },
-          { 
-            text: 'Add to Calendar', 
-            onPress: async () => {
-              // Here you would trigger the calendar integration
-              await handleAddToCalendar();
-              onClose();
-            }
-          },
-          { 
-            text: 'Send Invites', 
-            onPress: async () => {
-              // Send notifications to space participants
-              await sendInvites();
-              onClose();
-            }
-          }
-        ]
-      );
+      };
 
+      await collaborationService.createCollaborativeActivity(activityData);
       onActivityCreated();
-    } catch (error: any) {
+      onClose();
+    } catch (error) {
       console.error('Error creating activity:', error);
-      Alert.alert('Error', error.response?.data?.message || 'Failed to schedule session');
+      Alert.alert('Error', 'Failed to create activity. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
-  };
-
-  const handleAddToCalendar = async () => {
-    // Implementation for expo-calendar
-    Alert.alert('Calendar', 'This would add to your device calendar');
-  };
-
-  const sendInvites = async () => {
-    // Implementation for sending invites
-    Alert.alert('Invites', 'This would send invites to all space participants');
   };
 
   const handleQuickTimeSelect = (timeString: string) => {
@@ -159,6 +149,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
     const newDate = new Date(scheduledStart);
     newDate.setHours(hours, minutes, 0, 0);
     setScheduledStart(newDate);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
   const handleQuickDateSelect = (daysToAdd: number) => {
@@ -166,7 +157,35 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
     newDate.setDate(newDate.getDate() + daysToAdd);
     newDate.setHours(scheduledStart.getHours(), scheduledStart.getMinutes(), 0, 0);
     setScheduledStart(newDate);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
+
+  const animatedHeaderStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    transform: [{ scale: interpolate(progress.value, [0, 1], [0.9, 1], Extrapolate.CLAMP) }],
+  }));
+
+  const animatedButtonStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const renderStepIndicator = () => (
+    <View style={styles.progressContainer}>
+      <View style={styles.progressBar}>
+        {[1, 2, 3].map((i) => (
+          <Animated.View
+            key={i}
+            style={[
+              styles.progressDot,
+              i <= step && styles.progressDotActive,
+              i === step && styles.progressDotCurrent,
+            ]}
+          />
+        ))}
+      </View>
+      <Text style={styles.stepText}>Step {step} of 3</Text>
+    </View>
+  );
 
   return (
     <Modal
@@ -175,548 +194,666 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={styles.container}>
-        {/* Header with progress */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={step > 1 ? () => setStep(step - 1) : onClose}>
-            <Ionicons name={step > 1 ? "chevron-back" : "close"} size={24} color="#333" />
+      <LinearGradient
+        colors={['#f8fafc', '#f1f5f9']}
+        style={styles.container}
+      >
+        {/* Header */}
+        <Animated.View style={[styles.header, animatedHeaderStyle]}>
+          <TouchableOpacity
+            onPress={step > 1 ? () => setStep(step - 1) : onClose}
+            hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+          >
+            <Ionicons name={step > 1 ? 'chevron-back' : 'close'} size={28} color="#1e293b" />
           </TouchableOpacity>
-          
-          <View style={styles.progressBar}>
-            {[1, 2, 3].map((i) => (
-              <View 
-                key={i}
-                style={[
-                  styles.progressDot,
-                  i <= step && styles.progressDotActive,
-                  i === step && styles.progressDotCurrent,
-                ]}
-              />
-            ))}
-          </View>
-          
-          <Text style={styles.stepIndicator}>Step {step}/3</Text>
-        </View>
 
-        <ScrollView style={styles.content}>
+          {renderStepIndicator()}
+
+          <View style={{ width: 28 }} />
+        </Animated.View>
+
+        <ScrollView
+          style={styles.scrollContent}
+          contentContainerStyle={styles.scrollContentContainer}
+          keyboardShouldPersistTaps="handled"
+        >
           {step === 1 && (
-            <>
-              <Text style={styles.sectionTitle}>What's this session about?</Text>
-              
-              <TextInput
-                style={styles.titleInput}
-                placeholder="Session Title (e.g., Weekly Team Sync)"
-                value={title}
-                onChangeText={setTitle}
-                autoFocus
-              />
-              
-              <TextInput
-                style={styles.descriptionInput}
-                placeholder="Description (optional)"
-                value={description}
-                onChangeText={setDescription}
-                multiline
-                numberOfLines={3}
-              />
-              
-              <Text style={styles.sectionSubtitle}>Session Type</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeSelector}>
+            <Animated.View entering={FadeIn.duration(300)}>
+              <Text style={styles.heroTitle}>Create Session</Text>
+              <Text style={styles.heroSubtitle}>Let’s set up your collaborative activity</Text>
+
+              <View style={styles.card}>
+                <TextInput
+                  style={styles.titleInput}
+                  placeholder="Session title"
+                  placeholderTextColor="#94a3b8"
+                  value={title}
+                  onChangeText={setTitle}
+                  autoFocus
+                />
+                <TextInput
+                  style={styles.descriptionInput}
+                  placeholder="Add description (optional)"
+                  placeholderTextColor="#94a3b8"
+                  value={description}
+                  onChangeText={setDescription}
+                  multiline
+                  numberOfLines={4}
+                />
+              </View>
+
+              <Text style={styles.sectionLabel}>Activity Type</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
                 {activityTypes.map((type) => (
                   <TouchableOpacity
                     key={type.id}
+                    activeOpacity={0.7}
                     style={[
-                      styles.typeOption,
-                      activityType === type.id && { borderColor: type.color, backgroundColor: type.color + '10' }
+                      styles.typeChip,
+                      activityType === type.id && styles.typeChipSelected,
+                      { borderColor: type.color + '80' },
                     ]}
-                    onPress={() => setActivityType(type.id)}
+                    onPress={() => {
+                      setActivityType(type.id);
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }}
                   >
-                    <View style={[styles.typeIcon, { backgroundColor: type.color }]}>
-                      <Ionicons name={type.icon as any} size={20} color="#fff" />
-                    </View>
-                    <Text style={[
-                      styles.typeName,
-                      activityType === type.id && { color: type.color, fontWeight: '600' }
-                    ]}>
+                    <LinearGradient
+                      colors={[type.color, type.color + 'd0']}
+                      style={styles.typeIconGradient}
+                    >
+                      <Ionicons name={type.icon as any} size={22} color="#fff" />
+                    </LinearGradient>
+                    <Text
+                      style={[
+                        styles.typeName,
+                        activityType === type.id && { color: type.color, fontWeight: '700' },
+                      ]}
+                    >
                       {type.name}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-            </>
+            </Animated.View>
           )}
 
           {step === 2 && (
-            <>
-              <Text style={styles.sectionTitle}>When should we meet?</Text>
-              
-              <View style={styles.dateTimeDisplay}>
-                <TouchableOpacity 
-                  style={styles.dateTimeButton}
+            <Animated.View entering={FadeIn.duration(300)}>
+              <Text style={styles.heroTitle}>When?</Text>
+
+              <View style={styles.card}>
+                <TouchableOpacity
+                  style={styles.dateTimeRow}
                   onPress={() => setShowDatePicker(true)}
                 >
-                  <Ionicons name="calendar" size={20} color="#007AFF" />
-                  <Text style={styles.dateTimeText}>
-                    {format(scheduledStart, 'EEEE, MMMM d')}
+                  <Ionicons name="calendar-outline" size={22} color="#64748b" />
+                  <Text style={styles.dateTimeValue}>
+                    {format(scheduledStart, 'EEEE, MMMM d, yyyy')}
                   </Text>
                 </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={styles.dateTimeButton}
+
+                <View style={styles.separator} />
+
+                <TouchableOpacity
+                  style={styles.dateTimeRow}
                   onPress={() => setShowTimePicker(true)}
                 >
-                  <Ionicons name="time" size={20} color="#007AFF" />
-                  <Text style={styles.dateTimeText}>
+                  <Ionicons name="time-outline" size={22} color="#64748b" />
+                  <Text style={styles.dateTimeValue}>
                     {format(scheduledStart, 'h:mm a')}
                   </Text>
                 </TouchableOpacity>
               </View>
-              
-              {showDatePicker && Platform.OS === 'ios' && (
+
+              {Platform.OS === 'ios' && showDatePicker && (
                 <DateTimePicker
                   value={scheduledStart}
                   mode="date"
                   display="spinner"
-                  onChange={(event, date) => {
+                  onChange={(_, date) => {
                     setShowDatePicker(false);
                     if (date) setScheduledStart(date);
                   }}
                 />
               )}
-              
-              {showTimePicker && Platform.OS === 'ios' && (
+              {Platform.OS === 'ios' && showTimePicker && (
                 <DateTimePicker
                   value={scheduledStart}
                   mode="time"
                   display="spinner"
-                  onChange={(event, date) => {
+                  onChange={(_, date) => {
                     setShowTimePicker(false);
                     if (date) setScheduledStart(date);
                   }}
                 />
               )}
-              
-              <Text style={styles.sectionSubtitle}>Quick Times</Text>
-              <View style={styles.quickTimeRow}>
-                {quickTimes.map((time) => (
+
+              <Text style={styles.sectionLabel}>Quick start times</Text>
+              <View style={styles.quickGrid}>
+                {quickTimes.map((qt) => (
                   <TouchableOpacity
-                    key={time.time}
-                    style={styles.quickTimeButton}
-                    onPress={() => handleQuickTimeSelect(time.time)}
+                    key={qt.time}
+                    style={styles.quickPill}
+                    onPress={() => handleQuickTimeSelect(qt.time)}
                   >
-                    <Text style={styles.quickTimeLabel}>{time.label}</Text>
-                    <Text style={styles.quickTimeValue}>{time.time}</Text>
+                    <Text style={styles.quickLabel}>{qt.label}</Text>
+                    <Text style={styles.quickValue}>{qt.time}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
-              
-              <Text style={styles.sectionSubtitle}>Quick Dates</Text>
-              <View style={styles.quickDateRow}>
+
+              <Text style={styles.sectionLabel}>Quick dates</Text>
+              <View style={styles.quickGrid}>
                 {[
                   { label: 'Today', days: 0 },
                   { label: 'Tomorrow', days: 1 },
-                  { label: 'Monday', days: (1 - new Date().getDay() + 7) % 7 || 7 },
-                  { label: 'Next Week', days: 7 },
-                ].map((date) => (
+                  { label: 'Next Mon', days: (1 - new Date().getDay() + 7) % 7 || 7 },
+                  { label: 'Next week', days: 7 },
+                ].map((item) => (
                   <TouchableOpacity
-                    key={date.label}
-                    style={styles.quickDateButton}
-                    onPress={() => handleQuickDateSelect(date.days)}
+                    key={item.label}
+                    style={styles.quickPill}
+                    onPress={() => handleQuickDateSelect(item.days)}
                   >
-                    <Text style={styles.quickDateLabel}>{date.label}</Text>
+                    <Text style={styles.quickLabelBig}>{item.label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
-              
-              <Text style={styles.sectionSubtitle}>Duration</Text>
-              <View style={styles.durationRow}>
+
+              <Text style={styles.sectionLabel}>Duration</Text>
+              <View style={styles.durationGrid}>
                 {durationOptions.map((mins) => (
                   <TouchableOpacity
                     key={mins}
-                    style={[styles.durationButton, duration === mins && styles.durationButtonActive]}
-                    onPress={() => setDuration(mins)}
+                    style={[
+                      styles.durationChip,
+                      duration === mins && styles.durationChipActive,
+                    ]}
+                    onPress={() => {
+                      setDuration(mins);
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }}
                   >
-                    <Text style={[styles.durationText, duration === mins && styles.durationTextActive]}>
-                      {mins}m
+                    <Text
+                      style={[
+                        styles.durationText,
+                        duration === mins && styles.durationTextActive,
+                      ]}
+                    >
+                      {mins} min
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
-            </>
+            </Animated.View>
           )}
 
           {step === 3 && (
-            <>
-              <Text style={styles.sectionTitle}>Final Details</Text>
-              
-              <View style={styles.summaryCard}>
-                <Text style={styles.summaryTitle}>{title}</Text>
-                <View style={styles.summaryRow}>
-                  <Ionicons name="calendar" size={16} color="#666" />
-                  <Text style={styles.summaryText}>
-                    {format(scheduledStart, 'EEEE, MMMM d • h:mm a')}
+            <Animated.View entering={FadeIn.duration(300)}>
+              <Text style={styles.heroTitle}>Almost done!</Text>
+
+              <LinearGradient
+                colors={['#ffffff', '#f8fafc']}
+                style={styles.summaryCard}
+              >
+                <View style={styles.summaryHeader}>
+                  <LinearGradient
+                    colors={[activityTypes.find(t => t.id === activityType)?.color + '80' || '#6366f180', activityTypes.find(t => t.id === activityType)?.color || '#6366f1']}
+                    style={styles.summaryIcon}
+                  >
+                    <Ionicons
+                      name={activityTypes.find(t => t.id === activityType)?.icon as any || 'calendar'}
+                      size={24}
+                      color="#fff"
+                    />
+                  </LinearGradient>
+                  <Text style={styles.summaryTitle} numberOfLines={1}>
+                    {title || 'Untitled Session'}
                   </Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Ionicons name="time" size={16} color="#666" />
-                  <Text style={styles.summaryText}>{duration} minutes</Text>
+                  <Ionicons name="calendar-outline" size={18} color="#64748b" />
+                  <Text style={styles.summaryValue}>
+                    {format(scheduledStart, 'EEE, MMM d • h:mm a')}
+                  </Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Ionicons name="people" size={16} color="#666" />
-                  <Text style={styles.summaryText}>
-                    {maxParticipants ? `Up to ${maxParticipants} participants` : 'No participant limit'}
+                  <Ionicons name="time-outline" size={18} color="#64748b" />
+                  <Text style={styles.summaryValue}>{duration} minutes</Text>
+                </View>
+                <View style={styles.summaryRow}>
+                  <Ionicons name="people-outline" size={18} color="#64748b" />
+                  <Text style={styles.summaryValue}>
+                    {maxParticipants ? `Max ${maxParticipants} people` : 'Open to all'}
                   </Text>
                 </View>
-              </View>
-              
-              <View style={styles.settingRow}>
-                <View>
-                  <Text style={styles.settingTitle}>Recurring Session</Text>
-                  <Text style={styles.settingDescription}>
-                    Repeat this session weekly
-                  </Text>
+                {isRecurring && (
+                  <View style={styles.summaryRow}>
+                    <Ionicons name="repeat-outline" size={18} color="#64748b" />
+                    <Text style={styles.summaryValue}>
+                      Repeats {recurrencePattern === 'weekly' ? 'weekly' : recurrencePattern === 'biweekly' ? 'every 2 weeks' : 'monthly'}
+                    </Text>
+                  </View>
+                )}
+              </LinearGradient>
+
+              <View style={styles.settingCard}>
+                <View style={styles.settingLeft}>
+                  <Text style={styles.settingTitle}>Recurring</Text>
+                  <Text style={styles.settingDesc}>Repeat this event</Text>
                 </View>
                 <Switch
                   value={isRecurring}
-                  onValueChange={setIsRecurring}
-                  trackColor={{ false: '#ddd', true: '#007AFF' }}
+                  onValueChange={(val) => {
+                    setIsRecurring(val);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }}
+                  trackColor={{ false: '#cbd5e1', true: '#6366f1' }}
+                  thumbColor={isRecurring ? '#fff' : '#f1f5f9'}
                 />
               </View>
-              
+
               {isRecurring && (
-                <View style={styles.recurrenceOptions}>
-                  <Text style={styles.sectionSubtitle}>Repeat every:</Text>
+                <Animated.View entering={FadeIn.duration(200)} style={{ marginTop: 16 }}>
+                  <Text style={styles.sectionLabelSmall}>Repeat every</Text>
                   <View style={styles.recurrenceRow}>
-                    {['weekly', 'biweekly', 'monthly'].map((pattern) => (
+                    {['weekly', 'biweekly', 'monthly'].map((p) => (
                       <TouchableOpacity
-                        key={pattern}
+                        key={p}
                         style={[
-                          styles.recurrenceButton,
-                          recurrencePattern === pattern && styles.recurrenceButtonActive
+                          styles.recurrenceOption,
+                          recurrencePattern === p && styles.recurrenceOptionActive,
                         ]}
-                        onPress={() => setRecurrencePattern(pattern as any)}
+                        onPress={() => setRecurrencePattern(p as any)}
                       >
-                        <Text style={[
-                          styles.recurrenceText,
-                          recurrencePattern === pattern && styles.recurrenceTextActive
-                        ]}>
-                          {pattern === 'biweekly' ? 'Every 2 weeks' : pattern}
+                        <Text
+                          style={[
+                            styles.recurrenceText,
+                            recurrencePattern === p && styles.recurrenceTextActive,
+                          ]}
+                        >
+                          {p === 'biweekly' ? '2 weeks' : p}
                         </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
-                </View>
+                </Animated.View>
               )}
-              
-              <View style={styles.participantLimit}>
-                <Text style={styles.sectionSubtitle}>Participant Limit (optional)</Text>
-                <TextInput
-                  style={styles.participantInput}
-                  placeholder="No limit"
-                  value={maxParticipants?.toString() || ''}
-                  onChangeText={(text) => setMaxParticipants(text ? parseInt(text) : undefined)}
-                  keyboardType="number-pad"
-                />
+
+              <View style={{ marginTop: 24 }}>
+                <Text style={styles.sectionLabel}>Participant Limit (optional)</Text>
+                <View style={styles.participantInputWrapper}>
+                  <TextInput
+                    style={styles.participantInput}
+                    placeholder="Unlimited"
+                    placeholderTextColor="#94a3b8"
+                    value={maxParticipants?.toString() ?? ''}
+                    onChangeText={(txt) => setMaxParticipants(txt ? Number(txt) : undefined)}
+                    keyboardType="number-pad"
+                  />
+                </View>
               </View>
-            </>
+            </Animated.View>
           )}
         </ScrollView>
 
         <View style={styles.footer}>
-          <TouchableOpacity 
-            style={[styles.nextButton, !title.trim() && step === 1 && styles.nextButtonDisabled]}
-            onPress={handleNext}
-            disabled={step === 1 && !title.trim()}
-          >
-            <Text style={styles.nextButtonText}>
-              {step === 3 ? 'Schedule Session' : 'Continue'}
-            </Text>
-            <Ionicons name="chevron-forward" size={20} color="#fff" />
-          </TouchableOpacity>
+          <Animated.View style={[animatedButtonStyle, { flex: 1 }]}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[
+                styles.actionButton,
+                (step === 1 && !title.trim()) || isSubmitting ? styles.actionButtonDisabled : null,
+              ]}
+              onPress={handleNext}
+              disabled={(step === 1 && !title.trim()) || isSubmitting}
+            >
+              <LinearGradient
+                colors={['#6366f1', '#4f46e5']}
+                style={styles.buttonGradient}
+              >
+                {isSubmitting && step === 3 ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Text style={styles.buttonText}>
+                      {step === 3 ? 'Schedule Session' : 'Continue'}
+                    </Text>
+                    <Ionicons name="arrow-forward" size={20} color="#fff" />
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          </Animated.View>
         </View>
-      </View>
+      </LinearGradient>
     </Modal>
   );
+};
+
+const SHADOW = {
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 6 },
+  shadowOpacity: 0.12,
+  shadowRadius: 12,
+  elevation: 8,
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    paddingHorizontal: 20,
+    paddingTop: 48,
+    paddingBottom: 16,
+  },
+  progressContainer: {
+    alignItems: 'center',
   },
   progressBar: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    gap: 10,
+    marginBottom: 6,
   },
   progressDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#e0e0e0',
+    backgroundColor: '#e2e8f0',
   },
   progressDotActive: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#6366f1',
   },
   progressDotCurrent: {
     width: 12,
     height: 12,
+    borderWidth: 3,
+    borderColor: '#a5b4fc',
   },
-  stepIndicator: {
-    fontSize: 12,
-    color: '#666',
+  stepText: {
+    fontSize: 13,
+    color: '#64748b',
     fontWeight: '600',
   },
-  content: {
+  scrollContent: {
     flex: 1,
-    padding: 16,
   },
-  sectionTitle: {
-    fontSize: 24,
+  scrollContentContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 140,
+  },
+  heroTitle: {
+    fontSize: 28,
     fontWeight: '700',
-    color: '#333',
-    marginBottom: 24,
-  },
-  sectionSubtitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginTop: 24,
-    marginBottom: 12,
-  },
-  titleInput: {
-    fontSize: 18,
-    fontWeight: '600',
-    paddingVertical: 12,
-    borderBottomWidth: 2,
-    borderBottomColor: '#007AFF',
-    marginBottom: 24,
-  },
-  descriptionInput: {
-    fontSize: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    minHeight: 60,
-  },
-  typeSelector: {
-    marginHorizontal: -16,
-    paddingHorizontal: 16,
-  },
-  typeOption: {
-    alignItems: 'center',
-    padding: 12,
-    marginRight: 12,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#f0f0f0',
-    minWidth: 100,
-  },
-  typeIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  typeName: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '500',
-  },
-  dateTimeDisplay: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-  },
-  dateTimeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#f8f8f8',
-    borderRadius: 12,
-    flex: 0.48,
-  },
-  dateTimeText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginLeft: 8,
-  },
-  quickTimeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 16,
-  },
-  quickTimeButton: {
-    flex: 1,
-    minWidth: '22%',
-    padding: 12,
-    backgroundColor: '#f8f8f8',
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  quickTimeLabel: {
-    fontSize: 12,
-    color: '#666',
+    color: '#0f172a',
+    marginTop: 8,
     marginBottom: 4,
   },
-  quickTimeValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+  heroSubtitle: {
+    fontSize: 15,
+    color: '#64748b',
+    marginBottom: 28,
   },
-  quickDateRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 24,
-  },
-  quickDateButton: {
-    flex: 1,
-    minWidth: '22%',
-    padding: 12,
-    backgroundColor: '#f8f8f8',
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  quickDateLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-  },
-  durationRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  durationButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#f8f8f8',
+  card: {
+    backgroundColor: '#ffffff',
     borderRadius: 20,
+    padding: 20,
+    marginBottom: 28,
+    ...SHADOW,
   },
-  durationButtonActive: {
-    backgroundColor: '#007AFF',
+  titleInput: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0f172a',
+    paddingBottom: 12,
+    borderBottomWidth: 2,
+    borderBottomColor: '#6366f1',
+  },
+  descriptionInput: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#334155',
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  sectionLabel: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 14,
+  },
+  sectionLabelSmall: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#475569',
+    marginBottom: 12,
+  },
+  typeScroll: {
+    marginHorizontal: -4,
+  },
+  typeChip: {
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginHorizontal: 4,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    backgroundColor: '#ffffff',
+    ...SHADOW,
+    minWidth: 110,
+  },
+  typeChipSelected: {
+    borderWidth: 2,
+  },
+  typeIconGradient: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  typeName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  dateTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  dateTimeValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginLeft: 14,
+    flex: 1,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: '#e2e8f0',
+    marginVertical: 4,
+  },
+  quickGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 28,
+  },
+  quickPill: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    ...SHADOW,
+  },
+  quickLabel: {
+    fontSize: 13,
+    color: '#64748b',
+    marginBottom: 4,
+  },
+  quickLabelBig: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  quickValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  durationGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  durationChip: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 20,
+    ...SHADOW,
+  },
+  durationChipActive: {
+    backgroundColor: '#6366f1',
   },
   durationText: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 15,
     fontWeight: '600',
+    color: '#475569',
   },
   durationTextActive: {
-    color: '#fff',
+    color: '#ffffff',
   },
   summaryCard: {
-    backgroundColor: '#f8f8f8',
-    padding: 16,
-    borderRadius: 12,
+    borderRadius: 20,
+    padding: 20,
     marginBottom: 24,
+    ...SHADOW,
+  },
+  summaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  summaryIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   summaryTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
-    color: '#333',
-    marginBottom: 12,
+    color: '#0f172a',
+    flex: 1,
   },
   summaryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  summaryText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 8,
+  summaryValue: {
+    fontSize: 15,
+    color: '#475569',
+    marginLeft: 12,
+    flex: 1,
   },
-  settingRow: {
+  settingCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 16,
+    ...SHADOW,
+  },
+  settingLeft: {
+    flex: 1,
   },
   settingTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
+    fontWeight: '700',
+    color: '#0f172a',
   },
-  settingDescription: {
-    fontSize: 14,
-    color: '#666',
-  },
-  recurrenceOptions: {
-    marginTop: 16,
+  settingDesc: {
+    fontSize: 13,
+    color: '#64748b',
+    marginTop: 2,
   },
   recurrenceRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
   },
-  recurrenceButton: {
+  recurrenceOption: {
     flex: 1,
-    padding: 12,
-    backgroundColor: '#f8f8f8',
+    paddingVertical: 14,
+    backgroundColor: '#f1f5f9',
     borderRadius: 12,
     alignItems: 'center',
   },
-  recurrenceButtonActive: {
-    backgroundColor: '#007AFF20',
-    borderWidth: 1,
-    borderColor: '#007AFF',
+  recurrenceOptionActive: {
+    backgroundColor: '#e0e7ff',
+    borderWidth: 1.5,
+    borderColor: '#6366f1',
   },
   recurrenceText: {
     fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
+    fontWeight: '600',
+    color: '#475569',
   },
   recurrenceTextActive: {
-    color: '#007AFF',
-    fontWeight: '600',
+    color: '#4f46e5',
+    fontWeight: '700',
   },
-  participantLimit: {
-    marginTop: 24,
+  participantInputWrapper: {
+    backgroundColor: '#f1f5f9',
+    borderRadius: 16,
+    marginTop: 8,
+    ...SHADOW,
   },
   participantInput: {
     fontSize: 16,
-    padding: 12,
-    backgroundColor: '#f8f8f8',
-    borderRadius: 8,
-    marginTop: 8,
+    padding: 16,
+    color: '#0f172a',
   },
   footer: {
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: '#e2e8f0',
+    backgroundColor: '#ffffff',
   },
-  nextButton: {
+  actionButton: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    ...SHADOW,
+  },
+  actionButtonDisabled: {
+    opacity: 0.5,
+  },
+  buttonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#007AFF',
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 8,
+    paddingVertical: 18,
+    gap: 10,
   },
-  nextButtonDisabled: {
-    opacity: 0.5,
-  },
-  nextButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
+  buttonText: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#ffffff',
   },
 });
 

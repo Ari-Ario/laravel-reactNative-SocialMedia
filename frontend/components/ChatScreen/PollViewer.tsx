@@ -1,5 +1,5 @@
 // components/ChatScreen/PollViewer.tsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
     View,
     Text,
@@ -21,13 +21,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Animated, {
-    FadeIn,
-    FadeOut,
     SlideInDown,
     SlideOutDown,
-    useAnimatedStyle,
-    withSpring,
-    useSharedValue,
 } from 'react-native-reanimated';
 import Avatar from '@/components/Image/Avatar';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
@@ -35,6 +30,7 @@ import { safeHaptics } from '@/utils/haptics';
 import { createShadow } from '@/utils/styles';
 import PollComponent from './PollComponent';
 import PollVotersModal from './PollVotersModal';
+import GenericMenu, { MenuItem } from '../GenericMenu';
 
 const { width, height } = Dimensions.get('window');
 
@@ -84,7 +80,6 @@ const PollViewer: React.FC<PollViewerProps> = ({
     // Refs
     const menuButtonRef = useRef<any>(null);
     const collaborationService = CollaborationService.getInstance();
-    const menuScale = useSharedValue(0);
 
     // Update localPoll when poll prop changes
     useEffect(() => {
@@ -251,7 +246,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
     };
 
     // ==================== FIXED MENU PRESS - EXACT POSITIONING ====================
-    const handleMenuPress = () => {
+    const handleMenuPress = useCallback(() => {
         if (menuButtonRef.current) {
             menuButtonRef.current.measure((x: number, y: number, w: number, h: number, pageX: number, pageY: number) => {
                 const menuWidth = 220;
@@ -268,14 +263,13 @@ const PollViewer: React.FC<PollViewerProps> = ({
 
                 setMenuPosition({ top, left });
                 setShowMenu(true);
-                menuScale.value = withSpring(1);
             });
         }
-    };
+    }, [height, width]);
     // ==============================================================================
 
     // Close poll
-    const handleClosePoll = () => {
+    const handleClosePoll = useCallback(() => {
         setShowMenu(false);
         Alert.alert(
             'Close Poll',
@@ -288,7 +282,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
                     onPress: async () => {
                         try {
                             await collaborationService.closePoll(spaceId, localPoll.id);
-                            setLocalPoll({ ...localPoll, status: 'closed' });
+                            setLocalPoll((prev: any) => ({ ...prev, status: 'closed' }));
                             await safeHaptics.warning();
 
                             if (onClosePoll) {
@@ -316,10 +310,10 @@ const PollViewer: React.FC<PollViewerProps> = ({
                 },
             ]
         );
-    };
+    }, [spaceId, localPoll.id, localPoll.question, onClosePoll, onRefresh]);
 
     // Delete poll
-    const handleDeletePoll = () => {
+    const handleDeletePoll = useCallback(() => {
         setShowMenu(false);
 
         const isCreator = String(localPoll?.created_by) === String(currentUserId);
@@ -364,16 +358,16 @@ const PollViewer: React.FC<PollViewerProps> = ({
                 },
             ]
         );
-    };
+    }, [spaceId, localPoll, currentUserId, currentUserRole, onDelete]);
 
     // Edit poll
-    const handleEditPoll = () => {
+    const handleEditPoll = useCallback(() => {
         setShowMenu(false);
         setShowEditPoll(true);
-    };
+    }, []);
 
     // Handle poll update after edit
-    const handlePollUpdated = (updatedPoll: any) => {
+    const handlePollUpdated = useCallback(async (updatedPoll: any) => {
         setLocalPoll(updatedPoll);
         setShowEditPoll(false);
 
@@ -381,41 +375,59 @@ const PollViewer: React.FC<PollViewerProps> = ({
             onEdit(updatedPoll.id, updatedPoll);
         }
 
-        // Send update notification to chat
-        collaborationService.sendMessage(spaceId, {
-            content: `📊 Poll "${updatedPoll.question}" has been updated`,
-            type: 'text',
-            metadata: {
-                isPollNotification: true,
-                pollId: updatedPoll.id,
-                notificationType: 'poll_updated',
-            },
+        try {
+            // Send update notification to chat
+            await collaborationService.sendMessage(spaceId, {
+                content: `📊 Poll "${updatedPoll.question}" has been updated`,
+                type: 'text',
+                metadata: {
+                    isPollNotification: true,
+                    pollId: updatedPoll.id,
+                    notificationType: 'poll_updated',
+                },
+            });
+        } catch (error) {
+            console.error('Failed to send poll update notification:', error);
+        }
+    }, [spaceId, onEdit]);
+
+    // Calculate percentages
+    const calculatedOptions = useMemo(() => {
+        if (!localPoll?.options) return [];
+        const total = localPoll.total_votes || 0;
+
+        return localPoll.options.map((opt: any) => {
+            const voteCount = opt.votes?.length || 0;
+            return {
+                ...opt,
+                percentage: total > 0 ? Math.round((voteCount / total) * 100) : 0,
+                voteCount,
+            };
         });
-    };
+    }, [localPoll?.options, localPoll?.total_votes]);
 
     // View results (toggle results view)
-    const handleViewResults = () => {
+    const handleViewResults = useCallback(() => {
         setShowMenu(false);
         setShowResults(true);
-    };
+    }, []);
 
     // Share results
-    const handleShareResults = () => {
+    const handleShareResults = useCallback(() => {
         setShowMenu(false);
 
-        const results = calculatePercentages();
         const message = `📊 Poll Results: ${localPoll.question}\n\n` +
-            results.map((opt: any) =>
+            calculatedOptions.map((opt: any) =>
                 `${opt.text}: ${opt.voteCount} votes (${opt.percentage}%)`
             ).join('\n') +
             `\n\nTotal votes: ${localPoll.total_votes || 0}`;
 
         setShareMessage(message);
         setShowShareResultsModal(true);
-    };
+    }, [localPoll.question, localPoll.total_votes, calculatedOptions]);
 
     // Send results as message
-    const handleSendResults = async () => {
+    const handleSendResults = useCallback(async () => {
         try {
             await collaborationService.sendMessage(spaceId, {
                 content: shareMessage,
@@ -433,17 +445,10 @@ const PollViewer: React.FC<PollViewerProps> = ({
             console.error('Error sharing results:', error);
             Alert.alert('Error', 'Failed to share results');
         }
-    };
-
-    // Forward poll
-    const handleForwardPress = () => {
-        setShowMenu(false);
-        loadAvailableSpaces();
-        setShowForwardModal(true);
-    };
+    }, [spaceId, shareMessage, localPoll.id, collaborationService]);
 
     // Load available spaces for forwarding
-    const loadAvailableSpaces = async () => {
+    const loadAvailableSpaces = useCallback(async () => {
         setIsLoadingSpaces(true);
         try {
             const userSpaces = await collaborationService.fetchUserSpaces(currentUserId);
@@ -455,10 +460,17 @@ const PollViewer: React.FC<PollViewerProps> = ({
         } finally {
             setIsLoadingSpaces(false);
         }
-    };
+    }, [currentUserId, spaceId, collaborationService]);
+
+    // Forward poll
+    const handleForwardPress = useCallback(() => {
+        setShowMenu(false);
+        loadAvailableSpaces();
+        setShowForwardModal(true);
+    }, [loadAvailableSpaces]);
 
     // Handle forward with notifications
-    const handleForward = async () => {
+    const handleForward = useCallback(async () => {
         if (selectedSpaces.size === 0) {
             Alert.alert('Error', 'Please select at least one space');
             return;
@@ -497,22 +509,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
             console.error('Error forwarding poll:', error);
             Alert.alert('Error', 'Failed to forward poll');
         }
-    };
-
-    // Calculate percentages
-    const calculatePercentages = () => {
-        if (!localPoll?.options) return [];
-        const total = localPoll.total_votes || 0;
-
-        return localPoll.options.map((opt: any) => {
-            const voteCount = opt.votes?.length || 0;
-            return {
-                ...opt,
-                percentage: total > 0 ? Math.round((voteCount / total) * 100) : 0,
-                voteCount,
-            };
-        });
-    };
+    }, [selectedSpaces, localPoll.id, localPoll.question, spaceId, onForward, collaborationService]);
 
     // Render option
     const renderOption = (option: any) => {
@@ -587,12 +584,6 @@ const PollViewer: React.FC<PollViewerProps> = ({
     const canEdit = isCreator && localPoll?.status === 'active' && !hasVotes; // Disable edit if any votes exist
     const canDelete = isCreator || isModerator;
     const canShareResults = localPoll?.status === 'closed' || !canVote();
-
-    // Animated menu style
-    const menuAnimatedStyle = useAnimatedStyle(() => ({
-        transform: [{ scale: menuScale.value }],
-        opacity: menuScale.value,
-    }));
 
     return (
         <>
@@ -675,7 +666,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
 
                 {/* Options */}
                 <View style={styles.optionsContainer}>
-                    {calculatePercentages().map(renderOption)}
+                    {calculatedOptions.map(renderOption)}
                 </View>
 
                 {/* Stats - now clickable to open voters modal */}
@@ -738,104 +729,53 @@ const PollViewer: React.FC<PollViewerProps> = ({
                 )}
             </View>
 
-            {/* Dropdown Menu - FIXED POSITIONING */}
-            {showMenu && (
-                <>
-                    <TouchableOpacity
-                        style={styles.menuOverlay}
-                        activeOpacity={1}
-                        onPress={() => setShowMenu(false)}
-                    />
-                    <Animated.View
-                        entering={FadeIn.duration(200)}
-                        exiting={FadeOut.duration(200)}
-                        style={[
-                            styles.dropdownMenu,
-                            menuAnimatedStyle,
-                            {
-                                position: 'absolute',
-                                top: menuPosition.top,
-                                left: menuPosition.left,
-                            }
-                        ]}
-                    >
-                        {/* View Results */}
-                        {!canViewResults() && !hasVoted && (
-                            <TouchableOpacity
-                                style={styles.menuItem}
-                                onPress={handleViewResults}
-                            >
-                                <Ionicons name="bar-chart" size={20} color="#007AFF" />
-                                <Text style={styles.menuItemText}>View Results</Text>
-                            </TouchableOpacity>
-                        )}
-
-                        {/* Share Results */}
-                        {canShareResults && (
-                            <TouchableOpacity
-                                style={styles.menuItem}
-                                onPress={handleShareResults}
-                            >
-                                <Ionicons name="share-social" size={20} color="#9C27B0" />
-                                <Text style={styles.menuItemText}>Share Results</Text>
-                            </TouchableOpacity>
-                        )}
-
-                        {/* Forward */}
-                        {canForward && (
-                            <TouchableOpacity
-                                style={styles.menuItem}
-                                onPress={handleForwardPress}
-                            >
-                                <Ionicons name="share" size={20} color="#4CAF50" />
-                                <Text style={styles.menuItemText}>Forward to Spaces</Text>
-                            </TouchableOpacity>
-                        )}
-
-                        {/* Edit Poll - only shown if no votes */}
-                        {canEdit && (
-                            <TouchableOpacity
-                                style={styles.menuItem}
-                                onPress={handleEditPoll}
-                            >
-                                <Ionicons name="create" size={20} color="#FFA726" />
-                                <Text style={styles.menuItemText}>Edit Poll</Text>
-                            </TouchableOpacity>
-                        )}
-
-                        {/* Close Poll */}
-                        {canClose && (
-                            <TouchableOpacity
-                                style={[styles.menuItem]}
-                                onPress={handleClosePoll}
-                            >
-                                <Ionicons name="lock-closed" size={20} color="#FF6B6B" />
-                                <Text style={[styles.menuItemText, { color: '#FF6B6B' }]}>
-                                    Close Poll
-                                </Text>
-                            </TouchableOpacity>
-                        )}
-
-                        {/* Divider before destructive actions */}
-                        {canDelete && (canClose || canEdit || canForward) && (
-                            <View style={styles.menuDivider} />
-                        )}
-
-                        {/* Delete Poll */}
-                        {canDelete && (
-                            <TouchableOpacity
-                                style={[styles.menuItem, styles.menuItemDestructive]}
-                                onPress={handleDeletePoll}
-                            >
-                                <Ionicons name="trash" size={20} color="#FF6B6B" />
-                                <Text style={[styles.menuItemText, styles.menuItemTextDestructive]}>
-                                    Delete Poll
-                                </Text>
-                            </TouchableOpacity>
-                        )}
-                    </Animated.View>
-                </>
-            )}
+            {/* Dropdown Menu - FIXED POSITIONING VIA GENERIC MENU */}
+            <GenericMenu
+                visible={showMenu}
+                onClose={() => setShowMenu(false)}
+                anchorPosition={menuPosition}
+                items={useMemo(() => [
+                    ...(!canViewResults() && !hasVoted ? [{
+                        icon: 'bar-chart',
+                        label: 'View Results',
+                        onPress: handleViewResults,
+                        color: '#007AFF'
+                    }] : []),
+                    ...(canShareResults ? [{
+                        icon: 'share-social',
+                        label: 'Share Results',
+                        onPress: handleShareResults,
+                        color: '#9C27B0'
+                    }] : []),
+                    ...(canForward ? [{
+                        icon: 'share',
+                        label: 'Forward to Spaces',
+                        onPress: handleForwardPress,
+                        color: '#4CAF50'
+                    }] : []),
+                    ...(canEdit ? [{
+                        icon: 'create',
+                        label: 'Edit Poll',
+                        onPress: handleEditPoll,
+                        color: '#FFA726'
+                    }] : []),
+                    ...(canClose ? [{
+                        icon: 'lock-closed',
+                        label: 'Close Poll',
+                        onPress: handleClosePoll,
+                        color: '#FF6B6B'
+                    }] : []),
+                    ...(canDelete ? [{
+                        icon: 'trash',
+                        label: 'Delete Poll',
+                        onPress: handleDeletePoll,
+                        destructive: true
+                    }] : [])
+                ] as MenuItem[], [
+                    canViewResults, hasVoted, canShareResults, canForward, canEdit, canClose, canDelete,
+                    handleViewResults, handleShareResults, handleForwardPress, handleEditPoll, handleClosePoll, handleDeletePoll
+                ])}
+            />
 
             {/* Edit Poll Modal */}
             <Modal
@@ -1259,51 +1199,6 @@ const styles = StyleSheet.create({
         marginLeft: 4,
         fontSize: 11,
         color: '#999',
-    },
-    // Menu styles
-    menuOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'transparent',
-        zIndex: 999,
-    },
-    dropdownMenu: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        paddingVertical: 8,
-        minWidth: 200,
-        ...createShadow({
-            width: 0,
-            height: 2,
-            opacity: 0.15,
-            radius: 8,
-            elevation: 5,
-        }),
-        zIndex: 1000,
-    },
-    menuItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        gap: 12,
-    },
-    menuItemDestructive: {},
-    menuItemText: {
-        fontSize: 14,
-        color: '#333',
-        flex: 1,
-    },
-    menuItemTextDestructive: {
-        color: '#FF6B6B',
-    },
-    menuDivider: {
-        height: 1,
-        backgroundColor: '#f0f0f0',
-        marginVertical: 4,
     },
     // Modal styles
     modalOverlay: {

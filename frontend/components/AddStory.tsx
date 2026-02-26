@@ -1,15 +1,24 @@
 import { View, Text, StyleSheet, TouchableOpacity, Image, TextInput, Alert, Modal, ActivityIndicator, Platform } from 'react-native';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { createStory } from '@/services/StoryService';
 import getApiBaseImage from '@/services/getApiBaseImage';
 
-const AddStory = ({ visible, onClose, onStoryCreated }) => {
+const AddStory = ({ visible, onClose, onStoryCreated, initialCaption = '' }) => {
   const [image, setImage] = useState(null);
-  const [caption, setCaption] = useState('');
+  const [caption, setCaption] = useState(initialCaption);
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (visible && initialCaption) {
+      setCaption(initialCaption);
+    } else if (!visible) {
+      setCaption('');
+      setImage(null);
+    }
+  }, [visible, initialCaption]);
 
   const pickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();

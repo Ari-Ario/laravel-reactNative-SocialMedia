@@ -15,7 +15,7 @@ class StoryController extends Controller
     {
         // Cleanup expired stories on every controller instantiation
         $deletedCount = Story::cleanupExpiredStories();
-        
+
         if ($deletedCount > 0) {
             \Log::info("Cleaned up {$deletedCount} expired stories");
         }
@@ -28,39 +28,40 @@ class StoryController extends Controller
         Story::cleanupExpiredStories();
 
         $user = Auth::user();
-        
+
         // Get all active stories grouped by user
-        $stories = Story::with(['user', 'viewers' => function($query) use ($user) {
+        $stories = Story::with(['user', 'viewers' => function ($query) use ($user) {
             $query->where('user_id', $user->id);
         }])
-        ->where('expires_at', '>', now())
-        ->latest()
-        ->get()
-        ->groupBy('user_id')
-        ->map(function ($userStories) use ($user) {
+            ->where('expires_at', '>', now())
+            ->latest()
+            ->get()
+            ->groupBy('user_id')
+            ->map(function ($userStories) use ($user) {
             // Check if all stories from this user are viewed
             $allViewed = $userStories->every(function ($story) {
-                return $story->viewers->isNotEmpty();
-            });
-            
-            return [
+                    return $story->viewers->isNotEmpty();
+                }
+                );
+
+                return [
                 'user' => $userStories->first()->user,
                 'stories' => $userStories,
                 'all_viewed' => $allViewed,
                 'latest_story' => $userStories->first(), // Most recent story
                 'viewed' => $allViewed, // For backward compatibility
-            ];
-        })
-        ->sortByDesc(function ($group) {
+                ];
+            })
+            ->sortByDesc(function ($group) {
             // Sort groups: unviewed first, then viewed
             return $group['all_viewed'] ? 0 : 1;
         })
-        ->values();
+            ->values();
 
         return response()->json($stories);
     }
 
-    
+
     public function markAsViewed($id)
     {
         $story = Story::findOrFail($id);
@@ -78,15 +79,15 @@ class StoryController extends Controller
         Story::cleanupExpiredStories();
 
         $user = Auth::user();
-        
-        $stories = Story::with(['user', 'viewers' => function($query) use ($user) {
+
+        $stories = Story::with(['user', 'viewers' => function ($query) use ($user) {
             $query->where('user_id', $user->id);
         }])
-        ->where('user_id', $userId)
-        ->where('expires_at', '>', now())
-        ->orderBy('created_at', 'asc')
-        ->get()
-        ->map(function($story) {
+            ->where('user_id', $userId)
+            ->where('expires_at', '>', now())
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->map(function ($story) {
             $story->viewed = $story->viewers->isNotEmpty();
             return $story;
         });
@@ -99,12 +100,12 @@ class StoryController extends Controller
         try {
             $request->validate([
                 'media' => 'required|file|mimes:jpg,jpeg,png,mp4|max:10240',
-                'caption' => 'nullable|string|max:255',
+                'caption' => 'nullable|string|max:2000',
             ]);
 
             // Upload and store the new story
             $path = $request->file('media')->store('stories/' . Auth::id(), 'public');
-            
+
             // Handle file upload
             $path = $request->file('media')->store('stories/' . Auth::id(), 'public');
 
@@ -119,13 +120,14 @@ class StoryController extends Controller
                 'data' => $story->load('user')
             ]);
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
-                'errors' => $e instanceof \Illuminate\Validation\ValidationException 
-                    ? $e->errors() 
-                    : null
+                'errors' => $e instanceof \Illuminate\Validation\ValidationException
+                ? $e->errors()
+                : null
             ], 422);
         }
     }
@@ -148,7 +150,7 @@ class StoryController extends Controller
     }
 
 
-    
+
 
     /**
      * Make story collaborative
@@ -156,20 +158,20 @@ class StoryController extends Controller
     public function makeCollaborative(Request $request, $storyId)
     {
         $user = Auth::user();
-        
+
         $story = Story::where('id', $storyId)
             ->where('user_id', $user->id)
             ->firstOrFail();
-        
+
         $request->validate([
             'branch_options' => 'nullable|array',
             'interactive_elements' => 'nullable|array',
         ]);
-        
+
         // Create collaboration space for the story
         $spaceController = new SpaceController();
         $space = $spaceController->createSpaceFromStory($story, $request->all());
-        
+
         // Update story
         $story->update([
             'is_collaborative' => true,
@@ -177,7 +179,7 @@ class StoryController extends Controller
             'branch_options' => $request->branch_options,
             'interactive_elements' => $request->interactive_elements,
         ]);
-        
+
         return response()->json([
             'story' => $story->load(['collaborationSpace', 'user']),
             'space' => $space,
@@ -191,25 +193,25 @@ class StoryController extends Controller
     public function addToChain(Request $request, $storyId)
     {
         $user = Auth::user();
-        
+
         $story = Story::where('id', $storyId)
             ->where('is_collaborative', true)
             ->firstOrFail();
-        
+
         // Check if user can contribute
-        if ($story->user_id !== $user->id && 
-            !in_array($user->id, $story->collaborators ?? [])) {
+        if ($story->user_id !== $user->id &&
+        !in_array($user->id, $story->collaborators ?? [])) {
             return response()->json([
                 'message' => 'You are not authorized to contribute to this story'
             ], 403);
         }
-        
+
         $request->validate([
             'media_path' => 'required|string',
             'caption' => 'nullable|string',
             'branch_choice' => 'nullable|string', // If choosing from branch options
         ]);
-        
+
         // Create new story segment
         $newStory = Story::create([
             'user_id' => $user->id,
@@ -222,10 +224,10 @@ class StoryController extends Controller
             'linked_project_id' => $story->linked_project_id,
             'collaborators' => $story->collaborators,
         ]);
-        
+
         // Update original story chain length
         $story->increment('chain_length');
-        
+
         // Add to space activity
         if ($story->linked_project_id) {
             $space = CollaborationSpace::find($story->linked_project_id);
@@ -233,7 +235,7 @@ class StoryController extends Controller
                 $space->update([
                     'activity_metrics->story_additions' => ($space->activity_metrics['story_additions'] ?? 0) + 1,
                 ]);
-                
+
                 // Create magic event
                 MagicEvent::create([
                     'id' => Str::uuid(),
@@ -247,7 +249,7 @@ class StoryController extends Controller
                 ]);
             }
         }
-        
+
         return response()->json([
             'new_story' => $newStory,
             'original_story' => $story,

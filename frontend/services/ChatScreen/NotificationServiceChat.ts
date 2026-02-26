@@ -26,7 +26,7 @@ class NotificationService {
   private expoPushToken: string | null = null;
   private isConfigured = false;
 
-  private constructor() {}
+  private constructor() { }
 
   static getInstance(): NotificationService {
     if (!NotificationService.instance) {
@@ -42,12 +42,12 @@ class NotificationService {
       // Request permissions
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
-      
+
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
       }
-      
+
       if (finalStatus !== 'granted') {
         Alert.alert('Permission required', 'Push notifications are needed for real-time updates');
         return;
@@ -58,7 +58,7 @@ class NotificationService {
         const token = (await Notifications.getExpoPushTokenAsync({
           projectId: 'your-project-id', // Add your project ID
         })).data;
-        
+
         this.expoPushToken = token;
         await this.registerToken(token);
       } else {
@@ -87,7 +87,7 @@ class NotificationService {
     try {
       const userToken = await getToken();
       const API_BASE = getApiBase();
-      
+
       await fetch(`${API_BASE}/notifications/register-device`, {
         method: 'POST',
         headers: {
@@ -119,36 +119,42 @@ class NotificationService {
   }
 
   private handleNotificationTap(data: any) {
-    // Handle navigation based on notification type
-    const { type, id, spaceId, userId } = data;
-    
+    console.log('Push Notification tapped with metadata: ', data);
+
+    // Normalize properties from the push notification payload
+    const type = data.type || data.notificationType;
+    const spaceId = data.spaceId || data.space_id;
+    const userId = data.userId || data.user_id;
+    const magicEventId = data.id || data.eventId || data.magic_id;
+
+    // Handle navigation based on notification type or available IDs
+
+    // 1. Prioritize Magic Event routing first if there is a specific magic query param
+    if (type === 'magic_event' && spaceId) {
+      import('expo-router').then(({ router }) => {
+        router.push(`/(spaces)/${spaceId}?magic=${magicEventId}`);
+      });
+      return;
+    }
+
+    // 2. If it belongs to a Space (e.g., poll, message, activity, invitation), route there directly!
+    if (spaceId) {
+      import('expo-router').then(({ router }) => {
+        router.push(`/(spaces)/${spaceId}`);
+      });
+      return;
+    }
+
+    // 3. Fallback to basic types (e.g., direct chat message)
     switch (type) {
-      case 'space_invitation':
-        // Navigate to space
-        import('expo-router').then(({ router }) => {
-          router.push(`/(spaces)/${spaceId}`);
-        });
-        break;
-        
       case 'new_message':
-        if (spaceId) {
-          import('expo-router').then(({ router }) => {
-            router.push(`/(spaces)/${spaceId}`);
-          });
-        } else if (userId) {
+        if (userId) {
           import('expo-router').then(({ router }) => {
             router.push(`/(tabs)/chats/${userId}`);
           });
         }
         break;
-        
-      case 'magic_event':
-        if (spaceId) {
-          import('expo-router').then(({ router }) => {
-            router.push(`/(spaces)/${spaceId}?magic=${id}`);
-          });
-        }
-        break;
+      // Add other fallback cases as needed when spaceId is not present
     }
   }
 
@@ -161,7 +167,7 @@ class NotificationService {
       try {
         const userToken = await getToken();
         const API_BASE = getApiBase();
-        
+
         await fetch(`${API_BASE}/notifications/unregister-device`, {
           method: 'POST',
           headers: {

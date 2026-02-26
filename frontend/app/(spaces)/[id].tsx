@@ -33,7 +33,7 @@ import MessageList from '@/components/ChatScreen/MessageList';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { useCollaborationStore } from '@/stores/collaborationStore';
 import Avatar from '@/components/Image/Avatar';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, SlideOutDown } from 'react-native-reanimated';
 import EnhancedInviteModal from '@/components/ChatScreen/EnhancedInviteModal';
 import PollViewer from '@/components/ChatScreen/PollViewer';
 import PollComponent from '@/components/ChatScreen/PollComponent';
@@ -41,6 +41,7 @@ import PollComponent from '@/components/ChatScreen/PollComponent';
 // Import the InviteRecipient type
 import { InviteRecipient } from '@/components/ChatScreen/EnhancedInviteModal';
 import SpaceChatTab from '@/components/ChatScreen/SpaceChatTab';
+import SpaceExportModal from '@/components/ChatScreen/SpaceExportModal';
 import { createShadow } from '@/utils/styles';
 
 const SpaceDetailScreen = () => {
@@ -86,6 +87,7 @@ const SpaceDetailScreen = () => {
   const [showPollCreator, setShowPollCreator] = useState(false);
   const [polls, setPolls] = useState<any[]>([]);
   const [hasInitialTabSet, setHasInitialTabSet] = useState(false); // ✅ Add this flag
+  const [showExportModal, setShowExportModal] = useState(false);
 
   useEffect(() => {
     if (id && user) {
@@ -510,7 +512,10 @@ const SpaceDetailScreen = () => {
     setShowSpaceMenu(false);
   };
 
-
+  const handleExportContentClick = () => {
+    setShowSpaceMenu(false);
+    setShowExportModal(true);
+  };
 
   const handleStartCall = async (type: 'audio' | 'video') => {
     try {
@@ -788,7 +793,7 @@ const SpaceDetailScreen = () => {
           style={styles.headerContent}
           onPress={() => Alert.alert(
             'Space Info',
-            `Title: ${space?.title || 'Loading...'}\nType: ${space?.space_type || 'chat'}\nParticipants: ${participants.length}\nCreated: ${space?.created_at ? new Date(space.created_at).toLocaleDateString() : 'N/A'}`
+            `Title: ${space?.title || 'Loading...'} \nType: ${space?.space_type || 'chat'} \nParticipants: ${participants.length} \nCreated: ${space?.created_at ? new Date(space.created_at).toLocaleDateString() : 'N/A'} `
           )}
         >
           <Text style={styles.title} numberOfLines={1}>
@@ -886,7 +891,7 @@ const SpaceDetailScreen = () => {
           />
           <Animated.View
             entering={FadeIn.duration(200)}
-            exiting={FadeOut.duration(200)}
+            exiting={Platform.OS === 'web' ? undefined : SlideOutDown}
             style={[
               styles.dropdownMenu,
               {
@@ -941,10 +946,7 @@ const SpaceDetailScreen = () => {
 
             <TouchableOpacity
               style={styles.menuItem}
-              onPress={() => {
-                setShowSpaceMenu(false);
-                Alert.alert('Export', 'Export space content');
-              }}
+              onPress={handleExportContentClick}
             >
               <Ionicons name="download-outline" size={20} color="#666" />
               <Text style={styles.menuItemText}>Export Content</Text>
@@ -1265,7 +1267,85 @@ const SpaceDetailScreen = () => {
           </View>
         </View>
       </Modal>
+      {/* Admins Modal */}
+      <Modal
+        visible={showAdminsModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowAdminsModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContentLarge}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Manage Admins</Text>
+              <TouchableOpacity onPress={() => setShowAdminsModal(false)}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
 
+            <ScrollView style={styles.participantsList}>
+              {participants.filter(p => p.role === 'owner' || p.role === 'moderator').map((participant) => (
+                <TouchableOpacity
+                  key={`admin - ${participant.user_id} `}
+                  style={styles.participantItem}
+                  onPress={() => {
+                    if (space?.my_role === 'owner') {
+                      setSelectedParticipant(participant);
+                      setShowRoleModal(true);
+                    }
+                  }}
+                  disabled={participant.user_id === user?.id || space?.my_role !== 'owner'}
+                >
+                  <Avatar
+                    source={participant.user?.profile_photo}
+                    size={44}
+                    name={participant.user?.name}
+                  />
+                  <View style={styles.participantInfo}>
+                    <Text style={styles.participantName}>
+                      {participant.user?.name}
+                      {participant.user_id === user?.id && ' (You)'}
+                    </Text>
+                    <View style={styles.participantMeta}>
+                      <View style={[styles.roleBadge, {
+                        backgroundColor: participant.role === 'owner' ? '#FFD70020' : '#007AFF20'
+                      }]}>
+                        <Text style={[styles.roleText, {
+                          color: participant.role === 'owner' ? '#B8860B' : '#007AFF'
+                        }]}>
+                          {participant.role}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  {space?.my_role === 'owner' && participant.user_id !== user?.id && (
+                    <Ionicons name="chevron-forward" size={20} color="#999" />
+                  )}
+                </TouchableOpacity>
+              ))}
+              {participants.filter(p => p.role === 'owner' || p.role === 'moderator').length === 0 && (
+                <View style={{ padding: 20, alignItems: 'center' }}>
+                  <Text style={{ color: '#666' }}>No admins found.</Text>
+                </View>
+              )}
+            </ScrollView>
+
+            {space?.my_role === 'owner' && (
+              <TouchableOpacity
+                style={styles.inviteButton}
+                onPress={() => {
+                  setShowAdminsModal(false);
+                  setShowParticipantsModal(true);
+                  Alert.alert("Manage Admins", "To add an admin, select a Participant and change their role.");
+                }}
+              >
+                <Ionicons name="person-add" size={20} color="#007AFF" />
+                <Text style={styles.inviteButtonText}>Add Admin</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
       {/* Role Selection Modal */}
       <Modal
         visible={showRoleModal}

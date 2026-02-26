@@ -3,18 +3,16 @@ import { getToken } from "./TokenService";
 import getApiBase from "./getApiBase";
 import { Platform } from "react-native";
 
-export async function createStory(formData) {
+export async function createStory(formData: FormData) {
     const token = await getToken();
     const API_BASE = getApiBase();
-    
+
     // For web platform, we need to set the Content-Type header to undefined
     // so the browser can set it automatically with the correct boundary
     const config = {
         headers: {
             Authorization: `Bearer ${token}`,
-            ...(Platform.OS === 'web' ? {} : {
-                'Content-Type': 'multipart/form-data'
-            })
+            'Content-Type': 'multipart/form-data'
         }
     };
 
