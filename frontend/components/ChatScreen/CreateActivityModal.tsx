@@ -28,6 +28,7 @@ import Animated, {
   Extrapolate,
   FadeIn,
 } from 'react-native-reanimated';
+import { safeHaptics } from '@/utils/haptics';
 
 interface CreateActivityModalProps {
   spaceId: string;
@@ -105,7 +106,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
     }
     if (step < 3) {
       setStep(step + 1);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      safeHaptics.impact();
       scale.value = withSpring(1.1, {}, () => {
         scale.value = withSpring(1);
       });
@@ -117,7 +118,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
   const handleCreateActivity = async () => {
     try {
       setIsSubmitting(true);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      safeHaptics.success();
 
       // Simulate a short delay for better UX
       await new Promise(resolve => setTimeout(resolve, 800));
@@ -150,7 +151,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
     const newDate = new Date(scheduledStart);
     newDate.setHours(hours, minutes, 0, 0);
     setScheduledStart(newDate);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    safeHaptics.impact();
   };
 
   const handleQuickDateSelect = (daysToAdd: number) => {
@@ -158,7 +159,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
     newDate.setDate(newDate.getDate() + daysToAdd);
     newDate.setHours(scheduledStart.getHours(), scheduledStart.getMinutes(), 0, 0);
     setScheduledStart(newDate);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    safeHaptics.impact();
   };
 
   const animatedHeaderStyle = useAnimatedStyle(() => ({
@@ -256,7 +257,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
                     ]}
                     onPress={() => {
                       setActivityType(type.id);
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      safeHaptics.impact();
                     }}
                   >
                     <LinearGradient
@@ -373,7 +374,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
                     ]}
                     onPress={() => {
                       setDuration(mins);
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      safeHaptics.impact();
                     }}
                   >
                     <Text
@@ -448,7 +449,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
                   value={isRecurring}
                   onValueChange={(val) => {
                     setIsRecurring(val);
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    safeHaptics.impact();
                   }}
                   trackColor={{ false: '#cbd5e1', true: '#6366f1' }}
                   thumbColor={isRecurring ? '#fff' : '#f1f5f9'}

@@ -317,6 +317,10 @@ class PollController extends Controller
         ]);
 
         if ($validator->fails()) {
+            \Log::error('Vote validation failed:', [
+                'errors' => $validator->errors()->toArray(),
+                'request' => $request->all()
+            ]);
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
@@ -736,6 +740,38 @@ class PollController extends Controller
 
                 // Finally, delete the original poll
                 $poll->delete();
+                // Add the original deleted space to our list for message cleanup
+                $deletedSpaces[] = $spaceId;
+                
+                // Collect all deleted poll IDs (parent + all children)
+                $deletedPollIds = [$pollId];
+                if ($forwardedPolls->count() > 0) {
+                    $deletedPollIds = array_merge($deletedPollIds, $forwardedPolls->pluck('id')->toArray());
+                }
+                if (isset($childPolls) && $childPolls->count() > 0) {
+                    $deletedPollIds = array_merge($deletedPollIds, $childPolls->pluck('id')->toArray());
+                }
+                
+                // Delete associated Chat Messages from Space content_state
+                foreach (array_unique($deletedSpaces) as $sId) {
+                    $spaceToUpdate = \App\Models\CollaborationSpace::find($sId);
+                    if ($spaceToUpdate && $spaceToUpdate->content_state) {
+                        $contentState = $spaceToUpdate->content_state;
+                        if (isset($contentState['messages'])) {
+                            $messages = $contentState['messages'];
+                            $filteredMessages = array_filter($messages, function($msg) use ($deletedPollIds) {
+                                $isPoll = ($msg['type'] ?? '') === 'poll' || (!empty($msg['metadata']['isPoll']));
+                                $msgPollId = $msg['metadata']['pollId'] ?? null;
+                                return !($isPoll && in_array($msgPollId, $deletedPollIds));
+                            });
+                            
+                            if (count($filteredMessages) !== count($messages)) {
+                                $contentState['messages'] = array_values($filteredMessages);
+                                $spaceToUpdate->update(['content_state' => $contentState]);
+                            }
+                        }
+                    }
+                }
 
                 DB::commit();
 

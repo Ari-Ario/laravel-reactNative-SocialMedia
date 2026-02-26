@@ -428,10 +428,25 @@ const PollComponent: React.FC<PollComponentProps> = ({
                     },
                 });
 
-                // Forward to selected spaces (only for new polls)
                 if (selectedForwardSpaces.size > 0) {
                     const forwardTo = Array.from(selectedForwardSpaces);
                     await collaborationService.forwardPoll(savedPoll.id, forwardTo);
+
+                    // Send real-time messages to all forwarded spaces so it appears in chat
+                    for (const targetSpaceId of forwardTo) {
+                        await collaborationService.sendMessage(targetSpaceId, {
+                            content: `📊 Poll forwarded from another space: "${savedPoll.question}"`,
+                            type: 'poll', // Changed from text to poll
+                            metadata: {
+                                isPoll: true,
+                                isPollForward: true,
+                                pollId: savedPoll.id,
+                                pollData: savedPoll,
+                                sourceSpaceId: spaceId,
+                            },
+                        });
+                    }
+
                     if (onPollForwarded) {
                         onPollForwarded(savedPoll.id, forwardTo);
                     }

@@ -1411,6 +1411,127 @@ class CollaborationService {
       throw error;
     }
   }
+
+
+  // Whiteboard real-time methods
+  subscribeToWhiteboard(spaceId: string, callbacks: {
+    onElementAdded?: (element: WhiteboardElement) => void;
+    onElementUpdated?: (element: WhiteboardElement) => void;
+    onElementRemoved?: (elementId: string) => void;
+    onCursorMoved?: (userId: number, x: number, y: number, userName?: string) => void;
+    onClear?: () => void;
+    onUserJoined?: (userId: number, userName: string) => void;
+    onUserLeft?: (userId: number) => void;
+  }) {
+    const channelName = `presence-space.${spaceId}`;
+
+    // Ensure Pusher is initialized
+    if (!this.pusherService?.isReady()) {
+      console.warn('Pusher not ready for whiteboard subscription');
+      return () => { };
+    }
+
+    const pusher = this.getPusherInstance();
+    if (!pusher) return () => { };
+
+    const channel = pusher.subscribe(channelName);
+
+    if (callbacks.onElementAdded) {
+      channel.bind('whiteboard-element-added', callbacks.onElementAdded);
+    }
+
+    if (callbacks.onElementUpdated) {
+      channel.bind('whiteboard-element-updated', callbacks.onElementUpdated);
+    }
+
+    if (callbacks.onElementRemoved) {
+      channel.bind('whiteboard-element-removed', callbacks.onElementRemoved);
+    }
+
+    if (callbacks.onCursorMoved) {
+      channel.bind('whiteboard-cursor-moved', callbacks.onCursorMoved);
+    }
+
+    if (callbacks.onClear) {
+      channel.bind('whiteboard-cleared', callbacks.onClear);
+    }
+
+    if (callbacks.onUserJoined) {
+      channel.bind('whiteboard-user-joined', callbacks.onUserJoined);
+    }
+
+    if (callbacks.onUserLeft) {
+      channel.bind('whiteboard-user-left', callbacks.onUserLeft);
+    }
+
+    return () => {
+      channel.unbind_all();
+      this.pusherService?.unsubscribeFromChannel(channelName);
+    };
+  }
+
+  async addWhiteboardElement(spaceId: string, element: WhiteboardElement) {
+    try {
+      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/whiteboard/elements`, element, {
+        headers: this.getHeaders(),
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error adding whiteboard element:', error);
+      throw error;
+    }
+  }
+
+  async updateWhiteboardElement(spaceId: string, element: WhiteboardElement) {
+    try {
+      const response = await axios.put(`${this.baseURL}/spaces/${spaceId}/whiteboard/elements/${element.id}`, element, {
+        headers: this.getHeaders(),
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating whiteboard element:', error);
+      throw error;
+    }
+  }
+
+  async removeWhiteboardElement(spaceId: string, elementId: string) {
+    try {
+      const response = await axios.delete(`${this.baseURL}/spaces/${spaceId}/whiteboard/elements/${elementId}`, {
+        headers: this.getHeaders(),
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error removing whiteboard element:', error);
+      throw error;
+    }
+  }
+
+  async clearWhiteboard(spaceId: string) {
+    try {
+      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/whiteboard/clear`, {}, {
+        headers: this.getHeaders(),
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error clearing whiteboard:', error);
+      throw error;
+    }
+  }
+
+  async sendCursorPosition(spaceId: string, x: number, y: number) {
+    try {
+      await axios.post(`${this.baseURL}/spaces/${spaceId}/whiteboard/cursor`, {
+        x,
+        y,
+      }, {
+        headers: this.getHeaders(),
+      });
+    } catch (error) {
+      // Silent fail for cursor updates - not critical
+      console.debug('Cursor update failed:', error);
+    }
+  }
+
 }
 
 export default CollaborationService;

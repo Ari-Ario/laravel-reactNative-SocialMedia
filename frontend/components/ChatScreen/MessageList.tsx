@@ -43,6 +43,7 @@ interface MessageListProps {
   onMessageLongPress?: (message: any, x: number, y: number) => void;
   onPollPress?: (poll: any) => void;
   polls?: any[];
+  participants?: any[];
 }
 const MessageList: React.FC<MessageListProps> = ({
   spaceId,
@@ -52,6 +53,7 @@ const MessageList: React.FC<MessageListProps> = ({
   onMessageLongPress,
   onPollPress,
   polls = [],
+  participants = [],
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,16 +78,34 @@ const MessageList: React.FC<MessageListProps> = ({
     };
   }, [spaceId, conversationId]);
 
-  // Sycnhronize static embedded poll Data in messages with live Space API Polls
+  // Synchronize static embedded poll Data in messages with live Space API Polls, and PURGE ghost polls
   useEffect(() => {
-    if (!polls || polls.length === 0) return;
+    // If polls are undefined, it might not be loaded yet, but if it's an empty array, it means there are 0 active polls.
+    if (!polls) return;
 
     setMessages(prev => {
       let hasChanges = false;
-      const updatedMessages = prev.map(msg => {
+      
+      // 1. Filter out ghost polls (polls that no longer exist in the DB)
+      const validMessages = prev.filter(msg => {
+        const isPollMsg = msg.type === 'poll' || msg.metadata?.isPoll;
+        if (!isPollMsg) return true;
+        
+        const pollId = msg.poll?.id || msg.metadata?.pollId || msg.metadata?.pollData?.id;
+        const livePoll = polls.find(p => String(p.id) === String(pollId) || (p.parent_poll_id && String(p.parent_poll_id) === String(pollId)));
+        
+        if (!livePoll) {
+          hasChanges = true; // We are removing a ghost poll
+          return false;
+        }
+        return true;
+      });
+
+      // 2. Update the data for the remaining valid polls
+      const updatedMessages = validMessages.map(msg => {
         if (msg.type === 'poll' || msg.metadata?.isPoll) {
           const pollId = msg.poll?.id || msg.metadata?.pollId || msg.metadata?.pollData?.id;
-          const livePoll = polls.find(p => String(p.id) === String(pollId));
+          const livePoll = polls.find(p => String(p.id) === String(pollId) || (p.parent_poll_id && String(p.parent_poll_id) === String(pollId)));
 
           if (livePoll && JSON.stringify(msg.poll) !== JSON.stringify(livePoll)) {
             hasChanges = true;
@@ -99,6 +119,23 @@ const MessageList: React.FC<MessageListProps> = ({
     });
   }, [polls]);
 
+  const enrichMessageWithParticipantData = (msg: Message) => {
+    if (!participants || participants.length === 0) return msg;
+    
+    // Find the participant that matches the message sender
+    const sender = participants.find(p => String(p.user_id) === String(msg.user_id));
+    if (sender && sender.user && sender.user.profile_photo) {
+      return {
+        ...msg,
+        user: {
+          ...(msg.user ?? { id: msg.user_id, name: msg.user_name || 'User' }),
+          profile_photo: sender.user.profile_photo
+        }
+      };
+    }
+    return msg;
+  };
+
   const loadMessages = async () => {
     try {
       setLoading(true);
@@ -107,7 +144,7 @@ const MessageList: React.FC<MessageListProps> = ({
       if (spaceId) {
         const space = await collaborationService.fetchSpaceDetails(spaceId);
         if (space.content_state?.messages) {
-          messageList = space.content_state.messages;
+          messageList = space.content_state.messages.map(enrichMessageWithParticipantData);
         }
       } else if (conversationId) {
         // Fetch from conversation messages endpoint
@@ -136,6 +173,9 @@ const MessageList: React.FC<MessageListProps> = ({
         if (newMessage.type === 'poll' || (newMessage.metadata?.isPoll && newMessage.metadata?.pollData)) {
           newMessage = { ...newMessage, poll: newMessage.metadata?.pollData ?? newMessage.poll };
         }
+        
+        // Enrich avatar from participants list
+        newMessage = enrichMessageWithParticipantData(newMessage);
 
         setMessages(prev => {
           if (prev.some(m => m.id === newMessage.id)) {
@@ -189,10 +229,24 @@ const MessageList: React.FC<MessageListProps> = ({
       onPollUpdated: (pollData) => {
         console.log('🔄 Inline poll updating via socket:', pollData?.id);
         setMessages(prev => prev.map(msg => {
-          if ((msg.type === 'poll' || msg.metadata?.isPoll) && msg.poll?.id === pollData?.id) {
+          const isPollMsg = msg.type === 'poll' || msg.metadata?.isPoll;
+          const matchesPoll = msg.poll?.id === pollData?.id || (pollData?.parent_poll_id && msg.poll?.id === pollData?.parent_poll_id);
+
+          if (isPollMsg && matchesPoll) {
             return { ...msg, poll: pollData };
           }
           return msg;
+        }));
+      },
+
+      // ✅ FIX: Remove deleted polls from chat window in real-time
+      onPollDeleted: (deletedPollId) => {
+        console.log('🗑️ Poll deleted via socket, removing from chat:', deletedPollId);
+        setMessages(prev => prev.filter(msg => {
+          const isPollMsg = msg.type === 'poll' || msg.metadata?.isPoll;
+          const matchesPollId = msg.poll?.id === deletedPollId || msg.metadata?.pollData?.id === deletedPollId;
+          
+          return !(isPollMsg && matchesPollId);
         }));
       },
     });

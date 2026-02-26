@@ -174,7 +174,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           {!isCurrentUser && showAvatar && (
             <View style={styles.avatarContainer}>
               <Avatar
-                source={`${getApiBaseImage()}/storage/${message.user?.profile_photo || 'default-avatar.png'}`}
+                source={message.user?.profile_photo}
                 size={32}
                 name={message.user?.name}
                 showStatus={false}
@@ -217,7 +217,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       {!isCurrentUser && showAvatar && (
         <View style={styles.avatarContainer}>
           <Avatar
-            source={`${getApiBaseImage()}/storage/${message.user?.profile_photo || 'default-avatar.png'}`}
+            source={message.user?.profile_photo}
             size={32}
             name={message.user?.name}
             showStatus={false}

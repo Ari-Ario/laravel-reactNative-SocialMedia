@@ -40,7 +40,7 @@ const Avatar: React.FC<AvatarProps> = ({
     if (source && !imgError) {
       return (
         <Image
-          source={{ uri: resolveUri(source) }}
+          source={{ uri: resolveUri(source), cache: 'force-cache' }}
           style={{ width: size, height: size, borderRadius: size / 2 }}
           onError={() => setImgError(true)}
         />

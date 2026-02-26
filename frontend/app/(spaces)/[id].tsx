@@ -44,6 +44,7 @@ import SpaceChatTab from '@/components/ChatScreen/SpaceChatTab';
 import SpaceExportModal from '@/components/ChatScreen/SpaceExportModal';
 import SpaceSettingsModal from '@/components/ChatScreen/SpaceSettingsModal';
 import { createShadow } from '@/utils/styles';
+import WhiteboardCanvas, { WhiteboardCanvasRef } from '@/components/ChatScreen/WhiteboardCanvas';
 
 const SpaceDetailScreen = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -89,6 +90,8 @@ const SpaceDetailScreen = () => {
   const [polls, setPolls] = useState<any[]>([]);
   const [hasInitialTabSet, setHasInitialTabSet] = useState(false); // ✅ Add this flag
   const [showExportModal, setShowExportModal] = useState(false);
+
+  const whiteboardRef = useRef<WhiteboardCanvasRef>(null);
 
   useEffect(() => {
     if (id && user) {
@@ -298,7 +301,7 @@ const SpaceDetailScreen = () => {
           console.log('📊 Poll updated:', poll.id);
           setPolls(prev => {
             const updated = prev.map(p =>
-              p.id === poll.id ? poll : p
+              p.id === poll.id || p.parent_poll_id === poll.id ? { ...poll, id: p.id } : p
             );
             return activeTab === 'polls' ? [...updated] : updated;
           });
@@ -644,15 +647,50 @@ const SpaceDetailScreen = () => {
 
       case 'whiteboard':
         return (
-          <View style={styles.whiteboardContainer}>
-            <Ionicons name="easel" size={64} color="#007AFF" />
-            <Text style={styles.placeholderText}>Collaborative Whiteboard</Text>
-            <Text style={styles.placeholderSubtext}>
-              Draw together in real-time. Coming soon!
-            </Text>
-            <TouchableOpacity style={styles.placeholderButton}>
-              <Text style={styles.placeholderButtonText}>Start Drawing</Text>
-            </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <WhiteboardCanvas
+              ref={whiteboardRef}
+              spaceId={id as string}
+              userId={user?.id || 0}
+              userName={user?.name}
+              initialElements={space?.content_state?.whiteboard?.elements || []}
+              onElementsChange={(elements) => {
+                // Update local state but don't trigger full sync - we already sync via service
+                setSpace((prev: any) => ({
+                  ...prev,
+                  content_state: {
+                    ...prev.content_state,
+                    whiteboard: {
+                      ...prev.content_state?.whiteboard,
+                      elements,
+                    },
+                  },
+                }));
+              }}
+              onError={(error) => {
+                console.error('Whiteboard error:', error);
+                Alert.alert(
+                  'Whiteboard Error',
+                  'Something went wrong. Please try again.',
+                  [
+                    { text: 'Retry', onPress: () => { } },
+                    { text: 'Cancel', style: 'cancel' },
+                  ]
+                );
+              }}
+              onUserJoin={(userId, userName) => {
+                // Show notification
+                useNotificationStore.getState().addNotification({
+                  type: 'user_joined_whiteboard',
+                  title: 'User Joined Whiteboard',
+                  message: `${userName || 'Someone'} started drawing`,
+                  spaceId: id,
+                  userId,
+                  createdAt: new Date(),
+                });
+              }}
+              readOnly={space?.my_role === 'viewer'}
+            />
           </View>
         );
 

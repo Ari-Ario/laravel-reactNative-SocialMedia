@@ -45,6 +45,7 @@ interface PollViewerProps {
     onRefresh?: () => void;
     onDelete?: (pollId: string) => void;
     onEdit?: (pollId: string, updatedPoll: any) => void;
+    isPreview?: boolean;
 }
 
 const PollViewer: React.FC<PollViewerProps> = ({
@@ -58,6 +59,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
     onRefresh,
     onDelete,
     onEdit,
+    isPreview = false,
 }) => {
     // State
     const [selectedOptions, setSelectedOptions] = useState<Set<string>>(new Set());
@@ -139,6 +141,12 @@ const PollViewer: React.FC<PollViewerProps> = ({
     // Handle option selection (direct vote for single, toggle for multiple)
     const handleSelectOption = async (optionId: string) => {
         if (!canVote()) return;
+        if (votingInProgress) return;
+
+        if (isPreview) {
+            Alert.alert('Preview Mode', 'Voting is disabled while previewing the poll.');
+            return;
+        }
 
         if (localPoll.type === 'single') {
             // Single choice: vote immediately
@@ -168,6 +176,10 @@ const PollViewer: React.FC<PollViewerProps> = ({
     // Submit vote
     const submitVote = async (optionIds: string[]) => {
         if (optionIds.length === 0) return;
+        if (isPreview) {
+            Alert.alert('Preview Mode', 'Voting is disabled while previewing the poll.');
+            return;
+        }
 
         setVotingInProgress(true);
 
@@ -271,45 +283,61 @@ const PollViewer: React.FC<PollViewerProps> = ({
     // Close poll
     const handleClosePoll = useCallback(() => {
         setShowMenu(false);
-        Alert.alert(
-            'Close Poll',
-            'Are you sure you want to close this poll? No more votes will be accepted.',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Close',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await collaborationService.closePoll(spaceId, localPoll.id);
-                            setLocalPoll((prev: any) => ({ ...prev, status: 'closed' }));
-                            await safeHaptics.warning();
+        const title = 'Close Poll';
+        const message = 'Are you sure you want to close this poll? No more votes will be accepted.';
 
-                            if (onClosePoll) {
-                                onClosePoll(localPoll.id);
-                            }
+        const executeClose = async () => {
+            try {
+                await collaborationService.closePoll(spaceId, localPoll.id);
+                setLocalPoll((prev: any) => ({ ...prev, status: 'closed' }));
+                await safeHaptics.warning();
 
-                            if (onRefresh) {
-                                onRefresh();
-                            }
+                if (onClosePoll) {
+                    onClosePoll(localPoll.id);
+                }
 
-                            await collaborationService.sendMessage(spaceId, {
-                                content: `📊 Poll "${localPoll.question}" has been closed`,
-                                type: 'text',
-                                metadata: {
-                                    isPollNotification: true,
-                                    pollId: localPoll.id,
-                                    notificationType: 'poll_closed',
-                                },
-                            });
-                        } catch (error) {
-                            console.error('Error closing poll:', error);
-                            Alert.alert('Error', 'Failed to close poll');
-                        }
+                if (onRefresh) {
+                    onRefresh();
+                }
+
+                await collaborationService.sendMessage(spaceId, {
+                    content: `📊 Poll "${localPoll.question}" has been closed`,
+                    type: 'text',
+                    metadata: {
+                        isPollNotification: true,
+                        pollId: localPoll.id,
+                        notificationType: 'poll_closed',
                     },
-                },
-            ]
-        );
+                });
+            } catch (error) {
+                console.error('Error closing poll:', error);
+                if (Platform.OS === 'web') {
+                    window.alert('Failed to close poll');
+                } else {
+                    Alert.alert('Error', 'Failed to close poll');
+                }
+            }
+        };
+
+        if (Platform.OS === 'web') {
+            const confirmed = window.confirm(`${title}\n\n${message}`);
+            if (confirmed) {
+                executeClose();
+            }
+        } else {
+            Alert.alert(
+                title,
+                message,
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                        text: 'Close',
+                        style: 'destructive',
+                        onPress: executeClose,
+                    },
+                ]
+            );
+        }
     }, [spaceId, localPoll.id, localPoll.question, onClosePoll, onRefresh]);
 
     // Delete poll
@@ -328,36 +356,57 @@ const PollViewer: React.FC<PollViewerProps> = ({
             message = 'As a moderator, you can only delete this poll from the current space. The original creator\'s copy in other spaces will remain. This action cannot be undone.';
         }
 
-        Alert.alert(
-            title,
-            message,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            console.log('🗑️ Attempting to delete poll:', localPoll.id);
-                            const result: any = await collaborationService.deletePoll(spaceId, localPoll.id);
-                            console.log('✅ Delete successful:', result);
+        const executeDelete = async () => {
+            try {
+                console.log('🗑️ Attempting to delete poll:', localPoll.id);
+                const result: any = await collaborationService.deletePoll(spaceId, localPoll.id);
+                console.log('✅ Delete successful:', result);
 
-                            // Show appropriate message
-                            if (result && result.deleted_by === 'creator' && result.total_copies_deleted > 0) {
-                                Alert.alert('Success', `Poll deleted. ${result.total_copies_deleted} copies removed from other spaces.`);
-                            } else {
-                                Alert.alert('Success', 'Poll deleted successfully');
-                            }
+                // Show appropriate message
+                if (Platform.OS === 'web') {
+                    if (result && result.deleted_by === 'creator' && result.total_copies_deleted > 0) {
+                        window.alert(`Poll deleted. ${result.total_copies_deleted} copies removed from other spaces.`);
+                    } else {
+                        window.alert('Poll deleted successfully');
+                    }
+                } else {
+                    if (result && result.deleted_by === 'creator' && result.total_copies_deleted > 0) {
+                        Alert.alert('Success', `Poll deleted. ${result.total_copies_deleted} copies removed from other spaces.`);
+                    } else {
+                        Alert.alert('Success', 'Poll deleted successfully');
+                    }
+                }
 
-                            if (onDelete) onDelete(localPoll.id);
-                        } catch (error: any) {
-                            console.error('❌ Delete failed:', error);
-                            Alert.alert('Error', error.response?.data?.message || 'Failed to delete poll');
-                        }
+                if (onDelete) onDelete(localPoll.id);
+            } catch (error: any) {
+                console.error('❌ Delete failed:', error);
+                if (Platform.OS === 'web') {
+                    window.alert(error.response?.data?.message || 'Failed to delete poll');
+                } else {
+                    Alert.alert('Error', error.response?.data?.message || 'Failed to delete poll');
+                }
+            }
+        };
+
+        if (Platform.OS === 'web') {
+            const confirmed = window.confirm(`${title}\n\n${message}`);
+            if (confirmed) {
+                executeDelete();
+            }
+        } else {
+            Alert.alert(
+                title,
+                message,
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                        text: 'Delete',
+                        style: 'destructive',
+                        onPress: executeDelete,
                     },
-                },
-            ]
-        );
+                ]
+            );
+        }
     }, [spaceId, localPoll, currentUserId, currentUserRole, onDelete]);
 
     // Edit poll
@@ -483,10 +532,12 @@ const PollViewer: React.FC<PollViewerProps> = ({
             for (const targetSpaceId of targetSpaceIds) {
                 await collaborationService.sendMessage(targetSpaceId, {
                     content: `📊 Poll forwarded from another space: "${localPoll.question}"`,
-                    type: 'text',
+                    type: 'poll', // Changed from 'text' to 'poll'
                     metadata: {
+                        isPoll: true,      // Added so MessageList recognizes it
                         isPollForward: true,
                         pollId: localPoll.id,
+                        pollData: localPoll, // Added so target space has the data
                         sourceSpaceId: spaceId,
                     },
                 });
@@ -967,6 +1018,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
                 onClose={() => setShowVotersModal(false)}
                 poll={localPoll}
                 currentUserId={currentUserId}
+                spaceId={spaceId}
             />
         </>
     );

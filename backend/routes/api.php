@@ -161,8 +161,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::get('/{id}/polls/{pollId}/results', [PollController::class , 'results']);
             Route::put('/{id}/polls/{pollId}', [PollController::class , 'update']);
             Route::delete('/{id}/polls/{pollId}', [PollController::class , 'destroy']);
-        }
-        );
+        });
+        // Add to routes/api.php inside auth:sanctum group
+        Route::prefix('spaces/{id}/whiteboard')->group(function () {
+            Route::get('/elements', [WhiteboardController::class, 'getElements']);
+            Route::post('/elements', [WhiteboardController::class, 'addElement']);
+            Route::put('/elements/{elementId}', [WhiteboardController::class, 'updateElement']);
+            Route::delete('/elements/{elementId}', [WhiteboardController::class, 'removeElement']);
+            Route::post('/clear', [WhiteboardController::class, 'clear']);
+            Route::post('/cursor', [WhiteboardController::class, 'updateCursor']);
+        });
         Route::post('/spaces/{id}/call/signal', [SpaceController::class , 'callSignal']);
         Route::post('/spaces/{id}/call/mute', [SpaceController::class , 'callMute']);
         Route::post('/spaces/{id}/call/video', [SpaceController::class , 'callVideo']);

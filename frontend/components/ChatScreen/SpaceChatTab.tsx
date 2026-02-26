@@ -26,6 +26,8 @@ interface SpaceChatTabProps {
     setShowPollCreator: (show: boolean) => void;
     /** All polls for this space (passed from [id].tsx so we don't re-fetch) */
     polls?: any[];
+    /** Provide active participants for enriching chat message avatars */
+    participants?: any[];
     currentUserRole?: string;
     onNavigateToAllPolls?: () => void;
 }
@@ -37,6 +39,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
     setSpace,
     setShowPollCreator,
     polls = [],
+    participants = [],
     currentUserRole,
     onNavigateToAllPolls,
 }) => {
@@ -105,6 +108,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                     spaceId={spaceId}
                     currentUserId={currentUserId}
                     polls={polls}
+                    participants={participants}
                     onPollPress={() => { }} // No-op now that polls are inline
                 />
 
