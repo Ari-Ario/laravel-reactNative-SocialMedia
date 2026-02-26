@@ -25,7 +25,7 @@ class SpaceUpdated implements ShouldBroadcast
         if ($space && !$space->relationLoaded('creator')) {
             $space->load('creator');
         }
-        
+
         $this->space = $space;
         $this->userId = $userId;
         $this->changes = $changes;
@@ -37,13 +37,18 @@ class SpaceUpdated implements ShouldBroadcast
         if (!$this->space) {
             return []; // Return empty array if space is null
         }
-        $followerIds = Auth::user()->followers()->pluck('users.id')->toArray();
-    
-        return [
+
+        $channels = [
             new Channel('spaces'),
             new PresenceChannel('space.' . $this->space->id),
-            new PrivateChannel('user.' . $this->userId),
         ];
+
+        // Add user-specific channel if userId is provided
+        if ($this->userId) {
+            $channels[] = new PrivateChannel('user.' . $this->userId);
+        }
+
+        return $channels;
     }
 
     public function broadcastAs()
@@ -60,7 +65,7 @@ class SpaceUpdated implements ShouldBroadcast
                 'timestamp' => now()->toISOString()
             ];
         }
-        
+
         return [
             'space' => [
                 'id' => $this->space->id,
@@ -76,76 +81,76 @@ class SpaceUpdated implements ShouldBroadcast
     }
 
 
-public function callSignal(Request $request, $id)
-{
-    $request->validate([
-        'type' => 'required|in:offer,answer,ice-candidate',
-        'target_user_id' => 'required|exists:users,id',
-        'call_id' => 'required|string',
-        'offer' => 'required_if:type,offer',
-        'answer' => 'required_if:type,answer',
-        'candidate' => 'required_if:type,ice-candidate',
-    ]);
-    
-    $space = CollaborationSpace::findOrFail($id);
-    $user = auth()->user();
-    
-    // Forward the signal to the target user
-    broadcast(new \App\Events\WebRTCSignal(
-        $space,
-        $user,
-        $request->target_user_id,
-        $request->type,
-        $request->only(['offer', 'answer', 'candidate']),
-        $request->call_id
-    ))->toOthers();
-    
-    return response()->json(['success' => true]);
-}
+    public function callSignal(Request $request, $id)
+    {
+        $request->validate([
+            'type' => 'required|in:offer,answer,ice-candidate',
+            'target_user_id' => 'required|exists:users,id',
+            'call_id' => 'required|string',
+            'offer' => 'required_if:type,offer',
+            'answer' => 'required_if:type,answer',
+            'candidate' => 'required_if:type,ice-candidate',
+        ]);
 
-public function callMute(Request $request, $id)
-{
-    $request->validate([
-        'is_muted' => 'required|boolean',
-        'call_id' => 'required|string',
-    ]);
-    
-    $space = CollaborationSpace::findOrFail($id);
-    $user = auth()->user();
-    
-    broadcast(new \App\Events\CallMuteStateChanged($space, $user, $request->is_muted))->toOthers();
-    
-    return response()->json(['success' => true]);
-}
+        $space = CollaborationSpace::findOrFail($id);
+        $user = auth()->user();
 
-public function callVideo(Request $request, $id)
-{
-    $request->validate([
-        'has_video' => 'required|boolean',
-        'call_id' => 'required|string',
-    ]);
-    
-    $space = CollaborationSpace::findOrFail($id);
-    $user = auth()->user();
-    
-    broadcast(new \App\Events\CallVideoStateChanged($space, $user, $request->has_video))->toOthers();
-    
-    return response()->json(['success' => true]);
-}
+        // Forward the signal to the target user
+        broadcast(new \App\Events\WebRTCSignal(
+            $space,
+            $user,
+            $request->target_user_id,
+            $request->type,
+            $request->only(['offer', 'answer', 'candidate']),
+            $request->call_id
+            ))->toOthers();
 
-public function callScreenShare(Request $request, $id)
-{
-    $request->validate([
-        'is_sharing' => 'required|boolean',
-        'call_id' => 'required|string',
-    ]);
-    
-    $space = CollaborationSpace::findOrFail($id);
-    $user = auth()->user();
-    
-    broadcast(new \App\Events\ScreenShareToggled($space, $user, $request->is_sharing))->toOthers();
-    
-    return response()->json(['success' => true]);
-}
+        return response()->json(['success' => true]);
+    }
+
+    public function callMute(Request $request, $id)
+    {
+        $request->validate([
+            'is_muted' => 'required|boolean',
+            'call_id' => 'required|string',
+        ]);
+
+        $space = CollaborationSpace::findOrFail($id);
+        $user = auth()->user();
+
+        broadcast(new \App\Events\CallMuteStateChanged($space, $user, $request->is_muted))->toOthers();
+
+        return response()->json(['success' => true]);
+    }
+
+    public function callVideo(Request $request, $id)
+    {
+        $request->validate([
+            'has_video' => 'required|boolean',
+            'call_id' => 'required|string',
+        ]);
+
+        $space = CollaborationSpace::findOrFail($id);
+        $user = auth()->user();
+
+        broadcast(new \App\Events\CallVideoStateChanged($space, $user, $request->has_video))->toOthers();
+
+        return response()->json(['success' => true]);
+    }
+
+    public function callScreenShare(Request $request, $id)
+    {
+        $request->validate([
+            'is_sharing' => 'required|boolean',
+            'call_id' => 'required|string',
+        ]);
+
+        $space = CollaborationSpace::findOrFail($id);
+        $user = auth()->user();
+
+        broadcast(new \App\Events\ScreenShareToggled($space, $user, $request->is_sharing))->toOthers();
+
+        return response()->json(['success' => true]);
+    }
 
 }

@@ -1031,6 +1031,75 @@ public function endCall(Request $request, $id)
             'message' => 'Media uploaded successfully'
         ]);
     }
+
+    /**
+     * List all media uploaded to a space
+     */
+    public function getMedia(Request $request, $id)
+    {
+        $space = CollaborationSpace::findOrFail($id);
+        $user = auth()->user();
+
+        // Ensure user is a participant
+        $isParticipant = $space->participations()->where('user_id', $user->id)->exists();
+        if (!$isParticipant) {
+            return response()->json(['message' => 'Access denied'], 403);
+        }
+
+        $mediaItems = \App\Models\Media::where(function ($q) use ($space) {
+                $q->whereJsonContains('metadata->space_id', $space->id)
+                  ->orWhereJsonContains('metadata->space_id', (string) $space->id);
+            })
+            ->with('user:id,name,profile_photo')
+            ->orderBy('created_at', 'desc')
+            ->paginate(50);
+
+        $items = $mediaItems->map(function ($m) {
+            return [
+                'id'         => $m->id,
+                'file_name'  => $m->file_name,
+                'mime_type'  => $m->mime_type,
+                'file_size'  => $m->file_size,
+                'type'       => $m->metadata['type'] ?? 'document',
+                'url'        => Storage::url($m->file_path),
+                'uploader'   => $m->user ? ['id' => $m->user->id, 'name' => $m->user->name] : null,
+                'created_at' => $m->created_at->toISOString(),
+            ];
+        });
+
+        return response()->json(['media' => $items]);
+    }
+
+    /**
+     * Delete a media file from a space (owner/moderator only)
+     */
+    public function deleteMedia(Request $request, $id, $mediaId)
+    {
+        $space = CollaborationSpace::findOrFail($id);
+        $user  = auth()->user();
+
+        $participation = $space->participations()
+            ->where('user_id', $user->id)
+            ->whereIn('role', ['owner', 'moderator'])
+            ->first();
+
+        if (!$participation) {
+            return response()->json(['message' => 'Only owners and moderators can delete media'], 403);
+        }
+
+        $media = \App\Models\Media::findOrFail($mediaId);
+
+        // Make sure the media actually belongs to this space
+        $spaceId = $media->metadata['space_id'] ?? null;
+        if ((string) $spaceId !== (string) $space->id) {
+            return response()->json(['message' => 'Media does not belong to this space'], 404);
+        }
+
+        Storage::disk('public')->delete($media->file_path);
+        $media->delete();
+
+        return response()->json(['message' => 'Media deleted successfully']);
+    }
     
     /**
      * Send a message in space

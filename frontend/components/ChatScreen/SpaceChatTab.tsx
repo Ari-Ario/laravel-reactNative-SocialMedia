@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MessageList from './MessageList';
+import MediaUploader from '@/services/ChatScreen/MediaUploader';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import { useCollaborationStore } from '@/stores/collaborationStore';
 import { createShadow } from '@/utils/styles';
@@ -22,7 +23,6 @@ interface SpaceChatTabProps {
     currentUserId: number;
     space: any;
     setSpace: React.Dispatch<React.SetStateAction<any>>;
-    setShowMediaUploader: (show: boolean) => void;
     setShowPollCreator: (show: boolean) => void;
     /** All polls for this space (passed from [id].tsx so we don't re-fetch) */
     polls?: any[];
@@ -35,13 +35,13 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
     currentUserId,
     space,
     setSpace,
-    setShowMediaUploader,
     setShowPollCreator,
     polls = [],
     currentUserRole,
     onNavigateToAllPolls,
 }) => {
     const [content, setContent] = useState<string>('');
+    const [showMediaUploader, setShowMediaUploader] = useState(false); // ← now local
     const collaborationService = CollaborationService.getInstance();
 
     const handleSendMessage = async () => {
@@ -78,69 +78,81 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
     const pollCount = polls.length;
 
     return (
-        <View style={styles.chatContainer}>
-            {/* ─── Chat header bar with Poll shortcut ─── */}
-            {polls.length > 0 && (
-                <TouchableOpacity
-                    style={styles.pollsBanner}
-                    onPress={onNavigateToAllPolls}
-                    activeOpacity={0.8}
-                >
-                    <View style={styles.pollsBannerLeft}>
-                        <Ionicons name="bar-chart" size={16} color="#007AFF" />
-                        <Text style={styles.pollsBannerText}>
-                            {pollCount} active poll{pollCount !== 1 ? 's' : ''}
-                        </Text>
-                    </View>
-                    <View style={styles.pollsBannerRight}>
-                        <Text style={styles.pollsBannerCta}>View all</Text>
-                        <Ionicons name="chevron-forward" size={14} color="#007AFF" />
-                    </View>
-                </TouchableOpacity>
-            )}
-
-            {/* ─── Message List ─── */}
-            <MessageList
-                spaceId={spaceId}
-                currentUserId={currentUserId}
-                polls={polls}
-                onPollPress={() => { }} // No-op now that polls are inline
-            />
-
-            {/* ─── Input Bar ─── */}
-            <View style={styles.chatInputContainer}>
-                <View style={styles.attachActions}>
+        <>
+            <View style={styles.chatContainer}>
+                {/* ─── Chat header bar with Poll shortcut ─── */}
+                {polls.length > 0 && (
                     <TouchableOpacity
-                        onPress={() => setShowMediaUploader(true)}
-                        style={styles.actionButton}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={styles.pollsBanner}
+                        onPress={onNavigateToAllPolls}
+                        activeOpacity={0.8}
                     >
-                        <Ionicons name="attach" size={24} color="#007AFF" />
+                        <View style={styles.pollsBannerLeft}>
+                            <Ionicons name="bar-chart" size={16} color="#007AFF" />
+                            <Text style={styles.pollsBannerText}>
+                                {pollCount} active poll{pollCount !== 1 ? 's' : ''}
+                            </Text>
+                        </View>
+                        <View style={styles.pollsBannerRight}>
+                            <Text style={styles.pollsBannerCta}>View all</Text>
+                            <Ionicons name="chevron-forward" size={14} color="#007AFF" />
+                        </View>
                     </TouchableOpacity>
-                </View>
+                )}
 
-                <TextInput
-                    style={styles.messageInput}
-                    placeholder={`Message in ${space?.title || 'space'}...`}
-                    value={content}
-                    onChangeText={setContent}
-                    multiline
-                    maxLength={2000}
-                    placeholderTextColor="#9a9a9a"
-                    returnKeyType="default"
-                    blurOnSubmit={false}
+                {/* ─── Message List ─── */}
+                <MessageList
+                    spaceId={spaceId}
+                    currentUserId={currentUserId}
+                    polls={polls}
+                    onPollPress={() => { }} // No-op now that polls are inline
                 />
 
-                <TouchableOpacity
-                    style={[styles.sendButton, !content.trim() && styles.sendButtonDisabled]}
-                    onPress={handleSendMessage}
-                    disabled={!content.trim()}
-                    activeOpacity={0.8}
-                >
-                    <Ionicons name="send" size={18} color="#fff" />
-                </TouchableOpacity>
+                {/* ─── Input Bar ─── */}
+                <View style={styles.chatInputContainer}>
+                    <View style={styles.attachActions}>
+                        <TouchableOpacity
+                            onPress={() => setShowMediaUploader(true)}
+                            style={styles.actionButton}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                            <Ionicons name="attach" size={24} color="#007AFF" />
+                        </TouchableOpacity>
+                    </View>
+
+                    <TextInput
+                        style={styles.messageInput}
+                        placeholder={`Message in ${space?.title || 'space'}...`}
+                        value={content}
+                        onChangeText={setContent}
+                        multiline
+                        maxLength={2000}
+                        placeholderTextColor="#9a9a9a"
+                        returnKeyType="default"
+                        blurOnSubmit={false}
+                    />
+
+                    <TouchableOpacity
+                        style={[styles.sendButton, !content.trim() && styles.sendButtonDisabled]}
+                        onPress={handleSendMessage}
+                        disabled={!content.trim()}
+                        activeOpacity={0.8}
+                    >
+                        <Ionicons name="send" size={18} color="#fff" />
+                    </TouchableOpacity>
+                </View>
             </View>
-        </View>
+
+            {/* MediaUploader \u2013 fully self-contained inside SpaceChatTab */}
+            <MediaUploader
+                spaceId={spaceId}
+                isVisible={showMediaUploader}
+                onClose={() => setShowMediaUploader(false)}
+                onUploadComplete={(media) => {
+                    console.log('[SpaceChatTab] Media uploaded:', media);
+                }}
+            />
+        </>
     );
 };
 

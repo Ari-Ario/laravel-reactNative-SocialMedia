@@ -42,6 +42,7 @@ import PollComponent from '@/components/ChatScreen/PollComponent';
 import { InviteRecipient } from '@/components/ChatScreen/EnhancedInviteModal';
 import SpaceChatTab from '@/components/ChatScreen/SpaceChatTab';
 import SpaceExportModal from '@/components/ChatScreen/SpaceExportModal';
+import SpaceSettingsModal from '@/components/ChatScreen/SpaceSettingsModal';
 import { createShadow } from '@/utils/styles';
 
 const SpaceDetailScreen = () => {
@@ -634,7 +635,6 @@ const SpaceDetailScreen = () => {
             currentUserId={user?.id || 0}
             space={space}
             setSpace={setSpace}
-            setShowMediaUploader={setShowMediaUploader}
             setShowPollCreator={setShowPollCreator}
             polls={polls}
             currentUserRole={space?.my_role}
@@ -1074,121 +1074,26 @@ const SpaceDetailScreen = () => {
         onInvite={handleInviteUsers}
       />
 
-      {/* Space Settings Modal */}
-      <Modal
+      {/* Space Settings Modal – new high-performance component */}
+      <SpaceSettingsModal
         visible={showSettingsModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowSettingsModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContentLarge}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Space Settings</Text>
-              <TouchableOpacity onPress={() => setShowSettingsModal(false)}>
-                <Ionicons name="close" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.settingsScrollView}>
-              <View style={styles.settingsSection}>
-                <Text style={styles.settingsSectionTitle}>Space Photo</Text>
-                <TouchableOpacity
-                  style={styles.photoUploadArea}
-                  onPress={handleUpdateSpacePhoto}
-                >
-                  {space?.avatar ? (
-                    <Image source={{ uri: space.avatar }} style={styles.spacePhoto} />
-                  ) : (
-                    <View style={styles.photoPlaceholder}>
-                      <Ionicons name="camera" size={32} color="#999" />
-                      <Text style={styles.photoPlaceholderText}>Upload Photo</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.settingsSection}>
-                <Text style={styles.settingsSectionTitle}>Space Name</Text>
-                <View style={styles.settingsRow}>
-                  <TextInput
-                    style={styles.settingsInput}
-                    value={editingTitle}
-                    onChangeText={setEditingTitle}
-                    placeholder="Enter space name"
-                    maxLength={50}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.settingsSection}>
-                <Text style={styles.settingsSectionTitle}>Description</Text>
-                <TextInput
-                  style={[styles.settingsInput, styles.textArea]}
-                  value={editingDescription}
-                  onChangeText={setEditingDescription}
-                  placeholder="Enter space description"
-                  multiline
-                  numberOfLines={4}
-                  textAlignVertical="top"
-                />
-              </View>
-
-              <View style={styles.settingsSection}>
-                <Text style={styles.settingsSectionTitle}>Space Type</Text>
-                <View style={styles.infoRow}>
-                  <Ionicons name={getSpaceTypeIcon(space?.space_type) as any} size={20} color="#007AFF" />
-                  <Text style={styles.infoText}>
-                    {space?.space_type?.charAt(0).toUpperCase() + space?.space_type?.slice(1)}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.settingsSection}>
-                <Text style={styles.settingsSectionTitle}>Created</Text>
-                <Text style={styles.infoText}>
-                  {space?.created_at ? new Date(space.created_at).toLocaleDateString() : 'N/A'}
-                </Text>
-                <Text style={styles.infoSubtext}>
-                  by {space?.creator?.name || 'Unknown'}
-                </Text>
-              </View>
-
-              <View style={styles.settingsSection}>
-                <Text style={styles.settingsSectionTitle}>Stats</Text>
-                <View style={styles.statsRow}>
-                  <View style={styles.statItem}>
-                    <Ionicons name="people" size={16} color="#666" />
-                    <Text style={styles.statText}>{participants.length} participants</Text>
-                  </View>
-                  <View style={styles.statItem}>
-                    <Ionicons name="chatbubble" size={16} color="#666" />
-                    <Text style={styles.statText}>
-                      {space?.content_state?.messages?.length || 0} messages
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </ScrollView>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonCancel]}
-                onPress={() => setShowSettingsModal(false)}
-              >
-                <Text style={styles.modalButtonTextCancel}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonConfirm]}
-                onPress={handleUpdateSpace}
-              >
-                <Text style={styles.modalButtonTextConfirm}>Save Changes</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setShowSettingsModal(false)}
+        space={space}
+        participants={participants}
+        currentUserRole={space?.my_role || 'participant'}
+        onSpaceUpdated={(updatedSpace) => {
+          setSpace(updatedSpace);
+          setShowSettingsModal(false);
+        }}
+        onParticipantRoleChanged={(participantId, newRole) => {
+          setParticipants(prev =>
+            prev.map(p => p.user_id === participantId ? { ...p, role: newRole } : p)
+          );
+        }}
+        onParticipantRemoved={(participantId) => {
+          setParticipants(prev => prev.filter(p => p.user_id !== participantId));
+        }}
+      />
 
       {/* Participants Modal */}
       <Modal

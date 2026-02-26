@@ -146,6 +146,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::get('/{id}/ai-suggestions', [SpaceController::class , 'getAISuggestions']);
             Route::post('/{id}/ai-query', [SpaceController::class , 'aiQuery']);
             Route::post('/{id}/upload-media', [SpaceController::class , 'uploadMedia']);
+            Route::get('/{id}/media', [SpaceController::class , 'getMedia']);
+            Route::delete('/{id}/media/{mediaId}', [SpaceController::class , 'deleteMedia']);
             Route::post('/{id}/send-message', [SpaceController::class , 'sendMessage']);
             Route::post('/{id}/participants/{userId}/role', [SpaceController::class , 'updateParticipantRole']);
             Route::delete('/{id}/participants/{userId}', [SpaceController::class , 'removeParticipant']);
