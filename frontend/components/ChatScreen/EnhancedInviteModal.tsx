@@ -431,34 +431,41 @@ const EnhancedInviteModal: React.FC<EnhancedInviteModalProps> = ({
                     {/* Search Results / Suggestions */}
                     {showResults && (
                         <View style={styles.suggestionsContainer}>
-                            {isSearching ? (
-                                <View style={styles.loadingContainer}>
-                                    <ActivityIndicator size="small" color="#007AFF" />
-                                    <Text style={styles.loadingText}>Searching...</Text>
-                                </View>
-                            ) : suggestions.length > 0 ? (
-                                <>
-                                    <Text style={styles.suggestionsTitle}>Suggestions:</Text>
-                                    {suggestions.map((user) => (
-                                        <TouchableOpacity
-                                            key={user.id}
-                                            style={styles.suggestionItem}
-                                            onPress={() => addSuggestion(user)}
-                                        >
-                                            <Avatar source={user.profile_photo} size={40} name={user.name} />
-                                            <View style={styles.suggestionInfo}>
-                                                <Text style={styles.suggestionName}>{user.name}</Text>
-                                                <Text style={styles.suggestionDetail}>
-                                                    {user.email || user.phone || `@${user.username}`}
-                                                </Text>
-                                            </View>
-                                            <Ionicons name="add-circle-outline" size={24} color="#007AFF" />
-                                        </TouchableOpacity>
-                                    ))}
-                                </>
-                            ) : inputText.length >= 2 ? (
-                                <Text style={styles.noResultsText}>No users found</Text>
-                            ) : null}
+                            <ScrollView
+                                style={{ maxHeight: 240 }}           // ← adjust this value as needed
+                                nestedScrollEnabled={true}           // important on Android
+                                keyboardShouldPersistTaps="handled"
+                                showsVerticalScrollIndicator={false}
+                            >
+                                {isSearching ? (
+                                    <View style={styles.loadingContainer}>
+                                        <ActivityIndicator size="small" color="#007AFF" />
+                                        <Text style={styles.loadingText}>Searching...</Text>
+                                    </View>
+                                ) : suggestions.length > 0 ? (
+                                    <>
+                                        <Text style={styles.suggestionsTitle}>Suggestions:</Text>
+                                        {suggestions.map((user) => (
+                                            <TouchableOpacity
+                                                key={user.id}
+                                                style={styles.suggestionItem}
+                                                onPress={() => addSuggestion(user)}
+                                            >
+                                                <Avatar source={user.profile_photo} size={40} name={user.name} />
+                                                <View style={styles.suggestionInfo}>
+                                                    <Text style={styles.suggestionName}>{user.name}</Text>
+                                                    <Text style={styles.suggestionDetail}>
+                                                        {user.email || user.phone || `@${user.username}`}
+                                                    </Text>
+                                                </View>
+                                                <Ionicons name="add-circle-outline" size={24} color="#007AFF" />
+                                            </TouchableOpacity>
+                                        ))}
+                                    </>
+                                ) : inputText.length >= 2 ? (
+                                    <Text style={styles.noResultsText}>No users found</Text>
+                                ) : null}
+                            </ScrollView>
                         </View>
                     )}
 

@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 // import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from 'date-fns';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
+import { createShadow } from '@/utils/styles';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -532,13 +533,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
   );
 };
 
-const SHADOW = {
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.12,
-  shadowRadius: 12,
-  elevation: 8,
-};
+const SHADOW = createShadow({ height: 6, opacity: 0.12, radius: 12, elevation: 8 });
 
 const styles = StyleSheet.create({
   container: {

@@ -10,7 +10,11 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.graf"
+      "bundleIdentifier": "com.anonymous.graf",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app uses the camera to make video calls.",
+        "NSMicrophoneUsageDescription": "This app uses the microphone to make audio calls."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +25,10 @@
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.CAMERA"
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_CONNECT"
       ]
     },
     "web": {
@@ -89,20 +96,4 @@
       }
     }
   },
-  "android": {
-    "permissions": [
-      "android.permission.CAMERA",
-      "android.permission.RECORD_AUDIO",
-      "android.permission.MODIFY_AUDIO_SETTINGS",
-      "android.permission.ACCESS_NETWORK_STATE",
-      "android.permission.BLUETOOTH",
-      "android.permission.BLUETOOTH_CONNECT"
-    ]
-  },
-  "ios": {
-    "infoPlist": {
-      "NSCameraUsageDescription": "This app uses the camera to make video calls.",
-      "NSMicrophoneUsageDescription": "This app uses the microphone to make audio calls."
-    }
-  }
 }
