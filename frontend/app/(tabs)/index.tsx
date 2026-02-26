@@ -28,6 +28,7 @@ import SpacesPanel from '@/components/Notifications/SpacesPanel';
 import ActivitiesPanel from '@/components/Notifications/ActivitiesPanel';
 import RealTimeService from '@/services/ChatScreen/RealTimeServiceChat';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
+import { Avatar } from '@/components/ui/Avatar';
 
 type StoryGroup = {
   user: {
@@ -402,13 +403,10 @@ const HomePage = () => {
 
   const renderProfilePhoto = () => (
     <TouchableOpacity onPress={() => handleProfilePress(user.id)}>
-      {user?.profile_photo ? (
-        <Image source={{ uri: `${getApiBaseImage()}/storage/${user.profile_photo}` }} style={styles.profilePhoto} />
-      ) : (
-        <View style={styles.initialsContainer}>
-          <Text style={styles.initials}>{user?.name?.charAt(0)}{user?.last_name?.charAt(0)}</Text>
-        </View>
-      )}
+      <Avatar
+        user={user}
+        size={60}
+      />
     </TouchableOpacity>
   );
 
@@ -576,7 +574,11 @@ const HomePage = () => {
                   {storyGroups.map(group => (
                     <TouchableOpacity key={group.user.id} style={styles.storyItem} onPress={() => router.push({ pathname: '/story/[id]', params: { id: group.latest_story.id } })}>
                       <View style={[styles.storyBorder, group.all_viewed && styles.viewedStoryBorder]}>
-                        <Image source={{ uri: `${getApiBaseImage()}/storage/${group.user.profile_photo}` }} style={styles.storyImage} />
+                        <Avatar
+                          user={group.user}
+                          size={60}
+                          style={styles.storyImage}
+                        />
                         {!group.all_viewed && <View style={styles.unseenBadge} />}
                       </View>
                       <Text style={styles.storyUsername}>{group.user.name}</Text>

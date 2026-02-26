@@ -1,5 +1,5 @@
 // components/ChatScreen/EnhancedChatRow.tsx
-import { View, Text, Image, StyleSheet, Pressable, Alert, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert, TouchableOpacity, Platform } from 'react-native';
 import { Link, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useContext } from 'react';
@@ -349,15 +349,13 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       onLongPress={() => setShowContactMenu(true)}
     >
       <View style={styles.avatarContainer}>
-        <Image
-          source={{
-            uri: avatar
-              ? `${getApiBaseImage()}/storage/${avatar}`
-              : 'https://picsum.photos/200',
-          }}
-          style={styles.avatar}
+        <Avatar
+          source={avatar || null}
+          name={name}
+          size={50}
+          isOnline={isOnline}
+          showStatus={true}
         />
-        {isOnline && <View style={styles.onlineIndicator} />}
       </View>
 
       <View style={styles.content}>
@@ -461,13 +459,14 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
               <Ionicons name={getSpaceIcon()} size={24} color="#fff" />
             </View>
           ) : (
-            <Image
-              source={{ uri: avatar ? `${getApiBaseImage()}/storage/${avatar}` : 'https://picsum.photos/200' }}
-              style={styles.avatar}
+            <Avatar
+              source={avatar || null}
+              name={name}
+              size={50}
+              isOnline={isOnline}
+              showStatus={true}
             />
           )}
-
-          {isOnline && <View style={styles.onlineIndicator} />}
 
           {type === 'space' && spaceData?.is_live && (
             <View style={styles.liveIndicator}>

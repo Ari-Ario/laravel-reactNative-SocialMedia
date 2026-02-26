@@ -36,10 +36,10 @@ const RenderComments = ({
 
   const getGroupedReactionsComments = (comment: any) => {
     const defaultEmojis = ['🤍'];
-    
+
     if (!comment?.reaction_comments || comment?.reaction_comments.length === 0) {
-      return defaultEmojis.map(emoji => ({ 
-        emoji, 
+      return defaultEmojis.map(emoji => ({
+        emoji,
         count: 0,
         user_ids: []
       }));
@@ -56,10 +56,10 @@ const RenderComments = ({
     }
 
     return [...reactionMap.entries()]
-      .map(([emoji, { count, user_ids }]) => ({ 
-        emoji, 
+      .map(([emoji, { count, user_ids }]) => ({
+        emoji,
         count,
-        user_ids 
+        user_ids
       }))
       .sort((a, b) => b.count - a.count);
   };
@@ -71,7 +71,7 @@ const RenderComments = ({
 
     return (
       <View style={[
-        styles.commentContainer, 
+        styles.commentContainer,
         isHighlighted && styles.highlightedComment // Add highlighted style
       ]}>
         {/* Comment header */}
@@ -85,7 +85,7 @@ const RenderComments = ({
           </TouchableOpacity>
           <Text style={styles.commentContent}>{item.content}</Text>
         </View>
-        
+
         <View style={styles.commentButtons}>
           {/* Reply button */}
           <TouchableOpacity
@@ -94,7 +94,7 @@ const RenderComments = ({
           >
             <Text style={styles.replyButtonText}>Reply</Text>
           </TouchableOpacity>
-          
+
           {/* Comment reactions */}
           <View style={styles.commentReactionsScrollContainer}>
             {groupedReactions.length > 0 ? (
@@ -105,7 +105,7 @@ const RenderComments = ({
               >
                 {groupedReactions.map((reaction, idx) => {
                   const isMyReaction = reaction.user_ids?.includes(user?.id);
-                  
+
                   return isMyReaction ? (
                     <TouchableOpacity
                       key={`${reaction.emoji}-${idx}`}
@@ -164,7 +164,7 @@ const RenderComments = ({
             </TouchableOpacity>
           )}
         </View>
-        
+
         {/* Nested replies */}
         {item.replies?.length > 0 && (
           <View style={styles.repliesContainer}>

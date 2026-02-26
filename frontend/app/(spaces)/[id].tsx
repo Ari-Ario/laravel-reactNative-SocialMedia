@@ -1451,6 +1451,15 @@ const SpaceDetailScreen = () => {
           // Currently not handling text insertion for chat tab here
         }}
       />
+
+      {/* Export Modal */}
+      <SpaceExportModal
+        visible={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        space={space}
+        participants={participants}
+        polls={polls}
+      />
     </SafeAreaView>
   );
 };

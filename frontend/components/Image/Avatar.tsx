@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import LazyImage from './LazyImage';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import getApiBaseImage from '@/services/getApiBaseImage';
 
 interface AvatarProps {
   source?: string | null;
@@ -12,39 +12,55 @@ interface AvatarProps {
   showStatus?: boolean;
 }
 
+/**
+ * High-performance Avatar component with local initials fallback.
+ * Handles 404 image errors without external dependencies.
+ * Works on both Web and Mobile.
+ */
 const Avatar: React.FC<AvatarProps> = ({
   source,
   size = 40,
   name,
   isOnline = false,
   onPress,
-  borderColor = '#007AFF',
   showStatus = true,
 }) => {
-  // Generate initials or use fallback
-  const initials = name
-    ?.split(' ')
-    .map(word => word[0])
-    .join('')
-    .toUpperCase()
-    .substring(0, 2);
+  const [imgError, setImgError] = useState(false);
 
-  // Use fallback if no source
-  const actualSource = source 
-    ? { uri: source }
-    : { uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=007AFF&color=fff&size=${size}` };
+  // Resolve URI: relative paths become full API storage URLs
+  const resolveUri = (src: string) =>
+    src.startsWith('http') ? src : `${getApiBaseImage()}/storage/${src}`;
+
+  // Build initials: up to 2 characters from name words
+  const initials = name
+    ? name.trim().split(/\s+/).slice(0, 2).map(w => w[0].toUpperCase()).join('')
+    : '?';
+
+  const renderAvatar = () => {
+    if (source && !imgError) {
+      return (
+        <Image
+          source={{ uri: resolveUri(source) }}
+          style={{ width: size, height: size, borderRadius: size / 2 }}
+          onError={() => setImgError(true)}
+        />
+      );
+    }
+    // Initials fallback – zero external requests
+    return (
+      <View style={[
+        styles.initialsContainer,
+        { width: size, height: size, borderRadius: size / 2 },
+      ]}>
+        <Text style={[styles.initials, { fontSize: size * 0.38 }]}>{initials}</Text>
+      </View>
+    );
+  };
 
   return (
-    <TouchableOpacity onPress={onPress} disabled={!onPress}>
+    <TouchableOpacity onPress={onPress} disabled={!onPress} activeOpacity={onPress ? 0.7 : 1}>
       <View style={styles.container}>
-        <LazyImage
-          source={actualSource}
-          style={[
-            styles.avatar,
-            { width: size, height: size, borderRadius: size / 2 },
-          ]}
-          placeholderColor="#e0e0e0"
-        />
+        {renderAvatar()}
         {showStatus && isOnline && (
           <View
             style={[
@@ -53,9 +69,7 @@ const Avatar: React.FC<AvatarProps> = ({
                 width: size * 0.25,
                 height: size * 0.25,
                 borderRadius: (size * 0.25) / 2,
-                borderWidth: size * 0.03,
-                borderColor: '#fff',
-                backgroundColor: '#4CAF50',
+                borderWidth: Math.max(1, size * 0.03),
               },
             ]}
           />
@@ -69,22 +83,24 @@ const styles = StyleSheet.create({
   container: {
     position: 'relative',
   },
-  avatar: {
-    overflow: 'hidden',
-  },
   initialsContainer: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#007AFF20',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#007AFF40',
   },
   initials: {
-    color: '#fff',
-    fontWeight: '600',
+    color: '#007AFF',
+    fontWeight: '700',
   },
   statusIndicator: {
     position: 'absolute',
     bottom: 0,
     right: 0,
+    backgroundColor: '#4CAF50',
+    borderColor: '#fff',
+    borderWidth: 2,
   },
 });
 

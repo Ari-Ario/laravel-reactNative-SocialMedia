@@ -25,29 +25,29 @@ const ProfilePreview = ({ userId, visible, onClose }) => {
 
   const userPosts = posts;
 
-useEffect(() => {
-  if (visible && userId) {
-    // Save current posts
-    originalPostsRef.current = posts;
-    // Fetch the profile and replace posts
-    handleFetchProfile();
-  }
+  useEffect(() => {
+    if (visible && userId) {
+      // Save current posts
+      originalPostsRef.current = posts;
+      // Fetch the profile and replace posts
+      handleFetchProfile();
+    }
 
-  // When visible becomes false, restore original posts
-  if (!visible && originalPostsRef.current) {
-    setPosts(originalPostsRef.current);
-  }
-}, [visible, userId]);
+    // When visible becomes false, restore original posts
+    if (!visible && originalPostsRef.current) {
+      setPosts(originalPostsRef.current);
+    }
+  }, [visible, userId]);
 
   const handleFetchProfile = async () => {
     try {
       setLoading(true);
       const response = await fetchProfile(userId);
-      
+
       // Assuming the API returns data in a 'data' property
       // Adjust according to your actual API response structure
       const profileData = response.data || response;
-      
+
       setProfile(profileData.user);
       setIsFollowing(profileData.user.is_following);
       // console.log(profileData);
@@ -69,19 +69,19 @@ useEffect(() => {
       setFollowLoading(true);
       const action = isFollowing ? 'unfollow' : 'follow';
       const response = await followUser(userId, action);
-      
+
       // Assuming the API returns updated data
       const updatedData = response.data || response;
       // console.log(updatedData);
-      
+
       setIsFollowing(!isFollowing); // Toggle the follow state
       setProfile(prev => ({
         ...prev,
-        followers_count: isFollowing 
-          ? prev.followers_count - 1 
+        followers_count: isFollowing
+          ? prev.followers_count - 1
           : prev.followers_count + 1,
       }));
-      
+
       // Optional: Show success feedback
       // Toast.show(isFollowing ? 'Unfollowed successfully' : 'Followed successfully');
     } catch (error) {
@@ -96,7 +96,7 @@ useEffect(() => {
   const renderProfilePhoto = () => {
     if (profile?.profile_photo) {
       return (
-        <Image 
+        <Image
           source={{ uri: `${getApiBaseImage()}/storage/${profile.profile_photo}` }}
           style={styles.profilePhoto}
         />
@@ -114,7 +114,7 @@ useEffect(() => {
   if (!visible || !profile) return null;
 
   return (
-    <Modal onDismiss={onClose} 
+    <Modal onDismiss={onClose}
       visible={profilePreviewVisible}
       onRequestClose={() => setProfilePreviewVisible(false)}
       contentContainerStyle={styles.modal}
@@ -130,18 +130,18 @@ useEffect(() => {
           <>
             <View style={styles.profileHeader}>
               {renderProfilePhoto()}
-              
+
               <View style={styles.statsContainer}>
                 <View style={styles.statItem}>
                   <Text style={styles.statNumber}>{profile.posts_count}</Text>
                   <Text style={styles.statLabel}>Posts</Text>
                 </View>
-                
+
                 <View style={styles.statItem}>
                   <Text style={styles.statNumber}>{profile.followers_count}</Text>
                   <Text style={styles.statLabel}>Followers</Text>
                 </View>
-                
+
                 <View style={styles.statItem}>
                   <Text style={styles.statNumber}>{profile.following_count}</Text>
                   <Text style={styles.statLabel}>Following</Text>
@@ -154,7 +154,7 @@ useEffect(() => {
               {profile.bio && <Text style={styles.bio}>{profile.bio}</Text>}
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[
                 styles.followButton,
                 isFollowing && styles.followingButton
@@ -177,14 +177,14 @@ useEffect(() => {
             <FlatList
               data={userPosts}
               renderItem={({ item }) => (
-                <PostListItem 
-                  post={item} 
-                  onReact={() => {}} 
-                  onCommentSubmit={commentOnPost} 
-                  onRepost={() => {}} 
-                  onShare={() => {}} 
-                  onBookmark={() => {}}
-                  onReactComment={() => {}}
+                <PostListItem
+                  post={item}
+                  onReact={() => { }}
+                  onCommentSubmit={commentOnPost}
+                  onRepost={() => { }}
+                  onShare={() => { }}
+                  onBookmark={() => { }}
+                  onReactComment={() => { }}
                 />
               )}
               keyExtractor={(item) => item.id.toString()}
