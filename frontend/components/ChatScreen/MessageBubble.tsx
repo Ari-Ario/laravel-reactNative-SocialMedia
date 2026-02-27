@@ -5,8 +5,12 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
+  Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
 import Avatar from '@/components/Image/Avatar';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import PollViewer from './PollViewer';
@@ -16,6 +20,7 @@ interface MessageBubbleProps {
     id: string;
     content: string;
     type: string;
+    file_path?: string;
     user?: {
       id: number;
       name: string;
@@ -59,21 +64,87 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     });
   };
 
+  const downloadMedia = async (url: string, filename: string) => {
+    if (Platform.OS === 'web') {
+      try {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (err) {
+        console.error('Web download failed:', err);
+        Alert.alert('Error', 'Failed to download media on web.');
+      }
+      return;
+    }
+
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Unable to save media without gallery access.');
+        return;
+      }
+
+      const fileUri = `${FileSystem.documentDirectory}${filename}`;
+      const downloadRes = await FileSystem.downloadAsync(url, fileUri);
+
+      await MediaLibrary.saveToLibraryAsync(downloadRes.uri);
+      Alert.alert('Success', 'Saved to your gallery!');
+
+      await FileSystem.deleteAsync(fileUri, { idempotent: true });
+    } catch (err) {
+      console.error('Download failed:', err);
+      Alert.alert('Error', 'Failed to download media.');
+    }
+  };
+
   const renderContent = () => {
     switch (message.type) {
       case 'image':
+      case 'video': {
+        const rawUrl = message.metadata?.url || message.file_path || '';
+        const isNetworkUrl = rawUrl.startsWith('http://') || rawUrl.startsWith('https://');
+        const isFileUrl = rawUrl.startsWith('file://');
+        const isDataUrl = rawUrl.startsWith('data:');
+
+        const url = (isNetworkUrl || isFileUrl || isDataUrl)
+          ? rawUrl
+          : (rawUrl ? `${getApiBaseImage()}/storage/${rawUrl}` : 'https://via.placeholder.com/300');
+
+        const isVideo = message.type === 'video';
+
         return (
           <View style={styles.imageContainer}>
-            <Image
-              source={{ uri: message.metadata?.url || 'https://via.placeholder.com/300' }}
-              style={styles.image}
-              resizeMode="cover"
-            />
-            {message.content && (
-              <Text style={styles.imageCaption}>{message.content}</Text>
+            {isVideo ? (
+              <View style={[styles.image, styles.videoPlaceholder]}>
+                <Ionicons name="videocam" size={48} color="#fff" />
+                <Text style={styles.videoText}>Video Message</Text>
+              </View>
+            ) : (
+              <Image
+                source={{ uri: url, cache: 'force-cache' }}
+                style={styles.image}
+                resizeMode="cover"
+              />
             )}
+
+            <TouchableOpacity
+              style={styles.downloadBtnOverlay}
+              onPress={() => downloadMedia(url, `download_${Date.now()}.${isVideo ? 'mp4' : 'jpg'}`)}
+            >
+              <Ionicons name="download-outline" size={20} color="#fff" />
+            </TouchableOpacity>
+
+            {message.content ? (
+              <Text style={[styles.imageCaption, isCurrentUser ? styles.currentUserText : styles.otherUserText]}>
+                {message.content}
+              </Text>
+            ) : null}
           </View>
         );
+      }
 
       case 'voice':
         return (
@@ -329,6 +400,28 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 14,
     color: '#666',
+  },
+  videoPlaceholder: {
+    backgroundColor: '#333',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  videoText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  downloadBtnOverlay: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   voiceContainer: {
     flexDirection: 'row',

@@ -995,14 +995,16 @@ public function endCall(Request $request, $id)
         // Create media record
         $media = \App\Models\Media::create([
             'user_id' => $user->id,
+            'model_type' => \App\Models\CollaborationSpace::class,
+            'model_id' => $space->id,
             'file_path' => $path,
-            'file_name' => $file->getClientOriginalName(),
+            'original_name' => $file->getClientOriginalName(),
             'mime_type' => $file->getMimeType(),
-            'file_size' => $file->getSize(),
+            'size' => $file->getSize(),
+            'type' => $request->type,
             'metadata' => [
                 'space_id' => $space->id,
                 'uploaded_at' => now()->toISOString(),
-                'type' => $request->type,
             ],
         ]);
         
@@ -1107,7 +1109,7 @@ public function endCall(Request $request, $id)
     public function sendMessage(Request $request, $id)
     {
         $request->validate([
-            'content' => 'required|string',
+            'content' => 'nullable|string',
             'type' => 'sometimes|in:text,image,video,document,voice,poll',
             'file_path' => 'sometimes|string',
             'metadata' => 'sometimes|array',

@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MessageList from './MessageList';
-import MediaUploader from '@/services/ChatScreen/MediaUploader';
+import AdvancedMediaUploader from './AdvancedMediaUploader';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import { useCollaborationStore } from '@/stores/collaborationStore';
 import { createShadow } from '@/utils/styles';
@@ -147,13 +147,38 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                 </View>
             </View>
 
-            {/* MediaUploader \u2013 fully self-contained inside SpaceChatTab */}
-            <MediaUploader
+            {/* AdvancedMediaUploader - fully self-contained inside SpaceChatTab */}
+            <AdvancedMediaUploader
                 spaceId={spaceId}
                 isVisible={showMediaUploader}
                 onClose={() => setShowMediaUploader(false)}
-                onUploadComplete={(media) => {
+                onUploadComplete={async (media: any, caption?: string) => {
                     console.log('[SpaceChatTab] Media uploaded:', media);
+                    try {
+                        const message = await collaborationService.sendMessage(spaceId, {
+                            content: caption || '',
+                            type: media.type || 'image',
+                            file_path: media.file_path,
+                            metadata: {
+                                ...media.metadata,
+                                url: media.url || media.file_path, // Fallback if backend didn't send url
+                            }
+                        });
+
+                        setSpace((prev: any) => ({
+                            ...prev,
+                            content_state: {
+                                ...prev.content_state,
+                                messages: [...(prev?.content_state?.messages || []), message]
+                            }
+                        }));
+
+                        if (message.user_id !== currentUserId) {
+                            useCollaborationStore.getState().incrementUnreadCount(spaceId);
+                        }
+                    } catch (error) {
+                        console.error('Error sending media message:', error);
+                    }
                 }}
             />
         </>

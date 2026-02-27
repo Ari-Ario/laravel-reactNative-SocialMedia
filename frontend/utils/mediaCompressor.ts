@@ -17,33 +17,47 @@ export class MediaCompressor {
     uri: string,
     options: CompressionOptions = {}
   ): Promise<string> {
+    const TARGET_SIZE_MB = 1.9;
     const defaultOptions = {
-      maxWidth: 1080,
-      maxHeight: 1080,
-      quality: 0.7,
+      maxWidth: 1920,
+      quality: 0.8,
     };
     
     const finalOptions = { ...defaultOptions, ...options };
     
     try {
-      const result = await ImageManipulator.manipulateAsync(
-        uri,
-        [
-          {
-            resize: {
-              width: finalOptions.maxWidth,
-              height: finalOptions.maxHeight,
-            },
-          },
-        ],
-        {
-          compress: finalOptions.quality,
-          format: ImageManipulator.SaveFormat.JPEG,
-          base64: false,
-        }
-      );
+      const fileInfo = await FileSystem.getInfoAsync(uri);
+      let sizeMB = (fileInfo.size || 0) / (1024 * 1024);
       
-      return result.uri;
+      let currentQuality = finalOptions.quality;
+      let resultUri = uri;
+      
+      // We will loop up to 4 times to shrink it under TARGET_SIZE_MB
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const result = await ImageManipulator.manipulateAsync(
+          uri,
+          [{ resize: { width: finalOptions.maxWidth } }],
+          {
+            compress: currentQuality,
+            format: ImageManipulator.SaveFormat.JPEG,
+            base64: false,
+          }
+        );
+        
+        resultUri = result.uri;
+        const newFileInfo = await FileSystem.getInfoAsync(resultUri);
+        sizeMB = (newFileInfo.size || 0) / (1024 * 1024);
+        
+        if (sizeMB <= TARGET_SIZE_MB) {
+          break; // Satisfies <1.9MB constraint
+        }
+        
+        // Aggressively drop quality and resolution for next iteration
+        currentQuality = Math.max(0.1, currentQuality - 0.2);
+        finalOptions.maxWidth = Math.floor(finalOptions.maxWidth * 0.7);
+      }
+      
+      return resultUri;
     } catch (error) {
       console.error('Image compression failed:', error);
       return uri; // Return original if compression fails
@@ -77,6 +91,10 @@ export class MediaCompressor {
     options: CompressionOptions = {}
   ): Promise<{ uri: string; size?: number; compressedSize?: number }> {
     try {
+      if (Platform.OS === 'web') {
+         return { uri, size: 0, compressedSize: 0 };
+      }
+
       // Get original file size
       const fileInfo = await FileSystem.getInfoAsync(uri);
       const originalSize = fileInfo.size || 0;

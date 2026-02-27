@@ -16,7 +16,13 @@ class Media extends Model
         'type',
         'mime_type',
         'size',
-        'original_name'
+        'original_name',
+        'user_id',
+        'metadata'
+    ];
+
+    protected $casts = [
+        'metadata' => 'array'
     ];
 
     public function model()
