@@ -11,6 +11,7 @@ import getApiBaseImage from "@/services/getApiBaseImage";
 import { fetchPosts, bookmarkPost, repostPost, sharePost, commentOnPost, reactToPost, updatePost } from "@/services/PostService";
 import CreatePost from "@/components/CreatePost";
 import { Ionicons } from "@expo/vector-icons";
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import ProfilePreview from "@/components/ProfilePreview";
 import AddStory from "@/components/AddStory";
 import { fetchStories } from "@/services/StoryService";
@@ -65,6 +66,7 @@ const HomePage = () => {
     unreadMessageCount,
     unreadSpaceCount,
     unreadActivityCount,
+    unreadChatbotTrainingCount,
     initializeRealtime,
     disconnectRealtime,
     addNotification,
@@ -79,54 +81,7 @@ const HomePage = () => {
   const [isSpacesPanelVisible, setSpacesPanelVisible] = useState(false);
   const [isActivitiesPanelVisible, setActivitiesPanelVisible] = useState(false);
 
-  // ✅ FIX: Simplified real-time initialization
-  useEffect(() => {
-    let isMounted = true;
-
-    const initializeRealTimeSystems = async () => {
-      try {
-        const token = await getToken();
-        if (token && user?.id && isMounted) {
-          setIsTokenReady(true);
-
-          console.log('🔐 Initializing real-time systems for user:', user.id);
-
-          // Set user ID first
-          setCurrentUserId(user.id);
-
-          // Initialize notification real-time
-          const success = initializeRealtime(token, user.id);
-
-          if (success) {
-            console.log('✅ Notification real-time initialized successfully');
-          } else {
-            console.warn('⚠️ Notification real-time initialization failed');
-          }
-        } else {
-          console.warn('⚠️ No token or user ID available for real-time updates');
-          setIsTokenReady(true);
-        }
-      } catch (error) {
-        console.error('❌ Real-time initialization error:', error);
-        setIsTokenReady(true);
-      }
-    };
-
-    // ✅ FIX: Add delay to avoid conflicts with TabLayout initialization
-    const timer = setTimeout(() => {
-      initializeRealTimeSystems();
-    }, 2000);
-
-    return () => {
-      isMounted = false;
-      clearTimeout(timer);
-      console.log('🧹 Cleaning up real-time systems');
-      disconnectRealtime();
-    };
-  }, [user?.id]);
-
-
-  // Subscribe to posts only when token is ready and posts exist
+  // Subscribe to posts only when posts exist
   useEffect(() => {
     if (isTokenReady && posts.length > 0) {
       console.log('🏠 Setting up real-time subscriptions for', posts.length, 'posts');
@@ -538,6 +493,24 @@ const HomePage = () => {
                 )}
               </TouchableOpacity>
 
+
+              {/* Chatbot Training Icon (AI Admin Only) */}
+              {user?.ai_admin && (
+                <TouchableOpacity
+                  style={styles.notificationIconContainer}
+                  onPress={() => router.push('/chatbotTraining')}
+                >
+                  <FontAwesome name="server" size={24} color="#000" />
+                  {unreadChatbotTrainingCount > 0 && (
+                    <View style={[styles.badge, styles.regularBadge]}>
+                      <Text style={styles.badgeText}>
+                        {unreadChatbotTrainingCount > 99 ? '99+' : unreadChatbotTrainingCount}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              )}
+
               {/* Regular Notifications Icon */}
               <TouchableOpacity
                 style={styles.notificationIconContainer}
@@ -552,7 +525,6 @@ const HomePage = () => {
                   </View>
                 )}
               </TouchableOpacity>
-
             </View>
           </View>
         </View>

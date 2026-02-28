@@ -136,6 +136,14 @@ export default function RootLayout() {
       }
     }
 
+    // Access control for AI Admin
+    if (pathname?.startsWith('/chatbotTraining')) {
+      if (!user?.ai_admin) {
+        router.replace('/(tabs)');
+        return;
+      }
+    }
+
     // If it's an allowed route, let it through
     if (isAllowedRoute) {
       return;
@@ -208,6 +216,11 @@ export default function RootLayout() {
 
                   <Stack.Screen
                     name="(tabs)"
+                    options={{ headerShown: false }}
+                  />
+
+                  <Stack.Screen
+                    name="chatbotTraining"
                     options={{ headerShown: false }}
                   />
                 </Stack>

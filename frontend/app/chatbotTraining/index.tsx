@@ -9,7 +9,7 @@ import { useNotificationStore } from '@/stores/notificationStore'; // ← ONLY T
 
 const ChatbotTrainingScreen = () => {
     const { user } = useContext(AuthContext);
-    const { notifications } = useNotificationStore(); // ← LISTEN TO STORE
+    const { notifications, markChatbotNotificationsAsRead } = useNotificationStore(); // ← LISTEN TO STORE
     const [trainings, setTrainings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [newTraining, setNewTraining] = useState({ trigger: '', response: '', category: '', keywords: [] });
@@ -22,7 +22,7 @@ const ChatbotTrainingScreen = () => {
     // REAL-TIME: React when new training notification arrives in store
     // ========================================================================
     useEffect(() => {
-        const hasNewTraining = notifications.some(n => 
+        const hasNewTraining = notifications.some(n =>
             n.type === 'chatbot_training' && !n.isRead
         );
 
@@ -40,6 +40,8 @@ const ChatbotTrainingScreen = () => {
         fetchTrainings();
         fetchNeedsReview();
         fetchCategories();
+        // Clear notifications for this screen
+        markChatbotNotificationsAsRead();
     }, []);
 
     // ========================================================================
@@ -151,9 +153,9 @@ const ChatbotTrainingScreen = () => {
         try {
             const token = await getToken();
             const updates = editingItems[id];
-            
+
             console.log('Deleting the Item:', updates);
-            
+
             const { data } = await axios.delete(`${API_BASE}/chatbot-training/delete/${id}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -163,7 +165,7 @@ const ChatbotTrainingScreen = () => {
             });
 
             console.log('Delete response:', data);
-            
+
             fetchTrainings();
         } catch (error) {
             console.error('Full error:', error.response?.data || error.message);
@@ -274,83 +276,83 @@ const ChatbotTrainingScreen = () => {
 
 // Keep your existing styles
 const styles = StyleSheet.create({
-container: {
-    flex: 1,
-    padding: 20,
-    width: '100%',
-    // maxWidth: 500,
-    // backgroundColor: "#fff",
-    justifyContent: 'center',
-    alignSelf: 'center',  
-    // textAlign: 'center',
-},
-// webRow: {
-//     flexDirection: 'row',
-//     justifyContent: 'space-between',
-// },
-// mobileColumn: {
-//     flexDirection: 'column',
-// },
-title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    alignSelf: 'center',
-},
-head: {
-    marginBottom: 20,
-    padding: 15,
-    borderWidth: 2,
-    borderColor: 'black',
-    borderRadius: 5,
-    width: "100%",
-},
-review: {
-    marginTop: 20,
-    textAlign: 'center',
-    color: 'red'
-},
-form: {
-    marginBottom: 20,
-    padding: 15,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    backgroundColor: '#FAF9F6',
-    boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
-},
-input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    padding: 10,
-    marginBottom: 10,
-    borderRadius: 5,
-    backgroundColor: '#fff',
-},
-label: {
-    marginBottom: 5,
-    fontWeight: 'bold',
-},
-trigger: {
-    fontWeight: 'bold',
-    marginBottom: 5,
-},
-switchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-},
-approve: {
-    backgroundColor: '#000',
-},
-buttonContsainer: {
-    gap: '10px'
-},
-deleteBut: {
-    // backgroundColor: '#B03A2E',
-    backgroundColor: 'red',
-    color: '#B03A2E',
-},
+    container: {
+        flex: 1,
+        padding: 20,
+        width: '100%',
+        // maxWidth: 500,
+        // backgroundColor: "#fff",
+        justifyContent: 'center',
+        alignSelf: 'center',
+        // textAlign: 'center',
+    },
+    // webRow: {
+    //     flexDirection: 'row',
+    //     justifyContent: 'space-between',
+    // },
+    // mobileColumn: {
+    //     flexDirection: 'column',
+    // },
+    title: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginBottom: 10,
+        alignSelf: 'center',
+    },
+    head: {
+        marginBottom: 20,
+        padding: 15,
+        borderWidth: 2,
+        borderColor: 'black',
+        borderRadius: 5,
+        width: "100%",
+    },
+    review: {
+        marginTop: 20,
+        textAlign: 'center',
+        color: 'red'
+    },
+    form: {
+        marginBottom: 20,
+        padding: 15,
+        borderWidth: 1,
+        borderColor: '#ddd',
+        borderRadius: 5,
+        backgroundColor: '#FAF9F6',
+        boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
+    },
+    input: {
+        borderWidth: 1,
+        borderColor: '#ccc',
+        padding: 10,
+        marginBottom: 10,
+        borderRadius: 5,
+        backgroundColor: '#fff',
+    },
+    label: {
+        marginBottom: 5,
+        fontWeight: 'bold',
+    },
+    trigger: {
+        fontWeight: 'bold',
+        marginBottom: 5,
+    },
+    switchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    approve: {
+        backgroundColor: '#000',
+    },
+    buttonContsainer: {
+        gap: '10px'
+    },
+    deleteBut: {
+        // backgroundColor: '#B03A2E',
+        backgroundColor: 'red',
+        color: '#B03A2E',
+    },
 });
 
 export default ChatbotTrainingScreen;

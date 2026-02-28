@@ -136,6 +136,7 @@ interface NotificationStore {
   unreadMessageCount: number;
   unreadSpaceCount: number;
   unreadActivityCount: number;
+  unreadChatbotTrainingCount: number;
 
   // Actions
   setNotificationPanelVisible: (visible: boolean) => void;
@@ -148,6 +149,7 @@ interface NotificationStore {
   addNotification: (notification: Omit<Notification, 'id' | 'isRead'>) => void;
   markAsRead: (notificationId: string) => void;
   markAllAsRead: () => void;
+  markChatbotNotificationsAsRead: () => void;
   markAllFollowerNotificationsAsRead: () => void;
   removeNotification: (notificationId: string) => void;
   clearAll: () => void;
@@ -208,6 +210,13 @@ const isActivityNotification = (type: string): boolean => {
   ].includes(type);
 };
 
+const isChatbotTrainingNotification = (type: string): boolean => {
+  return [
+    NOTIFICATION_TYPES.CHATBOT_TRAINING,
+    'chatbot-training-needed',
+  ].includes(type);
+};
+
 export const useNotificationStore = create<NotificationStore>()(
   persist(
     (set, get) => ({
@@ -225,6 +234,7 @@ export const useNotificationStore = create<NotificationStore>()(
       unreadMessageCount: 0,
       unreadSpaceCount: 0,
       unreadActivityCount: 0,
+      unreadChatbotTrainingCount: 0,
 
       setNotificationPanelVisible: (visible) => set({ isNotificationPanelVisible: visible }),
       setIsFollowersPanelVisible: (visible) => set({ isFollowersPanelVisible: visible }),
@@ -244,7 +254,7 @@ export const useNotificationStore = create<NotificationStore>()(
 
         const newNotification: Notification = {
           ...notificationData,
-          id: notificationData.id || Date.now().toString(),
+          id: (notificationData as any).id || Date.now().toString(),
           isRead: false,
           createdAt: notificationData.createdAt || new Date()
         };
@@ -301,11 +311,12 @@ export const useNotificationStore = create<NotificationStore>()(
             const newNotifications = [newNotification, ...state.notifications].slice(0, 50);
 
             // Calculate all counts
-            const newUnreadCount = newNotifications.filter(n => !n.isRead && !isCallNotification(n.type) && !isMessageNotification(n.type) && !isSpaceNotification(n.type) && !isActivityNotification(n.type)).length;
+            const newUnreadCount = newNotifications.filter(n => !n.isRead && !isCallNotification(n.type) && !isMessageNotification(n.type) && !isSpaceNotification(n.type) && !isActivityNotification(n.type) && !isChatbotTrainingNotification(n.type)).length;
             const newUnreadCallCount = newNotifications.filter(n => !n.isRead && isCallNotification(n.type)).length;
             const newUnreadMessageCount = newNotifications.filter(n => !n.isRead && isMessageNotification(n.type)).length;
             const newUnreadSpaceCount = newNotifications.filter(n => !n.isRead && isSpaceNotification(n.type)).length;
             const newUnreadActivityCount = newNotifications.filter(n => !n.isRead && isActivityNotification(n.type)).length;
+            const newUnreadChatbotTrainingCount = newNotifications.filter(n => !n.isRead && isChatbotTrainingNotification(n.type)).length;
 
             return {
               notifications: newNotifications,
@@ -314,6 +325,7 @@ export const useNotificationStore = create<NotificationStore>()(
               unreadMessageCount: newUnreadMessageCount,
               unreadSpaceCount: newUnreadSpaceCount,
               unreadActivityCount: newUnreadActivityCount,
+              unreadChatbotTrainingCount: newUnreadChatbotTrainingCount,
               followerNotifications: state.followerNotifications,
               unreadFollowerCount: state.unreadFollowerCount,
             };
@@ -363,6 +375,7 @@ export const useNotificationStore = create<NotificationStore>()(
           !isMessageNotification(n.type) &&
           !isSpaceNotification(n.type) &&
           !isActivityNotification(n.type) &&
+          !isChatbotTrainingNotification(n.type) &&
           !(n.userId && currentUserId && n.userId == currentUserId)
         );
       },
@@ -388,11 +401,23 @@ export const useNotificationStore = create<NotificationStore>()(
             const updatedNotifications = state.notifications.map(notif =>
               notif.id === notificationId ? { ...notif, isRead: true } : notif
             );
-            const newUnreadCount = updatedNotifications.filter(n => !n.isRead).length;
+
+            // Calculate all counts
+            const newUnreadCount = updatedNotifications.filter(n => !n.isRead && !isCallNotification(n.type) && !isMessageNotification(n.type) && !isSpaceNotification(n.type) && !isActivityNotification(n.type) && !isChatbotTrainingNotification(n.type)).length;
+            const newUnreadCallCount = updatedNotifications.filter(n => !n.isRead && isCallNotification(n.type)).length;
+            const newUnreadMessageCount = updatedNotifications.filter(n => !n.isRead && isMessageNotification(n.type)).length;
+            const newUnreadSpaceCount = updatedNotifications.filter(n => !n.isRead && isSpaceNotification(n.type)).length;
+            const newUnreadActivityCount = updatedNotifications.filter(n => !n.isRead && isActivityNotification(n.type)).length;
+            const newUnreadChatbotTrainingCount = updatedNotifications.filter(n => !n.isRead && isChatbotTrainingNotification(n.type)).length;
 
             return {
               notifications: updatedNotifications,
               unreadCount: newUnreadCount,
+              unreadCallCount: newUnreadCallCount,
+              unreadMessageCount: newUnreadMessageCount,
+              unreadSpaceCount: newUnreadSpaceCount,
+              unreadActivityCount: newUnreadActivityCount,
+              unreadChatbotTrainingCount: newUnreadChatbotTrainingCount,
               followerNotifications: state.followerNotifications,
               unreadFollowerCount: state.unreadFollowerCount
             };
@@ -404,6 +429,11 @@ export const useNotificationStore = create<NotificationStore>()(
         set((state) => ({
           notifications: state.notifications.map(notif => ({ ...notif, isRead: true })),
           unreadCount: 0,
+          unreadCallCount: 0,
+          unreadMessageCount: 0,
+          unreadSpaceCount: 0,
+          unreadActivityCount: 0,
+          unreadChatbotTrainingCount: 0,
           followerNotifications: state.followerNotifications,
           unreadFollowerCount: state.unreadFollowerCount
         }));
@@ -420,6 +450,22 @@ export const useNotificationStore = create<NotificationStore>()(
         }));
 
         get().setLastActiveTime(new Date().toISOString());
+      },
+
+      markChatbotNotificationsAsRead: () => {
+        set((state) => {
+          const updatedNotifications = state.notifications.map(notif =>
+            isChatbotTrainingNotification(notif.type) ? { ...notif, isRead: true } : notif
+          );
+
+          const newUnreadCount = updatedNotifications.filter(n => !n.isRead && !isCallNotification(n.type) && !isMessageNotification(n.type) && !isSpaceNotification(n.type) && !isActivityNotification(n.type) && !isChatbotTrainingNotification(n.type)).length;
+
+          return {
+            notifications: updatedNotifications,
+            unreadCount: newUnreadCount,
+            unreadChatbotTrainingCount: 0,
+          };
+        });
       },
 
 
@@ -445,11 +491,23 @@ export const useNotificationStore = create<NotificationStore>()(
             const wasUnread = notificationToRemove?.isRead === false;
 
             const newNotifications = state.notifications.filter(n => n.id !== notificationId);
-            const newUnreadCount = wasUnread ? Math.max(0, state.unreadCount - 1) : state.unreadCount;
+
+            // Calculate all counts
+            const newUnreadCount = newNotifications.filter(n => !n.isRead && !isCallNotification(n.type) && !isMessageNotification(n.type) && !isSpaceNotification(n.type) && !isActivityNotification(n.type) && !isChatbotTrainingNotification(n.type)).length;
+            const newUnreadCallCount = newNotifications.filter(n => !n.isRead && isCallNotification(n.type)).length;
+            const newUnreadMessageCount = newNotifications.filter(n => !n.isRead && isMessageNotification(n.type)).length;
+            const newUnreadSpaceCount = newNotifications.filter(n => !n.isRead && isSpaceNotification(n.type)).length;
+            const newUnreadActivityCount = newNotifications.filter(n => !n.isRead && isActivityNotification(n.type)).length;
+            const newUnreadChatbotTrainingCount = newNotifications.filter(n => !n.isRead && isChatbotTrainingNotification(n.type)).length;
 
             return {
               notifications: newNotifications,
               unreadCount: newUnreadCount,
+              unreadCallCount: newUnreadCallCount,
+              unreadMessageCount: newUnreadMessageCount,
+              unreadSpaceCount: newUnreadSpaceCount,
+              unreadActivityCount: newUnreadActivityCount,
+              unreadChatbotTrainingCount: newUnreadChatbotTrainingCount,
               followerNotifications: state.followerNotifications,
               unreadFollowerCount: state.unreadFollowerCount
             };
@@ -461,7 +519,12 @@ export const useNotificationStore = create<NotificationStore>()(
         notifications: [],
         followerNotifications: [],
         unreadCount: 0,
-        unreadFollowerCount: 0
+        unreadFollowerCount: 0,
+        unreadCallCount: 0,
+        unreadMessageCount: 0,
+        unreadSpaceCount: 0,
+        unreadActivityCount: 0,
+        unreadChatbotTrainingCount: 0,
       }),
 
       initializeRealtime: (token: string, userId: number) => {
@@ -681,6 +744,20 @@ export const useNotificationStore = create<NotificationStore>()(
                   userId: notifData.userId || notifData.triggered_by,
                   avatar: notifData.avatar,
                   data: notifData,
+                };
+              }
+
+              // 11. CHATBOT TRAINING
+              else if (type === 'chatbot_training' || type.includes('ChatbotTraining')) {
+                formattedNotification = {
+                  ...formattedNotification,
+                  type: 'chatbot_training',
+                  title: 'Chatbot Training Needed',
+                  message: `New training data: "${notifData.question || 'New prompt'}"`,
+                  data: notifData,
+                  question: notifData.question,
+                  category: notifData.category,
+                  keywords: notifData.keywords,
                 };
               }
 

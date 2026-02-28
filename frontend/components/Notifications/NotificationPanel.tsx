@@ -190,7 +190,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
 
       if (['training_needed', NOTIFICATION_TYPES.CHATBOT_TRAINING].includes(item.type)) {
         router.replace({
-          pathname: '/(tabs)/chatbotTraining',
+          pathname: '/chatbotTraining',
           params: { highlightChatbotTraining: 'true' },
         });
         onClose();

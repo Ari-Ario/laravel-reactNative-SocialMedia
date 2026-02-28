@@ -19,14 +19,14 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
   const { user, setUser } = useContext(AuthContext);
   const { initializeRealtime, disconnectRealtime } = usePostStore();
-  const { 
-    initializeRealtime: initNotifications, 
+  const {
+    initializeRealtime: initNotifications,
     disconnectRealtime: disconnectNotifications,
     setNotificationPanelVisible,
     isNotificationPanelVisible,
     setInitializationTime // ADD THIS IMPORT
   } = useNotificationStore();
-  
+
   const realtimeInitialized = useRef(false);
   const [isRealtimeReady, setIsRealtimeReady] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,33 +41,33 @@ export default function TabLayout() {
       try {
         setIsLoading(true);
         const token = await getToken();
-        
-        console.log('🔐 Token check result:', { 
-          hasToken: !!token, 
+
+        console.log('🔐 Token check result:', {
+          hasToken: !!token,
           hasUser: !!user,
-          userId: user?.id 
+          userId: user?.id
         });
-        
+
         if (!isMounted) return;
 
         // ✅ FIX: Wait a bit for user context to be fully loaded
         if (token && user?.id) {
           console.log('🔐 Token and user ID found, initializing real-time...');
-          
+
           // Initialize post real-time
           initializeRealtime(token);
-          
+
           // Initialize notification real-time WITH user ID
           initNotifications(token, user.id);
-          
+
           // ✅ FIX: Check if setInitializationTime exists before calling
           if (typeof setInitializationTime === 'function') {
             setInitializationTime(new Date());
           }
-          
+
           realtimeInitialized.current = true;
           setIsRealtimeReady(true);
-          
+
           console.log('✅ Real-time systems initialized');
         } else {
           console.log('🔐 Missing token or user ID, skipping real-time initialization');
@@ -131,10 +131,10 @@ export default function TabLayout() {
   }
 
   // FIX: Add debug logging to see what's happening
-  console.log('🔐 TabLayout render state:', { 
-    isLoading, 
-    hasUser: !!user, 
-    isRealtimeReady 
+  console.log('🔐 TabLayout render state:', {
+    isLoading,
+    hasUser: !!user,
+    isRealtimeReady
   });
 
   return (
@@ -193,29 +193,6 @@ export default function TabLayout() {
                 tabBarIcon: ({ color }) => <FontAwesome size={28} name="android" color={color} />,
               }}
             />
-            {(user?.email_verified_at && user?.ai_admin !== null) && (
-            <Tabs.Screen
-              name="chatbotTraining"
-              options={{
-                title: 'Chatbot Training',
-                tabBarIcon: ({ color }) => <FontAwesome size={28} name="server" color={color} />,
-              }}
-            />
-            )}
-
-  {/* Conditionally hide the entire tab button */}
-  {/* <Tabs.Screen
-    name="chatbotTraining"
-    options={{
-      title: 'Chatbot Training',
-      tabBarIcon: ({ color }) => <FontAwesome size={28} name="server" color={color} />,
-      tabBarButton: (props) => 
-        user?.ai_admin === 1 ? (
-          <TouchableOpacity {...props} />
-        ) : null,
-    }}
-  /> */}
-  
             <Tabs.Screen
               name="settings"
               options={{
@@ -223,13 +200,14 @@ export default function TabLayout() {
                 tabBarIcon: ({ color }) => <FontAwesome size={28} name="gear" color={color} />,
               }}
             />
+
           </Tabs>
         </>
       ) : (
         // FIX: Make sure LoginScreen is properly rendered
         <View style={{ flex: 1 }}>
-          <Stack.Screen 
-            name="Login" 
+          <Stack.Screen
+            name="Login"
             options={{
               headerShown: false,
             }}

@@ -94,6 +94,8 @@ class PusherService {
           wsPort: 80,
           wssPort: 443,
           enabledTransports: ['ws', 'wss'],
+          activityTimeout: 30000,
+          pongTimeout: 10000,
         });
 
         // Connection event handlers
