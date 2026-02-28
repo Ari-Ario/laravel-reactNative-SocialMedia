@@ -7,7 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.graf",
@@ -33,12 +32,18 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/images/favicon.png",
       "build": {
         "babel": {
           "include": [
-            "react-native-reanimated"
+            "react-native-reanimated",
+            "moti",
+            "framer-motion",
+            "react-native-gifted-chat",
+            "@expo/vector-icons",
+            "zustand",
+            "expo-router"
           ]
         }
       }
@@ -52,13 +57,6 @@
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
-        }
-      ],
-      [
-        "expo-av",
-        {
-          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone.",
-          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera."
         }
       ],
       [
@@ -82,7 +80,8 @@
           "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true
@@ -95,5 +94,5 @@
         "projectId": "c240eb93-f893-4faf-bb24-46b6f670501d"
       }
     }
-  },
+  }
 }

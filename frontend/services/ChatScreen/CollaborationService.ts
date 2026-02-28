@@ -1,8 +1,8 @@
 import axios from "@/services/axios";
 import { Platform, Alert } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import Pusher from "pusher-js";
 import getApiBase from '@/services/getApiBase';
+import type PusherConstructor from 'pusher-js';
 import { getToken } from "@/services/TokenService";
 import PusherService from "@/services/PusherService";
 
@@ -194,7 +194,7 @@ class CollaborationService {
   /**
    * ✅ FIXED: Get the pusher instance from PusherService without creating a new one
    */
-  private getPusherInstance(): Pusher | null {
+  private getPusherInstance(): PusherConstructor | null {
     // Access the pusher instance from the singleton
     return (this.pusherService as any).pusher || null;
   }

@@ -14,7 +14,7 @@ import {
   Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Camera, CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
+import PlatformCameraView from '@/components/PlatformCameraView';
 import * as ImagePicker from 'expo-image-picker';
 import { createPost, updatePost } from '@/services/PostService';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -22,7 +22,6 @@ import getApiBaseImage from '@/services/getApiBaseImage';
 import { deletePostMedia, fetchPosts } from '@/services/PostService';
 import { usePostStore } from '@/stores/postStore';
 import { MediaCompressor } from '@/utils/mediaCompressor';
-import { CameraType } from 'expo-image-picker';
 import { Post } from '@/services/PostListService';
 
 interface CreatePostProps {
@@ -44,20 +43,16 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
   const [media, setMedia] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [cameraVisible, setCameraVisible] = useState(false);
-  const [cameraType, setCameraType] = useState<CameraType>(CameraType.back);
+  const [cameraType, setCameraType] = useState<'front' | 'back'>('back');
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [recordingTimer, setRecordingTimer] = useState<NodeJS.Timeout | null>(null);
 
-  // Use CameraView ref for web, Camera ref for mobile
+  // Use the new platform camera ref
   const cameraRef = useRef<any>(null);
 
   const [deleteStatus, setDeleteStatus] = useState<{ visible: boolean, message: string }>({ visible: false, message: '' });
   const postStore = usePostStore();
-
-  // Use the modern camera permissions hook for web
-  const [permission, requestPermission] = useCameraPermissions();
-  const [micPermission, requestMicPermission] = useMicrophonePermissions();
   // Initialize with edit data if available
   useEffect(() => {
     if (visible) {
@@ -125,36 +120,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
   };
 
   const takePhoto = async () => {
-    // For web: use CameraView with permission handling
-    if (Platform.OS === 'web') {
-      if (!permission) {
-        // Permissions are still loading
-        Alert.alert('Camera', 'Camera permissions are loading...');
-        return;
-      }
-
-      if (!permission.granted) {
-        // Request permission
-        const response = await requestPermission();
-        if (!response.granted) {
-          Alert.alert('Permission required', 'Camera permission is needed to take photos');
-          return;
-        }
-      }
-
-      setCameraVisible(true);
-      return;
-    }
-
-    // For mobile: use traditional Camera permission
-    if (Platform.OS !== 'web') {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission required', 'Camera permission is needed to take photos');
-        return;
-      }
-      setCameraVisible(true);
-    }
+    setCameraVisible(true);
   };
 
   const startRecording = async () => {
@@ -278,10 +244,9 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
     }
   };
 
-  const toggleCameraType = () => {
-    setCameraType(current => (
-      current === CameraType.back ? CameraType.front : CameraType.back
-    ));
+  const handleCameraCapture = (uri: string) => {
+    setMedia([...media, { uri, type: 'image', fileName: `photo-${Date.now()}.jpg` }]);
+    setCameraVisible(false);
   };
 
   const removeMedia = async (index: number) => {
@@ -404,163 +369,23 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const renderCameraView = () => {
-    if (Platform.OS === 'web') {
-      // Web camera view with permission handling
-      if (!permission) {
-        return (
-          <View style={styles.cameraContainer}>
-            <View style={[styles.camera, { justifyContent: 'center', alignItems: 'center' }]}>
-              <Text style={{ color: 'white' }}>Checking camera permissions...</Text>
-            </View>
-          </View>
-        );
-      }
-
-      if (!permission.granted) {
-        return (
-          <View style={styles.cameraContainer}>
-            <View style={[styles.camera, { justifyContent: 'center', alignItems: 'center' }]}>
-              <Text style={{ color: 'white', marginBottom: 20 }}>Camera permission is required</Text>
-              <TouchableOpacity
-                style={styles.permissionButton}
-                onPress={requestPermission}
-              >
-                <Text style={{ color: 'white', fontWeight: 'bold' }}>Grant Permission</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.permissionButton, { backgroundColor: '#666', marginTop: 10 }]}
-                onPress={() => setCameraVisible(false)}
-              >
-                <Text style={{ color: 'white' }}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        );
-      }
-
-      return (
-        <View style={styles.cameraContainer}>
-          <CameraView
-            style={styles.camera}
-            facing={cameraType}
-            ref={cameraRef}
-            videoQuality="480p"
-            mode="video"
-            mute={false}
-          >
-            <View style={styles.cameraButtons}>
-              <TouchableOpacity
-                style={styles.cameraButton}
-                onPress={() => setCameraVisible(false)}
-              >
-                <Ionicons name="close" size={30} color="white" />
-              </TouchableOpacity>
-
-              <View style={styles.captureButtonsContainer}>
-                {isRecording ? (
-                  <>
-                    <View style={styles.recordingTimer}>
-                      <Text style={styles.recordingTimerText}>{formatRecordingTime(recordingTime)}</Text>
-                    </View>
-                    <TouchableOpacity
-                      style={[styles.captureButton, styles.recordingButton]}
-                      onPress={stopRecording}
-                    >
-                      <View style={styles.stopRecordingButton} />
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  <>
-                    <TouchableOpacity
-                      style={styles.captureButton}
-                      onPress={capturePhoto}
-                    >
-                      <View style={styles.captureButtonInner} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.videoButton, { marginLeft: 20 }]}
-                      onPress={startRecording}
-                    >
-                      <Ionicons name="videocam" size={30} color="white" />
-                    </TouchableOpacity>
-                  </>
-                )}
-              </View>
-
-              <TouchableOpacity
-                style={styles.cameraButton}
-                onPress={toggleCameraType}
-              >
-                <Ionicons name="camera-reverse" size={30} color="white" />
-              </TouchableOpacity>
-            </View>
-          </CameraView>
-        </View>
-      );
-    } else {
-      // Mobile camera view
-      return (
-        <View style={[styles.cameraContainer, StyleSheet.absoluteFill]}>
-          <CameraView
-            style={styles.camera}
-            facing={cameraType}
-            ref={cameraRef}
-            videoQuality="480p"
-            mode="video"
-            mute={false}
-          >
-            <View style={styles.cameraButtons}>
-              <TouchableOpacity
-                style={styles.cameraButton}
-                onPress={() => setCameraVisible(false)}
-              >
-                <Ionicons name="close" size={30} color="white" />
-              </TouchableOpacity>
-
-              <View style={styles.captureButtonsContainer}>
-                {isRecording ? (
-                  <>
-                    <View style={styles.recordingTimer}>
-                      <Text style={styles.recordingTimerText}>{formatRecordingTime(recordingTime)}</Text>
-                    </View>
-                    <TouchableOpacity
-                      style={[styles.captureButton, styles.recordingButton]}
-                      onPress={stopRecording}
-                    >
-                      <View style={styles.stopRecordingButton} />
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  <>
-                    <TouchableOpacity
-                      style={styles.captureButton}
-                      onPress={capturePhoto}
-                    >
-                      <View style={styles.captureButtonInner} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.videoButton, { marginLeft: 20 }]}
-                      onPress={startRecording}
-                    >
-                      <Ionicons name="videocam" size={30} color="white" />
-                    </TouchableOpacity>
-                  </>
-                )}
-              </View>
-
-              <TouchableOpacity
-                style={styles.cameraButton}
-                onPress={toggleCameraType}
-              >
-                <Ionicons name="camera-reverse" size={30} color="white" />
-              </TouchableOpacity>
-            </View>
-          </CameraView>
-        </View>
-      );
-    }
-  };
+  const renderCameraView = () => (
+    <View style={styles.cameraContainer}>
+      <PlatformCameraView
+        style={{ flex: 1 } as any}
+        facing="back"
+        showControls
+        onCapture={handleCameraCapture}
+        cameraRef={cameraRef}
+      />
+      <TouchableOpacity
+        style={{ position: 'absolute', top: 16, left: 16, padding: 10 }}
+        onPress={() => setCameraVisible(false)}
+      >
+        <Ionicons name="close" size={30} color="white" />
+      </TouchableOpacity>
+    </View>
+  );
 
   if (cameraVisible) {
     return renderCameraView();

@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 // import NetInfo from '@react-native-netinfo/netinfo';
-import NetInfo from '@react-native-community/netinfo';
+// // import NetInfo from '@react-native-community/netinfo';
 
 interface CacheItem {
   data: any;
@@ -25,23 +25,35 @@ class OfflineService {
     return OfflineService.instance;
   }
 
-  private initializeNetworkListener() {
-    NetInfo.addEventListener(state => {
-      const wasOnline = this.isOnline;
-      this.isOnline = state.isConnected ?? false;
-      
-      if (!wasOnline && this.isOnline) {
-        this.syncPendingOperations();
-      }
-      
-      if (wasOnline && !this.isOnline) {
-        Alert.alert(
-          'You\'re offline',
-          'Some features may be limited. Your changes will sync when you reconnect.',
-          [{ text: 'OK' }]
-        );
-      }
-    });
+  private async initializeNetworkListener() {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    try {
+      const NetInfo = (await import('@react-native-community/netinfo')).default;
+
+      NetInfo.addEventListener(state => {
+        const wasOnline = this.isOnline;
+        this.isOnline = state.isConnected ?? false;
+
+        if (!wasOnline && this.isOnline) {
+          this.syncPendingOperations();
+        }
+
+        if (wasOnline && !this.isOnline) {
+          if (typeof Alert !== 'undefined' && Alert.alert) {
+            Alert.alert(
+              'You\'re offline',
+              'Some features may be limited. Your changes will sync when you reconnect.',
+              [{ text: 'OK' }]
+            );
+          }
+        }
+      });
+    } catch (error) {
+      console.warn('NetInfo initialization failed:', error);
+    }
   }
 
   async cacheData(key: string, data: any, expiresIn = 24 * 60 * 60 * 1000) {
@@ -51,7 +63,7 @@ class OfflineService {
         timestamp: Date.now(),
         expiresIn
       };
-      
+
       await AsyncStorage.setItem(`cache_${key}`, JSON.stringify(cacheItem));
     } catch (error) {
       console.error('Cache error:', error);
@@ -61,17 +73,17 @@ class OfflineService {
   async getCachedData<T>(key: string): Promise<T | null> {
     try {
       const cached = await AsyncStorage.getItem(`cache_${key}`);
-      
+
       if (!cached) return null;
-      
+
       const cacheItem: CacheItem = JSON.parse(cached);
       const isExpired = Date.now() - cacheItem.timestamp > cacheItem.expiresIn;
-      
+
       if (isExpired) {
         await AsyncStorage.removeItem(`cache_${key}`);
         return null;
       }
-      
+
       return cacheItem.data as T;
     } catch (error) {
       console.error('Cache read error:', error);
@@ -130,7 +142,7 @@ class OfflineService {
   private async syncPendingOperations() {
     const operations = [...this.pendingOperations];
     this.pendingOperations = [];
-    
+
     for (const operation of operations) {
       try {
         await operation();
@@ -140,7 +152,7 @@ class OfflineService {
         this.pendingOperations.push(operation);
       }
     }
-    
+
     if (operations.length > 0) {
       Alert.alert(
         'Sync complete',

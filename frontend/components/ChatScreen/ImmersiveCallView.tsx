@@ -13,7 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { Audio } from 'expo-av';
+import { requestRecordingPermissionsAsync, setAudioModeAsync } from 'expo-audio';
 import Animated, {
   Easing,
   useSharedValue,
@@ -27,7 +27,6 @@ import WebRTCService from '@/services/ChatScreen/WebRTCService';
 import { useSpaceStore } from '@/stores/spaceStore';
 import Avatar from '@/components/Image/Avatar';
 import AuthContext from '@/context/AuthContext';
-import { Camera } from 'expo-camera';
 
 const { width } = Dimensions.get('window');
 
@@ -121,20 +120,28 @@ const ImmersiveCallView: React.FC<{ spaceId: string }> = ({ spaceId }) => {
   const requestPermissions = async () => {
     try {
       // Camera permission
-      const { status: cameraStatus } = await Camera.requestCameraPermissionsAsync();
-      setHasCameraPermission(cameraStatus === 'granted');
+      if (Platform.OS === 'web') {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          stream.getTracks().forEach((t) => t.stop());
+          setHasCameraPermission(true);
+        } catch {
+          setHasCameraPermission(false);
+        }
+      } else {
+        const { Camera } = await import('expo-camera');
+        const { status: cameraStatus } = await Camera.requestCameraPermissionsAsync();
+        setHasCameraPermission(cameraStatus === 'granted');
+      }
 
       // Audio permission
-      const { status: audioStatus } = await Audio.requestPermissionsAsync();
-      setHasAudioPermission(audioStatus === 'granted');
+      const { granted: audioGranted } = await requestRecordingPermissionsAsync();
+      setHasAudioPermission(audioGranted);
 
       // Set audio mode for calls
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: true,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false,
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
       });
     } catch (error) {
       console.error('Error requesting permissions:', error);

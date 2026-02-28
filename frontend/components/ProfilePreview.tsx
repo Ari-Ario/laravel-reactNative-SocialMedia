@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList, ActivityIndicator, Modal, Alert, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect, useRef, useContext } from 'react';
 import { fetchProfile, followUser, updateProfile } from '@/services/UserService';
 import { Ionicons } from '@expo/vector-icons';
@@ -119,7 +120,7 @@ const ProfilePreview = ({ userId, visible, onClose }) => {
       onRequestClose={() => setProfilePreviewVisible(false)}
       contentContainerStyle={styles.modal}
     >
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <TouchableOpacity style={styles.closeButton} onPress={onClose}>
           <Ionicons name="close" size={24} color="black" />
         </TouchableOpacity>
@@ -192,7 +193,7 @@ const ProfilePreview = ({ userId, visible, onClose }) => {
             />
           </>
         )}
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 };
@@ -211,9 +212,6 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 1024,
     alignSelf: 'center',
-    ...(Platform.OS === 'ios' && {
-      paddingTop: 40,
-    }),
   },
   closeButton: {
     alignSelf: 'flex-end',

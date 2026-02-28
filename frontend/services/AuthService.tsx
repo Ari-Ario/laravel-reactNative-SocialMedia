@@ -28,19 +28,19 @@ export async function register(registerInfo: any) {
 }
 
 // Add verification functions
-export const verifyEmailCode = async (userId: number, code: string) => {
-    const response = await axios.post('/verify-email-code', {
-        user_id: userId,
-        code: code
-    });
-    return response.data;
+export const verifyEmailCode = async (userId: number, code: string, config = {}) => {
+  const response = await axios.post('/verify-email-code', {
+    user_id: userId,
+    code: code
+  }, config);
+  return response.data;
 };
 
-export const resendVerificationCode = async (userId: number) => {
-    const response = await axios.post('/resend-verification-code', {
-        user_id: userId
-    });
-    return response.data;
+export const resendVerificationCode = async (userId: number, config = {}) => {
+  const response = await axios.post('/resend-verification-code', {
+    user_id: userId
+  }, config);
+  return response.data;
 };
 
 

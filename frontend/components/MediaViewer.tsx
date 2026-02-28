@@ -9,14 +9,13 @@ import {
   TouchableWithoutFeedback,
   TouchableOpacity,
 } from 'react-native';
-import { Video } from 'expo-av';
-import { PanGestureHandler, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { VideoView, useVideoPlayer } from 'expo-video';
+import { GestureHandlerRootView, Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
   runOnJS,
-  useAnimatedGestureHandler,
   withSpring,
 } from 'react-native-reanimated';
 import getApiBaseImage from '@/services/getApiBaseImage';
@@ -187,21 +186,20 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     });
   }, [onNavigatePrev]);
 
-  const gestureHandler = useAnimatedGestureHandler({
-    onStart: () => {
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
       translateY.value = 0;
-    },
-    onActive: (event) => {
+    })
+    .onUpdate((event) => {
       if (Math.abs(event.translationY) > Math.abs(event.translationX)) {
         translateY.value = event.translationY;
         overlayOpacity.value = 0.7 - Math.abs(event.translationY) / 500;
         bgOpacity.value = 1 - Math.abs(event.translationY) / height;
-      } 
-      else if (mediaItems.length > 1) {
+      } else if (mediaItems.length > 1) {
         translateX.value = -width * currentIndex + event.translationX;
       }
-    },
-    onEnd: (event) => {
+    })
+    .onEnd((event) => {
       if (event.translationY > SWIPE_THRESHOLD) {
         runOnJS(handleClose)();
         return;
@@ -211,7 +209,6 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
         return;
       }
       if (event.translationY < -SWIPE_THRESHOLD / 2 && event.translationX < -SWIPE_THRESHOLD) {
-        // Diagonal swipe up-left
         runOnJS(handleNavigatePrevPost)();
         return;
       }
@@ -224,8 +221,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
         overlayOpacity.value = withTiming(0.7, ANIMATION_CONFIG);
         bgOpacity.value = withTiming(1, ANIMATION_CONFIG);
       }
-    },
-  });
+    });
 
   const containerStyle = useAnimatedStyle(() => ({
     transform: [
@@ -256,22 +252,19 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
         onRequestClose={handleClose}
       >
         <Animated.View style={[StyleSheet.absoluteFill, bgStyle]}>
-          <PanGestureHandler onGestureEvent={gestureHandler}>
+          <GestureDetector gesture={panGesture}>
             <Animated.View style={[styles.modalContainer, containerStyle]}>
               {mediaItems.map((media, index) => (
                 <View key={`${post.id}-${media.id}-${index}`} style={[styles.mediaItem, { left: width * index }]}>
                   {media.type === 'video' ? (
-                      <Video
-                      ref={(ref: any) => {
-                        if (ref) videoRefs.current[index] = ref;
-                      }}
-                      source={{ uri: `${getApiBaseImage()}/storage/${media.file_path}` }}
+                    <VideoView
+                      player={useVideoPlayer(
+                        `${getApiBaseImage()}/storage/${media.file_path}`,
+                        (p) => { p.loop = true; if (index === currentIndex) p.play(); }
+                      )}
                       style={styles.mediaContent}
-                      resizeMode="contain"
-                      shouldPlay={index === currentIndex}
-                      useNativeControls={false}
-                      onPress={onDoubleTap}
-                      isLooping
+                      contentFit="contain"
+                      nativeControls={false}
                     />
                   ) : (
                     <Image
@@ -283,16 +276,16 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
                 </View>
               ))}
             </Animated.View>
-          </PanGestureHandler>
+          </GestureDetector>
 
           {/* Caption overlay */}
           {post.caption && (
             <Animated.View style={[styles.captionContainer, overlayStyle]}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => setShowFullCaption(!showFullCaption)}
                 activeOpacity={0.8}
               >
-                <Text 
+                <Text
                   style={styles.captionText}
                   numberOfLines={showFullCaption ? undefined : 1}
                 >
@@ -309,20 +302,20 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
             </Text>
           )}
 
-      {/* Action buttons */}
-      <PostActionButtons
-        post={post}
-        onReact={onReact}
-        onDeleteReaction={onDeleteReaction}
-        onRepost={onRepost}
-        onShare={onShare}
-        onBookmark={onBookmark}
-        onCommentPress={onCommentPress}
-        currentReactingItem={currentReactingItem}
-        setCurrentReactingItem={setCurrentReactingItem}
-        setIsEmojiPickerOpen={setIsEmojiPickerOpen}
-        getGroupedReactions={getGroupedReactions}
-      />
+          {/* Action buttons */}
+          <PostActionButtons
+            post={post}
+            onReact={onReact}
+            onDeleteReaction={onDeleteReaction}
+            onRepost={onRepost}
+            onShare={onShare}
+            onBookmark={onBookmark}
+            onCommentPress={onCommentPress}
+            currentReactingItem={currentReactingItem}
+            setCurrentReactingItem={setCurrentReactingItem}
+            setIsEmojiPickerOpen={setIsEmojiPickerOpen}
+            getGroupedReactions={getGroupedReactions}
+          />
 
           {/* Close button */}
           <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
@@ -331,16 +324,16 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
           {/* Navigation arrows */}
           {currentIndex > 0 && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.navButton, styles.leftNavButton]}
               onPress={() => handleSwipeHorizontal('right')}
             >
               <Text style={styles.navButtonText}>‹</Text>
             </TouchableOpacity>
           )}
-          
+
           {currentIndex < mediaItems.length - 1 && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.navButton, styles.rightNavButton]}
               onPress={() => handleSwipeHorizontal('left')}
             >

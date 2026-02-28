@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import { 
-  View, 
-  ScrollView, 
-  Text, 
+import {
+  View,
+  ScrollView,
+  Text,
   TextInput,
-  FlatList, 
-  TouchableOpacity, 
+  FlatList,
+  TouchableOpacity,
   StyleSheet,
   Image,
   Modal,
@@ -21,7 +21,7 @@ import { logout } from "@/services/AuthService";
 import { useContext } from "react";
 import { uploadProfilePhoto, deleteProfilePhoto, requestCameraPermission, updateUserName } from '@/services/SettingService';
 import * as ImagePicker from 'expo-image-picker';
-import { CameraView, useCameraPermissions, CameraType } from 'expo-camera';
+import PlatformCameraView from '@/components/PlatformCameraView';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { loadUser } from '@/services/AuthService';
 import { router } from 'expo-router';
@@ -32,14 +32,12 @@ const Page = () => {
   const [editNameVisible, setEditNameVisible] = useState(false);
   const [newName, setNewName] = useState(user?.name || '');
   const [saving, setSaving] = useState(false);
-  
-  // Camera states for web
+
+
+
+  // Camera states
   const [cameraVisible, setCameraVisible] = useState(false);
-  const [cameraType, setCameraType] = useState<CameraType>(CameraType);
   const cameraRef = useRef<any>(null);
-  
-  // Use the new Camera permissions hook
-  const [permission, requestPermission] = useCameraPermissions();
 
   const devices = [
     { name: 'Broadcast Lists', icon: 'megaphone', backgroundColor: '#25D366' },
@@ -62,14 +60,14 @@ const Page = () => {
 
   const handleLogout = async () => {
     try {
-        await logout();
-        setUser(null);
-        if (!user || (user === null)) {
-          router.replace('/LoginScreen');
-        }
+      await logout();
+      setUser(null);
+      if (!user || (user === null)) {
+        router.replace('/LoginScreen');
+      }
     } catch (error) {
-        console.error("Logout failed:", error);
-        setUser(null);
+      console.error("Logout failed:", error);
+      setUser(null);
     }
   };
 
@@ -111,14 +109,14 @@ const Page = () => {
 
   const handleTakePhoto = async () => {
     setShowPhotoOptions(false);
-    
+
     // Check if we're on web or mobile
     if (Platform.OS === 'web') {
       // On web: Use custom camera UI with CameraView
       setCameraVisible(true);
       return;
     }
-    
+
     // On mobile: use ImagePicker.launchCameraAsync
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
@@ -146,19 +144,16 @@ const Page = () => {
     }
   };
 
-  // Web-specific camera capture using CameraView
-  const handleWebCameraCapture = async () => {
-    if (cameraRef.current) {
-      try {
-        const photo = await cameraRef.current.takePictureAsync();
-        setCameraVisible(false);
-        await uploadProfilePhoto(photo.uri);
-        const refreshedUser = await loadUser();
-        setUser(refreshedUser);
-      } catch (error) {
-        console.error('Error taking photo:', error);
-        Alert.alert('Error', 'Failed to capture photo. Please try again.');
-      }
+  // Web camera capture via PlatformCameraView ref
+  const handleWebCameraCapture = async (uri: string) => {
+    setCameraVisible(false);
+    try {
+      await uploadProfilePhoto(uri);
+      const refreshedUser = await loadUser();
+      setUser(refreshedUser);
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      Alert.alert('Error', 'Failed to upload photo. Please try again.');
     }
   };
 
@@ -168,15 +163,15 @@ const Page = () => {
     const confirmDelete = Platform.OS === 'web'
       ? window.confirm("Are you sure you want to delete your profile photo?")
       : await new Promise((resolve) => {
-          Alert.alert(
-            'Delete Photo',
-            'Are you sure you want to delete your profile photo?',
-            [
-              { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-              { text: 'Delete', style: 'destructive', onPress: () => resolve(true) },
-            ]
-          );
-        });
+        Alert.alert(
+          'Delete Photo',
+          'Are you sure you want to delete your profile photo?',
+          [
+            { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Delete', style: 'destructive', onPress: () => resolve(true) },
+          ]
+        );
+      });
 
     if (!confirmDelete) return;
 
@@ -211,7 +206,7 @@ const Page = () => {
   const renderProfilePhoto = () => {
     if (user?.profile_photo) {
       return (
-        <Image 
+        <Image
           source={{ uri: `${getApiBaseImage()}/storage/${user.profile_photo}` }}
           style={styles.profilePhoto}
         />
@@ -226,70 +221,16 @@ const Page = () => {
     }
   };
 
-  // Render camera permission request if needed
-  const renderWebCamera = () => {
-    if (!permission) {
-      // Camera permissions are still loading
-      return (
-        <View style={styles.permissionContainer}>
-          <Text style={styles.permissionText}>Loading camera...</Text>
-        </View>
-      );
-    }
-
-    if (!permission.granted) {
-      // Camera permissions are not granted yet
-      return (
-        <View style={styles.permissionContainer}>
-          <Text style={styles.permissionText}>We need your permission to use the camera</Text>
-          <TouchableOpacity 
-            style={styles.permissionButton}
-            onPress={requestPermission}
-          >
-            <Text style={styles.permissionButtonText}>Grant Permission</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.closeCameraButton}
-            onPress={() => setCameraVisible(false)}
-          >
-            <Text style={styles.closeCameraText}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
-
-    // Permission granted, show camera
-    return (
-      <CameraView 
-        style={StyleSheet.absoluteFill}
-        facing={cameraType}
-        ref={cameraRef}
-      >
-        <View style={styles.cameraControls}>
-          <TouchableOpacity 
-            style={styles.cameraButton}
-            onPress={() => setCameraVisible(false)}
-          >
-            <Ionicons name="close" size={30} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.captureButton}
-            onPress={handleWebCameraCapture}
-          >
-            <View style={styles.captureInner} />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.cameraButton}
-            onPress={() => setCameraType(
-              cameraType === CameraType.back ? CameraType.front : CameraType.back
-            )}
-          >
-            <Ionicons name="camera-reverse" size={30} color="white" />
-          </TouchableOpacity>
-        </View>
-      </CameraView>
-    );
-  };
+  // Camera rendered via PlatformCameraView
+  const renderWebCamera = () => (
+    <PlatformCameraView
+      style={{ width: '100%', height: '100%' } as any}
+      facing="front"
+      showControls
+      onCapture={handleWebCameraCapture}
+      cameraRef={cameraRef}
+    />
+  );
 
   return (
     <View style={styles.container}>
@@ -304,7 +245,7 @@ const Page = () => {
             </View>
           </View>
         </TouchableOpacity>
-        
+
         <TouchableOpacity onPress={() => {
           setNewName(user?.name || '');
           setEditNameVisible(true);
@@ -323,26 +264,26 @@ const Page = () => {
         animationType="fade"
         onRequestClose={() => setShowPhotoOptions(false)}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setShowPhotoOptions(false)}
         >
           <View style={styles.photoOptions}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.optionButton}
               onPress={handleChoosePhoto}
             >
               <Text style={styles.optionText}>Upload from device</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.optionButton}
               onPress={handleTakePhoto}
             >
               <Text style={styles.optionText}>Take a photo</Text>
             </TouchableOpacity>
             {user?.profile_photo && (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.optionButton, styles.deleteOption]}
                 onPress={handleDeletePhoto}
               >
@@ -459,10 +400,10 @@ const Page = () => {
 
 const styles = StyleSheet.create({
   container: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',    
-      width: '100%'
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%'
   },
   profileSection: {
     alignItems: 'center',

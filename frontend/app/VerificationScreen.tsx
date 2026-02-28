@@ -7,10 +7,11 @@ import {
     Button,
     StyleSheet,
     Alert,
-    SafeAreaView,
     KeyboardAvoidingView,
     Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { router, useLocalSearchParams } from 'expo-router';
 import { verifyEmailCode, resendVerificationCode } from '@/services/AuthService';
 import { setToken } from '@/services/TokenService'; // Fixed: should be setToken not saveToken
@@ -20,27 +21,27 @@ import { getToken } from '@/services/TokenService';
 const VerificationScreen = () => {
     const params = useLocalSearchParams();
     const { user, setUser } = useContext(AuthContext);
-    
+
     // Parse all params with proper handling
     const getParamValue = (param: string | string[] | undefined): string => {
         if (!param) return '';
         if (Array.isArray(param)) return param[0] || '';
         return param;
     };
-    
+
     const userIdStr = getParamValue(params.userId) || user?.id?.toString() || '';
     const userId = userIdStr ? parseInt(userIdStr) : null;
     const email = getParamValue(params.email) || user?.email || '';
     const token = getParamValue(params.token) || getToken();
     const userStr = getParamValue(params.user) || user ? JSON.stringify(user) : '';
-    
+
     console.log('VerificationScreen params:', {
         userId,
         email,
         hasToken: !!token,
         hasUser: !!userStr
     });
-    
+
     // Use useMemo to prevent recreation on every render
     const initialUser = useMemo(() => {
         if (!userStr) return null;
@@ -51,13 +52,13 @@ const VerificationScreen = () => {
             return null;
         }
     }, [userStr]); // Only recalculate when userStr changes
-    
+
     const [code, setCode] = useState(['', '', '', '', '', '']);
     const [loading, setLoading] = useState(false);
     const [resendLoading, setResendLoading] = useState(false);
     const [message, setMessage] = useState('');
     const [countdown, setCountdown] = useState(0);
-    
+
     const inputRefs = useRef<Array<TextInput | null>>([]);
 
     // Initialize user in context if available - FIXED DEPENDENCY
@@ -92,16 +93,16 @@ const VerificationScreen = () => {
     const handleCodeChange = (text: string, index: number) => {
         // Only allow numbers
         const numericText = text.replace(/[^0-9]/g, '');
-        
+
         const newCode = [...code];
         newCode[index] = numericText;
         setCode(newCode);
-        
+
         // Auto-focus next input
         if (numericText && index < 5) {
             focusNextInput(index);
         }
-        
+
         // Auto-verify when all digits are entered
         if (newCode.every(digit => digit !== '') && index === 5) {
             verifyCode();
@@ -116,21 +117,21 @@ const VerificationScreen = () => {
 
     const verifyCode = async () => {
         console.log('Verify button clicked, userId:', userId, 'token:', token);
-        
+
         if (!userId) {
             Alert.alert('Error', 'User ID not found');
             return;
         }
-        
+
         const fullCode = code.join('');
         if (fullCode.length !== 6) {
             setMessage('Please enter all 6 digits');
             return;
         }
-        
+
         setLoading(true);
         setMessage('');
-        
+
         try {
             // Add token to request headers if available
             const config = token ? {
@@ -138,24 +139,24 @@ const VerificationScreen = () => {
                     Authorization: `Bearer ${token}`
                 }
             } : {};
-            
+
             console.log('Calling verifyEmailCode with:', { userId, code: fullCode });
             const response = await verifyEmailCode(userId, fullCode, config);
             console.log('Verify response:', response);
-            
+
             if (response.verified) {
                 // Save the token if returned in response
                 if (response.token) {
                     await setToken(response.token); // Fixed: use setToken
                     console.log('New token saved after verification');
                 }
-                
+
                 // Update user in context with verified status
                 if (response.user && setUser) {
                     setUser(response.user);
                     console.log('User updated after verification:', response.user);
                 }
-                
+
                 Alert.alert(
                     'Success',
                     'Email verified successfully!',
@@ -186,15 +187,15 @@ const VerificationScreen = () => {
 
     const handleResendCode = async () => {
         console.log('Resend button clicked, userId:', userId, 'token:', token);
-        
+
         if (!userId || countdown > 0) {
             console.log('Cannot resend: missing userId or countdown active');
             return;
         }
-        
+
         setResendLoading(true);
         setMessage('');
-        
+
         try {
             // Add token to request headers if available
             const config = token ? {
@@ -202,11 +203,11 @@ const VerificationScreen = () => {
                     Authorization: `Bearer ${token}`
                 }
             } : {};
-            
+
             console.log('Calling resendVerificationCode with userId:', userId);
             const response = await resendVerificationCode(userId, config);
             console.log('Resend response:', response);
-            
+
             setMessage('New verification code sent!');
             setCountdown(60); // 60 seconds countdown
             setCode(['', '', '', '', '', '']);
@@ -242,20 +243,20 @@ const VerificationScreen = () => {
                 style={styles.content}
             >
                 <View style={styles.header}>
-                    <Button 
-                        title="← Back" 
+                    <Button
+                        title="← Back"
                         onPress={() => router.push('/RegisterScreen')}
                         color="blue"
                     />
                 </View>
-                
+
                 <View style={styles.formContainer}>
                     <Text style={styles.title}>Verify Your Email</Text>
                     <Text style={styles.subtitle}>
                         Enter the 6-digit code sent to:
                     </Text>
                     <Text style={styles.email}>{email}</Text>
-                    
+
                     <View style={styles.codeContainer}>
                         {[0, 1, 2, 3, 4, 5].map((index) => (
                             <TextInput
@@ -275,18 +276,18 @@ const VerificationScreen = () => {
                             />
                         ))}
                     </View>
-                    
+
                     {message ? (
                         <Text style={[
                             styles.message,
-                            message.includes('sent') || message.includes('Success') 
-                                ? styles.successMessage 
+                            message.includes('sent') || message.includes('Success')
+                                ? styles.successMessage
                                 : styles.errorMessage
                         ]}>
                             {message}
                         </Text>
                     ) : null}
-                    
+
                     <View style={styles.buttonContainer}>
                         <Button
                             title={loading ? "Verifying..." : "Verify Email"}
@@ -295,13 +296,13 @@ const VerificationScreen = () => {
                             color={code.join('').length === 6 && !loading ? "#007AFF" : "#CCCCCC"}
                         />
                     </View>
-                    
+
                     <View style={styles.buttonContainer}>
                         <Button
                             title={
-                                resendLoading 
-                                    ? 'Sending...' 
-                                    : countdown > 0 
+                                resendLoading
+                                    ? 'Sending...'
+                                    : countdown > 0
                                         ? `Resend code in ${countdown}s`
                                         : "Didn't receive code? Resend"
                             }

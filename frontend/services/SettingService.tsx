@@ -2,7 +2,6 @@ import axios from "@/services/axios";
 import { getToken } from "./TokenService";
 import getApiBase from "./getApiBase";
 import * as ImagePicker from 'expo-image-picker';
-import { Camera } from 'expo-camera';
 import { Platform } from "react-native";
 
 export const uploadProfilePhoto = async (uri: string) => {
@@ -41,7 +40,7 @@ export const uploadProfilePhoto = async (uri: string) => {
 export const deleteProfilePhoto = async () => {
   const token = await getToken();
   const API_BASE = getApiBase();
-  
+
   const response = await axios.delete(`${API_BASE}/profile/photo`, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -52,6 +51,17 @@ export const deleteProfilePhoto = async () => {
 };
 
 export const requestCameraPermission = async () => {
+  if (Platform.OS === 'web') {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      stream.getTracks().forEach(t => t.stop());
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  // Native: dynamic import to avoid SSR issues
+  const { Camera } = await import('expo-camera');
   const { status } = await Camera.requestCameraPermissionsAsync();
   return status === 'granted';
 };

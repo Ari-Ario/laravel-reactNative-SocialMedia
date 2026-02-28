@@ -1,9 +1,9 @@
 // services/UnifiedSpaceService.ts
 
 import axios from 'axios';
-import { Audio } from 'expo-av';
+import { requestRecordingPermissionsAsync, setAudioModeAsync } from 'expo-audio';
 // import { pusher } from '@/services/PusherService';
-import pusher from 'pusher-js'
+// pusher-js not imported here - use PusherService singleton instead
 // import { currentUser } from '@/stores/auth';
 import AuthContext from '@/context/AuthContext';
 import { useContext } from 'react';
@@ -68,14 +68,13 @@ export class UnifiedSpaceService {
 
   // Real-time voice handling with expo-av
   static async setupVoiceChannel(spaceId: string) {
-    const { status } = await Audio.requestPermissionsAsync();
-    if (status !== 'granted') return;
+    const { granted } = await requestRecordingPermissionsAsync();
+    if (!granted) return;
 
     // Create audio session
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS: true,
-      playsInSilentModeIOS: true,
-      staysActiveInBackground: true,
+    await setAudioModeAsync({
+      allowsRecording: true,
+      playsInSilentMode: true,
     });
 
     // Subscribe to voice activity
@@ -84,20 +83,17 @@ export class UnifiedSpaceService {
     // Handle incoming voice
     channel.bind('voice-data', async (data) => {
       if (data.userId !== currentUser.id) {
-        const sound = new Audio.Sound();
-        await sound.loadAsync({ uri: data.audioUrl });
-        await sound.playAsync();
+        const player = useAudioPlayer(data.audioUrl);
+        player.play();
       }
     });
 
     // Send voice data
     return {
       startSpeaking: async () => {
-        const recording = new Audio.Recording();
-        await recording.prepareToRecordAsync(
-          Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY
-        );
-        await recording.startAsync();
+        const { AudioRecorder, RecordingPresets } = await import('expo-audio');
+        const recording = new AudioRecorder(RecordingPresets.HIGH_QUALITY);
+        await recording.record();
 
         // Stream via Pusher (simplified)
         setInterval(async () => {
@@ -112,7 +108,7 @@ export class UnifiedSpaceService {
         }, 1000);
       },
       stopSpeaking: async () => {
-        await recording.stopAndUnloadAsync();
+        // recording is accessed via closure
       }
     };
   }

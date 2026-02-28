@@ -1,15 +1,16 @@
 // app/RegisterScreen.tsx
 import React, { useState } from "react";
-import { 
-    SafeAreaView, 
-    View, 
-    Text, 
-    StyleSheet, 
-    Button, 
-    TouchableOpacity, 
+import {
+    View,
+    Text,
+    StyleSheet,
+    Button,
+    TouchableOpacity,
     Platform,
-    Alert 
+    Alert
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import FormTextField from "@/components/FormTextField";
 import { register } from "@/services/AuthService";
 import { Link, router } from 'expo-router';
@@ -30,7 +31,7 @@ const RegisterUser: React.FC = () => {
     async function handleRegister() {
         setErrors({});
         setLoading(true);
-        
+
         try {
             const response = await register({
                 name: name,
@@ -41,19 +42,19 @@ const RegisterUser: React.FC = () => {
             });
 
             console.log('Register response:', response);
-            
+
             // Save the token from registration response
             if (response.token) {
                 await setToken(response.token);
                 console.log('Token saved during registration');
             }
-            
+
             // Save the user to context
             if (response.user) {
                 setUser(response.user);
                 console.log('User saved to context:', response.user);
             }
-            
+
             // Check if verification is required
             if (response.requires_verification && response.user_id) {
                 console.log('Navigation params:', {
@@ -62,11 +63,11 @@ const RegisterUser: React.FC = () => {
                     token: response.token,
                     user: response.user // Pass user object too
                 });
-                
+
                 // Navigate to VerificationScreen with all data
                 router.push({
                     pathname: '/VerificationScreen',
-                    params: { 
+                    params: {
                         userId: String(response.user_id),
                         email: email,
                         token: response.token,
@@ -77,16 +78,16 @@ const RegisterUser: React.FC = () => {
                 // If auto-verified or no verification needed
                 router.replace('/(tabs)');
             }
-            
+
             // Reset form
             setName("");
             setEmail("");
             setPassword("");
             setPasswordConfirmation("");
-            
+
         } catch (e: any) {
             console.error('Registration error:', e.response?.data);
-            
+
             if (e.response?.status === 422) {
                 setErrors(e.response.data.errors || {});
             } else if (e.response?.data?.message) {
@@ -108,51 +109,51 @@ const RegisterUser: React.FC = () => {
                     </TouchableOpacity>
                 </Link>
             </View>
-            
+
             <View style={styles.container}>
                 <Text style={styles.title}>Create Account</Text>
-                
-                <FormTextField 
-                    label="Name:" 
-                    value={name} 
-                    onChangeText={(text) => setName(text)} 
+
+                <FormTextField
+                    label="Name:"
+                    value={name}
+                    onChangeText={(text) => setName(text)}
                     errors={errors.name}
                 />
-                
-                <FormTextField 
-                    label="Email address:" 
-                    value={email} 
-                    onChangeText={(text) => setEmail(text)} 
-                    keyboardType="email-address" 
+
+                <FormTextField
+                    label="Email address:"
+                    value={email}
+                    onChangeText={(text) => setEmail(text)}
+                    keyboardType="email-address"
                     errors={errors.email}
                 />
 
-                <FormTextField 
-                    label="Password:" 
-                    secureTextEntry={true} 
-                    value={password} 
-                    onChangeText={(text) => setPassword(text)} 
+                <FormTextField
+                    label="Password:"
+                    secureTextEntry={true}
+                    value={password}
+                    onChangeText={(text) => setPassword(text)}
                     errors={errors.password}
                 />
 
-                <FormTextField 
-                    label="Confirm Password:" 
-                    secureTextEntry={true} 
-                    value={passwordConfirmation} 
-                    onChangeText={(text) => setPasswordConfirmation(text)} 
+                <FormTextField
+                    label="Confirm Password:"
+                    secureTextEntry={true}
+                    value={passwordConfirmation}
+                    onChangeText={(text) => setPasswordConfirmation(text)}
                     errors={errors.password_confirmation}
                 />
-                
-                <Button 
-                    title={loading ? "Registering..." : "Register"} 
-                    onPress={handleRegister} 
+
+                <Button
+                    title={loading ? "Registering..." : "Register"}
+                    onPress={handleRegister}
                     disabled={loading}
                 />
-                
+
                 {errors.general && (
                     <Text style={styles.errorText}>{errors.general}</Text>
                 )}
-                
+
                 <View style={styles.loginLink}>
                     <Text>Already have an account? </Text>
                     <Link href="/Login" asChild>
@@ -191,13 +192,13 @@ const styles = StyleSheet.create({
         width: '100%',
         textAlign: 'left',
         marginBottom: 20,
-      },
-      buttonText: {
+    },
+    buttonText: {
         textAlign: "center",
         color: "blue",
         fontSize: 22,
         fontWeight: '500',
-      },
+    },
     errorText: {
         color: 'red',
         textAlign: 'center',

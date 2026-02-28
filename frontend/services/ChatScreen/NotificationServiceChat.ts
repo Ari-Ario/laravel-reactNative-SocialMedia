@@ -5,13 +5,17 @@ import { Alert } from 'react-native';
 import getApiBase from '@/services/getApiBase';
 import { getToken } from '@/services/TokenService';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+if (Platform.OS !== 'web') {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 interface NotificationData {
   title: string;
@@ -54,28 +58,30 @@ class NotificationService {
       }
 
       // Get device token
-      if (Device.isDevice) {
+      if (Platform.OS !== 'web' && Device.isDevice) {
         const token = (await Notifications.getExpoPushTokenAsync({
           projectId: 'your-project-id', // Add your project ID
         })).data;
 
         this.expoPushToken = token;
         await this.registerToken(token);
-      } else {
+      } else if (Platform.OS !== 'web') {
         console.log('Must use physical device for push notifications');
       }
 
       // Handle notifications when app is in foreground
-      Notifications.addNotificationReceivedListener(notification => {
-        console.log('Notification received:', notification);
-        // You could update local state here
-      });
+      if (Platform.OS !== 'web') {
+        Notifications.addNotificationReceivedListener(notification => {
+          console.log('Notification received:', notification);
+          // You could update local state here
+        });
 
-      // Handle notification responses
-      Notifications.addNotificationResponseReceivedListener(response => {
-        const data = response.notification.request.content.data;
-        this.handleNotificationTap(data);
-      });
+        // Handle notification responses
+        Notifications.addNotificationResponseReceivedListener(response => {
+          const data = response.notification.request.content.data;
+          this.handleNotificationTap(data);
+        });
+      }
 
       this.isConfigured = true;
     } catch (error) {
@@ -106,6 +112,8 @@ class NotificationService {
   }
 
   async scheduleLocalNotification(data: NotificationData) {
+    if (Platform.OS === 'web') return;
+
     await Notifications.scheduleNotificationAsync({
       content: {
         title: data.title,
@@ -159,7 +167,9 @@ class NotificationService {
   }
 
   async clearBadgeCount() {
-    await Notifications.setBadgeCountAsync(0);
+    if (Platform.OS !== 'web') {
+      await Notifications.setBadgeCountAsync(0);
+    }
   }
 
   async unregister() {

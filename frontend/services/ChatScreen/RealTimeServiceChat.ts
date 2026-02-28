@@ -2,7 +2,8 @@
 // but we want to keep it around for now in case we need to add any custom logic later on.
 // services/ChatScreen/RealTimeServiceChat.ts
 
-import Pusher, { Channel } from 'pusher-js';
+import type Pusher from 'pusher-js';
+import type { Channel } from 'pusher-js';
 import { Platform } from 'react-native';
 import { getToken } from '@/services/TokenService';
 import getApiBase from '@/services/getApiBase';
@@ -13,7 +14,7 @@ type EventCallback = (data: any) => void;
 class RealTimeService {
   private static instance: RealTimeService;
   private pusherService: typeof PusherService;
-  private channels: Map<string, Channel> = new Map();
+  private channels: Map<string, any> = new Map();
   private subscriptions: Map<string, Map<string, EventCallback>> = new Map();
 
   private constructor() {
@@ -40,7 +41,7 @@ class RealTimeService {
     }
 
     console.log('⏳ RealTimeService: Waiting for Pusher to be initialized...');
-    
+
     // Wait up to 3 seconds for Pusher to be initialized
     for (let i = 0; i < 6; i++) {
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -50,7 +51,7 @@ class RealTimeService {
         return;
       }
     }
-    
+
     console.warn('⚠️ RealTimeService: Pusher not ready after waiting');
   }
 
@@ -69,7 +70,7 @@ class RealTimeService {
     }
 
     const channelName = `user.${userId}`; // ✅ FIX: Use 'user.' not 'private-user.'
-    
+
     if (this.channels.has(channelName)) {
       console.log(`ℹ️ RealTimeService: Already subscribed to ${channelName}`);
       return;
@@ -117,7 +118,7 @@ class RealTimeService {
     }
 
     const channelName = `presence-space.${spaceId}`;
-    
+
     if (this.channels.has(channelName)) {
       console.log(`ℹ️ RealTimeService: Already subscribed to ${channelName}`);
       return;
@@ -164,7 +165,7 @@ class RealTimeService {
 
     const channelName = `presence-space.${spaceId}`;
     const channel = this.channels.get(channelName);
-    
+
     if (channel) {
       channel.unbind_all();
       pusher.unsubscribe(channelName);
@@ -176,18 +177,18 @@ class RealTimeService {
 
   private addSubscription(type: string, id: string, event: string, callback: EventCallback) {
     const key = `${type}-${id}`;
-    
+
     if (!this.subscriptions.has(key)) {
       this.subscriptions.set(key, new Map());
     }
-    
+
     this.subscriptions.get(key)!.set(event, callback);
   }
 
   private notifySubscribers(type: string, id: string, event: string, data: any) {
     const key = `${type}-${id}`;
     const callbacks = this.subscriptions.get(key);
-    
+
     if (callbacks) {
       const callback = callbacks.get(event);
       if (callback) {
@@ -205,7 +206,7 @@ class RealTimeService {
         pusher.unsubscribe(channelName);
       });
     }
-    
+
     this.channels.clear();
     this.subscriptions.clear();
     console.log('✅ RealTimeService: Cleaned up subscriptions');

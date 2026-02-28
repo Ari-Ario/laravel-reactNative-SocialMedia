@@ -9,12 +9,9 @@ import {
   Platform,
   GestureResponderEvent,
 } from 'react-native';
-import { 
-  Audio, 
-  Video,
-} from 'expo-av';
-import { Camera, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
-import { ResizeMode } from 'expo-av';
+import { requestRecordingPermissionsAsync, setAudioModeAsync } from 'expo-audio';
+import { VideoView } from 'expo-video';
+import { usePlatformCamera } from '@/hooks/usePlatformCamera';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 
@@ -28,13 +25,13 @@ export const UnifiedSpace: React.FC<UnifiedSpaceProps> = ({ spaceId, initialType
   const [spaceData, setSpaceData] = useState<any>(null);
   const [magicEvents, setMagicEvents] = useState<any[]>([]);
   const [participants, setParticipants] = useState<any[]>([]);
-  
+
   // Media states
   const [cameraPermission] = useCameraPermissions();
   const [microphonePermission] = useMicrophonePermissions();
   const [isRecording, setIsRecording] = useState(false);
   const [screenShareMode, setScreenShareMode] = useState<'none' | 'canvas' | 'camera'>('none');
-  
+
   // Real-time state
   const [myCursor, setMyCursor] = useState({ x: 0, y: 0 });
   const [myReaction, setMyReaction] = useState<string>('');
@@ -48,33 +45,33 @@ export const UnifiedSpace: React.FC<UnifiedSpaceProps> = ({ spaceId, initialType
   useEffect(() => {
     // 1. Load space
     loadSpace(spaceId);
-    
+
     // 2. Setup real-time subscriptions
     const spaceChannel = pusher.subscribe(`presence-space.${spaceId}`);
-    
+
     // Handle ANY participant update
     spaceChannel.bind('participant-updated', (data: any) => {
       setParticipants(prev => updateParticipant(prev, data));
     });
-    
+
     // Handle ANY content change
     spaceChannel.bind('content-updated', (data: any) => {
       setSpaceData(prev => ({ ...prev, content_state: data.newState }));
     });
-    
+
     // Handle MAGIC events in real-time
     spaceChannel.bind('magic-triggered', (event: any) => {
       setMagicEvents(prev => [event, ...prev]);
       triggerMagicDiscovery(event);
     });
-    
+
     // Handle VOICE activity
     spaceChannel.bind('voice-activity', (data: any) => {
       if (data.userId !== currentUser.id) {
         updateVoiceVisualization(data);
       }
     });
-    
+
     return () => spaceChannel.unsubscribe();
   }, [spaceId]);
 
@@ -82,25 +79,25 @@ export const UnifiedSpace: React.FC<UnifiedSpaceProps> = ({ spaceId, initialType
   const renderSpaceContent = () => {
     const renderers = {
       chat: () => (
-        <ChatInterface 
+        <ChatInterface
           messages={spaceData?.content_state?.messages || []}
           onSend={handleSendMessage}
           onReact={handleReaction}
           participants={participants}
         />
       ),
-      
+
       whiteboard: () => (
-        <CollaborativeCanvas 
+        <CollaborativeCanvas
           canvasData={spaceData?.content_state?.canvas}
           onDraw={handleDraw}
           participants={participants}
           showCursors={true}
         />
       ),
-      
+
       meeting: () => (
-        <MeetingInterface 
+        <MeetingInterface
           participants={participants}
           myVideoState={myVideoState}
           onToggleVideo={toggleVideo}
@@ -109,36 +106,36 @@ export const UnifiedSpace: React.FC<UnifiedSpaceProps> = ({ spaceId, initialType
           sharedScreen={spaceData?.content_state?.shared_screen}
         />
       ),
-      
+
       document: () => (
-        <CollaborativeEditor 
+        <CollaborativeEditor
           content={spaceData?.content_state?.document}
           onChange={handleDocumentChange}
           participants={participants}
           showLiveEdits={true}
         />
       ),
-      
+
       brainstorm: () => (
-        <BrainstormBoard 
+        <BrainstormBoard
           ideas={spaceData?.content_state?.ideas}
           onAddIdea={handleAddIdea}
           onConnectIdeas={handleConnectIdeas}
           participants={participants}
         />
       ),
-      
+
       story: () => (
-        <StoryBuilder 
+        <StoryBuilder
           story={spaceData?.content_state?.story}
           onAddSegment={handleAddSegment}
           onChooseBranch={handleChooseBranch}
           participants={participants}
         />
       ),
-      
+
       voice_channel: () => (
-        <VoiceChannel 
+        <VoiceChannel
           participants={participants}
           onSpeak={handleStartSpeaking}
           onListen={handleListening}
@@ -199,13 +196,13 @@ export const UnifiedSpace: React.FC<UnifiedSpaceProps> = ({ spaceId, initialType
 
     // Real-time broadcast
     pusher.trigger(`space-${spaceId}`, 'magic-triggered', magicEvent.data);
-    
+
     // UI feedback
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    
+
     // Add to discovered
     setDiscoveredMagic(prev => [...prev, magicType]);
-    
+
     // Space evolves
     if (magicType === 'evolution_unlock') {
       await evolveSpace();
@@ -223,7 +220,7 @@ export const UnifiedSpace: React.FC<UnifiedSpaceProps> = ({ spaceId, initialType
         spaceType: chatItem.space_type,
         onStartCollaboration: () => startCollaborationFromChat(chatItem)
       }),
-      
+
       // Add spaces section to SectionList
       getSpacesSection: async (userId: string) => {
         const spaces = await axios.get(`/api/users/${userId}/spaces`);
@@ -243,7 +240,7 @@ export const UnifiedSpace: React.FC<UnifiedSpaceProps> = ({ spaceId, initialType
           }))
         };
       },
-      
+
       // Quick actions from chat
       quickActions: {
         startWhiteboard: (conversationId: string) => createSpace('whiteboard', conversationId),
@@ -258,7 +255,7 @@ export const UnifiedSpace: React.FC<UnifiedSpaceProps> = ({ spaceId, initialType
   return (
     <View style={styles.container}>
       {/* SPACE HEADER - Dynamic based on type */}
-      <SpaceHeader 
+      <SpaceHeader
         title={spaceData?.title}
         type={spaceType}
         participants={participants}
@@ -266,16 +263,16 @@ export const UnifiedSpace: React.FC<UnifiedSpaceProps> = ({ spaceId, initialType
         onTypeChange={setSpaceType}
         discoveredMagic={discoveredMagic}
       />
-      
+
       {/* MAIN CONTENT AREA */}
       <View style={styles.contentArea}>
         {renderSpaceContent()}
-        
+
         {/* MAGIC EVENTS FLOATING ORBS */}
         {magicEvents
           .filter(e => !e.has_been_discovered)
           .map(event => (
-            <MagicOrb 
+            <MagicOrb
               key={event.id}
               event={event}
               onDiscover={() => discoverMagic(event)}
@@ -283,9 +280,9 @@ export const UnifiedSpace: React.FC<UnifiedSpaceProps> = ({ spaceId, initialType
           ))
         }
       </View>
-      
+
       {/* UNIFIED TOOLBAR - Adapts to space type */}
-      <SpaceToolbar 
+      <SpaceToolbar
         type={spaceType}
         onToolSelect={handleToolSelect}
         myState={{
@@ -300,9 +297,9 @@ export const UnifiedSpace: React.FC<UnifiedSpaceProps> = ({ spaceId, initialType
           { icon: 'bulb', action: () => suggestIdea() },
         ]}
       />
-      
+
       {/* PARTICIPANTS OVERLAY */}
-      <ParticipantsOverlay 
+      <ParticipantsOverlay
         participants={participants}
         myCursor={myCursor}
         onParticipantPress={focusOnParticipant}
@@ -316,31 +313,31 @@ export const enhanceChatPage = (ChatPageComponent: React.FC) => {
   return function EnhancedChatPage(props: any) {
     const [spacesSection, setSpacesSection] = useState<any>(null);
     const collaboration = integrateWithChatPage();
-    
+
     useEffect(() => {
       // Add spaces to your existing SectionList
       collaboration.getSpacesSection(props.user?.id).then(section => {
         setSpacesSection(section);
       });
     }, [props.user?.id]);
-    
+
     // Enhance your existing filteredData
     const enhancedFilteredData = useMemo(() => {
       const original = props.filteredData || [];
       return spacesSection ? [spacesSection, ...original] : original;
     }, [props.filteredData, spacesSection]);
-    
+
     return (
       <>
-        <ChatPageComponent 
-          {...props} 
+        <ChatPageComponent
+          {...props}
           filteredData={enhancedFilteredData}
           // Pass collaboration methods to child components
           collaborationTools={collaboration}
         />
-        
+
         {/* Floating "Start Collaboration" button */}
-        <FloatingCollaborationButton 
+        <FloatingCollaborationButton
           onPress={() => showCollaborationMenu(props.currentChat)}
           quickActions={collaboration.quickActions}
         />

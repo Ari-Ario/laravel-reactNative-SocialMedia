@@ -1,26 +1,21 @@
-import Pusher from 'pusher-js';
 import { Platform } from 'react-native';
 import getApiBase from '@/services/getApiBase';
-import { get } from 'react-native/Libraries/TurboModule/TurboModuleRegistry';
 
-// Set up Pusher for React Native
-(Pusher as any).Runtime.createXHR = function () {
-  return new XMLHttpRequest();
-};
-
-(Pusher as any).Runtime.createWebSocket = function (url: string) {
-  return new WebSocket(url);
-};
+// Pusher type for TypeScript only (no runtime import at module level)
+type PusherType = InstanceType<typeof import('pusher-js').default>;
 
 class PusherService {
-  private pusher: Pusher | null = null;
+  private pusher: PusherType | null = null;
   private channels: Map<string, any> = new Map();
   private isInitialized = false;
   private connectionAttempts = 0;
   private maxConnectionAttempts = 3;
 
-  // SINGLE CONNECTION - reuse the same Pusher instance
   initialize(token: string): boolean {
+    // Guard: skip during SSR (Node.js has no window)
+    if (typeof window === 'undefined') {
+      return false;
+    }
     try {
       // Prevent multiple initializations
       if (this.isInitialized && this.pusher) {
@@ -45,71 +40,80 @@ class PusherService {
       console.log('🔄 Initializing Pusher connection...');
       this.connectionAttempts++;
 
-      // ✅ FIX: Add authorizer for presence channels
-      this.pusher = new Pusher(pusherKey, {
-        cluster: pusherCluster,
-        forceTLS: true,
-        authorizer: (channel, options) => {
-          return {
-            authorize: (socketId, callback) => {
-              console.log(`🔐 Authorizing channel: ${channel.name} with socket: ${socketId}`);
-              console.log(`🔐 Using token: ${token.substring(0, 20)}...`); // Log partial token
+      // Dynamically import pusher-js to avoid SSR window crash
+      import('pusher-js').then((mod) => {
+        const Pusher = mod.default;
 
-              fetch(`${apiUrl}/broadcasting/auth`, {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Accept': 'application/json',
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  socket_id: socketId,
-                  channel_name: channel.name
+        // Set up React Native XHR/WebSocket overrides
+        (Pusher as any).Runtime.createXHR = () => new XMLHttpRequest();
+        (Pusher as any).Runtime.createWebSocket = (url: string) => new WebSocket(url);
+        // ✅ FIX: Add authorizer for presence channels
+        this.pusher = new Pusher(pusherKey, {
+          cluster: pusherCluster,
+          forceTLS: true,
+          authorizer: (channel: any, options: any) => {
+            return {
+              authorize: (socketId: string, callback: Function) => {
+                console.log(`🔐 Authorizing channel: ${channel.name} with socket: ${socketId}`);
+                console.log(`🔐 Using token: ${token.substring(0, 20)}...`);
+
+                fetch(`${apiUrl}/broadcasting/auth`, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    socket_id: socketId,
+                    channel_name: channel.name
+                  })
                 })
-              })
-                .then(response => {
-                  console.log(`📡 Auth response status: ${response.status}`);
-                  if (!response.ok) {
-                    return response.text().then(text => {
-                      console.error(`❌ Auth failed with status ${response.status}:`, text);
-                      throw new Error(`Auth failed: ${response.status} - ${text}`);
-                    });
-                  }
-                  return response.json();
-                })
-                .then(data => {
-                  console.log(`✅ Channel authorized: ${channel.name}`);
-                  callback(null, data);
-                })
-                .catch(error => {
-                  console.error(`❌ Channel authorization failed: ${channel.name}`, error);
-                  callback(error, null);
-                });
-            }
-          };
-        },
-        // Web-specific configuration
-        wsHost: `ws-${pusherCluster}.pusher.com`,
-        wsPort: 80,
-        wssPort: 443,
-        enabledTransports: ['ws', 'wss'],
-      });
+                  .then(response => {
+                    console.log(`📡 Auth response status: ${response.status}`);
+                    if (!response.ok) {
+                      return response.text().then(text => {
+                        console.error(`❌ Auth failed with status ${response.status}:`, text);
+                        throw new Error(`Auth failed: ${response.status} - ${text}`);
+                      });
+                    }
+                    return response.json();
+                  })
+                  .then(data => {
+                    console.log(`✅ Channel authorized: ${channel.name}`);
+                    callback(null, data);
+                  })
+                  .catch((error: any) => {
+                    console.error(`❌ Channel authorization failed: ${channel.name}`, error);
+                    callback(error, null);
+                  });
+              }
+            };
+          },
+          wsHost: `ws-${pusherCluster}.pusher.com`,
+          wsPort: 80,
+          wssPort: 443,
+          enabledTransports: ['ws', 'wss'],
+        });
 
-      // Connection event handlers
-      this.pusher.connection.bind('connected', () => {
-        console.log('✅ Pusher connected successfully - Socket ID:', this.pusher?.connection.socket_id);
-        this.isInitialized = true;
-        this.connectionAttempts = 0;
-      });
+        // Connection event handlers
+        this.pusher.connection.bind('connected', () => {
+          console.log('✅ Pusher connected successfully - Socket ID:', this.pusher?.connection.socket_id);
+          this.isInitialized = true;
+          this.connectionAttempts = 0;
+        });
 
-      this.pusher.connection.bind('error', (err: any) => {
-        console.error('❌ Pusher connection error:', err);
-        this.isInitialized = false;
-      });
+        this.pusher.connection.bind('error', (err: any) => {
+          console.error('❌ Pusher connection error:', err);
+          this.isInitialized = false;
+        });
 
-      this.pusher.connection.bind('disconnected', () => {
-        console.log('🔌 Pusher disconnected');
-        this.isInitialized = false;
+        this.pusher.connection.bind('disconnected', () => {
+          console.log('🔌 Pusher disconnected');
+          this.isInitialized = false;
+        });
+      }).catch((err: any) => {
+        console.error('❌ Failed to load pusher-js:', err);
       });
 
       return true;

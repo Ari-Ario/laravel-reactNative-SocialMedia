@@ -27,7 +27,6 @@ import { DatabaseIntegrator } from '@/services/ChatScreen/DatabaseIntegrator';
 import debounce from 'lodash/debounce';
 import CreativeGenerator from "@/components/AI/CreativeGenerator";
 import CollaborativeActivities from "@/components/ChatScreen/CollaborativeActivities";
-import { id } from "rn-emoji-keyboard";
 import { useCollaborationStore } from "@/stores/collaborationStore";
 
 interface Chat {

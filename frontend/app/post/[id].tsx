@@ -25,7 +25,7 @@ import getApiBaseImage from '@/services/getApiBaseImage';
 import { Ionicons } from '@expo/vector-icons';
 import AuthContext from '@/context/AuthContext';
 import EmojiPicker from 'rn-emoji-keyboard';
-import { Video, Audio } from 'expo-av';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import { usePostListService } from '@/services/PostListService';
 
 const PostDetailScreen = () => {
@@ -368,13 +368,13 @@ const PostDetailScreen = () => {
               return sortedMedia.length === 1 ? (
                 <TouchableOpacity onPress={() => service.openMediaViewer(0)}>
                   {sortedMedia[0].type === 'video' ? (
-                    <Video
-                      source={{ uri: `${getApiBaseImage()}/storage/${sortedMedia[0].file_path}` }}
+                    <VideoView
+                      player={useVideoPlayer(
+                        `${getApiBaseImage()}/storage/${sortedMedia[0].file_path}`
+                      )}
                       style={styles.singleMedia}
-                      resizeMode="cover"
-                      shouldPlay={false}
-                      isMuted={true}
-                      useNativeControls={false}
+                      contentFit="cover"
+                      nativeControls={false}
                     />
                   ) : (
                     <Image
@@ -393,13 +393,13 @@ const PostDetailScreen = () => {
                       style={styles.multiMediaItem}
                     >
                       {media.type === 'video' ? (
-                        <Video
-                          source={{ uri: `${getApiBaseImage()}/storage/${media.file_path}` }}
+                        <VideoView
+                          player={useVideoPlayer(
+                            `${getApiBaseImage()}/storage/${media.file_path}`
+                          )}
                           style={styles.multiMediaContent}
-                          resizeMode="cover"
-                          shouldPlay={false}
-                          isMuted={true}
-                          useNativeControls={false}
+                          contentFit="cover"
+                          nativeControls={false}
                         />
                       ) : (
                         <Image

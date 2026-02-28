@@ -1,5 +1,7 @@
 import { useState, useContext } from "react";
-import { SafeAreaView ,View, Text, StyleSheet, Button, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, Button, TouchableOpacity, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import axios from "@/services/axios";
 import FormTextField from "@/components/FormTextField";
 import { login, loadUser } from "@/services/AuthService";
@@ -17,10 +19,10 @@ export default function () {
 
         try {
             await login({
-                    email,
-                    password,
-                    device_name: `${Platform.OS} ${Platform.Version}`,
-                });
+                email,
+                password,
+                device_name: `${Platform.OS} ${Platform.Version}`,
+            });
 
             const user = await loadUser();
             setUser(user);
@@ -34,29 +36,29 @@ export default function () {
             }
             router.push('/(tabs)');
         } catch (e: any) {
-        console.error('Login failed:', e);                    // ← Add this!
-        console.log('Full error:', e.message, e.code, e.config?.url);
+            console.error('Login failed:', e);                    // ← Add this!
+            console.log('Full error:', e.message, e.code, e.config?.url);
 
-        // if (axios.isAxiosError(e)) {
+            // if (axios.isAxiosError(e)) {
             if (e.response) {
-            // Server responded (e.g. 422, 401, 500)
-            console.log('Response error:', e.response.status, e.response.data);
-            if (e.response.status === 422) {
-                setErrors(e.response.data.errors || {});
-            } else {
-                setErrors({ general: e.response.data.message || 'Server error' });
-            }
+                // Server responded (e.g. 422, 401, 500)
+                console.log('Response error:', e.response.status, e.response.data);
+                if (e.response.status === 422) {
+                    setErrors(e.response.data.errors || {});
+                } else {
+                    setErrors({ general: e.response.data.message || 'Server error' });
+                }
             } else if (e.request) {
-            // No response received → network issue
-            console.log('Network-level failure - request was:', e.request);
-            setErrors({ general: 'Network error - check connection or server' });
+                // No response received → network issue
+                console.log('Network-level failure - request was:', e.request);
+                setErrors({ general: 'Network error - check connection or server' });
             } else {
-            // Something else (setup error)
-            setErrors({ general: e.message || 'Unknown error' });
+                // Something else (setup error)
+                setErrors({ general: e.message || 'Unknown error' });
             }
-        // } else {
-        //     setErrors({ general: 'Unexpected error' });
-        // }
+            // } else {
+            //     setErrors({ general: 'Unexpected error' });
+            // }
         }
     }
 
@@ -69,22 +71,22 @@ export default function () {
                     </TouchableOpacity>
                 </Link>
             </View>
-            
+
             <View style={styles.container}>
 
-                <FormTextField label="Email address:" 
-                value={email} 
-                onChangeText={(text) => setEmail(text)} 
-                keyboardType="email-address" 
-                errors={errors.email}
+                <FormTextField label="Email address:"
+                    value={email}
+                    onChangeText={(text) => setEmail(text)}
+                    keyboardType="email-address"
+                    errors={errors.email}
                 />
 
-                <FormTextField label="Password:" 
-                secureTextEntry={true} 
-                value={password} 
-                onChangeText={(text) => setPassword(text)} 
-                keyboardType="default" 
-                errors={errors.password}
+                <FormTextField label="Password:"
+                    secureTextEntry={true}
+                    value={password}
+                    onChangeText={(text) => setPassword(text)}
+                    keyboardType="default"
+                    errors={errors.password}
                 />
 
                 <Button title="login" onPress={handleLogin} />
@@ -92,7 +94,7 @@ export default function () {
                 {errors.general && (
                     <Text style={styles.errorText}>{errors.general}</Text>
                 )}
-                
+
 
                 <Link href={'/ForgotPasswordScreen'} >
                     <Text style={styles.buttonText}>Forgot Password</Text>
@@ -130,13 +132,13 @@ const styles = StyleSheet.create({
         width: '100%',
         textAlign: 'left',
         marginBottom: 20,
-      },
-      buttonText: {
+    },
+    buttonText: {
         textAlign: "center",
         color: "blue",
         fontSize: 22,
         fontWeight: '500',
-      },
+    },
     errorText: {
         color: 'red',
         textAlign: 'center',
@@ -151,4 +153,4 @@ const styles = StyleSheet.create({
         color: 'blue',
         fontWeight: '600',
     },
-  });
+});

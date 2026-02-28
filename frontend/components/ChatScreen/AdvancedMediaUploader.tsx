@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
+import PlatformCameraView from '@/components/PlatformCameraView';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { safeHaptics } from '@/utils/haptics';
 import { MediaCompressor } from '@/utils/mediaCompressor';
@@ -135,11 +135,7 @@ const AdvancedMediaUploader: React.FC<AdvancedMediaUploaderProps> = ({
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [recordingTimer, setRecordingTimer] = useState<NodeJS.Timeout | null>(null);
-  const cameraRef = useRef<CameraView>(null);
-
-  // Permission Hooks
-  const [permission, requestPermission] = useCameraPermissions();
-  const [micPermission, requestMicPermission] = useMicrophonePermissions();
+  const cameraRef = useRef<any>(null);
 
   // Video Preview Player (SDK 52)
   const videoPlayer = useVideoPlayer(
@@ -172,20 +168,12 @@ const AdvancedMediaUploader: React.FC<AdvancedMediaUploaderProps> = ({
 
   const openCamera = useCallback(async () => {
     try {
-      const camReq = await requestPermission();
-      const micReq = await requestMicPermission();
-
-      if (!camReq.granted || !micReq.granted) {
-        Alert.alert('Permission Required', 'Please allow camera and microphone access to use this feature.');
-        return;
-      }
-
       setCameraVisible(true);
     } catch (err) {
-      console.error('Camera permissions err:', err);
+      console.error('Camera err:', err);
       Alert.alert('Error', 'Failed to launch camera.');
     }
-  }, [requestPermission, requestMicPermission]);
+  }, []);
 
   const startRecording = async () => {
     if (cameraRef.current && !isRecording) {
@@ -375,50 +363,26 @@ const AdvancedMediaUploader: React.FC<AdvancedMediaUploaderProps> = ({
   // ─── Render ───────────────────────────────────────────────────────────────
 
   const renderCameraView = () => {
+    const handleCapture = (uri: string) => {
+      handleAssetPicked(uri, 'image', `photo_${Date.now()}.jpg`, 'image/jpeg');
+    };
+
     return (
       <Modal visible={cameraVisible} animationType="fade" transparent={false}>
         <View style={styles.cameraContainer}>
-          <CameraView
-            style={styles.camera}
+          <PlatformCameraView
+            style={{ flex: 1 } as any}
             facing={cameraType}
-            ref={cameraRef}
-            mode="video"
-            mute={false}
+            showControls
+            onCapture={handleCapture}
+            cameraRef={cameraRef}
+          />
+          <TouchableOpacity
+            style={{ position: 'absolute', top: 50, left: 20, padding: 8 }}
+            onPress={() => setCameraVisible(false)}
           >
-            <View style={styles.cameraOverlay}>
-              <View style={styles.cameraHeader}>
-                <TouchableOpacity style={styles.cameraClose} onPress={() => setCameraVisible(false)}>
-                  <Ionicons name="close" size={32} color="#fff" />
-                </TouchableOpacity>
-                {isRecording && (
-                  <View style={styles.recordingIndicator}>
-                    <View style={styles.redDot} />
-                    <Text style={styles.recordingText}>{formatRecordingTime(recordingTime)}</Text>
-                  </View>
-                )}
-                <TouchableOpacity style={styles.cameraFlip} onPress={toggleCameraType}>
-                  <Ionicons name="camera-reverse-outline" size={32} color="#fff" />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.cameraBottom}>
-                <View style={styles.captureContainer}>
-                  <TouchableOpacity
-                    onLongPress={startRecording}
-                    onPressOut={stopRecording}
-                    onPress={capturePhoto}
-                    activeOpacity={0.7}
-                    style={[styles.outerCircle, isRecording && styles.outerCircleRecording]}
-                  >
-                    <View style={[styles.innerCircle, isRecording && styles.innerCircleRecording]} />
-                  </TouchableOpacity>
-                  <Text style={styles.hintText}>
-                    {isRecording ? 'Release to stop' : 'Tap for photo, hold for video'}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </CameraView>
+            <Ionicons name="close" size={32} color="#fff" />
+          </TouchableOpacity>
         </View>
       </Modal>
     );

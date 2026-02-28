@@ -4,8 +4,8 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { useRouter, Redirect, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import {NavigationContainer} from '@react-navigation/native';
-import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useEffect, useRef, useState } from 'react';
 import 'react-native-reanimated';
 import AuthContext from '@/context/AuthContext';
@@ -22,6 +22,7 @@ import { GlobalModals } from '@/components/GlobalModals';
 import { ModalProvider } from '@/context/ModalContext';
 import ModalManager from '@/components/ModalManager';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -29,8 +30,15 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });  
-  const [user, setUser] = useState(null);
+  });
+  const [user, setUser] = useState<{
+    id: number;
+    name: string;
+    email: string;
+    email_verified_at?: string | null;
+    is_admin?: boolean;
+    ai_admin?: boolean;
+  } | null>(null);
   const [isReady, setIsReady] = useState(false);
   const router = useRouter();
 
@@ -45,7 +53,7 @@ export default function RootLayout() {
         if (token) {
           const userData = await loadUser();
           if (isMounted) setUser(userData);
-        } 
+        }
         // else {
         //   router.replace('/LoginScreen');
         // }
@@ -68,31 +76,31 @@ export default function RootLayout() {
   const pathname = usePathname();
 
   // ... rest of your existing pathname logic (UNCHANGED)
-useEffect(() => {
+  useEffect(() => {
     if (!isReady) return;
 
     // Allowed routes that should NOT redirect to tabs
     const allowedRoutes = [
-        '/story/',
-        '/post/', 
-        '/profile-preview/',
-        '/CreatPost/',
-        '/chats/',
-        '/spaces/',
-        '/LoginScreen',
-        '/RegisterScreen',
-        '/ForgotPasswordScreen',
-        '/ResetPasswordScreen',
-        '/VerificationScreen',
-        '/',
-        '/settings',
-        '/chatbot',
-        '/chatbotTraining',
+      '/story/',
+      '/post/',
+      '/profile-preview/',
+      '/CreatPost/',
+      '/chats/',
+      '/spaces/',
+      '/LoginScreen',
+      '/RegisterScreen',
+      '/ForgotPasswordScreen',
+      '/ResetPasswordScreen',
+      '/VerificationScreen',
+      '/',
+      '/settings',
+      '/chatbot',
+      '/chatbotTraining',
     ];
 
     // Check if current path starts with any allowed route
-    const isAllowedRoute = allowedRoutes.some(route => 
-        pathname?.startsWith(route)
+    const isAllowedRoute = allowedRoutes.some(route =>
+      pathname?.startsWith(route)
     );
 
     if (!user) {
@@ -115,29 +123,29 @@ useEffect(() => {
 
     // User is logged in
     if (pathname === '/' || pathname === '/LoginScreen') {
-        router.replace('/(tabs)');
-        return;
+      router.replace('/(tabs)');
+      return;
     }
 
     // Check if email is verified
     if (!user.email_verified_at) {
-        // If email not verified, only allow VerificationScreen
-        if (pathname !== '/VerificationScreen') {
-            router.replace('/VerificationScreen');
-            return;
-        }
+      // If email not verified, only allow VerificationScreen
+      if (pathname !== '/VerificationScreen') {
+        router.replace('/VerificationScreen');
+        return;
+      }
     }
 
     // If it's an allowed route, let it through
     if (isAllowedRoute) {
-        return;
+      return;
     }
 
     // Default: redirect to tabs for any other route
     if (!pathname?.startsWith('/(tabs)')) {
-        router.replace('/(tabs)');
+      router.replace('/(tabs)');
     }
-}, [isReady, user, pathname]);
+  }, [isReady, user, pathname]);
 
   if (!isReady) {
     return (
@@ -148,8 +156,8 @@ useEffect(() => {
   }
 
   return (
-    <GestureHandlerRootView 
-    style={{
+    <GestureHandlerRootView
+      style={{
         flex: 1,
         // Only apply maxWidth on web
         ...(Platform.OS === 'web' && {
@@ -163,56 +171,55 @@ useEffect(() => {
           borderRightWidth: 1,
           borderColor: '#ddd',
         }),
-        // Only apply top on IOS
-        ...(Platform.OS === 'ios' && {
-          paddingTop: 40,
-          // top: 40,
-        }),
       }}
     >
-      <AuthContext.Provider value={{ user, setUser }}>
-        <ModalProvider>
-          <ProfileViewProvider>
-            {/* Stack must be the last child to properly handle gestures */}
-            <Stack screenOptions={{ 
-              headerShown: false, 
-              animation: 'none',
-              gestureEnabled: true
-            }}>
-              {/* Define ALL screens statically - no conditional rendering */}
-              <Stack.Screen
-                name="LoginScreen"
-                options={{ headerShown: false }}
-              />
-              <Stack.Screen
-                name="RegisterScreen"
-                options={{ headerShown: false }}
-              />
-              <Stack.Screen
-                name="ForgotPasswordScreen"
-                options={{ headerShown: false }}
-              />
-              <Stack.Screen
-                name="ResetPasswordScreen"
-                options={{ headerShown: false }}
-              />
-              <Stack.Screen
-                name="VerificationScreen"
-                options={{ headerShown: false }}
-              />
+      <SafeAreaProvider>
+        <AuthContext.Provider value={{ user, setUser }}>
+          <ModalProvider>
+            <ProfileViewProvider>
+              {/* Stack must be the last child to properly handle gestures */}
+              <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
+                <Stack screenOptions={{
+                  headerShown: false,
+                  animation: 'none',
+                  gestureEnabled: true
+                }}>
+                  {/* Define ALL screens statically - no conditional rendering */}
+                  <Stack.Screen
+                    name="LoginScreen"
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen
+                    name="RegisterScreen"
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen
+                    name="ForgotPasswordScreen"
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen
+                    name="ResetPasswordScreen"
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen
+                    name="VerificationScreen"
+                    options={{ headerShown: false }}
+                  />
 
-              <Stack.Screen
-                name="(tabs)"
-                options={{ headerShown: false }}
-              />
-            </Stack>
-            
-            {/* Modals render above Stack */}
-            <GlobalModals />
-            <ModalManager />
-          </ProfileViewProvider>
-        </ModalProvider>
-      </AuthContext.Provider>
+                  <Stack.Screen
+                    name="(tabs)"
+                    options={{ headerShown: false }}
+                  />
+                </Stack>
+              </SafeAreaView>
+
+              {/* Modals render above Stack */}
+              <GlobalModals />
+              <ModalManager />
+            </ProfileViewProvider>
+          </ModalProvider>
+        </AuthContext.Provider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

@@ -26,7 +26,7 @@ import getApiBaseImage from '@/services/getApiBaseImage';
 import { useProfileView } from '@/context/ProfileViewContext';
 import { useModal } from '@/context/ModalContext';
 import { usePostStore } from '@/stores/postStore';
-import { Video } from 'expo-av';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import { MediaViewer } from './MediaViewer';
 import React from 'react';
 import { PostActionButtons } from './PostActionButtons';
@@ -154,13 +154,13 @@ export default function PostListItem({
           {sortedMedia.length === 1 ? (
             <TouchableOpacity onPress={() => service.openMediaViewer(0)}>
               {sortedMedia[0].type === 'video' ? (
-                <Video
-                  source={{ uri: `${getApiBaseImage()}/storage/${sortedMedia[0].file_path}` }}
+                <VideoView
+                  player={useVideoPlayer(
+                    `${getApiBaseImage()}/storage/${sortedMedia[0].file_path}`
+                  )}
                   style={styles.singleMedia}
-                  resizeMode="cover"
-                  shouldPlay={false}
-                  isMuted={true}
-                  useNativeControls={false}
+                  contentFit="cover"
+                  nativeControls={false}
                 />
               ) : (
                 <Image
@@ -179,13 +179,13 @@ export default function PostListItem({
                   style={styles.multiMediaItem}
                 >
                   {media.type === 'video' ? (
-                    <Video
-                      source={{ uri: `${getApiBaseImage()}/storage/${media.file_path}` }}
+                    <VideoView
+                      player={useVideoPlayer(
+                        `${getApiBaseImage()}/storage/${media.file_path}`
+                      )}
                       style={styles.multiMediaContent}
-                      resizeMode="cover"
-                      shouldPlay={false}
-                      isMuted={true}
-                      useNativeControls={false}
+                      contentFit="cover"
+                      nativeControls={false}
                     />
                   ) : (
                     <Image

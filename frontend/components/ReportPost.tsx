@@ -20,11 +20,11 @@ const reportReasons = [
     "Something else"
 ];
 
-export default function ReportPost({ 
-    visible, 
-    postId, 
-    onClose, 
-    onReportSubmitted 
+export default function ReportPost({
+    visible,
+    postId,
+    onClose,
+    onReportSubmitted
 }: ReportPostProps) {
     const handleReport = async (reason: string) => {
         try {
@@ -46,7 +46,7 @@ export default function ReportPost({
             <View style={styles.overlay}>
                 <View style={styles.container}>
                     <Text style={styles.title}>Why are you reporting this post?</Text>
-                    
+
                     <ScrollView style={styles.reasonsContainer}>
                         {reportReasons.map((reason, index) => (
                             <TouchableOpacity
@@ -58,8 +58,8 @@ export default function ReportPost({
                             </TouchableOpacity>
                         ))}
                     </ScrollView>
-                    
-                    <TouchableOpacity 
+
+                    <TouchableOpacity
                         style={styles.cancelButton}
                         onPress={onClose}
                     >

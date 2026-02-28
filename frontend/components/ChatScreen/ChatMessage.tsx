@@ -1,7 +1,7 @@
 // components/ChatMessage.tsx
 import React, { useMemo } from 'react';
 import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { Video } from 'expo-av';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import { PostActionButtons } from '../PostActionButtons';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,9 +33,9 @@ const ChatMessage = ({ item, user, service, onMenuPress, onCommentPress }: ChatM
       styles.messageContainer,
       item.user.id === user?.id ? styles.outgoingContainer : styles.incomingContainer
     ]}>
-      
+
       {/* Menu button */}
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.menuButton}
         onPress={service.handleMenuPress}
       >
@@ -47,7 +47,7 @@ const ChatMessage = ({ item, user, service, onMenuPress, onCommentPress }: ChatM
           styles.messageBubble,
           item.user.id === user?.id ? styles.outgoingBubble : styles.incomingBubble
         ]}>
-                      
+
 
           {/* Message header with text and timestamp */}
           <View style={styles.messageHeader}>
@@ -55,12 +55,12 @@ const ChatMessage = ({ item, user, service, onMenuPress, onCommentPress }: ChatM
               styles.messageTime,
               item.user.id === user?.id ? styles.outgoingTime : styles.incomingTime
             ]}>
-              {new Date(item.created_at).toLocaleTimeString([], { 
-                hour: '2-digit', 
-                minute: '2-digit' 
+              {new Date(item.created_at).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit'
               })}
             </Text>
-            
+
             <Text style={[
               styles.messageText,
               item.user.id === user?.id ? styles.outgoingText : styles.incomingText
@@ -78,13 +78,13 @@ const ChatMessage = ({ item, user, service, onMenuPress, onCommentPress }: ChatM
                   service.setMediaViewerVisible(true);
                 }}>
                   {postMedia[0].type === 'video' ? (
-                    <Video
-                      source={{ uri: `${getApiBaseImage()}/storage/${postMedia[0].file_path}` }}
+                    <VideoView
+                      player={useVideoPlayer(
+                        `${getApiBaseImage()}/storage/${postMedia[0].file_path}`
+                      )}
                       style={styles.singleMedia}
-                      resizeMode="cover"
-                      shouldPlay={false}
-                      isMuted={true}
-                      useNativeControls={false}
+                      contentFit="cover"
+                      nativeControls={false}
                     />
                   ) : (
                     <Image
@@ -97,7 +97,7 @@ const ChatMessage = ({ item, user, service, onMenuPress, onCommentPress }: ChatM
               ) : (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   {postMedia.map((media: any, index: number) => (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       key={`${media.id}-${index}`}
                       onPress={() => {
                         service.setMediaViewerIndex(index);
@@ -106,13 +106,13 @@ const ChatMessage = ({ item, user, service, onMenuPress, onCommentPress }: ChatM
                       style={styles.multiMediaItem}
                     >
                       {media.type === 'video' ? (
-                        <Video
-                          source={{ uri: `${getApiBaseImage()}/storage/${media.file_path}` }}
+                        <VideoView
+                          player={useVideoPlayer(
+                            `${getApiBaseImage()}/storage/${media.file_path}`
+                          )}
                           style={styles.multiMediaContent}
-                          resizeMode="cover"
-                          shouldPlay={false}
-                          isMuted={true}
-                          useNativeControls={false}
+                          contentFit="cover"
+                          nativeControls={false}
                         />
                       ) : (
                         <Image
@@ -127,16 +127,16 @@ const ChatMessage = ({ item, user, service, onMenuPress, onCommentPress }: ChatM
               )}
             </View>
           )}
-          
+
           {/* Post Action Buttons */}
           <View style={styles.messageActions}>
             <PostActionButtons
               post={item}
               onReact={(emoji) => service.handleReact(emoji, item.id)}
               onDeleteReaction={() => service.deletePostReaction(item.id)}
-              onRepost={() => {}}
-              onShare={() => {}}
-              onBookmark={() => {}}
+              onRepost={() => { }}
+              onShare={() => { }}
+              onBookmark={() => { }}
               onCommentPress={handleCommentPress}
               currentReactingItem={service.currentReactingItem}
               setCurrentReactingItem={service.setCurrentReactingItem}

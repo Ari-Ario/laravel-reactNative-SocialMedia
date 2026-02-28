@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Audio } from 'expo-av';
+import { useAudioRecorder, requestRecordingPermissionsAsync, setAudioModeAsync, RecordingPresets } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 
@@ -70,7 +70,7 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
   const [generatedContent, setGeneratedContent] = useState<Idea[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [recording, setRecording] = useState<any | null>(null);
   const [voiceInput, setVoiceInput] = useState('');
   const [recordingTime, setRecordingTime] = useState(0);
 
@@ -122,23 +122,20 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
 
   const startVoiceIdeation = async () => {
     try {
-      const permission = await Audio.requestPermissionsAsync();
-      if (!permission.granted) {
+      const { granted } = await requestRecordingPermissionsAsync();
+      if (!granted) {
         Alert.alert('Permission required', 'Need microphone access for voice input');
         return;
       }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false,
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
       });
 
-      const newRecording = new Audio.Recording();
-      await newRecording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
-      await newRecording.startAsync();
+      const { AudioRecorder } = await import('expo-audio');
+      const newRecording = new AudioRecorder(RecordingPresets.HIGH_QUALITY);
+      await newRecording.record();
 
       setRecording(newRecording);
       setIsRecording(true);
@@ -177,8 +174,8 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
         recordingTimerRef.current = null;
       }
 
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
+      await recording.stop();
+      const uri = recording.uri;
       setIsRecording(false);
       setRecording(null);
 
