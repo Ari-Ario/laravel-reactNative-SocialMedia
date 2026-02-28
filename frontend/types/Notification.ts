@@ -25,7 +25,7 @@ export const NOTIFICATION_TYPES = {
   POST_DELETED: 'post_deleted',
   NEW_FOLLOWER: 'new_follower',
   CHATBOT_TRAINING: 'chatbot_training',
-  
+
   // New Chat Types
   SPACE_INVITATION: 'space_invitation',
   CALL_STARTED: 'call_started',

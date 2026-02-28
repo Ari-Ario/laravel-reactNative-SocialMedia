@@ -4,58 +4,58 @@ import { getToken } from "./TokenService";
 import getApiBase from "./getApiBase";
 
 export async function fetchPosts() {
-    const token = await getToken();
-    const API_BASE = getApiBase();
-    const url = `${API_BASE}/posts`;
-    
-    const response = await axios.get(url, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    });
-    
-    if (!response.data) {
-        throw new Error('Failed to fetch posts');
-    }
-    // console.log('data back in PostService: ',response.data.data)
-    return response.data.data; // Return the posts array
+  const token = await getToken();
+  const API_BASE = getApiBase();
+  const url = `${API_BASE}/posts`;
+
+  const response = await axios.get(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.data) {
+    throw new Error('Failed to fetch posts');
+  }
+  // console.log('data back in PostService: ',response.data.data)
+  return response.data.data; // Return the posts array
 }
 
 export async function fetchPostById(postId: number) {
-    const token = await getToken();
-    const API_BASE = getApiBase();
-    
-    try {
-        const response = await axios.get(`${API_BASE}/posts/${postId}`, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
-        
-        console.log('📱 Fetched post by ID response structure:', {
-            data: response.data,
-            hasDataProperty: !!response.data.data,
-            keys: Object.keys(response.data)
-        });
-        
-        // If the response has a data property, return it, otherwise return the whole response
-        return response.data.data || response.data;
-    } catch (error) {
-        console.error('❌ Error fetching post by ID:', postId, error);
-        throw error;
-    }
+  const token = await getToken();
+  const API_BASE = getApiBase();
+
+  try {
+    const response = await axios.get(`${API_BASE}/posts/${postId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    console.log('📱 Fetched post by ID response structure:', {
+      data: response.data,
+      hasDataProperty: !!response.data.data,
+      keys: Object.keys(response.data)
+    });
+
+    // If the response has a data property, return it, otherwise return the whole response
+    return response.data.data || response.data;
+  } catch (error) {
+    console.error('❌ Error fetching post by ID:', postId, error);
+    throw error;
+  }
 }
 
 export async function createPost(formData: FormData) {
-    const token = await getToken();
-    const API_BASE = getApiBase();
-    const url = (API_BASE === 'http://127.0.0.1:8000/api') ? '/posts' : `${API_BASE}/posts`;
-    // console.log(formData)
+  const token = await getToken();
+  const API_BASE = getApiBase();
+  const url = (API_BASE === 'http://127.0.0.1:8000/api') ? '/posts' : `${API_BASE}/posts`;
+  // console.log(formData)
 
   const response = await axios.post(`${API_BASE}/posts`, formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
-        Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
   });
 
@@ -63,73 +63,73 @@ export async function createPost(formData: FormData) {
 }
 
 export async function updatePost(postId: number, formData: FormData) {
-    const token = await getToken();
-    const API_BASE = getApiBase();
-    
-    // For Laravel to handle as PUT request
-    formData.append('_method', 'PUT');
-    
-    const response = await axios.post(`${API_BASE}/posts/${postId}`, formData, {
-        headers: {
-            'Content-Type': 'multipart/form-data',
-            Authorization: `Bearer ${token}`,
-        },
-    });
-    // console.log(response.data)
-    
-    return response.data;
+  const token = await getToken();
+  const API_BASE = getApiBase();
+
+  // For Laravel to handle as PUT request
+  formData.append('_method', 'PUT');
+
+  const response = await axios.post(`${API_BASE}/posts/${postId}`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  // console.log(response.data)
+
+  return response.data;
 }
 
 
 export async function deletePostMedia(postId: number, mediaId: number) {
-    const token = await getToken();
-    const API_BASE = getApiBase();
-    
-    const response = await axios.delete(`${API_BASE}/posts/${postId}/media/${mediaId}`, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    });
-    
-    return response.data;
+  const token = await getToken();
+  const API_BASE = getApiBase();
+
+  const response = await axios.delete(`${API_BASE}/posts/${postId}/media/${mediaId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return response.data;
 }
 
 
 export async function deletePost(postId: number) {
-    const token = await getToken();
-    const API_BASE = getApiBase();
-    
-    try {
-        const response = await axios.delete(`${API_BASE}/posts/${postId}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json',
-            },
-        });
-        return response.data;
-    } catch (error) {
-        // Simple error handling that works universally
-        const errorMessage = error.response?.data?.message || 
-                           error.message || 
-                           'Failed to delete post';
-        console.error('Delete post error:', {
-            status: error.response?.status,
-            message: errorMessage,
-            error: error
-        });
-        throw new Error(errorMessage);
-    }
+  const token = await getToken();
+  const API_BASE = getApiBase();
+
+  try {
+    const response = await axios.delete(`${API_BASE}/posts/${postId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    // Simple error handling that works universally
+    const errorMessage = error.response?.data?.message ||
+      error.message ||
+      'Failed to delete post';
+    console.error('Delete post error:', {
+      status: error.response?.status,
+      message: errorMessage,
+      error: error
+    });
+    throw new Error(errorMessage);
+  }
 }
 
 export async function fetchPost(postId: number) {
-    const token = await getToken();
-    const API_BASE = getApiBase();
-    const response = await axios.get(`${API_BASE}/posts/${postId}`, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    });
-    return response.data;
+  const token = await getToken();
+  const API_BASE = getApiBase();
+  const response = await axios.get(`${API_BASE}/posts/${postId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return response.data;
 }
 
 export const reactToPost = async (
@@ -176,7 +176,7 @@ export const deleteReactionFromPost = async (
   const API_BASE = getApiBase();
 
   try {
-    const endpoint = commentId 
+    const endpoint = commentId
       ? `${API_BASE}/comments/${commentId}/deletereaction`
       : `${API_BASE}/posts/${postId}/deletereaction`;
 
@@ -211,7 +211,7 @@ export const reactToComment = async (
   commentId: number,
   emoji: string
 ): Promise<{
-  comment(postId: number, commentId: number, comment: any): unknown; reaction: Reaction 
+  comment(postId: number, commentId: number, comment: any): unknown; reaction: Reaction
 }> => {
   const token = await getToken();
   const API_BASE = getApiBase();
@@ -246,8 +246,8 @@ export const reactToComment = async (
 
 export const deleteReactionFromComment = async (
   commentId: number
-): Promise<{ 
-  success: boolean; 
+): Promise<{
+  success: boolean;
   reaction_counts?: ReactionCount[];
   reaction_comments_count?: number;
 }> => {
@@ -282,17 +282,17 @@ export const deleteReactionFromComment = async (
 
 
 export async function commentOnPost(postId: number, content: string, parentId?: number) {
-    const token = await getToken();
-    const API_BASE = getApiBase();
-    const response = await axios.post(`${API_BASE}/posts/${postId}/comment`, 
-        { content, parent_id: parentId },
-        {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        }
-    );
-    return response.data;
+  const token = await getToken();
+  const API_BASE = getApiBase();
+  const response = await axios.post(`${API_BASE}/posts/${postId}/comment`,
+    { content, parent_id: parentId },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+  return response.data;
 }
 
 export async function repostPost(postId: number): Promise<{
@@ -324,52 +324,52 @@ export async function repostPost(postId: number): Promise<{
 }
 
 export async function sharePost(postId: number) {
-    const token = await getToken();
-    const API_BASE = getApiBase();
-    const response = await axios.post(`${API_BASE}/posts/${postId}/share`, 
-        {},
-        {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        }
-    );
-    return response.data;
+  const token = await getToken();
+  const API_BASE = getApiBase();
+  const response = await axios.post(`${API_BASE}/posts/${postId}/share`,
+    {},
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+  return response.data;
 }
 
 export async function bookmarkPost(postId: number) {
-    const token = await getToken();
-    const API_BASE = getApiBase();
-    const response = await axios.post(`${API_BASE}/posts/${postId}/bookmark`, 
-        {},
-        {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        }
-    );
-    return response.data;
+  const token = await getToken();
+  const API_BASE = getApiBase();
+  const response = await axios.post(`${API_BASE}/posts/${postId}/bookmark`,
+    {},
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+  return response.data;
 }
 
 
 export async function reportPost(postId: number, reason: string) {
-    const token = await getToken();
-    const API_BASE = getApiBase();
-    const response = await axios.post(`${API_BASE}/posts/${postId}/report`, 
-        { reason },
-        {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        }
-    );
-    return response.data;
+  const token = await getToken();
+  const API_BASE = getApiBase();
+  const response = await axios.post(`${API_BASE}/posts/${postId}/report`,
+    { reason },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+  return response.data;
 }
 
 export async function deleteComment(postId: number, commentId: number) {
   const token = await getToken();
   const API_BASE = getApiBase();
-  
+
   try {
     const response = await axios.delete(
       `${API_BASE}/posts/${postId}/comments/${commentId}`,
@@ -379,7 +379,7 @@ export async function deleteComment(postId: number, commentId: number) {
         },
       }
     );
-    
+
     if (response.data.success) {
       return response.data;
     } else {

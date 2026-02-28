@@ -73,7 +73,9 @@ emulator -avd Pixel_9_API35_Foldable -no-snapshot-load -gpu swiftshader_indirect
 
 
 ## then in new Terminal:
+npx expo start --go --tunnel
 npx expo start -c
+npx expo start -c --tunnel
 
 ## Learning resources
 

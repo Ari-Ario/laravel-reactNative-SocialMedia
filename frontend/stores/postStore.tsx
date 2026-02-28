@@ -53,18 +53,18 @@ interface PostStore {
   posts: Post[];
   subscribedPostIds: number[];
   expandedPostId: number | null;
-  
+
   // Track pending operations to prevent duplicates
   pendingCommentIds: Set<number>;
   pendingReactionIds: Set<number>;
-  pendingPostIds: Set<number>; 
+  pendingPostIds: Set<number>;
 
   // Basic operations
   setPosts: (posts: Post[]) => void;
   updatePost: (updatedPost: Post) => void;
   addPost: (newPost: Post) => void;
   deletePostById: (postId: number) => void;
-  
+
   // Expanded post management
   setExpandedPostId: (postId: number | null) => void;
   toggleExpandedPostId: (postId: number) => void;
@@ -72,7 +72,7 @@ interface PostStore {
   // Reactions
   addPostReaction: (postId: number, reaction: Reaction) => void;
   removePostReaction: (postId: number, reactionId: number) => void;
-  
+
   // Comments
   addPostComment: (postId: number, comment: Comment) => void;
   updatePostWithNewComment: (postId: number, comment: Comment) => void;
@@ -111,7 +111,7 @@ interface PostStore {
   subscribeToPosts: (postIds: number[]) => void;
   unsubscribeFromAllPosts: () => void;
   disconnectRealtime: () => void;
-  
+
   // Real-time event handlers with duplicate prevention
   handleNewComment: (data: { comment: any; postId: number }) => void;
   handleNewReaction: (data: { reaction: any; postId: number }) => void;
@@ -133,7 +133,7 @@ export const usePostStore = create<PostStore>((set, get) => ({
   posts: [],
   subscribedPostIds: [],
   expandedPostId: null,
-  
+
   // Track pending operations to prevent duplicates
   pendingCommentIds: new Set<number>(),
   pendingReactionIds: new Set<number>(),
@@ -141,7 +141,7 @@ export const usePostStore = create<PostStore>((set, get) => ({
 
   // Basic post operations
   setPosts: (posts) => set({ posts }),
-  
+
   updatePost: (updatedPost) => {
     if (!updatedPost?.id) return;
     set((state) => ({
@@ -150,11 +150,11 @@ export const usePostStore = create<PostStore>((set, get) => ({
       ),
     }));
   },
-  
+
   addPost: (post) => {
     set((state) => {
       const existingIndex = state.posts.findIndex(p => p.id === post.id);
-      
+
       // Only update if the post is different
       if (existingIndex >= 0) {
         const existingPost = state.posts[existingIndex];
@@ -162,7 +162,7 @@ export const usePostStore = create<PostStore>((set, get) => ({
         if (JSON.stringify(existingPost) === JSON.stringify(post)) {
           return state; // No change needed
         }
-        
+
         const updatedPosts = [...state.posts];
         updatedPosts[existingIndex] = post;
         return { posts: updatedPosts };
@@ -171,14 +171,14 @@ export const usePostStore = create<PostStore>((set, get) => ({
       }
     });
   },
-    
+
   deletePostById: (postId) => set((state) => ({
     posts: state.posts.filter((p) => p.id !== postId),
   })),
 
   // Expanded post management
   setExpandedPostId: (postId) => set({ expandedPostId: postId }),
-  
+
   toggleExpandedPostId: (postId) => {
     set((state) => ({
       expandedPostId: state.expandedPostId === postId ? null : postId
@@ -199,7 +199,7 @@ export const usePostStore = create<PostStore>((set, get) => ({
       return { pendingPostIds: newPending };
     });
   },
-  
+
   markCommentAsPending: (commentId: number) => {
     set((state) => ({
       pendingCommentIds: new Set([...state.pendingCommentIds, commentId])
@@ -231,7 +231,7 @@ export const usePostStore = create<PostStore>((set, get) => ({
   // Reaction operations with duplicate prevention
   addPostReaction: (postId, reaction) => {
     const { pendingReactionIds } = get();
-    
+
     // Skip if this reaction is already pending (being handled by real-time)
     if (pendingReactionIds.has(reaction.id)) {
       console.log('🔄 Skipping duplicate reaction (already pending):', reaction.id);
@@ -241,14 +241,14 @@ export const usePostStore = create<PostStore>((set, get) => ({
     set((state) => ({
       posts: state.posts.map((post) => {
         if (post.id !== postId) return post;
-        
+
         const existingReactions = post.reactions || [];
         const alreadyReacted = existingReactions.some(
           (r) => r.user_id === reaction.user_id && r.emoji === reaction.emoji
         );
-        
+
         if (alreadyReacted) return post;
-        
+
         return {
           ...post,
           reactions: [...existingReactions, reaction],
@@ -257,63 +257,63 @@ export const usePostStore = create<PostStore>((set, get) => ({
       }),
     }));
   },
-  
+
   removePostReaction: (postId, reactionId) => {
     set((state) => ({
       posts: state.posts.map((post) => {
         if (post.id !== postId) return post;
-        
+
         const reactionToRemove = post.reactions?.find(r => r.id === reactionId);
         if (!reactionToRemove) return post;
-        
+
         return {
           ...post,
           reactions: post.reactions?.filter(r => r.id !== reactionId),
           reaction_counts: updateReactionCounts(
-            post.reaction_counts || [], 
-            reactionToRemove.emoji, 
+            post.reaction_counts || [],
+            reactionToRemove.emoji,
             -1
           )
         };
       }),
     }));
   },
-  
-  // Comment operations with duplicate prevention
-addPostComment: (postId, comment) => {
-  const { pendingCommentIds } = get();
-  
-  if (pendingCommentIds.has(comment.id)) {
-    console.log('🔄 Skipping duplicate comment (already pending):', comment.id);
-    return;
-  }
 
-  set((state) => ({
-    posts: state.posts.map((post) => {
-      if (post.id !== postId) return post;
-      
-      const newComment = {
-        ...comment,
-        reaction_comments: comment.reaction_comments || [], // Initialize reaction_comments
-        reaction_comments_count: comment.reaction_comments_count || 0, // Initialize count
-      };
-      
-      const newComments = comment.parent_id
-        ? addReplyToComment(post.comments || [], newComment)
-        : [...(post.comments || []), newComment];
-      
-      return {
-        ...post,
-        comments: newComments,
-        comments_count: (post.comments_count || 0) + 1
-      };
-    }),
-  }));
-},
-  
+  // Comment operations with duplicate prevention
+  addPostComment: (postId, comment) => {
+    const { pendingCommentIds } = get();
+
+    if (pendingCommentIds.has(comment.id)) {
+      console.log('🔄 Skipping duplicate comment (already pending):', comment.id);
+      return;
+    }
+
+    set((state) => ({
+      posts: state.posts.map((post) => {
+        if (post.id !== postId) return post;
+
+        const newComment = {
+          ...comment,
+          reaction_comments: comment.reaction_comments || [], // Initialize reaction_comments
+          reaction_comments_count: comment.reaction_comments_count || 0, // Initialize count
+        };
+
+        const newComments = comment.parent_id
+          ? addReplyToComment(post.comments || [], newComment)
+          : [...(post.comments || []), newComment];
+
+        return {
+          ...post,
+          comments: newComments,
+          comments_count: (post.comments_count || 0) + 1
+        };
+      }),
+    }));
+  },
+
   updatePostWithNewComment: (postId, comment) => {
     const { pendingCommentIds } = get();
-    
+
     if (pendingCommentIds.has(comment.id)) {
       console.log('🔄 Skipping duplicate comment in update:', comment.id);
       return;
@@ -322,9 +322,9 @@ addPostComment: (postId, comment) => {
     set((state) => ({
       posts: state.posts.map((post) => {
         if (post.id !== postId) return post;
-        
+
         const currentComments = post.comments || [];
-        
+
         if (comment.parent_id) {
           return {
             ...post,
@@ -332,7 +332,7 @@ addPostComment: (postId, comment) => {
             comments_count: post.comments_count
           };
         }
-        
+
         return {
           ...post,
           comments: [...currentComments, comment],
@@ -346,7 +346,7 @@ addPostComment: (postId, comment) => {
   addCommentReaction: (postId, commentId, userId, emoji) => {
     const { pendingReactionIds } = get();
     const tempReactionId = 1000000 + Date.now(); // Generate temp ID
-    
+
     // Mark as pending to prevent duplicates
     get().markReactionAsPending(tempReactionId);
 
@@ -360,14 +360,14 @@ addPostComment: (postId, comment) => {
       return {
         posts: state.posts.map((post) => {
           if (post.id !== postId) return post;
-          
+
           const updater = (comment: Comment) => {
             const hasExistingReaction = comment.reaction_comments?.some(
               (r: any) => r.user_id === userId && r.emoji === emoji
             );
-            
+
             if (hasExistingReaction) return comment;
-            
+
             const tempReaction = {
               id: tempReactionId,
               user_id: userId,
@@ -376,11 +376,11 @@ addPostComment: (postId, comment) => {
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             };
-            
+
             const filteredReactions = comment.reaction_comments?.filter(
               (r: any) => r.user_id !== userId
             ) || [];
-            
+
             return {
               ...comment,
               reaction_comments: [...filteredReactions, tempReaction],
@@ -399,7 +399,7 @@ addPostComment: (postId, comment) => {
 
   updateCommentReactions: (postId, commentId, newReaction, counts = null) => {
     const { pendingReactionIds } = get();
-    
+
     if (pendingReactionIds.has(newReaction.id)) {
       console.log('🔄 Skipping duplicate comment reaction:', newReaction.id);
       return;
@@ -437,7 +437,7 @@ addPostComment: (postId, comment) => {
     });
   },
 
-  removeCommentReaction: (postId, commentId, userId, updatedCounts = [], updatedCountNumber = null) => 
+  removeCommentReaction: (postId, commentId, userId, updatedCounts = [], updatedCountNumber = null) =>
     set((state) => {
       const postIndex = state.posts.findIndex(p => p.id === postId);
       if (postIndex === -1) return state;
@@ -480,7 +480,7 @@ addPostComment: (postId, comment) => {
     return {
       posts: state.posts.map((post) => {
         if (post.id !== postId) return post;
-        
+
         return {
           ...post,
           comments: post.comments?.map(comment => {
@@ -508,9 +508,9 @@ addPostComment: (postId, comment) => {
     return {
       posts: state.posts.map(post => {
         if (post.id !== postId) return post;
-        
+
         const updatedComments = removeCommentAndReplies(post.comments || []);
-        
+
         return {
           ...post,
           comments: updatedComments,
@@ -524,7 +524,7 @@ addPostComment: (postId, comment) => {
     console.log('🔄 Initializing real-time connection...');
     PusherService.initialize(token);
   },
-  
+
   // subscribeToPost: (postId: number) => {
   //   if (!PusherService.isReady()) {
   //     console.warn('⚠️ Pusher not ready, delaying subscription to post:', postId);
@@ -533,26 +533,26 @@ addPostComment: (postId, comment) => {
   //     }, 1000);
   //     return;
   //   }
-    
+
   //   console.log(`🔄 Subscribing to individual post ${postId}`);
-    
+
   //   const handleNewComment = (data: any) => {
   //     console.log('📝 Individual post comment received:', data);
   //     get().handleNewComment(data);
   //   };
-    
+
   //   const handleNewReaction = (data: any) => {
   //     console.log('❤️ Individual post reaction received:', data);
   //     get().handleNewReaction(data);
   //   };
-    
+
   //   PusherService.subscribeToIndividualPost(postId, handleNewComment, handleNewReaction);
-    
+
   //   set((state) => ({
   //     subscribedPostIds: [...state.subscribedPostIds, postId]
   //   }));
   // },
-  
+
   subscribeToPosts: (postIds: number[]) => {
     if (!PusherService.isReady()) {
       console.warn('⚠️ Pusher not ready, delaying global subscription');
@@ -561,14 +561,14 @@ addPostComment: (postId, comment) => {
       }, 1000);
       return;
     }
-    
+
     console.log(`🔄 Subscribing to ${postIds.length} posts via global channel`);
-    
+
     const handleNewComment = (data: any) => {
       console.log('📝 Global channel comment received:', data);
       get().handleNewComment(data);
     };
-    
+
     const handleNewReaction = (data: any) => {
       console.log('❤️ Global channel reaction received:', data);
       get().handleNewReaction(data);
@@ -593,10 +593,10 @@ addPostComment: (postId, comment) => {
       console.log('🗑️ Global channel post deleted:', data);
       get().handlePostDeleted(data);
     };
-    
+
     PusherService.subscribeToPosts(
-      postIds, 
-      handleNewComment, 
+      postIds,
+      handleNewComment,
       handleNewReaction,
       handleCommentReaction,
       handleNewPost,
@@ -606,57 +606,57 @@ addPostComment: (postId, comment) => {
   },
 
   // Add these new event handlers to your PostStore
-handleCommentReaction: (data) => {
-  const { posts, pendingReactionIds } = get();
-  
-  console.log('✅ Received comment reaction data:', data);
-  
-  // Coerce commentId to number
-  const commentId = Number(data.commentId);
-  
-  get().markReactionAsPending(data.reaction.id);
+  handleCommentReaction: (data) => {
+    const { posts, pendingReactionIds } = get();
 
-  const updatedPosts = posts.map(post => {
-    if (post.id === data.postId) {
-      const updater = (comment: Comment) => {
-        if (comment.id === commentId) {
-          const existingReactions = comment.reaction_comments || [];
-          const alreadyReacted = existingReactions.some(
-            (r: any) => r.user_id === data.reaction.user_id && r.emoji === data.reaction.emoji
-          );
-          
-          if (!alreadyReacted) {
-            console.log('✅ Adding new comment reaction via real-time:', data.reaction.id);
-            return {
-              ...comment,
-              reaction_comments: [...existingReactions, data.reaction],
-              reaction_comments_count: (comment.reaction_comments_count || 0) + 1
-            };
+    console.log('✅ Received comment reaction data:', data);
+
+    // Coerce commentId to number
+    const commentId = Number(data.commentId);
+
+    get().markReactionAsPending(data.reaction.id);
+
+    const updatedPosts = posts.map(post => {
+      if (post.id === data.postId) {
+        const updater = (comment: Comment) => {
+          if (comment.id === commentId) {
+            const existingReactions = comment.reaction_comments || [];
+            const alreadyReacted = existingReactions.some(
+              (r: any) => r.user_id === data.reaction.user_id && r.emoji === data.reaction.emoji
+            );
+
+            if (!alreadyReacted) {
+              console.log('✅ Adding new comment reaction via real-time:', data.reaction.id);
+              return {
+                ...comment,
+                reaction_comments: [...existingReactions, data.reaction],
+                reaction_comments_count: (comment.reaction_comments_count || 0) + 1
+              };
+            }
+            console.log('🔄 Comment reaction already exists:', data.reaction.id);
           }
-          console.log('🔄 Comment reaction already exists:', data.reaction.id);
-        }
-        return comment;
-      };
+          return comment;
+        };
 
-      return {
-        ...post,
-        comments: updateCommentInTree(post.comments || [], commentId, updater)
-      };
-    }
-    return post;
-  });
-  set({ posts: updatedPosts });
-},
+        return {
+          ...post,
+          comments: updateCommentInTree(post.comments || [], commentId, updater)
+        };
+      }
+      return post;
+    });
+    set({ posts: updatedPosts });
+  },
 
   handleNewPost: (data) => {
     const { posts, pendingPostIds } = get();
-    
+
     // Mark this post as pending to prevent API duplicates
     get().markPostAsPending(data.post.id);
 
     // Check if post already exists
     const postExists = posts.some(post => post.id === data.post.id);
-    
+
     if (!postExists) {
       console.log('✅ Adding new post via real-time:', data.post.id);
       set((state) => ({
@@ -669,7 +669,7 @@ handleCommentReaction: (data) => {
 
   handlePostUpdated: (data) => {
     const { posts } = get();
-        
+
     const updatedPosts = posts.map(post => {
       if (post.id === data.postId) {
         console.log('✅ Updating post via real-time:', data.postId);
@@ -692,22 +692,22 @@ handleCommentReaction: (data) => {
 
   handlePostDeleted: (data) => {
     const { posts } = get();
-    
+
     console.log('🗑️ Removing post via real-time:', data.postId);
     set((state) => ({
       posts: state.posts.filter(post => post.id !== data.postId)
     }));
   },
-  
+
   unsubscribeFromAllPosts: () => {
     console.log('🔄 Unsubscribing from all posts');
     PusherService.unsubscribeFromChannel('posts.global');
   },
-  
+
   unsubscribeFromPost: (postId: number) => {
     console.log(`🔄 Unsubscribing from post ${postId}`);
     PusherService.unsubscribeFromIndividualPost(postId);
-    
+
     set((state) => ({
       subscribedPostIds: state.subscribedPostIds.filter(id => id !== postId)
     }));
@@ -716,7 +716,7 @@ handleCommentReaction: (data) => {
   // REAL-TIME EVENT HANDLERS WITH DUPLICATE PREVENTION
   handleNewComment: (data) => {
     const { posts, pendingCommentIds } = get();
-    
+
     // Mark this comment as pending to prevent API duplicates
     get().markCommentAsPending(data.comment.id);
 
@@ -741,30 +741,30 @@ handleCommentReaction: (data) => {
     });
     set({ posts: updatedPosts });
   },
-  
+
   handleNewReaction: (data) => {
     const { posts, pendingReactionIds } = get();
-    
+
     // Mark this reaction as pending to prevent API duplicates
     get().markReactionAsPending(data.reaction.id);
 
     const updatedPosts = posts.map(post => {
       if (post.id === data.postId) {
         const existingReactions = post.reactions || [];
-        
+
         const reactionAlreadyExists = existingReactions.some(
           (r: any) => r.id === data.reaction.id
         );
-        
+
         if (reactionAlreadyExists) {
           console.log('🔄 Reaction already exists, skipping duplicate:', data.reaction.id);
           return post;
         }
-        
+
         const alreadyReacted = existingReactions.some(
           (r: any) => r.user_id === data.reaction.user_id && r.emoji === data.reaction.emoji
         );
-        
+
         if (!alreadyReacted) {
           console.log('✅ Adding new reaction via real-time:', data.reaction.id);
           return {
@@ -778,11 +778,11 @@ handleCommentReaction: (data) => {
     });
     set({ posts: updatedPosts });
   },
-  
+
   handleCommentDeleted: (data) => {
     const { posts } = get();
     console.log('🗑️ Handling comment deletion:', data);
-    
+
     // Clear from pending set
     get().clearPendingComment(data.commentId);
 
@@ -798,7 +798,7 @@ handleCommentReaction: (data) => {
         };
 
         const updatedComments = removeCommentAndReplies(post.comments || []);
-        
+
         return {
           ...post,
           comments: updatedComments,
@@ -813,7 +813,7 @@ handleCommentReaction: (data) => {
   handleReactionDeleted: (data) => {
     const { posts } = get();
     console.log('❌ Handling reaction deletion:', data);
-    
+
     // Clear from pending set
     get().clearPendingReaction(data.reactionId);
 
@@ -821,14 +821,14 @@ handleCommentReaction: (data) => {
       if (post.id === data.postId) {
         const existingReactions = post.reactions || [];
         const reactionToRemove = existingReactions.find(r => r.id === data.reactionId);
-        
+
         if (reactionToRemove) {
           return {
             ...post,
             reactions: existingReactions.filter(r => r.id !== data.reactionId),
             reaction_counts: updateReactionCounts(
-              post.reaction_counts || [], 
-              reactionToRemove.emoji, 
+              post.reaction_counts || [],
+              reactionToRemove.emoji,
               -1
             )
           };
@@ -838,7 +838,7 @@ handleCommentReaction: (data) => {
     });
     set({ posts: updatedPosts });
   },
-  
+
   disconnectRealtime: () => {
     console.log('🔄 Disconnecting real-time...');
     get().unsubscribeFromAllPosts();
@@ -854,20 +854,20 @@ function updateReactionCounts(
 ) {
   const newCounts = [...counts];
   const index = newCounts.findIndex(item => item.emoji === emoji);
-  
+
   if (index >= 0) {
     newCounts[index] = {
       emoji,
       count: Math.max(0, newCounts[index].count + delta)
     };
-    
+
     if (newCounts[index].count <= 0) {
       newCounts.splice(index, 1);
     }
   } else if (delta > 0) {
     newCounts.push({ emoji, count: 1 });
   }
-  
+
   return newCounts;
 }
 
@@ -879,14 +879,14 @@ function addReplyToComment(comments: Comment[], newComment: Comment): Comment[] 
         replies: [...(comment.replies || []), newComment]
       };
     }
-    
+
     if (comment.replies) {
       return {
         ...comment,
         replies: addReplyToComment(comment.replies, newComment)
       };
     }
-    
+
     return comment;
   });
 }
@@ -900,14 +900,14 @@ const updateCommentInTree = (
     if (comment.id === commentId) {
       return updater(comment);
     }
-    
+
     if (comment.replies && comment.replies.length > 0) {
       return {
         ...comment,
         replies: updateCommentInTree(comment.replies, commentId, updater)
       };
     }
-    
+
     return comment;
   });
 };
