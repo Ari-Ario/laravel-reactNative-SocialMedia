@@ -10,6 +10,7 @@ class PusherService {
   private isInitialized = false;
   private connectionAttempts = 0;
   private maxConnectionAttempts = 3;
+  private pendingSubscriptions: Array<() => void> = []; // ✅ Queue for early subscriptions
 
   initialize(token: string): boolean {
     // Guard: skip during SSR (Node.js has no window)
@@ -54,10 +55,18 @@ class PusherService {
           authorizer: (channel: any, options: any) => {
             return {
               authorize: (socketId: string, callback: Function) => {
-                console.log(`🔐 Authorizing channel: ${channel.name} with socket: ${socketId}`);
-                console.log(`🔐 Using token: ${token.substring(0, 20)}...`);
+                // Ensure we hit the correct auth endpoint. Laravel's Broadcast::routes() 
+                // by default registers at /broadcasting/auth. 
+                // If it's not under /api, we should use the root URL.
+                const authUrl = apiUrl.endsWith('/api')
+                  ? `${apiUrl}/broadcasting/auth` // If registered in routes/api.php
+                  : `${apiUrl.split('/api')[0] || ''}/broadcasting/auth`; // If registered in BroadcastServiceProvider
 
-                fetch(`${apiUrl}/broadcasting/auth`, {
+                console.log(`🔐 Authorizing channel: ${channel.name} with socket: ${socketId}`);
+                console.log(`🔐 Using token: ${token ? token.substring(0, 20) + '...' : 'MISSING'}`);
+                console.log(`📡 Auth endpoint: ${authUrl}`);
+
+                fetch(authUrl, {
                   method: 'POST',
                   headers: {
                     'Authorization': `Bearer ${token}`,
@@ -85,6 +94,9 @@ class PusherService {
                   })
                   .catch((error: any) => {
                     console.error(`❌ Channel authorization failed: ${channel.name}`, error);
+                    if (Platform.OS === 'android' && apiUrl.includes('localhost')) {
+                      console.warn('⚠️ Android detected using localhost. Try 10.0.2.2 instead.');
+                    }
                     callback(error, null);
                   });
               }
@@ -103,6 +115,13 @@ class PusherService {
           console.log('✅ Pusher connected successfully - Socket ID:', this.pusher?.connection.socket_id);
           this.isInitialized = true;
           this.connectionAttempts = 0;
+
+          // ✅ Process queue of early subscriptions
+          if (this.pendingSubscriptions.length > 0) {
+            console.log(`📡 Processing ${this.pendingSubscriptions.length} pending subscriptions...`);
+            this.pendingSubscriptions.forEach(sub => sub());
+            this.pendingSubscriptions = [];
+          }
         });
 
         this.pusher.connection.bind('error', (err: any) => {
@@ -129,8 +148,9 @@ class PusherService {
   // OPTIMIZED: Subscribe to user notifications with ALL event types
   subscribeToUserNotifications(userId: number, onNotification: (data: any) => void): boolean {
     if (!this.pusher || !this.isInitialized) {
-      console.warn('⚠️ Pusher not initialized. Skipping notification subscription.');
-      return false;
+      console.log('⏳ Pusher not ready. Queuing notification subscription for user:', userId);
+      this.pendingSubscriptions.push(() => this.subscribeToUserNotifications(userId, onNotification));
+      return true; // Return true as it will happen later
     }
 
     try {
@@ -145,12 +165,12 @@ class PusherService {
 
       // ✅ PROPERLY FORMAT NOTIFICATIONS FOR THE STORE
       channel.bind('new-comment', (data: any) => {
-        console.log('💬 New comment notification received:', data);
+        console.log('💬 RAW DATA (new-comment):', data);
 
         const notification = {
           type: data.type || 'comment',
           title: data.title || 'New Comment',
-          message: `${data.comment.user?.name || 'Someone'} commented: "${data.comment.content?.substring(0, 30)}..."`,
+          message: data.message || `${data.comment.user?.name || 'Someone'} commented: "${data.comment.content?.substring(0, 30)}..."`,
           data: data,
           userId: data.comment.user_id,
           postId: data.postId,
@@ -165,12 +185,12 @@ class PusherService {
 
       // ✅ FIX: Update other bindings too if they use broadcastAs
       channel.bind('new-reaction', (data: any) => {
-        console.log('❤️ New reaction notification:', data);
+        console.log('❤️ RAW DATA (new-reaction):', data);
 
         const notification = {
           type: data.type || 'reaction',
           title: data.title || 'New Reaction',
-          message: `${data.reaction.user?.name || 'Someone'} reacted with ${data.reaction.emoji} on post: "${data.reaction.post.caption.substring(0, 50)}..."`,
+          message: data.message || `${data.reaction.user?.name || 'Someone'} reacted with ${data.reaction.emoji} on post: "${data.reaction.post?.caption?.substring(0, 50)}..."`,
           data: data,
           userId: data.reaction.user_id,
           postId: data.postId,
@@ -202,12 +222,12 @@ class PusherService {
       });
 
       channel.bind('new-follower', (data: any) => {
-        console.log('👤 New follower:', data);
+        console.log('👤 RAW DATA (new-follower):', data);
 
         const notification = {
           type: data.type || 'new_follower',
           title: data.title || 'New Follower',
-          message: data.message || `${data.follower.name} started following you`,
+          message: data.message || `${data.followerName || data.follower?.name || 'Someone'} started following you`,
           data: data,
           userId: data.followerId,
           avatar: data.profile_photo || null,
@@ -297,21 +317,7 @@ class PusherService {
 
       // Space invitations
       // Find this block (around line 200-215)
-      channel.bind('space-invitation', (data: any) => {
-        console.log('📨 Space invitation received:', data);
-        const notification = {
-          type: data.type || 'space_invitation',
-          title: data.title || 'Space Invitation',
-          message: `${data.invited_by?.name || 'Someone'} invited you to join "${data.space?.title}"`,
-          data: data,
-          spaceId: data.space?.id,
-          userId: data.invited_by?.id,
-          avatar: data.invited_by?.profile_photo,
-          createdAt: new Date()
-        };
-        console.log('📨 SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification);
-      });
+      // Space invitations moved/consolidated
 
 
       // Space invitations - listen for Laravel's BroadcastNotificationCreated
@@ -345,11 +351,6 @@ class PusherService {
         }
       });
 
-      // Optional: Keep this for backward compatibility
-      channel.bind('space-invitation', (data: any) => {
-        console.log('📨 Space invitation (legacy) received:', data);
-        // Handle legacy format if needed
-      });
 
       // Call started
       channel.bind('call-started', (data: any) => {
@@ -475,10 +476,7 @@ class PusherService {
       });
       // ==================== END OF CHAT PAGE NOTIFICATIONS ====================
 
-      channel.bind('space-invitation', (data: any) => {
-        console.log('📨 Space invitation (legacy) received:', data);
-        // Handle legacy format if needed
-      });
+      // Consistently moved to a single handler
       channel.bind('pusher:subscription_succeeded', () => {
         console.log(`✅ SUBSCRIBED TO USER NOTIFICATIONS: ${channelName}`);
       });
@@ -512,8 +510,9 @@ class PusherService {
     onPostDeleted: (data: any) => void
   ): boolean {
     if (!this.pusher || !this.isInitialized) {
-      console.warn('⚠️ Pusher not initialized. Skipping global posts subscription.');
-      return false;
+      console.log('⏳ Pusher not ready. Queuing posts subscription.');
+      this.pendingSubscriptions.push(() => this.subscribeToPosts(postIds, onNewComment, onNewReaction, onCommentReaction, onNewPost, onPostUpdated, onPostDeleted));
+      return true;
     }
 
     try {
@@ -528,18 +527,14 @@ class PusherService {
 
       // Comments
       channel.bind('new-comment', (data: any) => {
-        if (postIds.includes(data.postId)) {
-          console.log('💬 Global channel: Relevant comment for post:', data.postId);
-          onNewComment(data);
-        }
+        console.log('💬 Global channel: comment received:', data.postId);
+        onNewComment(data);
       });
 
       // Post Reactions
       channel.bind('new-reaction', (data: any) => {
-        if (postIds.includes(data.postId)) {
-          console.log('❤️ Global channel: Relevant reaction for post:', data.postId);
-          onNewReaction(data);
-        }
+        console.log('❤️ Global channel: reaction received:', data.postId);
+        onNewReaction(data);
       });
 
       // New Posts
@@ -550,27 +545,21 @@ class PusherService {
 
       // Comment Reactions
       channel.bind('comment-reaction', (data: any) => {
-        if (postIds.includes(data.postId)) {
-          console.log('💖 Global channel: Relevant comment reaction for post:', data.postId);
-          onCommentReaction(data);
-        }
+        console.log('💖 Global channel: comment reaction received:', data.postId);
+        onCommentReaction(data);
       });
 
 
       // Post Updates
       channel.bind('post-updated', (data: any) => {
-        if (postIds.includes(data.postId)) {
-          console.log('✏️ Global channel: Post updated:', data.postId);
-          onPostUpdated(data);
-        }
+        console.log('✏️ Global channel: post update received:', data.postId);
+        onPostUpdated(data);
       });
 
       // Post Deletions
       channel.bind('post-deleted', (data: any) => {
-        if (postIds.includes(data.postId)) {
-          console.log('🗑️ Global channel: Post deleted:', data.postId);
-          onPostDeleted(data);
-        }
+        console.log('🗑️ Global channel: post deletion received:', data.postId);
+        onPostDeleted(data);
       });
 
       // Chatbot Training (if relevant to posts)
@@ -643,6 +632,12 @@ class PusherService {
   }): boolean {
     if (!this.pusher || !this.isInitialized) {
       console.warn('⚠️ Pusher not initialized. Skipping space subscription.');
+      return false;
+    }
+
+    // Guard: ignore invalid or reserved IDs that may be passed due to routing mishaps
+    if (spaceId === 'Login' || spaceId === 'undefined' || spaceId === '[id]') {
+      console.warn(`🛑 Ignoring invalid space subscription attempt for ID: ${spaceId}`);
       return false;
     }
 
@@ -788,18 +783,18 @@ class PusherService {
 
       // Bind to your custom space.invitation event
       channel.bind('space.invitation', (data: any) => {
-        console.log('📨 Space invitation received on private channel:', data);
+        console.log('📨 RAW DATA (space.invitation):', data);
 
         const notification = {
           id: data.id,
           type: 'space_invitation',
           title: 'Space Invitation',
-          message: `${data.inviter_name} invited you to join "${data.space_title}"`,
+          message: data.message || `${data.inviter_name || data.invited_by?.name || 'Someone'} invited you to join "${data.space_title || data.space?.title}"`,
           data: data,
-          spaceId: data.space_id,
-          userId: data.inviter_id,
-          avatar: data.inviter_avatar,
-          createdAt: new Date(data.timestamp),
+          spaceId: data.space_id || data.space?.id,
+          userId: data.inviter_id || data.invited_by?.id,
+          avatar: data.inviter_avatar || data.invited_by?.profile_photo,
+          createdAt: data.timestamp ? new Date(data.timestamp) : new Date(),
           isRead: false,
         };
 

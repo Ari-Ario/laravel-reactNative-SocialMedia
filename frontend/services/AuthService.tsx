@@ -80,7 +80,7 @@ export async function logout() {
     if (token) {
       await axios.post(`/logout`, {});
     }
-    router.replace('/Login');
+    router.replace('/LoginScreen');
   } catch (error) {
     console.error('Logout API error:', error);
   } finally {

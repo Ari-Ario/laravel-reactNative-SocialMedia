@@ -528,6 +528,12 @@ export const useNotificationStore = create<NotificationStore>()(
       }),
 
       initializeRealtime: (token: string, userId: number) => {
+        const { isConnected, currentUserId } = get();
+        if (isConnected && currentUserId === userId) {
+          console.log('ℹ️ Notification real-time already connected for user:', userId);
+          return;
+        }
+
         console.log('🔔 INITIALIZING NOTIFICATION REAL-TIME FOR USER:', userId);
 
         const success = PusherService.initialize(token);
@@ -784,13 +790,13 @@ export const useNotificationStore = create<NotificationStore>()(
       // Getters for filtered notifications
       getFollowerNotifications: () => {
         const { followerNotifications } = get();
-        console.log('👥 Getting follower notifications:', followerNotifications.length);
+        console.log('👥 Getting follower notifications:', followerNotifications);
         return followerNotifications;
       },
 
       getRegularNotifications: () => {
         const { notifications } = get();
-        console.log('🔔 Getting regular notifications:', notifications.length);
+        console.log('🔔 Getting regular notifications:', notifications);
         // Double-check that no follower notifications are in the regular array
         const filteredNotifications = notifications.filter(notif => !isFollowerNotification(notif.type));
         if (filteredNotifications.length !== notifications.length) {

@@ -61,7 +61,7 @@ interface PostStore {
 
   // Basic operations
   setPosts: (posts: Post[]) => void;
-  updatePost: (updatedPost: Post) => void;
+  updatePost: (updatedPostOrFn: Partial<Post> | ((p: Post) => Post)) => void;
   addPost: (newPost: Post) => void;
   deletePostById: (postId: number) => void;
 
@@ -142,13 +142,25 @@ export const usePostStore = create<PostStore>((set, get) => ({
   // Basic post operations
   setPosts: (posts) => set({ posts }),
 
-  updatePost: (updatedPost) => {
-    if (!updatedPost?.id) return;
-    set((state) => ({
-      posts: state.posts.map((p) =>
-        p.id === updatedPost.id ? { ...p, ...updatedPost } : p
-      ),
-    }));
+  updatePost: (updatedPostOrFn) => {
+    set((state) => {
+      // If it's a function (mapper pattern)
+      if (typeof updatedPostOrFn === 'function') {
+        return {
+          posts: state.posts.map(updatedPostOrFn)
+        };
+      }
+
+      // If it's a partial post object
+      const updatedPost = updatedPostOrFn;
+      if (!updatedPost?.id) return state;
+
+      return {
+        posts: state.posts.map((p) =>
+          p.id === updatedPost.id ? { ...p, ...updatedPost } : p
+        ),
+      };
+    });
   },
 
   addPost: (post) => {

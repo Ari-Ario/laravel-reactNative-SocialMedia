@@ -34,9 +34,9 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Support\Facades\Event;
 
-// Route::post('/broadcasting/auth', function (Request $request) {
-//     return Broadcast::auth($request);
-// })->middleware('auth:sanctum');
+Route::post('/broadcasting/auth', function (Request $request) {
+    return Broadcast::auth($request);
+})->middleware('auth:sanctum');
 
 Route::group(["middleware" => ["auth:sanctum"]], function () {
 

@@ -72,6 +72,37 @@ const HomePage = () => {
     addNotification,
     setCurrentUserId
   } = useNotificationStore();
+
+  // ✅ Initialize real-time services on mount
+  useEffect(() => {
+    const initRealtime = async () => {
+      try {
+        const token = await getToken();
+        if (token && user?.id) {
+          console.log('🚀 Initializing services for user:', user.id);
+
+          // 1. Set user ID for notification filtering
+          setCurrentUserId(Number(user.id));
+
+          // 2. Initialize Pusher via notification store
+          initializeRealtime(token, Number(user.id));
+
+          // 3. Mark token as ready to trigger other subscriptions
+          setIsTokenReady(true);
+        }
+      } catch (error) {
+        console.error('❌ Failed to initialize real-time services:', error);
+      }
+    };
+
+    if (user?.id) {
+      initRealtime();
+    }
+
+    // ✅ REMOVED: disconnectRealtime() cleanup. 
+    // This is now managed by TabLayout to prevent global connection loss on tab switch.
+  }, [user?.id]);
+
   const [activeNotificationType, setActiveNotificationType] = useState<"all" | "regular" | "spaces" | "calls" | "messages" | "activities" | null>(null);
   const realTimeService = RealTimeService.getInstance();
   const collaborationService = CollaborationService.getInstance();
@@ -111,7 +142,7 @@ const HomePage = () => {
         }
 
         console.log('🌐 Fetching all spaces for global subscription...');
-        const userSpaces = await collaborationService.fetchUserSpaces(user.id);
+        const userSpaces = await collaborationService.fetchUserSpaces(Number(user.id));
         console.log(`🌐 Found ${userSpaces.length} spaces to subscribe to`);
 
         subscribedSpaceIds = userSpaces.map(s => s.id);
@@ -143,7 +174,7 @@ const HomePage = () => {
                 type: 'new_message',
                 title: `New message in ${space.title}`,
                 message: msgText,
-                userId: senderId, // ✅ Pass at top level for global filtering
+                userId: Number(senderId), // ✅ Pass as number for global filtering
                 spaceId: space.id, // ✅ Pass at top level
                 data: { messageId: msgObj?.id },
                 createdAt: new Date(),
@@ -299,17 +330,15 @@ const HomePage = () => {
   const handleRepost = async (postId: number) => {
     try {
       const response = await repostPost(postId);
-      updatePost((prev) => {
-        if (prev.id !== postId) return prev;
-        const updated = {
-          ...prev,
-          is_reposted: response.reposted,
-          reposts_count: response.reposts_count,
-          reposts: response.reposted
-            ? [{ id: Date.now(), user: response.repost_user, created_at: new Date().toISOString() }, ...(prev.reposts || [])]
-            : (prev.reposts || []).filter(r => r.user.id !== user?.id)
-        };
-        return updated;
+
+      // ✅ Corrected: Pass a partial Post object to updatePost
+      updatePost({
+        id: postId,
+        is_reposted: response.reposted,
+        reposts_count: response.reposts_count,
+        reposts: response.reposted
+          ? [{ id: Date.now(), user: response.repost_user, created_at: new Date().toISOString() }, ...(posts.find(p => p.id === postId)?.reposts || [])]
+          : (posts.find(p => p.id === postId)?.reposts || []).filter((r: any) => user?.id && r.user.id !== user.id)
       });
     } catch (error) {
       console.error('Error handling repost:', error);

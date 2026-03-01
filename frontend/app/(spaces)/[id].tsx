@@ -95,13 +95,15 @@ const SpaceDetailScreen = () => {
   const whiteboardRef = useRef<WhiteboardCanvasRef>(null);
 
   useEffect(() => {
-    if (id && user) {
+    if (id && user && id !== 'Login' && id !== 'undefined' && id !== '[id]') {
       loadSpaceDetails();
       subscribeToSpace();
     }
 
     return () => {
-      unsubscribeFromSpace();
+      if (id !== 'Login' && id !== 'undefined') {
+        unsubscribeFromSpace();
+      }
     };
   }, [id, user]);
 
