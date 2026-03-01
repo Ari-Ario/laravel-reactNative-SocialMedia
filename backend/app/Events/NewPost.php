@@ -8,7 +8,9 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class NewPost implements ShouldBroadcast
+use Illuminate\Notifications\Notification as LaravelNotification;
+
+class NewPost extends LaravelNotification implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -21,15 +23,31 @@ class NewPost implements ShouldBroadcast
         $this->followerIds = $followerIds;
     }
 
+    public function via($notifiable)
+    {
+        return ['database', 'broadcast'];
+    }
+
+    public function toArray($notifiable)
+    {
+        return [
+            'post' => $this->post->load('user'),
+            'followerIds' => $this->followerIds,
+            'type' => 'new_post',
+            'title' => 'New Post',
+            'message' => $this->post->user->name . ' created a new post',
+        ];
+    }
+
     public function broadcastOn()
     {
         $channels = [new Channel('posts.global')];
-        
+
         // Broadcast to all followers
         foreach ($this->followerIds as $followerId) {
             $channels[] = new Channel('user.' . $followerId);
         }
-        
+
         return $channels;
     }
 

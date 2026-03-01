@@ -130,7 +130,7 @@ interface NotificationStore {
   isFollowersPanelVisible: boolean;
   isConnected: boolean;
   currentUserId: number | null;
-  lastActiveTime: string | null;
+  lastActiveTimes: { [userId: number]: string };
   initializationTime: Date | null;
   unreadCallCount: number;
   unreadMessageCount: number;
@@ -143,7 +143,7 @@ interface NotificationStore {
   setIsFollowersPanelVisible: (visible: boolean) => void;
   setCurrentUserId: (userId: number) => void;
   setInitializationTime: (time: Date) => void;
-  setLastActiveTime: (time: string) => void;
+  setLastActiveTime: (time: string, userId?: number) => void;
 
   // Notification management
   addNotification: (notification: Omit<Notification, 'id' | 'isRead'>) => void;
@@ -170,7 +170,6 @@ interface NotificationStore {
   getMessages: () => Notification[];
   getSpaces: () => Notification[];
   getActivities: () => Notification[];
-  getRegularFiltered: () => Notification[];
 }
 
 // Helper to check if notification is follower type (existing)
@@ -228,7 +227,7 @@ export const useNotificationStore = create<NotificationStore>()(
       isFollowersPanelVisible: false,
       isConnected: false,
       currentUserId: null,
-      lastActiveTime: null,
+      lastActiveTimes: {},
       initializationTime: null,
       unreadCallCount: 0,
       unreadMessageCount: 0,
@@ -240,16 +239,35 @@ export const useNotificationStore = create<NotificationStore>()(
       setIsFollowersPanelVisible: (visible) => set({ isFollowersPanelVisible: visible }),
       setCurrentUserId: (userId) => set({ currentUserId: userId }),
       setInitializationTime: (time) => set({ initializationTime: time }),
-      setLastActiveTime: (time) => set({ lastActiveTime: time }),
+      setLastActiveTime: (time, userId) => {
+        const id = userId || get().currentUserId;
+        if (id) {
+          set((state) => ({
+            lastActiveTimes: {
+              ...state.lastActiveTimes,
+              [id]: time
+            }
+          }));
+        }
+      },
 
       addNotification: (notificationData) => {
-        // ✅ GLOBAL FILTER: Don't add notifications for events created by the current user
         const { currentUserId } = get();
+        console.log(`📣 addNotification triggered: Type=${notificationData.type}, ActorId=${notificationData.userId}, CurrentUserId=${currentUserId}`);
 
+        // ✅ GLOBAL FILTER: Don't add notifications for events created by the current user
         // Use loose equality (==) to handle string/number mismatch
         if (notificationData.userId && currentUserId && notificationData.userId == currentUserId) {
           console.log('🚫 Skipping notification created by self:', notificationData.type);
           return;
+        }
+
+        // ✅ Fix empty titles/messages before storing
+        if (!notificationData.title) {
+          notificationData.title = 'New Notification';
+        }
+        if (!notificationData.message) {
+          notificationData.message = 'You have a new update';
         }
 
         const newNotification: Notification = {
@@ -282,13 +300,15 @@ export const useNotificationStore = create<NotificationStore>()(
           return;
         }
 
-        console.log('🔔 ADDING NOTIFICATION:', newNotification.type,
-          'isFollower:', isFollower,
-          'isCall:', isCall,
-          'isMessage:', isMessage,
-          'isSpace:', isSpace,
-          'isActivity:', isActivity,
-          'isRegular:', isRegular);
+        console.log(`🔔 ADDING NOTIFICATION:
+          ID: ${newNotification.id}
+          Type: ${newNotification.type}
+          Title: ${newNotification.title}
+          Message: ${newNotification.message?.substring(0, 30)}...
+          UserId (Actor): ${newNotification.userId}
+          PostId: ${newNotification.postId}
+          isFollower: ${isFollower}, isCall: ${isCall}, isMessage: ${isMessage}, isSpace: ${isSpace}, isActivity: ${isActivity}, isRegular: ${isRegular}
+        `);
 
         set((state) => {
           if (isFollower) {
@@ -333,43 +353,50 @@ export const useNotificationStore = create<NotificationStore>()(
         });
       },
 
-
       // Add getter methods with self-filtering safety net
       getCalls: () => {
         const { notifications, currentUserId } = get();
-        return notifications.filter(n =>
+        const filtered = notifications.filter(n =>
           isCallNotification(n.type) &&
           !(n.userId && currentUserId && n.userId == currentUserId)
         );
+        console.log('📞 Getting call notifications:', filtered.length);
+        return filtered;
       },
 
       getMessages: () => {
         const { notifications, currentUserId } = get();
-        return notifications.filter(n =>
+        const filtered = notifications.filter(n =>
           isMessageNotification(n.type) &&
           !(n.userId && currentUserId && n.userId == currentUserId)
         );
+        console.log('💬 Getting message notifications:', filtered.length);
+        return filtered;
       },
 
       getSpaces: () => {
         const { notifications, currentUserId } = get();
-        return notifications.filter(n =>
+        const filtered = notifications.filter(n =>
           isSpaceNotification(n.type) &&
           !(n.userId && currentUserId && n.userId == currentUserId)
         );
+        console.log('🌐 Getting space notifications:', filtered.length);
+        return filtered;
       },
 
       getActivities: () => {
         const { notifications, currentUserId } = get();
-        return notifications.filter(n =>
+        const filtered = notifications.filter(n =>
           isActivityNotification(n.type) &&
           !(n.userId && currentUserId && n.userId == currentUserId)
         );
+        console.log('✨ Getting activity notifications:', filtered.length);
+        return filtered;
       },
 
-      getRegularFiltered: () => {
+      getRegularNotifications: () => {
         const { notifications, currentUserId } = get();
-        return notifications.filter(n =>
+        const filtered = notifications.filter(n =>
           !isFollowerNotification(n.type) &&
           !isCallNotification(n.type) &&
           !isMessageNotification(n.type) &&
@@ -378,6 +405,8 @@ export const useNotificationStore = create<NotificationStore>()(
           !isChatbotTrainingNotification(n.type) &&
           !(n.userId && currentUserId && n.userId == currentUserId)
         );
+        console.log('🔔 Getting regular notifications:', filtered.length);
+        return filtered;
       },
 
       markAsRead: (notificationId) => {
@@ -561,18 +590,19 @@ export const useNotificationStore = create<NotificationStore>()(
         const { currentUserId } = get();
         if (currentUserId) {
           PusherService.unsubscribeFromUserNotifications(currentUserId);
-          PusherService.unsubscribeFromChannel(`private-user.${currentUserId}`); // Add this
+          PusherService.unsubscribeFromChannel(`private-user.${currentUserId}`);
+          get().setLastActiveTime(new Date().toISOString(), currentUserId);
         }
         PusherService.disconnect();
 
-        get().setLastActiveTime(new Date().toISOString());
         set({ isConnected: false, currentUserId: null });
       },
 
 
       fetchMissedNotifications: async (token: string, userId: number) => {
         try {
-          const { lastActiveTime } = get();
+          const { lastActiveTimes } = get();
+          const lastActiveTime = lastActiveTimes[userId];
           const apiUrl = getApiBase() || 'http://localhost:8000';
           const url = `${apiUrl}/notifications/missed`;
 
@@ -590,24 +620,26 @@ export const useNotificationStore = create<NotificationStore>()(
           console.log('📬 Found missed notifications:', missedNotifications.length);
 
           if (missedNotifications.length > 0) {
-            missedNotifications.forEach((notification: any) => {
+            console.log(`📬 Processing ${missedNotifications.length} missed notifications in reverse (oldest first)`);
+            [...missedNotifications].reverse().forEach((notification: any) => {
               // Extract type and data
               const type = notification.type;
               const notifData = notification.data || notification;
 
               // Create properly formatted notification for store
               let formattedNotification: any = {
-                id: notification.id,
+                id: notification.id || Date.now().toString(),
                 type: type,
-                title: '',
-                message: '',
+                title: notification.title || 'New Notification',
+                message: notification.message || 'You have a new update',
+                userId: notification.userId || notifData.userId || notifData.user_id,
                 data: notifData,
                 isRead: !!notification.read_at,
                 createdAt: new Date(notification.created_at || notification.createdAt),
               };
 
               // 1. SPACE INVITATIONS
-              if (type === 'space-invitation') {
+              if (type === 'space-invitation' || type === 'space_invitation' || type.includes('SpaceInvitation')) {
                 formattedNotification = {
                   ...formattedNotification,
                   type: 'space_invitation',
@@ -621,7 +653,7 @@ export const useNotificationStore = create<NotificationStore>()(
               }
 
               // 2. NEW FOLLOWERS (for FollowersPanel)
-              else if (type === 'App\\Events\\NewFollower') {
+              else if (type === 'new_follower' || type === 'App\\Events\\NewFollower') {
                 formattedNotification = {
                   ...formattedNotification,
                   type: 'new_follower',
@@ -634,7 +666,7 @@ export const useNotificationStore = create<NotificationStore>()(
               }
 
               // 3. COMMENTS
-              else if (type === 'App\\Events\\NewComment') {
+              else if (type === 'comment' || type === 'App\\Events\\NewComment' || type === 'NewComment') {
                 const commentData = notifData.comment || notifData;
                 const commenter = commentData.user || {};
 
@@ -652,7 +684,7 @@ export const useNotificationStore = create<NotificationStore>()(
               }
 
               // 4. REACTIONS
-              else if (type === 'App\\Events\\NewReaction') {
+              else if (type === 'reaction' || type === 'App\\Events\\NewReaction' || type === 'NewReaction') {
                 const reactionData = notifData.reaction || notifData;
                 const reactor = reactionData.user || {};
 
@@ -668,8 +700,9 @@ export const useNotificationStore = create<NotificationStore>()(
                 };
               }
 
+
               // 5. POST UPDATES
-              else if (type === 'App\\Events\\PostUpdated') {
+              else if (type === 'post_updated' || type === 'App\\Events\\PostUpdated' || type === 'post-updated') {
                 formattedNotification = {
                   ...formattedNotification,
                   type: 'post_updated',
@@ -677,19 +710,36 @@ export const useNotificationStore = create<NotificationStore>()(
                   message: notifData.message || 'A post was updated',
                   postId: notifData.postId,
                   userId: notifData.userId,
-                  avatar: notifData.avatar,
+                  avatar: notifData.avatar || notifData.profile_photo,
                   data: notifData,
                 };
               }
 
               // 6. POST DELETED
-              else if (type === 'App\\Events\\PostDeleted') {
+              else if (type === 'post_deleted' || type === 'App\\Events\\PostDeleted' || type === 'post-deleted') {
                 formattedNotification = {
                   ...formattedNotification,
                   type: 'post_deleted',
                   title: 'Post Deleted',
                   message: notifData.message || 'A post was deleted',
                   postId: notifData.postId,
+                  data: notifData,
+                };
+              }
+
+              // 6b. NEW POSTS
+              else if (type === 'new_post' || type === 'App\\Events\\NewPost' || type === 'new-post') {
+                const postData = notifData.post || notifData;
+                const author = postData.user || {};
+
+                formattedNotification = {
+                  ...formattedNotification,
+                  type: 'new_post',
+                  title: notifData.title || 'New Post',
+                  message: notifData.message || `${author.name || 'Someone'} created a new post`,
+                  postId: postData.id,
+                  userId: author.id || postData.user_id,
+                  avatar: author.profile_photo,
                   data: notifData,
                 };
               }
@@ -710,7 +760,7 @@ export const useNotificationStore = create<NotificationStore>()(
               }
 
               // 8. NEW MESSAGE
-              else if (type === 'new_message') {
+              else if (type === 'new_message' || type.includes('NewMessage')) {
                 formattedNotification = {
                   ...formattedNotification,
                   type: 'new_message',
@@ -794,16 +844,6 @@ export const useNotificationStore = create<NotificationStore>()(
         return followerNotifications;
       },
 
-      getRegularNotifications: () => {
-        const { notifications } = get();
-        console.log('🔔 Getting regular notifications:', notifications);
-        // Double-check that no follower notifications are in the regular array
-        const filteredNotifications = notifications.filter(notif => !isFollowerNotification(notif.type));
-        if (filteredNotifications.length !== notifications.length) {
-          console.log('⚠️ Filtered out follower notifications from regular array');
-        }
-        return filteredNotifications;
-      },
 
       getUnreadFollowerCount: () => {
         const { unreadFollowerCount } = get();
@@ -825,7 +865,7 @@ export const useNotificationStore = create<NotificationStore>()(
         })),
         unreadCount: state.unreadCount,
         unreadFollowerCount: state.unreadFollowerCount,
-        lastActiveTime: state.lastActiveTime,
+        lastActiveTimes: state.lastActiveTimes,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {

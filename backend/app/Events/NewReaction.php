@@ -8,7 +8,9 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class NewReaction implements ShouldBroadcast
+use Illuminate\Notifications\Notification as LaravelNotification;
+
+class NewReaction extends LaravelNotification implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -23,17 +25,32 @@ class NewReaction implements ShouldBroadcast
         $this->postOwnerId = $postOwnerId ?? $reaction->post->user_id;
     }
 
+    public function via($notifiable)
+    {
+        return ['database', 'broadcast'];
+    }
+
+    public function toArray($notifiable)
+    {
+        return [
+            'reaction' => $this->reaction->load('user'),
+            'postId' => $this->postId,
+            'postOwnerId' => $this->postOwnerId,
+            'type' => 'reaction',
+            'title' => 'New Reaction',
+            'message' => $this->reaction->user->name . ' reacted with ' . $this->reaction->emoji,
+        ];
+    }
+
     public function broadcastOn()
     {
 
         $channels = [
             new Channel('posts.global'), // For real-time feed updates
         ];
-        
+
         if ($this->postOwnerId != auth()->id()) {
             $channels[] = new Channel('user.' . $this->postOwnerId); // For notifications to post owner
-        } else {
-            $channels = []; // No notification if the reactor is the post owner
         }
         return $channels;
     }

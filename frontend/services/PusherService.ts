@@ -155,6 +155,7 @@ class PusherService {
 
     try {
       const channelName = `user.${userId}`;
+      console.log(`🔌 Pusher: Subscribing to user channel: ${channelName}`);
 
       if (this.channels.has(channelName)) {
         console.log(`ℹ️ Already subscribed to user notifications: ${channelName}`);
@@ -170,12 +171,12 @@ class PusherService {
         const notification = {
           type: data.type || 'comment',
           title: data.title || 'New Comment',
-          message: data.message || `${data.comment.user?.name || 'Someone'} commented: "${data.comment.content?.substring(0, 30)}..."`,
+          message: data.message || `${data.comment?.user?.name || 'Someone'} commented: "${data.comment?.content?.substring(0, 30)}..."`,
           data: data,
-          userId: data.comment.user_id,
-          postId: data.postId,
-          commentId: data.comment.id,
-          avatar: data.comment.user?.profile_photo,
+          userId: data.comment?.user_id || data.user_id,
+          postId: data.postId || data.post_id || data.comment?.post_id,
+          commentId: data.comment?.id,
+          avatar: data.comment?.user?.profile_photo || data.user_avatar,
           createdAt: new Date()
         };
 
@@ -244,11 +245,11 @@ class PusherService {
         const notification = {
           type: data.type || 'new_post',
           title: data.title || 'New Post',
-          message: `${data.post.user.name} created a new post: ${data.post.caption.substring(0, 30)}...` || data.message,
+          message: data.message || `${data.post?.user?.name || 'Someone'} created a new post: ${data.post?.caption?.substring(0, 30)}...`,
           data: data,
-          userId: data.post.user_id,
-          postId: data.post.id,
-          avatar: data.post.user.profile_photo,
+          userId: data.post?.user_id || data.userId,
+          postId: data.post?.id || data.postId,
+          avatar: data.post?.user?.profile_photo || data.profile_photo,
           createdAt: new Date()
         };
 
@@ -320,35 +321,36 @@ class PusherService {
       // Space invitations moved/consolidated
 
 
-      // Space invitations - listen for Laravel's BroadcastNotificationCreated
+      // Handle Laravel's generic BroadcastNotificationCreated events
       channel.bind('Illuminate\\Notifications\\Events\\BroadcastNotificationCreated', (data: any) => {
         console.log('📨 Laravel notification received:', data);
 
-        // Check if this is a space invitation notification
-        if (data.type === 'App\\Notifications\\SpaceInvitationNotification' ||
-          data.type?.includes('SpaceInvitation')) {
+        // Extract inner data which contains the actual message
+        const innerData = data.data || {};
 
-          const notification = {
-            id: data.id,
-            type: 'space_invitation',
-            title: 'Space Invitation',
-            message: `${data.data?.inviter_name || 'Someone'} invited you to join "${data.data?.space_title}"`,
-            data: data.data,
-            spaceId: data.data?.space_id,
-            userId: data.data?.inviter_id,
-            avatar: data.data?.inviter_avatar,
-            createdAt: new Date(data.created_at),
-            isRead: false,
-          };
+        // Map generic Laravel notification to our store format
+        const notification: any = {
+          id: data.id || Date.now().toString(),
+          type: innerData.type || data.type || 'generic',
+          title: innerData.title || 'New Notification',
+          message: innerData.message || 'You have a new update',
+          data: innerData,
+          userId: innerData.userId || innerData.user_id || innerData.inviter_id || innerData.followerId,
+          postId: innerData.postId || innerData.post_id,
+          spaceId: innerData.spaceId || innerData.space_id,
+          avatar: innerData.avatar || innerData.profile_photo || innerData.inviter_avatar,
+          createdAt: new Date(data.created_at || Date.now()),
+          isRead: false,
+        };
 
-          console.log('📨 SENDING SPACE INVITATION TO STORE:', notification);
-          onNotification(notification);
-        }
+        // Special handling for common types if they come through this event
+        if (notification.type.includes('NewComment')) notification.type = 'comment';
+        if (notification.type.includes('NewReaction')) notification.type = 'reaction';
+        if (notification.type.includes('NewPost')) notification.type = 'new_post';
+        if (notification.type.includes('SpaceInvitation')) notification.type = 'space_invitation';
 
-        // Also handle other notification types if needed
-        else if (data.type === 'App\\Notifications\\SomeOtherNotification') {
-          // Handle other notifications
-        }
+        console.log('📨 SENDING BROADCAST NOTIFICATION TO STORE:', notification.type);
+        onNotification(notification);
       });
 
 

@@ -10,7 +10,9 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class PostUpdated implements ShouldBroadcast
+use Illuminate\Notifications\Notification as LaravelNotification;
+
+class PostUpdated extends LaravelNotification implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -37,6 +39,28 @@ class PostUpdated implements ShouldBroadcast
             'updated_fields' => $updatedFields,
             'follower_count' => count($followerIds)
         ]);
+    }
+
+    public function via($notifiable)
+    {
+        return ['database', 'broadcast'];
+    }
+
+    public function toArray($notifiable)
+    {
+        return [
+            'postId' => $this->postId,
+            'userId' => $this->userId,
+            'profile_photo' => User::find($this->userId)?->profile_photo,
+            'userName' => $this->userName,
+            'changes' => $this->changes,
+            'updatedFields' => $this->updatedFields,
+            'followerIds' => $this->followerIds,
+            'type' => 'post_updated',
+            'title' => 'Post Updated', 
+            'message' => $this->userName . ' updated their post',
+            'timestamp' => now()->toIso8601String(),
+        ];
     }
 
     public function broadcastOn()
@@ -75,7 +99,7 @@ class PostUpdated implements ShouldBroadcast
             'title' => 'Post Updated', 
             'message' => $this->userName . ' updated their post',
             'action' => 'updated',
-            'timestamp' => now()->toISOString()
+            'timestamp' => now()->toIso8601String()
         ];
     }
     

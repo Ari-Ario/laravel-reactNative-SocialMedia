@@ -11,7 +11,9 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class MessageSent implements ShouldBroadcast
+use Illuminate\Notifications\Notification as LaravelNotification;
+
+class MessageSent extends LaravelNotification implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -30,41 +32,39 @@ class MessageSent implements ShouldBroadcast
     }
 
     /**
+     * Get the notification's delivery channels.
+     */
+    public function via($notifiable)
+    {
+        // Only save to database for participants (the broadcast is handled separately by the Event interface)
+        return ['database'];
+    }
+
+    /**
+     * Get the array representation of the notification for the database.
+     */
+    public function toArray($notifiable)
+    {
+        $content = $this->message['content'] ?? 'New message';
+        if (($this->message['type'] ?? '') === 'poll') {
+            $content = '📊 ' . $content;
+        }
+
+        return [
+            'type' => 'new_message',
+            'title' => 'New Message',
+            'message' => ($this->user->name ?? 'Someone') . ': ' . $content,
+            'messageId' => $this->message['id'] ?? null,
+            'spaceId' => $this->spaceId,
+            'userId' => $this->user->id ?? null,
+            'profile_photo' => $this->user->profile_photo ?? null,
+            'timestamp' => now()->toISOString(),
+        ];
+    }
+
+    /**
      * Get the channels the event should broadcast on.
      *
      * @return array<int, \Illuminate\Broadcasting\Channel>
      */
-    public function broadcastOn(): array
-    {
-        return [
-            // ✅ FIX: Use presence-space channel to match your frontend
-            new PresenceChannel('space.' . $this->spaceId),
-        ];
-    }
-
-    /**
-     * The event's broadcast name.
-     */
-    public function broadcastAs(): string
-    {
-        return 'message.sent';
-    }
-
-    /**
-     * Get the data to broadcast.
-     *
-     * @return array<string, mixed>
-     */
-    public function broadcastWith(): array
-    {
-        return [
-            'message' => $this->message,
-            'space_id' => $this->spaceId,
-            'user' => [
-                'id' => $this->user->id,
-                'name' => $this->user->name,
-            ],
-            'timestamp' => now()->toISOString(),
-        ];
-    }
-}
+ 

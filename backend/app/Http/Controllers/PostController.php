@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use App\Http\Controllers\Controller;
 use App\Events\NewComment;
 use App\Events\NewReaction;
@@ -100,7 +101,7 @@ class PostController extends Controller
             return response()->json($posts);
 
         } catch (\Exception $e) {
-            \Log::error('PostController error: '.$e->getMessage());
+            Log::error('PostController error: '.$e->getMessage());
             return response()->json(['error' => 'Server error'], 500);
         }
     }
@@ -162,13 +163,13 @@ class PostController extends Controller
             return response()->json($post);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            \Log::error('Post not found for ID: ' . $id);
+            Log::error('Post not found for ID: ' . $id);
             return response()->json([
                 'success' => false,
                 'message' => 'Post not found'
             ], 404);
         } catch (\Exception $e) {
-            \Log::error('Error fetching post: ' . $e->getMessage(), [
+            Log::error('Error fetching post: ' . $e->getMessage(), [
                 'id' => $id,
                 'trace' => $e->getTraceAsString()
             ]);
@@ -215,7 +216,8 @@ class PostController extends Controller
         // ✅ FIX: Get follower IDs and pass to event
         $followerIds = Auth::user()->followers()->pluck('users.id')->toArray();
         
-        broadcast(new NewPost($post, $followerIds));
+        $followers = User::whereIn('id', $followerIds)->get();
+        Notification::send($followers, new NewPost($post, $followerIds));
 
         return response()->json($post);
     }
@@ -278,7 +280,7 @@ class PostController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             
-            \Log::error('Post deletion failed: ' . $e->getMessage());
+            Log::error('Post deletion failed: ' . $e->getMessage());
             
             return response()->json([
                 'message' => 'Failed to delete post',
@@ -450,7 +452,12 @@ class PostController extends Controller
             ]
         );
 
-        broadcast(new NewReaction($reaction, $post->id));
+        if ($post->user_id != Auth::id()) {
+            $postOwner = User::find($post->user_id);
+            if ($postOwner) {
+                $postOwner->notify(new NewReaction($reaction, $post->id));
+            }
+        }
 
         return response()->json([
             'reaction' => $reaction,
@@ -496,7 +503,7 @@ class PostController extends Controller
 
             return response()->json($comment);
         } catch (\Exception $e) {
-            \Log::error('❌ Comment creation failed', [
+            Log::error('❌ Comment creation failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -622,7 +629,7 @@ class PostController extends Controller
                 'post_id' => $postId
             ]);
         } catch (\Exception $e) {
-            \Log::error('Delete comment error: ' . $e->getMessage());
+            Log::error('Delete comment error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'error' => 'Failed to delete comment',

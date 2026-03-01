@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use App\Notifications\SpaceInvitationNotification;
 
@@ -229,6 +230,54 @@ class SpaceController extends Controller
     }
 
     /**
+     * Create a space automatically from a post
+     */
+    public function createSpaceFromPost(Post $post, array $data)
+    {
+        DB::beginTransaction();
+        
+        try {
+            $user = Auth::user();
+            
+            $space = CollaborationSpace::create([
+                'id' => (string) Str::uuid(),
+                'creator_id' => $user->id,
+                'space_type' => 'chat',
+                'title' => 'Space for: ' . $post->caption,
+                'description' => $data['description'] ?? 'Collaboration space for post content',
+                'linked_post_id' => $post->id,
+                'settings' => $this->getDefaultSettings('chat'),
+                'content_state' => $this->getInitialContentState('chat'),
+                'has_ai_assistant' => false,
+                'activity_metrics' => [
+                    'total_interactions' => 0,
+                    'energy_level' => 50,
+                ],
+            ]);
+
+            SpaceParticipation::create([
+                'space_id' => $space->id,
+                'user_id' => $user->id,
+                'role' => 'owner',
+                'permissions' => $this->getOwnerPermissions(),
+                'presence_data' => [
+                    'is_online' => true,
+                    'device' => 'app',
+                    'last_seen' => now(),
+                ],
+            ]);
+
+            DB::commit();
+            return $space;
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error creating space from post: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
      * Get space details
      */
     public function show($id)
@@ -304,110 +353,6 @@ class SpaceController extends Controller
 
         return response()->json(['spaces' => $formattedSpaces]);
     }
-
-    /**
-     * Helper: Get default settings for space type
-     */
-    // private function getDefaultSettings($spaceType)
-    // {
-    //     $settings = [
-    //         'chat' => [
-    //             'allow_guests' => false,
-    //             'max_participants' => 100,
-    //             'enable_reactions' => true,
-    //             'enable_threads' => false,
-    //             'require_invitation' => false,
-    //         ],
-    //         'whiteboard' => [
-    //             'allow_guests' => true,
-    //             'max_participants' => 20,
-    //             'enable_grid' => true,
-    //             'tools' => ['pen', 'shape', 'text', 'sticker'],
-    //             'require_invitation' => false,
-    //         ],
-    //         'meeting' => [
-    //             'allow_guests' => true,
-    //             'max_participants' => 10,
-    //             'video_on_join' => false,
-    //             'enable_raise_hand' => true,
-    //             'enable_recording' => false,
-    //             'require_invitation' => true,
-    //         ],
-    //         'document' => [
-    //             'allow_guests' => true,
-    //             'max_participants' => 10,
-    //             'editing_mode' => 'collaborative',
-    //             'versioning' => true,
-    //             'require_invitation' => false,
-    //         ],
-    //         'brainstorm' => [
-    //             'allow_guests' => true,
-    //             'max_participants' => 20,
-    //             'anonymous_ideas' => false,
-    //             'voting' => true,
-    //             'require_invitation' => false,
-    //         ],
-    //         'story' => [
-    //             'allow_guests' => true,
-    //             'max_participants' => 10,
-    //             'chain_mode' => 'sequential',
-    //             'allow_branching' => true,
-    //             'require_invitation' => false,
-    //         ],
-    //         'voice_channel' => [
-    //             'allow_guests' => true,
-    //             'max_participants' => 20,
-    //             'spatial_audio' => true,
-    //             'noise_suppression' => true,
-    //             'require_invitation' => false,
-    //         ],
-    //     ];
-        
-    //     return $settings[$spaceType] ?? $settings['chat'];
-    // }
-
-    // /**
-    //  * Helper: Get initial content state
-    //  */
-    // private function getInitialContentState($spaceType)
-    // {
-    //     $states = [
-    //         'chat' => [
-    //             'messages' => [],
-    //             'last_message_id' => null,
-    //         ],
-    //         'whiteboard' => [
-    //             'canvas' => [],
-    //             'elements' => [],
-    //             'background' => '#ffffff',
-    //         ],
-    //         'meeting' => [
-    //             'participants' => [],
-    //             'agenda' => [],
-    //             'notes' => '',
-    //         ],
-    //         'document' => [
-    //             'content' => '',
-    //             'revisions' => [],
-    //         ],
-    //         'brainstorm' => [
-    //             'ideas' => [],
-    //             'connections' => [],
-    //             'categories' => [],
-    //         ],
-    //         'story' => [
-    //             'segments' => [],
-    //             'current_branch' => 'main',
-    //             'choices' => [],
-    //         ],
-    //         'voice_channel' => [
-    //             'participants' => [],
-    //             'active_speakers' => [],
-    //         ],
-    //     ];
-        
-    //     return $states[$spaceType] ?? $states['chat'];
-    // }
 
     /**
      * Helper: Get owner permissions

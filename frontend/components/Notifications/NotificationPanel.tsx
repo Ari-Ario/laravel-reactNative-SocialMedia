@@ -41,7 +41,6 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
     getMessages,
     getSpaces,
     getActivities,
-    getRegularFiltered,
   } = useNotificationStore();
 
   const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
@@ -67,11 +66,11 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
       case 'activities':
         return getActivities();
       case 'regular':
-        return getRegularFiltered();
+        return getRegularNotifications();
       case 'all':
       default:
         const allNotifications = [
-          ...getRegularFiltered(),
+          ...getRegularNotifications(),
           ...getCalls(),
           ...getMessages(),
           ...getSpaces(),
@@ -410,9 +409,9 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
       <TouchableOpacity style={[styles.filterTab, activeFilter === 'regular' && styles.activeFilterTab]} onPress={() => setActiveFilter('regular')}>
         <Ionicons name="notifications" size={16} color={activeFilter === 'regular' ? '#000' : '#666'} />
         <Text style={[styles.filterTabText, activeFilter === 'regular' && styles.activeFilterText]}>Regular</Text>
-        {getRegularFiltered().filter(n => !n.isRead).length > 0 && (
+        {getRegularNotifications().filter(n => !n.isRead).length > 0 && (
           <View style={[styles.filterBadge, { backgroundColor: '#FF9500' }]}>
-            <Text style={styles.filterBadgeText}>{getRegularFiltered().filter(n => !n.isRead).length}</Text>
+            <Text style={styles.filterBadgeText}>{getRegularNotifications().filter(n => !n.isRead).length}</Text>
           </View>
         )}
       </TouchableOpacity>

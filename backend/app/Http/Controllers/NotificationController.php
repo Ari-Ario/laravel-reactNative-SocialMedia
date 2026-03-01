@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\DB;
 class NotificationController extends Controller
 {
     //
-    public function missedNotifications(Request $request) {
+    public function missedNotifications(Request $request)
+    {
         $userId = $request->user()->id;
         $lastSeenTime = $request->query('last_seen_time'); // Optional: ISO8601 string
 
@@ -18,7 +19,8 @@ class NotificationController extends Controller
 
         if ($lastSeenTime) {
             $query->where('created_at', '>', $lastSeenTime);
-        } else {
+        }
+        else {
             // Return notifications from last 7 days if no last_seen_time
             $query->where('created_at', '>', now()->subDays(7));
         }
@@ -27,28 +29,28 @@ class NotificationController extends Controller
             ->limit(50)
             ->get()
             ->map(function ($notification) {
-                $data = $notification->data;
-                
-                return [
-                    'id' => $notification->id,
-                    'type' => $data['type'] ?? 'unknown',
-                    'title' => $data['title'] ?? 'Notification',
-                    'message' => $data['message'] ?? '',
-                    'data' => $data,
-                    'userId' => $data['userId'] ?? null,
-                    'postId' => $data['postId'] ?? null,
-                    'postCaption' => $data['postCaption'] ?? null,
-                    'commentId' => $data['commentId'] ?? null,
-                    'avatar' => $data['profile_photo'] ?? null,
-                    'isRead' => !is_null($notification->read_at),
-                    'createdAt' => $notification->created_at->toISOString(),
-                ];
-            });
+            $data = $notification->data;
+
+            return [
+            'id' => $notification->id,
+            'type' => $data['type'] ?? $notification->type,
+            'title' => $data['title'] ?? 'Notification',
+            'message' => $data['message'] ?? '',
+            'data' => $data,
+            'userId' => $data['userId'] ?? null,
+            'postId' => $data['postId'] ?? null,
+            'postCaption' => $data['postCaption'] ?? null,
+            'commentId' => $data['commentId'] ?? null,
+            'avatar' => $data['profile_photo'] ?? null,
+            'isRead' => !is_null($notification->read_at),
+            'createdAt' => $notification->created_at->toISOString(),
+            ];
+        });
 
         return response()->json($notifications);
     }
 
-    
+
     /**
      * Register device for push notifications
      */
@@ -59,30 +61,30 @@ class NotificationController extends Controller
             'device_type' => 'required|in:ios,android,web',
             'device_name' => 'sometimes|string',
         ]);
-        
+
         $user = auth()->user();
-        
+
         // Store device token
         $user->update([
             'device_tokens' => array_merge(
-                $user->device_tokens ?? [],
+            $user->device_tokens ?? [],
+            [
                 [
-                    [
-                        'token' => $request->device_token,
-                        'type' => $request->device_type,
-                        'name' => $request->device_name,
-                        'registered_at' => now()->toISOString(),
-                    ]
+                    'token' => $request->device_token,
+                    'type' => $request->device_type,
+                    'name' => $request->device_name,
+                    'registered_at' => now()->toISOString(),
                 ]
-            ),
+            ]
+        ),
         ]);
-        
+
         return response()->json([
             'success' => true,
             'message' => 'Device registered for push notifications',
         ]);
     }
-    
+
     /**
      * Unregister device
      */
@@ -91,26 +93,26 @@ class NotificationController extends Controller
         $request->validate([
             'device_token' => 'required|string',
         ]);
-        
+
         $user = auth()->user();
         $deviceToken = $request->device_token;
-        
+
         // Remove device token
         $deviceTokens = $user->device_tokens ?? [];
-        $filteredTokens = array_filter($deviceTokens, function($token) use ($deviceToken) {
+        $filteredTokens = array_filter($deviceTokens, function ($token) use ($deviceToken) {
             return $token['token'] !== $deviceToken;
         });
-        
+
         $user->update([
             'device_tokens' => array_values($filteredTokens),
         ]);
-        
+
         return response()->json([
             'success' => true,
             'message' => 'Device unregistered',
         ]);
     }
-    
+
     /**
      * Mark notification as read
      */
@@ -118,39 +120,39 @@ class NotificationController extends Controller
     {
         $notification = auth()->user()->notifications()->findOrFail($id);
         $notification->markAsRead();
-        
+
         return response()->json([
             'success' => true,
             'message' => 'Notification marked as read',
         ]);
     }
-    
+
     /**
      * Mark all notifications as read
      */
     public function markAllAsRead()
     {
         auth()->user()->unreadNotifications->markAsRead();
-        
+
         return response()->json([
             'success' => true,
             'message' => 'All notifications marked as read',
         ]);
     }
-    
+
     /**
      * Clear all notifications
      */
     public function clearAll()
     {
         auth()->user()->notifications()->delete();
-        
+
         return response()->json([
             'success' => true,
             'message' => 'All notifications cleared',
         ]);
     }
-    
+
     /**
      * Get notification preferences
      */
@@ -158,7 +160,7 @@ class NotificationController extends Controller
     {
         $user = auth()->user();
         $preferences = $user->preferences()->first();
-        
+
         return response()->json([
             'preferences' => [
                 'push_notifications' => $preferences->push_notifications ?? true,
@@ -171,7 +173,7 @@ class NotificationController extends Controller
             ],
         ]);
     }
-    
+
     /**
      * Update notification preferences
      */
@@ -186,15 +188,15 @@ class NotificationController extends Controller
             'collaborative_activities' => 'boolean',
             'mentions' => 'boolean',
         ]);
-        
+
         $user = auth()->user();
         $preferences = $user->preferences()->firstOrCreate([]);
-        
+
         $preferences->update([
             'push_notifications' => $request->boolean('push_notifications', $preferences->push_notifications),
             'email_notifications' => $request->boolean('email_notifications', $preferences->email_notifications),
         ]);
-        
+
         // Store other preferences in settings
         $settings = $preferences->settings ?? [];
         $settings['notifications'] = [
@@ -204,9 +206,9 @@ class NotificationController extends Controller
             'collaborative_activities' => $request->boolean('collaborative_activities', $settings['notifications']['collaborative_activities'] ?? true),
             'mentions' => $request->boolean('mentions', $settings['notifications']['mentions'] ?? true),
         ];
-        
+
         $preferences->update(['settings' => $settings]);
-        
+
         return response()->json([
             'success' => true,
             'message' => 'Notification preferences updated',
