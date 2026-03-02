@@ -11,6 +11,7 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import LoginScreen from '../LoginScreen';
 import { usePostStore } from '@/stores/postStore';
 import { useNotificationStore } from '@/stores/notificationStore';
+import { logout } from '@/services/AuthService';
 import { getToken } from '@/services/TokenService';
 import { NotificationToast } from '@/components/Notifications/NotificationToast';
 import { NotificationPanel } from '@/components/Notifications/NotificationPanel';
@@ -24,7 +25,8 @@ export default function TabLayout() {
     disconnectRealtime: disconnectNotifications,
     setNotificationPanelVisible,
     isNotificationPanelVisible,
-    setInitializationTime // ADD THIS IMPORT
+    setInitializationTime,
+    setIsRealtimeReady: setGlobalRealtimeReady
   } = useNotificationStore();
 
   const realtimeInitialized = useRef(false);
@@ -32,65 +34,58 @@ export default function TabLayout() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentToast, setCurrentToast] = useState<any>(null);
 
-  // Real-time initialization effect - FIXED VERSION
+  // Real-time initialization effect
   useEffect(() => {
     let isMounted = true;
     let initializationTimeout: NodeJS.Timeout;
 
     async function initializeRealtimeConnection() {
+      if (realtimeInitialized.current) {
+        console.log('ℹ️ Real-time already initialized, skipping...');
+        return;
+      }
+
       try {
         setIsLoading(true);
         const token = await getToken();
 
-        console.log('🔐 Token check result:', {
-          hasToken: !!token,
-          hasUser: !!user,
-          userId: user?.id
-        });
-
         if (!isMounted) return;
 
-        // ✅ FIX: Wait a bit for user context to be fully loaded
         if (token && user?.id) {
-          console.log('🔐 Token and user ID found, initializing real-time...');
+          console.log('🔐 Initializing real-time for user:', user.id);
 
-          // Initialize post real-time
+          // Initialize both stores explicitly once
           initializeRealtime(token);
+          initNotifications(token, Number(user.id));
 
-          // Initialize notification real-time WITH user ID
-          initNotifications(token, user.id);
-
-          // ✅ FIX: Check if setInitializationTime exists before calling
           if (typeof setInitializationTime === 'function') {
             setInitializationTime(new Date());
           }
 
           realtimeInitialized.current = true;
           setIsRealtimeReady(true);
-
+          setGlobalRealtimeReady(true);
           console.log('✅ Real-time systems initialized');
         } else {
-          console.log('🔐 Missing token or user ID, skipping real-time initialization');
           setIsRealtimeReady(true);
+          setGlobalRealtimeReady(true);
         }
       } catch (error) {
         console.error('❌ Real-time initialization failed:', error);
         setIsRealtimeReady(true);
+        setGlobalRealtimeReady(true);
       } finally {
         if (isMounted) {
-          // ✅ FIX: Add small delay to ensure everything is loaded
           initializationTimeout = setTimeout(() => {
             setIsLoading(false);
-            console.log('🔐 Loading complete');
           }, 500);
         }
       }
     }
 
-    // ✅ FIX: Add small delay before initialization
     const initializationTimer = setTimeout(() => {
       initializeRealtimeConnection();
-    }, 1000);
+    }, 800);
 
     return () => {
       isMounted = false;
@@ -102,9 +97,10 @@ export default function TabLayout() {
         disconnectNotifications();
         realtimeInitialized.current = false;
         setIsRealtimeReady(false);
+        setGlobalRealtimeReady(false);
       }
     };
-  }, [user?.id]); // Only depend on user.id
+  }, [user?.id]);
 
   // NEW: Handle notification toasts
   const handleShowToast = (notification: any) => {
@@ -113,6 +109,15 @@ export default function TabLayout() {
 
   const handleHideToast = () => {
     setCurrentToast(null);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setUser(null);
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   };
 
   const handleToastPress = () => {
@@ -138,7 +143,7 @@ export default function TabLayout() {
   });
 
   return (
-    <AuthContext.Provider value={{ user, setUser }}>
+    <AuthContext.Provider value={{ user, setUser, logout: handleLogout }}>
       {user ? (
         <>
           {/* NEW: Notification Toast */}
@@ -157,7 +162,7 @@ export default function TabLayout() {
 
           <Tabs
             screenOptions={{
-              tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+              tabBarActiveTintColor: (Colors as any)[colorScheme ?? 'light']?.tint,
               headerShown: false,
               tabBarStyle: Platform.select({
                 ios: { position: 'absolute' },

@@ -32,6 +32,9 @@ import ReportPost from '@/components/ReportPost';
 import RenderComments from '@/components/RenderComments';
 import { commentOnPost, reactToComment, deleteReactionFromComment } from '@/services/PostService';
 import MessageList from '@/components/ChatScreen/MessageList';
+import { createShadow } from '@/utils/styles';
+import { Colors } from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
 
 const ChatDetailScreen = () => {
   const { id } = useLocalSearchParams();
@@ -266,7 +269,6 @@ const ChatDetailScreen = () => {
           }
         }}
         emojiSize={28}
-        containerStyle={styles.emojiPicker}
       />
 
       {/* Comments section */}
@@ -451,17 +453,12 @@ const styles = StyleSheet.create({
   },
   emojiPicker: {
     borderRadius: 10,
-    ...Platform.select({
-      web: {
-        boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-      },
+    ...createShadow({
+      width: 0,
+      height: 2,
+      opacity: 0.25,
+      radius: 3.84,
+      elevation: 5,
     }),
   },
 
@@ -479,17 +476,12 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 10,
-    ...Platform.select({
-      web: {
-        boxShadow: '0px -3px 6px rgba(0, 0, 0, 0.2)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -3 },
-        shadowOpacity: 0.2,
-        shadowRadius: 6,
-        elevation: 20,
-      }
+    ...createShadow({
+      width: 0,
+      height: -3,
+      opacity: 0.2,
+      radius: 6,
+      elevation: 20,
     }),
   },
   fullScreenSheet: {

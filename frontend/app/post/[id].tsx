@@ -27,6 +27,7 @@ import AuthContext from '@/context/AuthContext';
 import EmojiPicker from 'rn-emoji-keyboard';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { usePostListService } from '@/services/PostListService';
+import { createShadow } from '@/utils/styles';
 
 const PostDetailScreen = () => {
   const { id, highlightCommentId } = useLocalSearchParams();
@@ -264,7 +265,7 @@ const PostDetailScreen = () => {
   // Check if user has reacted to post
   const hasUserReacted = () => {
     if (!post?.reactions || !user) return false;
-    return post.reactions.some(reaction => reaction.user_id === user.id);
+    return post.reactions.some(reaction => reaction.user_id === Number(user.id));
   };
 
   if (loading) {
@@ -465,7 +466,7 @@ const PostDetailScreen = () => {
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <View style={styles.reactionsList}>
                     {groupedReactions.map((reaction, index) => {
-                      const isMyReaction = reaction.user_ids.includes(user?.id);
+                      const isMyReaction = reaction.user_ids.includes(Number(user?.id));
                       return (
                         <TouchableOpacity
                           key={index}
@@ -604,7 +605,6 @@ const PostDetailScreen = () => {
           setCurrentReactingComment(null);
         }}
         emojiSize={28}
-        containerStyle={styles.emojiPicker}
       />
     </KeyboardAvoidingView>
   );
@@ -875,17 +875,12 @@ const styles = StyleSheet.create({
   },
   emojiPicker: {
     borderRadius: 10,
-    ...Platform.select({
-      web: {
-        boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-      },
+    ...createShadow({
+      width: 0,
+      height: 2,
+      opacity: 0.25,
+      radius: 3.84,
+      elevation: 5,
     }),
   },
   commentsHeader: {

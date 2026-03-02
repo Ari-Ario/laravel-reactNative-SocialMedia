@@ -1,7 +1,21 @@
-// services/PostService.tsx
 import axios from "@/services/axios";
 import { getToken } from "./TokenService";
 import getApiBase from "./getApiBase";
+
+export interface Reaction {
+  id: number;
+  emoji: string;
+  user_id: number;
+  post_id: number;
+  comment_id?: number;
+  created_at?: string;
+}
+
+export interface ReactionCount {
+  emoji: string;
+  count: number;
+  user_id?: number; // Optional as it might be present in some responses
+}
 
 export async function fetchPosts() {
   const token = await getToken();
@@ -107,7 +121,7 @@ export async function deletePost(postId: number) {
       },
     });
     return response.data;
-  } catch (error) {
+  } catch (error: any) {
     // Simple error handling that works universally
     const errorMessage = error.response?.data?.message ||
       error.message ||
@@ -143,7 +157,7 @@ export const reactToPost = async (
   try {
     const response = await axios.post(
       `${API_BASE}/posts/${postId}/react`,
-      { emoji, comment_id: postId },
+      { emoji, comment_id: commentId },
       {
         headers: {
           Authorization: `Bearer ${token}`,

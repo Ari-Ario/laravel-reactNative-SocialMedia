@@ -146,7 +146,10 @@ class PusherService {
   }
 
   // OPTIMIZED: Subscribe to user notifications with ALL event types
-  subscribeToUserNotifications(userId: number, onNotification: (data: any) => void): boolean {
+  subscribeToUserNotifications(
+    userId: number,
+    onNotification: (data: any) => void
+  ): boolean {
     if (!this.pusher || !this.isInitialized) {
       console.log('⏳ Pusher not ready. Queuing notification subscription for user:', userId);
       this.pendingSubscriptions.push(() => this.subscribeToUserNotifications(userId, onNotification));
@@ -290,6 +293,24 @@ class PusherService {
         };
 
         console.log('✏️ SENDING TO NOTIFICATION STORE:', notification);
+        onNotification(notification);
+      });
+
+      // ✅ ADDED: Comment deleted
+      channel.bind('comment-deleted', (data: any) => {
+        console.log('🗑️ Comment deleted notification:', data);
+
+        const notification = {
+          type: 'comment_deleted',
+          title: 'Comment Deleted',
+          message: data.message || 'A comment was deleted',
+          data: data,
+          postId: data.postId,
+          commentId: data.commentId,
+          createdAt: new Date()
+        };
+
+        console.log('🗑️ SENDING TO NOTIFICATION STORE:', notification);
         onNotification(notification);
       });
 
@@ -509,11 +530,14 @@ class PusherService {
     onCommentReaction: (data: any) => void,
     onNewPost: (data: any) => void,
     onPostUpdated: (data: any) => void,
-    onPostDeleted: (data: any) => void
+    onPostDeleted: (data: any) => void,
+    onCommentDeleted: (data: any) => void
   ): boolean {
     if (!this.pusher || !this.isInitialized) {
       console.log('⏳ Pusher not ready. Queuing posts subscription.');
-      this.pendingSubscriptions.push(() => this.subscribeToPosts(postIds, onNewComment, onNewReaction, onCommentReaction, onNewPost, onPostUpdated, onPostDeleted));
+      this.pendingSubscriptions.push(() =>
+        this.subscribeToPosts(postIds, onNewComment, onNewReaction, onCommentReaction, onNewPost, onPostUpdated, onPostDeleted, onCommentDeleted)
+      );
       return true;
     }
 
@@ -564,6 +588,12 @@ class PusherService {
         onPostDeleted(data);
       });
 
+      // Comment Deletions
+      channel.bind('comment-deleted', (data: any) => {
+        console.log('🗑️ Global channel: comment deletion received:', data.postId);
+        onCommentDeleted(data);
+      });
+
       // Chatbot Training (if relevant to posts)
       channel.bind('chatbot-training-needed', (data: any) => {
         console.log('🤖 Global channel: Chatbot training needed');
@@ -594,7 +624,8 @@ class PusherService {
     onCommentReaction: (data: any) => void,
     onNewPost: (data: any) => void,
     onPostUpdated: (data: any) => void,
-    onPostDeleted: (data: any) => void
+    onPostDeleted: (data: any) => void,
+    onCommentDeleted: (data: any) => void
   ): boolean {
     // First unsubscribe from old channel
     this.unsubscribeFromChannel('posts.global');
@@ -607,7 +638,8 @@ class PusherService {
       onCommentReaction,
       onNewPost,
       onPostUpdated,
-      onPostDeleted
+      onPostDeleted,
+      onCommentDeleted
     );
   }
 

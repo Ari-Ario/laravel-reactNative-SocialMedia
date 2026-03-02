@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { createShadow } from '@/utils/styles';
 
 // Types for better IDE support and type safety
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -57,7 +58,7 @@ const handleButtonError = (error: Error, context: string) => {
 export interface IconButtonProps {
     // Core props
     icon: IconName;
-    onPress: (event?: GestureResponderEvent) => void;
+    onPress?: (event?: GestureResponderEvent) => void;
 
     // Optional text
     title?: string;
@@ -174,13 +175,13 @@ export const IconButton = memo<IconButtonProps>(({
                 borderWidth: variant === 'outline' ? 1 : 0,
                 borderRadius,
                 opacity: disabled ? 0.5 : 1,
-                width: fullWidth ? '100%' : undefined,
+                width: (fullWidth ? '100%' : undefined) as any,
                 ...sizeConfig.container,
-                flexDirection: iconPosition === 'left' ? 'row' :
+                flexDirection: (iconPosition === 'left' ? 'row' :
                     iconPosition === 'right' ? 'row-reverse' :
-                        iconPosition === 'top' ? 'column' : 'column-reverse',
-                alignItems: 'center',
-                justifyContent: 'center',
+                        iconPosition === 'top' ? 'column' : 'column-reverse') as any,
+                alignItems: 'center' as const,
+                justifyContent: 'center' as const,
             },
             icon: {
                 color: iconColor || variantStyle.text,
@@ -214,7 +215,7 @@ export const IconButton = memo<IconButtonProps>(({
                 // Haptics.impactAsync(getHapticStyle(hapticFeedback));
             }
 
-            onPress(event);
+            onPress?.(event);
         } catch (error) {
             handleButtonError(error as Error, `onPress for icon ${icon}`);
         }
@@ -286,16 +287,12 @@ export const IconButton = memo<IconButtonProps>(({
 const styles = StyleSheet.create({
     baseContainer: {
         // iOS shadow for depth (only when not transparent)
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.1,
-                shadowRadius: 2,
-            },
-            android: {
-                elevation: 2,
-            },
+        ...createShadow({
+            width: 0,
+            height: 1,
+            opacity: 0.1,
+            radius: 2,
+            elevation: 2,
         }),
     },
 });

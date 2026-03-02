@@ -22,6 +22,7 @@ import { safeHaptics } from '@/utils/haptics';
 import { MediaCompressor } from '@/utils/mediaCompressor';
 import { getToken } from '@/services/TokenService';
 import getApiBase from '@/services/getApiBase';
+import { createShadow } from '@/utils/styles';
 
 export interface UploadedMedia {
   id: number;
@@ -433,8 +434,7 @@ const AdvancedMediaUploader: React.FC<AdvancedMediaUploaderProps> = ({
                   <VideoView
                     style={styles.previewVideo}
                     player={videoPlayer}
-                    allowsFullscreen
-                    allowsPictureInPicture
+                    nativeControls={true}
                   />
                 ) : (
                   <View style={styles.docPlaceholderContainer}>
@@ -529,11 +529,13 @@ const styles = StyleSheet.create({
     borderRadius: 36,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+    ...createShadow({
+      width: 0,
+      height: 2,
+      opacity: 0.15,
+      radius: 8,
+      elevation: 4,
+    }),
   },
   actionLabel: {
     fontSize: 13,
@@ -715,7 +717,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '500',
-    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },

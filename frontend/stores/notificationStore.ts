@@ -138,12 +138,15 @@ interface NotificationStore {
   unreadActivityCount: number;
   unreadChatbotTrainingCount: number;
 
+  isRealtimeReady: boolean;
+
   // Actions
   setNotificationPanelVisible: (visible: boolean) => void;
   setIsFollowersPanelVisible: (visible: boolean) => void;
   setCurrentUserId: (userId: number) => void;
   setInitializationTime: (time: Date) => void;
   setLastActiveTime: (time: string, userId?: number) => void;
+  setIsRealtimeReady: (ready: boolean) => void;
 
   // Notification management
   addNotification: (notification: Omit<Notification, 'id' | 'isRead'>) => void;
@@ -234,11 +237,13 @@ export const useNotificationStore = create<NotificationStore>()(
       unreadSpaceCount: 0,
       unreadActivityCount: 0,
       unreadChatbotTrainingCount: 0,
+      isRealtimeReady: false,
 
       setNotificationPanelVisible: (visible) => set({ isNotificationPanelVisible: visible }),
       setIsFollowersPanelVisible: (visible) => set({ isFollowersPanelVisible: visible }),
       setCurrentUserId: (userId) => set({ currentUserId: userId }),
       setInitializationTime: (time) => set({ initializationTime: time }),
+      setIsRealtimeReady: (ready) => set({ isRealtimeReady: ready }),
       setLastActiveTime: (time, userId) => {
         const id = userId || get().currentUserId;
         if (id) {

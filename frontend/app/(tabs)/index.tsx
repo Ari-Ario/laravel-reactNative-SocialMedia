@@ -70,37 +70,16 @@ const HomePage = () => {
     initializeRealtime,
     disconnectRealtime,
     addNotification,
-    setCurrentUserId
+    setCurrentUserId,
+    isRealtimeReady
   } = useNotificationStore();
 
-  // ✅ Initialize real-time services on mount
+  // ✅ Token ready state management
   useEffect(() => {
-    const initRealtime = async () => {
-      try {
-        const token = await getToken();
-        if (token && user?.id) {
-          console.log('🚀 Initializing services for user:', user.id);
-
-          // 1. Set user ID for notification filtering
-          setCurrentUserId(Number(user.id));
-
-          // 2. Initialize Pusher via notification store
-          initializeRealtime(token, Number(user.id));
-
-          // 3. Mark token as ready to trigger other subscriptions
-          setIsTokenReady(true);
-        }
-      } catch (error) {
-        console.error('❌ Failed to initialize real-time services:', error);
-      }
-    };
-
     if (user?.id) {
-      initRealtime();
+      // HomePage no longer initializes real-time; TabLayout handles it globally.
+      setIsTokenReady(true);
     }
-
-    // ✅ REMOVED: disconnectRealtime() cleanup. 
-    // This is now managed by TabLayout to prevent global connection loss on tab switch.
   }, [user?.id]);
 
   const [activeNotificationType, setActiveNotificationType] = useState<"all" | "regular" | "spaces" | "calls" | "messages" | "activities" | null>(null);
@@ -112,9 +91,9 @@ const HomePage = () => {
   const [isSpacesPanelVisible, setSpacesPanelVisible] = useState(false);
   const [isActivitiesPanelVisible, setActivitiesPanelVisible] = useState(false);
 
-  // Subscribe to posts only when posts exist
+  // Subscribe to posts only when posts exist AND Pusher is ready
   useEffect(() => {
-    if (isTokenReady && posts.length > 0) {
+    if (isRealtimeReady && isTokenReady && posts.length > 0) {
       console.log('🏠 Setting up real-time subscriptions for', posts.length, 'posts');
 
       const postIds = posts.map(post => post.id);
@@ -125,11 +104,11 @@ const HomePage = () => {
         usePostStore.getState().unsubscribeFromAllPosts();
       };
     }
-  }, [posts.length, isTokenReady]);
+  }, [posts.length, isTokenReady, isRealtimeReady]);
 
   // ✅ Global space fetch + per-space real-time subscriptions
   useEffect(() => {
-    if (!isTokenReady || !user?.id) return;
+    if (!isRealtimeReady || !isTokenReady || !user?.id) return;
 
     let subscribedSpaceIds: string[] = [];
 
@@ -291,23 +270,16 @@ const HomePage = () => {
       });
       PusherService.unsubscribeFromChannel('spaces');
     };
-  }, [isTokenReady, user?.id]);
+  }, [isTokenReady, user?.id, isRealtimeReady]);
 
-  // Load posts when component mounts
+  // Combined Data Loading Effect: Load posts and stories once when user is available
   useEffect(() => {
-    const loadPosts = async () => {
-      try {
-        const postsData = await fetchPosts();
-        setPosts(postsData);
-      } catch (error) {
-        console.error('Error loading posts:', error);
-      }
-    };
-
-    if (user) {
-      loadPosts();
+    if (user && isTokenReady) {
+      console.log('🏠 Home: Initial data load');
+      fetchPostsAndHandleState();
+      fetchStoriesAndHandleState();
     }
-  }, [user]);
+  }, [user, isTokenReady]);
 
 
   //////////////////////////////////
@@ -331,8 +303,8 @@ const HomePage = () => {
     try {
       const response = await repostPost(postId);
 
-      // ✅ Corrected: Pass a partial Post object to updatePost
-      updatePost({
+      // ✅ Corrected: Pass a partial Post object to updatePostInStore
+      updatePostInStore({
         id: postId,
         is_reposted: response.reposted,
         reposts_count: response.reposts_count,
@@ -363,12 +335,7 @@ const HomePage = () => {
     }
   };
 
-  useEffect(() => {
-    if (user) {
-      fetchPostsAndHandleState();
-      fetchStoriesAndHandleState();
-    }
-  }, [user]);
+  // Removed redundant effect: fetchPostsAndHandleState is already called in the combined data loading effect above.
 
   const fetchStoriesAndHandleState = async () => {
     try {
@@ -406,7 +373,7 @@ const HomePage = () => {
     }
   }, [user]);
 
-  if (loading && !refreshing) return <View style={styles.loadingContainer}><ActivityIndicator size="large" /></View>;
+  if ((loading && !refreshing) || !user) return <View style={styles.loadingContainer}><ActivityIndicator size="large" /></View>;
 
   return (
     <AuthContext.Provider value={{ user, setUser }}>
@@ -563,7 +530,7 @@ const HomePage = () => {
             {storyGroups.length >= 0 && (
               <View style={styles.storiesContainer}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 10 }} snapToAlignment="start" decelerationRate="fast" snapToInterval={80}>
-                  <TouchableOpacity style={styles.storyItem} onPress={() => handleProfilePress(user.id)}>
+                  <TouchableOpacity style={styles.storyItem} onPress={() => handleProfilePress(user?.id)}>
                     <View style={styles.myStoryCircle}>
                       {renderProfilePhoto()}
                       <View style={styles.addStoryIcon}>
@@ -600,11 +567,13 @@ const HomePage = () => {
               <PostListItem
                 post={item}
                 onReact={reactToPost}
+                onReactComment={(postId, emoji, commentId) => {
+                  reactToPost(postId, emoji, commentId);
+                }}
                 onCommentSubmit={handleCommentSubmit}
                 onRepost={handleRepost}
                 onShare={sharePost}
                 onBookmark={bookmarkPost}
-                setIsCreateModalVisible={setIsCreateModalVisible}
               />
             </View>
           )}

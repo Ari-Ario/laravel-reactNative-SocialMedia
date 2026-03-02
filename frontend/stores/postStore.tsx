@@ -32,6 +32,8 @@ interface Comment {
   post_id: number;
   parent_id?: number;
   replies?: Comment[];
+  reaction_comments?: any[];
+  reaction_comments_count?: number;
   reaction_counts?: Array<{
     emoji: string;
     count: number;
@@ -58,6 +60,8 @@ interface PostStore {
   pendingCommentIds: Set<number>;
   pendingReactionIds: Set<number>;
   pendingPostIds: Set<number>;
+  markPostAsPending: (postId: number) => void;
+  clearPendingPost: (postId: number) => void;
 
   // Basic operations
   setPosts: (posts: Post[]) => void;
@@ -89,13 +93,17 @@ interface PostStore {
     postId: string | number,
     commentId: string | number,
     userId: string | number,
-    emoji: string
+    emoji: string,
+    reaction_counts?: any[],
+    reaction_comments_count?: number
   ) => void;
 
   removeCommentReaction: (
     postId: string | number,
     commentId: string | number,
-    userId: string | number
+    userId: string | number,
+    updatedCounts?: any[],
+    updatedCountNumber?: number | null
   ) => void;
 
   updateCommentWithServerData: (
@@ -119,7 +127,7 @@ interface PostStore {
   handleReactionDeleted: (data: { reactionId: number; postId: number }) => void;
   handleCommentReaction: (data: { reaction: any; postId: number; commentId: number }) => void;
   handleNewPost: (data: { post: any }) => void;
-  handlePostUpdated: (data: { post: any; postId: number }) => void;
+  handlePostUpdated: (data: { post?: any; postId: number; changes?: any; timestamp?: string }) => void;
   handlePostDeleted: (data: { postId: number }) => void;
 
   // Duplicate prevention helpers
@@ -138,6 +146,22 @@ export const usePostStore = create<PostStore>((set, get) => ({
   pendingCommentIds: new Set<number>(),
   pendingReactionIds: new Set<number>(),
   pendingPostIds: new Set<number>(),
+
+  markPostAsPending: (postId) => {
+    set((state) => {
+      const newPending = new Set(state.pendingPostIds);
+      newPending.add(postId);
+      return { pendingPostIds: newPending };
+    });
+  },
+
+  clearPendingPost: (postId) => {
+    set((state) => {
+      const newPending = new Set(state.pendingPostIds);
+      newPending.delete(postId);
+      return { pendingPostIds: newPending };
+    });
+  },
 
   // Basic post operations
   setPosts: (posts) => set({ posts }),
@@ -167,12 +191,10 @@ export const usePostStore = create<PostStore>((set, get) => ({
     set((state) => {
       const existingIndex = state.posts.findIndex(p => p.id === post.id);
 
-      // Only update if the post is different
       if (existingIndex >= 0) {
         const existingPost = state.posts[existingIndex];
-        // Simple check to avoid unnecessary updates
         if (JSON.stringify(existingPost) === JSON.stringify(post)) {
-          return state; // No change needed
+          return state;
         }
 
         const updatedPosts = [...state.posts];
@@ -184,7 +206,7 @@ export const usePostStore = create<PostStore>((set, get) => ({
     });
   },
 
-  deletePostById: (postId) => set((state) => ({
+  deletePostById: (postId: number) => set((state) => ({
     posts: state.posts.filter((p) => p.id !== postId),
   })),
 
@@ -198,20 +220,6 @@ export const usePostStore = create<PostStore>((set, get) => ({
   },
 
   // Duplicate prevention helpers
-  markPostAsPending: (postId: number) => {
-    set((state) => ({
-      pendingPostIds: new Set([...state.pendingPostIds, postId])
-    }));
-  },
-
-  clearPendingPost: (postId: number) => {
-    set((state) => {
-      const newPending = new Set(state.pendingPostIds);
-      newPending.delete(postId);
-      return { pendingPostIds: newPending };
-    });
-  },
-
   markCommentAsPending: (commentId: number) => {
     set((state) => ({
       pendingCommentIds: new Set([...state.pendingCommentIds, commentId])
@@ -306,8 +314,9 @@ export const usePostStore = create<PostStore>((set, get) => ({
 
         const newComment = {
           ...comment,
-          reaction_comments: comment.reaction_comments || [], // Initialize reaction_comments
-          reaction_comments_count: comment.reaction_comments_count || 0, // Initialize count
+          reaction_comments: comment.reaction_comments || [],
+          reaction_counts: comment.reaction_counts || [],
+          reaction_comments_count: comment.reaction_comments_count || 0,
         };
 
         const newComments = comment.parent_id
@@ -356,60 +365,56 @@ export const usePostStore = create<PostStore>((set, get) => ({
 
   // Comment reaction functions
   addCommentReaction: (postId, commentId, userId, emoji) => {
+    const pId = Number(postId);
+    const cId = Number(commentId);
+    const uId = Number(userId);
     const { pendingReactionIds } = get();
-    const tempReactionId = 1000000 + Date.now(); // Generate temp ID
+    const tempReactionId = 1000000 + Date.now();
 
-    // Mark as pending to prevent duplicates
     get().markReactionAsPending(tempReactionId);
 
-    set((state) => {
-      const postIndex = state.posts.findIndex(p => p.id === postId);
-      if (postIndex === -1) {
-        console.warn(`Post ${postId} not found in store`);
-        return state;
-      }
+    set((state) => ({
+      posts: state.posts.map((post) => {
+        if (post.id !== pId) return post;
 
-      return {
-        posts: state.posts.map((post) => {
-          if (post.id !== postId) return post;
+        const updater = (comment: Comment) => {
+          const hasExistingReaction = comment.reaction_comments?.some(
+            (r: any) => r.user_id === uId && r.emoji === emoji
+          );
 
-          const updater = (comment: Comment) => {
-            const hasExistingReaction = comment.reaction_comments?.some(
-              (r: any) => r.user_id === userId && r.emoji === emoji
-            );
+          if (hasExistingReaction) return comment;
 
-            if (hasExistingReaction) return comment;
-
-            const tempReaction = {
-              id: tempReactionId,
-              user_id: userId,
-              comment_id: commentId,
-              emoji,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            };
-
-            const filteredReactions = comment.reaction_comments?.filter(
-              (r: any) => r.user_id !== userId
-            ) || [];
-
-            return {
-              ...comment,
-              reaction_comments: [...filteredReactions, tempReaction],
-              reaction_comments_count: (comment.reaction_comments_count || 0) + 1
-            };
+          const tempReaction = {
+            id: tempReactionId,
+            user_id: uId,
+            comment_id: cId,
+            emoji,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           };
+
+          const filteredReactions = comment.reaction_comments?.filter(
+            (r: any) => r.user_id !== uId
+          ) || [];
 
           return {
-            ...post,
-            comments: updateCommentInTree(post.comments, commentId, updater)
+            ...comment,
+            reaction_comments: [...filteredReactions, tempReaction],
+            reaction_comments_count: (comment.reaction_comments_count || 0) + 1
           };
-        })
-      };
-    });
+        };
+
+        return {
+          ...post,
+          comments: updateCommentInTree(post.comments || [], cId, updater)
+        };
+      })
+    }));
   },
 
   updateCommentReactions: (postId, commentId, newReaction, counts = null) => {
+    const pId = Number(postId);
+    const cId = Number(commentId);
     const { pendingReactionIds } = get();
 
     if (pendingReactionIds.has(newReaction.id)) {
@@ -417,153 +422,119 @@ export const usePostStore = create<PostStore>((set, get) => ({
       return;
     }
 
+    set((state) => ({
+      posts: state.posts.map((post) => {
+        if (post.id !== pId) return post;
+
+        const updater = (comment: Comment) => {
+          const filtered = (comment.reaction_comments || []).filter(
+            (r: any) => r.user_id !== newReaction.user_id
+          );
+
+          return {
+            ...comment,
+            reaction_comments: [...filtered, newReaction],
+            reaction_comments_count: counts ?? comment.reaction_comments_count,
+          };
+        };
+
+        return {
+          ...post,
+          comments: updateCommentInTree(post.comments || [], cId, updater)
+        };
+      }),
+    }));
+  },
+
+  removeCommentReaction: (postId, commentId, userId, updatedCounts = [], updatedCountNumber = null) => {
+    const pId = Number(postId);
+    const cId = Number(commentId);
+    const uId = Number(userId);
+
+    set((state) => ({
+      posts: state.posts.map((post) => {
+        if (post.id !== pId) return post;
+
+        const updater = (comment: Comment) => {
+          const filteredReactions = comment.reaction_comments?.filter(
+            (r: any) => r.user_id !== uId
+          ) || [];
+
+          return {
+            ...comment,
+            reaction_comments: filteredReactions,
+            reaction_counts: updatedCounts,
+            reaction_comments_count: updatedCountNumber ?? filteredReactions.length
+          };
+        };
+
+        return {
+          ...post,
+          comments: updateCommentInTree(post.comments || [], cId, updater)
+        };
+      })
+    }));
+  },
+
+  updateCommentWithServerData: (postId, commentId, serverComment) => {
+    const pId = Number(postId);
+    const cId = Number(commentId);
+
     set((state) => {
-      const postIndex = state.posts.findIndex((p) => p.id === postId);
-      if (postIndex === -1) {
-        console.warn(`Post ${postId} not found when updating comment reactions`);
-        return state;
-      }
+      const ensureReactions = (comment: Comment) => ({
+        ...comment,
+        reaction_comments: comment.reaction_comments || [],
+        replies: comment.replies?.map(ensureReactions as any) || []
+      });
 
       return {
         posts: state.posts.map((post) => {
-          if (post.id !== postId) return post;
-
-          const updater = (comment: Comment) => {
-            const filtered = (comment.reaction_comments || []).filter(
-              (r: any) => r.user_id !== newReaction.user_id
-            );
-
-            return {
-              ...comment,
-              reaction_comments: [...filtered, newReaction],
-              reaction_comments_count: counts ?? comment.reaction_comments_count,
-            };
-          };
+          if (post.id !== pId) return post;
 
           return {
             ...post,
-            comments: updateCommentInTree(post.comments, commentId, updater)
+            comments: post.comments?.map(comment => {
+              if (comment.id !== cId) return comment;
+              return ensureReactions(serverComment) as any;
+            }) ?? [ensureReactions(serverComment) as any]
           };
-        }),
+        })
       };
     });
   },
 
-  removeCommentReaction: (postId, commentId, userId, updatedCounts = [], updatedCountNumber = null) =>
+  removeComment: (postId, commentId) => {
+    const pId = Number(postId);
+    const cId = Number(commentId);
+
     set((state) => {
-      const postIndex = state.posts.findIndex(p => p.id === postId);
-      if (postIndex === -1) return state;
+      const removeCommentAndReplies = (comments: Comment[]): Comment[] => {
+        return comments
+          .filter(comment => comment.id !== cId)
+          .map(comment => ({
+            ...comment,
+            replies: removeCommentAndReplies(comment.replies || [])
+          }));
+      };
 
       return {
-        posts: state.posts.map((post) => {
-          if (post.id !== postId) return post;
-
-          const updater = (comment: Comment) => {
-            const filteredReactions = comment.reaction_comments?.filter(
-              (r: any) => r.user_id !== userId
-            ) || [];
-
-            return {
-              ...comment,
-              reaction_comments: filteredReactions,
-              reaction_counts: updatedCounts,
-              reaction_comments_count: updatedCountNumber ?? filteredReactions.length
-            };
-          };
-
+        posts: state.posts.map(post => {
+          if (post.id !== pId) return post;
+          const updatedComments = removeCommentAndReplies(post.comments || []);
           return {
             ...post,
-            comments: updateCommentInTree(post.comments, commentId, updater)
+            comments: updatedComments,
           };
         })
       };
-    }),
-
-  updateCommentWithServerData: (postId, commentId, serverComment) => set((state) => {
-    const postIndex = state.posts.findIndex(p => p.id === postId);
-    if (postIndex === -1) return state;
-
-    const ensureReactions = (comment: Comment) => ({
-      ...comment,
-      reaction_comments: comment.reaction_comments || [],
-      replies: comment.replies?.map(ensureReactions) || []
     });
-
-    return {
-      posts: state.posts.map((post) => {
-        if (post.id !== postId) return post;
-
-        return {
-          ...post,
-          comments: post.comments?.map(comment => {
-            if (comment.id !== commentId) return comment;
-            return ensureReactions(serverComment);
-          }) ?? [ensureReactions(serverComment)]
-        };
-      })
-    };
-  }),
-
-  removeComment: (postId, commentId) => set((state) => {
-    const postIndex = state.posts.findIndex(p => p.id === postId);
-    if (postIndex === -1) return state;
-
-    const removeCommentAndReplies = (comments: Comment[]): Comment[] => {
-      return comments
-        .filter(comment => comment.id !== commentId)
-        .map(comment => ({
-          ...comment,
-          replies: removeCommentAndReplies(comment.replies || [])
-        }));
-    };
-
-    return {
-      posts: state.posts.map(post => {
-        if (post.id !== postId) return post;
-
-        const updatedComments = removeCommentAndReplies(post.comments || []);
-
-        return {
-          ...post,
-          comments: updatedComments,
-        };
-      })
-    };
-  }),
+  },
 
   // REAL-TIME METHODS
   initializeRealtime: (token: string) => {
     console.log('🔄 Initializing real-time connection...');
     PusherService.initialize(token);
   },
-
-  // subscribeToPost: (postId: number) => {
-  //   if (!PusherService.isReady()) {
-  //     console.warn('⚠️ Pusher not ready, delaying subscription to post:', postId);
-  //     setTimeout(() => {
-  //       get().subscribeToPost(postId);
-  //     }, 1000);
-  //     return;
-  //   }
-
-  //   console.log(`🔄 Subscribing to individual post ${postId}`);
-
-  //   const handleNewComment = (data: any) => {
-  //     console.log('📝 Individual post comment received:', data);
-  //     get().handleNewComment(data);
-  //   };
-
-  //   const handleNewReaction = (data: any) => {
-  //     console.log('❤️ Individual post reaction received:', data);
-  //     get().handleNewReaction(data);
-  //   };
-
-  //   PusherService.subscribeToIndividualPost(postId, handleNewComment, handleNewReaction);
-
-  //   set((state) => ({
-  //     subscribedPostIds: [...state.subscribedPostIds, postId]
-  //   }));
-  // },
 
   subscribeToPosts: (postIds: number[]) => {
     if (!PusherService.isReady()) {
@@ -602,8 +573,13 @@ export const usePostStore = create<PostStore>((set, get) => ({
     };
 
     const handlePostDeleted = (data: any) => {
-      console.log('🗑️ Global channel post deleted:', data);
+      console.log('🗑️ Global channel: post deleted:', data.postId);
       get().handlePostDeleted(data);
+    };
+
+    const handleCommentDeleted = (data: any) => {
+      console.log('🗑️ Global channel: comment deleted:', data.commentId);
+      get().handleCommentDeleted(data);
     };
 
     PusherService.subscribeToPosts(
@@ -613,23 +589,22 @@ export const usePostStore = create<PostStore>((set, get) => ({
       handleCommentReaction,
       handleNewPost,
       handlePostUpdated,
-      handlePostDeleted
+      handlePostDeleted,
+      handleCommentDeleted
     );
   },
 
-  // Add these new event handlers to your PostStore
   handleCommentReaction: (data) => {
-    const { posts, pendingReactionIds } = get();
-
+    const { posts } = get();
     console.log('✅ Received comment reaction data:', data);
 
-    // Coerce commentId to number
     const commentId = Number(data.commentId);
+    const postId = Number(data.postId);
 
     get().markReactionAsPending(data.reaction.id);
 
     const updatedPosts = posts.map(post => {
-      if (post.id === data.postId) {
+      if (post.id === postId) {
         const updater = (comment: Comment) => {
           if (comment.id === commentId) {
             const existingReactions = comment.reaction_comments || [];
@@ -661,12 +636,9 @@ export const usePostStore = create<PostStore>((set, get) => ({
   },
 
   handleNewPost: (data) => {
-    const { posts, pendingPostIds } = get();
-
-    // Mark this post as pending to prevent API duplicates
+    const { posts } = get();
     get().markPostAsPending(data.post.id);
 
-    // Check if post already exists
     const postExists = posts.some(post => post.id === data.post.id);
 
     if (!postExists) {
@@ -681,11 +653,11 @@ export const usePostStore = create<PostStore>((set, get) => ({
 
   handlePostUpdated: (data) => {
     const { posts } = get();
+    const postId = Number(data.postId);
 
     const updatedPosts = posts.map(post => {
-      if (post.id === data.postId) {
-        console.log('✅ Updating post via real-time:', data.postId);
-        // Apply changes from data.changes
+      if (post.id === postId) {
+        console.log('✅ Updating post via real-time:', postId);
         const updatedPost = { ...post };
         if (data.changes) {
           Object.keys(data.changes).forEach((field) => {
@@ -703,11 +675,10 @@ export const usePostStore = create<PostStore>((set, get) => ({
   },
 
   handlePostDeleted: (data) => {
-    const { posts } = get();
-
-    console.log('🗑️ Removing post via real-time:', data.postId);
+    const postId = Number(data.postId);
+    console.log('🗑️ Removing post via real-time:', postId);
     set((state) => ({
-      posts: state.posts.filter(post => post.id !== data.postId)
+      posts: state.posts.filter(post => post.id !== postId)
     }));
   },
 
@@ -725,15 +696,13 @@ export const usePostStore = create<PostStore>((set, get) => ({
     }));
   },
 
-  // REAL-TIME EVENT HANDLERS WITH DUPLICATE PREVENTION
   handleNewComment: (data) => {
-    const { posts, pendingCommentIds } = get();
-
-    // Mark this comment as pending to prevent API duplicates
+    const { posts } = get();
+    const postId = Number(data.postId);
     get().markCommentAsPending(data.comment.id);
 
     const updatedPosts = posts.map(post => {
-      if (post.id === data.postId) {
+      if (post.id === postId) {
         const existingComments = post.comments || [];
         const alreadyExists = existingComments.some(c => c.id === data.comment.id);
 
@@ -755,15 +724,13 @@ export const usePostStore = create<PostStore>((set, get) => ({
   },
 
   handleNewReaction: (data) => {
-    const { posts, pendingReactionIds } = get();
-
-    // Mark this reaction as pending to prevent API duplicates
+    const { posts } = get();
+    const postId = Number(data.postId);
     get().markReactionAsPending(data.reaction.id);
 
     const updatedPosts = posts.map(post => {
-      if (post.id === data.postId) {
+      if (post.id === postId) {
         const existingReactions = post.reactions || [];
-
         const reactionAlreadyExists = existingReactions.some(
           (r: any) => r.id === data.reaction.id
         );
@@ -773,18 +740,11 @@ export const usePostStore = create<PostStore>((set, get) => ({
           return post;
         }
 
-        const alreadyReacted = existingReactions.some(
-          (r: any) => r.user_id === data.reaction.user_id && r.emoji === data.reaction.emoji
-        );
-
-        if (!alreadyReacted) {
-          console.log('✅ Adding new reaction via real-time:', data.reaction.id);
-          return {
-            ...post,
-            reactions: [...existingReactions, data.reaction],
-            reaction_counts: updateReactionCounts(post.reaction_counts || [], data.reaction.emoji, 1)
-          };
-        }
+        return {
+          ...post,
+          reactions: [...existingReactions, data.reaction],
+          reaction_counts: updateReactionCounts(post.reaction_counts || [], (data.reaction.emoji as string), 1)
+        };
       }
       return post;
     });
@@ -793,16 +753,17 @@ export const usePostStore = create<PostStore>((set, get) => ({
 
   handleCommentDeleted: (data) => {
     const { posts } = get();
-    console.log('🗑️ Handling comment deletion:', data);
+    const postId = Number(data.postId);
+    const commentId = Number(data.commentId);
 
-    // Clear from pending set
-    get().clearPendingComment(data.commentId);
+    console.log('🗑️ Handling comment deletion:', data);
+    get().clearPendingComment(commentId);
 
     const updatedPosts = posts.map(post => {
-      if (post.id === data.postId) {
+      if (post.id === postId) {
         const removeCommentAndReplies = (comments: Comment[]): Comment[] => {
           return comments
-            .filter(comment => comment.id !== data.commentId)
+            .filter(comment => comment.id !== commentId)
             .map(comment => ({
               ...comment,
               replies: removeCommentAndReplies(comment.replies || [])
@@ -826,18 +787,20 @@ export const usePostStore = create<PostStore>((set, get) => ({
     const { posts } = get();
     console.log('❌ Handling reaction deletion:', data);
 
-    // Clear from pending set
-    get().clearPendingReaction(data.reactionId);
+    const reactionId = Number(data.reactionId);
+    const postId = Number(data.postId);
+
+    get().clearPendingReaction(reactionId);
 
     const updatedPosts = posts.map(post => {
-      if (post.id === data.postId) {
+      if (post.id === postId) {
         const existingReactions = post.reactions || [];
-        const reactionToRemove = existingReactions.find(r => r.id === data.reactionId);
+        const reactionToRemove = existingReactions.find(r => r.id === reactionId);
 
         if (reactionToRemove) {
           return {
             ...post,
-            reactions: existingReactions.filter(r => r.id !== data.reactionId),
+            reactions: existingReactions.filter(r => r.id !== reactionId),
             reaction_counts: updateReactionCounts(
               post.reaction_counts || [],
               reactionToRemove.emoji,
