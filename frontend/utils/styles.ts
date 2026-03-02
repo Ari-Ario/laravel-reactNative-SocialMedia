@@ -24,7 +24,8 @@ export const createShadow = ({
 }: ShadowOptions = {}) => {
     return Platform.select({
         web: {
-            boxShadow: `${width}px ${height}px ${radius}px ${color.replace('#', '%23')}${Math.round(opacity * 255).toString(16).padStart(2, '0')}`,
+            // Use rgba for better compatibility and to avoid potential issues with hex opacity
+            boxShadow: `${width}px ${height}px ${radius}px rgba(0, 0, 0, ${opacity})`,
         },
         default: {
             shadowColor: color,

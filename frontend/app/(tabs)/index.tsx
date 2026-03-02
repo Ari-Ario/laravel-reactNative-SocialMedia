@@ -1,7 +1,7 @@
 // app/(tabs)/index.tsx
-import { View, Text, Pressable, StyleSheet, Button, ActivityIndicator, ScrollView, FlatList, Image, TouchableOpacity, Alert, Platform } from "react-native";
+import { View, Text, Pressable, StyleSheet, Button, ActivityIndicator, ScrollView, FlatList, Image, TouchableOpacity, Alert, Platform, Dimensions } from "react-native";
 import { Link, router, Stack, useRouter } from 'expo-router';
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import AuthContext from "@/context/AuthContext";
 import LoginScreen from "../LoginScreen";
 import VerificationScreen from "../VerificationScreen";
@@ -23,13 +23,13 @@ import { getToken } from "@/services/TokenService";
 import PusherService from "@/services/PusherService";
 import { NotificationPanel } from "@/components/Notifications/NotificationPanel";
 import FollowersPanel from "@/components/Notifications/FollowersPanel";
+import RealTimeService from '@/services/ChatScreen/RealTimeServiceChat';
+import CollaborationService from '@/services/ChatScreen/CollaborationService';
+import { Avatar } from '@/components/ui/Avatar';
 import CallsPanel from '@/components/Notifications/CallsPanel';
 import MessagesPanel from '@/components/Notifications/MessagesPanel';
 import SpacesPanel from '@/components/Notifications/SpacesPanel';
 import ActivitiesPanel from '@/components/Notifications/ActivitiesPanel';
-import RealTimeService from '@/services/ChatScreen/RealTimeServiceChat';
-import CollaborationService from '@/services/ChatScreen/CollaborationService';
-import { Avatar } from '@/components/ui/Avatar';
 
 type StoryGroup = {
   user: {
@@ -52,7 +52,7 @@ const HomePage = () => {
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const [addStoryVisible, setAddStoryVisible] = useState(false);
   const [storyGroups, setStoryGroups] = useState<StoryGroup[]>([]);
-  const { posts, setPosts } = usePostStore();
+  const { posts, setPosts, updatePost: updatePostInStore } = usePostStore();
   const [isTokenReady, setIsTokenReady] = useState(false);
   const {
     isNotificationPanelVisible,
@@ -86,10 +86,86 @@ const HomePage = () => {
   const realTimeService = RealTimeService.getInstance();
   const collaborationService = CollaborationService.getInstance();
 
-  const [isCallsPanelVisible, setCallsPanelVisible] = useState(false);
-  const [isMessagesPanelVisible, setMessagesPanelVisible] = useState(false);
-  const [isSpacesPanelVisible, setSpacesPanelVisible] = useState(false);
-  const [isActivitiesPanelVisible, setActivitiesPanelVisible] = useState(false);
+  // Specialized panels are now handled by NotificationPanel with initialType
+  // or FollowersPanel for followers.
+
+
+  // Refs for notification icons to measure position
+  const callsIconRef = useRef<any>(null);
+  const messagesIconRef = useRef<any>(null);
+  const spacesIconRef = useRef<any>(null);
+  const activitiesIconRef = useRef<any>(null);
+  const followersIconRef = useRef<any>(null);
+  const chatbotIconRef = useRef<any>(null);
+  const regularIconRef = useRef<any>(null);
+
+  const [notificationAnchor, setNotificationAnchor] = useState<{ top: number; left?: number; right?: number; arrowOffset?: number }>();
+  const [followersAnchor, setFollowersAnchor] = useState<{ top: number; left?: number; right?: number; arrowOffset?: number }>();
+
+  const calculateAnchor = (pageX: number, width: number, pageY: number, height: number) => {
+    const windowWidth = Dimensions.get('window').width;
+    const iconCenter = pageX + width / 2;
+    const dropdownWidth = Platform.OS === 'web' ? 400 : 320;
+
+    let left = iconCenter - (dropdownWidth / 2);
+
+    // Keep within screen bounds
+    if (left < 10) left = 10;
+    if (left + dropdownWidth > windowWidth - 10) {
+      left = windowWidth - dropdownWidth - 10;
+    }
+
+    // arrowOffset is relative to the dropdown's left edge
+    const arrowOffset = iconCenter - left - 10;
+
+    return {
+      top: pageY + height,
+      left: left,
+      arrowOffset: arrowOffset,
+    };
+  };
+
+  const handleIconPress = (
+    ref: React.RefObject<any>,
+    type: "all" | "regular" | "spaces" | "calls" | "messages" | "activities",
+    visibleSetter: (v: boolean) => void
+  ) => {
+    if (ref.current) {
+      ref.current.measure((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+        const anchor = calculateAnchor(pageX, width, pageY, height);
+        setNotificationAnchor(anchor);
+
+        // If it's already open with the same type, close it
+        if (isNotificationPanelVisible && activeNotificationType === type) {
+          setNotificationPanelVisible(false);
+          setActiveNotificationType(null);
+        } else {
+          // Close other panels first
+          setIsFollowersPanelVisible(false);
+
+          setActiveNotificationType(type);
+          setNotificationPanelVisible(true);
+        }
+      });
+    }
+  };
+
+  const handleFollowersPress = () => {
+    if (followersIconRef.current) {
+      followersIconRef.current.measure((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+        const anchor = calculateAnchor(pageX, width, pageY, height);
+        setFollowersAnchor(anchor);
+
+        // Close other panels first
+        if (isNotificationPanelVisible) {
+          setNotificationPanelVisible(false);
+          setActiveNotificationType(null);
+        }
+
+        setIsFollowersPanelVisible(!isFollowersPanelVisible);
+      });
+    }
+  };
 
   // Subscribe to posts only when posts exist AND Pusher is ready
   useEffect(() => {
@@ -378,37 +454,60 @@ const HomePage = () => {
   return (
     <AuthContext.Provider value={{ user, setUser }}>
       <View style={styles.container}>
-        {/* Notification Panels */}
-        <NotificationPanel
-          visible={isNotificationPanelVisible}
-          onClose={() => {
-            setNotificationPanelVisible(false);
-            setActiveNotificationType(null);
-          }}
-          initialType={activeNotificationType || 'all'}
-        />
+        {activeNotificationType === 'regular' || activeNotificationType === 'all' ? (
+          <NotificationPanel
+            visible={isNotificationPanelVisible}
+            onClose={() => {
+              setNotificationPanelVisible(false);
+              setActiveNotificationType(null);
+            }}
+            initialType={activeNotificationType || 'all'}
+            anchorPosition={notificationAnchor}
+          />
+        ) : activeNotificationType === 'calls' ? (
+          <CallsPanel
+            visible={isNotificationPanelVisible}
+            onClose={() => {
+              setNotificationPanelVisible(false);
+              setActiveNotificationType(null);
+            }}
+            anchorPosition={notificationAnchor}
+          />
+        ) : activeNotificationType === 'messages' ? (
+          <MessagesPanel
+            visible={isNotificationPanelVisible}
+            onClose={() => {
+              setNotificationPanelVisible(false);
+              setActiveNotificationType(null);
+            }}
+            anchorPosition={notificationAnchor}
+          />
+        ) : activeNotificationType === 'spaces' ? (
+          <SpacesPanel
+            visible={isNotificationPanelVisible}
+            onClose={() => {
+              setNotificationPanelVisible(false);
+              setActiveNotificationType(null);
+            }}
+            anchorPosition={notificationAnchor}
+          />
+        ) : activeNotificationType === 'activities' ? (
+          <ActivitiesPanel
+            visible={isNotificationPanelVisible}
+            onClose={() => {
+              setNotificationPanelVisible(false);
+              setActiveNotificationType(null);
+            }}
+            anchorPosition={notificationAnchor}
+          />
+        ) : null}
 
         <FollowersPanel
           visible={isFollowersPanelVisible}
           onClose={() => setIsFollowersPanelVisible(false)}
+          anchorPosition={followersAnchor}
         />
 
-        <CallsPanel
-          visible={isCallsPanelVisible}
-          onClose={() => setCallsPanelVisible(false)}
-        />
-        <MessagesPanel
-          visible={isMessagesPanelVisible}
-          onClose={() => setMessagesPanelVisible(false)}
-        />
-        <SpacesPanel
-          visible={isSpacesPanelVisible}
-          onClose={() => setSpacesPanelVisible(false)}
-        />
-        <ActivitiesPanel
-          visible={isActivitiesPanelVisible}
-          onClose={() => setActivitiesPanelVisible(false)}
-        />
         {/* Enhanced Header with Multiple Notification Icons */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
@@ -416,8 +515,9 @@ const HomePage = () => {
             <View style={styles.headerIcons}>
               {/* Calls Icon */}
               <TouchableOpacity
+                ref={callsIconRef}
                 style={styles.notificationIconContainer}
-                onPress={() => setCallsPanelVisible(true)}
+                onPress={() => handleIconPress(callsIconRef, 'calls', setNotificationPanelVisible)}
               >
                 <Ionicons name="call-outline" size={24} color="#4CD964" />
                 {unreadCallCount > 0 && (
@@ -431,8 +531,9 @@ const HomePage = () => {
 
               {/* Messages Icon */}
               <TouchableOpacity
+                ref={messagesIconRef}
                 style={styles.notificationIconContainer}
-                onPress={() => setMessagesPanelVisible(true)}
+                onPress={() => handleIconPress(messagesIconRef, 'messages', setNotificationPanelVisible)}
               >
                 <Ionicons name="chatbubble-outline" size={24} color="#007AFF" />
                 {unreadMessageCount > 0 && (
@@ -446,8 +547,9 @@ const HomePage = () => {
 
               {/* Spaces Icon */}
               <TouchableOpacity
+                ref={spacesIconRef}
                 style={styles.notificationIconContainer}
-                onPress={() => setSpacesPanelVisible(true)}
+                onPress={() => handleIconPress(spacesIconRef, 'spaces', setNotificationPanelVisible)}
               >
                 <Ionicons name="cube-outline" size={24} color="#5856D6" />
                 {unreadSpaceCount > 0 && (
@@ -461,8 +563,9 @@ const HomePage = () => {
 
               {/* Activities Icon */}
               <TouchableOpacity
+                ref={activitiesIconRef}
                 style={styles.notificationIconContainer}
-                onPress={() => setActivitiesPanelVisible(true)}
+                onPress={() => handleIconPress(activitiesIconRef, 'activities', setNotificationPanelVisible)}
               >
                 <Ionicons name="sparkles-outline" size={24} color="#FF2D55" />
                 {unreadActivityCount > 0 && (
@@ -476,8 +579,9 @@ const HomePage = () => {
 
               {/* Followers Icon */}
               <TouchableOpacity
+                ref={followersIconRef}
                 style={styles.notificationIconContainer}
-                onPress={() => setIsFollowersPanelVisible(true)}
+                onPress={handleFollowersPress}
               >
                 <Ionicons name="people-outline" size={24} color="#000" />
                 {unreadFollowerCount > 0 && (
@@ -491,8 +595,9 @@ const HomePage = () => {
 
 
               {/* Chatbot Training Icon (AI Admin Only) */}
-              {user?.ai_admin && (
+              {!!user?.ai_admin && (
                 <TouchableOpacity
+                  ref={chatbotIconRef}
                   style={styles.notificationIconContainer}
                   onPress={() => router.push('/chatbotTraining')}
                 >
@@ -509,8 +614,9 @@ const HomePage = () => {
 
               {/* Regular Notifications Icon */}
               <TouchableOpacity
+                ref={regularIconRef}
                 style={styles.notificationIconContainer}
-                onPress={() => setNotificationPanelVisible(true)}
+                onPress={() => handleIconPress(regularIconRef, 'regular', setNotificationPanelVisible)}
               >
                 <Ionicons name="notifications-outline" size={24} color="#000" />
                 {unreadCount > 0 && (
@@ -527,34 +633,33 @@ const HomePage = () => {
 
         <View style={styles.headerScrollContainer}>
           <View style={styles.header}>
-            {storyGroups.length >= 0 && (
-              <View style={styles.storiesContainer}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 10 }} snapToAlignment="start" decelerationRate="fast" snapToInterval={80}>
-                  <TouchableOpacity style={styles.storyItem} onPress={() => handleProfilePress(user?.id)}>
-                    <View style={styles.myStoryCircle}>
-                      {renderProfilePhoto()}
-                      <View style={styles.addStoryIcon}>
-                        <Ionicons name="add" size={16} color="white" onPress={(e) => { e.stopPropagation(); setAddStoryVisible(true); }} />
-                      </View>
+
+            <View style={styles.storiesContainer}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 10 }} snapToAlignment="start" decelerationRate="fast" snapToInterval={80}>
+                <TouchableOpacity style={styles.storyItem} onPress={() => handleProfilePress(user?.id)}>
+                  <View style={styles.myStoryCircle}>
+                    {renderProfilePhoto()}
+                    <View style={styles.addStoryIcon}>
+                      <Ionicons name="add" size={16} color="white" onPress={(e) => { e.stopPropagation(); setAddStoryVisible(true); }} />
                     </View>
-                    <Text style={styles.storyUsername} onPress={() => setAddStoryVisible(true)}>Your Story</Text>
+                  </View>
+                  <Text style={styles.storyUsername} onPress={() => setAddStoryVisible(true)}>Your Story</Text>
+                </TouchableOpacity>
+                {storyGroups.map(group => (
+                  <TouchableOpacity key={group.user.id} style={styles.storyItem} onPress={() => router.push({ pathname: '/story/[id]', params: { id: group.latest_story.id } })}>
+                    <View style={[styles.storyBorder, group.all_viewed && styles.viewedStoryBorder]}>
+                      <Avatar
+                        user={group.user}
+                        size={60}
+                        style={styles.storyImage}
+                      />
+                      {!group.all_viewed && <View style={styles.unseenBadge} />}
+                    </View>
+                    <Text style={styles.storyUsername}>{group.user.name}</Text>
                   </TouchableOpacity>
-                  {storyGroups.map(group => (
-                    <TouchableOpacity key={group.user.id} style={styles.storyItem} onPress={() => router.push({ pathname: '/story/[id]', params: { id: group.latest_story.id } })}>
-                      <View style={[styles.storyBorder, group.all_viewed && styles.viewedStoryBorder]}>
-                        <Avatar
-                          user={group.user}
-                          size={60}
-                          style={styles.storyImage}
-                        />
-                        {!group.all_viewed && <View style={styles.unseenBadge} />}
-                      </View>
-                      <Text style={styles.storyUsername}>{group.user.name}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
+                ))}
+              </ScrollView>
+            </View>
             {/* <Button title="Logout" onPress={handleLogout} /> */}
           </View>
 

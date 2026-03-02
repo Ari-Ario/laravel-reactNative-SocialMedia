@@ -26,12 +26,14 @@ interface NotificationPanelProps {
   visible: boolean;
   onClose: () => void;
   initialType?: 'all' | 'calls' | 'messages' | 'spaces' | 'activities' | 'regular';
+  anchorPosition?: { top: number; left?: number; right?: number; arrowOffset?: number };
 }
 
 export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   visible,
   onClose,
   initialType = 'all',
+  anchorPosition,
 }) => {
   const {
     getRegularNotifications,
@@ -288,7 +290,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
           <View style={styles.textContent}>
             <View style={styles.titleRow}>
               <View style={styles.titleWithIcon}>
-                <Ionicons name={iconName} size={16} color={iconColor} />
+                <Ionicons name={iconName as any} size={16} color={iconColor} />
                 <Text style={styles.notificationTitle}>{item.title}</Text>
               </View>
               <Text style={styles.notificationTime}>
@@ -357,6 +359,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
+
       style={styles.filterTabs}
       contentContainerStyle={styles.filterTabsContent}
     >
@@ -419,39 +422,63 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   );
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose} statusBarTranslucent>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
 
-      <View style={styles.panelContainer}>
-        <View style={styles.panelHeader}>
-          <Text style={styles.panelTitle}>
-            Notifications {totalCount > 0 ? `(${totalCount})` : ''}
-          </Text>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color="#000" />
-          </TouchableOpacity>
-        </View>
+      <View
+        style={[
+          styles.panelContainer,
+          anchorPosition ? {
+            top: anchorPosition.top + 15,
+            left: anchorPosition.left,
+            right: anchorPosition.right,
+          } : styles.defaultPosition
+        ]}
+      >
+        {/* Pointer Arrow */}
+        {anchorPosition && (
+          <View
+            style={[
+              styles.pointer,
+              anchorPosition.right !== undefined
+                ? { right: anchorPosition.arrowOffset }
+                : { left: anchorPosition.arrowOffset }
+            ]}
+          />
+        )}
 
-        {renderFilterTabs()}
+        <View style={styles.contentWrapper}>
+          <View style={styles.panelHeader}>
+            <Text style={styles.panelTitle}>
+              Notifications {totalCount > 0 ? `(${totalCount})` : ''}
+            </Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close" size={20} color="#666" />
+            </TouchableOpacity>
+          </View>
 
-        {/* Fixed container to prevent jumping when switching tabs */}
-        <View style={{ flex: 1 }}>
-          {totalCount > 0 ? (
-            <FlatList
-              data={filteredNotifications}
-              renderItem={renderNotificationItem}
-              keyExtractor={(item) => item.id}
-              extraData={activeFilter}           // ← prevents jump
-              contentContainerStyle={styles.listContent}
-              showsVerticalScrollIndicator={false}
-            />
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="notifications-off-outline" size={48} color="#ccc" />
-              <Text style={styles.emptyText}>No notifications yet</Text>
-              <Text style={styles.emptySubtext}>New notifications will appear here in real-time</Text>
-            </View>
-          )}
+          <View style={styles.filterTabsContainer}>
+            {renderFilterTabs()}
+          </View>
+
+          <View style={styles.listContainer}>
+            {totalCount > 0 ? (
+              <FlatList
+                style={{ flex: 1 }}
+                data={filteredNotifications}
+                renderItem={renderNotificationItem}
+                keyExtractor={(item) => item.id}
+                extraData={activeFilter}
+                contentContainerStyle={styles.listContent}
+                showsVerticalScrollIndicator={false}
+              />
+            ) : (
+              <View style={styles.emptyState}>
+                <Ionicons name="notifications-off-outline" size={48} color="#ccc" />
+                <Text style={styles.emptyText}>No notifications yet</Text>
+              </View>
+            )}
+          </View>
         </View>
       </View>
     </Modal>
@@ -459,45 +486,84 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
 };
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'transparent' // Transparent for dropdown feel
+  },
   panelContainer: {
     position: 'absolute',
+    width: Platform.OS === 'web' ? 400 : 320,
+    maxHeight: 500,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    ...createShadow({
+      width: 0,
+      height: 4,
+      opacity: 0.2,
+      radius: 12,
+      elevation: 8,
+    }),
+    borderWidth: 1,
+    borderColor: '#efefef',
+    zIndex: 1000,
+  },
+  defaultPosition: {
     top: 90,
     left: 16,
     right: 16,
-    bottom: 90,
-    backgroundColor: '#ffffff',
-    borderRadius: 24,
+  },
+  contentWrapper: {
+    flex: 1,
     overflow: 'hidden',
-    ...createShadow({
-      width: 0,
-      height: 8,
-      opacity: 0.15,
-      radius: 24,
-      elevation: 10,
-    }),
+    borderRadius: 16,
+  },
+  pointer: {
+    position: 'absolute',
+    top: -10,
+    width: 20,
+    height: 20,
+    backgroundColor: '#ffffff',
+    transform: [{ rotate: '45deg' }],
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderColor: '#efefef',
+    zIndex: -1, // Behind the content but shadows will show
   },
   panelHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    backgroundColor: '#fff',
+    flexShrink: 0,
+    zIndex: 10,
+  },
+  panelTitle: { fontSize: 16, fontWeight: '700', color: '#1a1a1a' },
+  closeButton: {
+    padding: 4,
+    borderRadius: 20,
+    backgroundColor: '#f5f5f5',
+  },
+  filterTabsContainer: {
+    height: 60,
+    backgroundColor: '#fff',
+    flexShrink: 0,
+    zIndex: 100,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
-  panelTitle: { fontSize: 20, fontWeight: '700', color: '#1a1a1a' },
-  closeButton: {
-    padding: 6,
-    borderRadius: 20,
-    backgroundColor: '#f5f5f5',
-    width: 36,
-    height: 36,
-    justifyContent: 'center',
-    alignItems: 'center',
+  filterTabs: {
+    flex: 1,
   },
-  filterTabs: { maxHeight: 64, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
   filterTabsContent: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
+  listContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+    zIndex: 1,
+    overflow: 'hidden',
+  },
   filterTab: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -508,6 +574,8 @@ const styles = StyleSheet.create({
     marginRight: 8,
     gap: 6,
   },
+
+
   activeFilterTab: { backgroundColor: '#e8f0fe', borderColor: '#007AFF', borderWidth: 1 },
   filterTabText: { fontSize: 13, fontWeight: '500', color: '#666' },
   activeFilterText: { color: '#007AFF', fontWeight: '600' },

@@ -28,6 +28,7 @@ import debounce from 'lodash/debounce';
 import CreativeGenerator from "@/components/AI/CreativeGenerator";
 import CollaborativeActivities from "@/components/ChatScreen/CollaborativeActivities";
 import { useCollaborationStore } from "@/stores/collaborationStore";
+import { createShadow } from "@/utils/styles";
 
 interface Chat {
   id: string;
@@ -1431,17 +1432,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     padding: 16,
     borderRadius: 16,
-    ...Platform.select({
-      web: {
-        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4,
-      },
+    ...createShadow({
+      width: 0,
+      height: 2,
+      opacity: 0.1,
+      radius: 8,
+      elevation: 4,
     }),
   },
   spaceTypeTitle: {

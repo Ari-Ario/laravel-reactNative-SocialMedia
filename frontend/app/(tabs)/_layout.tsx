@@ -14,7 +14,6 @@ import { useNotificationStore } from '@/stores/notificationStore';
 import { logout } from '@/services/AuthService';
 import { getToken } from '@/services/TokenService';
 import { NotificationToast } from '@/components/Notifications/NotificationToast';
-import { NotificationPanel } from '@/components/Notifications/NotificationPanel';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -152,12 +151,6 @@ export default function TabLayout() {
             onPress={handleToastPress}
             onHide={handleHideToast}
             visible={!!currentToast}
-          />
-
-          {/* NEW: Notification Panel */}
-          <NotificationPanel
-            visible={isNotificationPanelVisible}
-            onClose={() => setNotificationPanelVisible(false)}
           />
 
           <Tabs

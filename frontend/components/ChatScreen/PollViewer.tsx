@@ -31,6 +31,7 @@ import { createShadow } from '@/utils/styles';
 import PollComponent from './PollComponent';
 import PollVotersModal from './PollVotersModal';
 import GenericMenu, { MenuItem } from '../GenericMenu';
+import { calculateAnchor, AnchorPosition } from '@/utils/layout';
 
 const { width, height } = Dimensions.get('window');
 
@@ -68,7 +69,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
     const [localPoll, setLocalPoll] = useState<any>(poll);
     const [votingInProgress, setVotingInProgress] = useState(false);
     const [showMenu, setShowMenu] = useState(false);
-    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+    const [menuPosition, setMenuPosition] = useState<AnchorPosition>();
     const [showForwardModal, setShowForwardModal] = useState(false);
     const [availableSpaces, setAvailableSpaces] = useState<any[]>([]);
     const [selectedSpaces, setSelectedSpaces] = useState<Set<string>>(new Set());
@@ -261,23 +262,12 @@ const PollViewer: React.FC<PollViewerProps> = ({
     const handleMenuPress = useCallback(() => {
         if (menuButtonRef.current) {
             menuButtonRef.current.measure((x: number, y: number, w: number, h: number, pageX: number, pageY: number) => {
-                const menuWidth = 220;
-                const menuHeight = 200; // Approximate based on number of items
-
-                // Adjust position to keep menu on screen
-                let left = pageX - menuWidth + w; // Align to the right edge of the button by default
-                let top = pageY + h + 5;  // Render slightly below the button
-
-                // Ensure menu doesn't go off screen
-                if (left < 10) left = 10;
-                if (left + menuWidth > width) left = width - menuWidth - 10;
-                if (top + menuHeight > height) top = pageY - menuHeight - 10;
-
-                setMenuPosition({ top, left });
+                const anchor = calculateAnchor(pageX, pageY, w, h, 220); // 220 is GenericMenu width
+                setMenuPosition(anchor);
                 setShowMenu(true);
             });
         }
-    }, [height, width]);
+    }, []);
     // ==============================================================================
 
     // Close poll

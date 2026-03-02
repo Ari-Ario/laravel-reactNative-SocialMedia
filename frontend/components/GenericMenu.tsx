@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { createShadow } from '@/utils/styles';
+import { AnchorPosition } from '@/utils/layout';
 
 export interface MenuItem {
     icon: keyof typeof Ionicons.glyphMap;
@@ -15,23 +16,37 @@ interface GenericMenuProps {
     visible: boolean;
     onClose: () => void;
     items: MenuItem[];
-    anchorPosition?: { top: number; left: number };
+    anchorPosition?: AnchorPosition;
 }
 
 export default function GenericMenu({
     visible,
     onClose,
     items,
-    anchorPosition = { top: 0, left: 0 }
+    anchorPosition
 }: GenericMenuProps) {
     return (
         <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
             <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
-                <View style={[styles.menuContainer, {
-                    position: 'absolute',
-                    top: anchorPosition.top + 20,
-                    left: Math.max(10, anchorPosition.left - 180), // Prevent going off-screen left
-                }]}>
+                <View
+                    style={[
+                        styles.menuContainer,
+                        anchorPosition ? {
+                            top: anchorPosition.top + 15, // Standard offset from trigger
+                            left: anchorPosition.left,
+                        } : { top: 100, left: 20 } // Fallback
+                    ]}
+                >
+                    {/* Pointer Arrow */}
+                    {anchorPosition && (
+                        <View
+                            style={[
+                                styles.pointer,
+                                { left: anchorPosition.arrowOffset }
+                            ]}
+                        />
+                    )}
+
                     {items.map((item, index) => (
                         <TouchableOpacity
                             key={index}
@@ -63,11 +78,12 @@ export default function GenericMenu({
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.2)', // Slightly dim background
-        justifyContent: 'center',
-        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.1)',
+        width: '100%',
+        height: '100%',
     },
     menuContainer: {
+        position: 'absolute',
         backgroundColor: 'white',
         borderRadius: 12,
         width: 220,
@@ -79,6 +95,21 @@ const styles = StyleSheet.create({
             radius: 12,
             elevation: 8,
         }),
+    },
+    pointer: {
+        position: 'absolute',
+        top: -10,
+        width: 0,
+        height: 0,
+        backgroundColor: 'transparent',
+        borderStyle: 'solid',
+        borderLeftWidth: 10,
+        borderRightWidth: 10,
+        borderBottomWidth: 10,
+        borderLeftColor: 'transparent',
+        borderRightColor: 'transparent',
+        borderBottomColor: 'white',
+        marginLeft: -10, // Center on the peak
     },
     menuItem: {
         flexDirection: 'row',

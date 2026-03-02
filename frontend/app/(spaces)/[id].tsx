@@ -22,6 +22,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import AuthContext from '@/context/AuthContext';
 import CollaborationService, { CollaborativeActivity } from '@/services/ChatScreen/CollaborationService';
+import GenericMenu from '@/components/GenericMenu';
+import { calculateAnchor, AnchorPosition } from '@/utils/layout';
 import { AICollaborationAssistant } from '@/components/AI/AICollaborationAssistant';
 import * as Haptics from 'expo-haptics';
 import { getToken } from '@/services/TokenService';
@@ -64,8 +66,8 @@ const SpaceDetailScreen = () => {
   // Dropdown menu states
   const [showCallMenu, setShowCallMenu] = useState(false);
   const [showSpaceMenu, setShowSpaceMenu] = useState(false);
-  const [callMenuPosition, setCallMenuPosition] = useState({ top: 0, right: 0 });
-  const [spaceMenuPosition, setSpaceMenuPosition] = useState({ top: 0, right: 0 });
+  const [callMenuPosition, setCallMenuPosition] = useState<AnchorPosition>();
+  const [spaceMenuPosition, setSpaceMenuPosition] = useState<AnchorPosition>();
 
   // Refs for button measurements
   const callButtonRef = useRef<any>(null);
@@ -589,10 +591,7 @@ const SpaceDetailScreen = () => {
   const measureCallButton = () => {
     if (callButtonRef.current) {
       callButtonRef.current.measure((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
-        setCallMenuPosition({
-          top: pageY + height + 5,
-          right: windowWidth - (pageX + width),
-        });
+        setCallMenuPosition(calculateAnchor(pageX, pageY, width, height, 220));
         setShowCallMenu(true);
       });
     }
@@ -601,10 +600,7 @@ const SpaceDetailScreen = () => {
   const measureSpaceButton = () => {
     if (spaceButtonRef.current) {
       spaceButtonRef.current.measure((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
-        setSpaceMenuPosition({
-          top: pageY + height + 5,
-          right: windowWidth - (pageX + width),
-        });
+        setSpaceMenuPosition(calculateAnchor(pageX, pageY, width, height, 220));
         setShowSpaceMenu(true);
       });
     }
@@ -878,143 +874,71 @@ const SpaceDetailScreen = () => {
         </View>
       </View>
 
-      {/* Call Menu Dropdown */}
-      {showCallMenu && (
-        <>
-          <TouchableOpacity
-            style={styles.menuOverlay}
-            activeOpacity={1}
-            onPress={() => setShowCallMenu(false)}
-          />
-          <Animated.View
-            entering={FadeIn.duration(200)}
-            exiting={FadeOut.duration(200)}
-            style={[
-              styles.dropdownMenu,
-              {
-                top: callMenuPosition.top,
-                right: callMenuPosition.right,
-              }
-            ]}
-          >
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setShowCallMenu(false);
-                handleStartCall('video');
-              }}
-            >
-              <Ionicons name="videocam" size={20} color="#007AFF" />
-              <Text style={styles.menuItemText}>Video Call</Text>
-            </TouchableOpacity>
+      {/* Unified Menus */}
+      <GenericMenu
+        visible={showCallMenu}
+        onClose={() => setShowCallMenu(false)}
+        anchorPosition={callMenuPosition}
+        items={[
+          {
+            icon: 'videocam',
+            label: 'Video Call',
+            color: '#007AFF',
+            onPress: () => handleStartCall('video'),
+          },
+          {
+            icon: 'call',
+            label: 'Audio Call',
+            color: '#4CAF50',
+            onPress: () => handleStartCall('audio'),
+          },
+        ]}
+      />
 
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setShowCallMenu(false);
-                handleStartCall('audio');
-              }}
-            >
-              <Ionicons name="call" size={20} color="#4CAF50" />
-              <Text style={styles.menuItemText}>Audio Call</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </>
-      )}
-
-      {/* Space Options Menu Dropdown */}
-      {showSpaceMenu && (
-        <>
-          <TouchableOpacity
-            style={styles.menuOverlay}
-            activeOpacity={1}
-            onPress={() => setShowSpaceMenu(false)}
-          />
-          <Animated.View
-            entering={FadeIn.duration(200)}
-            exiting={Platform.OS === 'web' ? undefined : SlideOutDown}
-            style={[
-              styles.dropdownMenu,
-              {
-                top: spaceMenuPosition.top,
-                right: spaceMenuPosition.right,
-              }
-            ]}
-          >
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setShowSpaceMenu(false);
-                handleOpenSettings();
-              }}
-            >
-              <Ionicons name="settings-outline" size={20} color="#666" />
-              <Text style={styles.menuItemText}>Space Settings</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setShowSpaceMenu(false);
-                setShowParticipantsModal(true);
-              }}
-            >
-              <Ionicons name="people-outline" size={20} color="#666" />
-              <Text style={styles.menuItemText}>View Participants</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setShowSpaceMenu(false);
-                setShowAdminsModal(true);
-              }}
-            >
-              <Ionicons name="shield-outline" size={20} color="#666" />
-              <Text style={styles.menuItemText}>Manage Admins</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setShowSpaceMenu(false);
-                setShowPollCreator(true);
-              }}
-            >
-              <Ionicons name="bar-chart-outline" size={20} color="#666" />
-              <Text style={styles.menuItemText}>Create Poll</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={handleExportContentClick}
-            >
-              <Ionicons name="download-outline" size={20} color="#666" />
-              <Text style={styles.menuItemText}>Export Content</Text>
-            </TouchableOpacity>
-
-            <View style={styles.menuDivider} />
-
-            <TouchableOpacity
-              style={[styles.menuItem, styles.menuItemDestructive]}
-              onPress={handleLeaveSpace}
-            >
-              <Ionicons name="exit-outline" size={20} color="#FF6B6B" />
-              <Text style={[styles.menuItemText, styles.menuItemTextDestructive]}>Leave Space</Text>
-            </TouchableOpacity>
-
-            {space?.my_role === 'owner' && (
-              <TouchableOpacity
-                style={[styles.menuItem, styles.menuItemDestructive]}
-                onPress={handleDeleteSpace}
-              >
-                <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
-                <Text style={[styles.menuItemText, styles.menuItemTextDestructive]}>Delete Space</Text>
-              </TouchableOpacity>
-            )}
-          </Animated.View>
-        </>
-      )}
+      <GenericMenu
+        visible={showSpaceMenu}
+        onClose={() => setShowSpaceMenu(false)}
+        anchorPosition={spaceMenuPosition}
+        items={[
+          {
+            icon: 'settings-outline',
+            label: 'Space Settings',
+            onPress: handleOpenSettings,
+          },
+          {
+            icon: 'people-outline',
+            label: 'View Participants',
+            onPress: () => setShowParticipantsModal(true),
+          },
+          {
+            icon: 'shield-outline',
+            label: 'Manage Admins',
+            onPress: () => setShowAdminsModal(true),
+          },
+          {
+            icon: 'bar-chart-outline',
+            label: 'Create Poll',
+            onPress: () => setShowPollCreator(true),
+          },
+          {
+            icon: 'download-outline',
+            label: 'Export Content',
+            onPress: handleExportContentClick,
+          },
+          {
+            icon: 'exit-outline',
+            label: 'Leave Space',
+            destructive: true,
+            onPress: handleLeaveSpace,
+          },
+          ...(space?.my_role === 'owner' ? [{
+            icon: 'trash-outline' as const,
+            label: 'Delete Space',
+            destructive: true,
+            onPress: handleDeleteSpace,
+          }] : []),
+        ]}
+      />
 
       {/* Tab Navigation */}
       <ScrollView
