@@ -1055,7 +1055,7 @@ public function endCall(Request $request, $id)
     {
         $request->validate([
             'content' => 'nullable|string',
-            'type' => 'sometimes|in:text,image,video,document,voice,poll',
+            'type' => 'sometimes|in:text,image,video,document,voice,poll,album',
             'file_path' => 'sometimes|string',
             'metadata' => 'sometimes|array',
         ]);

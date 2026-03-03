@@ -1310,6 +1310,14 @@ class CollaborationService {
     }
   }
 
+  getGroupedReactions(reactions: any[]) {
+    if (!reactions) return {};
+    return reactions.reduce((acc: any, curr: any) => {
+      acc[curr.reaction] = (acc[curr.reaction] || 0) + 1;
+      return acc;
+    }, {});
+  }
+
   // handling 3 dot menu on (spaces)/[id].tsx
 
   async updateSpace(spaceId: string, data: {

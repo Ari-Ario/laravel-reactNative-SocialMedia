@@ -271,14 +271,18 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
             <Text style={styles.panelTitle}>
               Followers {followerNotifications.length > 0 ? `(${followerNotifications.length})` : ''}
             </Text>
-            <TouchableOpacity onPress={() => {
-              markAllFollowerNotificationsAsRead();
-              onClose();
-            }} style={styles.closeButton}>
+            <TouchableOpacity
+              onPress={() => {
+                markAllFollowerNotificationsAsRead();
+                onClose();
+              }}
+              style={styles.closeButton}
+            >
               <Ionicons name="close" size={20} color="#666" />
             </TouchableOpacity>
           </View>
-          <View style={{ flex: 1 }}>
+
+          <View style={styles.listContainer}>
             {followerNotifications.length === 0 ? (
               <View style={styles.emptyState}>
                 <Ionicons name="person-add-outline" size={48} color="#ccc" />
@@ -289,6 +293,7 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
               </View>
             ) : (
               <FlatList
+                style={{ flex: 1 }}
                 data={followerNotifications}
                 renderItem={renderFollowerItem}
                 keyExtractor={(item) => item.id}
@@ -355,6 +360,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+    backgroundColor: '#fff',
+    flexShrink: 0,
+    zIndex: 10,
   },
   panelTitle: {
     fontSize: 16,
@@ -365,6 +373,12 @@ const styles = StyleSheet.create({
     padding: 4,
     borderRadius: 20,
     backgroundColor: '#f5f5f5',
+  },
+  listContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+    zIndex: 1,
+    overflow: 'hidden',
   },
   followersList: {
     flexGrow: 1,
@@ -377,6 +391,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#f5f5f5',
+    minHeight: 80,
   },
   unreadFollower: {
     backgroundColor: '#f8faff',

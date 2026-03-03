@@ -10,7 +10,6 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-
 use Illuminate\Notifications\Notification as LaravelNotification;
 
 class MessageSent extends LaravelNotification implements ShouldBroadcast
@@ -36,7 +35,6 @@ class MessageSent extends LaravelNotification implements ShouldBroadcast
      */
     public function via($notifiable)
     {
-        // Only save to database for participants (the broadcast is handled separately by the Event interface)
         return ['database'];
     }
 
@@ -67,4 +65,18 @@ class MessageSent extends LaravelNotification implements ShouldBroadcast
      *
      * @return array<int, \Illuminate\Broadcasting\Channel>
      */
- 
+    public function broadcastOn()
+    {
+        return [
+            new PresenceChannel('space.' . $this->spaceId),
+        ];
+    }
+
+    /**
+     * The event's broadcast name.
+     */
+    public function broadcastAs()
+    {
+        return 'message.sent';
+    }
+}

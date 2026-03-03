@@ -35,6 +35,7 @@ interface MessageBubbleProps {
   showAvatar: boolean;
   isSelected: boolean;
   onPress: () => void;
+  onMediaPress?: (index: number) => void;
   onLongPress: () => void;
   onLongPressWithPosition?: (message: any, x: number, y: number) => void;
   onPollPress?: (poll: any) => void;
@@ -50,6 +51,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   showAvatar,
   isSelected,
   onPress,
+  onMediaPress,
   onLongPress,
   onLongPressWithPosition,
   onPollPress,
@@ -87,7 +89,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         return;
       }
 
-      const fileUri = `${FileSystem.documentDirectory}${filename}`;
+      const fileUri = `${(FileSystem as any).documentDirectory || (FileSystem as any).cacheDirectory || ''}${filename}`;
       const downloadRes = await FileSystem.downloadAsync(url, fileUri);
 
       await MediaLibrary.saveToLibraryAsync(downloadRes.uri);
@@ -117,18 +119,24 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
         return (
           <View style={styles.imageContainer}>
-            {isVideo ? (
-              <View style={[styles.image, styles.videoPlaceholder]}>
-                <Ionicons name="videocam" size={48} color="#fff" />
-                <Text style={styles.videoText}>Video Message</Text>
-              </View>
-            ) : (
-              <Image
-                source={{ uri: url, cache: 'force-cache' }}
-                style={styles.image}
-                resizeMode="cover"
-              />
-            )}
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => onMediaPress?.(0)}
+              style={styles.image}
+            >
+              {isVideo ? (
+                <View style={[styles.image, styles.videoPlaceholder]}>
+                  <Ionicons name="videocam" size={48} color="#fff" />
+                  <Text style={styles.videoText}>Video Message</Text>
+                </View>
+              ) : (
+                <Image
+                  source={{ uri: url, cache: 'force-cache' }}
+                  style={styles.image}
+                  resizeMode="cover"
+                />
+              )}
+            </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.downloadBtnOverlay}
@@ -137,6 +145,72 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               <Ionicons name="download-outline" size={20} color="#fff" />
             </TouchableOpacity>
 
+            {message.content ? (
+              <Text style={[styles.imageCaption, isCurrentUser ? styles.currentUserText : styles.otherUserText]}>
+                {message.content}
+              </Text>
+            ) : null}
+          </View>
+        );
+      }
+
+      case 'album': {
+        const mediaItems = message.metadata?.media_items || [];
+        if (mediaItems.length === 0) return null;
+
+        // Telegram style: 1 is big, 2 is 2x1, 3 is 1 top + 2 bottom, 4 is 2x2
+        // We'll simplify to a robust grid for 2-4 and grid with +X for 5+
+        const displayItems = mediaItems.slice(0, 4);
+        const remaining = mediaItems.length - 4;
+
+        return (
+          <View style={styles.albumContainer}>
+            <View style={styles.albumGrid}>
+              {displayItems.map((item: any, idx: number) => {
+                const rawUrl = item.url || item.file_path || '';
+                const isNetworkUrl = rawUrl.startsWith('http://') || rawUrl.startsWith('https://');
+                const isFileUrl = rawUrl.startsWith('file://');
+                const isDataUrl = rawUrl.startsWith('data:');
+
+                const url = (isNetworkUrl || isFileUrl || isDataUrl)
+                  ? rawUrl
+                  : (rawUrl ? `${getApiBaseImage()}/storage/${rawUrl}` : 'https://via.placeholder.com/300');
+
+                const isLast = idx === 3 && remaining > 0;
+                const isVideo = item.type === 'video';
+
+                return (
+                  <TouchableOpacity
+                    key={idx}
+                    activeOpacity={0.9}
+                    onPress={() => onMediaPress?.(idx)}
+                    style={[
+                      styles.albumItem,
+                      displayItems.length === 1 ? styles.albumItemFull :
+                        displayItems.length === 2 ? styles.albumItemHalf :
+                          styles.albumItemQuarter
+                    ]}
+                  >
+                    {isVideo ? (
+                      <View style={[styles.albumMedia, styles.videoPlaceholderSmall]}>
+                        <Ionicons name="play" size={24} color="#fff" />
+                      </View>
+                    ) : (
+                      <Image
+                        source={{ uri: url, cache: 'force-cache' }}
+                        style={styles.albumMedia}
+                        resizeMode="cover"
+                      />
+                    )}
+                    {isLast && (
+                      <View style={styles.albumOverlay}>
+                        <Text style={styles.albumOverlayText}>+{remaining}</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
             {message.content ? (
               <Text style={[styles.imageCaption, isCurrentUser ? styles.currentUserText : styles.otherUserText]}>
                 {message.content}
@@ -409,8 +483,57 @@ const styles = StyleSheet.create({
   },
   videoText: {
     color: '#fff',
+    marginTop: 8,
     fontSize: 14,
     fontWeight: '600',
+  },
+  // Album Styles
+  albumContainer: {
+    width: 240,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  albumGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 2,
+  },
+  albumItem: {
+    backgroundColor: '#333',
+    overflow: 'hidden',
+  },
+  albumItemFull: {
+    width: '100%',
+    aspectRatio: 1,
+  },
+  albumItemHalf: {
+    width: '49.5%',
+    aspectRatio: 1,
+  },
+  albumItemQuarter: {
+    width: '49.5%',
+    aspectRatio: 1,
+  },
+  albumMedia: {
+    width: '100%',
+    height: '100%',
+  },
+  albumOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  albumOverlayText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  videoPlaceholderSmall: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1c1c1e',
   },
   downloadBtnOverlay: {
     position: 'absolute',

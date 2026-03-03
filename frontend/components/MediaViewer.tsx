@@ -8,6 +8,7 @@ import {
   Image,
   TouchableWithoutFeedback,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { GestureHandlerRootView, Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -20,6 +21,11 @@ import Animated, {
 } from 'react-native-reanimated';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { PostActionButtons } from './PostActionButtons';
+import { Ionicons } from '@expo/vector-icons';
+import * as MediaLibrary from 'expo-media-library';
+import * as FileSystem from 'expo-file-system';
+import { Alert, Share as RNShare } from 'react-native';
+import AuthContext from '@/context/AuthContext';
 
 type Media = {
   id: string;
@@ -62,7 +68,7 @@ interface MediaViewerProps {
     is_reposted?: boolean;
     reactions: any;
     reaction_counts: Array<{ emoji: string; count: number }>;
-  };
+  } | null;
   getApiBaseImage: () => string;
   onNavigateNext: () => void;
   onNavigatePrev: () => void;
@@ -93,8 +99,58 @@ interface MediaViewerProps {
   deleteCommentReaction: (emoji: string) => void;
 }
 const { width, height } = Dimensions.get('window');
-const SWIPE_THRESHOLD = 100;
+const SWIPE_THRESHOLD = 50; // More sensitive
 const ANIMATION_CONFIG = { duration: 300 };
+
+// Internal component to handle individual media rendering and its hooks correctly
+const MediaItemDisplay: React.FC<{
+  media: any;
+  index: number;
+  currentIndex: number;
+  getApiBaseImage: () => string;
+}> = ({ media, index, currentIndex, getApiBaseImage }) => {
+  const uri = `${getApiBaseImage()}/storage/${media.file_path}`;
+  const isFocused = currentIndex === index;
+
+  // useVideoPlayer MUST be called always if this component is rendered for a video
+  const player = useVideoPlayer(
+    media.type === 'video' ? uri : '',
+    (p) => {
+      p.loop = true;
+      if (isFocused) p.play();
+    }
+  );
+
+  // Sync play/pause with focus state
+  useEffect(() => {
+    if (media.type === 'video') {
+      if (isFocused) {
+        player.play();
+      } else {
+        player.pause();
+      }
+    }
+  }, [isFocused, media.type, player]);
+
+  if (media.type === 'video') {
+    return (
+      <VideoView
+        player={player}
+        style={styles.mediaContent}
+        contentFit="contain"
+        nativeControls={false}
+      />
+    );
+  }
+
+  return (
+    <Image
+      source={{ uri }}
+      style={styles.mediaContent}
+      resizeMode="contain"
+    />
+  );
+};
 
 export const MediaViewer: React.FC<MediaViewerProps> = ({
   visible,
@@ -128,45 +184,46 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const [showFullCaption, setShowFullCaption] = useState(false);
   const translateX = useSharedValue(-width * startIndex);
   const translateY = useSharedValue(0);
+  const currentIndexShared = useSharedValue(startIndex); // Shared value for gestures
   const overlayOpacity = useSharedValue(0.7);
   const bgOpacity = useSharedValue(1);
-  const videoRefs = useRef<any[]>([]);
 
-  // Initialize video refs array
-  useEffect(() => {
-    videoRefs.current = videoRefs.current.slice(0, mediaItems.length);
-  }, [mediaItems]);
+  const { user } = React.useContext(AuthContext);
+  const reactionsToShow = getGroupedReactions(post, Number(user?.id) || undefined);
 
   // Reset state when visibility or post changes
   useEffect(() => {
     if (visible) {
       setCurrentIndex(startIndex);
+      currentIndexShared.value = startIndex;
       translateX.value = -width * startIndex;
       translateY.value = 0;
       overlayOpacity.value = 0.7;
       bgOpacity.value = 1;
     }
-  }, [visible, startIndex, post.id]); // Add post.id to dependencies
+  }, [visible, startIndex, post?.id]);
+
+  const handleNavigate = useCallback((index: number) => {
+    if (index >= 0 && index < mediaItems.length) {
+      setCurrentIndex(index);
+      currentIndexShared.value = index;
+      translateX.value = withTiming(-width * index, ANIMATION_CONFIG);
+    }
+  }, [mediaItems.length]); // Minimize dependencies
 
   const handleSwipeHorizontal = useCallback((direction: 'left' | 'right') => {
     const newIndex = direction === 'left' ? currentIndex + 1 : currentIndex - 1;
-    if (newIndex >= 0 && newIndex < mediaItems.length) {
-      if (mediaItems[currentIndex].type === 'video' && videoRefs.current[currentIndex]) {
-        videoRefs.current[currentIndex]?.pauseAsync();
-      }
-      setCurrentIndex(newIndex);
-      translateX.value = withTiming(-width * newIndex, ANIMATION_CONFIG);
-    }
-  }, [currentIndex, mediaItems]);
+    handleNavigate(newIndex);
+  }, [currentIndex, handleNavigate]);
 
   const handleClose = useCallback(() => {
-    translateX.value = withTiming(-width * startIndex, ANIMATION_CONFIG);
+    translateX.value = withTiming(-width * currentIndex, ANIMATION_CONFIG);
     translateY.value = withTiming(0, ANIMATION_CONFIG);
     overlayOpacity.value = withTiming(0.7, ANIMATION_CONFIG);
     bgOpacity.value = withTiming(0, ANIMATION_CONFIG, () => {
       runOnJS(onClose)();
     });
-  }, [startIndex, onClose]);
+  }, [currentIndex, onClose]);
 
   const handleNavigateNextPost = useCallback(() => {
     translateY.value = withSpring(-height, {
@@ -191,32 +248,41 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       translateY.value = 0;
     })
     .onUpdate((event) => {
+      // Priority 1: Vertical swipe (Close or Vertical Nav)
       if (Math.abs(event.translationY) > Math.abs(event.translationX)) {
         translateY.value = event.translationY;
         overlayOpacity.value = 0.7 - Math.abs(event.translationY) / 500;
         bgOpacity.value = 1 - Math.abs(event.translationY) / height;
-      } else if (mediaItems.length > 1) {
-        translateX.value = -width * currentIndex + event.translationX;
+      }
+      // Priority 2: Horizontal swipe (Navigation)
+      else if (mediaItems.length > 1) {
+        translateX.value = -width * currentIndexShared.value + event.translationX;
       }
     })
     .onEnd((event) => {
-      if (event.translationY > SWIPE_THRESHOLD) {
+      // Threshold for closing
+      if (event.translationY > 50) {
         runOnJS(handleClose)();
         return;
       }
-      if (event.translationY < -SWIPE_THRESHOLD) {
+
+      // Vertical navigation thresholds
+      if (event.translationY < -SWIPE_THRESHOLD * 2) {
         runOnJS(handleNavigateNextPost)();
         return;
       }
-      if (event.translationY < -SWIPE_THRESHOLD / 2 && event.translationX < -SWIPE_THRESHOLD) {
+      if (event.translationY > SWIPE_THRESHOLD * 2 && event.translationX < -SWIPE_THRESHOLD) {
         runOnJS(handleNavigatePrevPost)();
         return;
       }
+
+      // Horizontal navigation logic
       if (Math.abs(event.translationX) > SWIPE_THRESHOLD && mediaItems.length > 1) {
         const direction = event.translationX > 0 ? 'right' : 'left';
         runOnJS(handleSwipeHorizontal)(direction);
       } else {
-        translateX.value = withTiming(-width * currentIndex, ANIMATION_CONFIG);
+        // Snap back
+        translateX.value = withTiming(-width * currentIndexShared.value, ANIMATION_CONFIG);
         translateY.value = withTiming(0, ANIMATION_CONFIG);
         overlayOpacity.value = withTiming(0.7, ANIMATION_CONFIG);
         bgOpacity.value = withTiming(1, ANIMATION_CONFIG);
@@ -255,31 +321,20 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
           <GestureDetector gesture={panGesture}>
             <Animated.View style={[styles.modalContainer, containerStyle]}>
               {mediaItems.map((media, index) => (
-                <View key={`${post.id}-${media.id}-${index}`} style={[styles.mediaItem, { left: width * index }]}>
-                  {media.type === 'video' ? (
-                    <VideoView
-                      player={useVideoPlayer(
-                        `${getApiBaseImage()}/storage/${media.file_path}`,
-                        (p) => { p.loop = true; if (index === currentIndex) p.play(); }
-                      )}
-                      style={styles.mediaContent}
-                      contentFit="contain"
-                      nativeControls={false}
-                    />
-                  ) : (
-                    <Image
-                      source={{ uri: `${getApiBaseImage()}/storage/${media.file_path}` }}
-                      style={styles.mediaContent}
-                      resizeMode="contain"
-                    />
-                  )}
+                <View key={`${post?.id}-${media.id}-${index}`} style={[styles.mediaItem, { left: width * index }]}>
+                  <MediaItemDisplay
+                    media={media}
+                    index={index}
+                    currentIndex={currentIndex}
+                    getApiBaseImage={getApiBaseImage}
+                  />
                 </View>
               ))}
             </Animated.View>
           </GestureDetector>
 
           {/* Caption overlay */}
-          {post.caption && (
+          {post?.caption && (
             <Animated.View style={[styles.captionContainer, overlayStyle]}>
               <TouchableOpacity
                 onPress={() => setShowFullCaption(!showFullCaption)}
@@ -302,44 +357,101 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
             </Text>
           )}
 
-          {/* Action buttons */}
-          <PostActionButtons
-            post={post}
-            onReact={onReact}
-            onDeleteReaction={onDeleteReaction}
-            onRepost={onRepost}
-            onShare={onShare}
-            onBookmark={onBookmark}
-            onCommentPress={onCommentPress}
-            currentReactingItem={currentReactingItem}
-            setCurrentReactingItem={setCurrentReactingItem}
-            setIsEmojiPickerOpen={setIsEmojiPickerOpen}
-            getGroupedReactions={getGroupedReactions}
-          />
+          {/* Actions & Reactions */}
+          {post && (
+            <Animated.View style={[styles.bottomActions, overlayStyle]}>
+              <PostActionButtons
+                post={post}
+                onReact={onReact}
+                onDeleteReaction={onDeleteReaction}
+                onRepost={onRepost}
+                onShare={onShare}
+                onBookmark={onBookmark}
+                onCommentPress={onCommentPress}
+                currentReactingItem={currentReactingItem}
+                setCurrentReactingItem={setCurrentReactingItem}
+                setIsEmojiPickerOpen={setIsEmojiPickerOpen}
+                getGroupedReactions={getGroupedReactions}
+                compact={true}
+              />
+            </Animated.View>
+          )}
 
-          {/* Close button */}
+          {/* Close button (now on the left) */}
           <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-            <Text style={styles.closeButtonText}>×</Text>
+            <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
 
-          {/* Navigation arrows */}
-          {currentIndex > 0 && (
-            <TouchableOpacity
-              style={[styles.navButton, styles.leftNavButton]}
-              onPress={() => handleSwipeHorizontal('right')}
-            >
-              <Text style={styles.navButtonText}>‹</Text>
-            </TouchableOpacity>
+          {/* Navigation Arrows */}
+          {mediaItems.length > 1 && (
+            <>
+              <TouchableOpacity
+                style={[styles.navButton, styles.leftNav]}
+                onPress={() => {
+                  if (currentIndex > 0) handleNavigate(currentIndex - 1);
+                }}
+              >
+                <Ionicons name="chevron-back" size={32} color="rgba(255,255,255,0.8)" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.navButton, styles.rightNav]}
+                onPress={() => {
+                  if (currentIndex < mediaItems.length - 1) handleNavigate(currentIndex + 1);
+                }}
+              >
+                <Ionicons name="chevron-forward" size={32} color="rgba(255,255,255,0.8)" />
+              </TouchableOpacity>
+            </>
           )}
 
-          {currentIndex < mediaItems.length - 1 && (
-            <TouchableOpacity
-              style={[styles.navButton, styles.rightNavButton]}
-              onPress={() => handleSwipeHorizontal('left')}
-            >
-              <Text style={styles.navButtonText}>›</Text>
-            </TouchableOpacity>
-          )}
+          {/* Download button */}
+          <TouchableOpacity
+            style={styles.downloadButton}
+            onPress={async () => {
+              try {
+                const media = mediaItems[currentIndex];
+                const uri = `${getApiBaseImage()}/storage/${media.file_path}`;
+
+                if (Platform.OS === 'web') {
+                  try {
+                    const response = await fetch(uri);
+                    if (!response.ok) throw new Error('CORS or network error');
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = media.file_path.split('/').pop() || 'media';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                  } catch (fetchErr) {
+                    console.warn('Fetch download failed, falling back to window.open:', fetchErr);
+                    window.open(uri, '_blank');
+                  }
+                  return;
+                }
+
+                const { status } = await MediaLibrary.requestPermissionsAsync();
+                if (status !== 'granted') {
+                  Alert.alert('Permission needed', 'Please allow access to save media.');
+                  return;
+                }
+
+                const fileUri = ((FileSystem as any).documentDirectory || (FileSystem as any).cacheDirectory || '') + (media.file_path.split('/').pop() || 'media');
+                const downloadResumable = FileSystem.createDownloadResumable(uri, fileUri);
+                const result = await downloadResumable.downloadAsync();
+                if (result) {
+                  await MediaLibrary.saveToLibraryAsync(result.uri);
+                  Alert.alert('Success', 'Media saved to library.');
+                }
+              } catch (err) {
+                console.error('Download error:', err);
+                Alert.alert('Error', 'Failed to download media.');
+              }
+            }}
+          >
+            <Ionicons name="download-outline" size={24} color="#fff" />
+          </TouchableOpacity>
         </Animated.View>
       </Modal>
     </GestureHandlerRootView>
@@ -391,38 +503,50 @@ const styles = StyleSheet.create({
   closeButton: {
     position: 'absolute',
     top: 40,
-    right: 20,
+    left: 20,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 100,
   },
   closeButtonText: {
     color: 'white',
     fontSize: 24,
     lineHeight: 30,
   },
+  downloadButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    zIndex: 100,
+  },
   navButton: {
     position: 'absolute',
     top: '50%',
-    backgroundColor: 'rgba(0, 0, 0, 0.31)',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    marginTop: -25,
+    width: 50,
+    height: 50,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 25,
+    zIndex: 90,
   },
-  leftNavButton: {
+  leftNav: {
     left: 10,
   },
-  rightNavButton: {
+  rightNav: {
     right: 10,
   },
-  navButtonText: {
-    color: 'white',
-    fontSize: 28,
-    lineHeight: 30,
+  bottomActions: {
+    padding: 16,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
 });

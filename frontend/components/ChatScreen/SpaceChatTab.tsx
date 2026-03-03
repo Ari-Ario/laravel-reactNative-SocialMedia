@@ -1,5 +1,5 @@
 // components/ChatScreen/SpaceChatTab.tsx
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
     View,
     StyleSheet,
@@ -10,10 +10,13 @@ import {
     ScrollView,
     Animated,
     Platform,
+    Alert,
 } from 'react-native';
+import AnimatedRN, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import MessageList from './MessageList';
-import AdvancedMediaUploader from './AdvancedMediaUploader';
+import AdvancedMediaUploader, { AdvancedMediaUploaderRef } from './AdvancedMediaUploader';
+import AttachmentPicker from './AttachmentPicker';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import { useCollaborationStore } from '@/stores/collaborationStore';
 import { createShadow } from '@/utils/styles';
@@ -44,8 +47,24 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
     onNavigateToAllPolls,
 }) => {
     const [content, setContent] = useState<string>('');
-    const [showMediaUploader, setShowMediaUploader] = useState(false); // ← now local
+    const [showMediaUploader, setShowMediaUploader] = useState(false);
+    const [showAttachmentPicker, setShowAttachmentPicker] = useState(false);
+    const [pendingAsset, setPendingAsset] = useState<any>(null);
+    const uploaderRef = useRef<AdvancedMediaUploaderRef>(null);
     const collaborationService = CollaborationService.getInstance();
+
+    const inputTranslateY = useSharedValue(0);
+
+    useEffect(() => {
+        // WhatsApp height for picker is around 280
+        inputTranslateY.value = withTiming(showAttachmentPicker ? -280 : 0, {
+            duration: 250
+        });
+    }, [showAttachmentPicker]);
+
+    const animatedInputStyle = useAnimatedStyle(() => ({
+        transform: [{ translateY: inputTranslateY.value }]
+    }));
 
     const handleSendMessage = async () => {
         if (!content.trim() || !space) return;
@@ -113,14 +132,18 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                 />
 
                 {/* ─── Input Bar ─── */}
-                <View style={styles.chatInputContainer}>
+                <AnimatedRN.View style={[styles.chatInputContainer, animatedInputStyle]}>
                     <View style={styles.attachActions}>
                         <TouchableOpacity
-                            onPress={() => setShowMediaUploader(true)}
+                            onPress={() => setShowAttachmentPicker(!showAttachmentPicker)}
                             style={styles.actionButton}
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         >
-                            <Ionicons name="attach" size={24} color="#007AFF" />
+                            <Ionicons
+                                name={showAttachmentPicker ? "close" : "attach"}
+                                size={24}
+                                color="#007AFF"
+                            />
                         </TouchableOpacity>
                     </View>
 
@@ -134,36 +157,77 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                         placeholderTextColor="#9a9a9a"
                         returnKeyType="default"
                         blurOnSubmit={false}
+                        onFocus={() => setShowAttachmentPicker(false)}
                     />
 
                     <TouchableOpacity
-                        style={[styles.sendButton, !content.trim() && styles.sendButtonDisabled]}
-                        onPress={handleSendMessage}
-                        disabled={!content.trim()}
+                        style={[styles.sendButton, !content.trim() && { backgroundColor: '#FF9500' }]}
+                        onPress={content.trim() ? handleSendMessage : () => Alert.alert('Coming Soon', 'Voice recording features are coming soon!')}
                         activeOpacity={0.8}
                     >
-                        <Ionicons name="send" size={18} color="#fff" />
+                        <Ionicons name={content.trim() ? "send" : "mic"} size={content.trim() ? 18 : 22} color="#fff" />
                     </TouchableOpacity>
-                </View>
+                </AnimatedRN.View>
             </View>
 
-            {/* AdvancedMediaUploader - fully self-contained inside SpaceChatTab */}
+            <AttachmentPicker
+                isVisible={showAttachmentPicker}
+                onClose={() => setShowAttachmentPicker(false)}
+                onSelectAction={(action) => {
+                    setShowAttachmentPicker(false);
+                    if (action === 'poll') {
+                        setShowPollCreator(true);
+                    } else if (action === 'camera') {
+                        uploaderRef.current?.openCamera();
+                        setShowMediaUploader(true);
+                    } else if (action === 'gallery') {
+                        uploaderRef.current?.openGallery();
+                        setShowMediaUploader(true);
+                    } else if (action === 'document') {
+                        uploaderRef.current?.openFilePicker();
+                        setShowMediaUploader(true);
+                    } else {
+                        Alert.alert('Coming Soon', `${action} features are coming soon!`);
+                    }
+                }}
+            />
+
             <AdvancedMediaUploader
+                ref={uploaderRef}
                 spaceId={spaceId}
                 isVisible={showMediaUploader}
                 onClose={() => setShowMediaUploader(false)}
-                onUploadComplete={async (media: any, caption?: string) => {
-                    console.log('[SpaceChatTab] Media uploaded:', media);
+                onUploadComplete={async (mediaList: any[], caption?: string) => {
+                    console.log('[SpaceChatTab] Media uploaded:', mediaList);
                     try {
-                        const message = await collaborationService.sendMessage(spaceId, {
-                            content: caption || '',
-                            type: media.type || 'image',
-                            file_path: media.file_path,
-                            metadata: {
-                                ...media.metadata,
-                                url: media.url || media.file_path, // Fallback if backend didn't send url
-                            }
-                        });
+                        const isMultiple = mediaList.length > 1;
+                        let messageData: any;
+
+                        if (isMultiple) {
+                            messageData = {
+                                content: caption || '',
+                                type: 'album',
+                                metadata: {
+                                    media_items: mediaList.map(m => ({
+                                        ...m,
+                                        url: m.url || m.file_path,
+                                    }))
+                                }
+                            };
+                        } else {
+                            const media = mediaList[0];
+                            messageData = {
+                                content: caption || '',
+                                type: media.type || 'image',
+                                file_path: media.file_path,
+                                metadata: {
+                                    ...media.metadata,
+                                    url: media.url || media.file_path,
+                                }
+                            };
+                        }
+
+                        const message = await collaborationService.sendMessage(spaceId, messageData);
 
                         setSpace((prev: any) => ({
                             ...prev,

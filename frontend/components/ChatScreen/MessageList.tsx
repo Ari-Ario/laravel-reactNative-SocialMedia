@@ -12,6 +12,10 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import MessageBubble from './MessageBubble';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
+import { MediaViewer } from '@/components/MediaViewer';
+import getApiBaseImage from '@/services/getApiBaseImage';
+import AuthContext from '@/context/AuthContext';
+import { useContext } from 'react';
 
 interface Message {
   id: string;
@@ -19,7 +23,7 @@ interface Message {
   user_id: number;
   user_name?: string;
   content: string;
-  type: 'text' | 'image' | 'video' | 'file' | 'voice' | 'poll';
+  type: 'text' | 'image' | 'video' | 'file' | 'voice' | 'poll' | 'album';
   metadata?: any;
   file_path?: string;
   mime_type?: string;
@@ -58,6 +62,11 @@ const MessageList: React.FC<MessageListProps> = ({
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
+  const [mediaViewerVisible, setMediaViewerVisible] = useState(false);
+  const [mediaViewerIndex, setMediaViewerIndex] = useState(0);
+  const [activeMediaPost, setActiveMediaPost] = useState<any>(null);
+
+  const { user: currentUser } = useContext(AuthContext);
 
   const collaborationService = CollaborationService.getInstance();
   const flatListRef = useRef<FlatList>(null);
@@ -85,15 +94,15 @@ const MessageList: React.FC<MessageListProps> = ({
 
     setMessages(prev => {
       let hasChanges = false;
-      
+
       // 1. Filter out ghost polls (polls that no longer exist in the DB)
       const validMessages = prev.filter(msg => {
         const isPollMsg = msg.type === 'poll' || msg.metadata?.isPoll;
         if (!isPollMsg) return true;
-        
+
         const pollId = msg.poll?.id || msg.metadata?.pollId || msg.metadata?.pollData?.id;
         const livePoll = polls.find(p => String(p.id) === String(pollId) || (p.parent_poll_id && String(p.parent_poll_id) === String(pollId)));
-        
+
         if (!livePoll) {
           hasChanges = true; // We are removing a ghost poll
           return false;
@@ -121,7 +130,7 @@ const MessageList: React.FC<MessageListProps> = ({
 
   const enrichMessageWithParticipantData = (msg: Message) => {
     if (!participants || participants.length === 0) return msg;
-    
+
     // Find the participant that matches the message sender
     const sender = participants.find(p => String(p.user_id) === String(msg.user_id));
     if (sender && sender.user && sender.user.profile_photo) {
@@ -173,7 +182,7 @@ const MessageList: React.FC<MessageListProps> = ({
         if (newMessage.type === 'poll' || (newMessage.metadata?.isPoll && newMessage.metadata?.pollData)) {
           newMessage = { ...newMessage, poll: newMessage.metadata?.pollData ?? newMessage.poll };
         }
-        
+
         // Enrich avatar from participants list
         newMessage = enrichMessageWithParticipantData(newMessage);
 
@@ -245,7 +254,7 @@ const MessageList: React.FC<MessageListProps> = ({
         setMessages(prev => prev.filter(msg => {
           const isPollMsg = msg.type === 'poll' || msg.metadata?.isPoll;
           const matchesPollId = msg.poll?.id === deletedPollId || msg.metadata?.pollData?.id === deletedPollId;
-          
+
           return !(isPollMsg && matchesPollId);
         }));
       },
@@ -261,6 +270,12 @@ const MessageList: React.FC<MessageListProps> = ({
       }
     }
     setSelectedMessage(selectedMessage === message.id ? null : message.id);
+  };
+
+  const handleMediaPress = (message: Message, index: number) => {
+    setActiveMediaPost(message);
+    setMediaViewerIndex(index);
+    setMediaViewerVisible(true);
   };
 
   const handleMessageLongPress = (message: Message) => {
@@ -361,6 +376,7 @@ const MessageList: React.FC<MessageListProps> = ({
         showAvatar={showAvatar}
         isSelected={selectedMessage === item.id}
         onPress={() => handleMessagePress(item)}
+        onMediaPress={(idx) => handleMediaPress(item, idx)}
         onLongPress={() => { }}
         onPollPress={onPollPress}
         spaceId={spaceId}
@@ -393,6 +409,44 @@ const MessageList: React.FC<MessageListProps> = ({
           </View>
         }
       />
+
+      {activeMediaPost && (
+        <MediaViewer
+          visible={mediaViewerVisible}
+          mediaItems={activeMediaPost.type === 'album'
+            ? activeMediaPost.metadata?.media_items?.map((item: any, idx: number) => ({
+              ...item,
+              id: item.id || `${activeMediaPost.id}_${idx}`
+            }))
+            : (activeMediaPost.media || [{
+              id: activeMediaPost.id,
+              type: activeMediaPost.type,
+              file_path: activeMediaPost.file_path,
+              metadata: activeMediaPost.metadata
+            }])
+          }
+          startIndex={mediaViewerIndex}
+          onClose={() => setMediaViewerVisible(false)}
+          post={activeMediaPost}
+          getApiBaseImage={getApiBaseImage}
+          onReact={(emoji) => handleReact(activeMediaPost, emoji)}
+          onDeleteReaction={() => { }} // Implement if needed
+          onRepost={() => { }}
+          onShare={() => { }}
+          onBookmark={() => { }}
+          onCommentPress={() => { }} // Implement if needed
+          onDoubleTap={() => { }}
+          currentReactingItem={null}
+          setCurrentReactingItem={() => { }}
+          setIsEmojiPickerOpen={() => { }}
+          onCommentSubmit={async () => { }}
+          handleReactComment={() => { }}
+          deleteCommentReaction={() => { }}
+          onNavigateNext={() => { }}
+          onNavigatePrev={() => { }}
+          getGroupedReactions={collaborationService.getGroupedReactions}
+        />
+      )}
     </View>
   );
 };

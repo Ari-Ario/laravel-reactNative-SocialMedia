@@ -2,9 +2,7 @@
 import { View, StyleSheet, TouchableOpacity, Text, ScrollView } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import React from 'react';
-import { usePostStore } from '@/stores/postStore';
 import AuthContext from '@/context/AuthContext';
-import { useDoubleTap } from '@/hooks/useDoubleTap'; // You might want to move this hook to a separate file
 
 interface PostActionButtonsProps {
   post: {
@@ -33,6 +31,7 @@ interface PostActionButtonsProps {
     count: number;
     user_ids: number[];
   }>;
+  compact?: boolean;
 }
 
 export const PostActionButtons = ({
@@ -47,26 +46,27 @@ export const PostActionButtons = ({
   setCurrentReactingItem,
   setIsEmojiPickerOpen,
   getGroupedReactions,
+  compact,
 }: PostActionButtonsProps) => {
   const { user } = React.useContext(AuthContext);
-  const reactionsToShow = getGroupedReactions(post, user?.id);
+  const reactionsToShow = getGroupedReactions(post, Number(user?.id) || undefined);
 
   return (
-    <View style={styles.actionBar}>
+    <View style={[styles.actionBar, compact && styles.compactActionBar]}>
       {/* Comment button */}
-      <TouchableOpacity 
-        style={styles.actionButton}
+      <TouchableOpacity
+        style={[styles.actionButton, compact && styles.compactActionButton]}
         onPress={onCommentPress}
       >
-        <Ionicons 
-          name="chatbubble-outline" 
-          size={24} 
+        <Ionicons
+          name="chatbubble-outline"
+          size={compact ? 20 : 24}
           color={
             !post.comments || post.comments.length === 0
-              ? '#888' // second color when no comments at all
+              ? '#888'
               : post.comments.some(comment => comment.user_id === user?.id)
-                ? '#10b981' // green if current user commented
-                : '#000'    // black if others commented
+                ? '#10b981'
+                : '#000'
           }
         />
         {post.comments_count > 0 && (
@@ -75,16 +75,16 @@ export const PostActionButtons = ({
       </TouchableOpacity>
 
       {/* Repost button */}
-      <TouchableOpacity 
-        style={styles.actionButton}
+      <TouchableOpacity
+        style={[styles.actionButton, compact && styles.compactActionButton]}
         onPress={onRepost}
       >
         <Feather
           name="repeat"
-          size={24}
+          size={compact ? 20 : 24}
           color={post.is_reposted ? '#10b981' : '#000'}
         />
-        {post.reposts_count > 0 && (
+        {(post.reposts_count ?? 0) > 0 && (
           <Text style={[
             styles.actionCount,
             post.is_reposted && styles.activeActionCount
@@ -95,56 +95,47 @@ export const PostActionButtons = ({
       </TouchableOpacity>
 
       {/* Share button */}
-      <TouchableOpacity 
-        style={styles.actionButton}
-        onPress={onShare}
-      >
-        <Feather name="send" size={24} />
-      </TouchableOpacity>
-      
-      {/* Reaction bar of Post */}
+      {!compact && (
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={onShare}
+        >
+          <Feather name="send" size={24} />
+        </TouchableOpacity>
+      )}
+
+      {/* Reaction bar Component */}
       <View style={styles.reactionScrollContainer}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.reactionBar}
+          contentContainerStyle={[styles.reactionBar, compact && styles.compactReactionBar]}
         >
           {reactionsToShow.map((reaction, idx) => {
-            const isMyReaction = reaction.user_ids?.includes(user?.id);
-            
+            const isMyReaction = reaction.user_ids?.includes(Number(user?.id) || 0);
+
             return (
-              <View 
+              <View
                 key={`reaction-${reaction.emoji}-${idx}`}
                 style={[
                   styles.reactionItem,
+                  compact && styles.compactReactionItem,
                   isMyReaction && styles.reactionItemMine
                 ]}
               >
-                {isMyReaction ? (
-                  <TouchableOpacity 
-                    onPress={onDeleteReaction}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.reactionEmoji}>
-                      {reaction.emoji}
-                    </Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setCurrentReactingItem({ postId: post.id });
-                      setIsEmojiPickerOpen(true);
-                    }}
-                  >
-                    <Text style={styles.reactionEmoji}>
-                      {reaction.emoji}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                
+                <TouchableOpacity
+                  onPress={() => isMyReaction ? onDeleteReaction() : (setCurrentReactingItem({ postId: post.id }), setIsEmojiPickerOpen(true))}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.reactionEmoji, compact && styles.compactReactionEmoji]}>
+                    {reaction.emoji}
+                  </Text>
+                </TouchableOpacity>
+
                 {reaction.count > 0 && (
                   <Text style={[
                     styles.reactionCount,
+                    compact && styles.compactReactionCount,
                     isMyReaction && styles.reactionCountMine
                   ]}>
                     {reaction.count}
@@ -157,12 +148,14 @@ export const PostActionButtons = ({
       </View>
 
       {/* Bookmark button */}
-      <TouchableOpacity 
-        style={[styles.actionButton, { marginLeft: 'auto', marginRight: 0 }]}
-        onPress={onBookmark}
-      >
-        <Feather name="bookmark" size={24} />
-      </TouchableOpacity>
+      {!compact && (
+        <TouchableOpacity
+          style={[styles.actionButton, { marginLeft: 'auto', marginRight: 0 }]}
+          onPress={onBookmark}
+        >
+          <Feather name="bookmark" size={24} />
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -224,5 +217,28 @@ const styles = StyleSheet.create({
   },
   activeActionCount: {
     color: '#10b981',
+  },
+  compactActionBar: {
+    paddingVertical: 4,
+    paddingHorizontal: 0,
+    backgroundColor: 'transparent',
+  },
+  compactActionButton: {
+    marginRight: 12,
+  },
+  compactReactionBar: {
+    gap: 4,
+  },
+  compactReactionItem: {
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  compactReactionEmoji: {
+    fontSize: 12,
+  },
+  compactReactionCount: {
+    fontSize: 10,
+    marginLeft: 2,
   },
 });

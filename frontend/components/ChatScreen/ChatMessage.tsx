@@ -42,111 +42,105 @@ const ChatMessage = ({ item, user, service, onMenuPress, onCommentPress }: ChatM
         <Ionicons name="ellipsis-horizontal" size={16} color="#666" />
       </TouchableOpacity>
 
-      {item.caption && (
-        <View style={[
-          styles.messageBubble,
-          item.user.id === user?.id ? styles.outgoingBubble : styles.incomingBubble
-        ]}>
+      <View style={[
+        styles.messageBubble,
+        item.user.id === user?.id ? styles.outgoingBubble : styles.incomingBubble
+      ]}>
 
+        {/* Media for this specific post */}
+        {postMedia.length > 0 && (
+          <View style={[
+            styles.mediaContainer,
+            postMedia.length > 1 && styles.gridMediaContainer
+          ]}>
+            <View style={styles.gridWrapper}>
+              {postMedia.map((media: any, index: number) => {
+                let itemStyle: any = styles.singleMedia;
+                if (postMedia.length === 2) {
+                  itemStyle = styles.gridItemTwo;
+                } else if (postMedia.length === 3) {
+                  itemStyle = index === 0 ? styles.gridItemThreeLarge : styles.gridItemThreeSmall;
+                } else if (postMedia.length >= 4) {
+                  itemStyle = styles.gridItemFour;
+                }
 
-          {/* Message header with text and timestamp */}
-          <View style={styles.messageHeader}>
-            <Text style={[
-              styles.messageTime,
-              item.user.id === user?.id ? styles.outgoingTime : styles.incomingTime
-            ]}>
-              {new Date(item.created_at).toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-            </Text>
+                return (
+                  <TouchableOpacity
+                    key={`${media.id}-${index}`}
+                    onPress={() => {
+                      service.setMediaViewerIndex(index);
+                      service.setMediaViewerVisible(true);
+                    }}
+                    style={itemStyle}
+                  >
+                    {media.type === 'video' ? (
+                      <VideoView
+                        player={useVideoPlayer(
+                          `${getApiBaseImage()}/storage/${media.file_path}`
+                        )}
+                        style={styles.mediaContent}
+                        contentFit="cover"
+                        nativeControls={false}
+                      />
+                    ) : (
+                      <Image
+                        source={{ uri: `${getApiBaseImage()}/storage/${media.file_path}` }}
+                        style={styles.mediaContent}
+                        resizeMode="cover"
+                      />
+                    )}
+                    {postMedia.length > 4 && index === 3 && (
+                      <View style={styles.overlayMore}>
+                        <Text style={styles.moreText}>+{postMedia.length - 3}</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              }).slice(0, 4)}
+            </View>
+          </View>
+        )}
 
+        {/* Message header with text and timestamp */}
+        <View style={styles.messageHeader}>
+          {item.caption && (
             <Text style={[
               styles.messageText,
               item.user.id === user?.id ? styles.outgoingText : styles.incomingText
             ]}>
               {item.caption}
             </Text>
-          </View>
-
-          {/* Media for this specific post */}
-          {postMedia.length > 0 && (
-            <View style={styles.mediaContainer}>
-              {postMedia.length === 1 ? (
-                <TouchableOpacity onPress={() => {
-                  service.setMediaViewerIndex(0);
-                  service.setMediaViewerVisible(true);
-                }}>
-                  {postMedia[0].type === 'video' ? (
-                    <VideoView
-                      player={useVideoPlayer(
-                        `${getApiBaseImage()}/storage/${postMedia[0].file_path}`
-                      )}
-                      style={styles.singleMedia}
-                      contentFit="cover"
-                      nativeControls={false}
-                    />
-                  ) : (
-                    <Image
-                      source={{ uri: `${getApiBaseImage()}/storage/${postMedia[0].file_path}` }}
-                      style={styles.singleMedia}
-                      resizeMode="cover"
-                    />
-                  )}
-                </TouchableOpacity>
-              ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  {postMedia.map((media: any, index: number) => (
-                    <TouchableOpacity
-                      key={`${media.id}-${index}`}
-                      onPress={() => {
-                        service.setMediaViewerIndex(index);
-                        service.setMediaViewerVisible(true);
-                      }}
-                      style={styles.multiMediaItem}
-                    >
-                      {media.type === 'video' ? (
-                        <VideoView
-                          player={useVideoPlayer(
-                            `${getApiBaseImage()}/storage/${media.file_path}`
-                          )}
-                          style={styles.multiMediaContent}
-                          contentFit="cover"
-                          nativeControls={false}
-                        />
-                      ) : (
-                        <Image
-                          source={{ uri: `${getApiBaseImage()}/storage/${media.file_path}` }}
-                          style={styles.multiMediaContent}
-                          resizeMode="cover"
-                        />
-                      )}
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              )}
-            </View>
           )}
 
-          {/* Post Action Buttons */}
-          <View style={styles.messageActions}>
-            <PostActionButtons
-              post={item}
-              onReact={(emoji) => service.handleReact(emoji, item.id)}
-              onDeleteReaction={() => service.deletePostReaction(item.id)}
-              onRepost={() => { }}
-              onShare={() => { }}
-              onBookmark={() => { }}
-              onCommentPress={handleCommentPress}
-              currentReactingItem={service.currentReactingItem}
-              setCurrentReactingItem={service.setCurrentReactingItem}
-              setIsEmojiPickerOpen={service.setIsEmojiPickerOpen}
-              getGroupedReactions={service.getGroupedReactions}
-              compact={true}
-            />
-          </View>
+          <Text style={[
+            styles.messageTime,
+            item.user.id === user?.id ? styles.outgoingTime : styles.incomingTime
+          ]}>
+            {new Date(item.created_at).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
+          </Text>
         </View>
-      )}
+
+        {/* Post Action Buttons */}
+        <View style={styles.messageActions}>
+          <PostActionButtons
+            post={item}
+            onReact={(emoji: string) => service.handleReact(emoji, item.id)}
+            onDeleteReaction={() => service.deletePostReaction(item.id)}
+            onRepost={() => { }}
+            onShare={() => { }}
+            onBookmark={() => { }}
+            onCommentPress={handleCommentPress}
+            currentReactingItem={service.currentReactingItem}
+            setCurrentReactingItem={service.setCurrentReactingItem}
+            setIsEmojiPickerOpen={service.setIsEmojiPickerOpen}
+            getGroupedReactions={service.getGroupedReactions}
+            compact={true}
+          />
+        </View>
+      </View>
 
     </View>
   );
@@ -201,15 +195,54 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   mediaContainer: {
-    maxHeight: 120,
-    borderColor: 'black',
+    width: '100%',
+    borderRadius: 18,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  gridMediaContainer: {
+    aspectRatio: 1,
+  },
+  gridWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 2,
   },
   singleMedia: {
-    width: 200,
+    width: '100%',
+    height: 250,
+  },
+  gridItemTwo: {
+    width: '49.5%',
     height: '100%',
-    borderRadius: 12,
-    maxHeight: 200,
-    alignSelf: 'center',
+  },
+  gridItemThreeLarge: {
+    width: '50%',
+    height: '100%',
+  },
+  gridItemThreeSmall: {
+    width: '49%',
+    height: '49.5%',
+  },
+  gridItemFour: {
+    width: '49.5%',
+    height: '49.5%',
+  },
+  mediaContent: {
+    width: '100%',
+    height: '100%',
+  },
+  overlayMore: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  moreText: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: 'bold',
   },
   multiMediaItem: {
     width: 120,

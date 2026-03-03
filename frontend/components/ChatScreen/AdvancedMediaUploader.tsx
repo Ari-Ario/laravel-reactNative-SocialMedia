@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import {
   View,
   Text,
@@ -13,11 +13,15 @@ import {
   Pressable,
   Keyboard,
   ActivityIndicator,
+  Dimensions,
+  ScrollView,
 } from 'react-native';
+import { MotiView } from 'moti';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import PlatformCameraView from '@/components/PlatformCameraView';
 import { VideoView, useVideoPlayer } from 'expo-video';
+import * as FileSystem from 'expo-file-system';
 import { safeHaptics } from '@/utils/haptics';
 import { MediaCompressor } from '@/utils/mediaCompressor';
 import { getToken } from '@/services/TokenService';
@@ -37,7 +41,13 @@ export interface AdvancedMediaUploaderProps {
   spaceId: string;
   isVisible: boolean;
   onClose: () => void;
-  onUploadComplete?: (media: UploadedMedia, caption?: string) => void;
+  onUploadComplete?: (media: UploadedMedia[], caption?: string) => void;
+}
+
+export interface AdvancedMediaUploaderRef {
+  openCamera: () => void;
+  openGallery: () => void;
+  openFilePicker: () => void;
 }
 
 interface SelectedAsset {
@@ -111,20 +121,29 @@ async function uploadToSpaceAPI(
   });
 }
 
+const { width, height } = Dimensions.get('window');
+
 // ─── Main Component ────────────────────────────────────────────────────────────
 
-const AdvancedMediaUploader: React.FC<AdvancedMediaUploaderProps> = ({
+const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMediaUploaderProps>(({
   spaceId,
   isVisible,
   onClose,
   onUploadComplete,
-}) => {
+}, ref) => {
   // Navigation State
-  const [viewState, setViewState] = useState<'picker' | 'preview'>('picker');
+  const [viewState, setViewState] = useState<'preview' | 'grid'>('preview');
   const [cameraVisible, setCameraVisible] = useState(false);
 
+  useImperativeHandle(ref, () => ({
+    openCamera,
+    openGallery,
+    openFilePicker,
+  }));
+
   // Data State
-  const [selectedAsset, setSelectedAsset] = useState<SelectedAsset | null>(null);
+  const [selectedAssets, setSelectedAssets] = useState<SelectedAsset[]>([]);
+  const [focusedIndex, setFocusedIndex] = useState(0);
   const [caption, setCaption] = useState('');
 
   // Upload State
@@ -140,7 +159,7 @@ const AdvancedMediaUploader: React.FC<AdvancedMediaUploaderProps> = ({
 
   // Video Preview Player (SDK 52)
   const videoPlayer = useVideoPlayer(
-    viewState === 'preview' && selectedAsset?.type === 'video' ? selectedAsset.uri : '',
+    viewState === 'preview' && selectedAssets[focusedIndex]?.type === 'video' ? selectedAssets[focusedIndex].uri : '',
     player => {
       player.loop = true;
       if (viewState === 'preview') player.play();
@@ -162,8 +181,31 @@ const AdvancedMediaUploader: React.FC<AdvancedMediaUploaderProps> = ({
     mimeType: string,
     file?: File
   ) => {
-    setSelectedAsset({ uri, type, name, mimeType, file });
-    setViewState('preview'); // Instantly transition to preview screen
+    // ─── Size Limit Check (20MB) ───
+    try {
+      let size = 0;
+      if (Platform.OS === 'web' && file) {
+        size = file.size;
+      } else if (Platform.OS !== 'web') {
+        const info = await FileSystem.getInfoAsync(uri) as any;
+        if (info.exists) size = info.size || 0;
+      }
+
+      if (size > 20 * 1024 * 1024) {
+        Alert.alert(
+          'File Too Large',
+          'Files must be less than 20 MB. Please choose a smaller file.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+    } catch (err) {
+      console.warn('Size check failed:', err);
+    }
+
+    setSelectedAssets(prev => [...prev, { uri, type, name, mimeType, file }]);
+    setFocusedIndex(selectedAssets.length);
+    setViewState('preview');
     setCameraVisible(false);
   };
 
@@ -248,11 +290,26 @@ const AdvancedMediaUploader: React.FC<AdvancedMediaUploaderProps> = ({
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'image/*,video/*';
+      input.multiple = true;
       input.onchange = async (e: any) => {
-        const file = e.target?.files?.[0];
-        if (file) {
-          const type = file.type.startsWith('video/') ? 'video' : 'image';
-          handleAssetPicked(URL.createObjectURL(file), type, file.name, file.type, file);
+        const files = Array.from(e.target?.files || []) as File[];
+        if (files.length > 0) {
+          const newAssets: SelectedAsset[] = files.map(file => {
+            const type = file.type.startsWith('video/') ? 'video' : 'image';
+            return {
+              uri: URL.createObjectURL(file),
+              type,
+              name: file.name,
+              mimeType: file.type,
+              file
+            };
+          });
+          setSelectedAssets(prev => {
+            const next = [...prev, ...newAssets];
+            setFocusedIndex(prev.length);
+            setViewState(next.length > 1 ? 'grid' : 'preview');
+            return next;
+          });
         }
       };
       input.click();
@@ -267,23 +324,32 @@ const AdvancedMediaUploader: React.FC<AdvancedMediaUploaderProps> = ({
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images', 'videos'] as any,
-      allowsMultipleSelection: false,
+      allowsMultipleSelection: true,
+      selectionLimit: 0, // 0 means unlimited
       quality: 0.8,
-      videoExportPreset: ImagePicker.VideoExportPreset.H264_1920x1080, // Enforce 1080p limit
+      videoExportPreset: ImagePicker.VideoExportPreset.H264_1920x1080,
       videoQuality: ImagePicker.UIImagePickerControllerQualityType.High,
     });
 
-    if (!result.canceled && result.assets?.[0]) {
-      const asset = result.assets[0];
-      const isVideo = asset.type === 'video' || (asset.mimeType ?? '').startsWith('video/');
-      handleAssetPicked(
-        asset.uri,
-        isVideo ? 'video' : 'image',
-        asset.fileName || `media_${Date.now()}.${isVideo ? 'mp4' : 'jpg'}`,
-        asset.mimeType ?? (isVideo ? 'video/mp4' : 'image/jpeg')
-      );
+    if (!result.canceled && result.assets?.length > 0) {
+      const newAssets: SelectedAsset[] = result.assets.map(asset => {
+        const isVideo = asset.type === 'video' || (asset.mimeType ?? '').startsWith('video/');
+        return {
+          uri: asset.uri,
+          type: isVideo ? 'video' : 'image',
+          name: asset.fileName || `media_${Date.now()}.${isVideo ? 'mp4' : 'jpg'}`,
+          mimeType: asset.mimeType ?? (isVideo ? 'video/mp4' : 'image/jpeg')
+        };
+      });
+
+      setSelectedAssets(prev => {
+        const next = [...prev, ...newAssets];
+        setFocusedIndex(prev.length);
+        setViewState(next.length > 1 ? 'grid' : 'preview');
+        return next;
+      });
     }
-  }, []);
+  }, [selectedAssets.length]);
 
   const openFilePicker = useCallback(async () => {
     // Currently relying on web input for files, fallback to Gallery for native
@@ -291,11 +357,26 @@ const AdvancedMediaUploader: React.FC<AdvancedMediaUploaderProps> = ({
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = '*/*';
+      input.multiple = true;
       input.onchange = async (e: any) => {
-        const file = e.target?.files?.[0];
-        if (file) {
-          const type = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'document';
-          handleAssetPicked(URL.createObjectURL(file), type, file.name, file.type || 'application/octet-stream', file);
+        const files = Array.from(e.target?.files || []) as File[];
+        if (files.length > 0) {
+          const newAssets: SelectedAsset[] = files.map(file => {
+            const type = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'document';
+            return {
+              uri: URL.createObjectURL(file),
+              type,
+              name: file.name,
+              mimeType: file.type || 'application/octet-stream',
+              file
+            };
+          });
+          setSelectedAssets(prev => {
+            const next = [...prev, ...newAssets];
+            setFocusedIndex(prev.length);
+            setViewState(next.length > 1 ? 'grid' : 'preview');
+            return next;
+          });
         }
       };
       input.click();
@@ -309,38 +390,49 @@ const AdvancedMediaUploader: React.FC<AdvancedMediaUploaderProps> = ({
   // ─── Upload Action ──────────────────────────────────────────────────────────
 
   const handleSend = async () => {
-    if (!selectedAsset) return;
+    if (selectedAssets.length === 0) return;
 
     setUploading(true);
     setProgress(0);
     Keyboard.dismiss();
 
     try {
-      // 1. Prepare and Compress Media via mediaCompressor Utils (<1.9MB logic)
-      const compressedData = await MediaCompressor.prepareMediaForUpload(
-        selectedAsset.uri,
-        selectedAsset.name
-      );
+      const uploadedItems: UploadedMedia[] = [];
 
-      const finalAsset: SelectedAsset = {
-        ...selectedAsset,
-        uri: compressedData.uri,
-        mimeType: compressedData.type,
-      };
+      for (let i = 0; i < selectedAssets.length; i++) {
+        const asset = selectedAssets[i];
+        setFocusedIndex(i);
 
-      // 2. Upload to Server
-      const media = await uploadToSpaceAPI(
-        spaceId,
-        finalAsset,
-        (pct) => setProgress(pct)
-      );
+        // 1. Prepare and Compress Media
+        const compressedData = await MediaCompressor.prepareMediaForUpload(
+          asset.uri,
+          asset.name
+        );
+
+        const finalAsset: SelectedAsset = {
+          ...asset,
+          uri: compressedData.uri,
+          mimeType: compressedData.type,
+        };
+
+        // 2. Upload to Server
+        const media = await uploadToSpaceAPI(
+          spaceId,
+          finalAsset,
+          (pct) => setProgress(Math.round(((i * 100) + pct) / selectedAssets.length))
+        );
+
+        uploadedItems.push(media);
+      }
+
+      // 3. Finalize batch
+      onUploadComplete?.(uploadedItems, caption.trim());
 
       setProgress(100);
       safeHaptics.success();
 
-      // 3. Complete and Reset State
+      // 4. Reset State
       setTimeout(() => {
-        onUploadComplete?.(media, caption.trim());
         resetAndClose();
       }, 500);
 
@@ -355,10 +447,21 @@ const AdvancedMediaUploader: React.FC<AdvancedMediaUploaderProps> = ({
   const resetAndClose = () => {
     setUploading(false);
     setProgress(0);
-    setViewState('picker');
-    setSelectedAsset(null);
+    setSelectedAssets([]);
+    setFocusedIndex(0);
     setCaption('');
     onClose();
+  };
+
+  const removeAsset = (index: number) => {
+    const newAssets = [...selectedAssets];
+    newAssets.splice(index, 1);
+    setSelectedAssets(newAssets);
+    if (newAssets.length === 0) {
+      resetAndClose();
+    } else if (focusedIndex >= newAssets.length) {
+      setFocusedIndex(newAssets.length - 1);
+    }
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -398,160 +501,235 @@ const AdvancedMediaUploader: React.FC<AdvancedMediaUploaderProps> = ({
       transparent
       onRequestClose={uploading ? () => { } : resetAndClose}
     >
-      <Pressable onPress={() => Keyboard.dismiss()} style={{ flex: 1 }}>
-        <KeyboardAvoidingView
-          style={styles.overlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          {viewState === 'picker' && (
-            <View style={styles.sheet}>
-              <View style={styles.handle} />
-              <View style={styles.grid}>
-                <ActionBtn icon="camera" label="Camera" color="#007AFF" onPress={openCamera} />
-                <ActionBtn icon="images" label="Gallery" color="#34C759" onPress={openGallery} />
-                <ActionBtn icon="document-text" label="File" color="#FF9500" onPress={openFilePicker} />
-              </View>
-              <TouchableOpacity style={styles.cancelBtn} onPress={resetAndClose}>
-                <Text style={styles.cancelText}>Cancel</Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
+        {viewState === 'grid' && (
+          <View style={styles.previewContainer}>
+            <View style={styles.previewHeader}>
+              <TouchableOpacity onPress={resetAndClose} disabled={uploading} style={styles.backBtn}>
+                <Ionicons name="close" size={28} color="#fff" />
               </TouchableOpacity>
+              <View style={styles.headerIndicator}>
+                <Text style={styles.headerTitle}>
+                  {selectedAssets.length} Selected
+                </Text>
+              </View>
+              <View style={{ width: 44 }} />
             </View>
-          )}
 
-          {viewState === 'preview' && selectedAsset && (
-            <View style={styles.previewContainer}>
-              {/* Header */}
-              <View style={styles.previewHeader}>
-                <TouchableOpacity onPress={() => setViewState('picker')} disabled={uploading} style={styles.backBtn}>
-                  <Ionicons name="close" size={28} color="#fff" />
+            <ScrollView
+              style={styles.flex1}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.gridContainer}>
+                {selectedAssets.map((asset, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.gridItem}
+                    onPress={() => {
+                      setFocusedIndex(index);
+                      setViewState('preview');
+                    }}
+                  >
+                    {asset.type === 'image' ? (
+                      <Image source={{ uri: asset.uri }} style={styles.gridMedia} />
+                    ) : asset.type === 'video' ? (
+                      <View style={styles.gridMedia}>
+                        <Ionicons name="play-circle" size={32} color="#fff" style={styles.gridPlayIcon} />
+                      </View>
+                    ) : (
+                      <View style={[styles.gridMedia, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#333' }]}>
+                        <Ionicons name="document" size={32} color="#fff" />
+                      </View>
+                    )}
+                    <TouchableOpacity
+                      style={styles.removeBadge}
+                      onPress={() => removeAsset(index)}
+                    >
+                      <Ionicons name="close-circle" size={24} color="#ff3b30" />
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity style={styles.addItem} onPress={openGallery}>
+                  <Ionicons name="add" size={40} color="#666" />
                 </TouchableOpacity>
               </View>
+            </ScrollView>
 
-              {/* Main Media Viewer */}
-              <View style={styles.mediaViewer}>
-                {selectedAsset.type === 'image' ? (
-                  <Image source={{ uri: selectedAsset.uri }} style={styles.previewImage} resizeMode="contain" />
-                ) : selectedAsset.type === 'video' ? (
-                  <VideoView
-                    style={styles.previewVideo}
-                    player={videoPlayer}
-                    nativeControls={true}
+            <View style={styles.captionBar}>
+              {uploading ? (
+                <View style={styles.uploadingState}>
+                  <ActivityIndicator size="small" color="#fff" />
+                  <Text style={styles.uploadingText}>Sending... {progress}%</Text>
+                </View>
+              ) : (
+                <>
+                  <TextInput
+                    style={styles.captionInput}
+                    placeholder="Add a caption..."
+                    placeholderTextColor="rgba(255,255,255,0.6)"
+                    value={caption}
+                    onChangeText={setCaption}
+                    multiline
+                    maxLength={1000}
                   />
-                ) : (
-                  <View style={styles.docPlaceholderContainer}>
-                    <Ionicons name="document" size={64} color="#fff" />
-                    <Text style={styles.videoPlaceholderText}>{selectedAsset.name}</Text>
-                  </View>
-                )}
-              </View>
-
-              {/* Caption & Send Bar */}
-              <View style={styles.captionBar}>
-                {uploading ? (
-                  <View style={styles.uploadingState}>
-                    <ActivityIndicator size="small" color="#fff" />
-                    <Text style={styles.uploadingText}>Sending... {progress}%</Text>
-                  </View>
-                ) : (
-                  <>
-                    <TextInput
-                      style={styles.captionInput}
-                      placeholder="Add a caption..."
-                      placeholderTextColor="rgba(255,255,255,0.6)"
-                      value={caption}
-                      onChangeText={setCaption}
-                      multiline
-                      maxLength={1000}
-                    />
-                    <TouchableOpacity style={styles.sendBtn} onPress={handleSend} disabled={uploading}>
-                      <Ionicons name="send" size={20} color="#fff" />
-                    </TouchableOpacity>
-                  </>
-                )}
-              </View>
+                  <TouchableOpacity style={styles.sendBtn} onPress={handleSend} disabled={uploading}>
+                    <Ionicons name="send" size={20} color="#fff" />
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
-          )}
-        </KeyboardAvoidingView>
-      </Pressable>
+          </View>
+        )}
+
+        {viewState === 'preview' && selectedAssets[focusedIndex] && (
+          <View style={styles.previewContainer}>
+            {/* Main Media Viewer - Takes full screen */}
+            <View style={styles.mediaViewerFull}>
+              {selectedAssets[focusedIndex].type === 'image' ? (
+                <Image
+                  source={{ uri: selectedAssets[focusedIndex].uri }}
+                  style={styles.previewImage}
+                  resizeMode="contain"
+                />
+              ) : selectedAssets[focusedIndex].type === 'video' ? (
+                <VideoView
+                  style={styles.previewVideo}
+                  player={videoPlayer}
+                  nativeControls={true}
+                />
+              ) : (
+                <View style={styles.docPlaceholderContainer}>
+                  <Ionicons name="document" size={64} color="#fff" />
+                  <Text style={styles.videoPlaceholderText}>{selectedAssets[focusedIndex].name}</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Immersive Header Overlay */}
+            <View style={styles.previewHeaderOverlay}>
+              <TouchableOpacity
+                onPress={() => selectedAssets.length > 1 ? setViewState('grid') : resetAndClose()}
+                disabled={uploading}
+                style={styles.backBtn}
+              >
+                <Ionicons
+                  name={selectedAssets.length > 1 ? "arrow-back" : "close"}
+                  size={28}
+                  color="#fff"
+                />
+              </TouchableOpacity>
+              {selectedAssets.length > 1 && (
+                <View style={styles.headerIndicatorCompact}>
+                  <Text style={styles.headerTitleSmall}>
+                    {focusedIndex + 1} / {selectedAssets.length}
+                  </Text>
+                </View>
+              )}
+              <View style={{ width: 44 }} />
+            </View>
+
+            {/* Immersive Caption & Send Bar Overlay */}
+            <View style={styles.captionBarOverlay}>
+              {uploading ? (
+                <View style={styles.uploadingState}>
+                  <ActivityIndicator size="small" color="#fff" />
+                  <Text style={styles.uploadingText}>Sending... {progress}%</Text>
+                </View>
+              ) : (
+                <>
+                  <TextInput
+                    style={styles.captionInputImmersive}
+                    placeholder="Add a caption..."
+                    placeholderTextColor="rgba(255,255,255,0.6)"
+                    value={caption}
+                    onChangeText={setCaption}
+                    multiline
+                    maxLength={1000}
+                  />
+                  <TouchableOpacity
+                    style={styles.sendBtnImmersive}
+                    onPress={handleSend}
+                    disabled={uploading}
+                  >
+                    <Ionicons name="send" size={20} color="#fff" />
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </View>
+        )}
+      </KeyboardAvoidingView>
     </Modal>
   );
-};
+});
 
-// ─── Small UI sub-component ───────────────────────────────────────────────────
+export default AdvancedMediaUploader;
 
-const ActionBtn: React.FC<{ icon: string; label: string; color: string; onPress: () => void }> = ({
-  icon, label, color, onPress,
-}) => (
-  <TouchableOpacity style={styles.actionBtn} onPress={onPress} activeOpacity={0.75}>
-    <View style={[styles.actionIcon, { backgroundColor: color }]}>
-      <Ionicons name={icon as any} size={30} color="#fff" />
-    </View>
-    <Text style={styles.actionLabel}>{label}</Text>
-  </TouchableOpacity>
-);
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
   sheet: {
     backgroundColor: '#fff',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    paddingHorizontal: 24,
-    paddingBottom: 40,
+    paddingHorizontal: 16,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
     paddingTop: 12,
+    ...createShadow({ width: 0, height: -4, opacity: 0.1, radius: 12, elevation: 12 }),
   },
   handle: {
-    width: 40,
+    width: 38,
     height: 4,
-    backgroundColor: '#ddd',
+    backgroundColor: '#E0E0E0',
     borderRadius: 2,
     alignSelf: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   grid: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 28,
-    marginTop: 10,
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    paddingHorizontal: 8,
   },
   actionBtn: {
+    width: '25%', // 4 columns
     alignItems: 'center',
+    marginBottom: 24,
     gap: 8,
   },
   actionIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
     ...createShadow({
       width: 0,
-      height: 2,
-      opacity: 0.15,
-      radius: 8,
-      elevation: 4,
+      height: 3,
+      opacity: 0.12,
+      radius: 6,
+      elevation: 3,
     }),
   },
   actionLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#333',
-  },
-  cancelBtn: {
-    paddingVertical: 14,
-    backgroundColor: '#f4f4f6',
-    borderRadius: 14,
-    alignItems: 'center',
-  },
-  cancelText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FF3B30',
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#4B4B4B',
+    textAlign: 'center',
   },
   previewContainer: {
     flex: 1,
@@ -590,12 +768,51 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 20,
   },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: 12,
+    gap: 8,
+  },
+  gridItem: {
+    width: (width - 40) / 3,
+    aspectRatio: 1,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#1c1c1e',
+  },
+  gridMedia: {
+    width: '100%',
+    height: '100%',
+  },
+  gridPlayIcon: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -16 }, { translateY: -16 }],
+  },
+  removeBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    zIndex: 10,
+  },
+  addItem: {
+    width: (width - 32) / 3,
+    aspectRatio: 1,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#333',
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   captionBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 16, // Safe area approx
+    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
   captionInput: {
@@ -632,6 +849,96 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Immersive Preview Styles
+  mediaViewerFull: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewHeaderOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingTop: 50,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    zIndex: 100,
+  },
+  captionBarOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    zIndex: 100,
+  },
+  captionInputImmersive: {
+    flex: 1,
+    backgroundColor: 'rgba(28, 28, 30, 0.8)',
+    color: '#fff',
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 12,
+    fontSize: 16,
+    maxHeight: 120,
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  sendBtnImmersive: {
+    backgroundColor: '#007AFF',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 12,
+    ...createShadow({ width: 0, height: 2, opacity: 0.2, radius: 4, elevation: 4 }),
+  },
+  headerIndicator: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerIndicatorCompact: {
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  headerTitleSmall: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  flex1: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
   },
   // Camera UI Styles
   cameraContainer: {
@@ -735,4 +1042,3 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AdvancedMediaUploader;
