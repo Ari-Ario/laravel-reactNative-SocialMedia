@@ -866,7 +866,10 @@ class PusherService {
     const channel = this.channels.get(channelName);
     if (channel && this.pusher) {
       try {
-        this.pusher.unsubscribe(channelName);
+        const connectionState = this.pusher.connection.state;
+        if (connectionState !== 'disconnected' && connectionState !== 'unavailable' && connectionState !== 'failed') {
+          this.pusher.unsubscribe(channelName);
+        }
         this.channels.delete(channelName);
         console.log(`✅ Unsubscribed from channel: ${channelName}`);
       } catch (error) {
@@ -879,9 +882,14 @@ class PusherService {
   disconnect(): void {
     if (this.pusher) {
       try {
-        // Unsubscribe from all channels first
+        // Unsubscribe from all channels first if connection is still active
+        const connectionState = this.pusher.connection.state;
+        const canUnsubscribe = connectionState !== 'disconnected' && connectionState !== 'unavailable' && connectionState !== 'failed';
+
         this.channels.forEach((channel, channelName) => {
-          this.pusher?.unsubscribe(channelName);
+          if (canUnsubscribe) {
+            this.pusher?.unsubscribe(channelName);
+          }
         });
 
         this.channels.clear();

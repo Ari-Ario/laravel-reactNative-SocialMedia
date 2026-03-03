@@ -1310,12 +1310,21 @@ class CollaborationService {
     }
   }
 
-  getGroupedReactions(reactions: any[]) {
-    if (!reactions) return {};
-    return reactions.reduce((acc: any, curr: any) => {
-      acc[curr.reaction] = (acc[curr.reaction] || 0) + 1;
-      return acc;
-    }, {});
+  getGroupedReactions(post: any, userId?: number) {
+    const reactions = post?.reactions || [];
+    if (!reactions || !Array.isArray(reactions)) return [];
+
+    const groups: { [key: string]: { emoji: string, count: number, user_ids: number[] } } = {};
+
+    reactions.forEach((r: any) => {
+      if (!groups[r.reaction]) {
+        groups[r.reaction] = { emoji: r.reaction, count: 0, user_ids: [] };
+      }
+      groups[r.reaction].count++;
+      if (r.user_id) groups[r.reaction].user_ids.push(Number(r.user_id));
+    });
+
+    return Object.values(groups);
   }
 
   // handling 3 dot menu on (spaces)/[id].tsx

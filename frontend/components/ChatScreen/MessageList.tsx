@@ -427,7 +427,7 @@ const MessageList: React.FC<MessageListProps> = ({
           }
           startIndex={mediaViewerIndex}
           onClose={() => setMediaViewerVisible(false)}
-          post={activeMediaPost}
+          post={null}
           getApiBaseImage={getApiBaseImage}
           onReact={(emoji) => handleReact(activeMediaPost, emoji)}
           onDeleteReaction={() => { }} // Implement if needed
