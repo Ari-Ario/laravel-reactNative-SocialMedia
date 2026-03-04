@@ -10,6 +10,7 @@ export interface Notification {
   postId?: number;
   commentId?: number;
   spaceId?: string;
+  messageId?: string;
   callId?: string;
   activityId?: number;
   avatar?: string;
@@ -36,4 +37,6 @@ export const NOTIFICATION_TYPES = {
   ACTIVITY_CREATED: 'activity_created',
   CALL_ENDED: 'call_ended',
   SPACE_UPDATED: 'space_updated',
+  MESSAGE_REACTION: 'message_reaction',
+  MESSAGE_REPLY: 'message_reply',
 };

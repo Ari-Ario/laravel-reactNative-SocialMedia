@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import * as MediaLibrary from 'expo-media-library';
 import Avatar from '@/components/Image/Avatar';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import PollViewer from './PollViewer';
+import VoiceMessagePlayer from './VoiceMessagePlayer';
 
 interface MessageBubbleProps {
   message: {
@@ -30,7 +31,10 @@ interface MessageBubbleProps {
     reactions?: any[];
     metadata?: any;
     poll?: any;
+    reply_to_id?: string;
   };
+  repliedToMessage?: any;
+  translatedContent?: string;
   isCurrentUser: boolean;
   showAvatar: boolean;
   isSelected: boolean;
@@ -39,14 +43,17 @@ interface MessageBubbleProps {
   onLongPress: () => void;
   onLongPressWithPosition?: (message: any, x: number, y: number) => void;
   onPollPress?: (poll: any) => void;
+  onToggleTranslation?: () => void;
   /** Required for InlinePollCard voting */
   spaceId?: string;
   currentUserId?: number;
   currentUserRole?: string;
+  highlighted?: boolean;
 }
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({
   message,
+  repliedToMessage,
   isCurrentUser,
   showAvatar,
   isSelected,
@@ -55,10 +62,23 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   onLongPress,
   onLongPressWithPosition,
   onPollPress,
+  onToggleTranslation,
   spaceId,
   currentUserId,
   currentUserRole,
+  translatedContent,
+  highlighted,
 }) => {
+  const bubbleRef = useRef<React.ElementRef<typeof TouchableOpacity>>(null);
+  const [isSelfHighlighted, setIsSelfHighlighted] = useState(false);
+
+  useEffect(() => {
+    if (highlighted) {
+      setIsSelfHighlighted(true);
+      const timer = setTimeout(() => setIsSelfHighlighted(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [highlighted]);
   const formatTime = (timestamp: string) => {
     return new Date(timestamp).toLocaleTimeString([], {
       hour: '2-digit',
@@ -220,26 +240,24 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         );
       }
 
-      case 'voice':
+      case 'voice': {
+        const rawUrl = message.metadata?.url || message.file_path || '';
+        const isNetworkUrl = rawUrl.startsWith('http://') || rawUrl.startsWith('https://');
+        const isFileUrl = rawUrl.startsWith('file://');
+        const isDataUrl = rawUrl.startsWith('data:');
+
+        const url = (isNetworkUrl || isFileUrl || isDataUrl)
+          ? rawUrl
+          : (rawUrl ? `${getApiBaseImage()}/storage/${rawUrl}` : '');
+
         return (
-          <View style={styles.voiceContainer}>
-            <Ionicons name="mic" size={20} color="#007AFF" />
-            <Text style={styles.voiceDuration}>
-              {message.metadata?.duration || '0:30'}
-            </Text>
-            <View style={styles.waveform}>
-              {Array.from({ length: 20 }).map((_, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.waveformBar,
-                    { height: Math.random() * 20 + 4 }
-                  ]}
-                />
-              ))}
-            </View>
-          </View>
+          <VoiceMessagePlayer
+            uri={url}
+            durationLabel={message.metadata?.duration || '0:00'}
+            isCurrentUser={isCurrentUser}
+          />
         );
+      }
 
       case 'poll': {
         const pollData = message.poll || message.metadata?.pollData;
@@ -267,14 +285,25 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         );
       }
 
+      case 'text':
       default:
+        // Use translation if provided
         return (
-          <Text style={[
-            styles.textContent,
-            isCurrentUser ? styles.currentUserText : styles.otherUserText
-          ]}>
-            {message.content}
-          </Text>
+          <View>
+            <Text style={[styles.text, isCurrentUser ? styles.currentUserText : styles.otherUserText]}>
+              {translatedContent || message.content}
+            </Text>
+            {translatedContent && (
+              <TouchableOpacity onPress={onToggleTranslation} style={styles.translatedContainer}>
+                <Text style={[styles.translatedLabel, isCurrentUser ? styles.currentUserText : styles.otherUserText]}>
+                  (Translated)
+                </Text>
+                <Text style={[styles.seeOriginalLink, isCurrentUser ? styles.currentUserText : { color: '#007AFF' }]}>
+                  See Original
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
         );
     }
   };
@@ -304,16 +333,47 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     );
   };
 
-  // ── Poll messages: render PollViewer directly (no bubble wrapper) ───────
-  // This makes polls look exactly like WhatsApp — a standalone card in the feed.
+  const renderReplyHeader = () => {
+    if (!repliedToMessage) return null;
+    return (
+      <View style={[styles.replyHeaderContainer, isCurrentUser ? styles.currentUserReplyHeader : styles.otherUserReplyHeader]}>
+        <View style={styles.replyHeaderBar} />
+        <View style={styles.replyHeaderContent}>
+          <Text style={styles.replyHeaderName} numberOfLines={1}>
+            {repliedToMessage.user?.name || repliedToMessage.user_name || 'User'}
+          </Text>
+          <Text style={styles.replyHeaderText} numberOfLines={1}>
+            {repliedToMessage.type === 'text' ? repliedToMessage.content : `[${repliedToMessage.type}]`}
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
+  // ── Poll messages: wrapped in a message bubble container with long-press ──
   if (message.type === 'poll') {
     const pollData = message.poll || message.metadata?.pollData;
     if (pollData && spaceId && currentUserId) {
       return (
-        <View
+        <TouchableOpacity
+          ref={bubbleRef}
+          activeOpacity={0.95}
+          onPress={onPress}
+          onLongPress={() => {
+            if (onLongPressWithPosition) {
+              bubbleRef.current?.measure((_x: number, _y: number, width: number, _height: number, pageX: number, pageY: number) => {
+                onLongPressWithPosition(message, pageX + width / 2, pageY);
+              });
+            } else if (onLongPress) {
+              onLongPress();
+            }
+          }}
+          delayLongPress={200}
           style={[
             styles.container,
             isCurrentUser ? styles.currentUserContainer : styles.otherUserContainer,
+            isSelfHighlighted && styles.selectedContainer,
+            isSelected && styles.selectedContainer,
           ]}
         >
           {!isCurrentUser && showAvatar && (
@@ -326,26 +386,59 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               />
             </View>
           )}
-          <PollViewer
-            poll={pollData}
-            spaceId={spaceId}
-            currentUserId={currentUserId}
-            currentUserRole="participant" // Default to participant for now, will pass correctly if needed
-            onRefresh={() => { }} // No-op, real-time updates handle this
-          />
-        </View>
+          <View style={[
+            styles.bubbleContainer,
+            isCurrentUser ? styles.currentUserBubble : styles.otherUserBubble,
+            isSelfHighlighted && styles.highlightedBubble,
+            { maxWidth: '85%' } // Polls can be wider than text
+          ]}>
+            {!isCurrentUser && showAvatar && (
+              <Text style={styles.userName}>{message.user?.name}</Text>
+            )}
+
+            {renderReplyHeader()}
+            <PollViewer
+              poll={pollData}
+              spaceId={spaceId}
+              currentUserId={currentUserId}
+              currentUserRole={currentUserRole || 'participant'}
+              onRefresh={() => { }}
+              inChatMode={true}
+            />
+
+            <View style={styles.messageFooter}>
+              <Text style={styles.timestamp}>
+                {formatTime(message.created_at)}
+              </Text>
+            </View>
+
+            {renderReactions()}
+          </View>
+          {isCurrentUser && showAvatar && (
+            <View style={styles.avatarContainer}>
+              <Avatar
+                source={message.user?.profile_photo}
+                size={32}
+                name={message.user?.name}
+                showStatus={false}
+              />
+            </View>
+          )}
+        </TouchableOpacity>
       );
     }
   }
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────────────────────
 
   return (
     <TouchableOpacity
+      ref={bubbleRef}
       activeOpacity={0.7}
       onPress={onPress}
-      onLongPress={(event) => {
+      onLongPress={() => {
         if (onLongPressWithPosition) {
-          event.currentTarget.measure((x, y, width, height, pageX, pageY) => {
+          // Use the ref instead of event.currentTarget — which can be null on Android
+          bubbleRef.current?.measure((_x: number, _y: number, width: number, _height: number, pageX: number, pageY: number) => {
             onLongPressWithPosition(message, pageX + width / 2, pageY);
           });
         } else if (onLongPress) {
@@ -372,12 +465,14 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
       <View style={[
         styles.bubbleContainer,
-        isCurrentUser ? styles.currentUserBubble : styles.otherUserBubble
+        isCurrentUser ? styles.currentUserBubble : styles.otherUserBubble,
+        isSelfHighlighted && styles.highlightedBubble
       ]}>
         {!isCurrentUser && showAvatar && (
           <Text style={styles.userName}>{message.user?.name}</Text>
         )}
 
+        {renderReplyHeader()}
         {renderContent()}
 
         <View style={styles.messageFooter}>
@@ -451,9 +546,25 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 4,
   },
-  textContent: {
+  text: {
     fontSize: 16,
     lineHeight: 22,
+  },
+  translatedLabel: {
+    fontSize: 10,
+    marginTop: 2,
+    opacity: 0.7,
+    fontStyle: 'italic',
+  },
+  translatedContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  seeOriginalLink: {
+    fontSize: 10,
+    marginLeft: 5,
+    textDecorationLine: 'underline',
   },
   currentUserText: {
     color: '#fff',
@@ -674,6 +785,48 @@ const styles = StyleSheet.create({
     color: '#444',
     fontWeight: '600',
     flex: 1,
+  },
+  /* ── Reply Header Styles ── */
+  replyHeaderContainer: {
+    flexDirection: 'row',
+    borderRadius: 8,
+    padding: 6,
+    marginBottom: 6,
+    alignItems: 'center',
+  },
+  currentUserReplyHeader: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  otherUserReplyHeader: {
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  replyHeaderBar: {
+    width: 3,
+    height: '100%',
+    backgroundColor: '#007AFF',
+    borderRadius: 1.5,
+  },
+  replyHeaderContent: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  replyHeaderName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#007AFF',
+    marginBottom: 1,
+  },
+  replyHeaderText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  pollBubbleContent: {
+    flex: 1,
+  },
+  highlightedBubble: {
+    backgroundColor: '#FFF9C4', // Soft yellow highlight
+    borderWidth: 1,
+    borderColor: '#FBC02D',
   },
 });
 

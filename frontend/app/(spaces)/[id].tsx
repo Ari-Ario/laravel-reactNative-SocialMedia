@@ -141,6 +141,15 @@ const SpaceDetailScreen = () => {
     }
   }, [space?.id, space?.space_type, participants.length, params.justCreated]);
 
+  // ✅ CRITICAL FIX: Re-activate tab when navigated from a notification (e.g., params.tab changes)
+  useEffect(() => {
+    if (!params.tab) return;
+    const validTabs = ['chat', 'whiteboard', 'meeting', 'document', 'brainstorm', 'calendar', 'files', 'ai', 'polls'];
+    if (validTabs.includes(params.tab as string) && activeTab !== params.tab) {
+      setActiveTab(params.tab as any);
+    }
+  }, [params.tab]);
+
   const loadSpaceDetails = async () => {
     console.log('Loading space details for ID:', id);
     setLoading(true);
@@ -246,6 +255,84 @@ const SpaceDetailScreen = () => {
             content_state: contentState,
             updated_at: new Date().toISOString()
           }));
+        },
+
+        // chat real-time granular updates
+        onMessageReplied: (data) => {
+          console.log('↩️ Message replied (live chat):', data);
+          setSpace((prev: any) => {
+            const msgs = prev?.content_state?.messages || [];
+            // Assuming data.message contains the newly created reply message from the backend
+            const replyMsg = data.message || data;
+            if (msgs.find((m: any) => m.id === replyMsg.id)) return prev; // Avoid dupes
+            return {
+              ...prev,
+              content_state: {
+                ...prev?.content_state,
+                messages: [...msgs, replyMsg]
+              }
+            };
+          });
+        },
+
+        onMessageReacted: (data) => {
+          console.log('👍 Message reacted (live chat):', data);
+          setSpace((prev: any) => {
+            const msgs = [...(prev?.content_state?.messages || [])];
+            // backend sends: { message: {...}, user: {...}, reaction: "👍", id: message_id }
+            const msgId = data.id || data.message?.id || data.messageId;
+            const updatedMsgObj = data.message;
+            if (!msgId) return prev;
+
+            const index = msgs.findIndex((m: any) => m.id === msgId);
+            if (index !== -1) {
+              // If backend sends the fully updated message object, replace it
+              if (updatedMsgObj && updatedMsgObj.reactions) {
+                msgs[index] = { ...msgs[index], reactions: updatedMsgObj.reactions };
+              } else {
+                // otherwise manually append reaction to existing list
+                const emoji = data.reaction || data.emoji;
+                const reactorId = data.user?.id || data.userId;
+                if (emoji && reactorId) {
+                  const existingReactions = msgs[index].reactions || [];
+                  const existingIdx = existingReactions.findIndex((r: any) => r.user_id === reactorId && r.reaction === emoji);
+
+                  if (existingIdx !== -1) {
+                    existingReactions.splice(existingIdx, 1); // toggle off
+                  } else {
+                    existingReactions.push({
+                      user_id: reactorId,
+                      reaction: emoji,
+                      created_at: new Date().toISOString()
+                    });
+                  }
+                  msgs[index] = { ...msgs[index], reactions: [...existingReactions] };
+                }
+              }
+            }
+            return {
+              ...prev,
+              content_state: {
+                ...prev?.content_state,
+                messages: msgs
+              }
+            };
+          });
+        },
+
+        onMessageDeleted: (data) => {
+          console.log('🗑️ Message deleted (live chat):', data);
+          setSpace((prev: any) => {
+            const msgs = prev?.content_state?.messages || [];
+            const msgId = data.id || data.messageId;
+            return {
+              ...prev,
+              content_state: {
+                ...prev?.content_state,
+                messages: msgs.filter((m: any) => m.id !== msgId)
+              }
+            };
+          });
         },
 
         // poll events
@@ -634,13 +721,14 @@ const SpaceDetailScreen = () => {
         return (
           <SpaceChatTab
             spaceId={id as string}
-            currentUserId={user?.id || 0}
+            currentUserId={Number(user?.id) || 0}
             space={space}
             setSpace={setSpace}
             setShowPollCreator={setShowPollCreator}
             polls={polls}
             currentUserRole={space?.my_role}
             onNavigateToAllPolls={() => setActiveTab('polls')}
+            highlightMessageId={params.highlightMessageId as string}
           />
         );
 
@@ -685,6 +773,7 @@ const SpaceDetailScreen = () => {
                   message: `${userName || 'Someone'} started drawing`,
                   spaceId: id,
                   userId,
+                  data: {},
                   createdAt: new Date(),
                 });
               }}
@@ -718,7 +807,7 @@ const SpaceDetailScreen = () => {
                   key={poll.id}
                   poll={poll}
                   spaceId={id as string}
-                  currentUserId={user?.id || 0}
+                  currentUserId={Number(user?.id) || 0}
                   currentUserRole={space?.my_role}
                   onRefresh={loadPolls}
                 />
@@ -883,7 +972,7 @@ const SpaceDetailScreen = () => {
           {
             icon: 'videocam',
             label: 'Video Call',
-            color: '#007AFF',
+            color: '#525df8ff',
             onPress: () => handleStartCall('video'),
           },
           {

@@ -143,7 +143,7 @@ class CollaborationService {
   }
 
   async setToken(token: string) {
-    this.userToken = await getToken();
+    this.userToken = (await getToken()) || null;
   }
 
   getHeaders() {
@@ -613,6 +613,10 @@ class CollaborationService {
     onPollCreated?: (poll: any) => void;
     onPollUpdated?: (poll: any) => void;
     onPollDeleted?: (poll: any) => void;
+    onMessageDeleted?: (data: any) => void;
+    onMessagePinned?: (data: any) => void;
+    onMessageReacted?: (data: any) => void;
+    onMessageReplied?: (data: any) => void;  // ✅ NEW
   }) {
     try {
       // ✅ FIX: Only check if Pusher is ready - DON'T initialize
@@ -677,6 +681,12 @@ class CollaborationService {
       bind('participant.updated', (data) => {
         callbacks.onParticipantUpdate?.(data);
       });
+
+      // Message specific events
+      bind('message.reacted', callbacks.onMessageReacted, '👍 Message reacted');
+      bind('message.deleted', callbacks.onMessageDeleted, '🗑️ Message deleted');
+      bind('message.pinned', callbacks.onMessagePinned, '📌 Message pinned');
+      bind('message.replied', callbacks.onMessageReplied, '↩️ Message replied'); // ✅ NEW
 
       // Collaboration specific events
       bind('content.updated', (data) => callbacks.onContentUpdate?.(data.content_state || data), '📝 Content updated');
@@ -1266,9 +1276,10 @@ class CollaborationService {
   // Message handling functions
   async sendMessage(spaceId: string, messageData: {
     content: string;
-    type?: 'text' | 'image' | 'video' | 'file' | 'voice' | 'poll';
+    type?: 'text' | 'image' | 'video' | 'file' | 'voice' | 'poll' | 'album';
     file_path?: string;
     metadata?: any;
+    reply_to_id?: string;
   }): Promise<any> {
     try {
       const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/send-message`, messageData, {
@@ -1283,6 +1294,86 @@ class CollaborationService {
       throw error;
     }
   }
+
+  // ==== Space Message Context Menu Actions ====
+
+  async deleteSpaceMessage(spaceId: string, messageId: string): Promise<void> {
+    try {
+      await axios.delete(`${this.baseURL}/spaces/${spaceId}/messages/${messageId}`, {
+        headers: this.getHeaders(),
+      });
+    } catch (error) {
+      console.error('Error deleting space message:', error);
+      throw error;
+    }
+  }
+
+  async hideSpaceMessage(spaceId: string, messageId: string): Promise<void> {
+    try {
+      await axios.delete(`${this.baseURL}/spaces/${spaceId}/messages/${messageId}/local`, {
+        headers: this.getHeaders(),
+      });
+    } catch (error) {
+      console.error('Error hiding space message locally:', error);
+      throw error;
+    }
+  }
+
+  async forwardSpaceMessages(sourceSpaceId: string, messageIds: string[], destinationSpaceId: string): Promise<any> {
+    try {
+      const response = await axios.post(`${this.baseURL}/spaces/${sourceSpaceId}/messages/forward`, {
+        message_ids: messageIds,
+        destination_space_id: destinationSpaceId
+      }, {
+        headers: this.getHeaders(),
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error forwarding space messages:', error);
+      throw error;
+    }
+  }
+
+  async getUserSpaces(userId: number): Promise<any> {
+    try {
+      const response = await axios.get(`${this.baseURL}/users/${userId}/spaces`, {
+        headers: this.getHeaders(),
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching user spaces:', error);
+      throw error;
+    }
+  }
+
+  async reactToSpaceMessage(spaceId: string, messageId: string, emoji: string): Promise<any> {
+    try {
+      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/messages/${messageId}/react`, {
+        emoji,
+      }, {
+        headers: this.getHeaders(),
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error reacting to space message:', error);
+      throw error;
+    }
+  }
+
+  async pinSpaceMessage(spaceId: string, messageId: string): Promise<any> {
+    try {
+      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/messages/${messageId}/pin`, {}, {
+        headers: this.getHeaders(),
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error pinning space message:', error);
+      throw error;
+    }
+  }
+
+  // ==== Standard Message Actions ====
+
 
   async reactToMessage(messageId: string, reaction: string): Promise<void> {
     try {
@@ -1546,6 +1637,30 @@ class CollaborationService {
     } catch (error) {
       // Silent fail for cursor updates - not critical
       console.debug('Cursor update failed:', error);
+    }
+  }
+
+  async uploadAudio(spaceId: string, uri: string, durationInSeconds: number) {
+    try {
+      const formData = new FormData();
+      formData.append('file', {
+        uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
+        type: 'audio/m4a',
+        name: `voice_message_${Date.now()}.m4a`
+      } as any);
+      formData.append('type', 'audio');
+
+      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/upload-media`, formData, {
+        headers: {
+          ...this.getHeaders(),
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error('Error uploading audio:', error);
+      throw error;
     }
   }
 

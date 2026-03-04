@@ -88,16 +88,48 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   const totalCount = filteredNotifications.length;
 
   const handleNotificationPress = async (item: Notification) => {
-    console.log('🔔 Notification pressed:', item.type, 'data:', item.data);
+    console.log('🔔 Notification pressed:', item.type);
+    console.log('  → spaceId:', item.spaceId, '| data.spaceId:', item.data?.spaceId, '| data.space_id:', item.data?.space_id);
+    console.log('  → messageId:', item.messageId, '| data.messageId:', item.data?.messageId, '| data.message?.id:', item.data?.message?.id);
 
     if (!item.isRead) {
       markAsRead(item.id);
     }
 
+    // ✅ HELPER: Extract spaceId from all possible locations (top-level or nested in `data`)
+    const resolveSpaceId = (): string | undefined =>
+      item.spaceId
+      || item.data?.spaceId
+      || item.data?.space_id
+      || item.data?.space?.id
+      || undefined;
+
+    // ✅ HELPER: Extract messageId from all possible locations
+    const resolveMessageId = (): string | undefined =>
+      item.messageId
+      || item.data?.messageId
+      || item.data?.message_id
+      || item.data?.message?.id
+      || item.data?.replyId
+      || undefined;
+
+    // ✅ HELPER: Navigate to space+chat+message
+    const navigateToSpaceMessage = (spaceId: string, messageId?: string) => {
+      router.push({
+        pathname: '/(spaces)/[id]',
+        params: {
+          id: spaceId,
+          tab: 'chat',
+          ...(messageId ? { highlightMessageId: messageId } : {}),
+        }
+      });
+      onClose();
+    };
+
     try {
-      // ============= CHAT & SPACE NOTIFICATIONS =============
+      // ============= SPACE INVITATION =============
       if (item.type === NOTIFICATION_TYPES.SPACE_INVITATION) {
-        const spaceId = item.data?.space?.id || item.spaceId || item.data?.space_id;
+        const spaceId = resolveSpaceId();
         if (spaceId) {
           router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, justInvited: 'true' } });
           onClose();
@@ -105,8 +137,9 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         }
       }
 
+      // ============= CALL STARTED =============
       if (item.type === NOTIFICATION_TYPES.CALL_STARTED) {
-        const spaceId = item.spaceId || item.data?.space_id;
+        const spaceId = resolveSpaceId();
         if (spaceId) {
           router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'meeting' } });
           onClose();
@@ -114,23 +147,39 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         }
       }
 
-      if (item.type === NOTIFICATION_TYPES.NEW_MESSAGE) {
-        const spaceId = item.spaceId || item.data?.space_id;
+      // ============= CHAT MESSAGES / REACTIONS / REPLIES / DELETIONS =============
+      if (item.type === NOTIFICATION_TYPES.NEW_MESSAGE ||
+        item.type === NOTIFICATION_TYPES.MESSAGE_REACTION ||
+        item.type === NOTIFICATION_TYPES.MESSAGE_REPLY ||
+        item.type === NOTIFICATION_TYPES.MESSAGE_DELETED) {
+
+        const spaceId = resolveSpaceId();
+        const messageId = resolveMessageId();
+
+        console.log(`  → [${item.type}] Resolved spaceId:`, spaceId, '| messageId:', messageId);
+
         if (spaceId) {
-          router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'chat' } });
-          onClose();
+          navigateToSpaceMessage(spaceId, messageId);
           return;
         }
-        const userId = item.userId || item.data?.user?.id;
+
+        // Fallback: DM chat — only if no spaceId found
+        const userId = item.userId || item.data?.user?.id || item.data?.userId;
         if (userId) {
           router.push({ pathname: '/(tabs)/chats/[id]', params: { id: userId.toString() } });
           onClose();
           return;
         }
+
+        // Last resort: close panel, user will see chat list
+        console.warn('⚠️ No spaceId or userId found for message notification:', item);
+        onClose();
+        return;
       }
 
+      // ============= PARTICIPANT JOINED =============
       if (item.type === NOTIFICATION_TYPES.PARTICIPANT_JOINED) {
-        const spaceId = item.spaceId || item.data?.space_id;
+        const spaceId = resolveSpaceId();
         if (spaceId) {
           router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'chat' } });
           onClose();
@@ -138,8 +187,9 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         }
       }
 
+      // ============= MAGIC EVENT =============
       if (item.type === NOTIFICATION_TYPES.MAGIC_EVENT) {
-        const spaceId = item.spaceId || item.data?.space_id;
+        const spaceId = resolveSpaceId();
         const eventId = item.data?.event?.id || item.data?.eventId;
         if (spaceId) {
           router.push({
@@ -151,8 +201,9 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         }
       }
 
+      // ============= SCREEN SHARE =============
       if (item.type === NOTIFICATION_TYPES.SCREEN_SHARE) {
-        const spaceId = item.spaceId || item.data?.space_id;
+        const spaceId = resolveSpaceId();
         if (spaceId) {
           router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'meeting' } });
           onClose();
@@ -160,8 +211,9 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         }
       }
 
+      // ============= ACTIVITY CREATED =============
       if (item.type === NOTIFICATION_TYPES.ACTIVITY_CREATED) {
-        const spaceId = item.spaceId || item.data?.space_id;
+        const spaceId = resolveSpaceId();
         if (spaceId) {
           router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'calendar' } });
           onClose();
@@ -169,8 +221,9 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         }
       }
 
+      // ============= SPACE UPDATED =============
       if (item.type === NOTIFICATION_TYPES.SPACE_UPDATED) {
-        const spaceId = item.spaceId || item.data?.space_id;
+        const spaceId = resolveSpaceId();
         if (spaceId) {
           router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId } });
           onClose();
@@ -178,12 +231,13 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         }
       }
 
+      // ============= CALL ENDED =============
       if (item.type === NOTIFICATION_TYPES.CALL_ENDED) {
         onClose();
         return;
       }
 
-      // ============= RESTORED POST-RELATED NOTIFICATIONS =============
+      // ============= POST-RELATED NOTIFICATIONS =============
       if (item.type === 'post_deleted') {
         onClose();
         return;
@@ -201,7 +255,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
       if (['post', NOTIFICATION_TYPES.POST_UPDATED, 'reaction'].includes(item.type) && item.postId) {
         const postData = await fetchPostById(item.postId);
         if (postData?.data) addPost(postData.data);
-        router.push(`/post/${item.postId}`);
+        router.push(`/post/${item.postId}` as any);
         onClose();
         return;
       }
@@ -210,7 +264,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         const postData = await fetchPostById(item.postId);
         if (postData?.data) addPost(postData.data);
         router.push({
-          pathname: `/post/${item.postId}`,
+          pathname: `/post/${item.postId}` as any,
           params: { highlightCommentId: item.commentId.toString() },
         });
         onClose();
@@ -220,12 +274,14 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
       if (item.type === 'comment-deleted' && item.postId) {
         const postData = await fetchPostById(item.postId);
         if (postData?.data) addPost(postData.data);
-        router.push(`/post/${item.postId}`);
+        router.push(`/post/${item.postId}` as any);
         onClose();
         return;
       }
 
-      // ============= PROFILE NAVIGATION =============
+      // ============= PROFILE NAVIGATION (last resort for social notifications) =============
+      // ✅ CRITICAL: isChatNotification() now includes MESSAGE_REPLY and MESSAGE_REACTION
+      // so they will NEVER reach this block
       if (item.userId && !isChatNotification(item.type) &&
         !['new_follower', 'user_unfollowed', 'new-follower', 'user-unfollowed'].includes(item.type)) {
         try {

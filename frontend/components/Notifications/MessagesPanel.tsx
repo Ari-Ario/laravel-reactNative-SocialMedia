@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { createShadow } from '@/utils/styles';
-import { useNotificationStore } from '@/stores/notificationStore';
+import { useNotificationStore, getNotificationIcon, getNotificationColor } from '@/stores/notificationStore';
 import { Notification } from '@/types/Notification';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { router } from 'expo-router';
@@ -39,16 +39,32 @@ const MessagesPanel = ({ visible, onClose, anchorPosition }: MessagesPanelProps)
             markAsRead(item.id);
         }
 
-        if (item.spaceId || item.data?.space_id) {
-            const spaceId = item.spaceId || item.data?.space_id;
+        // ✅ Robust resolution of spaceId and messageId
+        const spaceId = item.spaceId
+            || item.data?.spaceId
+            || item.data?.space_id
+            || item.data?.space?.id;
+
+        const messageId = item.messageId
+            || item.data?.messageId
+            || item.data?.message_id
+            || item.data?.message?.id
+            || item.data?.replyId;
+
+        if (spaceId) {
             router.push({
                 pathname: '/(spaces)/[id]',
-                params: { id: spaceId, tab: 'chat' }
+                params: {
+                    id: spaceId.toString(),
+                    tab: 'chat',
+                    ...(messageId ? { highlightMessageId: messageId.toString() } : {})
+                }
             });
-        } else if (item.userId) {
+        } else if (item.userId || item.data?.user_id || item.data?.userId) {
+            const userId = item.userId || item.data?.user_id || item.data?.userId;
             router.push({
                 pathname: '/(tabs)/chats/[id]',
-                params: { id: item.userId.toString() }
+                params: { id: userId.toString() }
             });
         }
         onClose();
@@ -82,7 +98,11 @@ const MessagesPanel = ({ visible, onClose, anchorPosition }: MessagesPanelProps)
                 <View style={styles.textContent}>
                     <View style={styles.titleRow}>
                         <View style={styles.titleWithIcon}>
-                            <Ionicons name="chatbubble" size={16} color="#007AFF" />
+                            <Ionicons
+                                name={getNotificationIcon(item.type) as any}
+                                size={16}
+                                color={getNotificationColor(item.type)}
+                            />
                             <Text style={styles.messageTitle}>{item.title}</Text>
                         </View>
                         <Text style={styles.messageTime}>

@@ -139,6 +139,19 @@ export const useCollaborationStore = create<CollaborationState>()(
             onMagicEvent: handleMagicTriggered,
             onScreenShareStarted: handleScreenShareStarted,
             onScreenShareEnded: handleScreenShareEnded,
+            // ✅ NEW: forward message.deleted/reacted/replied as notifications
+            onMessageDeleted: (data: any) => {
+              console.log('🗑️ Message deleted in space:', data);
+              get().handleSpaceEvent({ type: 'message-deleted', data });
+            },
+            onMessageReacted: (data: any) => {
+              console.log('❤️ Message reacted in space:', data);
+              get().handleSpaceEvent({ type: 'message-reacted', data });
+            },
+            onMessageReplied: (data: any) => {
+              console.log('↩️ Message replied in space:', data);
+              get().handleSpaceEvent({ type: 'message-replied', data });
+            },
           });
         });
 
@@ -196,10 +209,16 @@ export const useCollaborationStore = create<CollaborationState>()(
             break;
         }
 
-        // ✅ Map internal event types to NOTIFICATION_TYPES
+        // ✅ Map internal event types → NOTIFICATION_TYPES
         const typeMap: Record<string, string> = {
           'message-sent': 'new_message',
           'message.sent': 'new_message',
+          'message-deleted': 'message_deleted',   // ✅ NEW
+          'message.deleted': 'message_deleted',   // ✅ NEW
+          'message-reacted': 'message_reaction',  // ✅ NEW
+          'message.reacted': 'message_reaction',  // ✅ NEW
+          'message-replied': 'message_reply',     // ✅ NEW
+          'message.replied': 'message_reply',     // ✅ NEW
           'call-started': 'call_started',
           'call.started': 'call_started',
           'call-ended': 'call_ended',
@@ -210,31 +229,53 @@ export const useCollaborationStore = create<CollaborationState>()(
           'magic.triggered': 'magic_event',
           'screen-share-started': 'screen_share',
           'screen_share.started': 'screen_share',
-          'screen-share-ended': 'screen_share_ended',
-          'screen_share.ended': 'screen_share_ended'
+          'screen-share-ended': 'screen_share',
+          'screen_share.ended': 'screen_share',
         };
 
-        const notificationType = typeMap[type] || type.replace('-', '_');
+        const notificationType = typeMap[type] || type.replace(/-/g, '_');
 
-        // ✅ Titles & Messages
+        // ✅ Titles per type
         const titles: Record<string, string> = {
           'new_message': 'New message',
+          'message_deleted': 'Message deleted',
+          'message_reaction': 'New reaction',
+          'message_reply': 'New reply',
           'call_started': 'Call started',
           'call_ended': 'Call ended',
           'participant_joined': 'Participant joined',
           'magic_event': 'Magic event',
-          'screen_share': 'Screen share started'
+          'screen_share': 'Screen share started',
         };
 
         const msgObj = data?.message || data;
-        const senderId = msgObj?.user_id || msgObj?.sender_id || data?.user_id || data?.sender_id;
+        const senderId = data?.user?.id || msgObj?.user_id || msgObj?.sender_id || data?.user_id || data?.sender_id;
+        const senderName = data?.user?.name || msgObj?.user_name || 'Someone';
         const spaceTitle = data?.space?.title || 'Collaboration space';
 
-        const notificationMessage =
-          type === 'message-sent' ? (msgObj?.content || 'New message received') :
-            type === 'participant-joined' ? `${data.user_name || 'Someone'} joined` :
-              type === 'call-started' ? `${data.caller_name || 'A call'} started` :
-                'New activity in space';
+        const notificationMessage: string = (() => {
+          switch (type) {
+            case 'message-sent':
+            case 'message.sent':
+              return `${senderName}: ${msgObj?.content?.substring(0, 60) || 'New message'}`;
+            case 'message-deleted':
+            case 'message.deleted':
+              return `${senderName} deleted a message`;
+            case 'message-reacted':
+            case 'message.reacted':
+              return `${senderName} reacted ${data?.reaction || ''} to a message`;
+            case 'message-replied':
+            case 'message.replied':
+              return `${senderName} replied to a message`;
+            case 'participant-joined':
+            case 'participant.joined':
+              return `${data?.user_name || senderName} joined`;
+            case 'call-started':
+            case 'call.started':
+              return `${data?.caller_name || 'A call'} started`;
+            default: return 'New activity in space';
+          }
+        })();
 
         // Also send to notification store
         useNotificationStore.getState().addNotification({
@@ -243,6 +284,7 @@ export const useCollaborationStore = create<CollaborationState>()(
           message: notificationMessage,
           data: data,
           spaceId: data.space_id,
+          messageId: msgObj?.id || data?.id,   // ✅ ensure messageId is always set
           userId: senderId,
           avatar: data.user?.profile_photo || msgObj?.user?.profile_photo,
           createdAt: new Date()

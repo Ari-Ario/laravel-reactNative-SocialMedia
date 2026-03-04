@@ -15,20 +15,31 @@ class MessageDeleted implements ShouldBroadcast
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public $message;
+    public $messageId;
+    public $spaceId;
 
-    public function __construct(Message $message)
+    public function __construct($messageOrId, $spaceId = null)
     {
-        $this->message = $message;
+        if ($messageOrId instanceof Message) {
+            $this->message = clone $messageOrId;
+            $this->messageId = $messageOrId->id;
+            $this->spaceId = $messageOrId->space_id;
+        }
+        else {
+            $this->messageId = $messageOrId;
+            $this->spaceId = $spaceId;
+        }
     }
 
     public function broadcastOn()
     {
-        if ($this->message->space_id) {
-            return new PresenceChannel('space.' . $this->message->space_id);
-        } else if ($this->message->conversation_id) {
+        if ($this->spaceId) {
+            return new PresenceChannel('space.' . $this->spaceId);
+        }
+        else if ($this->message && $this->message->conversation_id) {
             return new PresenceChannel('chat.' . $this->message->conversation_id);
         }
-        
+
         return [];
     }
 
@@ -40,9 +51,9 @@ class MessageDeleted implements ShouldBroadcast
     public function broadcastWith()
     {
         return [
-            'id' => $this->message->id,
-            'conversation_id' => $this->message->conversation_id,
-            'space_id' => $this->message->space_id,
+            'id' => $this->messageId,
+            'conversation_id' => $this->message ? $this->message->conversation_id : null,
+            'space_id' => $this->spaceId,
         ];
     }
 }

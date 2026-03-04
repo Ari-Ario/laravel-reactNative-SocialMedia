@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { createShadow } from '@/utils/styles';
 import { AnchorPosition } from '@/utils/layout';
@@ -28,6 +28,7 @@ export default function GenericMenu({
     return (
         <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
             <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
+                {Platform.OS === 'web' && <View style={[StyleSheet.absoluteFill, styles.webBackdrop]} />}
                 <View
                     style={[
                         styles.menuContainer,
@@ -59,11 +60,11 @@ export default function GenericMenu({
                             <Ionicons
                                 name={item.icon}
                                 size={20}
-                                color={item.destructive ? '#FF3B30' : (item.color || '#333')}
+                                color={item.destructive ? '#FF453A' : (item.color || '#3A7AFE')}
                             />
                             <Text style={[
                                 styles.menuText,
-                                { color: item.destructive ? '#FF3B30' : (item.color || '#333') }
+                                { color: item.destructive ? '#FF453A' : (item.color || '#EBEBF5') }
                             ]}>
                                 {item.label}
                             </Text>
@@ -78,22 +79,26 @@ export default function GenericMenu({
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.1)',
+        backgroundColor: 'rgba(0,0,0,0.38)',
         width: '100%',
         height: '100%',
     },
+    webBackdrop: {
+        backgroundColor: 'rgba(0,0,0,0.42)',
+        backdropFilter: 'blur(6px)',
+    } as any,
     menuContainer: {
         position: 'absolute',
-        backgroundColor: 'white',
-        borderRadius: 12,
+        backgroundColor: '#1C1C1E',
+        borderRadius: 18,
         width: 220,
         paddingVertical: 8,
         ...createShadow({
             width: 0,
-            height: 4,
-            opacity: 0.15,
-            radius: 12,
-            elevation: 8,
+            height: 8,
+            opacity: 0.36,
+            radius: 24,
+            elevation: 20,
         }),
     },
     pointer: {
@@ -108,7 +113,7 @@ const styles = StyleSheet.create({
         borderBottomWidth: 10,
         borderLeftColor: 'transparent',
         borderRightColor: 'transparent',
-        borderBottomColor: 'white',
+        borderBottomColor: '#1C1C1E',
         marginLeft: -10, // Center on the peak
     },
     menuItem: {
@@ -121,5 +126,6 @@ const styles = StyleSheet.create({
         marginLeft: 12,
         fontSize: 15,
         fontWeight: '500',
+        color: '#EBEBF5',
     },
 });

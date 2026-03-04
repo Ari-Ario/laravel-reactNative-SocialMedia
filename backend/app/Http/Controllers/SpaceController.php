@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Notification;
 use App\Notifications\SpaceInvitationNotification;
 
 use App\Events\SpaceCreated;
@@ -1058,6 +1059,7 @@ public function endCall(Request $request, $id)
             'type' => 'sometimes|in:text,image,video,document,voice,poll,album',
             'file_path' => 'sometimes|string',
             'metadata' => 'sometimes|array',
+            'reply_to_id' => 'sometimes|nullable|string',
         ]);
         
         $space = CollaborationSpace::findOrFail($id);
@@ -1085,6 +1087,7 @@ public function endCall(Request $request, $id)
             'content' => $request->content,
             'type' => $request->type ?? 'text',
             'file_path' => $request->file_path,
+            'reply_to_id' => $request->reply_to_id,
             'metadata' => $request->metadata ?? [],
             'created_at' => now()->toISOString(),
             'user' => [
@@ -1107,6 +1110,25 @@ public function endCall(Request $request, $id)
             'last_active_at' => now(),
         ]);
         
+        // 🔔 Notify original sender if this is a reply
+        if ($request->reply_to_id) {
+            $origMsg = collect($messages)->firstWhere('id', $request->reply_to_id);
+            if ($origMsg && data_get($origMsg, 'user_id') !== $user->id) {
+                $recipient = User::find(data_get($origMsg, 'user_id'));
+                if ($recipient) {
+                    try {
+                        \Illuminate\Support\Facades\Notification::send($recipient, 
+                            new \App\Notifications\MessageRepliedNotification($user, $origMsg, $message, $space->id)
+                        );
+                    } catch (\Exception $e) {
+                        \Log::error('Reply notification failed: ' . $e->getMessage());
+
+                    }
+                }
+            }
+        }
+
+        
         // ✅ FIX: Broadcast to presence channel only, not to private-user
         try {
             broadcast(new \App\Events\MessageSent($message, $space->id, $user))->toOthers();
@@ -1123,9 +1145,289 @@ public function endCall(Request $request, $id)
             'space' => $space->fresh(),
         ]);
     }
+
     /**
-     * Query AI assistant
+     * Delete a message for everyone (Space Owner/Moderator or Message Author)
      */
+    public function deleteMessage(Request $request, $id, $messageId)
+    {
+        $space = CollaborationSpace::findOrFail($id);
+        $user = auth()->user();
+
+        $participation = $space->participations()->where('user_id', $user->id)->first();
+        if (!$participation) {
+            return response()->json(['message' => 'Not authorized'], 403);
+        }
+
+        $contentState = $space->content_state ?? [];
+        $messages = $contentState['messages'] ?? [];
+        
+        $messageIndex = null;
+        foreach ($messages as $index => $msg) {
+            if (($msg['id'] ?? '') === $messageId) {
+                $messageIndex = $index;
+                break;
+            }
+        }
+
+        if ($messageIndex === null) {
+            return response()->json(['message' => 'Message not found'], 404);
+        }
+
+        $msg = $messages[$messageIndex];
+        $isAuthor = ($msg['user_id'] ?? null) == $user->id;
+        $isModerator = in_array($participation->role, ['owner', 'moderator']);
+
+        if (!$isAuthor && !$isModerator) {
+            return response()->json(['message' => 'Not authorized to delete this message'], 403);
+        }
+
+        // Remove the message
+        array_splice($messages, $messageIndex, 1);
+        $contentState['messages'] = $messages;
+
+        $space->update([
+            'content_state' => $contentState,
+            'updated_at' => now(),
+        ]);
+
+        try {
+            broadcast(new \App\Events\MessageDeleted($messageId, $space->id))->toOthers();
+        } catch (\Exception $e) {
+            \Log::error('Failed to broadcast message deletion: ' . $e->getMessage());
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Hide a message for the current user only (Local delete)
+     */
+    public function hideMessage(Request $request, $id, $messageId)
+    {
+        $space = CollaborationSpace::findOrFail($id);
+        $user = auth()->user();
+
+        $contentState = $space->content_state ?? [];
+        $messages = $contentState['messages'] ?? [];
+        
+        $messageIndex = null;
+        foreach ($messages as $index => $msg) {
+            if (($msg['id'] ?? '') === $messageId) {
+                $messageIndex = $index;
+                break;
+            }
+        }
+
+        if ($messageIndex !== null) {
+            $msg = $messages[$messageIndex];
+            $hiddenBy = $msg['hidden_by'] ?? [];
+            if (!in_array($user->id, $hiddenBy)) {
+                $hiddenBy[] = $user->id;
+                $msg['hidden_by'] = $hiddenBy;
+                $messages[$messageIndex] = $msg;
+
+                $contentState['messages'] = $messages;
+                $space->update(['content_state' => $contentState]);
+            }
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Toggle reaction on a Space message
+     */
+    public function reactToMessage(Request $request, $id, $messageId)
+    {
+        $request->validate(['emoji' => 'required|string']);
+        $emoji = $request->emoji;
+        
+        $space = CollaborationSpace::findOrFail($id);
+        $user = auth()->user();
+
+        $contentState = $space->content_state ?? [];
+        $messages = $contentState['messages'] ?? [];
+        
+        $messageIndex = null;
+        foreach ($messages as $index => $msg) {
+            if (($msg['id'] ?? '') === $messageId) {
+                $messageIndex = $index;
+                break;
+            }
+        }
+
+        if ($messageIndex === null) {
+            return response()->json(['message' => 'Message not found'], 404);
+        }
+
+        $msg = $messages[$messageIndex];
+        $reactions = $msg['reactions'] ?? [];
+        
+        // Find existing reaction from this user for this emoji
+        $existingIndex = null;
+        foreach ($reactions as $rIndex => $r) {
+            if (($r['user_id'] ?? null) == $user->id && ($r['reaction'] ?? '') === $emoji) {
+                $existingIndex = $rIndex;
+                break;
+            }
+        }
+
+        if ($existingIndex !== null) {
+            // Remove reaction
+            array_splice($reactions, $existingIndex, 1);
+            $isNewReaction = false;
+        } else {
+            // Add reaction
+            $reactions[] = [
+                'user_id' => $user->id,
+                'reaction' => $emoji,
+                'created_at' => now()->toISOString()
+            ];
+            $isNewReaction = true;
+        }
+
+        $msg['reactions'] = $reactions;
+        $messages[$messageIndex] = $msg;
+        $contentState['messages'] = $messages;
+
+        $space->update(['content_state' => $contentState]);
+
+        // Trigger Notification
+        if ($isNewReaction) {
+            $messageOwnerId = $msg['user_id'] ?? null;
+            if ($messageOwnerId && (int)$messageOwnerId !== (int)$user->id) {
+                $owner = \App\Models\User::find($messageOwnerId);
+                if ($owner) {
+                    \Illuminate\Support\Facades\Notification::send($owner, new \App\Notifications\MessageReactedNotification($user, $msg, $emoji, $space->id));
+                }
+            }
+        }
+
+        try {
+            broadcast(new \App\Events\MessageReacted((object)$msg, $user, $emoji, $space->id))->toOthers();
+        } catch (\Exception $e) {
+            \Log::error('Failed to broadcast reaction: ' . $e->getMessage());
+        }
+
+        return response()->json(['success' => true, 'reactions' => $reactions]);
+    }
+
+    /**
+     * Toggle Pin status for a Space message (Owner/Moderator only)
+     */
+    public function pinMessage(Request $request, $id, $messageId)
+    {
+        $space = CollaborationSpace::findOrFail($id);
+        $user = auth()->user();
+
+        $participation = $space->participations()->where('user_id', $user->id)->first();
+        if (!$participation || !in_array($participation->role, ['owner', 'moderator'])) {
+            return response()->json(['message' => 'Not authorized to pin messages'], 403);
+        }
+
+        $contentState = $space->content_state ?? [];
+        $messages = $contentState['messages'] ?? [];
+        
+        $messageIndex = null;
+        foreach ($messages as $index => $msg) {
+            if (($msg['id'] ?? '') === $messageId) {
+                $messageIndex = $index;
+                break;
+            }
+        }
+
+        if ($messageIndex === null) {
+            return response()->json(['message' => 'Message not found'], 404);
+        }
+
+        $msg = $messages[$messageIndex];
+        $isPinned = !($msg['is_pinned'] ?? false);
+        $msg['is_pinned'] = $isPinned;
+        
+        $messages[$messageIndex] = $msg;
+        $contentState['messages'] = $messages;
+
+        $space->update(['content_state' => $contentState]);
+
+        try {
+            broadcast(new \App\Events\MessagePinned($messageId, $isPinned, $space->id))->toOthers();
+        } catch (\Exception $e) {
+            \Log::error('Failed to broadcast message pin: ' . $e->getMessage());
+        }
+
+        return response()->json(['success' => true, 'is_pinned' => $isPinned]);
+    }
+
+    /**
+     * Forward one or more messages to another Space
+     */
+    public function forwardMessages(Request $request, $id)
+    {
+        $request->validate([
+            'message_ids' => 'required|array',
+            'destination_space_id' => 'required|exists:collaboration_spaces,id',
+        ]);
+
+        $sourceSpace = CollaborationSpace::findOrFail($id);
+        $destSpace = CollaborationSpace::findOrFail($request->destination_space_id);
+        $user = auth()->user();
+
+        // Check auth in both spaces
+        $sourceParticipation = $sourceSpace->participations()->where('user_id', $user->id)->first();
+        if (!$sourceParticipation) {
+            return response()->json(['message' => 'Not a participant in the source space'], 403);
+        }
+
+        $destParticipation = $destSpace->participations()->where('user_id', $user->id)->where('status', 'active')->first();
+        if (!$destParticipation) {
+            return response()->json(['message' => 'Not an active participant in the destination space'], 403);
+        }
+
+        $sourceState = $sourceSpace->content_state ?? [];
+        $sourceMessages = collect($sourceState['messages'] ?? []);
+        
+        $destState = $destSpace->content_state ?? ['messages' => []];
+        $destMessages = $destState['messages'] ?? [];
+        
+        $forwardedCount = 0;
+
+        foreach ($request->message_ids as $messageId) {
+            $msgToForward = $sourceMessages->firstWhere('id', $messageId);
+            if ($msgToForward) {
+                // Clone and prep
+                $newMsg = (array)$msgToForward;
+                $newMsg['id'] = (string)Str::uuid();
+                $newMsg['created_at'] = now()->toISOString();
+                $newMsg['reactions'] = []; // strip reactions
+                $newMsg['is_pinned'] = false; // strip pinned status
+                
+                // Add forward metadata
+                $newMsg['metadata'] = array_merge($newMsg['metadata'] ?? [], [
+                    'is_forwarded' => true,
+                    'original_space_id' => $sourceSpace->id,
+                ]);
+
+                $destMessages[] = $newMsg;
+                $forwardedCount++;
+
+                try {
+                    broadcast(new \App\Events\MessageSent($newMsg, $destSpace->id, $user))->toOthers();
+                } catch (\Exception $e) {
+                    Log::error('Failed to broadcast forwarded message: ' . $e->getMessage());
+                }
+            }
+        }
+
+        $destState['messages'] = $destMessages;
+        $destSpace->update(['content_state' => $destState]);
+
+        return response()->json([
+            'success' => true, 
+            'forwarded_count' => $forwardedCount
+        ]);
+    }
+
     // public function aiQuery(Request $request, $id)
     // {
     //     $user = Auth::user();
@@ -1880,10 +2182,9 @@ public function endCall(Request $request, $id)
 
         // Broadcast the removal
         broadcast(new \App\Events\ParticipantLeft($space, User::find($userId)))->toOthers();
-
+        
         return response()->json([
             'message' => 'Participant removed successfully'
         ]);
     }
-
 }

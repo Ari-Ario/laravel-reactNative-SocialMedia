@@ -19,6 +19,7 @@ export interface Notification {
   postId?: number;
   commentId?: number;
   spaceId?: string;
+  messageId?: string;  // ✅ ADDED: for reaction/reply routing
   callId?: string;
   activityId?: number;
   avatar?: string;
@@ -26,7 +27,7 @@ export interface Notification {
 
 // Notification type constants
 export const NOTIFICATION_TYPES = {
-  // Existing types
+  // Social
   COMMENT: 'comment',
   REACTION: 'reaction',
   COMMENT_REACTION: 'comment_reaction',
@@ -36,33 +37,38 @@ export const NOTIFICATION_TYPES = {
   NEW_FOLLOWER: 'new_follower',
   CHATBOT_TRAINING: 'chatbot_training',
 
-  // NEW CHAT TYPES
+  // Space / Chat
   SPACE_INVITATION: 'space_invitation',
+  SPACE_UPDATED: 'space_updated',
+  SPACE_CREATED: 'space_created',          // ✅ NEW
   CALL_STARTED: 'call_started',
+  CALL_ENDED: 'call_ended',
   NEW_MESSAGE: 'new_message',
+  MESSAGE_REACTION: 'message_reaction',
+  MESSAGE_REPLY: 'message_reply',
+  MESSAGE_DELETED: 'message_deleted',       // ✅ NEW
   PARTICIPANT_JOINED: 'participant_joined',
   MAGIC_EVENT: 'magic_event',
   SCREEN_SHARE: 'screen_share',
   ACTIVITY_CREATED: 'activity_created',
-  CALL_ENDED: 'call_ended',
-  SPACE_UPDATED: 'space_updated',
 };
 
 // Icon mapping for different notification types
 export const getNotificationIcon = (type: string): string => {
   switch (type) {
-    // Chat & Space notifications
     case NOTIFICATION_TYPES.SPACE_INVITATION: return 'people-outline';
+    case NOTIFICATION_TYPES.SPACE_CREATED: return 'rocket-outline';
+    case NOTIFICATION_TYPES.SPACE_UPDATED: return 'cube-outline';
     case NOTIFICATION_TYPES.CALL_STARTED: return 'call-outline';
+    case NOTIFICATION_TYPES.CALL_ENDED: return 'call-outline';
     case NOTIFICATION_TYPES.NEW_MESSAGE: return 'chatbubble-outline';
+    case NOTIFICATION_TYPES.MESSAGE_REPLY: return 'arrow-undo-outline';
+    case NOTIFICATION_TYPES.MESSAGE_REACTION: return 'heart-outline';
+    case NOTIFICATION_TYPES.MESSAGE_DELETED: return 'trash-outline';
     case NOTIFICATION_TYPES.PARTICIPANT_JOINED: return 'person-add-outline';
     case NOTIFICATION_TYPES.MAGIC_EVENT: return 'sparkles-outline';
     case NOTIFICATION_TYPES.SCREEN_SHARE: return 'desktop-outline';
     case NOTIFICATION_TYPES.ACTIVITY_CREATED: return 'calendar-outline';
-    case NOTIFICATION_TYPES.CALL_ENDED: return 'call-outline';
-    case NOTIFICATION_TYPES.SPACE_UPDATED: return 'cube-outline';
-
-    // Existing types
     case NOTIFICATION_TYPES.COMMENT: return 'chatbubble-outline';
     case NOTIFICATION_TYPES.REACTION: return 'heart-outline';
     case NOTIFICATION_TYPES.COMMENT_REACTION: return 'heart-outline';
@@ -71,7 +77,6 @@ export const getNotificationIcon = (type: string): string => {
     case NOTIFICATION_TYPES.POST_DELETED: return 'trash-outline';
     case NOTIFICATION_TYPES.NEW_FOLLOWER: return 'person-add-outline';
     case NOTIFICATION_TYPES.CHATBOT_TRAINING: return 'school-outline';
-
     default: return 'notifications-outline';
   }
 };
@@ -79,18 +84,19 @@ export const getNotificationIcon = (type: string): string => {
 // Color mapping for different notification types
 export const getNotificationColor = (type: string): string => {
   switch (type) {
-    // Chat & Space notifications
-    case NOTIFICATION_TYPES.SPACE_INVITATION: return '#5856D6'; // Purple
-    case NOTIFICATION_TYPES.CALL_STARTED: return '#4CD964'; // Green
-    case NOTIFICATION_TYPES.NEW_MESSAGE: return '#007AFF'; // Blue
-    case NOTIFICATION_TYPES.PARTICIPANT_JOINED: return '#FF9500'; // Orange
-    case NOTIFICATION_TYPES.MAGIC_EVENT: return '#FF2D55'; // Pink
-    case NOTIFICATION_TYPES.SCREEN_SHARE: return '#5856D6'; // Purple
-    case NOTIFICATION_TYPES.ACTIVITY_CREATED: return '#FF9500'; // Orange
-    case NOTIFICATION_TYPES.CALL_ENDED: return '#8E8E93'; // Gray
-    case NOTIFICATION_TYPES.SPACE_UPDATED: return '#007AFF'; // Blue
-
-    // Existing types
+    case NOTIFICATION_TYPES.SPACE_INVITATION: return '#5856D6';
+    case NOTIFICATION_TYPES.SPACE_CREATED: return '#5856D6';
+    case NOTIFICATION_TYPES.SPACE_UPDATED: return '#007AFF';
+    case NOTIFICATION_TYPES.CALL_STARTED: return '#4CD964';
+    case NOTIFICATION_TYPES.CALL_ENDED: return '#8E8E93';
+    case NOTIFICATION_TYPES.NEW_MESSAGE: return '#007AFF';
+    case NOTIFICATION_TYPES.MESSAGE_REPLY: return '#007AFF';
+    case NOTIFICATION_TYPES.MESSAGE_REACTION: return '#FF3B30';
+    case NOTIFICATION_TYPES.MESSAGE_DELETED: return '#FF3B30';
+    case NOTIFICATION_TYPES.PARTICIPANT_JOINED: return '#FF9500';
+    case NOTIFICATION_TYPES.MAGIC_EVENT: return '#FF2D55';
+    case NOTIFICATION_TYPES.SCREEN_SHARE: return '#5856D6';
+    case NOTIFICATION_TYPES.ACTIVITY_CREATED: return '#FF9500';
     case NOTIFICATION_TYPES.COMMENT: return '#007AFF';
     case NOTIFICATION_TYPES.REACTION: return '#FF3B30';
     case NOTIFICATION_TYPES.COMMENT_REACTION: return '#FF3B30';
@@ -99,25 +105,28 @@ export const getNotificationColor = (type: string): string => {
     case NOTIFICATION_TYPES.POST_DELETED: return '#FF3B30';
     case NOTIFICATION_TYPES.NEW_FOLLOWER: return '#5856D6';
     case NOTIFICATION_TYPES.CHATBOT_TRAINING: return '#FF2D55';
-
     default: return '#8E8E93';
   }
 };
 
 
 
-// NEW: Helper to check if notification is chat/space type
+// Chat/space notification — never routes to profile view
 export const isChatNotification = (type: string): boolean => {
   return [
     NOTIFICATION_TYPES.SPACE_INVITATION,
+    NOTIFICATION_TYPES.SPACE_UPDATED,
+    NOTIFICATION_TYPES.SPACE_CREATED,
     NOTIFICATION_TYPES.CALL_STARTED,
+    NOTIFICATION_TYPES.CALL_ENDED,
     NOTIFICATION_TYPES.NEW_MESSAGE,
+    NOTIFICATION_TYPES.MESSAGE_REACTION,
+    NOTIFICATION_TYPES.MESSAGE_REPLY,
+    NOTIFICATION_TYPES.MESSAGE_DELETED,
     NOTIFICATION_TYPES.PARTICIPANT_JOINED,
     NOTIFICATION_TYPES.MAGIC_EVENT,
     NOTIFICATION_TYPES.SCREEN_SHARE,
     NOTIFICATION_TYPES.ACTIVITY_CREATED,
-    NOTIFICATION_TYPES.CALL_ENDED,
-    NOTIFICATION_TYPES.SPACE_UPDATED,
   ].includes(type);
 };
 
@@ -190,16 +199,22 @@ const isCallNotification = (type: string): boolean => {
   ].includes(type);
 };
 
+// Messages panel: chat messages, reactions, replies, and deletions
 const isMessageNotification = (type: string): boolean => {
   return [
     NOTIFICATION_TYPES.NEW_MESSAGE,
+    NOTIFICATION_TYPES.MESSAGE_REACTION,
+    NOTIFICATION_TYPES.MESSAGE_REPLY,
+    NOTIFICATION_TYPES.MESSAGE_DELETED,  // ✅ NEW
   ].includes(type);
 };
 
+// Spaces panel: invitations, updates, space_created
 const isSpaceNotification = (type: string): boolean => {
   return [
     NOTIFICATION_TYPES.SPACE_INVITATION,
     NOTIFICATION_TYPES.SPACE_UPDATED,
+    NOTIFICATION_TYPES.SPACE_CREATED,    // ✅ NEW
   ].includes(type);
 };
 
@@ -297,6 +312,8 @@ export const useNotificationStore = create<NotificationStore>()(
           notif.id === newNotification.id ||
           (notif.type === newNotification.type &&
             notif.postId === newNotification.postId &&
+            notif.messageId === newNotification.messageId &&
+            notif.spaceId === newNotification.spaceId &&
             Math.abs(new Date(notif.createdAt).getTime() - newNotification.createdAt.getTime()) < 60000)
         );
 
@@ -705,6 +722,35 @@ export const useNotificationStore = create<NotificationStore>()(
                 };
               }
 
+              // 4b. MESSAGE REACTIONS
+              else if (type === 'message_reaction' || type.includes('MessageReacted')) {
+                formattedNotification = {
+                  ...formattedNotification,
+                  type: 'message_reaction',
+                  title: notifData.title || 'New Reaction',
+                  message: notifData.message || 'Someone reacted to your message',
+                  spaceId: notifData.spaceId || notifData.space_id,
+                  messageId: notifData.messageId || notifData.message_id || notifData.message?.id,
+                  userId: notifData.userId || notifData.user_id || notifData.user?.id,
+                  avatar: notifData.avatar || notifData.profile_photo || notifData.user?.profile_photo,
+                  data: notifData,
+                };
+              }
+
+              // 4c. MESSAGE REPLIES
+              else if (type === 'message_reply' || type.includes('MessageReplied')) {
+                formattedNotification = {
+                  ...formattedNotification,
+                  type: 'message_reply',
+                  title: notifData.title || 'New Reply',
+                  message: notifData.message || 'Someone replied to your message',
+                  spaceId: notifData.spaceId || notifData.space_id,
+                  messageId: notifData.messageId || notifData.message_id || notifData.replyId,
+                  userId: notifData.userId || notifData.user_id || notifData.user?.id,
+                  avatar: notifData.avatar || notifData.profile_photo || notifData.user?.profile_photo,
+                  data: notifData,
+                };
+              }
 
               // 5. POST UPDATES
               else if (type === 'post_updated' || type === 'App\\Events\\PostUpdated' || type === 'post-updated') {

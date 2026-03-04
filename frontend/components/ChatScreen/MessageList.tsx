@@ -7,15 +7,20 @@ import {
   Text,
   Alert,
   Platform,
+  Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import MessageBubble from './MessageBubble';
+import MessageContextMenu from './MessageContextMenu';
+import PollComponent from './PollComponent';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import { MediaViewer } from '@/components/MediaViewer';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import AuthContext from '@/context/AuthContext';
 import { useContext } from 'react';
+import { createShadow } from '@/utils/styles';
 
 interface Message {
   id: string;
@@ -23,7 +28,7 @@ interface Message {
   user_id: number;
   user_name?: string;
   content: string;
-  type: 'text' | 'image' | 'video' | 'file' | 'voice' | 'poll' | 'album';
+  type: 'text' | 'image' | 'video' | 'file' | 'voice' | 'poll' | 'album' | '__divider__';
   metadata?: any;
   file_path?: string;
   mime_type?: string;
@@ -45,9 +50,13 @@ interface MessageListProps {
   currentUserId: number;
   currentUserRole?: string;
   onMessageLongPress?: (message: any, x: number, y: number) => void;
+  onReply?: (message: any) => void;
   onPollPress?: (poll: any) => void;
   polls?: any[];
   participants?: any[];
+  highlightMessageId?: string;
+  /** ISO timestamp of user's last read position in this space */
+  lastReadAt?: string | null;
 }
 const MessageList: React.FC<MessageListProps> = ({
   spaceId,
@@ -55,21 +64,100 @@ const MessageList: React.FC<MessageListProps> = ({
   currentUserId,
   currentUserRole,
   onMessageLongPress,
+  onReply,
   onPollPress,
   polls = [],
   participants = [],
+  highlightMessageId,
+  lastReadAt,
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
+  const [translatingMessageId, setTranslatingMessageId] = useState<string | null>(null);
+  const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
   const [mediaViewerVisible, setMediaViewerVisible] = useState(false);
   const [mediaViewerIndex, setMediaViewerIndex] = useState(0);
   const [activeMediaPost, setActiveMediaPost] = useState<any>(null);
+  const [contextMenuMessage, setContextMenuMessage] = useState<Message | null>(null);
+  const [contextMenuVisible, setContextMenuVisible] = useState(false);
+  // anchor position for the floating context menu
+  const [contextAnchorY, setContextAnchorY] = useState(200);
+  const [contextAnchorRight, setContextAnchorRight] = useState(false);
+  const [translatedMessages, setTranslatedMessages] = useState<Record<string, string>>({});
+
+  const [forwardModalVisible, setForwardModalVisible] = useState(false);
+  const [availableSpaces, setAvailableSpaces] = useState<any[]>([]);
+  const [selectedSpacesForForward, setSelectedSpacesForForward] = useState<Set<string>>(new Set());
+  const [forwarding, setForwarding] = useState(false);
+  // Poll edit modal state
+  const [editPollVisible, setEditPollVisible] = useState(false);
+  const [editingPollData, setEditingPollData] = useState<any>(null);
 
   const { user: currentUser } = useContext(AuthContext);
 
   const collaborationService = CollaborationService.getInstance();
   const flatListRef = useRef<FlatList>(null);
+  // track per-item heights for reliable scroll
+  const itemHeights = useRef<Record<string, number>>({});
+  // guard: only do the initial scroll once
+  const initialScrollDone = useRef(false);
+
+  // ─── Divider: inject before FIRST unread message ──────────────────────────
+  // The divider position is determined by lastReadAt, NOT by highlightMessageId.
+  // highlightMessageId is only used to visually highlight + scroll to a specific message.
+  const listData = React.useMemo(() => {
+    if (!lastReadAt || messages.length === 0) return messages;
+
+    const lastReadTime = new Date(lastReadAt).getTime();
+    // Find the first message that was created AFTER the last read time
+    const firstUnreadIdx = messages.findIndex(
+      (m) => new Date(m.created_at).getTime() > lastReadTime
+    );
+
+    // No unread messages, or all messages are unread from the start — no divider
+    if (firstUnreadIdx <= 0) return messages;
+
+    const divider: Message = {
+      id: '__new_messages_divider__',
+      type: '__divider__',
+      user_id: 0,
+      content: '',
+      created_at: '',
+    };
+    return [...messages.slice(0, firstUnreadIdx), divider, ...messages.slice(firstUnreadIdx)];
+  }, [messages, lastReadAt]);
+
+  const handleTranslate = React.useCallback(async (msg: any) => {
+    if (!msg.content) return;
+
+    // Toggle off if already translated
+    if (translatedMessages[msg.id]) {
+      setTranslatedMessages(prev => {
+        const next = { ...prev };
+        delete next[msg.id];
+        return next;
+      });
+      return;
+    }
+
+    setTranslatingMessageId(msg.id);
+    try {
+      const langpair = 'autodetect|en'; // Future: Use setting from AuthContext if available
+      const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(msg.content)}&langpair=${langpair}`);
+      const data = await response.json();
+
+      if (data && data.responseData && data.responseData.translatedText) {
+        setTranslatedMessages(prev => ({ ...prev, [msg.id]: data.responseData.translatedText }));
+      } else {
+        throw new Error('Invalid translation response');
+      }
+    } catch (error) {
+      console.error('Translation failed:', error);
+      Alert.alert('Translation Error', 'Could not translate this message at the moment.');
+    } finally {
+      setTranslatingMessageId(null);
+    }
+  }, [translatedMessages]);
 
   useEffect(() => {
     loadMessages();
@@ -127,6 +215,75 @@ const MessageList: React.FC<MessageListProps> = ({
       return hasChanges ? updatedMessages : prev;
     });
   }, [polls]);
+
+  // ─── Initial scroll: to divider (if unreads) or bottom (no unreads) ──────
+  useEffect(() => {
+    if (listData.length === 0 || initialScrollDone.current) return;
+
+    // If there's a notification highlight, skip the initial scroll — the highlight effect handles it
+    if (highlightMessageId) {
+      initialScrollDone.current = true;
+      return;
+    }
+
+    const dividerIdx = listData.findIndex(m => m.id === '__new_messages_divider__');
+    const hasUnreads = dividerIdx !== -1;
+
+    const doInitialScroll = () => {
+      if (hasUnreads) {
+        // Scroll to just above the first unread message (the divider)
+        try {
+          flatListRef.current?.scrollToIndex({
+            index: dividerIdx,
+            animated: true,
+            viewPosition: 0, // Show divider at top of view
+          });
+        } catch {
+          let offset = 0;
+          for (let i = 0; i < dividerIdx; i++) {
+            offset += itemHeights.current[listData[i].id] ?? 72;
+          }
+          flatListRef.current?.scrollToOffset({ offset, animated: true });
+        }
+      } else {
+        // No unreads: jump to bottom (newest messages)
+        flatListRef.current?.scrollToEnd({ animated: false });
+      }
+      initialScrollDone.current = true;
+    };
+
+    // Give FlatList time to lay out items
+    const t = setTimeout(doInitialScroll, 300);
+    return () => clearTimeout(t);
+  }, [listData.length]);
+
+  // ─── Highlight scroll: when notification navigates to a specific message ──
+  useEffect(() => {
+    if (!highlightMessageId || listData.length === 0) return;
+    const idx = listData.findIndex(m => String(m.id) === String(highlightMessageId));
+    if (idx === -1) return;
+
+    const doScroll = () => {
+      try {
+        flatListRef.current?.scrollToIndex({
+          index: idx,
+          animated: true,
+          viewPosition: 0.4,
+        });
+      } catch {
+        let offset = 0;
+        for (let i = 0; i < idx; i++) {
+          offset += itemHeights.current[listData[i].id] ?? 72;
+        }
+        flatListRef.current?.scrollToOffset({ offset, animated: true });
+      }
+    };
+
+    // Two attempts: FlatList may not have measured items yet
+    const t1 = setTimeout(doScroll, 400);
+    const t2 = setTimeout(doScroll, 900);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [highlightMessageId, listData.length]);
 
   const enrichMessageWithParticipantData = (msg: Message) => {
     if (!participants || participants.length === 0) return msg;
@@ -258,10 +415,94 @@ const MessageList: React.FC<MessageListProps> = ({
           return !(isPollMsg && matchesPollId);
         }));
       },
+
+      onMessageDeleted: (data: any) => {
+        console.log('🗑️ Message deleted via socket:', data.id);
+        const deletedId = data.id || data.message_id;
+        if (deletedId) {
+          setMessages(prev => prev.filter(msg => msg.id !== deletedId));
+        }
+      },
+
+      onMessagePinned: (data: any) => {
+        console.log('📌 Message pin state changed via socket:', data);
+        const messageId = data.message_id || data.id;
+        const isPinned = data.is_pinned;
+        if (messageId !== undefined && isPinned !== undefined) {
+          setMessages(prev => prev.map(msg =>
+            msg.id === messageId
+              ? { ...msg, metadata: { ...msg.metadata, is_pinned: isPinned } }
+              : msg
+          ));
+        }
+      },
+
+      onMessageReacted: (data: any) => {
+        console.log('👍 Message reacted via socket:', data);
+        const messageId = data.id || data.message?.id || data.message_id;
+
+        if (messageId) {
+          setMessages(prev => prev.map(msg => {
+            if (msg.id === messageId) {
+              const currentReactions = msg.reactions || [];
+              if (data.message?.reactions !== undefined) {
+                return { ...msg, reactions: data.message.reactions };
+              } else if (data.reaction && data.user) {
+                // Check if user already reacted with this emoji to toggle it
+                const existingIndex = currentReactions.findIndex((r: any) => r.user_id === data.user.id && r.reaction === data.reaction);
+                let newReactions = [...currentReactions];
+                if (existingIndex >= 0) {
+                  newReactions.splice(existingIndex, 1);
+                } else {
+                  newReactions.push({
+                    user_id: data.user.id,
+                    reaction: data.reaction,
+                    created_at: new Date().toISOString()
+                  });
+                }
+                return { ...msg, reactions: newReactions };
+              }
+            }
+            return msg;
+          }));
+        }
+      },
+
+      onMessageReplied: (data: any) => {
+        console.log('↩️ Message replied via socket:', data);
+        let newMessage = data.message || data;
+        if (newMessage.type === 'poll') {
+          newMessage = { ...newMessage, poll: newMessage.metadata?.pollData ?? newMessage.poll };
+        }
+        newMessage = enrichMessageWithParticipantData(newMessage);
+
+        setMessages(prev => {
+          if (prev.some(m => m.id === newMessage.id)) return prev;
+          return [...prev, newMessage].sort((a, b) =>
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+        });
+      },
+    });
+  };
+
+  const toggleSelection = (id: string) => {
+    setSelectedMessages(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
     });
   };
 
   const handleMessagePress = async (message: Message) => {
+    if (selectedMessages.size > 0) {
+      toggleSelection(message.id);
+      return;
+    }
     if (Platform.OS !== 'web') {
       try {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -269,7 +510,8 @@ const MessageList: React.FC<MessageListProps> = ({
         console.warn('Haptics error:', error);
       }
     }
-    setSelectedMessage(selectedMessage === message.id ? null : message.id);
+    // Original single message selection logic (if any)
+    // setSelectedMessage(selectedMessage === message.id ? null : message.id);
   };
 
   const handleMediaPress = (message: Message, index: number) => {
@@ -278,25 +520,24 @@ const MessageList: React.FC<MessageListProps> = ({
     setMediaViewerVisible(true);
   };
 
-  const handleMessageLongPress = (message: Message) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert(
-      'Message Options',
-      `From: ${message.user?.name || message.user_name || 'User'}\nTime: ${new Date(message.created_at).toLocaleTimeString()}`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Reply', onPress: () => handleReply(message) },
-        { text: 'React', onPress: () => showReactionPicker(message) },
-        { text: 'Copy', onPress: () => handleCopy(message) },
-        { text: 'Forward', onPress: () => handleForward(message) },
-        { text: 'Report', style: 'destructive', onPress: () => handleReport(message) },
-      ]
-    );
+  const handleMessageLongPress = (message: Message, pageY: number, isRight: boolean) => {
+    if (selectedMessages.size > 0) {
+      toggleSelection(message.id);
+      return;
+    }
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => { });
+    }
+    setContextMenuMessage(message);
+    setContextAnchorY(pageY);
+    setContextAnchorRight(isRight);
+    setContextMenuVisible(true);
   };
 
   const handleReply = (message: Message) => {
-    // Implement reply logic
-    console.log('Reply to:', message.id);
+    if (onReply) {
+      onReply(message);
+    }
   };
 
   const showReactionPicker = (message: Message) => {
@@ -342,9 +583,93 @@ const MessageList: React.FC<MessageListProps> = ({
   };
 
   const handleForward = (message: Message) => {
-    // Implement forward logic
+    // Generic message forward
     console.log('Forward:', message.id);
   };
+
+  // ─── Poll Handlers ────────────────────────────────────────────────────────
+
+  const handleClosePoll = async (msg: Message) => {
+    const pollId = msg.poll?.id || msg.metadata?.pollId || msg.metadata?.pollData?.id;
+    if (!spaceId || !pollId) return;
+    const execute = async () => {
+      try {
+        await collaborationService.closePoll(spaceId, pollId);
+        setMessages(prev => prev.map(m => {
+          if (m.id === msg.id) {
+            return { ...m, poll: { ...(m.poll || {}), status: 'closed' } };
+          }
+          return m;
+        }));
+      } catch (e) {
+        Alert.alert('Error', 'Failed to close poll');
+      }
+    };
+    if (Platform.OS === 'web') {
+      if (window.confirm('Close Poll?\n\nNo more votes will be accepted.')) execute();
+    } else {
+      Alert.alert('Close Poll', 'No more votes will be accepted.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Close', style: 'destructive', onPress: execute },
+      ]);
+    }
+  };
+
+  const handleEditPoll = (msg: Message) => {
+    const pollData = msg.poll || msg.metadata?.pollData;
+    if (!pollData) return;
+    setEditingPollData(pollData);
+    setEditPollVisible(true);
+  };
+
+  const handleForwardPoll = async (msg: Message) => {
+    const pollId = msg.poll?.id || msg.metadata?.pollId || msg.metadata?.pollData?.id;
+    if (!pollId) return;
+    try {
+      const response = await collaborationService.getUserSpaces(currentUserId);
+      setAvailableSpaces(response.filter((s: any) => String(s.id) !== String(spaceId)));
+      setSelectedSpacesForForward(new Set());
+      setForwardModalVisible(true);
+    } catch (e) {
+      Alert.alert('Error', 'Failed to load spaces for forwarding.');
+    }
+  };
+
+  const handleSharePollResults = async (msg: Message) => {
+    if (!spaceId) return;
+    const poll = msg.poll || msg.metadata?.pollData;
+    if (!poll) return;
+
+    // Calculate results summary
+    const total = poll.total_votes || 0;
+    const optionsSummary = (poll.options || []).map((opt: any) => {
+      const voteCount = opt.votes?.length || opt.votes || 0;
+      const percentage = total > 0 ? Math.round((voteCount / total) * 100) : 0;
+      return `• ${opt.text}: ${voteCount} votes (${percentage}%)`;
+    }).join('\n');
+
+    const resultsMessage = `📊 *Poll Results: ${poll.question}*\n\n${optionsSummary}\n\nTotal votes: ${total}`;
+
+    try {
+      await collaborationService.sendMessage(spaceId, {
+        content: resultsMessage,
+        type: 'text',
+        metadata: {
+          isPollResults: true,
+          pollId: poll.id,
+        },
+      });
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });
+      }
+      Alert.alert('Success', 'Results shared to chat.');
+    } catch (e) {
+      console.error('Error sharing poll results:', e);
+      Alert.alert('Error', 'Failed to share poll results.');
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   const handleReport = (message: Message) => {
     Alert.alert(
@@ -364,33 +689,178 @@ const MessageList: React.FC<MessageListProps> = ({
   };
 
   const renderMessage = React.useCallback(({ item, index }: { item: Message; index: number }) => {
+    // ── Divider row ──────────────────────────────────────────
+    if (item.type === '__divider__') {
+      return (
+        <View style={styles.newMessagesDivider}>
+          <View style={styles.newMessagesDividerLine} />
+          <Text style={styles.newMessagesDividerText}>New Messages</Text>
+          <View style={styles.newMessagesDividerLine} />
+        </View>
+      );
+    }
+
+    // ── Normal message ───────────────────────────────────────
     const isCurrentUser = item.user_id === currentUserId;
-    const showAvatar = index === 0 ||
-      messages[index - 1]?.user_id !== item.user_id ||
-      new Date(item.created_at).getTime() - new Date(messages[index - 1]?.created_at).getTime() > 5 * 60 * 1000;
+    // Adjust index to account for the injected divider
+    const prevItem = listData[index - 1];
+    const showAvatar =
+      index === 0 ||
+      !prevItem ||
+      prevItem.type === '__divider__' ||
+      prevItem.user_id !== item.user_id ||
+      new Date(item.created_at).getTime() - new Date(prevItem.created_at).getTime() > 5 * 60 * 1000;
+
+    const repliedToMessage = item.reply_to_id ? messages.find(m => m.id === item.reply_to_id) : undefined;
 
     return (
-      <MessageBubble
-        message={item}
-        isCurrentUser={isCurrentUser}
-        showAvatar={showAvatar}
-        isSelected={selectedMessage === item.id}
-        onPress={() => handleMessagePress(item)}
-        onMediaPress={(idx) => handleMediaPress(item, idx)}
-        onLongPress={() => { }}
-        onPollPress={onPollPress}
-        spaceId={spaceId}
-        currentUserId={currentUserId}
-        currentUserRole={currentUserRole}
-      />
+      <View
+        onLayout={(e) => { itemHeights.current[item.id] = e.nativeEvent.layout.height; }}
+      >
+        <MessageBubble
+          message={item}
+          repliedToMessage={repliedToMessage}
+          translatedContent={translatedMessages[item.id]}
+          isCurrentUser={isCurrentUser}
+          showAvatar={showAvatar}
+          isSelected={selectedMessages.has(item.id)}
+          onPress={() => handleMessagePress(item)}
+          onMediaPress={(idx) => handleMediaPress(item, idx)}
+          onLongPress={() => handleMessageLongPress(item, 300, isCurrentUser)}
+          onLongPressWithPosition={(msg, _x, pageY) => handleMessageLongPress(item, pageY, isCurrentUser)}
+          onPollPress={onPollPress}
+          onToggleTranslation={() => handleTranslate(item)}
+          highlighted={String(item.id) === String(highlightMessageId)}
+          spaceId={spaceId}
+          currentUserId={currentUserId}
+          currentUserRole={currentUserRole}
+        />
+      </View>
     );
-  }, [currentUserId, currentUserRole, messages, selectedMessage, handleMessagePress, onMessageLongPress, onPollPress]);
+  }, [currentUserId, currentUserRole, listData, messages, translatedMessages, selectedMessages, handleMessagePress, onMessageLongPress, onPollPress, handleTranslate, spaceId, highlightMessageId]);
+
+  const handleDeleteSelected = async () => {
+    if (!spaceId || selectedMessages.size === 0) return;
+    Alert.alert(
+      'Delete Messages',
+      `Are you sure you want to delete ${selectedMessages.size} messages?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            const idsToDelete = Array.from(selectedMessages);
+            // Optimistic update
+            const oldMessages = [...messages];
+            setMessages(prev => prev.filter(m => !selectedMessages.has(m.id)));
+            setSelectedMessages(new Set());
+
+            try {
+              for (const id of idsToDelete) {
+                await collaborationService.deleteSpaceMessage(spaceId, id).catch(e => console.error('Delete failed for', id, e));
+              }
+            } catch (e) {
+              setMessages(oldMessages);
+              Alert.alert('Error', 'Failed to delete some messages');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleForwardSelected = async () => {
+    if (selectedMessages.size === 0) return;
+    try {
+      const response = await collaborationService.getUserSpaces(currentUserId);
+      setAvailableSpaces(response.filter((s: any) => String(s.id) !== String(spaceId)));
+      setSelectedSpacesForForward(new Set());
+      setForwardModalVisible(true);
+    } catch (e) {
+      console.error('Error fetching spaces to forward to:', e);
+      Alert.alert('Error', 'Failed to load spaces.');
+    }
+  };
+
+  const executeMultiForward = async () => {
+    if (!spaceId || selectedMessages.size === 0 || selectedSpacesForForward.size === 0) return;
+    setForwarding(true);
+    try {
+      const idsToForward = Array.from(selectedMessages);
+      const destinationSpaceIds = Array.from(selectedSpacesForForward);
+
+      // Check if we are forwarding a single poll
+      if (idsToForward.length === 1) {
+        const msg = messages.find(m => m.id === idsToForward[0]);
+        const isPoll = msg?.type === 'poll' || msg?.metadata?.isPoll;
+        const pollId = msg?.poll?.id || msg?.metadata?.pollId;
+
+        if (isPoll && pollId) {
+          // Use poll-specific forwarding which creates new records in target spaces
+          await collaborationService.forwardPoll(pollId, destinationSpaceIds);
+
+          // Also send a message notification to each destination space
+          for (const destId of destinationSpaceIds) {
+            await collaborationService.sendMessage(destId, {
+              content: `📊 Poll forwarded: "${msg.poll?.question || msg.content}"`,
+              type: 'poll',
+              metadata: {
+                isPoll: true,
+                pollId: pollId,
+                pollData: msg.poll,
+                is_forwarded: true,
+                original_space_id: spaceId
+              }
+            });
+          }
+        } else {
+          // Regular batch forward
+          for (const destId of destinationSpaceIds) {
+            await collaborationService.forwardSpaceMessages(spaceId, idsToForward, destId);
+          }
+        }
+      } else {
+        // Multi-message batch forward
+        for (const destId of destinationSpaceIds) {
+          await collaborationService.forwardSpaceMessages(spaceId, idsToForward, destId);
+        }
+      }
+
+      Alert.alert('Success', `Forwarded to ${destinationSpaceIds.length} space(s).`);
+      setForwardModalVisible(false);
+      setSelectedMessages(new Set());
+      setSelectedSpacesForForward(new Set());
+    } catch (e) {
+      console.error('Forward failed', e);
+      Alert.alert('Error', 'Failed to forward messages to some destinations.');
+    } finally {
+      setForwarding(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
+      {selectedMessages.size > 0 && (
+        <View style={styles.selectionHeader}>
+          <TouchableOpacity onPress={() => setSelectedMessages(new Set())} style={styles.selectionClose}>
+            <Ionicons name="close" size={24} color="#333" />
+          </TouchableOpacity>
+          <Text style={styles.selectionCount}>{selectedMessages.size} Selected</Text>
+          <View style={styles.selectionActions}>
+            <TouchableOpacity onPress={handleForwardSelected} style={styles.selectionActionBtn}>
+              <Ionicons name="arrow-redo-outline" size={22} color="#333" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleDeleteSelected} style={styles.selectionActionBtn}>
+              <Ionicons name="trash-outline" size={22} color="#FF3B30" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       <FlatList
         ref={flatListRef}
-        data={messages}
+        data={listData}
         renderItem={renderMessage}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
@@ -399,6 +869,16 @@ const MessageList: React.FC<MessageListProps> = ({
           // Load more messages
         }}
         onEndReachedThreshold={0.5}
+        onScrollToIndexFailed={(info) => {
+          // Fallback when item height is unknown
+          let offset = 0;
+          for (let i = 0; i < info.index; i++) {
+            offset += itemHeights.current[listData[i]?.id] ?? 72;
+          }
+          setTimeout(() => {
+            flatListRef.current?.scrollToOffset({ offset, animated: true });
+          }, 100);
+        }}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="chatbubbles-outline" size={64} color="#ccc" />
@@ -408,6 +888,107 @@ const MessageList: React.FC<MessageListProps> = ({
             </Text>
           </View>
         }
+      />
+
+      {/* ── Context Menu ──────────────────────────────────── */}
+      <MessageContextMenu
+        visible={contextMenuVisible}
+        message={contextMenuMessage as any}
+        isCurrentUser={(contextMenuMessage?.user_id ?? 0) === currentUserId}
+        currentUserRole={currentUserRole}
+        anchorY={contextAnchorY}
+        anchorRight={contextAnchorRight}
+        onClose={() => {
+          setContextMenuVisible(false);
+          setTimeout(() => setContextMenuMessage(null), 200);
+        }}
+        onReply={(msg) => handleReply(msg as any)}
+        onForward={(msg) => handleForward(msg as any)}
+        onCopy={(msg) => handleCopy(msg as any)}
+        // ── Poll callbacks ──────────────────────────────────────────────────
+        onClosePoll={(msg) => handleClosePoll(msg as any)}
+        onEditPoll={(msg) => handleEditPoll(msg as any)}
+        onForwardPoll={(msg) => handleForwardPoll(msg as any)}
+        onSharePollResults={(msg) => handleSharePollResults(msg as any)}
+        onReact={(msg, emoji) => {
+          if (spaceId) {
+            // Optimistic update
+            const oldMessages = [...messages];
+            setMessages(prev => prev.map(m => {
+              if (m.id === msg.id) {
+                const reactions = m.reactions || [];
+                // Simple toggle logic for optimistic update
+                const existing = reactions.find(r => r.reaction === emoji && r.user_id === currentUserId);
+                let newReactions;
+                if (existing) {
+                  newReactions = reactions.filter(r => r.id !== existing.id);
+                } else {
+                  newReactions = [...reactions, { reaction: emoji, user_id: currentUserId, created_at: new Date().toISOString() }];
+                }
+                return { ...m, reactions: newReactions };
+              }
+              return m;
+            }));
+
+            collaborationService.reactToSpaceMessage(spaceId, msg.id, emoji).catch(e => {
+              console.warn('Failed to react:', e);
+              setMessages(oldMessages); // rollback
+            });
+          }
+        }}
+        onTranslate={handleTranslate}
+        onDeleteForAll={async (msg) => {
+          if (spaceId) {
+            const isPoll = msg.type === 'poll' || msg.metadata?.isPoll;
+            const pollId = msg.poll?.id || msg.metadata?.pollId;
+            const oldMessages = [...messages];
+
+            // Optimistic update
+            setMessages(prev => prev.filter(m => m.id !== msg.id));
+
+            try {
+              if (isPoll && pollId) {
+                // Use poll-specific deletion which cleans up global copies and messages
+                await collaborationService.deletePoll(spaceId, pollId);
+              } else {
+                await collaborationService.deleteSpaceMessage(spaceId, msg.id);
+              }
+            } catch (e) {
+              console.warn('Failed to delete message for all:', e);
+              setMessages(oldMessages); // rollback
+              Alert.alert('Error', 'Failed to delete message');
+            }
+          }
+        }}
+        onDeleteForMe={async (msg) => {
+          if (spaceId) {
+            const oldMessages = [...messages];
+            setMessages(prev => prev.filter(m => m.id !== msg.id));
+            try {
+              await collaborationService.hideSpaceMessage(spaceId, msg.id);
+            } catch (e) {
+              console.warn('Failed to hide message for me:', e);
+              setMessages(oldMessages); // rollback
+            }
+          }
+        }}
+        onPin={async (msg) => {
+          if (spaceId) {
+            const oldMessages = [...messages];
+            const currentlyPinned = msg.metadata?.is_pinned || false;
+            setMessages(prev => prev.map(m =>
+              m.id === msg.id ? { ...m, metadata: { ...m.metadata, is_pinned: !currentlyPinned } } : m
+            ));
+
+            try {
+              await collaborationService.pinSpaceMessage(spaceId, msg.id);
+            } catch (e) {
+              console.warn('Failed to pin message:', e);
+              setMessages(oldMessages); // rollback
+            }
+          }
+        }}
+        onSelect={(msg) => setSelectedMessages(new Set([msg.id]))}
       />
 
       {activeMediaPost && (
@@ -447,6 +1028,71 @@ const MessageList: React.FC<MessageListProps> = ({
           getGroupedReactions={collaborationService.getGroupedReactions}
         />
       )}
+
+      {/* ── Forward Modal ──────────────────────────────────── */}
+      <Modal visible={forwardModalVisible} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Forward message to...</Text>
+              <TouchableOpacity onPress={() => setForwardModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            {forwarding ? (
+              <View style={styles.forwardingState}>
+                <ActivityIndicator size="large" color="#0a7ea4" />
+                <Text style={{ marginTop: 12 }}>Forwarding...</Text>
+              </View>
+            ) : availableSpaces.length === 0 ? (
+              <Text style={styles.noSpacesText}>No other spaces found.</Text>
+            ) : (
+              <>
+                <FlatList
+                  data={availableSpaces}
+                  keyExtractor={(item) => String(item.id)}
+                  renderItem={({ item }) => {
+                    const isSelected = selectedSpacesForForward.has(item.id);
+                    return (
+                      <TouchableOpacity
+                        style={[styles.spaceItem, isSelected && styles.spaceItemSelected]}
+                        onPress={() => {
+                          setSelectedSpacesForForward(prev => {
+                            const next = new Set(prev);
+                            if (next.has(item.id)) next.delete(item.id);
+                            else next.add(item.id);
+                            return next;
+                          });
+                        }}
+                      >
+                        <View style={styles.spaceAvatarPlaceholder}>
+                          <Text style={styles.spaceAvatarText}>{item.name.charAt(0)}</Text>
+                        </View>
+                        <Text style={styles.spaceNameText}>{item.name}</Text>
+                        <Ionicons
+                          name={isSelected ? "checkmark-circle" : "ellipse-outline"}
+                          size={24}
+                          color={isSelected ? "#007AFF" : "#ccc"}
+                        />
+                      </TouchableOpacity>
+                    );
+                  }}
+                />
+                <TouchableOpacity
+                  style={[styles.modalSendBtn, selectedSpacesForForward.size === 0 && styles.modalSendBtnDisabled]}
+                  disabled={selectedSpacesForForward.size === 0}
+                  onPress={executeMultiForward}
+                >
+                  <Text style={styles.modalSendBtnText}>
+                    Forward to {selectedSpacesForForward.size} Space{selectedSpacesForForward.size !== 1 ? 's' : ''}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -477,6 +1123,133 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     paddingHorizontal: 32,
+  },
+  selectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#F2F2F7',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: '#C6C6C8',
+    justifyContent: 'space-between',
+    zIndex: 10,
+  },
+  selectionClose: {
+    padding: 4,
+  },
+  selectionCount: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    flex: 1,
+    marginLeft: 16,
+  },
+  selectionActions: {
+    flexDirection: 'row',
+  },
+  selectionActionBtn: {
+    padding: 8,
+    marginLeft: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    padding: 16,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  forwardingState: {
+    padding: 32,
+    alignItems: 'center',
+  },
+  noSpacesText: {
+    textAlign: 'center',
+    padding: 24,
+    color: '#666',
+  },
+  spaceItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#eee',
+  },
+  spaceAvatarPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#0a7ea4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  spaceAvatarText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  spaceNameText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
+  },
+  spaceItemSelected: {
+    backgroundColor: '#F2F2F7',
+    borderColor: '#007AFF',
+  },
+  modalSendBtn: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginHorizontal: 4,
+    marginTop: 16,
+    ...createShadow({ width: 0, height: 4, opacity: 0.2, radius: 8, elevation: 4 }),
+  },
+  modalSendBtnDisabled: {
+    backgroundColor: '#C6C6C8',
+  },
+  modalSendBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  // ✅ WhatsApp/Telegram-style "New Messages" divider
+  newMessagesDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 12,
+    marginHorizontal: 16,
+  },
+  newMessagesDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#25A244',
+    opacity: 0.5,
+  },
+  newMessagesDividerText: {
+    marginHorizontal: 10,
+    color: '#25A244',
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.4,
   },
 });
 

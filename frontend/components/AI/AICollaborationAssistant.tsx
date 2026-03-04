@@ -390,7 +390,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
 const styles = StyleSheet.create({
   floatingAIButton: {
     position: 'absolute',
-    bottom: 80,
+    bottom: 180,
     right: 10,
     width: 56,
     height: 56,
@@ -429,4 +429,152 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16,
   },
+
+  chatContainer: {
+    flex: 1,
+    marginTop: 16,
+  },
+
+  chatMessage: {
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 12,
+    maxWidth: '85%',
+  },
+
+  chatMessageUser: {
+    backgroundColor: '#667EEA',
+    alignSelf: 'flex-end',
+  },
+
+  chatMessageAI: {
+    backgroundColor: '#f0f0f0',
+    alignSelf: 'flex-start',
+  },
+
+  chatMessageText: {
+    fontSize: 14,
+    color: '#333',
+  },
+
+  chatMessageUserText: {
+    color: '#fff',
+  },
+
+  chatMessageTimestamp: {
+    fontSize: 10,
+    color: '#888',
+    marginTop: 4,
+    textAlign: 'right',
+  },
+
+  chatMessageUserTimestamp: {
+    color: '#ddd',
+  },
+
+  inputContainer: {
+    flexDirection: 'row',
+    marginTop: 16,
+  },
+
+  input: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginRight: 8,
+  },
+
+  sendButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#667EEA',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  suggestionCard: {
+    backgroundColor: '#f8f9ff',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: '#667EEA',
+  },
+
+  suggestionText: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 8,
+  },
+
+  suggestionActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+
+  suggestionButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#667EEA',
+    alignItems: 'center',
+  },
+
+  suggestionButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
+  aiThinking: {
+    padding: 12,
+    fontStyle: 'italic',
+    color: '#888',
+  },
+
+  aiCapabilities: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+
+  capabilityButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+  },
+
+  capabilityButtonText: {
+    fontSize: 12,
+    color: '#333',
+  },
+
+  aiPersonality: {
+    marginTop: 12,
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+
+  aiPersonalityLabel: {
+    marginTop: 12,
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+
+  aiPersonalityValue: {
+    marginTop: 12,
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+
 });

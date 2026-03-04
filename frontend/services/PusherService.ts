@@ -102,10 +102,9 @@ class PusherService {
               }
             };
           },
-          wsHost: `ws-${pusherCluster}.pusher.com`,
-          wsPort: 80,
-          wssPort: 443,
-          enabledTransports: ['ws', 'wss'],
+          // ✅ FIX: optimize for React Native stability (fix error 1006)
+          disableStats: true,
+          // Note: using the default wsHost from the cluster is safer unless using self-hosted soketi/websockets
           activityTimeout: 30000,
           pongTimeout: 10000,
         });
@@ -342,24 +341,63 @@ class PusherService {
       // Space invitations moved/consolidated
 
 
+      // ✅ FIX: capture direct message replies and reactions sent via Notifications
+      channel.bind('message_reply', (data: any) => {
+        console.log('↩️ RAW DATA (message_reply via notification):', data);
+        const notification = {
+          type: data.type || 'message_reply',
+          title: data.title || 'New Reply',
+          message: data.message || 'Someone replied to your message',
+          data: data,
+          userId: data.userId,
+          messageId: data.messageId,
+          spaceId: data.spaceId,
+          avatar: data.profile_photo,
+          createdAt: new Date()
+        };
+        console.log('↩️ SENDING TO NOTIFICATION STORE:', notification);
+        onNotification(notification);
+      });
+
+      channel.bind('message_reaction', (data: any) => {
+        console.log('❤️ RAW DATA (message_reaction via notification):', data);
+        const notification = {
+          type: data.type || 'message_reaction',
+          title: data.title || 'New Reaction',
+          message: data.message || `Someone reacted ${data.reaction || ''} to your message`,
+          data: data,
+          userId: data.userId,
+          messageId: data.messageId,
+          spaceId: data.spaceId,
+          avatar: data.profile_photo,
+          createdAt: new Date()
+        };
+        console.log('❤️ SENDING TO NOTIFICATION STORE:', notification);
+        onNotification(notification);
+      });
+
       // Handle Laravel's generic BroadcastNotificationCreated events
       channel.bind('Illuminate\\Notifications\\Events\\BroadcastNotificationCreated', (data: any) => {
         console.log('📨 Laravel notification received:', data);
 
         // Extract inner data which contains the actual message
         const innerData = data.data || {};
+        const notifType = innerData.type || data.type || 'generic';
 
         // Map generic Laravel notification to our store format
         const notification: any = {
           id: data.id || Date.now().toString(),
-          type: innerData.type || data.type || 'generic',
+          type: notifType,
           title: innerData.title || 'New Notification',
           message: innerData.message || 'You have a new update',
           data: innerData,
           userId: innerData.userId || innerData.user_id || innerData.inviter_id || innerData.followerId,
           postId: innerData.postId || innerData.post_id,
           spaceId: innerData.spaceId || innerData.space_id,
-          avatar: innerData.avatar || innerData.profile_photo || innerData.inviter_avatar,
+          // ✅ CRITICAL: Extract messageId for routing to the specific message
+          messageId: innerData.messageId || innerData.message_id || innerData.message?.id,
+          avatar: innerData.avatar || innerData.profile_photo || innerData.inviter_avatar
+            || innerData.user?.profile_photo,
           createdAt: new Date(data.created_at || Date.now()),
           isRead: false,
         };
@@ -369,8 +407,12 @@ class PusherService {
         if (notification.type.includes('NewReaction')) notification.type = 'reaction';
         if (notification.type.includes('NewPost')) notification.type = 'new_post';
         if (notification.type.includes('SpaceInvitation')) notification.type = 'space_invitation';
+        // ✅ NEW: Map chat notification class names to store types
+        if (notification.type.includes('MessageReacted')) notification.type = 'message_reaction';
+        if (notification.type.includes('MessageReplied')) notification.type = 'message_reply';
+        if (notification.type.includes('MessageSent') || notification.type.includes('NewMessage')) notification.type = 'new_message';
 
-        console.log('📨 SENDING BROADCAST NOTIFICATION TO STORE:', notification.type);
+        console.log('📨 SENDING BROADCAST NOTIFICATION TO STORE:', notification.type, '| spaceId:', notification.spaceId, '| messageId:', notification.messageId);
         onNotification(notification);
       });
 
@@ -649,7 +691,7 @@ class PusherService {
   }
 
 
-  // subscribing to spces
+  // subscribing to spaces
   subscribeToSpace(spaceId: string, callbacks: {
     onSpaceUpdate?: (data: any) => void;
     onParticipantJoined?: (data: any) => void;
@@ -663,6 +705,10 @@ class PusherService {
     onPollCreated?: (poll: any) => void;
     onPollUpdated?: (poll: any) => void;
     onPollDeleted?: (poll: any) => void;
+    // ✅ NEW: message lifecycle events
+    onMessageDeleted?: (data: any) => void;
+    onMessageReacted?: (data: any) => void;
+    onMessageReplied?: (data: any) => void;
   }): boolean {
     if (!this.pusher || !this.isInitialized) {
       console.warn('⚠️ Pusher not initialized. Skipping space subscription.');
@@ -721,6 +767,20 @@ class PusherService {
     if (callbacks.onScreenShareEnded) {
       channel.bind('screen_share.ended', callbacks.onScreenShareEnded);
     }
+
+    // ✅ NEW: message lifecycle events → notification store
+    if (callbacks.onMessageDeleted) {
+      channel.bind('message.deleted', callbacks.onMessageDeleted);
+    }
+
+    if (callbacks.onMessageReacted) {
+      channel.bind('message.reacted', callbacks.onMessageReacted);
+    }
+
+    if (callbacks.onMessageReplied) {
+      channel.bind('message.replied', callbacks.onMessageReplied);
+    }
+
     if (callbacks.onPollCreated) {
       channel.bind('poll.created', (data: any) => {
         console.log(`📊 Poll created in space ${spaceId}:`, data.poll.question);

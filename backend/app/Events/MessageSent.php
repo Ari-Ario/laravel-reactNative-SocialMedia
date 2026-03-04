@@ -43,20 +43,32 @@ class MessageSent extends LaravelNotification implements ShouldBroadcast
      */
     public function toArray($notifiable)
     {
-        $content = $this->message['content'] ?? 'New message';
-        if (($this->message['type'] ?? '') === 'poll') {
-            $content = '📊 ' . $content;
-        }
+        $type = $this->message['type'] ?? 'text';
+        $content = $this->message['content'] ?? '';
+        
+        $displayText = match($type) {
+            'poll' => '📊 Poll: ' . ($content ?: 'New Poll'),
+            'image' => '📷 Photo',
+            'video' => '🎥 Video',
+            'voice' => '🎤 Voice message',
+            'audio' => '🎵 Audio',
+            'file' => '📄 File',
+            'album' => '🖼️ Album',
+            'location' => '📍 Location',
+            default => $content ?: 'New message'
+        };
 
         return [
             'type' => 'new_message',
             'title' => 'New Message',
-            'message' => ($this->user->name ?? 'Someone') . ': ' . $content,
+            'message' => ($this->user->name ?? 'Someone') . ': ' . $displayText,
             'messageId' => $this->message['id'] ?? null,
             'spaceId' => $this->spaceId,
             'userId' => $this->user->id ?? null,
             'profile_photo' => $this->user->profile_photo ?? null,
             'timestamp' => now()->toISOString(),
+            'message_type' => $type,
+            'file_path' => $this->message['file_path'] ?? null,
         ];
     }
 

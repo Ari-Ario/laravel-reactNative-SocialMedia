@@ -47,6 +47,8 @@ interface PollViewerProps {
     onDelete?: (pollId: string) => void;
     onEdit?: (pollId: string, updatedPoll: any) => void;
     isPreview?: boolean;
+    /** When true, the 3-dot menu is hidden (actions handled by MessageContextMenu) */
+    inChatMode?: boolean;
 }
 
 const PollViewer: React.FC<PollViewerProps> = ({
@@ -61,6 +63,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
     onDelete,
     onEdit,
     isPreview = false,
+    inChatMode = false,
 }) => {
     // State
     const [selectedOptions, setSelectedOptions] = useState<Set<string>>(new Set());
@@ -628,60 +631,62 @@ const PollViewer: React.FC<PollViewerProps> = ({
 
     return (
         <>
-            <View style={styles.container}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <TouchableOpacity
-                        style={styles.creatorInfo}
-                        onPress={() => setShowVotersModal(true)} // Open voters modal on creator tap
-                    >
-                        <Avatar
-                            source={localPoll?.creator?.profile_photo}
-                            size={32}
-                            name={localPoll?.creator?.name || 'User'}
-                        />
-                        <View style={styles.creatorText}>
-                            <Text style={styles.creatorName}>
-                                {localPoll?.creator?.name || 'User'}
-                            </Text>
-                            <Text style={styles.timestamp}>
-                                {localPoll?.created_at
-                                    ? new Date(localPoll.created_at).toLocaleString()
-                                    : 'Just now'}
-                            </Text>
-                        </View>
-                    </TouchableOpacity>
-
-                    <View style={styles.headerRight}>
-                        <View style={styles.badgeContainer}>
-                            <View style={[
-                                styles.statusBadge,
-                                { backgroundColor: localPoll?.status === 'active' ? '#4CAF5020' : '#FF6B6B20' }
-                            ]}>
-                                <Text style={[
-                                    styles.statusText,
-                                    { color: localPoll?.status === 'active' ? '#4CAF50' : '#FF6B6B' }
-                                ]}>
-                                    {localPoll?.status?.toUpperCase() || 'ACTIVE'}
+            <View style={inChatMode ? [styles.chatModeContainer] : styles.container}>
+                {/* Header — hidden in chat mode as bubble already has avatar/name */}
+                {!inChatMode && (
+                    <View style={styles.header}>
+                        <TouchableOpacity
+                            style={styles.creatorInfo}
+                            onPress={() => setShowVotersModal(true)} // Open voters modal on creator tap
+                        >
+                            <Avatar
+                                source={localPoll?.creator?.profile_photo}
+                                size={32}
+                                name={localPoll?.creator?.name || 'User'}
+                            />
+                            <View style={styles.creatorText}>
+                                <Text style={styles.creatorName}>
+                                    {localPoll?.creator?.name || 'User'}
+                                </Text>
+                                <Text style={styles.timestamp}>
+                                    {localPoll?.created_at
+                                        ? new Date(localPoll.created_at).toLocaleString()
+                                        : 'Just now'}
                                 </Text>
                             </View>
-                            <View style={styles.typeBadge}>
-                                <Text style={styles.typeText}>{localPoll?.type}</Text>
-                            </View>
-                        </View>
+                        </TouchableOpacity>
 
-                        {/* Three dots menu */}
-                        {(canClose || canForward || canEdit || canDelete || canShareResults) && (
-                            <TouchableOpacity
-                                ref={menuButtonRef}
-                                style={styles.menuButton}
-                                onPress={handleMenuPress}
-                            >
-                                <Ionicons name="ellipsis-vertical" size={20} color="#666" />
-                            </TouchableOpacity>
-                        )}
+                        <View style={styles.headerRight}>
+                            <View style={styles.badgeContainer}>
+                                <View style={[
+                                    styles.statusBadge,
+                                    { backgroundColor: localPoll?.status === 'active' ? '#4CAF5020' : '#FF6B6B20' }
+                                ]}>
+                                    <Text style={[
+                                        styles.statusText,
+                                        { color: localPoll?.status === 'active' ? '#4CAF50' : '#FF6B6B' }
+                                    ]}>
+                                        {localPoll?.status?.toUpperCase() || 'ACTIVE'}
+                                    </Text>
+                                </View>
+                                <View style={styles.typeBadge}>
+                                    <Text style={styles.typeText}>{localPoll?.type}</Text>
+                                </View>
+                            </View>
+
+                            {/* Three dots menu — only visible outside chat; in chat the MessageContextMenu is used */}
+                            {!inChatMode && (canClose || canForward || canEdit || canDelete || canShareResults) && (
+                                <TouchableOpacity
+                                    ref={menuButtonRef}
+                                    style={styles.menuButton}
+                                    onPress={handleMenuPress}
+                                >
+                                    <Ionicons name="ellipsis-vertical" size={20} color="#666" />
+                                </TouchableOpacity>
+                            )}
+                        </View>
                     </View>
-                </View>
+                )}
 
                 {/* Question */}
                 <Text style={styles.question}>{localPoll?.question}</Text>
@@ -1030,6 +1035,9 @@ const styles = StyleSheet.create({
             radius: 8,
             elevation: 2,
         }),
+    },
+    chatModeContainer: {
+        backgroundColor: 'transparent',
     },
     header: {
         flexDirection: 'row',
