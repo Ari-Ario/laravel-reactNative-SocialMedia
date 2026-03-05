@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Models\Message;
 use App\Models\Conversation;
 use App\Models\CollaborationSpace;
+use App\Models\SpaceParticipation;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class MessagesController extends Controller
@@ -282,6 +284,113 @@ class MessagesController extends Controller
 
         return response()->json([
             'message' => 'Message deleted',
+        ]);
+    }
+
+    /**
+     * Forward to a specific user
+     */
+    public function forwardToUser(Request $request)
+    {
+        $request->validate([
+            'target_user_id' => 'required|exists:users,id',
+            'content' => 'required|string',
+            'type' => 'required|string',
+            'metadata' => 'nullable|array',
+            'file_path' => 'nullable|string',
+            'mime_type' => 'nullable|string',
+        ]);
+
+        $user = auth()->user();
+        $targetUserId = $request->target_user_id;
+
+        // Find existing 1-on-1 space
+        $spaces = CollaborationSpace::where('space_type', 'chat')
+            ->whereHas('participations', function ($q) use ($user) {
+            $q->where('user_id', $user->id);
+        })
+            ->whereHas('participations', function ($q) use ($targetUserId) {
+            $q->where('user_id', $targetUserId);
+        })
+            ->withCount('participations')
+            ->get();
+
+        $space = $spaces->firstWhere('participations_count', 2);
+
+        if (!$space) {
+            $targetUser = User::find($targetUserId);
+            $spaceName = $targetUser ? "Chat with " . $targetUser->name : 'Direct Chat';
+
+            // Create new space
+            $space = CollaborationSpace::create([
+                'id' => (string)\Illuminate\Support\Str::uuid(),
+                'title' => $spaceName,
+                'space_type' => 'chat',
+                'creator_id' => $user->id,
+                'settings' => [
+                    'theme' => 'light',
+                    'privacy' => 'private',
+                    'allow_guests' => false,
+                    'is_direct' => true
+                ],
+                'content_state' => ['messages' => []],
+                'is_live' => false,
+                'has_ai_assistant' => false,
+                'participants_count' => 2
+            ]);
+
+            // Add both users
+            SpaceParticipation::create([
+                'space_id' => $space->id,
+                'user_id' => $user->id,
+                'role' => 'owner',
+            ]);
+
+            SpaceParticipation::create([
+                'space_id' => $space->id,
+                'user_id' => $targetUserId,
+                'role' => 'participant',
+            ]);
+        }
+
+        // Clone/create message in the space
+        $destState = $space->content_state ?? ['messages' => []];
+        $destMessages = $destState['messages'] ?? [];
+
+        $newMsg = [
+            'id' => (string)\Illuminate\Support\Str::uuid(),
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'profile_photo' => $user->profile_photo,
+            ],
+            'content' => $request->content,
+            'type' => $request->type,
+            'created_at' => now()->toISOString(),
+            'metadata' => array_merge($request->metadata ?? [], ['is_forwarded' => true]),
+            'file_path' => $request->file_path,
+            'mime_type' => $request->mime_type,
+            'reactions' => [],
+            'is_pinned' => false
+        ];
+
+        $destMessages[] = $newMsg;
+        $destState['messages'] = $destMessages;
+
+        $space->update(['content_state' => $destState]);
+
+        // Broadcast message
+        try {
+            broadcast(new \App\Events\MessageSent($newMsg, $space->id, $user))->toOthers();
+        }
+        catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to broadcast forwarded message: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $newMsg,
+            'space' => $space,
         ]);
     }
 

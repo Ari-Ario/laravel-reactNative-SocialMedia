@@ -10,7 +10,7 @@ export interface CollaborationSpace {
   id: string;
   title: string;
   description?: string;
-  space_type: 'chat' | 'whiteboard' | 'meeting' | 'document' | 'brainstorm' | 'story' | 'voice_channel';
+  space_type: 'chat' | 'whiteboard' | 'meeting' | 'document' | 'brainstorm' | 'story' | 'voice_channel' | 'direct';
   creator_id: number;
   settings: any;
   content_state: any;
@@ -33,6 +33,12 @@ export interface CollaborationSpace {
   };
   participations?: SpaceParticipation[];
   participants?: SpaceParticipation[]; // Added alias for compatibility
+  other_participant?: {
+    id: number;
+    name: string;
+    username?: string;
+    profile_photo?: string;
+  };
   magic_events?: any[];
   my_role?: string;
   my_permissions?: any;
@@ -143,7 +149,7 @@ class CollaborationService {
   }
 
   async setToken(token: string) {
-    this.userToken = (await getToken()) || null;
+    this.userToken = await getToken();
   }
 
   getHeaders() {
@@ -1640,26 +1646,34 @@ class CollaborationService {
     }
   }
 
-  async uploadAudio(spaceId: string, uri: string, durationInSeconds: number) {
+  async sendMessageToUser(userId: number, data: {
+    content: string,
+    type: string,
+    metadata?: any,
+    file_path?: string,
+    mime_type?: string
+  }): Promise<any> {
     try {
-      const formData = new FormData();
-      formData.append('file', {
-        uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
-        type: 'audio/m4a',
-        name: `voice_message_${Date.now()}.m4a`
-      } as any);
-      formData.append('type', 'audio');
-
-      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/upload-media`, formData, {
-        headers: {
-          ...this.getHeaders(),
-          'Content-Type': 'multipart/form-data',
-        },
+      const response = await axios.post(`${this.baseURL}/messages/forward-to-user`, {
+        target_user_id: userId,
+        ...data
+      }, {
+        headers: this.getHeaders(),
       });
-
       return response.data;
     } catch (error) {
-      console.error('Error uploading audio:', error);
+      console.error('Error sending message to user:', error);
+      throw error;
+    }
+  }
+  async getOrCreateDirectSpace(userId: number | string): Promise<any> {
+    try {
+      const response = await axios.get(`${this.baseURL}/spaces/direct/${userId}`, {
+        headers: this.getHeaders(),
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error getting or creating direct space:', error);
       throw error;
     }
   }

@@ -317,7 +317,7 @@ class SpaceController extends Controller
             })
             ->select([
                 'id', 'title', 'space_type', 'description', 'creator_id', 
-                'is_live', 'has_ai_assistant',
+                'is_live', 'has_ai_assistant', 'settings',
                 'created_at', 'updated_at'
             ])
             ->with(['creator:id,name,profile_photo,username'])
@@ -333,9 +333,22 @@ class SpaceController extends Controller
             ->get()
             ->keyBy('space_id');
 
+        // Get other participant for direct spaces
+        $directSpaceIds = $spaces->filter(function($s) {
+            $settings = is_string($s->settings) ? json_decode($s->settings, true) : $s->settings;
+            return ($settings['is_direct'] ?? false) || $s->space_type === 'direct';
+        })->pluck('id')->toArray();
+
+        $otherParticipations = SpaceParticipation::whereIn('space_id', $directSpaceIds)
+            ->where('user_id', '!=', $userId)
+            ->with('user:id,name,username,profile_photo')
+            ->get()
+            ->keyBy('space_id');
+
         // Format for frontend
-        $formattedSpaces = $spaces->map(function($space) use ($participations) {
+        $formattedSpaces = $spaces->map(function($space) use ($participations, $otherParticipations) {
             $participation = $participations->get($space->id);
+            $settings = is_string($space->settings) ? json_decode($space->settings, true) : $space->settings;
             
             return [
                 'id' => $space->id,
@@ -343,16 +356,90 @@ class SpaceController extends Controller
                 'space_type' => $space->space_type,
                 'creator_id' => $space->creator_id,
                 'creator' => $space->creator,
+                'settings' => $settings,
                 'is_live' => $space->is_live,
                 'has_ai_assistant' => $space->has_ai_assistant,
                 'participants_count' => $space->participations_count,
                 'my_role' => $participation ? $participation->role : null,
+                'other_participant' => $otherParticipations->get($space->id)?->user,
                 'created_at' => $space->created_at,
                 'updated_at' => $space->updated_at,
             ];
         });
 
         return response()->json(['spaces' => $formattedSpaces]);
+    }
+
+    /**
+     * Find or create a direct (1-on-1) space with a user
+     */
+    public function getOrCreateDirectSpace(Request $request, $targetUserId)
+    {
+        $user = auth()->user();
+
+        // 1. Find existing 1-on-1 space
+        $spaces = CollaborationSpace::where('space_type', 'chat')
+            ->whereHas('participations', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            })
+            ->whereHas('participations', function ($q) use ($targetUserId) {
+                $q->where('user_id', $targetUserId);
+            })
+            ->withCount('participations')
+            ->get();
+            
+        $space = $spaces->firstWhere('participations_count', 2);
+
+        if (!$space) {
+            $targetUser = User::find($targetUserId);
+            if (!$targetUser) {
+                return response()->json(['message' => 'Target user not found'], 404);
+            }
+
+            $spaceName = "Chat with " . $targetUser->name;
+            
+            DB::beginTransaction();
+            try {
+                // Create new space
+                $space = CollaborationSpace::create([
+                    'id' => (string) \Illuminate\Support\Str::uuid(),
+                    'title' => $spaceName,
+                    'space_type' => 'chat',
+                    'creator_id' => $user->id,
+                    'settings' => [
+                        'theme' => 'light',
+                        'privacy' => 'private',
+                        'allow_guests' => false,
+                        'is_direct' => true
+                    ],
+                    'content_state' => ['messages' => []],
+                    'is_live' => false,
+                    'has_ai_assistant' => false,
+                ]);
+
+                // Add both users
+                SpaceParticipation::create([
+                    'space_id' => $space->id,
+                    'user_id' => $user->id,
+                    'role' => 'owner',
+                ]);
+                
+                SpaceParticipation::create([
+                    'space_id' => $space->id,
+                    'user_id' => $targetUserId,
+                    'role' => 'participant',
+                ]);
+
+                DB::commit();
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return response()->json(['message' => 'Failed to create direct space', 'error' => $e->getMessage()], 500);
+            }
+        }
+
+        return response()->json([
+            'space' => $space->load('participations.user', 'creator')
+        ]);
     }
 
     /**
@@ -1379,7 +1466,7 @@ public function endCall(Request $request, $id)
             return response()->json(['message' => 'Not a participant in the source space'], 403);
         }
 
-        $destParticipation = $destSpace->participations()->where('user_id', $user->id)->where('status', 'active')->first();
+        $destParticipation = $destSpace->participations()->where('user_id', $user->id)->first();
         if (!$destParticipation) {
             return response()->json(['message' => 'Not an active participant in the destination space'], 403);
         }

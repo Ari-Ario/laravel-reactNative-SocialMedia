@@ -54,7 +54,7 @@ interface Chat {
 interface SectionData {
   title: string;
   data: Chat[];
-  type: 'spaces' | 'chats' | 'contacts' | 'search';
+  type: 'spaces' | 'contacts' | 'search';
   isSearchSection?: boolean;
 }
 
@@ -69,9 +69,8 @@ const ChatPage = () => {
 
   const { user } = useContext(AuthContext);
   const { posts } = usePostStore();
-  const [chats, setChats] = useState<Chat[]>([]);
-  const [contacts, setContacts] = useState<Chat[]>([]);
   const [spaces, setSpaces] = useState<Chat[]>([]);
+  const [contacts, setContacts] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -283,16 +282,13 @@ const ChatPage = () => {
     if (!user?.id || chats.length === 0) return;
 
     try {
-      const recentChatCount = chats.length;
       const activeSpaces = spaces.filter(s => s.spaceData?.is_live).length;
 
       let suggestion = '';
-      if (recentChatCount > 5 && activeSpaces === 0) {
-        suggestion = 'You have several ongoing chats. Create a space to collaborate with multiple people at once?';
+      if (activeSpaces === 0) {
+        suggestion = 'You have no active spaces. Create a space to collaborate with multiple people at once.';
       } else if (spaces.length === 0) {
         suggestion = 'Try creating your first collaboration space! Start with a brainstorming session.';
-      } else if (chats.length === 0) {
-        suggestion = 'Start a conversation with someone you follow to begin chatting.';
       }
 
       setAiSuggestion(suggestion);
@@ -346,10 +342,6 @@ const ChatPage = () => {
         }
       }
 
-      // Extract chats from posts
-      const chatConversations = extractChatsFromPosts(posts, Number(user.id));
-
-      setChats(chatConversations);
       setContacts(followerContacts);
 
       if (fallbackUsed) {
@@ -362,10 +354,9 @@ const ChatPage = () => {
 
     } catch (error: any) {
       console.error('Error in fetchChatsAndContacts:', error);
-      Alert.alert('Error', 'Failed to load conversations');
+      Alert.alert('Error', 'Failed to load contacts');
 
       // Set empty states
-      setChats([]);
       setContacts(getFallbackContacts());
     } finally {
       setLoading(false);
@@ -391,48 +382,6 @@ const ChatPage = () => {
     });
   };
 
-  // Helper function to extract chats from posts
-  const extractChatsFromPosts = (posts: any[], currentUserId: number): Chat[] => {
-    const uniqueUsers = new Map();
-
-    posts.forEach(post => {
-      if (post.user && post.user.id !== currentUserId && post.is_following) {
-        const userId = post.user.id.toString();
-        if (!uniqueUsers.has(userId)) {
-          uniqueUsers.set(userId, {
-            id: userId,
-            name: post.user.name,
-            avatar: post.user.profile_photo,
-            lastPost: post,
-            postCount: 0
-          });
-        }
-
-        const userData = uniqueUsers.get(userId);
-        userData.postCount++;
-
-        const postDate = new Date(post.created_at);
-        const lastPostDate = new Date(userData.lastPost.created_at || 0);
-
-        if (postDate > lastPostDate) {
-          userData.lastPost = post;
-        }
-      }
-    });
-
-    return Array.from(uniqueUsers.values()).map(userData => ({
-      id: userData.id,
-      name: userData.name,
-      lastMessage: userData.lastPost.caption?.substring(0, 50) + '...' || 'Media shared',
-      timestamp: formatTimestamp(userData.lastPost.created_at),
-      unreadCount: Math.floor(Math.random() * 5),
-      avatar: userData.avatar,
-      isOnline: Math.random() > 0.3,
-      isPinned: Math.random() > 0.8,
-      user_id: userData.id,
-      type: 'chat' as const,
-    })).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  };
 
   // Fallback contacts when API fails
   const getFallbackContacts = (): Chat[] => [
@@ -563,18 +512,12 @@ const ChatPage = () => {
     const query = searchQuery.toLowerCase();
 
     let filteredSpaces = spaces;
-    let filteredChats = chats;
     let filteredContacts = contacts;
 
     if (query.trim()) {
       filteredSpaces = spaces.filter(item =>
         item.name.toLowerCase().includes(query) ||
         item.spaceData?.description?.toLowerCase().includes(query)
-      );
-
-      filteredChats = chats.filter(item =>
-        item.name.toLowerCase().includes(query) ||
-        item.lastMessage?.toLowerCase().includes(query)
       );
 
       filteredContacts = contacts.filter(item =>
@@ -592,14 +535,6 @@ const ChatPage = () => {
         title: '🎯 Collaboration Spaces',
         data: filteredSpaces,
         type: 'spaces'
-      });
-    }
-
-    if (filteredChats.length > 0) {
-      sections.push({
-        title: '💬 Recent Chats',
-        data: filteredChats,
-        type: 'chats'
       });
     }
 
@@ -634,7 +569,7 @@ const ChatPage = () => {
     }
 
     return sections;
-  }, [searchQuery, chats, contacts, spaces, searchResults]);
+  }, [searchQuery, contacts, spaces, searchResults]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -753,11 +688,24 @@ const ChatPage = () => {
       // Fallback to local search
       const allItems = [
         ...spaces.map(item => ({ ...item, type: 'space' })),
-        ...chats.map(item => ({ ...item, type: 'chat' })),
         ...contacts.map(item => ({ ...item, type: 'contact' })),
       ];
 
-      const localResults = await searchService.localSearch(query, allItems);
+      // Basic matching logic
+      const matchesQuery = (text?: string) => text?.toLowerCase().includes(query.toLowerCase());
+
+      const localResults = allItems.filter(item =>
+        matchesQuery(item.name) ||
+        matchesQuery(item.lastMessage) ||
+        matchesQuery(item.username) ||
+        matchesQuery(item.email)
+      ).map(item => ({
+        ...item,
+        isSearchResult: true,
+        searchRelevance: 0, // Simplified for fallback
+        searchType: item.type === 'space' ? 'space' : 'contact' // Cast to match SearchResult type
+      })) as unknown as SearchResult[];
+
       setSearchResults(localResults);
     } finally {
       setIsSearching(false);
@@ -1018,7 +966,7 @@ const ChatPage = () => {
       >
         <CreativeGenerator
           spaceId={currentSpace?.id || 'global'}
-          context={{ type: 'chat', chats, contacts, spaces }}
+          context={{ type: 'chat', contacts, spaces }}
           onClose={() => setShowCreativeGenerator(false)}
         />
       </Modal>

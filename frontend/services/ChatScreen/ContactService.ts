@@ -9,7 +9,7 @@ class ContactService {
   private token: string | null = null;
 
   private constructor() {
-    this.baseURL = `${getApiBase()}/api`;
+    this.baseURL = getApiBase();
   }
 
   static getInstance() {
@@ -34,7 +34,7 @@ class ContactService {
   async fetchFollowers() {
     if (!this.token) await this.setToken();
 
-    const response = await axios.get(`${this.baseURL}/followers`, {
+    const response = await axios.get(`${this.baseURL}/profile/followers`, {
       headers: this.getHeaders(),
     });
     console.log('All Followers', response.data)
@@ -45,7 +45,7 @@ class ContactService {
   async fetchFollowing() {
     if (!this.token) await this.setToken();
 
-    const response = await axios.get(`${this.baseURL}/following`, {
+    const response = await axios.get(`${this.baseURL}/profile/following`, {
       headers: this.getHeaders(),
     });
     console.log('All Followings', response.data)

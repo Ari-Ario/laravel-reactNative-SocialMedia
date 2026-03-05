@@ -127,6 +127,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::prefix('spaces')->group(function () {
             Route::get('/', [SpaceController::class , 'index']);
             Route::post('/', [SpaceController::class , 'store']);
+            Route::get('/direct/{userId}', [SpaceController::class , 'getOrCreateDirectSpace']);
             Route::get('/{id}', [SpaceController::class , 'show']);
             Route::put('/{id}', [SpaceController::class , 'update']);
             Route::put('/{id}/content', [SpaceController::class , 'updateContentState']);
@@ -150,6 +151,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::delete('/{id}/messages/{messageId}/local', [SpaceController::class , 'hideMessage']);
             Route::post('/{id}/messages/{messageId}/react', [SpaceController::class , 'reactToMessage']);
             Route::post('/{id}/messages/{messageId}/pin', [SpaceController::class , 'pinMessage']);
+            Route::post('/{id}/messages/forward', [SpaceController::class , 'forwardMessages']);
             Route::post('/{id}/participants/{userId}/role', [SpaceController::class , 'updateParticipantRole']);
             Route::delete('/{id}/participants/{userId}', [SpaceController::class , 'removeParticipant']);
 
@@ -189,6 +191,7 @@ Route::middleware('auth:sanctum')->prefix('messages')->group(function () {
     Route::put('/{id}', [MessagesController::class , 'update']);
     Route::delete('/{id}', [MessagesController::class , 'destroy']);
     Route::post('/{id}/react', [MessagesController::class , 'react']);
+    Route::post('/forward-to-user', [MessagesController::class , 'forwardToUser']);
     Route::delete('/{id}/reaction', [MessagesController::class , 'deleteReaction']);
 });
 

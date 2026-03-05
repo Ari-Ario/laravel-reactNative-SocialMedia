@@ -65,41 +65,8 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
   // Start a chat with contact
   const handleStartChat = async () => {
     try {
-      // First check if conversation already exists
-      const existingConversations = await axios.get(`${API_BASE}/conversations`, {
-        params: { participant_id: user_id },
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      let conversationId;
-
-      if (existingConversations.data.length > 0) {
-        // Use existing conversation
-        conversationId = existingConversations.data[0].id;
-      } else {
-        // Create new conversation
-        const newConversation = await axios.post(`${API_BASE}/conversations`, {
-          type: 'private',
-          participant_ids: [parseInt(user_id)],
-        }, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        conversationId = newConversation.data.id;
-      }
-
-      // Create a collaboration space for the chat
-      const space = await collaborationService.createSpace({
-        title: `Chat with ${name}`,
-        space_type: 'chat',
-        linked_conversation_id: conversationId,
-        ai_personality: 'helpful',
-        ai_capabilities: ['summarize', 'suggest', 'moderate'],
-      });
-
-      // Navigate to the space
-      router.push(`/spaces/${space.id}`);
-
+      const spaceRes = await collaborationService.getOrCreateDirectSpace(user_id);
+      router.push(`/spaces/${spaceRes.space.id}`);
       setShowContactMenu(false);
     } catch (error) {
       console.error('Error starting chat:', error);
@@ -110,52 +77,19 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
   // Start a video call with contact
   const handleStartVideoCall = async () => {
     try {
-      // Create space first
-      const space = await collaborationService.createSpace({
-        title: `Video call with ${name}`,
-        space_type: 'meeting',
-        description: `Private video call between ${user?.name} and ${name}`,
-      });
+      // Find or create the unified direct space
+      const spaceRes = await collaborationService.getOrCreateDirectSpace(user_id);
+      const spaceId = spaceRes.space.id;
 
-      // Join the space (you're the creator, so you're automatically joined)
-      // No need to call joinSpace() for creator
-
-      // Send invitation to the other user
-      try {
-        await collaborationService.inviteToSpace(space.id, [parseInt(id)], 'participant',
-          `${user?.name} wants to start a video call with you!`);
-      } catch (inviteError: any) {
-        // If invite fails due to permission, try to just join them directly
-        if (inviteError.message?.includes('permission')) {
-          console.log('Using direct join instead of invitation');
-          // As creator, you can add them directly
-          await collaborationService.updateSpace(space.id, {
-            // You might need a different endpoint for direct adding
-          });
-        } else {
-          throw inviteError;
-        }
-      }
-
-      // Start the call
-      const callData = await collaborationService.startCall(space.id, 'video');
+      // Start the call in the space
+      const callData = await collaborationService.startCall(spaceId, 'video');
 
       // Navigate to space with call active
-      router.push(`/(spaces)/${space.id}?call=${callData.call.id}`);
-
+      router.push(`/(spaces)/${spaceId}?call=${callData.call?.id || 'active'}`);
+      setShowContactMenu(false);
     } catch (error: any) {
       console.error('Error starting video call:', error);
-
       let errorMessage = 'Failed to start video call.';
-
-      if (error.response?.status === 403) {
-        errorMessage = 'You need to be a space participant to start calls.';
-      } else if (error.response?.status === 422) {
-        errorMessage = 'Invalid request. Please check your input.';
-      } else if (error.message?.includes('permission')) {
-        errorMessage = 'You do not have permission to invite users.';
-      }
-
       Alert.alert('Error', errorMessage, [{ text: 'OK' }]);
     }
   };
@@ -163,23 +97,15 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
   // Start a voice call with contact
   const handleStartVoiceCall = async () => {
     try {
-      // Create a voice channel space
-      const space = await collaborationService.createSpace({
-        title: `Voice chat with ${name}`,
-        space_type: 'voice_channel',
-        ai_personality: 'helpful',
-        ai_capabilities: ['summarize', 'moderate'],
-      });
+      // Find or create the unified direct space
+      const spaceRes = await collaborationService.getOrCreateDirectSpace(user_id);
+      const spaceId = spaceRes.space.id;
 
-      // Invite the contact
-      await collaborationService.inviteToSpace(space.id, [parseInt(user_id)], 'participant', `Join my voice chat!`);
-
-      // Start audio call
-      await collaborationService.startCall(space.id, 'audio');
+      // Start audio call in the space
+      const callData = await collaborationService.startCall(spaceId, 'audio');
 
       // Navigate to the space
-      router.push(`/spaces/${space.id}`);
-
+      router.push(`/(spaces)/${spaceId}?call=${callData.call?.id || 'active'}`);
       setShowContactMenu(false);
     } catch (error) {
       console.error('Error starting voice call:', error);
@@ -190,16 +116,11 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
   // Start collaborative whiteboard
   const handleStartWhiteboard = async () => {
     try {
-      const space = await collaborationService.createSpace({
-        title: `Whiteboard with ${name}`,
-        space_type: 'whiteboard',
-        ai_personality: 'creative',
-        ai_capabilities: ['suggest', 'inspire'],
-      });
+      // Find or create the unified direct space
+      const spaceRes = await collaborationService.getOrCreateDirectSpace(user_id);
+      const spaceId = spaceRes.space.id;
 
-      await collaborationService.inviteToSpace(space.id, [parseInt(user_id)], 'participant', `Let's collaborate on a whiteboard!`);
-
-      router.push(`/spaces/${space.id}`);
+      router.push(`/(spaces)/${spaceId}`);
       setShowContactMenu(false);
     } catch (error) {
       console.error('Error starting whiteboard:', error);
@@ -233,7 +154,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
           space = await collaborationService.createSpace({
             title: `Whiteboard with ${name}`,
             space_type: 'whiteboard',
-            linked_conversation_id: conversationId ? parseInt(conversationId) : undefined,
+            linked_conversation_id: conversationId,
           });
           break;
 
@@ -241,7 +162,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
           space = await collaborationService.createSpace({
             title: `Meeting with ${name}`,
             space_type: 'meeting',
-            linked_conversation_id: conversationId ? parseInt(conversationId) : undefined,
+            linked_conversation_id: conversationId,
           });
           break;
 
@@ -249,7 +170,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
           space = await collaborationService.createSpace({
             title: `Brainstorm with ${name}`,
             space_type: 'brainstorm',
-            linked_conversation_id: conversationId ? parseInt(conversationId) : undefined,
+            linked_conversation_id: conversationId,
           });
           break;
 
@@ -273,7 +194,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
           space = await collaborationService.createSpace({
             title: `Voice chat with ${name}`,
             space_type: 'voice_channel',
-            linked_conversation_id: conversationId ? parseInt(conversationId) : undefined,
+            linked_conversation_id: conversationId,
           });
           break;
 
@@ -313,9 +234,8 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
         break;
 
       case 'contact':
-        console.log('Would open new chat with contact:', id);
-        // For now, just show a message or create a new chat
-        // router.push(`/(tabs)/chats/new?contactId=${id}`);
+        console.log('Opening chat with contact:', id);
+        handleStartChat();
         break;
     }
   };
@@ -447,6 +367,20 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
     const spaceType = spaceData?.space_type || 'chat';
     const spaceBgColor = getSpaceBackgroundColor(spaceType);
 
+    // Determine dynamic name and avatar for direct spaces
+    let displayTitle = name;
+    let displayAvatar = avatar;
+    let isDirectSpace = false;
+
+    if (type === 'space' && spaceData) {
+      const isDirect = spaceData.settings?.is_direct || spaceType === 'direct';
+      if (isDirect && spaceData.other_participant) {
+        isDirectSpace = true;
+        displayTitle = spaceData.other_participant.name || spaceData.other_participant.username || displayTitle;
+        displayAvatar = spaceData.other_participant.profile_photo || displayAvatar;
+      }
+    }
+
     return (
       <Pressable
         style={styles.container}
@@ -454,14 +388,14 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
         onLongPress={handleLongPress}
       >
         <View style={styles.avatarContainer}>
-          {type === 'space' ? (
+          {type === 'space' && !isDirectSpace ? (
             <View style={[styles.spaceAvatar, { backgroundColor: spaceBgColor }]}>
-              <Ionicons name={getSpaceIcon()} size={24} color="#fff" />
+              <Ionicons name={getSpaceIcon() as any} size={24} color="#fff" />
             </View>
           ) : (
             <Avatar
-              source={avatar || null}
-              name={name}
+              source={displayAvatar || null}
+              name={displayTitle}
               size={50}
               isOnline={isOnline}
               showStatus={true}
@@ -482,7 +416,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
               {type === 'space' && spaceData?.has_ai_assistant && (
                 <Ionicons name="sparkles" size={14} color="#667EEA" style={styles.aiIcon} />
               )}
-              {name}
+              {displayTitle}
             </Text>
             <Text style={styles.timestamp}>{timestamp}</Text>
           </View>
@@ -519,18 +453,18 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
                   </Text>
                 </View>
               )
-            ) : type === 'space' ? (
-              <Ionicons name={getSpaceIcon()} size={20} color="#007AFF" />
+            ) : type === 'space' && !isDirectSpace ? (
+              <Ionicons name={getSpaceIcon() as any} size={20} color="#007AFF" />
             ) : (
               <Ionicons name="chatbubble-outline" size={20} color="#007AFF" />
             )}
           </View>
 
           {/* Evolution level indicator for spaces */}
-          {type === 'space' && spaceData?.evolution_level > 1 && (
+          {type === 'space' && (spaceData?.evolution_level ?? 0) > 1 && (
             <View style={styles.evolutionIndicator}>
-              <Text style={styles.evolutionText}>Level {spaceData.evolution_level}</Text>
-              {spaceData.unlocked_features?.slice(0, 3).map((feature: string, index: number) => (
+              <Text style={styles.evolutionText}>Level {spaceData?.evolution_level}</Text>
+              {spaceData?.unlocked_features?.slice(0, 3).map((feature: string, index: number) => (
                 <Ionicons key={index} name="checkmark-circle" size={12} color="#4CAF50" />
               ))}
             </View>

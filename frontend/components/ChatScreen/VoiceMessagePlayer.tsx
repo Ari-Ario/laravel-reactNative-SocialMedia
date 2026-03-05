@@ -1,138 +1,242 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+/**
+ * VoiceMessagePlayer.tsx
+ * Renders a voice note inside a chat bubble — web + native.
+ * Web: uses the HTML <audio> element internally.
+ * Native: uses expo-av Sound.
+ */
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    TouchableOpacity,
+    Animated,
+    Platform,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
+import getApiBaseImage from '@/services/getApiBaseImage';
 
-interface VoiceMessagePlayerProps {
-    uri: string;
-    durationLabel: string;
-    isCurrentUser: boolean;
+function formatDuration(ms: number) {
+    if (ms <= 0) return '0:00';
+    const totalSec = Math.floor(ms / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-const VoiceMessagePlayer: React.FC<VoiceMessagePlayerProps> = ({ uri, durationLabel, isCurrentUser }) => {
-    const [sound, setSound] = useState<Audio.Sound | null>(null);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [progress, setProgress] = useState(0); // 0 to 1
-    const [positionMillis, setPositionMillis] = useState(0);
-    const [durationMillis, setDurationMillis] = useState(1);
-    const [isLoaded, setIsLoaded] = useState(false);
+function resolveAudioUrl(filePath?: string): string {
+    if (!filePath) return '';
+    if (filePath.startsWith('http') || filePath.startsWith('file://') || filePath.startsWith('blob:')) {
+        return filePath;
+    }
+    return `${getApiBaseImage()}/storage/${filePath}`;
+}
 
-    useEffect(() => {
-        return () => {
-            if (sound) {
-                sound.unloadAsync().catch(() => { });
-            }
-        };
-    }, []);
+interface VoiceMessagePlayerProps {
+    /** file_path or URL from the message */
+    filePath?: string;
+    /** Pre-resolved blob URL (e.g. just recorded) */
+    blobUrl?: string;
+    /** Original duration in ms stored in metadata */
+    durationMs?: number;
+    isCurrentUser?: boolean;
+}
 
-    const initializeSound = async () => {
-        try {
-            // Unload existing sound if any
-            if (sound) {
-                await sound.unloadAsync();
-            }
+const BAR_COUNT = 28;
 
-            await Audio.setAudioModeAsync({
-                playsInSilentModeIOS: true,
-                allowsRecordingIOS: false,
-            });
-
-            const { sound: newSound } = await Audio.Sound.createAsync(
-                { uri },
-                { shouldPlay: true },
-                (status) => {
-                    if (status.isLoaded) {
-                        setIsLoaded(true);
-                        const duration = status.durationMillis || 1;
-                        setDurationMillis(duration);
-                        setPositionMillis(status.positionMillis);
-                        setProgress(status.positionMillis / duration);
-
-                        setIsPlaying(status.isPlaying);
-
-                        if (status.didJustFinish) {
-                            setIsPlaying(false);
-                            setProgress(0);
-                            setPositionMillis(0);
-                            newSound.setPositionAsync(0);
-                        }
-                    }
-                }
-            );
-            setSound(newSound);
-        } catch (err) {
-            console.error('Failed to load sound', err);
-        }
-    };
-
-    const togglePlayback = async () => {
-        if (!sound) {
-            await initializeSound();
-            return;
-        }
-
-        if (isPlaying) {
-            await sound.pauseAsync();
-        } else {
-            await sound.playAsync();
-        }
-    };
-
-    const formatCurrentTime = (ms: number) => {
-        const totalSeconds = Math.floor(ms / 1000);
-        const mins = Math.floor(totalSeconds / 60);
-        const secs = totalSeconds % 60;
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    };
-
-    const displayTime = positionMillis > 0 ? formatCurrentTime(positionMillis) : durationLabel;
-
-    // Generate a reasonably distributed set of bars for the waveform
-    const BARS_COUNT = 35;
-    const bars = React.useMemo(() => {
-        return Array.from({ length: BARS_COUNT }).map((_, i) => {
-            // Pseudo-random but deterministic heights for consistent look per message
-            // Uses a simple hash based on URI length and index
-            const seed = (uri.length + i) * 123.456;
-            const height = 4 + Math.abs(Math.sin(seed)) * 14 + Math.abs(Math.cos(seed * 0.5)) * 10;
-            return height;
-        });
-    }, [uri]);
-
-    return (
-        <View style={styles.voiceContainer}>
-            <TouchableOpacity
-                onPress={togglePlayback}
-                style={[styles.playButton, !isCurrentUser && styles.playButtonOther]}
-                activeOpacity={0.8}
-            >
-                <Ionicons
-                    name={isPlaying ? "pause" : "play"}
-                    size={22}
-                    color={isCurrentUser ? "#007AFF" : "#fff"}
-                />
-            </TouchableOpacity>
-
-            <View style={styles.waveformContainer}>
-                {bars.map((height, i) => {
-                    const isPlayed = (i / BARS_COUNT) <= progress;
+// Static waveform bars — decorative, using a sine pattern so it looks organic
+const StaticBars: React.FC<{ progress: number; isCurrentUser: boolean }> = React.memo(
+    ({ progress, isCurrentUser }) => {
+        const played = Math.round(progress * BAR_COUNT);
+        return (
+            <View style={barStyles.container}>
+                {Array.from({ length: BAR_COUNT }).map((_, i) => {
+                    const h = 4 + Math.abs(Math.sin(i * 1.1 + 0.5)) * 18;
+                    const isPast = i < played;
                     return (
                         <View
                             key={i}
                             style={[
-                                styles.waveformBar,
-                                { height },
-                                isPlayed ? (isCurrentUser ? styles.barPlayedCurrent : styles.barPlayedOther) :
-                                    (isCurrentUser ? styles.barUnplayedCurrent : styles.barUnplayedOther)
+                                barStyles.bar,
+                                { height: h },
+                                isPast
+                                    ? (isCurrentUser ? barStyles.playedCurrent : barStyles.playedOther)
+                                    : (isCurrentUser ? barStyles.unplayedCurrent : barStyles.unplayedOther),
                             ]}
                         />
                     );
                 })}
             </View>
+        );
+    }
+);
 
-            <View style={styles.durationContainer}>
-                <Text style={[styles.durationText, isCurrentUser ? styles.durationCurrent : styles.durationOther]}>
-                    {displayTime}
+const barStyles = StyleSheet.create({
+    container: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 2,
+        height: 30,
+        flex: 1,
+    },
+    bar: { width: 3, borderRadius: 2 },
+    playedCurrent: { backgroundColor: 'rgba(255,255,255,0.95)' },
+    unplayedCurrent: { backgroundColor: 'rgba(255,255,255,0.35)' },
+    playedOther: { backgroundColor: '#007AFF' },
+    unplayedOther: { backgroundColor: 'rgba(0,122,255,0.25)' },
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+const VoiceMessagePlayer: React.FC<VoiceMessagePlayerProps> = ({
+    filePath,
+    blobUrl,
+    durationMs = 0,
+    isCurrentUser = false,
+}) => {
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [progress, setProgress] = useState(0); // 0–1
+    const [currentMs, setCurrentMs] = useState(0);
+    const [totalMs, setTotalMs] = useState(durationMs);
+    const [error, setError] = useState(false);
+
+    const audioElRef = useRef<HTMLAudioElement | null>(null); // web
+    const soundRef = useRef<any>(null); // native expo-av Sound
+    const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    const url = blobUrl || resolveAudioUrl(filePath);
+
+    // ── Cleanup on unmount ──────────────────────────────────────────────────
+    useEffect(() => {
+        return () => {
+            if (Platform.OS === 'web') {
+                audioElRef.current?.pause();
+                audioElRef.current = null;
+            } else {
+                soundRef.current?.unloadAsync?.();
+                soundRef.current = null;
+            }
+            if (progressInterval.current) clearInterval(progressInterval.current);
+        };
+    }, []);
+
+    // ── Web implementation ─────────────────────────────────────────────────
+    const playWeb = useCallback(() => {
+        if (!url) return;
+        setError(false);
+
+        if (!audioElRef.current) {
+            const el = new Audio(url);
+            el.onerror = () => { setError(true); setIsPlaying(false); };
+            el.onloadedmetadata = () => {
+                setTotalMs(Math.round(el.duration * 1000));
+            };
+            el.onended = () => {
+                setIsPlaying(false);
+                setProgress(0);
+                setCurrentMs(0);
+                if (progressInterval.current) clearInterval(progressInterval.current);
+            };
+            audioElRef.current = el;
+        }
+
+        audioElRef.current.play();
+        setIsPlaying(true);
+
+        progressInterval.current = setInterval(() => {
+            const el = audioElRef.current;
+            if (!el || el.paused) return;
+            const dur = el.duration * 1000 || totalMs || 1;
+            const cur = el.currentTime * 1000;
+            setCurrentMs(cur);
+            setProgress(cur / dur);
+        }, 80);
+    }, [url, totalMs]);
+
+    const pauseWeb = useCallback(() => {
+        audioElRef.current?.pause();
+        setIsPlaying(false);
+        if (progressInterval.current) clearInterval(progressInterval.current);
+    }, []);
+
+    // ── Native implementation ──────────────────────────────────────────────
+    const playNative = useCallback(async () => {
+        if (!url) return;
+        setError(false);
+        try {
+            const { Audio, AVPlaybackStatus } = await import('expo-av');
+            if (!soundRef.current) {
+                const { sound } = await Audio.Sound.createAsync(
+                    { uri: url },
+                    { shouldPlay: false }
+                );
+                soundRef.current = sound;
+                const status = await sound.getStatusAsync() as any;
+                if (status.isLoaded && status.durationMillis) {
+                    setTotalMs(status.durationMillis);
+                }
+                sound.setOnPlaybackStatusUpdate((st: any) => {
+                    if (!st.isLoaded) return;
+                    const dur = st.durationMillis || totalMs || 1;
+                    const pos = st.positionMillis || 0;
+                    setCurrentMs(pos);
+                    setProgress(pos / dur);
+                    if (st.didJustFinish) {
+                        setIsPlaying(false);
+                        setProgress(0);
+                        setCurrentMs(0);
+                    }
+                });
+            }
+            await soundRef.current.playAsync();
+            setIsPlaying(true);
+        } catch (err) {
+            console.error('[VoiceMessagePlayer] native play error:', err);
+            setError(true);
+        }
+    }, [url, totalMs]);
+
+    const pauseNative = useCallback(async () => {
+        await soundRef.current?.pauseAsync?.();
+        setIsPlaying(false);
+    }, []);
+
+    // ── Toggle play/pause ───────────────────────────────────────────────────
+    const handleToggle = useCallback(() => {
+        if (error) return;
+        if (Platform.OS === 'web') {
+            isPlaying ? pauseWeb() : playWeb();
+        } else {
+            isPlaying ? pauseNative() : playNative();
+        }
+    }, [error, isPlaying, pauseWeb, playWeb, pauseNative, playNative]);
+
+    const displayTime = isPlaying || currentMs > 0 ? currentMs : totalMs;
+
+    return (
+        <View style={[styles.container, isCurrentUser ? styles.containerCurrent : styles.containerOther]}>
+            {/* Play / Pause button */}
+            <TouchableOpacity
+                style={[styles.playBtn, isCurrentUser ? styles.playBtnCurrent : styles.playBtnOther]}
+                onPress={handleToggle}
+                activeOpacity={0.75}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+                {error ? (
+                    <Ionicons name="alert-circle-outline" size={18} color={isCurrentUser ? '#fff' : '#FF3B30'} />
+                ) : (
+                    <Ionicons
+                        name={isPlaying ? 'pause' : 'play'}
+                        size={18}
+                        color={isCurrentUser ? '#fff' : '#007AFF'}
+                    />
+                )}
+            </TouchableOpacity>
+
+            {/* Waveform + duration */}
+            <View style={styles.middle}>
+                <StaticBars progress={progress} isCurrentUser={isCurrentUser} />
+                <Text style={[styles.duration, isCurrentUser ? styles.durationCurrent : styles.durationOther]}>
+                    {error ? 'Error' : formatDuration(displayTime)}
                 </Text>
             </View>
         </View>
@@ -140,69 +244,38 @@ const VoiceMessagePlayer: React.FC<VoiceMessagePlayerProps> = ({ uri, durationLa
 };
 
 const styles = StyleSheet.create({
-    voiceContainer: {
+    container: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 10,
-        minWidth: 220,
-        maxWidth: 280,
+        gap: 10,
+        minWidth: 180,
+        paddingVertical: 6,
     },
-    playButton: {
+    containerCurrent: {},
+    containerOther: {},
+    playBtn: {
         width: 38,
         height: 38,
         borderRadius: 19,
-        backgroundColor: '#fff',
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
     },
-    playButtonOther: {
-        backgroundColor: 'rgba(0,122,255,0.9)', // Blue play button on grey bubble
+    playBtnCurrent: {
+        backgroundColor: 'rgba(255,255,255,0.25)',
     },
-    waveformContainer: {
+    playBtnOther: {
+        backgroundColor: 'rgba(0,122,255,0.12)',
+    },
+    middle: {
         flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        height: 30,
-        marginRight: 10,
+        gap: 4,
     },
-    waveformBar: {
-        width: 2.5,
-        borderRadius: 1.5,
-    },
-    barPlayedCurrent: {
-        backgroundColor: '#fff', // White on Blue bubble
-    },
-    barUnplayedCurrent: {
-        backgroundColor: 'rgba(255,255,255,0.4)',
-    },
-    barPlayedOther: {
-        backgroundColor: '#007AFF', // Blue on Grey bubble
-    },
-    barUnplayedOther: {
-        backgroundColor: 'rgba(0,0,0,0.15)',
-    },
-    durationContainer: {
-        minWidth: 35,
-    },
-    durationText: {
-        fontSize: 12,
-        fontWeight: '600',
+    duration: {
+        fontSize: 11,
         fontVariant: ['tabular-nums'],
     },
-    durationCurrent: {
-        color: 'rgba(255,255,255,0.9)',
-    },
-    durationOther: {
-        color: '#666',
-    }
+    durationCurrent: { color: 'rgba(255,255,255,0.75)' },
+    durationOther: { color: '#8E8E93' },
 });
 
-export default VoiceMessagePlayer;
+export default React.memo(VoiceMessagePlayer);

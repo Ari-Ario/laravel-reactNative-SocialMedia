@@ -27,7 +27,7 @@ export async function setToken(newToken: string | null) {
   }
 }
 
-export async function getToken() {
+export async function getToken(): Promise<string | null> {
   try {
     if (token !== null) {
       console.log("Token exists already: ", token);
@@ -42,5 +42,6 @@ export async function getToken() {
     }
   } catch (error) {
     console.error('Storage error:', error);
+    return null;
   }
 }

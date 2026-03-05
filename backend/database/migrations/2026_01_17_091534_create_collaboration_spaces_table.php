@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -37,11 +36,12 @@ return new class extends Migration
             $table->string('ai_personality')->nullable(); // 'helpful', 'creative', 'analytical', 'playful'
             $table->json('ai_capabilities')->nullable(); // ['summarize', 'suggest', 'moderate', 'inspire']
             $table->json('ai_learning_data')->nullable(); // What the AI has learned from this space
-            
+
             $table->softDeletes();
             $table->timestamps();
             $table->index(['space_type', 'is_live']);
             $table->index(['creator_id', 'updated_at']);
+            $table->index('updated_at');
         });
     }
 

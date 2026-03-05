@@ -9,6 +9,7 @@ import {
   Platform,
   Modal,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -21,6 +22,7 @@ import getApiBaseImage from '@/services/getApiBaseImage';
 import AuthContext from '@/context/AuthContext';
 import { useContext } from 'react';
 import { createShadow } from '@/utils/styles';
+import ContactService from '@/services/ChatScreen/ContactService';
 
 interface Message {
   id: string;
@@ -87,7 +89,10 @@ const MessageList: React.FC<MessageListProps> = ({
 
   const [forwardModalVisible, setForwardModalVisible] = useState(false);
   const [availableSpaces, setAvailableSpaces] = useState<any[]>([]);
+  const [availableContacts, setAvailableContacts] = useState<any[]>([]);
   const [selectedSpacesForForward, setSelectedSpacesForForward] = useState<Set<string>>(new Set());
+  const [selectedContactsForForward, setSelectedContactsForForward] = useState<Set<string>>(new Set());
+  const [pendingMessageToForward, setPendingMessageToForward] = useState<Message | null>(null);
   const [forwarding, setForwarding] = useState(false);
   // Poll edit modal state
   const [editPollVisible, setEditPollVisible] = useState(false);
@@ -582,9 +587,38 @@ const MessageList: React.FC<MessageListProps> = ({
     console.log('Copy:', message.content);
   };
 
-  const handleForward = (message: Message) => {
+  const handleForward = async (message: Message) => {
     // Generic message forward
-    console.log('Forward:', message.id);
+    try {
+      setPendingMessageToForward(message);
+      setSelectedMessages(new Set([message.id]));
+
+      const [spacesResponse, followersResponse, followingResponse] = await Promise.all([
+        collaborationService.getUserSpaces(currentUserId),
+        ContactService.getInstance().fetchFollowers(),
+        ContactService.getInstance().fetchFollowing()
+      ]);
+
+      const finalSpaces = Array.isArray(spacesResponse) ? spacesResponse : (spacesResponse.spaces || []);
+      setAvailableSpaces(finalSpaces.filter((s: any) => String(s.id) !== String(spaceId)));
+
+      // Merge and unique contacts
+      const contactsMap = new Map();
+      [...(followersResponse || []), ...(followingResponse || [])].forEach(c => {
+        const user = c.follower || c.following || c;
+        if (user && user.id !== currentUserId) {
+          contactsMap.set(String(user.id), user);
+        }
+      });
+      setAvailableContacts(Array.from(contactsMap.values()));
+
+      setSelectedSpacesForForward(new Set());
+      setSelectedContactsForForward(new Set());
+      setForwardModalVisible(true);
+    } catch (e) {
+      console.error('Error loading forwarding targets:', e);
+      Alert.alert('Error', 'Failed to load targets for forwarding.');
+    }
   };
 
   // ─── Poll Handlers ────────────────────────────────────────────────────────
@@ -626,12 +660,33 @@ const MessageList: React.FC<MessageListProps> = ({
     const pollId = msg.poll?.id || msg.metadata?.pollId || msg.metadata?.pollData?.id;
     if (!pollId) return;
     try {
-      const response = await collaborationService.getUserSpaces(currentUserId);
-      setAvailableSpaces(response.filter((s: any) => String(s.id) !== String(spaceId)));
+      setPendingMessageToForward(msg);
+      setSelectedMessages(new Set([msg.id]));
+
+      const [spacesResponse, followersResponse, followingResponse] = await Promise.all([
+        collaborationService.getUserSpaces(currentUserId),
+        ContactService.getInstance().fetchFollowers(),
+        ContactService.getInstance().fetchFollowing()
+      ]);
+
+      const finalSpaces = Array.isArray(spacesResponse) ? spacesResponse : (spacesResponse.spaces || []);
+      setAvailableSpaces(finalSpaces.filter((s: any) => String(s.id) !== String(spaceId)));
+
+      // Merge and unique contacts
+      const contactsMap = new Map();
+      [...(followersResponse || []), ...(followingResponse || [])].forEach(c => {
+        const user = c.follower || c.following || c;
+        if (user && user.id !== currentUserId) {
+          contactsMap.set(String(user.id), user);
+        }
+      });
+      setAvailableContacts(Array.from(contactsMap.values()));
+
       setSelectedSpacesForForward(new Set());
+      setSelectedContactsForForward(new Set());
       setForwardModalVisible(true);
     } catch (e) {
-      Alert.alert('Error', 'Failed to load spaces for forwarding.');
+      Alert.alert('Error', 'Failed to load targets for forwarding.');
     }
   };
 
@@ -773,64 +828,112 @@ const MessageList: React.FC<MessageListProps> = ({
   const handleForwardSelected = async () => {
     if (selectedMessages.size === 0) return;
     try {
-      const response = await collaborationService.getUserSpaces(currentUserId);
-      setAvailableSpaces(response.filter((s: any) => String(s.id) !== String(spaceId)));
+      const [spacesResponse, followersResponse, followingResponse] = await Promise.all([
+        collaborationService.getUserSpaces(currentUserId),
+        ContactService.getInstance().fetchFollowers(),
+        ContactService.getInstance().fetchFollowing()
+      ]);
+
+      const finalSpaces = Array.isArray(spacesResponse) ? spacesResponse : (spacesResponse.spaces || []);
+      setAvailableSpaces(finalSpaces.filter((s: any) => String(s.id) !== String(spaceId)));
+
+      // Merge and unique contacts
+      const contactsMap = new Map();
+      [...(followersResponse || []), ...(followingResponse || [])].forEach(c => {
+        const user = c.follower || c.following || c;
+        if (user && user.id !== currentUserId) {
+          contactsMap.set(String(user.id), user);
+        }
+      });
+      setAvailableContacts(Array.from(contactsMap.values()));
+
       setSelectedSpacesForForward(new Set());
+      setSelectedContactsForForward(new Set());
       setForwardModalVisible(true);
     } catch (e) {
-      console.error('Error fetching spaces to forward to:', e);
-      Alert.alert('Error', 'Failed to load spaces.');
+      console.error('Error fetching targets to forward to:', e);
+      Alert.alert('Error', 'Failed to load targets.');
     }
   };
 
   const executeMultiForward = async () => {
-    if (!spaceId || selectedMessages.size === 0 || selectedSpacesForForward.size === 0) return;
+    if ((selectedMessages.size === 0 && !pendingMessageToForward) ||
+      (selectedSpacesForForward.size === 0 && selectedContactsForForward.size === 0)) return;
+
     setForwarding(true);
     try {
-      const idsToForward = Array.from(selectedMessages);
+      const idsToForward = selectedMessages.size > 0 ? Array.from(selectedMessages) : [pendingMessageToForward!.id];
       const destinationSpaceIds = Array.from(selectedSpacesForForward);
+      const destinationContactIds = Array.from(selectedContactsForForward);
 
-      // Check if we are forwarding a single poll
-      if (idsToForward.length === 1) {
-        const msg = messages.find(m => m.id === idsToForward[0]);
-        const isPoll = msg?.type === 'poll' || msg?.metadata?.isPoll;
-        const pollId = msg?.poll?.id || msg?.metadata?.pollId;
+      // Handle Space Forwarding
+      if (destinationSpaceIds.length > 0) {
+        if (idsToForward.length === 1) {
+          const msg = pendingMessageToForward || messages.find(m => m.id === idsToForward[0]);
+          const isPoll = msg?.type === 'poll' || msg?.metadata?.isPoll;
+          const pollId = msg?.poll?.id || msg?.metadata?.pollId;
 
-        if (isPoll && pollId) {
-          // Use poll-specific forwarding which creates new records in target spaces
-          await collaborationService.forwardPoll(pollId, destinationSpaceIds);
-
-          // Also send a message notification to each destination space
-          for (const destId of destinationSpaceIds) {
-            await collaborationService.sendMessage(destId, {
-              content: `📊 Poll forwarded: "${msg.poll?.question || msg.content}"`,
-              type: 'poll',
-              metadata: {
-                isPoll: true,
-                pollId: pollId,
-                pollData: msg.poll,
-                is_forwarded: true,
-                original_space_id: spaceId
-              }
-            });
+          if (isPoll && pollId) {
+            await collaborationService.forwardPoll(pollId, destinationSpaceIds);
+            for (const destId of destinationSpaceIds) {
+              await collaborationService.sendMessage(destId, {
+                content: `📊 Poll forwarded: "${msg?.poll?.question || msg?.content}"`,
+                type: 'poll',
+                metadata: {
+                  isPoll: true,
+                  pollId: pollId,
+                  pollData: msg?.poll,
+                  is_forwarded: true,
+                  original_space_id: spaceId
+                }
+              });
+            }
+          } else {
+            for (const destId of destinationSpaceIds) {
+              await collaborationService.forwardSpaceMessages(spaceId || '0', idsToForward, destId);
+            }
           }
         } else {
-          // Regular batch forward
           for (const destId of destinationSpaceIds) {
-            await collaborationService.forwardSpaceMessages(spaceId, idsToForward, destId);
+            await collaborationService.forwardSpaceMessages(spaceId || '0', idsToForward, destId);
           }
-        }
-      } else {
-        // Multi-message batch forward
-        for (const destId of destinationSpaceIds) {
-          await collaborationService.forwardSpaceMessages(spaceId, idsToForward, destId);
         }
       }
 
-      Alert.alert('Success', `Forwarded to ${destinationSpaceIds.length} space(s).`);
+      // Handle Contact Forwarding
+      if (destinationContactIds.length > 0) {
+        for (const contactId of destinationContactIds) {
+          for (const msgId of idsToForward) {
+            const msg = messages.find(m => m.id === msgId);
+            if (!msg) continue;
+
+            // Note: This requires a search/create conversation logic on backend if we don't have conversionId
+            // A safer approach for now is to use the contact's ID as a target if the API supports it, 
+            // but usually we need a conversation. 
+            // Assuming sendMessage handles participant finding if conversation_id is missing, or we need another method.
+            // For now, let's try to send a message to a direct chat if possible.
+
+            await collaborationService.sendMessageToUser(Number(contactId), {
+              content: msg.content,
+              type: msg.type,
+              metadata: {
+                ...msg.metadata,
+                is_forwarded: true,
+                original_space_id: spaceId
+              },
+              file_path: msg.file_path,
+              mime_type: msg.mime_type
+            });
+          }
+        }
+      }
+
+      Alert.alert('Success', `Forwarded to ${destinationSpaceIds.length + destinationContactIds.length} destination(s).`);
       setForwardModalVisible(false);
       setSelectedMessages(new Set());
       setSelectedSpacesForForward(new Set());
+      setSelectedContactsForForward(new Set());
+      setPendingMessageToForward(null);
     } catch (e) {
       console.error('Forward failed', e);
       Alert.alert('Error', 'Failed to forward messages to some destinations.');
@@ -1034,42 +1137,72 @@ const MessageList: React.FC<MessageListProps> = ({
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Forward message to...</Text>
-              <TouchableOpacity onPress={() => setForwardModalVisible(false)}>
+              <Text style={styles.modalTitle}>Forward to...</Text>
+              <TouchableOpacity onPress={() => {
+                setForwardModalVisible(false);
+                setPendingMessageToForward(null);
+              }}>
                 <Ionicons name="close" size={24} color="#333" />
               </TouchableOpacity>
             </View>
 
             {forwarding ? (
               <View style={styles.forwardingState}>
-                <ActivityIndicator size="large" color="#0a7ea4" />
-                <Text style={{ marginTop: 12 }}>Forwarding...</Text>
+                <ActivityIndicator size="large" color="#007AFF" />
+                <Text style={{ marginTop: 12, color: '#666' }}>Forwarding...</Text>
               </View>
-            ) : availableSpaces.length === 0 ? (
-              <Text style={styles.noSpacesText}>No other spaces found.</Text>
             ) : (
               <>
                 <FlatList
-                  data={availableSpaces}
-                  keyExtractor={(item) => String(item.id)}
+                  data={[
+                    ...(availableSpaces.length > 0 ? [{ type: 'header', title: 'Spaces' }, ...availableSpaces.map(s => ({ ...s, targetType: 'space' }))] : []),
+                    ...(availableContacts.length > 0 ? [{ type: 'header', title: 'Contacts' }, ...availableContacts.map(c => ({ ...c, targetType: 'contact' }))] : [])
+                  ]}
+                  keyExtractor={(item, index) => item.type === 'header' ? `header-${item.title}` : `target-${item.id}-${index}`}
                   renderItem={({ item }) => {
-                    const isSelected = selectedSpacesForForward.has(item.id);
+                    if (item.type === 'header') {
+                      return <Text style={styles.modalSectionHeader}>{item.title}</Text>;
+                    }
+
+                    const isSelected = item.targetType === 'space'
+                      ? selectedSpacesForForward.has(item.id)
+                      : selectedContactsForForward.has(item.id);
+
                     return (
                       <TouchableOpacity
                         style={[styles.spaceItem, isSelected && styles.spaceItemSelected]}
                         onPress={() => {
-                          setSelectedSpacesForForward(prev => {
-                            const next = new Set(prev);
-                            if (next.has(item.id)) next.delete(item.id);
-                            else next.add(item.id);
-                            return next;
-                          });
+                          if (item.targetType === 'space') {
+                            setSelectedSpacesForForward(prev => {
+                              const next = new Set(prev);
+                              if (next.has(item.id)) next.delete(item.id);
+                              else next.add(item.id);
+                              return next;
+                            });
+                          } else {
+                            setSelectedContactsForForward(prev => {
+                              const next = new Set(prev);
+                              if (next.has(item.id)) next.delete(item.id);
+                              else next.add(item.id);
+                              return next;
+                            });
+                          }
                         }}
                       >
                         <View style={styles.spaceAvatarPlaceholder}>
-                          <Text style={styles.spaceAvatarText}>{item.name.charAt(0)}</Text>
+                          {item.profile_photo ? (
+                            <Image
+                              source={{ uri: `${getApiBaseImage()}/storage/${item.profile_photo}` }}
+                              style={styles.targetAvatar}
+                            />
+                          ) : (
+                            <Text style={styles.spaceAvatarText}>{(item.name || item.title || '?').charAt(0)}</Text>
+                          )}
                         </View>
-                        <Text style={styles.spaceNameText}>{item.name}</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.spaceNameText}>{item.name || item.title}</Text>
+                          <Text style={styles.targetTypeText}>{item.targetType === 'space' ? 'Space' : 'Contact'}</Text>
+                        </View>
                         <Ionicons
                           name={isSelected ? "checkmark-circle" : "ellipse-outline"}
                           size={24}
@@ -1078,16 +1211,23 @@ const MessageList: React.FC<MessageListProps> = ({
                       </TouchableOpacity>
                     );
                   }}
+                  contentContainerStyle={{ paddingBottom: 20 }}
                 />
-                <TouchableOpacity
-                  style={[styles.modalSendBtn, selectedSpacesForForward.size === 0 && styles.modalSendBtnDisabled]}
-                  disabled={selectedSpacesForForward.size === 0}
-                  onPress={executeMultiForward}
-                >
-                  <Text style={styles.modalSendBtnText}>
-                    Forward to {selectedSpacesForForward.size} Space{selectedSpacesForForward.size !== 1 ? 's' : ''}
-                  </Text>
-                </TouchableOpacity>
+
+                <View style={styles.modalFooter}>
+                  <TouchableOpacity
+                    style={[
+                      styles.modalSendBtn,
+                      (selectedSpacesForForward.size === 0 && selectedContactsForForward.size === 0) && styles.modalSendBtnDisabled
+                    ]}
+                    disabled={selectedSpacesForForward.size === 0 && selectedContactsForForward.size === 0}
+                    onPress={executeMultiForward}
+                  >
+                    <Text style={styles.modalSendBtnText}>
+                      Forward to {selectedSpacesForForward.size + selectedContactsForForward.size} item(s)
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </>
             )}
           </View>
@@ -1250,6 +1390,32 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     letterSpacing: 0.4,
+  },
+  modalSectionHeader: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#666',
+    backgroundColor: '#f8f8f8',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  targetAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  targetTypeText: {
+    fontSize: 12,
+    color: '#8e8e93',
+    marginTop: 2,
+  },
+  modalFooter: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    backgroundColor: '#fff',
   },
 });
 

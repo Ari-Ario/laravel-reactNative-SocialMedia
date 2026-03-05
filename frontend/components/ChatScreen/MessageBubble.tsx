@@ -14,7 +14,6 @@ import * as MediaLibrary from 'expo-media-library';
 import Avatar from '@/components/Image/Avatar';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import PollViewer from './PollViewer';
-import VoiceMessagePlayer from './VoiceMessagePlayer';
 
 interface MessageBubbleProps {
   message: {
@@ -240,24 +239,26 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         );
       }
 
-      case 'voice': {
-        const rawUrl = message.metadata?.url || message.file_path || '';
-        const isNetworkUrl = rawUrl.startsWith('http://') || rawUrl.startsWith('https://');
-        const isFileUrl = rawUrl.startsWith('file://');
-        const isDataUrl = rawUrl.startsWith('data:');
-
-        const url = (isNetworkUrl || isFileUrl || isDataUrl)
-          ? rawUrl
-          : (rawUrl ? `${getApiBaseImage()}/storage/${rawUrl}` : '');
-
+      case 'voice':
         return (
-          <VoiceMessagePlayer
-            uri={url}
-            durationLabel={message.metadata?.duration || '0:00'}
-            isCurrentUser={isCurrentUser}
-          />
+          <View style={styles.voiceContainer}>
+            <Ionicons name="mic" size={20} color="#007AFF" />
+            <Text style={styles.voiceDuration}>
+              {message.metadata?.duration || '0:30'}
+            </Text>
+            <View style={styles.waveform}>
+              {Array.from({ length: 20 }).map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.waveformBar,
+                    { height: Math.random() * 20 + 4 }
+                  ]}
+                />
+              ))}
+            </View>
+          </View>
         );
-      }
 
       case 'poll': {
         const pollData = message.poll || message.metadata?.pollData;

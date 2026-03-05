@@ -906,6 +906,22 @@ const SpaceDetailScreen = () => {
       </View>
     );
   }
+  const isDirectChat = space?.settings?.is_direct || space?.space_type === 'direct';
+  const otherParticipant = isDirectChat
+    ? participants.find(p => p.user?.id !== user?.id)?.user || participants.find(p => p.user_id !== user?.id)?.user
+    : null;
+
+  const displayTitle = isDirectChat && otherParticipant
+    ? (otherParticipant.name || otherParticipant.username)
+    : (space?.title || 'Loading Space...');
+
+  const displaySubtitle = isDirectChat && otherParticipant
+    ? 'Direct Message'
+    : `${participants.length} ${participants.length === 1 ? 'participant' : 'participants'}`;
+
+  const displayPhoto = isDirectChat && otherParticipant
+    ? (otherParticipant.profile_photo_url || otherParticipant.profile_photo)
+    : null;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -919,21 +935,28 @@ const SpaceDetailScreen = () => {
           style={styles.headerContent}
           onPress={() => Alert.alert(
             'Space Info',
-            `Title: ${space?.title || 'Loading...'} \nType: ${space?.space_type || 'chat'} \nParticipants: ${participants.length} \nCreated: ${space?.created_at ? new Date(space.created_at).toLocaleDateString() : 'N/A'} `
+            `Title: ${displayTitle} \nType: ${space?.space_type || 'chat'} \nParticipants: ${participants.length} \nCreated: ${space?.created_at ? new Date(space.created_at).toLocaleDateString() : 'N/A'} `
           )}
         >
-          <Text style={styles.title} numberOfLines={1}>
-            {space?.title || 'Loading Space...'}
-          </Text>
-          <View style={styles.subtitleRow}>
-            <Ionicons name="people" size={12} color="#666" />
-            <Text style={styles.subtitle}>
-              {participants.length} {participants.length === 1 ? 'participant' : 'participants'}
+          {isDirectChat && otherParticipant ? (
+            <Avatar url={displayPhoto} size={36} style={styles.headerAvatar} />
+          ) : (
+            <View style={[styles.headerAvatar, { backgroundColor: '#007AFF', justifyContent: 'center', alignItems: 'center' }]}>
+              <Ionicons name="cube" size={20} color="#fff" />
+            </View>
+          )}
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.title} numberOfLines={1}>
+              {displayTitle}
             </Text>
-            <View style={styles.dotSeparator} />
-            <Text style={styles.subtitle}>
-              {space?.space_type || 'chat'}
-            </Text>
+            <View style={styles.subtitleRow}>
+              {(!isDirectChat || !otherParticipant) && <Ionicons name="people" size={12} color="#666" />}
+              {(!isDirectChat || !otherParticipant) && <Text style={styles.subtitle}>{displaySubtitle}</Text>}
+              {(!isDirectChat || !otherParticipant) && <View style={styles.dotSeparator} />}
+              <Text style={styles.subtitle}>
+                {isDirectChat && otherParticipant ? displaySubtitle : (space?.space_type || 'chat')}
+              </Text>
+            </View>
           </View>
         </TouchableOpacity>
 
@@ -1453,6 +1476,18 @@ const styles = StyleSheet.create({
   },
   headerContent: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 10,
+  },
+  headerTextContainer: {
+    flex: 1,
+    justifyContent: 'center',
   },
   title: {
     fontSize: 18,

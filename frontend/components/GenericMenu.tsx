@@ -82,6 +82,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.38)',
         width: '100%',
         height: '100%',
+        zIndex: 9999,
     },
     webBackdrop: {
         backgroundColor: 'rgba(0,0,0,0.42)',
@@ -100,6 +101,7 @@ const styles = StyleSheet.create({
             radius: 24,
             elevation: 20,
         }),
+        zIndex: 10000,
     },
     pointer: {
         position: 'absolute',

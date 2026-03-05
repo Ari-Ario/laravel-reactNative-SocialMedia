@@ -1,6 +1,7 @@
 <?php
 
 namespace Database\Seeders;
+
 use Database\Seeders\UsersTableSeeder;
 
 
@@ -17,27 +18,27 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        
+
         $this->call([
-            UsersTableSeeder::class,
+            UsersTableSeeder::class ,
             // UserPreferencesSeeder::class,
 
-            PostsTableSeeder::class,
-            StoriesTableSeeder::class,
-            CommentsTableSeeder::class,
-            ReactionsTableSeeder::class,
-            CommentReactionsTableSeeder::class,
+            PostsTableSeeder::class ,
+            StoriesTableSeeder::class ,
+            CommentsTableSeeder::class ,
+            ReactionsTableSeeder::class ,
+            CommentReactionsTableSeeder::class ,
 
-            ConversationsTableSeeder::class,
-            ConversationUserSeeder::class,
-            MessagesTableSeeder::class,
+            ConversationsTableSeeder::class ,
+            ConversationUserSeeder::class ,
+            MessagesTableSeeder::class ,
 
-            CollaborationSpacesSeeder::class,
-            SpaceParticipationsSeeder::class,
-            MagicEventsSeeder::class,
+            CollaborationSpacesSeeder::class ,
+            SpaceParticipationsSeeder::class ,
+            MagicEventsSeeder::class ,
 
-            AIInteractionsSeeder::class,
-            AILearningSourcesSeeder::class,
+            AIInteractionsSeeder::class ,
+            AILearningSourcesSeeder::class ,
         ]);
 
     }
