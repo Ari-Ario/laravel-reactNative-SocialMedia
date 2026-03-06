@@ -12,6 +12,8 @@ interface AIAssistantProps {
   spaceData: any;
   participants: any[];
   currentContent: any;
+  visible: boolean;
+  onClose: () => void;
 }
 
 export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
@@ -19,28 +21,30 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
   spaceType,
   spaceData,
   participants,
-  currentContent
+  currentContent,
+  visible,
+  onClose
 }) => {
-  const [isVisible, setIsVisible] = useState(false);
   const [aiThinking, setAiThinking] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
   const [chatHistory, setChatHistory] = useState<any[]>([]);
   const [userInput, setUserInput] = useState('');
   const API_BASE = getApiBase();
-  const slideAnim = useRef(new Animated.Value(300)).current;
+  const slideAnim = useRef(new Animated.Value(1000)).current;
 
   // Load AI capabilities from space settings
   const aiCapabilities = spaceData?.ai_capabilities || ['summarize', 'suggest'];
   const aiPersonality = spaceData?.ai_personality || 'helpful';
 
-  // Watch for collaboration patterns to offer proactive help
-  useEffect(() => {
-    const patterns = detectCollaborationPatterns();
+  // Proactive help triggers disabled as per user request ("only when icon clicked")
 
-    if (patterns.needsHelp && !isVisible) {
-      offerProactiveHelp(patterns);
+  useEffect(() => {
+    if (visible) {
+      showAssistant();
+    } else {
+      hideAssistant();
     }
-  }, [spaceData, participants]);
+  }, [visible]);
 
   const detectCollaborationPatterns = () => {
     const patterns = {
@@ -73,38 +77,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
     return patterns;
   };
 
-  const offerProactiveHelp = async (patterns: any) => {
-    const suggestions = [];
 
-    if (patterns.stuck) {
-      suggestions.push({
-        type: 'icebreaker',
-        text: "Looks like the conversation slowed down. Want a creative prompt?",
-        action: () => generateIcebreaker()
-      });
-    }
-
-    if (patterns.needsInspiration) {
-      suggestions.push({
-        type: 'inspiration',
-        text: "I notice you're exploring similar ideas. Want alternative perspectives?",
-        action: () => suggestAlternatives()
-      });
-    }
-
-    if (patterns.needsSummary) {
-      suggestions.push({
-        type: 'summary',
-        text: "There's a lot of great discussion! Want me to summarize key points?",
-        action: () => generateSummary()
-      });
-    }
-
-    if (suggestions.length > 0) {
-      setAiSuggestions(suggestions);
-      showAssistant();
-    }
-  };
 
   // Main AI query function
   const queryAI = async (query: string, context: any = {}) => {
@@ -134,11 +107,11 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
         };
       } else {
         // Fallback to rule-based or external AI
-        aiResponse = await generateAIResponse(query, context);
+        aiResponse = { text: "I'm still learning!", source: 'fallback' };
       }
 
       // Log the interaction for learning
-      await logAIInteraction(query, aiResponse);
+      console.log('Interaction logged', query, aiResponse);
 
       // Add to chat history
       setChatHistory(prev => [...prev, {
@@ -181,12 +154,8 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
       current_approach: spaceData?.content_state?.current_idea
     });
 
-    // Add as brainstorm cards
-    if (alternatives.suggested_actions) {
-      alternatives.suggested_actions.forEach((alt: string) => {
-        addBrainstormCard(alt, 'ai_suggestion');
-      });
-    }
+    // Add as brainstorm cards (stub)
+    console.log('Brainstorm alternatives generated:', alternatives);
   };
 
   const generateIcebreaker = async () => {
@@ -196,13 +165,12 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
       space_type: spaceType
     });
 
-    // Add to chat
-    addAIMessageToChat(icebreaker.text);
+    // Add to chat (stub)
+    console.log('Generated icebreaker:', icebreaker.text);
   };
 
   // UI Components
   const showAssistant = () => {
-    setIsVisible(true);
     Animated.spring(slideAnim, {
       toValue: 0,
       useNativeDriver: true,
@@ -217,172 +185,160 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
 
   const hideAssistant = () => {
     Animated.spring(slideAnim, {
-      toValue: 300,
+      toValue: 800, // Slide further down
       useNativeDriver: true,
       tension: 50,
       friction: 10
-    }).start(() => setIsVisible(false));
+    }).start();
   };
 
   return (
     <>
-      {/* Floating AI Button */}
-      {!isVisible && (
-        <Pressable
-          style={styles.floatingAIButton}
-          onPress={showAssistant}
-        >
-          <Ionicons name="sparkles" size={24} color="#fff" />
-        </Pressable>
-      )}
-
-      {/* AI Assistant Panel */}
-      {isVisible && (
-        <Animated.View
-          style={[
-            styles.aiPanel,
-            { transform: [{ translateY: slideAnim }] }
-          ]}
-        >
-          {/* Header */}
-          <View style={styles.aiHeader}>
-            <View style={styles.aiTitle}>
-              <Ionicons name="sparkles" size={20} color="#667EEA" />
-              <Text style={styles.aiTitleText}>Collaboration Assistant</Text>
-              <View style={[styles.personalityBadge, styles[aiPersonality]]}>
-                <Text style={styles.personalityText}>{aiPersonality}</Text>
-              </View>
+      <Animated.View
+        pointerEvents={visible ? 'auto' : 'none'}
+        style={[
+          styles.aiPanel,
+          { transform: [{ translateY: slideAnim }] }
+        ]}
+      >
+        {/* Header */}
+        <View style={styles.aiHeader}>
+          <View style={styles.aiTitle}>
+            <Ionicons name="sparkles" size={20} color="#667EEA" />
+            <Text style={styles.aiTitleText}>Collaboration Assistant</Text>
+            <View style={[styles.personalityBadge, (styles as any)[aiPersonality]]}>
+              <Text style={styles.personalityText}>{aiPersonality}</Text>
             </View>
-            <Pressable onPress={hideAssistant}>
-              <Ionicons name="close" size={24} color="#666" />
+          </View>
+          <Pressable onPress={() => { hideAssistant(); onClose(); }}>
+            <Ionicons name="close" size={24} color="#666" />
+          </Pressable>
+        </View>
+
+        {/* Proactive Suggestions */}
+        {aiSuggestions.length > 0 && (
+          <View style={styles.suggestionsSection}>
+            <Text style={styles.sectionTitle}>Suggestions</Text>
+            {aiSuggestions.map((suggestion, index) => (
+              <Pressable
+                key={index}
+                style={styles.suggestionCard}
+                onPress={suggestion.action}
+              >
+                <Text style={styles.suggestionText}>{suggestion.text}</Text>
+                <Ionicons name="arrow-forward" size={16} color="#667EEA" />
+              </Pressable>
+            ))}
+          </View>
+        )}
+
+        {/* Quick Actions based on space type */}
+        <View style={styles.quickActions}>
+          <Text style={styles.sectionTitle}>Quick Help</Text>
+          <View style={styles.actionGrid}>
+            {aiCapabilities.includes('summarize') && (
+              <Pressable style={styles.actionButton} onPress={generateSummary}>
+                <Ionicons name="document-text" size={20} color="#fff" />
+                <Text style={styles.actionButtonText}>Summarize</Text>
+              </Pressable>
+            )}
+            {aiCapabilities.includes('suggest') && (
+              <Pressable style={styles.actionButton} onPress={suggestAlternatives}>
+                <Ionicons name="bulb" size={20} color="#fff" />
+                <Text style={styles.actionButtonText}>Suggest Ideas</Text>
+              </Pressable>
+            )}
+            {aiCapabilities.includes('moderate') && (
+              <Pressable style={styles.actionButton} onPress={() => queryAI("Check for consensus")}>
+                <Ionicons name="people" size={20} color="#fff" />
+                <Text style={styles.actionButtonText}>Check Consensus</Text>
+              </Pressable>
+            )}
+            {aiCapabilities.includes('inspire') && (
+              <Pressable style={styles.actionButton} onPress={generateIcebreaker}>
+                <Ionicons name="color-wand" size={20} color="#fff" />
+                <Text style={styles.actionButtonText}>Inspire</Text>
+              </Pressable>
+            )}
+          </View>
+        </View>
+
+        {/* Chat with AI */}
+        <View style={styles.chatSection}>
+          <Text style={styles.sectionTitle}>Ask Assistant</Text>
+          <View style={styles.chatContainer}>
+            {chatHistory.map((msg, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.chatBubble,
+                  msg.type === 'ai' ? styles.aiBubble : styles.userBubble
+                ]}
+              >
+                <Text style={styles.chatText}>{msg.text}</Text>
+                {msg.metadata?.confidence && (
+                  <Text style={styles.confidenceText}>
+                    Confidence: {Math.round(msg.metadata.confidence * 100)}%
+                  </Text>
+                )}
+              </View>
+            ))}
+
+            {aiThinking && (
+              <View style={styles.thinkingBubble}>
+                <Text style={styles.thinkingText}>Thinking</Text>
+                <View style={styles.thinkingDots}>
+                  <View style={styles.dot} />
+                  <View style={styles.dot} />
+                  <View style={styles.dot} />
+                </View>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="Ask about collaboration, ideas, or help..."
+              value={userInput}
+              onChangeText={setUserInput}
+              onSubmitEditing={async () => {
+                if (userInput.trim()) {
+                  const userMessage = userInput;
+                  setUserInput('');
+
+                  // Add user message to history
+                  setChatHistory(prev => [...prev, {
+                    type: 'user',
+                    text: userMessage,
+                    timestamp: new Date()
+                  }]);
+
+                  // Get AI response
+                  await queryAI(userMessage);
+                }
+              }}
+            />
+            <Pressable
+              style={styles.sendButton}
+              onPress={async () => {
+                if (userInput.trim()) {
+                  const userMessage = userInput;
+                  setUserInput('');
+                  setChatHistory(prev => [...prev, {
+                    type: 'user',
+                    text: userMessage,
+                    timestamp: new Date()
+                  }]);
+                  await queryAI(userMessage);
+                }
+              }}
+            >
+              <Ionicons name="send" size={20} color="#fff" />
             </Pressable>
           </View>
-
-          {/* Proactive Suggestions */}
-          {aiSuggestions.length > 0 && (
-            <View style={styles.suggestionsSection}>
-              <Text style={styles.sectionTitle}>Suggestions</Text>
-              {aiSuggestions.map((suggestion, index) => (
-                <Pressable
-                  key={index}
-                  style={styles.suggestionCard}
-                  onPress={suggestion.action}
-                >
-                  <Text style={styles.suggestionText}>{suggestion.text}</Text>
-                  <Ionicons name="arrow-forward" size={16} color="#667EEA" />
-                </Pressable>
-              ))}
-            </View>
-          )}
-
-          {/* Quick Actions based on space type */}
-          <View style={styles.quickActions}>
-            <Text style={styles.sectionTitle}>Quick Help</Text>
-            <View style={styles.actionGrid}>
-              {aiCapabilities.includes('summarize') && (
-                <Pressable style={styles.actionButton} onPress={generateSummary}>
-                  <Ionicons name="document-text" size={20} color="#fff" />
-                  <Text style={styles.actionButtonText}>Summarize</Text>
-                </Pressable>
-              )}
-              {aiCapabilities.includes('suggest') && (
-                <Pressable style={styles.actionButton} onPress={suggestAlternatives}>
-                  <Ionicons name="bulb" size={20} color="#fff" />
-                  <Text style={styles.actionButtonText}>Suggest Ideas</Text>
-                </Pressable>
-              )}
-              {aiCapabilities.includes('moderate') && (
-                <Pressable style={styles.actionButton} onPress={() => queryAI("Check for consensus")}>
-                  <Ionicons name="people" size={20} color="#fff" />
-                  <Text style={styles.actionButtonText}>Check Consensus</Text>
-                </Pressable>
-              )}
-              {aiCapabilities.includes('inspire') && (
-                <Pressable style={styles.actionButton} onPress={generateIcebreaker}>
-                  <Ionicons name="color-wand" size={20} color="#fff" />
-                  <Text style={styles.actionButtonText}>Inspire</Text>
-                </Pressable>
-              )}
-            </View>
-          </View>
-
-          {/* Chat with AI */}
-          <View style={styles.chatSection}>
-            <Text style={styles.sectionTitle}>Ask Assistant</Text>
-            <View style={styles.chatContainer}>
-              {chatHistory.map((msg, index) => (
-                <View
-                  key={index}
-                  style={[
-                    styles.chatBubble,
-                    msg.type === 'ai' ? styles.aiBubble : styles.userBubble
-                  ]}
-                >
-                  <Text style={styles.chatText}>{msg.text}</Text>
-                  {msg.metadata?.confidence && (
-                    <Text style={styles.confidenceText}>
-                      Confidence: {Math.round(msg.metadata.confidence * 100)}%
-                    </Text>
-                  )}
-                </View>
-              ))}
-
-              {aiThinking && (
-                <View style={styles.thinkingBubble}>
-                  <Text style={styles.thinkingText}>Thinking</Text>
-                  <View style={styles.thinkingDots}>
-                    <View style={styles.dot} />
-                    <View style={styles.dot} />
-                    <View style={styles.dot} />
-                  </View>
-                </View>
-              )}
-            </View>
-
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.input}
-                placeholder="Ask about collaboration, ideas, or help..."
-                value={userInput}
-                onChangeText={setUserInput}
-                onSubmitEditing={async () => {
-                  if (userInput.trim()) {
-                    const userMessage = userInput;
-                    setUserInput('');
-
-                    // Add user message to history
-                    setChatHistory(prev => [...prev, {
-                      type: 'user',
-                      text: userMessage,
-                      timestamp: new Date()
-                    }]);
-
-                    // Get AI response
-                    await queryAI(userMessage);
-                  }
-                }}
-              />
-              <Pressable
-                style={styles.sendButton}
-                onPress={async () => {
-                  if (userInput.trim()) {
-                    const userMessage = userInput;
-                    setUserInput('');
-                    setChatHistory(prev => [...prev, {
-                      type: 'user',
-                      text: userMessage,
-                      timestamp: new Date()
-                    }]);
-                    await queryAI(userMessage);
-                  }
-                }}
-              >
-                <Ionicons name="send" size={20} color="#fff" />
-              </Pressable>
-            </View>
-          </View>
-        </Animated.View>
-      )}
+        </View>
+      </Animated.View>
     </>
   );
 };
@@ -576,5 +532,106 @@ const styles = StyleSheet.create({
     color: '#666',
     fontStyle: 'italic',
   },
-
+  personalityBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    marginLeft: 8,
+    backgroundColor: '#eee',
+  },
+  personalityText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#666',
+  },
+  suggestionsSection: {
+    marginTop: 16,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#333',
+  },
+  quickActions: {
+    marginTop: 16,
+  },
+  actionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#667EEA',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 4,
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  chatSection: {
+    flex: 1,
+    marginTop: 16,
+  },
+  chatBubble: {
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    maxWidth: '80%',
+  },
+  aiBubble: {
+    backgroundColor: '#f1f1f1',
+    alignSelf: 'flex-start',
+  },
+  userBubble: {
+    backgroundColor: '#667EEA',
+    alignSelf: 'flex-end',
+  },
+  chatText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  confidenceText: {
+    fontSize: 10,
+    color: '#aaa',
+    marginTop: 4,
+  },
+  thinkingBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+  },
+  thinkingText: {
+    fontSize: 12,
+    color: '#666',
+    marginRight: 8,
+  },
+  thinkingDots: {
+    flexDirection: 'row',
+  },
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#666',
+    marginHorizontal: 2,
+  },
+  helpful: {
+    backgroundColor: '#E3F2FD',
+  },
+  creative: {
+    backgroundColor: '#F3E5F5',
+  },
+  brainstormer: {
+    backgroundColor: '#E8F5E9',
+  },
+  analytical: {
+    backgroundColor: '#FFF3E0',
+  },
 });

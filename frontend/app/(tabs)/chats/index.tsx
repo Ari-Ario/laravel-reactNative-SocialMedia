@@ -10,6 +10,7 @@ import OfflineService from '@/services/ChatScreen/OfflineServiceChat';
 import RealTimeService from '@/services/ChatScreen/RealTimeServiceChat';
 import NotificationService from '@/services/ChatScreen/NotificationServiceChat';
 import SearchService, { SearchResult } from '@/services/ChatScreen/SearchServiceChat';
+import PusherService from '@/services/PusherService';
 
 import { router, useFocusEffect } from 'expo-router';
 import AuthContext from "@/context/AuthContext";
@@ -27,6 +28,7 @@ import { DatabaseIntegrator } from '@/services/ChatScreen/DatabaseIntegrator';
 import debounce from 'lodash/debounce';
 import CreativeGenerator from "@/components/AI/CreativeGenerator";
 import CollaborativeActivities from "@/components/ChatScreen/CollaborativeActivities";
+import SpaceCreationModal from "@/components/ChatScreen/SpaceCreationModal";
 import { useCollaborationStore } from "@/stores/collaborationStore";
 import { createShadow } from "@/utils/styles";
 
@@ -74,7 +76,6 @@ const ChatPage = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showSpaceTypes, setShowSpaceTypes] = useState(false);
   const [showCreativeGenerator, setShowCreativeGenerator] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
@@ -91,9 +92,8 @@ const ChatPage = () => {
   const [activities, setActivities] = useState<CollaborativeActivity[]>([]);
   const [showActivities, setShowActivities] = useState(false);
 
-  const [showSpaceNameInput, setShowSpaceNameInput] = useState(false);
-  const [selectedSpaceType, setSelectedSpaceType] = useState<CollaborationSpace['space_type'] | null>(null);
-  const [newSpaceName, setNewSpaceName] = useState('');
+  // New Unified Space Creation Flow State
+  const [showSpaceCreationModal, setShowSpaceCreationModal] = useState(false);
 
   // Configure notifications
   useEffect(() => {
@@ -158,6 +158,15 @@ const ChatPage = () => {
           });
         }
       };
+
+      // ✅ Global sync: listen to spaces channel for updates
+      const pusherService = (PusherService as any).getInstance ? (PusherService as any).getInstance() : PusherService;
+      if (pusherService && typeof pusherService.subscribeToAllSpaces === 'function') {
+        pusherService.subscribeToAllSpaces((data: any) => {
+          console.log('🔄 Remote space update detected, refreshing spaces list', data);
+          fetchUserSpaces();
+        });
+      }
     }
 
     return () => {
@@ -413,22 +422,34 @@ const ChatPage = () => {
     try {
       const userSpaces = await collaborationService.fetchUserSpaces(Number(user.id));
 
-      // Get the unread counts from the store
-      const { spaceUnreadCounts } = useCollaborationStore.getState();
+      const spaceUnreadCounts = useCollaborationStore.getState().spaceUnreadCounts;
 
-      const spaceChats: Chat[] = userSpaces.map(space => ({
-        id: space.id,
-        name: space.title,
-        lastMessage: getSpaceDescription(space),
-        timestamp: formatTimestamp(space.updated_at || space.created_at || new Date().toISOString()),
-        unreadCount: spaceUnreadCounts[space.id] || 0, // ✅ Use store's unread count
-        avatar: space.creator?.profile_photo,
-        isOnline: space.is_live,
-        user_id: space.creator_id.toString(),
-        type: 'space' as const,
-        spaceData: space,
-        conversationId: space.linked_conversation_id,
-      }));
+      const spaceChats: Chat[] = userSpaces.map(space => {
+        const isDirect = space.settings?.is_direct || space.space_type === 'direct';
+        const otherUser = space.other_participant;
+
+        let chatName = space.title || 'Direct Message';
+        let chatAvatar = space.creator?.profile_photo || undefined;
+
+        if (isDirect && otherUser) {
+          chatName = otherUser.name || otherUser.username || chatName;
+          chatAvatar = otherUser.profile_photo || chatAvatar;
+        }
+
+        return {
+          id: space.id,
+          name: chatName,
+          lastMessage: getSpaceDescription(space),
+          timestamp: formatTimestamp(space.updated_at || space.created_at || new Date().toISOString()),
+          unreadCount: spaceUnreadCounts[space.id] || 0,
+          avatar: chatAvatar,
+          isOnline: isDirect && otherUser ? (otherUser as any).is_online ?? space.is_live : space.is_live,
+          user_id: isDirect && otherUser ? otherUser.id.toString() : space.creator_id.toString(),
+          type: 'space' as const,
+          spaceData: space,
+          conversationId: space.linked_conversation_id,
+        };
+      });
 
       // Sort by activity
       spaceChats.sort((a, b) => {
@@ -509,52 +530,59 @@ const ChatPage = () => {
 
   // Enhanced filtered data with search results integration
   const filteredData = useMemo(() => {
-    const query = searchQuery.toLowerCase();
+    const query = searchQuery.toLowerCase().trim();
 
-    let filteredSpaces = spaces;
-    let filteredContacts = contacts;
-
-    if (query.trim()) {
-      filteredSpaces = spaces.filter(item =>
-        item.name.toLowerCase().includes(query) ||
-        item.spaceData?.description?.toLowerCase().includes(query)
-      );
-
-      filteredContacts = contacts.filter(item =>
-        item.name.toLowerCase().includes(query) ||
-        item.email?.toLowerCase().includes(query) ||
-        item.username?.toLowerCase().includes(query)
-      );
+    if (!query) {
+      const sections: SectionData[] = [];
+      if (spaces.length > 0) {
+        sections.push({ title: '🎯 Collaboration Spaces', data: spaces, type: 'spaces' });
+      }
+      if (contacts.length > 0) {
+        sections.push({ title: '👥 Contacts', data: contacts, type: 'contacts' });
+      }
+      return sections;
     }
+
+    // When searching
+    const localSpaces = spaces.filter(item =>
+      item.name.toLowerCase().includes(query) ||
+      item.spaceData?.description?.toLowerCase().includes(query)
+    );
+
+    const localContacts = contacts.filter(item =>
+      item.name.toLowerCase().includes(query) ||
+      item.email?.toLowerCase().includes(query) ||
+      item.username?.toLowerCase().includes(query)
+    );
 
     const sections: SectionData[] = [];
 
-    // Add regular sections FIRST
-    if (filteredSpaces.length > 0) {
-      sections.push({
-        title: '🎯 Collaboration Spaces',
-        data: filteredSpaces,
-        type: 'spaces'
-      });
+    if (localSpaces.length > 0) {
+      sections.push({ title: '🎯 Spaces in your list', data: localSpaces, type: 'spaces' });
     }
 
-    if (filteredContacts.length > 0) {
-      sections.push({
-        title: '👥 Contacts',
-        data: filteredContacts,
-        type: 'contacts'
-      });
+    if (localContacts.length > 0) {
+      sections.push({ title: '👥 Contacts in your list', data: localContacts, type: 'contacts' });
     }
 
-    // Add search results section LAST when there's a search
-    if (searchQuery.trim() && searchResults.length > 0) {
+    // Filter global results to exclude those already in local lists
+    const localIds = new Set([
+      ...spaces.map(s => s.id),
+      ...contacts.map(c => c.id),
+      ...spaces.map(s => s.user_id),
+      ...contacts.map(c => c.user_id)
+    ]);
+
+    const globalResults = searchResults.filter(result => !localIds.has(result.id) && !localIds.has(result.data?.id?.toString()));
+
+    if (globalResults.length > 0) {
       sections.push({
-        title: 'All Search Results',
-        data: searchResults.map(result => ({
+        title: '🌍 Global Results',
+        data: globalResults.map(result => ({
           id: result.id,
           name: result.title,
           lastMessage: result.description,
-          timestamp: result.timestamp || 'Just now',
+          timestamp: result.timestamp || 'Global User',
           avatar: result.avatar,
           user_id: result.data?.id?.toString() || result.id,
           type: result.type as 'chat' | 'contact' | 'space',
@@ -588,70 +616,14 @@ const ChatPage = () => {
     }
   };
 
-  const handleCreateSpace = async (spaceType: CollaborationSpace['space_type']) => {
-    // Show name input modal first
-    setSelectedSpaceType(spaceType);
-    setNewSpaceName(`New ${spaceType.charAt(0).toUpperCase() + spaceType.slice(1)}`);
-    setShowSpaceNameInput(true);
+  const handleCreateSpaceFlow = () => {
+    setShowSpaceCreationModal(true);
   };
 
-  // Add new function to actually create space after name input
-  const confirmCreateSpace = async () => {
-    if (!selectedSpaceType) return;
-
-    const createSpaceOperation = async () => {
-      try {
-        const space = await collaborationService.createSpace({
-          title: newSpaceName.trim() || `New ${selectedSpaceType.charAt(0).toUpperCase() + selectedSpaceType.slice(1)}`,
-          space_type: selectedSpaceType,
-          ai_personality: 'helpful',
-          ai_capabilities: ['summarize', 'suggest'],
-        });
-
-        if (Platform.OS !== 'web') {
-          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
-
-        // Add to spaces list
-        const newSpaceChat: Chat = {
-          id: space.id,
-          name: space.title,
-          lastMessage: getSpaceDescription(space),
-          timestamp: 'Just now',
-          unreadCount: 0,
-          avatar: space.creator?.profile_photo,
-          isOnline: true,
-          user_id: space.creator_id.toString(),
-          type: 'space',
-          spaceData: space,
-        };
-
-        setSpaces(prev => [newSpaceChat, ...prev]);
-        setShowSpaceTypes(false);
-        setShowSpaceNameInput(false);
-        setSelectedSpaceType(null);
-        setNewSpaceName('');
-
-        // Navigate to the new space
-        router.push(`/(spaces)/${space.id}`);
-
-      } catch (error) {
-        console.error('Error creating space:', error);
-        Alert.alert('Error', 'Failed to create space. Please try again.');
-      }
-    };
-
-    if (offlineService.isConnected()) {
-      await createSpaceOperation();
-    } else {
-      offlineService.queueOperation(createSpaceOperation);
-      setShowSpaceNameInput(false);
-      Alert.alert(
-        'Offline Mode',
-        'Space will be created when you reconnect to the internet.',
-        [{ text: 'OK' }]
-      );
-    }
+  const onSpaceCreated = (newSpace: CollaborationSpace) => {
+    // Navigate to the newly created space
+    router.push(`/(spaces)/${newSpace.id}`);
+    onRefresh(); // Refresh the list in the background
   };
 
   const handleClearSearch = () => {
@@ -739,18 +711,23 @@ const ChatPage = () => {
       return colors[type] || '#666';
     };
 
-    const handlePress = () => {
+    const handlePress = async () => {
       if (item.searchType === 'space') {
         router.push(`/(spaces)/${item.id}`);
       } else if (item.searchType === 'chat') {
-        router.push(`/(tabs)/chats/${item.id}`);
+        router.push(`/(spaces)/${item.id}`);
       } else if (item.searchType === 'contact') {
-        router.push({
-          pathname: '/(tabs)/chats/[id]',
-          params: { id: item.id, contact: JSON.stringify(item) }
-        });
+        try {
+          // Add loading state ideally, but instant request should be fast
+          const space = await CollaborationService.getInstance().getOrCreateDirectSpace(item.id);
+          if (space && space.id) {
+            router.push(`/(spaces)/${space.id}`);
+          }
+        } catch (error) {
+          console.error('Failed to create or fetch direct space from search:', error);
+          Alert.alert('Error', 'Could not start chat with this contact.');
+        }
       }
-      // handleClearSearch(); // Assuming this was causing issues since it is from the parent. It should be passed as a prop if needed.
     };
 
     return (
@@ -803,20 +780,24 @@ const ChatPage = () => {
     return prevProps.item.id === nextProps.item.id && prevProps.item.timestamp === nextProps.item.timestamp;
   });
 
-  const handleSearchResultTap = (result: SearchResult) => {
+  const handleSearchResultTap = async (result: SearchResult) => {
     switch (result.type) {
       case 'space':
         router.push(`/(spaces)/${result.id}`);
         break;
       case 'chat':
-        router.push(`/(tabs)/chats/${result.id}`);
+        router.push(`/(spaces)/${result.id}`);
         break;
       case 'contact':
-        // Start chat with contact
-        router.push({
-          pathname: '/(tabs)/chats/[id]',
-          params: { id: result.id, contact: JSON.stringify(result.data) }
-        });
+        try {
+          const space = await CollaborationService.getInstance().getOrCreateDirectSpace(result.id);
+          if (space && space.id) {
+            router.push(`/(spaces)/${space.id}`);
+          }
+        } catch (error) {
+          console.error('Failed to create or fetch direct space from search:', error);
+          Alert.alert('Error', 'Could not start chat with this contact.');
+        }
         break;
     }
     handleClearSearch();
@@ -896,10 +877,10 @@ const ChatPage = () => {
       <View style={styles.actionRow}>
         <TouchableOpacity
           style={[styles.actionButton, styles.primaryAction]}
-          onPress={() => setShowSpaceTypes(!showSpaceTypes)}
+          onPress={handleCreateSpaceFlow}
         >
-          <Ionicons name="add" size={20} color="#fff" />
-          <Text style={styles.actionButtonText}>Create Space</Text>
+          <Ionicons name="create-outline" size={20} color="#fff" />
+          <Text style={styles.actionButtonText}>New Chat</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -929,36 +910,6 @@ const ChatPage = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Space Type Selector */}
-      {showSpaceTypes && (
-        <Animated.View style={styles.spaceTypeSelector}>
-          <Text style={styles.spaceTypeTitle}>Choose Space Type:</Text>
-          <View style={styles.spaceTypeGrid}>
-            {(['whiteboard', 'meeting', 'document', 'brainstorm', 'voice_channel', 'chat'] as const).map((type) => (
-              <TouchableOpacity
-                key={type}
-                style={styles.spaceTypeOption}
-                onPress={() => handleCreateSpace(type)}
-              >
-                <View style={[styles.spaceTypeIcon, { backgroundColor: getSpaceTypeColor(type) }]}>
-                  <Ionicons name={getSpaceTypeIcon(type) as any} size={24} color="#fff" />
-                </View>
-                <Text style={styles.spaceTypeLabel}>
-                  {type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => setShowSpaceTypes(false)}
-          >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      )}
-
-      {/* Creative Generator Modal */}
       <Modal
         visible={showCreativeGenerator}
         animationType="slide"
@@ -971,67 +922,13 @@ const ChatPage = () => {
         />
       </Modal>
 
-      {/* Space Name Input Modal */}
-      <Modal
-        visible={showSpaceNameInput}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => {
-          setShowSpaceNameInput(false);
-          setSelectedSpaceType(null);
-          setNewSpaceName('');
-        }}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.nameInputModal}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Name Your Space</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowSpaceNameInput(false);
-                  setSelectedSpaceType(null);
-                  setNewSpaceName('');
-                }}
-              >
-                <Ionicons name="close" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.emptySubtitle}>
-              Choose a name for your {selectedSpaceType} space
-            </Text>
-
-            <TextInput
-              style={styles.nameInput}
-              placeholder="Space name"
-              value={newSpaceName}
-              onChangeText={setNewSpaceName}
-              autoFocus
-              maxLength={50}
-            />
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalCancelButton]}
-                onPress={() => {
-                  setShowSpaceNameInput(false);
-                  setSelectedSpaceType(null);
-                  setNewSpaceName('');
-                }}
-              >
-                <Text style={[styles.modalButtonText, styles.modalCancelButtonText]}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalConfirmButton]}
-                onPress={confirmCreateSpace}
-              >
-                <Text style={[styles.modalButtonText, styles.modalConfirmButtonText]}>Create Space</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {/* Unified Space Creation Modal */}
+      <SpaceCreationModal
+        visible={showSpaceCreationModal}
+        onClose={() => setShowSpaceCreationModal(false)}
+        contacts={contacts}
+        onSpaceCreated={onSpaceCreated}
+      />
 
       {/* Collaborative Activities Modal - ADD THIS */}
       <Modal
@@ -1134,13 +1031,13 @@ const ChatPage = () => {
             <Ionicons name="chatbubbles-outline" size={80} color="#ddd" />
             <Text style={styles.emptyTitle}>No conversations yet</Text>
             <Text style={styles.emptySubtitle}>
-              Start by creating a collaboration space or messaging a contact
+              Start by creating a space or messaging a contact
             </Text>
             <TouchableOpacity
               style={styles.emptyButton}
-              onPress={() => setShowSpaceTypes(true)}
+              onPress={handleCreateSpaceFlow}
             >
-              <Text style={styles.emptyButtonText}>Create Your First Space</Text>
+              <Text style={styles.emptyButtonText}>Start Chatting</Text>
             </TouchableOpacity>
           </View>
         }
@@ -1151,14 +1048,14 @@ const ChatPage = () => {
         maxToRenderPerBatch={10}
         removeClippedSubviews={Platform.OS === 'android'}
       />
-    </Animated.View>
+    </Animated.View >
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F0F2F5',
   },
   activitiesButton: {
     flexDirection: 'row',
@@ -1440,17 +1337,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#F0F2F5',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   sectionHeaderText: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#666',
+    fontWeight: '500',
+    color: '#667781',
     letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   sectionCount: {
     fontSize: 13,
@@ -1462,7 +1358,7 @@ const styles = StyleSheet.create({
   },
   separator: {
     height: 1,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#E9EDEF',
     marginLeft: 72,
   },
   emptyContainer: {

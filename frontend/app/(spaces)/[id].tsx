@@ -47,7 +47,7 @@ import SpaceChatTab from '@/components/ChatScreen/SpaceChatTab';
 import SpaceExportModal from '@/components/ChatScreen/SpaceExportModal';
 import SpaceSettingsModal from '@/components/ChatScreen/SpaceSettingsModal';
 import { createShadow } from '@/utils/styles';
-import WhiteboardCanvas, { WhiteboardCanvasRef } from '@/components/ChatScreen/WhiteboardCanvas';
+import WhiteboardCanvas from '@/components/ChatScreen/WhiteboardCanvas';
 
 const SpaceDetailScreen = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -62,6 +62,7 @@ const SpaceDetailScreen = () => {
   const [showCreateActivity, setShowCreateActivity] = useState(false);
   const params = useLocalSearchParams();
   const [showMediaUploader, setShowMediaUploader] = useState(false);
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
 
   // Dropdown menu states
   const [showCallMenu, setShowCallMenu] = useState(false);
@@ -93,8 +94,32 @@ const SpaceDetailScreen = () => {
   const [polls, setPolls] = useState<any[]>([]);
   const [hasInitialTabSet, setHasInitialTabSet] = useState(false); // ✅ Add this flag
   const [showExportModal, setShowExportModal] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isPinned, setIsPinned] = useState(false);
+  const [isArchived, setIsArchived] = useState(false);
 
-  const whiteboardRef = useRef<WhiteboardCanvasRef>(null);
+  // ✅ Real-time space management listener
+  useEffect(() => {
+    // We listen to the notification store for system events we added in PusherService
+    const unsubscribe = useNotificationStore.subscribe((state) => {
+      const lastNotif = state.notifications[0];
+      if (!lastNotif || lastNotif.spaceId !== id) return;
+
+      switch (lastNotif.type) {
+        case 'space_muted':
+          setIsMuted(lastNotif.data.is_muted);
+          break;
+        case 'space_pinned':
+          setIsPinned(lastNotif.data.is_pinned);
+          break;
+        case 'space_archived':
+          setIsArchived(lastNotif.data.is_archived);
+          break;
+      }
+    });
+
+    return () => unsubscribe();
+  }, [id]);
 
   useEffect(() => {
     if (id && user && id !== 'Login' && id !== 'undefined' && id !== '[id]') {
@@ -166,15 +191,19 @@ const SpaceDetailScreen = () => {
       setParticipants(spaceData.participants || []);
       setMagicEvents(spaceData.magic_events || []);
 
-      // ✅ FIX: Honor params.tab first (from navigation), then fall back to space_type, only run once
+      // Initialize management states
+      const perms = spaceData.my_permissions || {};
+      setIsMuted(perms.is_muted || false);
+      setIsPinned(perms.is_pinned || false);
+      setIsArchived(perms.is_archived || false);
+
+      // ✅ FIX: Default to chat always, unless tab param explicitly passed
       if (!hasInitialTabSet) {
         const validTabs = ['chat', 'whiteboard', 'meeting', 'document', 'brainstorm', 'calendar', 'files', 'ai', 'polls'];
         if (params.tab && validTabs.includes(params.tab as string)) {
-          // Navigation passed a specific tab, use it
           setActiveTab(params.tab as any);
-        } else if (spaceData.space_type && validTabs.includes(spaceData.space_type)) {
-          // No tab param: default to space type
-          setActiveTab(spaceData.space_type as any);
+        } else {
+          setActiveTab('chat');
         }
         setHasInitialTabSet(true);
       }
@@ -736,10 +765,7 @@ const SpaceDetailScreen = () => {
         return (
           <View style={{ flex: 1 }}>
             <WhiteboardCanvas
-              ref={whiteboardRef}
               spaceId={id as string}
-              userId={user?.id || 0}
-              userName={user?.name}
               initialElements={space?.content_state?.whiteboard?.elements || []}
               onElementsChange={(elements) => {
                 // Update local state but don't trigger full sync - we already sync via service
@@ -765,19 +791,6 @@ const SpaceDetailScreen = () => {
                   ]
                 );
               }}
-              onUserJoin={(userId, userName) => {
-                // Show notification
-                useNotificationStore.getState().addNotification({
-                  type: 'user_joined_whiteboard',
-                  title: 'User Joined Whiteboard',
-                  message: `${userName || 'Someone'} started drawing`,
-                  spaceId: id,
-                  userId,
-                  data: {},
-                  createdAt: new Date(),
-                });
-              }}
-              readOnly={space?.my_role === 'viewer'}
             />
           </View>
         );
@@ -913,15 +926,15 @@ const SpaceDetailScreen = () => {
 
   const displayTitle = isDirectChat && otherParticipant
     ? (otherParticipant.name || otherParticipant.username)
-    : (space?.title || 'Loading Space...');
+    : (space?.title && space.title !== 'Direct Message' ? space.title : 'Loading Space...');
 
   const displaySubtitle = isDirectChat && otherParticipant
-    ? 'Direct Message'
+    ? (otherParticipant.is_online ? 'Online' : 'Direct Message')
     : `${participants.length} ${participants.length === 1 ? 'participant' : 'participants'}`;
 
   const displayPhoto = isDirectChat && otherParticipant
-    ? (otherParticipant.profile_photo_url || otherParticipant.profile_photo)
-    : null;
+    ? ((otherParticipant.profile_photo_url || otherParticipant.profile_photo) as string)
+    : (space?.creator?.profile_photo || null);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -939,16 +952,22 @@ const SpaceDetailScreen = () => {
           )}
         >
           {isDirectChat && otherParticipant ? (
-            <Avatar url={displayPhoto} size={36} style={styles.headerAvatar} />
+            <View style={styles.headerAvatar}>
+              <Avatar source={displayPhoto} size={36} name={displayTitle} />
+            </View>
           ) : (
             <View style={[styles.headerAvatar, { backgroundColor: '#007AFF', justifyContent: 'center', alignItems: 'center' }]}>
               <Ionicons name="cube" size={20} color="#fff" />
             </View>
           )}
           <View style={styles.headerTextContainer}>
-            <Text style={styles.title} numberOfLines={1}>
-              {displayTitle}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={styles.title} numberOfLines={1}>
+                {displayTitle}
+              </Text>
+              {isPinned && <Ionicons name="pin" size={12} color="#007AFF" style={{ marginLeft: 4 }} />}
+              {isMuted && <Ionicons name="volume-mute" size={12} color="#666" style={{ marginLeft: 4 }} />}
+            </View>
             <View style={styles.subtitleRow}>
               {(!isDirectChat || !otherParticipant) && <Ionicons name="people" size={12} color="#666" />}
               {(!isDirectChat || !otherParticipant) && <Text style={styles.subtitle}>{displaySubtitle}</Text>}
@@ -985,6 +1004,14 @@ const SpaceDetailScreen = () => {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Archived Banner */}
+      {isArchived && (
+        <View style={styles.archivedBanner}>
+          <Ionicons name="archive" size={16} color="#007AFF" />
+          <Text style={styles.archivedBannerText}>This chat is archived</Text>
+        </View>
+      )}
 
       {/* Unified Menus */}
       <GenericMenu
@@ -1033,6 +1060,22 @@ const SpaceDetailScreen = () => {
             onPress: () => setShowPollCreator(true),
           },
           {
+            icon: 'easel-outline',
+            label: 'Whiteboard',
+            onPress: () => {
+              setActiveTab('whiteboard');
+              setShowSpaceMenu(false);
+            },
+          },
+          {
+            icon: 'calendar-outline',
+            label: 'Calendar',
+            onPress: () => {
+              setActiveTab('calendar');
+              setShowSpaceMenu(false);
+            },
+          },
+          {
             icon: 'download-outline',
             label: 'Export Content',
             onPress: handleExportContentClick,
@@ -1052,50 +1095,11 @@ const SpaceDetailScreen = () => {
         ]}
       />
 
-      {/* Tab Navigation */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.tabContainer}
-        contentContainerStyle={styles.tabContent}
-      >
-        {[
-          { id: 'chat', icon: 'chatbubble-outline', label: 'Chat' },
-          { id: 'whiteboard', icon: 'easel-outline', label: 'Whiteboard' },
-          { id: 'calendar', icon: 'calendar-outline', label: 'Calendar' },
-          ...(space?.space_type === 'document' ? [{ id: 'document', icon: 'document-text-outline', label: 'Document' }] : []),
-          ...(space?.space_type === 'brainstorm' ? [{ id: 'brainstorm', icon: 'bulb-outline', label: 'Brainstorm' }] : []),
-          { id: 'files', icon: 'folder-outline', label: 'Files' },
-          { id: 'ai', icon: 'sparkles', label: 'AI' },
-        ].map((tab) => (
-          <TouchableOpacity
-            key={tab.id}
-            style={[styles.tab, activeTab === tab.id && styles.activeTab]}
-            onPress={() => {
-              setActiveTab(tab.id as any);
-              if (Platform.OS !== 'web') {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              }
-            }}
-          >
-            <Ionicons
-              name={tab.icon as any}
-              size={20}
-              color={activeTab === tab.id ? '#007AFF' : '#666'}
-            />
-            <Text style={[
-              styles.tabText,
-              activeTab === tab.id && styles.activeTabText
-            ]}>
-              {tab.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      {/* Tab Navigation Removed - Tools are now in the generic menu */}
 
       <PollComponent
-        spaceId={id}
-        currentUserId={user?.id || 0}
+        spaceId={id as string}
+        currentUserId={Number(user?.id) || 0}
         currentUserRole={space?.my_role}
         isVisible={showPollCreator}
         onClose={() => setShowPollCreator(false)}
@@ -1129,16 +1133,28 @@ const SpaceDetailScreen = () => {
               <Ionicons name="sparkles" size={20} color="#fff" />
             </TouchableOpacity>
           ))}
+
+        {/* Floating AI Assistant Trigger */}
+        {space?.has_ai_assistant && !showAIAssistant && (
+          <TouchableOpacity
+            style={styles.aiFloatingButton}
+            onPress={() => setShowAIAssistant(true)}
+          >
+            <Ionicons name="sparkles" size={28} color="#007AFF" />
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* AI Assistant - Only if enabled */}
-      {space?.has_ai_assistant && (
+      {/* AI Assistant - Only if enabled and toggled */}
+      {space?.has_ai_assistant && showAIAssistant && (
         <AICollaborationAssistant
           spaceId={id as string}
           spaceType={space?.space_type}
           spaceData={space}
           participants={participants}
           currentContent={space?.content_state}
+          visible={showAIAssistant}
+          onClose={() => setShowAIAssistant(false)}
         />
       )}
 
@@ -1768,6 +1784,25 @@ const styles = StyleSheet.create({
       elevation: 8,
     }),
   },
+  aiFloatingButton: {
+    position: 'absolute',
+    bottom: 110,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...createShadow({
+      width: 0,
+      height: 4,
+      opacity: 0.3,
+      radius: 4.65,
+      elevation: 8,
+    }),
+    zIndex: 999,
+  },
   actionBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2153,6 +2188,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     paddingHorizontal: 32,
+  },
+  archivedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#007AFF08',
+    paddingVertical: 10,
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#007AFF15',
+  },
+  archivedBannerText: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '600',
   },
 });
 

@@ -6,11 +6,22 @@ import type PusherConstructor from 'pusher-js';
 import { getToken } from "@/services/TokenService";
 import PusherService from "@/services/PusherService";
 
+export interface WhiteboardElement {
+  id: string;
+  type: string;
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  content?: any;
+  user_id?: number;
+}
+
 export interface CollaborationSpace {
   id: string;
   title: string;
   description?: string;
-  space_type: 'chat' | 'whiteboard' | 'meeting' | 'document' | 'brainstorm' | 'story' | 'voice_channel' | 'direct';
+  space_type: 'chat' | 'whiteboard' | 'meeting' | 'document' | 'brainstorm' | 'story' | 'voice_channel' | 'direct' | 'general' | 'protected' | 'channel';
   creator_id: number;
   settings: any;
   content_state: any;
@@ -783,6 +794,64 @@ class CollaborationService {
       this.broadcastCursorUpdate(spaceId, cursorState);
     } catch (error) {
       console.error('Error updating cursor:', error);
+      throw error;
+    }
+  }
+
+  // 🔥 SPACE MANAGEMENT ACTIONS (Mute, Archive, Pin, Read Status)
+
+  async muteSpace(spaceId: string): Promise<{ is_muted: boolean }> {
+    try {
+      const response = await axios.post(
+        `${this.baseURL}/spaces/${spaceId}/mute`,
+        {},
+        { headers: this.getHeaders() }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error muting space:', error);
+      throw error;
+    }
+  }
+
+  async archiveSpace(spaceId: string): Promise<{ is_archived: boolean }> {
+    try {
+      const response = await axios.post(
+        `${this.baseURL}/spaces/${spaceId}/archive`,
+        {},
+        { headers: this.getHeaders() }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error archiving space:', error);
+      throw error;
+    }
+  }
+
+  async pinSpace(spaceId: string): Promise<{ is_pinned: boolean }> {
+    try {
+      const response = await axios.post(
+        `${this.baseURL}/spaces/${spaceId}/pin`,
+        {},
+        { headers: this.getHeaders() }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error pinning space:', error);
+      throw error;
+    }
+  }
+
+  async markAsUnread(spaceId: string): Promise<{ is_unread: boolean }> {
+    try {
+      const response = await axios.post(
+        `${this.baseURL}/spaces/${spaceId}/unread`,
+        {},
+        { headers: this.getHeaders() }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error marking space as unread:', error);
       throw error;
     }
   }

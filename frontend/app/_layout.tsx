@@ -80,67 +80,61 @@ export default function RootLayout() {
     if (!isReady) return;
 
     // Allowed routes that should NOT redirect to tabs
-    const allowedPrefixRoutes = [
+    const allowedRoutes = [
       '/story/',
       '/post/',
       '/profile-preview/',
       '/CreatPost/',
       '/chats/',
       '/spaces/',
-      '/chatbotTraining',
-    ];
-
-    const allowedExactRoutes = [
-      '/',
       '/LoginScreen',
       '/RegisterScreen',
       '/ForgotPasswordScreen',
       '/ResetPasswordScreen',
       '/VerificationScreen',
+      '/',
       '/settings',
       '/chatbot',
+      '/chatbotTraining',
     ];
 
-    // Check if current path matches any allowed route exactly or is a sub-path of an allowed prefix
-    const isAllowedRoute =
-      allowedExactRoutes.includes(pathname || '') ||
-      allowedPrefixRoutes.some(route => pathname?.startsWith(route));
+    // Check if current path starts with any allowed route
+    const isAllowedRoute = allowedRoutes.some(route =>
+      pathname?.startsWith(route)
+    );
 
     if (!user) {
-      // If user not logged in, only allow LoginScreen, Register, Forgot/Reset and Verification
-      // Root '/' is also allowed but redirects to Login if handled below
-      const authRoutes = ['/LoginScreen', '/RegisterScreen', '/ForgotPasswordScreen', '/ResetPasswordScreen', '/VerificationScreen'];
-
-      const isAuthRoute = authRoutes.some(route => pathname?.startsWith(route));
-
-      if (!isAuthRoute && pathname !== '/') {
+      // If user not logged in, only allow LoginScreen and root
+      if (pathname !== '/' && pathname?.startsWith('/LoginScreen')) {
         router.replace('/LoginScreen');
+      } else if (pathname?.startsWith('/RegisterScreen')) {
+        router.replace('/RegisterScreen');
+      } else if (pathname?.startsWith('/ForgotPasswordScreen')) {
+        router.replace('/ForgotPasswordScreen');
+      } else if (pathname?.startsWith('/VerificationScreen')) {
+        router.replace('/VerificationScreen');
+      } else if (!pathname || pathname === '/ResetPasswordScreen') {
+        router.replace('/ResetPasswordScreen');
+      } else {
+        router.replace('/');
       }
       return;
     }
 
     // User is logged in
-    // If on auth screens OR root, and user is fully verified, go to tabs
-    const authScreens = ['/', '/LoginScreen', '/RegisterScreen', '/ForgotPasswordScreen', '/ResetPasswordScreen'];
-    if (user.email_verified_at && authScreens.includes(pathname || '')) {
-      router.replace('/(tabs)');
-      return;
-    }
-
-    // Check if email is verified
-    if (!user.email_verified_at) {
-      // If email not verified, only allow VerificationScreen
-      if (pathname !== '/VerificationScreen' && !pathname?.startsWith('/VerificationScreen')) {
+    if (user.email_verified_at) {
+      // If fully verified, redirect away from root, login, register, and verification screens
+      const authScreens = ['/', '/LoginScreen', '/RegisterScreen', '/VerificationScreen'];
+      if (authScreens.includes(pathname || '')) {
+        router.replace('/(tabs)');
+        return;
+      }
+    } else {
+      // If email NOT verified, only allow VerificationScreen
+      if (pathname !== '/VerificationScreen') {
         router.replace('/VerificationScreen');
         return;
       }
-      return; // Stay on VerificationScreen
-    }
-
-    // Verified user on VerificationScreen should also go to tabs
-    if (pathname === '/VerificationScreen') {
-      router.replace('/(tabs)');
-      return;
     }
 
     // Access control for AI Admin
@@ -151,13 +145,15 @@ export default function RootLayout() {
       }
     }
 
-    // If it's an allowed route or already in tabs, let it through
-    if (isAllowedRoute || pathname?.startsWith('/(tabs)')) {
+    // If it's an allowed route, let it through
+    if (isAllowedRoute) {
       return;
     }
 
     // Default: redirect to tabs for any other route
-    router.replace('/(tabs)');
+    if (!pathname?.startsWith('/(tabs)')) {
+      router.replace('/(tabs)');
+    }
   }, [isReady, user, pathname]);
 
   if (!isReady) {

@@ -453,6 +453,43 @@ class PusherService {
         onNotification(notification); // ✅ ADD THIS LINE
       });
 
+      // ✅ SPACE MANAGEMENT EVENTS
+      channel.bind('space.muted', (data: any) => {
+        onNotification({
+          type: 'space_muted',
+          spaceId: data.space_id,
+          data: data,
+          createdAt: new Date()
+        });
+      });
+
+      channel.bind('space.pinned', (data: any) => {
+        onNotification({
+          type: 'space_pinned',
+          spaceId: data.space_id,
+          data: data,
+          createdAt: new Date()
+        });
+      });
+
+      channel.bind('space.archived', (data: any) => {
+        onNotification({
+          type: 'space_archived',
+          spaceId: data.space_id,
+          data: data,
+          createdAt: new Date()
+        });
+      });
+
+      channel.bind('space.unread', (data: any) => {
+        onNotification({
+          type: 'space_unread',
+          spaceId: data.space_id,
+          data: data,
+          createdAt: new Date()
+        });
+      });
+
       // Participant joined space
       channel.bind('participant.joined', (data: any) => {
         console.log('👤 Participant joined notification:', data);
@@ -709,6 +746,12 @@ class PusherService {
     onMessageDeleted?: (data: any) => void;
     onMessageReacted?: (data: any) => void;
     onMessageReplied?: (data: any) => void;
+
+    // Space Management Events
+    onSpaceMuted?: (data: any) => void;
+    onSpacePinned?: (data: any) => void;
+    onSpaceArchived?: (data: any) => void;
+    onSpaceUnread?: (data: any) => void;
   }): boolean {
     if (!this.pusher || !this.isInitialized) {
       console.warn('⚠️ Pusher not initialized. Skipping space subscription.');
@@ -766,6 +809,23 @@ class PusherService {
 
     if (callbacks.onScreenShareEnded) {
       channel.bind('screen_share.ended', callbacks.onScreenShareEnded);
+    }
+
+    // Space Management Events
+    if (callbacks.onSpaceMuted) {
+      channel.bind('space.muted', callbacks.onSpaceMuted);
+    }
+
+    if (callbacks.onSpacePinned) {
+      channel.bind('space.pinned', callbacks.onSpacePinned);
+    }
+
+    if (callbacks.onSpaceArchived) {
+      channel.bind('space.archived', callbacks.onSpaceArchived);
+    }
+
+    if (callbacks.onSpaceUnread) {
+      channel.bind('space.unread', callbacks.onSpaceUnread);
     }
 
     // ✅ NEW: message lifecycle events → notification store

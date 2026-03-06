@@ -32,6 +32,10 @@ use App\Events\CallStarted;
 use App\Events\CallEnded;
 use App\Events\ScreenShareToggled;
 use App\Events\SpaceInvitationSent;
+use App\Events\SpaceMuted;
+use App\Events\SpacePinned;
+use App\Events\SpaceArchived;
+use App\Events\SpaceMarkedUnread;
 
 class SpaceController extends Controller
 {
@@ -112,7 +116,7 @@ class SpaceController extends Controller
         
         try {
             $validator = Validator::make($request->all(), [
-                'space_type' => 'required|in:chat,whiteboard,meeting,document,brainstorm,story,voice_channel',
+                'space_type' => 'required|in:chat,whiteboard,meeting,document,brainstorm,story,voice_channel,general,protected,channel,direct',
                 'title' => 'required|string|max:255',
                 'description' => 'nullable|string',
                 'linked_conversation_id' => 'nullable|exists:conversations,id',
@@ -349,6 +353,7 @@ class SpaceController extends Controller
         $formattedSpaces = $spaces->map(function($space) use ($participations, $otherParticipations) {
             $participation = $participations->get($space->id);
             $settings = is_string($space->settings) ? json_decode($space->settings, true) : $space->settings;
+            $permissions = $participation ? (is_string($participation->permissions) ? json_decode($participation->permissions, true) : $participation->permissions) : null;
             
             return [
                 'id' => $space->id,
@@ -361,6 +366,7 @@ class SpaceController extends Controller
                 'has_ai_assistant' => $space->has_ai_assistant,
                 'participants_count' => $space->participations_count,
                 'my_role' => $participation ? $participation->role : null,
+                'my_permissions' => $permissions,
                 'other_participant' => $otherParticipations->get($space->id)?->user,
                 'created_at' => $space->created_at,
                 'updated_at' => $space->updated_at,
@@ -396,7 +402,7 @@ class SpaceController extends Controller
                 return response()->json(['message' => 'Target user not found'], 404);
             }
 
-            $spaceName = "Chat with " . $targetUser->name;
+            $spaceName = "Direct Message";
             
             DB::beginTransaction();
             try {
@@ -1879,6 +1885,40 @@ public function endCall(Request $request, $id)
                 'tools' => ['pen', 'shape', 'text', 'sticker'],
                 'require_invitation' => false,
             ],
+            // Tiered types
+            'general' => [
+                'allow_guests' => true,
+                'max_participants' => 1000,
+                'enable_reactions' => true,
+                'enable_threads' => true,
+                'require_invitation' => false,
+                'privacy_tier' => 'general',
+            ],
+            'protected' => [
+                'allow_guests' => false,
+                'max_participants' => 500,
+                'enable_reactions' => true,
+                'enable_threads' => true,
+                'require_invitation' => true,
+                'privacy_tier' => 'protected',
+            ],
+            'channel' => [
+                'allow_guests' => true,
+                'max_participants' => 10000,
+                'enable_reactions' => true,
+                'enable_threads' => false,
+                'require_invitation' => false,
+                'privacy_tier' => 'channel',
+                'read_only_members' => true,
+            ],
+            'direct' => [
+                'allow_guests' => false,
+                'max_participants' => 2,
+                'enable_reactions' => true,
+                'enable_threads' => false,
+                'require_invitation' => true,
+                'privacy_tier' => 'direct',
+            ],
             // ... add more types as needed
         ];
         
@@ -1898,6 +1938,10 @@ public function endCall(Request $request, $id)
             'brainstorm' => ['ideas' => [], 'connections' => [], 'categories' => []],
             'story' => ['segments' => [], 'current_branch' => 'main', 'choices' => []],
             'voice_channel' => ['participants' => [], 'active_speakers' => []],
+            'general' => ['messages' => [], 'last_message_id' => null],
+            'protected' => ['messages' => [], 'last_message_id' => null],
+            'channel' => ['messages' => [], 'last_message_id' => null],
+            'direct' => ['messages' => [], 'last_message_id' => null],
         ];
         
         return $states[$spaceType] ?? [];
@@ -1985,6 +2029,7 @@ public function endCall(Request $request, $id)
         if (in_array('contacts', $types)) {
             try {
                 $contacts = User::where('id', '!=', $userId)
+                    ->where('is_private', '!=', 1)
                     ->where(function($q) use ($query) {
                         $q->where('name', 'like', "%{$query}%")
                           ->orWhere('username', 'like', "%{$query}%")
@@ -2273,5 +2318,134 @@ public function endCall(Request $request, $id)
         return response()->json([
             'message' => 'Participant removed successfully'
         ]);
+    }
+
+    /**
+     * Set a custom user-specific property in the SpaceParticipation JSON.
+     */
+    private function toggleSpaceProperty($spaceId, $userId, $propertyKey)
+    {
+        $participation = SpaceParticipation::where('space_id', $spaceId)
+            ->where('user_id', $userId)
+            ->first();
+
+        if (!$participation) {
+            return false;
+        }
+
+        $permissions = is_string($participation->permissions) 
+            ? json_decode($participation->permissions, true) 
+            : ($participation->permissions ?? []);
+        
+        // Toggle the property (defaulting to false if it doesn't exist)
+        $currentValue = $permissions[$propertyKey] ?? false;
+        $newValue = !$currentValue;
+        
+        $permissions[$propertyKey] = $newValue;
+        
+        $participation->permissions = $permissions;
+        $participation->save();
+
+        return $newValue;
+    }
+
+    /**
+     * Toggle Mute status for the current user in a space
+     */
+    public function muteSpace(Request $request, $id)
+    {
+        try {
+            $user = Auth::user();
+            $isMuted = $this->toggleSpaceProperty($id, $user->id, 'is_muted');
+            
+            if ($isMuted === false && !is_bool($isMuted)) {
+                 return response()->json(['message' => 'Participation not found'], 404);
+            }
+
+            broadcast(new SpaceMuted($id, $user->id, $isMuted))->toOthers();
+
+            return response()->json([
+                'message' => $isMuted ? 'Space muted' : 'Space unmuted',
+                'is_muted' => $isMuted
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error muting space: ' . $e->getMessage());
+            return response()->json(['message' => 'Server error'], 500);
+        }
+    }
+
+    /**
+     * Toggle Archive status for the current user in a space
+     */
+    public function archiveSpace(Request $request, $id)
+    {
+        try {
+            $user = Auth::user();
+            $isArchived = $this->toggleSpaceProperty($id, $user->id, 'is_archived');
+            
+            if ($isArchived === false && !is_bool($isArchived)) {
+                 return response()->json(['message' => 'Participation not found'], 404);
+            }
+
+            broadcast(new SpaceArchived($id, $user->id, $isArchived))->toOthers();
+
+            return response()->json([
+                'message' => $isArchived ? 'Space archived' : 'Space unarchived',
+                'is_archived' => $isArchived
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error archiving space: ' . $e->getMessage());
+            return response()->json(['message' => 'Server error'], 500);
+        }
+    }
+
+    /**
+     * Toggle Pin status for the current user in a space
+     */
+    public function pinSpace(Request $request, $id)
+    {
+        try {
+            $user = Auth::user();
+            $isPinned = $this->toggleSpaceProperty($id, $user->id, 'is_pinned');
+            
+            if ($isPinned === false && !is_bool($isPinned)) {
+                 return response()->json(['message' => 'Participation not found'], 404);
+            }
+
+            broadcast(new SpacePinned($id, $user->id, $isPinned))->toOthers();
+
+            return response()->json([
+                'message' => $isPinned ? 'Space pinned' : 'Space unpinned',
+                'is_pinned' => $isPinned
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error pinning space: ' . $e->getMessage());
+            return response()->json(['message' => 'Server error'], 500);
+        }
+    }
+
+    /**
+     * Toggle Unread status for the current user in a space
+     */
+    public function markAsUnread(Request $request, $id)
+    {
+        try {
+            $user = Auth::user();
+            $isUnread = $this->toggleSpaceProperty($id, $user->id, 'is_unread');
+            
+            if ($isUnread === false && !is_bool($isUnread)) {
+                 return response()->json(['message' => 'Participation not found'], 404);
+            }
+
+            broadcast(new SpaceMarkedUnread($id, $user->id, $isUnread))->toOthers();
+
+            return response()->json([
+                'message' => $isUnread ? 'Space marked as unread' : 'Space marked as read',
+                'is_unread' => $isUnread
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error marking space unread: ' . $e->getMessage());
+            return response()->json(['message' => 'Server error'], 500);
+        }
     }
 }

@@ -155,6 +155,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('/{id}/participants/{userId}/role', [SpaceController::class , 'updateParticipantRole']);
             Route::delete('/{id}/participants/{userId}', [SpaceController::class , 'removeParticipant']);
 
+            // Management Menu Actions
+            Route::post('/{id}/mute', [SpaceController::class , 'muteSpace']);
+            Route::post('/{id}/archive', [SpaceController::class , 'archiveSpace']);
+            Route::post('/{id}/pin', [SpaceController::class , 'pinSpace']);
+            Route::post('/{id}/unread', [SpaceController::class , 'markAsUnread']);
+
             // Poll routes
             Route::get('/{id}/polls', [PollController::class , 'index']);
             Route::post('/{id}/polls', [PollController::class , 'store']);

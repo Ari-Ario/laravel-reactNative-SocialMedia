@@ -1,5 +1,6 @@
 // components/ChatScreen/EnhancedChatRow.tsx
 import { View, Text, StyleSheet, Pressable, Alert, TouchableOpacity, Platform } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { Link, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useContext } from 'react';
@@ -11,6 +12,10 @@ import axios from '@/services/axios';
 import { getToken } from '@/services/TokenService';
 import getApiBase from '@/services/getApiBase';
 import { createShadow } from '@/utils/styles';
+import { calculateAnchor, AnchorPosition } from '@/utils/layout';
+import GenericMenu, { MenuItem } from '@/components/GenericMenu';
+import EnhancedInviteModal, { InviteRecipient } from '@/components/ChatScreen/EnhancedInviteModal';
+import { useRef } from 'react';
 
 interface EnhancedChatRowProps {
   id: string;
@@ -51,6 +56,16 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
 }) => {
   const [showCollaborationMenu, setShowCollaborationMenu] = useState(false);
   const [showContactMenu, setShowContactMenu] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<AnchorPosition>();
+  const [showInviteModal, setShowInviteModal] = useState(false);
+
+  // Optimistic UI state
+  const [localIsMuted, setLocalIsMuted] = useState(spaceData?.my_permissions?.is_muted || false);
+  const [localIsPinned, setLocalIsPinned] = useState(isPinned || spaceData?.my_permissions?.is_pinned || false);
+  const [localIsArchived, setLocalIsArchived] = useState(spaceData?.my_permissions?.is_archived || false);
+  const [localIsUnread, setLocalIsUnread] = useState(unreadCount > 0 || spaceData?.my_permissions?.is_unread || false);
+
+  const containerRef = useRef<View>(null);
   const collaborationService = CollaborationService.getInstance();
   const { user } = useContext(AuthContext);
   const API_BASE = getApiBase();
@@ -240,11 +255,193 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
     }
   };
 
-  const handleLongPress = () => {
-    console.log('Long press on:', { type, id });
-    if (type === 'chat') {
-      setShowCollaborationMenu(true);
+  const handleLongPress = (event: any) => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
+
+    if (containerRef.current) {
+      containerRef.current.measure((x, y, width, height, pageX, pageY) => {
+        // We use the touch coordinates for more precise anchoring if available,
+        // but default to row center for better consistency with WhatsApp/Telegram
+        const { pageX: touchX, pageY: touchY } = event.nativeEvent;
+        const anchor = calculateAnchor(touchX || pageX, pageY, width, height, 220);
+        setMenuPosition(anchor);
+
+        if (type === 'contact') {
+          setShowContactMenu(true);
+        } else {
+          setShowCollaborationMenu(true);
+        }
+      });
+    }
+  };
+
+  const handleMuteSpace = async () => {
+    if (Platform.OS !== 'web') {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+
+    // Optimistic update
+    const previousState = localIsMuted;
+    setLocalIsMuted(!previousState);
+    setShowCollaborationMenu(false);
+
+    try {
+      if (type === 'space' || type === 'chat') {
+        await collaborationService.muteSpace(id);
+      }
+    } catch (error) {
+      console.error('Error muting space:', error);
+      // Revert if failed
+      setLocalIsMuted(previousState);
+      Alert.alert('Error', 'Failed to toggle mute status');
+    }
+  };
+
+  const handleDeleteSpace = async () => {
+    if (Platform.OS !== 'web') {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    }
+    Alert.alert(
+      'Delete Chat',
+      'Are you sure you want to delete this chat?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            // Logic for deleting
+            setShowCollaborationMenu(false);
+          }
+        }
+      ]
+    );
+  };
+
+  const handleLeaveSpace = async () => {
+    if (Platform.OS !== 'web') {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    }
+    Alert.alert(
+      'Leave Space',
+      'Are you sure you want to leave this space?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await collaborationService.leaveSpace(id);
+              Alert.alert('Success', 'You have left the space.');
+              setShowCollaborationMenu(false);
+            } catch (error) {
+              console.error('Error leaving space:', error);
+              Alert.alert('Error', 'Failed to leave space');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleInviteUsers = async (recipients: InviteRecipient[]) => {
+    const userIds = recipients
+      .filter(r => r.type !== 'space' && r.userData?.id)
+      .map(r => r.userData.id);
+
+    try {
+      if (userIds.length > 0) {
+        await collaborationService.inviteToSpace(id, userIds, 'participant');
+      }
+      Alert.alert('Success', `Invited ${userIds.length} user(s) successfully!`);
+      setShowInviteModal(false);
+    } catch (error) {
+      console.error('Error inviting users:', error);
+      Alert.alert('Error', 'Failed to send invites.');
+    }
+  };
+
+  const handlePinSpace = async () => {
+    if (Platform.OS !== 'web') {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+
+    const previousState = localIsPinned;
+    setLocalIsPinned(!previousState);
+    setShowCollaborationMenu(false);
+
+    try {
+      if (type === 'space' || type === 'chat') {
+        await collaborationService.pinSpace(id);
+      }
+    } catch (error) {
+      console.error('Error pinning space:', error);
+      setLocalIsPinned(previousState);
+      Alert.alert('Error', 'Failed to toggle pin status');
+    }
+  };
+
+  const handleArchiveSpace = async () => {
+    if (Platform.OS !== 'web') {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+
+    const previousState = localIsArchived;
+    setLocalIsArchived(!previousState);
+    setShowCollaborationMenu(false);
+
+    try {
+      if (type === 'space' || type === 'chat') {
+        await collaborationService.archiveSpace(id);
+      }
+    } catch (error) {
+      console.error('Error archiving space:', error);
+      setLocalIsArchived(previousState);
+      Alert.alert('Error', 'Failed to toggle archive status');
+    }
+  };
+
+  const handleMarkUnread = async () => {
+    if (Platform.OS !== 'web') {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+
+    const previousState = localIsUnread;
+    setLocalIsUnread(!previousState);
+    setShowCollaborationMenu(false);
+
+    try {
+      if (type === 'space' || type === 'chat') {
+        await collaborationService.markAsUnread(id);
+      }
+    } catch (error) {
+      console.error('Error marking unread space:', error);
+      setLocalIsUnread(previousState);
+      Alert.alert('Error', 'Failed to toggle read status');
+    }
+  };
+
+  const handleClearChat = async () => {
+    if (Platform.OS !== 'web') {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    }
+    Alert.alert(
+      'Clear Chat',
+      'Are you sure you want to clear all messages in this chat?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Clear', onPress: () => setShowCollaborationMenu(false) }
+      ]
+    );
+  };
+
+  const handleViewProfile = () => {
+    // Navigate to user profile
+    router.push(`/profile/${user_id}`);
+    setShowContactMenu(false);
   };
 
   const getSpaceBackgroundColor = (spaceType?: string) => {
@@ -266,7 +463,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
     <Pressable
       style={styles.container}
       onPress={handleContactPress}
-      onLongPress={() => setShowContactMenu(true)}
+      onLongPress={handleLongPress}
     >
       <View style={styles.avatarContainer}>
         <Avatar
@@ -381,8 +578,69 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       }
     }
 
+    const menuItems: MenuItem[] = [
+      {
+        icon: (localIsPinned ? "pin-outline" : "pin") as any,
+        label: localIsPinned ? "Unpin Chat" : "Pin Chat",
+        onPress: handlePinSpace,
+      },
+      {
+        icon: (localIsUnread ? "mail-open-outline" : "mail-unread-outline") as any,
+        label: localIsUnread ? "Mark as Read" : "Mark as Unread",
+        onPress: handleMarkUnread,
+      },
+      {
+        icon: (localIsArchived ? "archive" : "archive-outline") as any,
+        label: localIsArchived ? "Unarchive Chat" : "Archive Chat",
+        onPress: handleArchiveSpace,
+      },
+      {
+        icon: (localIsMuted ? "volume-high-outline" : "volume-mute-outline") as any,
+        label: localIsMuted ? "Unmute Notifications" : "Mute Notifications",
+        onPress: handleMuteSpace,
+      }
+    ];
+
+    // Add space-specific actions
+    if (type === 'space' && !isDirectSpace) {
+      menuItems.push({
+        icon: "person-add-outline" as any,
+        label: "Invite People",
+        onPress: () => {
+          setShowInviteModal(true);
+          setShowCollaborationMenu(false);
+        },
+      });
+
+      menuItems.push({
+        icon: "exit-outline" as any,
+        label: "Leave Space",
+        onPress: handleLeaveSpace,
+        destructive: true,
+      });
+    }
+
+    menuItems.push({
+      icon: "remove-circle-outline" as any,
+      label: "Clear Chat",
+      onPress: handleClearChat,
+    });
+
+    // Only owners can delete spaces, but direct chats can always be deleted
+    const canDelete = type === 'space' ? (spaceData?.my_role === 'owner' || spaceType === 'direct') : false;
+
+    if (canDelete) {
+      menuItems.push({
+        icon: "trash-outline" as any,
+        label: "Delete Chat",
+        onPress: handleDeleteSpace,
+        destructive: true,
+      });
+    }
+
     return (
       <Pressable
+        ref={containerRef}
         style={styles.container}
         onPress={handlePress}
         onLongPress={handleLongPress}
@@ -447,7 +705,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
 
             {type === 'chat' ? (
               unreadCount > 0 && (
-                <View style={styles.badge}>
+                <View style={[styles.badge, { backgroundColor: '#25D366' }]}>
                   <Text style={styles.badgeText}>
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </Text>
@@ -475,42 +733,47 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
           <Ionicons name="pin" size={16} color="#666" style={styles.pinIcon} />
         )}
 
-        {/* Collaboration quick menu */}
-        {showCollaborationMenu && (
-          <View style={styles.collaborationMenu}>
-            <Pressable
-              style={styles.collabMenuItem}
-              onPress={() => handleStartCollaboration('whiteboard')}
-            >
-              <Ionicons name="easel-outline" size={20} color="#007AFF" />
-              <Text style={styles.collabMenuText}>Whiteboard</Text>
-            </Pressable>
+        <GenericMenu
+          visible={showCollaborationMenu}
+          onClose={() => setShowCollaborationMenu(false)}
+          anchorPosition={menuPosition}
+          items={menuItems}
+        />
 
-            <Pressable
-              style={styles.collabMenuItem}
-              onPress={() => handleStartCollaboration('meeting')}
-            >
-              <Ionicons name="videocam-outline" size={20} color="#007AFF" />
-              <Text style={styles.collabMenuText}>Meeting</Text>
-            </Pressable>
-
-            <Pressable
-              style={styles.collabMenuItem}
-              onPress={() => handleStartCollaboration('brainstorm')}
-            >
-              <Ionicons name="bulb-outline" size={20} color="#007AFF" />
-              <Text style={styles.collabMenuText}>Brainstorm</Text>
-            </Pressable>
-
-            <Pressable
-              style={styles.collabMenuItem}
-              onPress={() => handleStartCollaboration('voice')}
-            >
-              <Ionicons name="mic-outline" size={20} color="#007AFF" />
-              <Text style={styles.collabMenuText}>Voice Chat</Text>
-            </Pressable>
-          </View>
-        )}
+        <GenericMenu
+          visible={showContactMenu}
+          onClose={() => setShowContactMenu(false)}
+          anchorPosition={menuPosition}
+          items={[
+            {
+              icon: 'chatbubble-outline',
+              label: 'Message',
+              onPress: handleStartChat,
+            },
+            {
+              icon: 'videocam-outline',
+              label: 'Video Call',
+              onPress: handleStartVideoCall,
+            },
+            {
+              icon: 'call-outline',
+              label: 'Voice Call',
+              onPress: handleStartVoiceCall,
+            },
+            {
+              icon: 'person-outline',
+              label: 'View Profile',
+              onPress: handleViewProfile,
+            },
+          ]}
+        />
+        <EnhancedInviteModal
+          visible={showInviteModal}
+          spaceId={id}
+          spaceTitle={name}
+          onClose={() => setShowInviteModal(false)}
+          onInvite={handleInviteUsers}
+        />
       </Pressable>
     );
   };
@@ -522,16 +785,17 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
   }
 
   return renderContent();
-
 };
 
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: '#fff',
     position: 'relative',
+    height: 72,
   },
   avatarContainer: {
     position: 'relative',
@@ -594,8 +858,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   name: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
+    color: '#111B21',
     flex: 1,
     marginRight: 8,
   },
@@ -613,7 +878,7 @@ const styles = StyleSheet.create({
   },
   lastMessage: {
     fontSize: 14,
-    color: '#666',
+    color: '#667781',
     flex: 1,
     marginRight: 8,
   },
@@ -622,7 +887,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   badge: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#25D366',
     borderRadius: 12,
     minWidth: 24,
     height: 24,

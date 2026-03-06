@@ -1,0 +1,45 @@
+<?php
+
+namespace App\Events;
+
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Queue\SerializesModels;
+
+class SpacePinned implements ShouldBroadcast
+{
+    use Dispatchable, InteractsWithSockets, SerializesModels;
+
+    public $spaceId;
+    public $userId;
+    public $isPinned;
+
+    public function __construct($spaceId, $userId, $isPinned)
+    {
+        $this->spaceId = $spaceId;
+        $this->userId = $userId;
+        $this->isPinned = $isPinned;
+    }
+
+    public function broadcastOn(): array
+    {
+        return [
+            new PrivateChannel('user.' . $this->userId),
+        ];
+    }
+
+    public function broadcastAs()
+    {
+        return 'space.pinned';
+    }
+
+    public function broadcastWith()
+    {
+        return [
+            'space_id' => $this->spaceId,
+            'is_pinned' => $this->isPinned
+        ];
+    }
+}
