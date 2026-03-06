@@ -32,9 +32,10 @@ export default function RootLayout() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
   const [user, setUser] = useState<{
-    id: number;
+    id: string; // Changed from number to string to match AuthContext
     name: string;
     email: string;
+    profile_photo: string | null; // Made required (can be null)
     email_verified_at?: string | null;
     is_admin?: boolean;
     ai_admin?: boolean;
@@ -52,7 +53,14 @@ export default function RootLayout() {
 
         if (token) {
           const userData = await loadUser();
-          if (isMounted) setUser(userData);
+          if (isMounted && userData) {
+            // Ensure ID is string
+            setUser({
+              ...userData,
+              id: userData.id.toString(),
+              profile_photo: userData.profile_photo || null,
+            });
+          }
         }
         // else {
         //   router.replace('/LoginScreen');
@@ -72,6 +80,15 @@ export default function RootLayout() {
     return () => { isMounted = false };
 
   }, []);
+
+  const logout = async () => {
+    try {
+      setUser(null);
+      router.replace('/LoginScreen');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
   const pathname = usePathname();
 
@@ -105,17 +122,18 @@ export default function RootLayout() {
 
     if (!user) {
       // If user not logged in, only allow LoginScreen and root
-      if (pathname !== '/' && pathname?.startsWith('/LoginScreen')) {
+      if (pathname === '/' || !pathname?.startsWith('/LoginScreen')) {
         router.replace('/LoginScreen');
-      } else if (pathname?.startsWith('/RegisterScreen')) {
+      } else if (pathname?.startsWith('/RegisterScreen') && pathname !== '/RegisterScreen') {
         router.replace('/RegisterScreen');
-      } else if (pathname?.startsWith('/ForgotPasswordScreen')) {
+      } else if (pathname?.startsWith('/ForgotPasswordScreen') && pathname !== '/ForgotPasswordScreen') {
         router.replace('/ForgotPasswordScreen');
-      } else if (pathname?.startsWith('/VerificationScreen')) {
+      } else if (pathname?.startsWith('/VerificationScreen') && pathname !== '/VerificationScreen') {
         router.replace('/VerificationScreen');
-      } else if (!pathname || pathname === '/ResetPasswordScreen') {
+      } else if (!pathname || (pathname === '/ResetPasswordScreen' && pathname !== '/ResetPasswordScreen')) {
+        // This logic was a bit weird in original, let's simplify
         router.replace('/ResetPasswordScreen');
-      } else {
+      } else if (pathname !== '/' && !pathname?.startsWith('/LoginScreen') && !pathname?.startsWith('/RegisterScreen') && !pathname?.startsWith('/ForgotPasswordScreen') && !pathname?.startsWith('/VerificationScreen')) {
         router.replace('/');
       }
       return;
@@ -125,7 +143,7 @@ export default function RootLayout() {
     if (user.email_verified_at) {
       // If fully verified, redirect away from root, login, register, and verification screens
       const authScreens = ['/', '/LoginScreen', '/RegisterScreen', '/VerificationScreen'];
-      if (authScreens.includes(pathname || '')) {
+      if (authScreens.includes(pathname || '') && pathname !== '/(tabs)') {
         router.replace('/(tabs)');
         return;
       }
@@ -139,7 +157,7 @@ export default function RootLayout() {
 
     // Access control for AI Admin
     if (pathname?.startsWith('/chatbotTraining')) {
-      if (!user?.ai_admin) {
+      if (!user?.ai_admin && pathname !== '/(tabs)') {
         router.replace('/(tabs)');
         return;
       }
@@ -151,7 +169,7 @@ export default function RootLayout() {
     }
 
     // Default: redirect to tabs for any other route
-    if (!pathname?.startsWith('/(tabs)')) {
+    if (!pathname?.startsWith('/(tabs)') && pathname !== '/(tabs)') {
       router.replace('/(tabs)');
     }
   }, [isReady, user, pathname]);
@@ -183,7 +201,7 @@ export default function RootLayout() {
       }}
     >
       <SafeAreaProvider>
-        <AuthContext.Provider value={{ user, setUser }}>
+        <AuthContext.Provider value={{ user, setUser, logout }}>
           <ModalProvider>
             <ProfileViewProvider>
               {/* Stack must be the last child to properly handle gestures */}

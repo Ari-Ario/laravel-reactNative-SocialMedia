@@ -490,6 +490,25 @@ class PusherService {
         });
       });
 
+      // Space invitation
+      channel.bind('space.invitation', (data: any) => {
+        console.log('📨 Space invitation notification:', data);
+        const notification = {
+          id: data.id,
+          type: 'space_invitation',
+          title: 'New Space Invitation',
+          message: data.message || `${data.inviter_name || 'Someone'} invited you to join "${data.space_title || data.space?.title}"`,
+          data: data,
+          spaceId: data.space_id || data.space?.id,
+          userId: data.inviter_id || data.inviter?.id || data.invited_by?.id,
+          avatar: data.inviter_avatar || data.inviter?.profile_photo || data.invited_by?.profile_photo,
+          createdAt: data.timestamp ? new Date(data.timestamp) : new Date(),
+          isRead: false,
+        };
+        console.log('📨 SENDING INVITATION TO NOTIFICATION STORE:', notification);
+        onNotification(notification);
+      });
+
       // Participant joined space
       channel.bind('participant.joined', (data: any) => {
         console.log('👤 Participant joined notification:', data);
@@ -935,44 +954,8 @@ class PusherService {
       console.log(`🔌 Subscribing to private user channel: ${channelName}`);
       const channel = this.pusher.subscribe(channelName);
 
-      // Bind to your custom space.invitation event
-      channel.bind('space.invitation', (data: any) => {
-        console.log('📨 RAW DATA (space.invitation):', data);
-
-        const notification = {
-          id: data.id,
-          type: 'space_invitation',
-          title: 'Space Invitation',
-          message: data.message || `${data.inviter_name || data.invited_by?.name || 'Someone'} invited you to join "${data.space_title || data.space?.title}"`,
-          data: data,
-          spaceId: data.space_id || data.space?.id,
-          userId: data.inviter_id || data.invited_by?.id,
-          avatar: data.inviter_avatar || data.invited_by?.profile_photo,
-          createdAt: data.timestamp ? new Date(data.timestamp) : new Date(),
-          isRead: false,
-        };
-
-        onEvent(notification);
-      });
-
-      // Also bind to the Laravel notification event if needed
-      channel.bind('space-invitation', (data: any) => {
-        console.log('📨 Laravel notification received on private channel:', data);
-        // Handle Laravel notification format if needed
-      });
-
-      channel.bind('pusher:subscription_succeeded', () => {
-        console.log(`✅ Successfully subscribed to private user: ${channelName}`);
-      });
-
-      channel.bind('pusher:subscription_error', (error: any) => {
-        console.error(`❌ Subscription error for private user ${channelName}:`, error);
-      });
-
-      channel.bind('space.invitation', (data: any) => {
-        console.log('📨 Space invitation received on private channel:', data);
-        // ... handles the event
-      });
+      // Note: All relevant events (space.invitation, space.muted, etc.) 
+      // are now handled in subscribeToUserNotifications to unify synchronization.
 
       this.channels.set(channelName, channel);
       return true;

@@ -10,9 +10,9 @@ import {
   Alert,
   ActivityIndicator,
   Dimensions,
-  SafeAreaView,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAudioRecorder, requestRecordingPermissionsAsync, setAudioModeAsync, RecordingPresets } from 'expo-audio';
@@ -547,7 +547,7 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
                   {
                     text: 'Create', onPress: () => {
                       router.push({
-                        pathname: '/(spaces)/create',
+                        pathname: '/(tabs)/spaces/create' as any,
                         params: {
                           idea: idea.content.substring(0, 100),
                           ideaType: idea.type

@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import { Alert } from 'react-native';
 import getApiBase from '@/services/getApiBase';
 import { getToken } from '@/services/TokenService';
+import Constants from 'expo-constants';
 
 if (Platform.OS !== 'web') {
   Notifications.setNotificationHandler({
@@ -59,12 +60,24 @@ class NotificationService {
 
       // Get device token
       if (Platform.OS !== 'web' && Device.isDevice) {
-        const token = (await Notifications.getExpoPushTokenAsync({
-          projectId: 'your-project-id', // Add your project ID
-        })).data;
+        // SDK 53+ (and 55) removed remote notifications from Expo Go
+        const isExpoGo = Constants.appOwnership === 'expo';
 
-        this.expoPushToken = token;
-        await this.registerToken(token);
+        if (isExpoGo) {
+          console.warn('⚠️ Push notifications (remote) are not supported in Expo Go for SDK 53+. Use a development build for full functionality.');
+          // We can still initialize local notifications, so we don't return early here
+        } else {
+          try {
+            const token = (await Notifications.getExpoPushTokenAsync({
+              projectId: 'your-project-id', // Add your project ID
+            })).data;
+
+            this.expoPushToken = token;
+            await this.registerToken(token);
+          } catch (tokenError) {
+            console.error('Failed to get Expo push token:', tokenError);
+          }
+        }
       } else if (Platform.OS !== 'web') {
         console.log('Must use physical device for push notifications');
       }

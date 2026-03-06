@@ -394,7 +394,7 @@ class CollaborationService {
   async createSpace(spaceData: {
     title: string;
     description?: string;
-    space_type: 'chat' | 'whiteboard' | 'meeting' | 'document' | 'brainstorm' | 'story' | 'voice_channel';
+    space_type: 'chat' | 'whiteboard' | 'meeting' | 'document' | 'brainstorm' | 'story' | 'voice_channel' | 'direct' | 'general' | 'protected' | 'channel';
     linked_conversation_id?: number;
     linked_post_id?: number;
     linked_story_id?: number;

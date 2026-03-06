@@ -288,19 +288,19 @@ const ChatPage = () => {
 
   // Get AI suggestion for user
   const getAISuggestion = async () => {
-    if (!user?.id || chats.length === 0) return;
+    if (!user?.id) return;
 
     try {
       const activeSpaces = spaces.filter(s => s.spaceData?.is_live).length;
 
       let suggestion = '';
-      if (activeSpaces === 0) {
-        suggestion = 'You have no active spaces. Create a space to collaborate with multiple people at once.';
-      } else if (spaces.length === 0) {
+      if (spaces.length === 0) {
         suggestion = 'Try creating your first collaboration space! Start with a brainstorming session.';
+      } else if (activeSpaces === 0) {
+        suggestion = 'You have no active spaces. Create a space to collaborate with multiple people at once.';
       }
 
-      setAiSuggestion(suggestion);
+      setAiSuggestion(suggestion || null);
     } catch (error) {
       console.error('Error getting AI suggestion:', error);
     }

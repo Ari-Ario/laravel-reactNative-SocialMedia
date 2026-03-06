@@ -188,7 +188,8 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
         try {
             const collaborationService = CollaborationService.getInstance();
 
-            const payload = {
+            // 1. Create the space first without participants (backend ignores them anyway)
+            const payload: any = {
                 title: spaceName.trim(),
                 description: spaceDescription.trim(),
                 space_type: privacyTier,
@@ -196,23 +197,62 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
                     privacy_tier: privacyTier,
                     has_ai_assistant: enableAI,
                 },
-                ai_personality: enableAI ? 'helpful' : null,
-                participants: Array.from(selectedContacts),
+                ai_personality: enableAI ? 'helpful' : undefined,
             };
 
             const response = await collaborationService.createSpace(payload);
+            const newSpaceId = response.id;
 
+            // 2. Upload photo if selected
             if (spacePhoto && !spacePhoto.startsWith('http') && !spacePhoto.startsWith('blob:')) {
                 setIsUploadingPhoto(true);
-                await uploadSpacePhoto(response.id, spacePhoto);
+                try {
+                    await uploadSpacePhoto(newSpaceId, spacePhoto);
+                } catch (photoError) {
+                    console.error('Photo upload failed, but space was created:', photoError);
+                }
+            }
+
+            // 3. Send invitations individually and collect errors
+            const participantIds = Array.from(selectedContacts);
+            const failedInvites: number[] = [];
+
+            if (participantIds.length > 0) {
+                console.log(`Sending invitations to ${participantIds.length} users for space ${newSpaceId}`);
+
+                for (const userId of participantIds) {
+                    try {
+                        await collaborationService.inviteToSpace(newSpaceId, [userId]);
+                    } catch (inviteError) {
+                        console.error(`Failed to invite user ${userId}:`, inviteError);
+                        failedInvites.push(userId);
+                    }
+                }
             }
 
             if (Platform.OS !== 'web') {
                 await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             }
 
-            onSpaceCreated(response);
-            onClose();
+            // 4. Handle summary of errors if any
+            if (failedInvites.length > 0) {
+                const failedCount = failedInvites.length;
+                const totalCount = participantIds.length;
+                Alert.alert(
+                    'Partial Success',
+                    `Space created, but could not invite ${failedCount} out of ${totalCount} people. They can be invited later from space settings.`,
+                    [{
+                        text: 'OK', onPress: () => {
+                            onSpaceCreated(response);
+                            onClose();
+                        }
+                    }]
+                );
+            } else {
+                // 5. Notify parent and close (Routing happens here via onSpaceCreated)
+                onSpaceCreated(response);
+                onClose();
+            }
         } catch (error: any) {
             console.error('Failed to create space:', error);
             Alert.alert('Creation Failed', error.message || 'Could not create the space.');
@@ -407,6 +447,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#F2F2F7',
+        top: 40
     },
     header: {
         flexDirection: 'row',

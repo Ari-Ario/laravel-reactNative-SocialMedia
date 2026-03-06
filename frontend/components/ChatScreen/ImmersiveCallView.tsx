@@ -4,12 +4,12 @@ import {
   StyleSheet,
   TouchableOpacity,
   Text,
-  SafeAreaView,
   ScrollView,
   Dimensions,
   Alert,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -82,7 +82,7 @@ const ImmersiveCallView: React.FC<{ spaceId: string }> = ({ spaceId }) => {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [hasAudioPermission, setHasAudioPermission] = useState<boolean | null>(null);
 
-  const durationInterval = useRef<NodeJS.Timeout>();
+  const durationInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
 
   // Animation for spinning icon
@@ -208,12 +208,12 @@ const ImmersiveCallView: React.FC<{ spaceId: string }> = ({ spaceId }) => {
       }
 
       // Initialize WebRTC service
-      await webRTCService.initialize(user?.id || 0);
+      await webRTCService.initialize(parseInt(user?.id || '0'));
 
       console.log('Starting call for space:', spaceId);
 
       // Start call or join existing
-      const response = await collaborationService.startCall(spaceId, 'video') as CallResponse;
+      const response = await collaborationService.startCall(spaceId, 'video') as any;
 
       // Handle response structure
       let callData;
@@ -236,7 +236,7 @@ const ImmersiveCallView: React.FC<{ spaceId: string }> = ({ spaceId }) => {
       setCallStatus('connecting');
 
       // Check if this user is the initiator
-      setIsInitiator(callData.initiator_id === user?.id);
+      setIsInitiator(callData.initiator_id === parseInt(user?.id || '0'));
 
       // Set up participants from space data
       if (spaceData?.participants) {
@@ -346,7 +346,7 @@ const ImmersiveCallView: React.FC<{ spaceId: string }> = ({ spaceId }) => {
       if (isInitiator) {
         setTimeout(() => {
           participants.forEach(p => {
-            if (p.user_id !== user?.id) {
+            if (p.user_id !== parseInt(user?.id || '0')) {
               webRTCService.createOffer(p.user_id);
             }
           });
@@ -687,7 +687,7 @@ const ImmersiveCallView: React.FC<{ spaceId: string }> = ({ spaceId }) => {
   };
 
   const localParticipant = participants.find(p =>
-    p.user_id === user?.id
+    p.user_id === parseInt(user?.id || '0')
   );
 
   return (
@@ -731,7 +731,7 @@ const ImmersiveCallView: React.FC<{ spaceId: string }> = ({ spaceId }) => {
                 text: 'Participants',
                 onPress: () => Alert.alert(
                   'Participants',
-                  participants.map(p => `• ${p.name}${p.user_id === user?.id ? ' (You)' : ''}`).join('\n')
+                  participants.map(p => `• ${p.name}${p.user_id === parseInt(user?.id || '0') ? ' (You)' : ''}`).join('\n')
                 )
               },
               { text: 'Record', onPress: () => Alert.alert('Recording', 'Call recording coming soon!') },
@@ -1310,6 +1310,11 @@ const styles = StyleSheet.create({
   },
   videoPlaceholder: {
     alignItems: 'center',
+  },
+  placeholderText: {
+    color: '#fff',
+    fontSize: 14,
+    marginTop: 8,
   },
   rtcView: {
     width: '100%',
