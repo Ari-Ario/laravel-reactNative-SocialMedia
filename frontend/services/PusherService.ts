@@ -909,7 +909,7 @@ class PusherService {
       console.log(`🔌 Subscribing to global spaces channel: ${channelName}`);
       const channel = this.pusher.subscribe(channelName);
 
-      channel.bind('presence-space.updated', (data: any) => {
+      channel.bind('space.updated', (data: any) => {
         console.log('🪐 Global space update received:', data);
         onSpaceUpdated(data);
       });

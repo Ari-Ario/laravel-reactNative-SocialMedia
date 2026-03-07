@@ -234,6 +234,18 @@ const ChatPage = () => {
                 updatedTopLevel.updatedAt = new Date().toISOString();
                 updatedTopLevel.unreadCount = (updatedTopLevel.unreadCount || 0) + 1;
                 break;
+              case 'participation':
+                if (data.space) {
+                  updatedTopLevel.spaceData = {
+                    ...space.spaceData!,
+                    participants_count: data.space.participants_count ?? space.spaceData?.participants_count
+                  };
+                }
+                break;
+              case 'invitation':
+                console.log('🔄 Invitation received via space_update case');
+                fetchUserSpaces();
+                return prev; // fetchUserSpaces will handle the state update
             }
 
             const updatedSpace = {

@@ -483,6 +483,18 @@ class CollaborationService {
     }
   }
 
+  async clearChat(spaceId: string): Promise<void> {
+    try {
+      await axios.post(`${this.baseURL}/spaces/${spaceId}/clear-messages`, {}, {
+        headers: this.getHeaders(),
+      });
+      await this.triggerHapticLight();
+    } catch (error) {
+      console.error('Error clearing chat:', error);
+      throw error;
+    }
+  }
+
   // Poll management
   async createPoll(spaceId: string, pollData: any): Promise<any> {
     try {

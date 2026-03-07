@@ -161,6 +161,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('/{id}/pin', [SpaceController::class , 'pinSpace']);
             Route::post('/{id}/unread', [SpaceController::class , 'markAsUnread']);
             Route::post('/{id}/favorite', [SpaceController::class , 'favoriteSpace']);
+            Route::post('/{id}/clear-messages', [SpaceController::class , 'clearMessages']);
 
             // Poll routes
             Route::get('/{id}/polls', [PollController::class , 'index']);

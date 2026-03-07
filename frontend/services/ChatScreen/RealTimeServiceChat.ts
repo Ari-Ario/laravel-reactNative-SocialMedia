@@ -123,6 +123,17 @@ class RealTimeService {
       this.notifySubscribers('user', userId, 'space_update', { ...data, update_type: 'message' });
     });
 
+    channel.bind('space.updated', (data: any) => {
+      console.log('🔄 RealTimeService: Space updated:', data);
+      const updateType = data.changes?.update_type || data.update_type || 'general';
+      
+      if (updateType === 'invitation') {
+        this.notifySubscribers('user', userId, 'invitation', data);
+      } else {
+        this.notifySubscribers('user', userId, 'space_update', { ...data, update_type: updateType });
+      }
+    });
+
     // Also bind to space invitations
     channel.bind('space.invitation', (data: any) => {
       console.log('📨 RealTimeService: Space invitation received:', data);

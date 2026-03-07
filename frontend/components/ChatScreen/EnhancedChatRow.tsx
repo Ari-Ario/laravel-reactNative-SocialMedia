@@ -71,6 +71,28 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
   const { user } = useContext(AuthContext);
   const API_BASE = getApiBase();
   const token = getToken();
+
+  // ✅ Web-compatible alert/confirm helpers
+  const simpleAlert = (title: string, message: string) => {
+    if (Platform.OS === 'web') {
+      alert(`${title}\n\n${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
+  const confirmAction = (title: string, message: string, confirmText: string, onConfirm: () => void) => {
+    if (Platform.OS === 'web') {
+      if (window.confirm(`${title}\n\n${message}`)) {
+        onConfirm();
+      }
+    } else {
+      Alert.alert(title, message, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: confirmText, onPress: onConfirm, style: 'destructive' }
+      ]);
+    }
+  };
   // Handle contact press - open collaboration menu
   const handleContactPress = () => {
     if (type === 'contact') {
@@ -86,7 +108,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       setShowContactMenu(false);
     } catch (error) {
       console.error('Error starting chat:', error);
-      Alert.alert('Error', 'Failed to start chat');
+      simpleAlert('Error', 'Failed to start chat');
     }
   };
 
@@ -106,7 +128,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
     } catch (error: any) {
       console.error('Error starting video call:', error);
       let errorMessage = 'Failed to start video call.';
-      Alert.alert('Error', errorMessage, [{ text: 'OK' }]);
+      simpleAlert('Error', errorMessage);
     }
   };
 
@@ -125,7 +147,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       setShowContactMenu(false);
     } catch (error) {
       console.error('Error starting voice call:', error);
-      Alert.alert('Error', 'Failed to start voice call');
+      simpleAlert('Error', 'Failed to start voice call');
     }
   };
 
@@ -140,7 +162,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       setShowContactMenu(false);
     } catch (error) {
       console.error('Error starting whiteboard:', error);
-      Alert.alert('Error', 'Failed to start whiteboard');
+      simpleAlert('Error', 'Failed to start whiteboard');
     }
   };
 
@@ -296,7 +318,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       console.error('Error muting space:', error);
       // Revert if failed
       setLocalIsMuted(previousState);
-      Alert.alert('Error', 'Failed to toggle mute status');
+      simpleAlert('Error', 'Failed to toggle mute status');
     }
   };
 
@@ -304,48 +326,45 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
     if (Platform.OS !== 'web') {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     }
-    Alert.alert(
-      'Delete Chat',
-      'Are you sure you want to delete this chat?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            // Logic for deleting
-            setShowCollaborationMenu(false);
-          }
+    
+    const warningMessage = type === 'space' 
+      ? 'The space will be deleted forever for all participants with all messages and belongings. Proceed?'
+      : 'Are you sure you want to delete this chat?';
+
+    confirmAction('Delete Chat', warningMessage, 'Delete', async () => {
+      try {
+        if (type === 'space') {
+          await collaborationService.deleteSpace(id);
+          simpleAlert('Success', 'Space deleted forever.');
         }
-      ]
-    );
+        setShowCollaborationMenu(false);
+      } catch (error) {
+        console.error('Error deleting space:', error);
+        simpleAlert('Error', 'Failed to delete space');
+      }
+    });
   };
 
   const handleLeaveSpace = async () => {
     if (Platform.OS !== 'web') {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     }
-    Alert.alert(
-      'Leave Space',
-      'Are you sure you want to leave this space?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Leave',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await collaborationService.leaveSpace(id);
-              Alert.alert('Success', 'You have left the space.');
-              setShowCollaborationMenu(false);
-            } catch (error) {
-              console.error('Error leaving space:', error);
-              Alert.alert('Error', 'Failed to leave space');
-            }
-          }
+    
+    confirmAction('Leave Space', 'Are you sure you want to leave this space?', 'Leave', async () => {
+      try {
+        await collaborationService.leaveSpace(id);
+        simpleAlert('Success', 'You have left the space.');
+        setShowCollaborationMenu(false);
+      } catch (error: any) {
+        console.error('Error leaving space:', error);
+        // Handle sole owner warning from backend
+        if (error.response?.status === 403 && error.response?.data?.message) {
+          simpleAlert('Cannot Leave', error.response.data.message);
+        } else {
+          simpleAlert('Error', 'Failed to leave space');
         }
-      ]
-    );
+      }
+    });
   };
 
   const handleInviteUsers = async (recipients: InviteRecipient[]) => {
@@ -361,7 +380,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       setShowInviteModal(false);
     } catch (error) {
       console.error('Error inviting users:', error);
-      Alert.alert('Error', 'Failed to send invites.');
+      simpleAlert('Error', 'Failed to send invites.');
     }
   };
 
@@ -381,7 +400,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
     } catch (error) {
       console.error('Error pinning space:', error);
       setLocalIsPinned(previousState);
-      Alert.alert('Error', 'Failed to toggle pin status');
+      simpleAlert('Error', 'Failed to toggle pin status');
     }
   };
 
@@ -401,7 +420,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
     } catch (error) {
       console.error('Error archiving space:', error);
       setLocalIsArchived(previousState);
-      Alert.alert('Error', 'Failed to toggle archive status');
+      simpleAlert('Error', 'Failed to toggle archive status');
     }
   };
 
@@ -421,7 +440,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
     } catch (error) {
       console.error('Error marking unread space:', error);
       setLocalIsUnread(previousState);
-      Alert.alert('Error', 'Failed to toggle read status');
+      simpleAlert('Error', 'Failed to toggle read status');
     }
   };
 
@@ -441,7 +460,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
     } catch (error) {
       console.error('Error favoriting space:', error);
       setLocalIsFavorite(previousState);
-      Alert.alert('Error', 'Failed to toggle favorite status');
+      simpleAlert('Error', 'Failed to toggle favorite status');
     }
   };
 
@@ -449,13 +468,21 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
     if (Platform.OS !== 'web') {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     }
-    Alert.alert(
-      'Clear Chat',
-      'Are you sure you want to clear all messages in this chat?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Clear', onPress: () => setShowCollaborationMenu(false) }
-      ]
+    
+    confirmAction(
+      'Clear Chat', 
+      'Are you sure you want to clear all messages in this chat for you? This cannot be undone.', 
+      'Clear',
+      async () => {
+        try {
+          await collaborationService.clearChat(id);
+          setShowCollaborationMenu(false);
+          simpleAlert('Success', 'Chat history cleared for you.');
+        } catch (error) {
+          console.error('Error clearing chat:', error);
+          simpleAlert('Error', 'Failed to clear chat');
+        }
+      }
     );
   };
 
@@ -629,14 +656,17 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
 
     // Add space-specific actions
     if (type === 'space' && !isDirectSpace) {
-      menuItems.push({
-        icon: "person-add-outline" as any,
-        label: "Invite People",
-        onPress: () => {
-          setShowInviteModal(true);
-          setShowCollaborationMenu(false);
-        },
-      });
+      // Invite People: Only for owner/moderator
+      if (spaceData?.my_role === 'owner' || spaceData?.my_role === 'moderator') {
+        menuItems.push({
+          icon: "person-add-outline" as any,
+          label: "Invite People",
+          onPress: () => {
+            setShowInviteModal(true);
+            setShowCollaborationMenu(false);
+          },
+        });
+      }
 
       menuItems.push({
         icon: "exit-outline" as any,
@@ -652,8 +682,8 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       onPress: handleClearChat,
     });
 
-    // Only owners can delete spaces, but direct chats can always be deleted
-    const canDelete = type === 'space' ? (spaceData?.my_role === 'owner' || spaceType === 'direct') : false;
+    // Only owners can delete spaces (including direct chats if user is part of it)
+    const canDelete = spaceData?.my_role === 'owner' || (isDirectSpace && spaceData?.my_role === 'owner');
 
     if (canDelete) {
       menuItems.push({

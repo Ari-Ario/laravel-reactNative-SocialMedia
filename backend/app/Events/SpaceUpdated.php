@@ -72,6 +72,7 @@ class SpaceUpdated implements ShouldBroadcast
                 'title' => $this->space->title,
                 'space_type' => $this->space->space_type,
                 'content_state' => $this->space->content_state,
+                'participants_count' => $this->space->participations_count ?? $this->space->participations()->count(),
                 'updated_at' => $this->space->updated_at->toISOString(),
             ],
             'updated_by' => $this->userId,

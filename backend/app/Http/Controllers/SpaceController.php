@@ -12,15 +12,14 @@ use App\Models\MagicEvent;
 use App\Models\User;
 use App\Models\Message;
 use App\Models\Call;
-
 use App\Models\AiInteraction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 use App\Notifications\SpaceInvitationNotification;
 
 use App\Events\SpaceCreated;
@@ -36,6 +35,16 @@ use App\Events\SpaceMuted;
 use App\Events\SpacePinned;
 use App\Events\SpaceArchived;
 use App\Events\SpaceMarkedUnread;
+use App\Events\SpaceFavorited;
+use App\Events\MessageSent;
+use App\Events\SpaceMessageSent;
+use App\Events\MessageDeleted;
+use App\Events\MessageReacted;
+use App\Events\MessagePinned;
+use App\Events\WebRTCSignal;
+use App\Events\MuteStateChanged;
+use App\Events\VideoStateChanged;
+use App\Events\ParticipantUpdated;
 
 class SpaceController extends Controller
 {
@@ -106,7 +115,7 @@ class SpaceController extends Controller
             ]);
             
         } catch (\Exception $e) {
-            \Log::error('Error fetching spaces: ' . $e->getMessage());
+            Log::error('Error fetching spaces: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Error fetching spaces',
                 'error' => $e->getMessage()
@@ -233,7 +242,7 @@ class SpaceController extends Controller
             
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error creating space: ' . $e->getMessage());
+            Log::error('Error creating space: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Error creating space',
                 'error' => $e->getMessage()
@@ -284,7 +293,7 @@ class SpaceController extends Controller
             
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error creating space from post: ' . $e->getMessage());
+            Log::error('Error creating space from post: ' . $e->getMessage());
             throw $e;
         }
     }
@@ -415,7 +424,7 @@ class SpaceController extends Controller
             try {
                 // Create new space
                 $space = CollaborationSpace::create([
-                    'id' => (string) \Illuminate\Support\Str::uuid(),
+                    'id' => (string) Str::uuid(),
                     'title' => $spaceName,
                     'space_type' => 'chat',
                     'creator_id' => $user->id,
@@ -602,7 +611,12 @@ public function updateContentState(Request $request, $id)
         ]);
         
         // Broadcast participant joined
-        broadcast(new ParticipantJoined($space, auth()->user()))->toOthers();
+        /** @var \App\Models\User $authUser */
+        $authUser = auth()->user();
+        broadcast(new ParticipantJoined($space, $authUser))->toOthers();
+        
+        // Broadcast participation update globally
+        broadcast(new SpaceUpdated($space, $authUser->id, ['update_type' => 'participation']))->toOthers();
         
         return response()->json([
             'participation' => $participation->load('user'),
@@ -622,9 +636,26 @@ public function updateContentState(Request $request, $id)
             ->first();
             
         if ($participation) {
+            // Check if user is the last owner
+            if ($participation->role === 'owner') {
+                $otherOwnersCount = $space->participations()
+                    ->where('role', 'owner')
+                    ->where('user_id', '!=', auth()->id())
+                    ->count();
+                
+                if ($otherOwnersCount === 0) {
+                    return response()->json([
+                        'message' => 'You are the only owner of this space. Please assign another owner before leaving, or delete the space forever.'
+                    ], 403);
+                }
+            }
+
             // Broadcast before deleting
             broadcast(new ParticipantLeft($space, auth()->user()))->toOthers();
             $participation->delete();
+
+            // Broadcast participation update globally
+            broadcast(new SpaceUpdated($space, auth()->id(), ['update_type' => 'participation']))->toOthers();
         }
         
         return response()->json([
@@ -717,7 +748,15 @@ public function updateContentState(Request $request, $id)
         ]);
         
         // Broadcast participant joined
-        broadcast(new ParticipantJoined($space, auth()->user()))->toOthers();
+        /** @var \App\Models\User $authUser */
+        $authUser = auth()->user();
+        broadcast(new ParticipantJoined($space, $authUser))->toOthers();
+        
+        // Broadcast invitation accepted to the joining user's private channel (to refresh list)
+        broadcast(new SpaceUpdated($space, $userId, ['update_type' => 'invitation']))->toOthers();
+
+        // Broadcast participation update globally
+        broadcast(new SpaceUpdated($space, $userId, ['update_type' => 'participation']))->toOthers();
         
         return response()->json([
             'participation' => $participation->load('user'),
@@ -777,7 +816,7 @@ public function startCall(Request $request, $id)
     }
 
     // Create call with UUID
-    $callId = \Illuminate\Support\Str::uuid()->toString();
+    $callId = Str::uuid()->toString();
     $participantIds = $space->participations()->pluck('user_id')->toArray();
     
     $call = Call::create([ // ✅ FIX: Use Call model
@@ -980,7 +1019,7 @@ public function endCall(Request $request, $id)
         ]);
         
     } catch (\Exception $e) {
-        \Log::error('Error ending call:', [
+        Log::error('Error ending call:', [
             'space_id' => $id,
             'call_id' => $request->call_id,
             'error' => $e->getMessage()
@@ -1067,7 +1106,7 @@ public function endCall(Request $request, $id)
             $messages = $contentState['messages'] ?? [];
             
             $messages[] = [
-                'id' => \Str::uuid(),
+                'id' => Str::uuid(),
                 'user_id' => $user->id,
                 'content' => $request->message_content,
                 'type' => $request->type,
@@ -1188,7 +1227,7 @@ public function endCall(Request $request, $id)
         $messages = $contentState['messages'] ?? [];
         
         $message = [
-            'id' => (string) \Str::uuid(),
+            'id' => (string) Str::uuid(),
             'user_id' => $user->id,
             'user_name' => $user->name,
             'content' => $request->content,
@@ -1228,7 +1267,7 @@ public function endCall(Request $request, $id)
                             new \App\Notifications\MessageRepliedNotification($user, $origMsg, $message, $space->id)
                         );
                     } catch (\Exception $e) {
-                        \Log::error('Reply notification failed: ' . $e->getMessage());
+                        Log::error('Reply notification failed: ' . $e->getMessage());
 
                     }
                 }
@@ -1248,7 +1287,7 @@ public function endCall(Request $request, $id)
                 }
             }
         } catch (\Exception $e) {
-            \Log::error('Failed to broadcast message:', [
+            Log::error('Failed to broadcast message:', [
                 'error' => $e->getMessage(),
                 'space_id' => $space->id
             ]);
@@ -1308,7 +1347,7 @@ public function endCall(Request $request, $id)
         try {
             broadcast(new \App\Events\MessageDeleted($messageId, $space->id))->toOthers();
         } catch (\Exception $e) {
-            \Log::error('Failed to broadcast message deletion: ' . $e->getMessage());
+            Log::error('Failed to broadcast message deletion: ' . $e->getMessage());
         }
 
         return response()->json(['success' => true]);
@@ -1421,7 +1460,7 @@ public function endCall(Request $request, $id)
         try {
             broadcast(new \App\Events\MessageReacted((object)$msg, $user, $emoji, $space->id))->toOthers();
         } catch (\Exception $e) {
-            \Log::error('Failed to broadcast reaction: ' . $e->getMessage());
+            Log::error('Failed to broadcast reaction: ' . $e->getMessage());
         }
 
         return response()->json(['success' => true, 'reactions' => $reactions]);
@@ -1467,7 +1506,7 @@ public function endCall(Request $request, $id)
         try {
             broadcast(new \App\Events\MessagePinned($messageId, $isPinned, $space->id))->toOthers();
         } catch (\Exception $e) {
-            \Log::error('Failed to broadcast message pin: ' . $e->getMessage());
+            Log::error('Failed to broadcast message pin: ' . $e->getMessage());
         }
 
         return response()->json(['success' => true, 'is_pinned' => $isPinned]);
@@ -1840,22 +1879,30 @@ public function endCall(Request $request, $id)
             return [
                 'response' => $trainingMatch['response'],
                 'confidence' => $trainingMatch['confidence'],
-                'source' => 'trained',
-                'response_time' => round($responseTime),
-                'training_match_id' => $trainingMatch['id'],
+                'source' => 'training_data',
+                'training_id' => $trainingMatch['id'],
+                'response_time_ms' => $responseTime
             ];
         }
-        
-        // Fallback to rule-based responses
-        $response = $this->generateRuleBasedResponse($query, $context, $action);
-        $responseTime = (microtime(true) - $startTime) * 1000;
-        
+
+        // Fallback to rule-based response
+        $ruleResponse = $this->generateRuleBasedResponse($query, $context);
+        if ($ruleResponse) {
+            $responseTime = (microtime(true) - $startTime) * 1000;
+            return [
+                'response' => $ruleResponse,
+                'confidence' => 0.6,
+                'source' => 'rule_engine',
+                'response_time_ms' => $responseTime
+            ];
+        }
+
+        // Final fallback
         return [
-            'response' => $response['text'],
-            'confidence' => $response['confidence'],
-            'source' => 'rule_based',
-            'response_time' => round($responseTime),
-            'suggested_actions' => $response['suggested_actions'] ?? [],
+            'response' => "I'm still learning about this. How else can I help?",
+            'confidence' => 0.1,
+            'source' => 'fallback',
+            'response_time_ms' => (microtime(true) - $startTime) * 1000
         ];
     }
 
@@ -1975,7 +2022,7 @@ public function endCall(Request $request, $id)
      */
     public function search(Request $request)
     {
-        // \Log::info('Search request received', $request->all());
+        // Log::info('Search request received', $request->all());
         
         try {
             $request->validate([
@@ -1985,7 +2032,7 @@ public function endCall(Request $request, $id)
                 'limit' => 'sometimes|integer|min:1|max:100',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
-            // \Log::error('Search validation failed', $e->errors());
+            // Log::error('Search validation failed', $e->errors());
             return response()->json([
                 'error' => 'Validation failed',
                 'errors' => $e->errors()
@@ -1997,7 +2044,7 @@ public function endCall(Request $request, $id)
         $limit = $request->input('limit', 20);
         $userId = auth()->id();
 
-        // \Log::info('Searching for', [
+        // Log::info('Searching for', [
         //     'query' => $query,
         //     'types' => $types,
         //     'user_id' => $userId
@@ -2040,9 +2087,9 @@ public function endCall(Request $request, $id)
                     ];
                 }
                 
-                // \Log::info('Found spaces', ['count' => $spaces->count()]);
+                // Log::info('Found spaces', ['count' => $spaces->count()]);
             } catch (\Exception $e) {
-                \Log::error('Error searching spaces', ['error' => $e->getMessage()]);
+                Log::error('Error searching spaces', ['error' => $e->getMessage()]);
             }
         }
 
@@ -2078,9 +2125,9 @@ public function endCall(Request $request, $id)
                     ];
                 }
                 
-                \Log::info('Found contacts', ['count' => $contacts->count()]);
+                Log::info('Found contacts', ['count' => $contacts->count()]);
             } catch (\Exception $e) {
-                \Log::error('Error searching contacts', ['error' => $e->getMessage()]);
+                Log::error('Error searching contacts', ['error' => $e->getMessage()]);
             }
         }
 
@@ -2118,9 +2165,9 @@ public function endCall(Request $request, $id)
                     ];
                 }
                 
-                \Log::info('Found chats', ['count' => $chats->count()]);
+                Log::info('Found chats', ['count' => $chats->count()]);
             } catch (\Exception $e) {
-                \Log::error('Error searching chats', ['error' => $e->getMessage()]);
+                Log::error('Error searching chats', ['error' => $e->getMessage()]);
             }
         }
 
@@ -2132,7 +2179,7 @@ public function endCall(Request $request, $id)
         // Limit results
         $results = array_slice($results, 0, $limit);
 
-        \Log::info('Search completed', [
+        Log::info('Search completed', [
             'total_results' => count($results),
             'query' => $query
         ]);
@@ -2390,7 +2437,7 @@ public function endCall(Request $request, $id)
                 'is_muted' => $isMuted
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error muting space: ' . $e->getMessage());
+            Log::error('Error muting space: ' . $e->getMessage());
             return response()->json(['message' => 'Server error'], 500);
         }
     }
@@ -2415,7 +2462,7 @@ public function endCall(Request $request, $id)
                 'is_archived' => $isArchived
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error archiving space: ' . $e->getMessage());
+            Log::error('Error archiving space: ' . $e->getMessage());
             return response()->json(['message' => 'Server error'], 500);
         }
     }
@@ -2440,7 +2487,7 @@ public function endCall(Request $request, $id)
                 'is_pinned' => $isPinned
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error pinning space: ' . $e->getMessage());
+            Log::error('Error pinning space: ' . $e->getMessage());
             return response()->json(['message' => 'Server error'], 500);
         }
     }
@@ -2465,7 +2512,7 @@ public function endCall(Request $request, $id)
                 'is_unread' => $isUnread
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error marking space unread: ' . $e->getMessage());
+            Log::error('Error marking space unread: ' . $e->getMessage());
             return response()->json(['message' => 'Server error'], 500);
         }
     }
@@ -2489,8 +2536,156 @@ public function endCall(Request $request, $id)
                 'is_favorite' => $isFavorite
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error favoriting space: ' . $e->getMessage());
+            Log::error('Error favoriting space: ' . $e->getMessage());
             return response()->json(['message' => 'Server error'], 500);
         }
+    }
+
+    /**
+     * Delete a space permanently (Owner only)
+     */
+    public function destroy($id)
+    {
+        try {
+            $space = CollaborationSpace::findOrFail($id);
+            $user = auth()->user();
+
+            // Check if user is the creator or has owner role
+            $participation = $space->participations()->where('user_id', $user->id)->first();
+            
+            if ($space->creator_id !== $user->id && (!$participation || $participation->role !== 'owner')) {
+                return response()->json(['message' => 'Only the owner can delete this space'], 403);
+            }
+
+            DB::beginTransaction();
+            
+            // Delete all participations
+            $space->participations()->delete();
+            
+            // Delete magic events
+            $space->magicEvents()->delete();
+            
+            // Delete the space itself
+            $space->delete();
+
+            DB::commit();
+
+            // Broadcast space deleted if we have an event (optional, but good for real-time UI removal)
+            // broadcast(new \App\Events\SpaceDeleted($id))->toOthers();
+
+            return response()->json(['message' => 'Space deleted forever']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error deleting space: ' . $e->getMessage());
+            return response()->json(['message' => 'Error deleting space'], 500);
+        }
+    }
+
+    /**
+     * Clear all messages in a space for the current user
+     */
+    public function clearMessages(Request $request, $id)
+    {
+        try {
+            $space = CollaborationSpace::findOrFail($id);
+            $user = auth()->user();
+
+            $contentState = $space->content_state ?? [];
+            $messages = $contentState['messages'] ?? [];
+            
+            $updated = false;
+            foreach ($messages as &$msg) {
+                $hiddenBy = $msg['hidden_by'] ?? [];
+                if (!in_array($user->id, $hiddenBy)) {
+                    $hiddenBy[] = $user->id;
+                    $msg['hidden_by'] = $hiddenBy;
+                    $updated = true;
+                }
+            }
+
+            if ($updated) {
+                $contentState['messages'] = $messages;
+                $space->update(['content_state' => $contentState]);
+            }
+
+            return response()->json(['success' => true, 'message' => 'Chat cleared for you']);
+        } catch (\Exception $e) {
+            Log::error('Error clearing messages: ' . $e->getMessage());
+            return response()->json(['message' => 'Error clearing chat'], 500);
+        }
+    }
+
+    /**
+     * Helper: Find match in chatbot_training
+     */
+    private function findTrainingMatch($query, $context, $action = null)
+    {
+        $query = strtolower(trim($query));
+        $words = explode(' ', preg_replace('/[^\w\s]/', '', $query));
+        
+        $allTrainings = \App\Models\ChatbotTraining::where('is_active', true)->get();
+        
+        $bestMatch = null;
+        $highestScore = 0;
+        
+        foreach ($allTrainings as $t) {
+            $trigger = strtolower(trim($t->trigger));
+            $triggerWords = explode(' ', preg_replace('/[^\w\s]/', '', $trigger));
+            
+            // Exact match
+            if ($query === $trigger) {
+                return [
+                    'id' => $t->id,
+                    'response' => $t->response,
+                    'confidence' => 1.0
+                ];
+            }
+            
+            // Word overlap score
+            $overlap = count(array_intersect($words, $triggerWords));
+            $score = count($triggerWords) > 0 ? ($overlap / count($triggerWords)) : 0;
+            
+            // Check context match
+            if ($t->context && $context && str_contains(strtolower($context), strtolower($t->context))) {
+                $score += 0.2;
+            }
+            
+            if ($score > $highestScore) {
+                $highestScore = $score;
+                $bestMatch = $t;
+            }
+        }
+        
+        if ($bestMatch && $highestScore > 0.5) {
+            return [
+                'id' => $bestMatch->id,
+                'response' => $bestMatch->response,
+                'confidence' => min(0.95, $highestScore)
+            ];
+        }
+        
+        return null;
+    }
+
+    /**
+     * Helper: Generate rule-based response
+     */
+    private function generateRuleBasedResponse($query, $context)
+    {
+        $query = strtolower($query);
+        
+        if (str_contains($query, 'hello') || str_contains($query, 'hi')) {
+            return "Hello! I'm your Space AI assistant. How can I help you today?";
+        }
+        
+        if (str_contains($query, 'help')) {
+            return "I can help you manage this space, summarize discussions, or answer questions based on the content here.";
+        }
+        
+        if (str_contains($query, 'who are you')) {
+            return "I am an AI assistant designed to help you collaborate more effectively in this space.";
+        }
+        
+        return null;
     }
 }
