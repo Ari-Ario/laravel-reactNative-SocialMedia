@@ -6,7 +6,9 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Broadcasting\Channel;
 use App\Models\CollaborationSpace;
+use Illuminate\Support\Facades\Log;
 
 class SpaceInvitationNotification extends Notification implements ShouldQueue
 {
@@ -14,16 +16,25 @@ class SpaceInvitationNotification extends Notification implements ShouldQueue
 
     public $space;
     public $inviter;
+    public $user; // The user being invited
     public $message;
 
     /**
      * Create a new notification instance.
      */
-    public function __construct(CollaborationSpace $space, $inviter, $message = null)
+    public function __construct(CollaborationSpace $space, $inviter, $user, $message = null)
     {
         $this->space = $space;
         $this->inviter = $inviter;
+        $this->user = $user;
         $this->message = $message;
+    }
+
+    public function broadcastOn(): \Illuminate\Broadcasting\Channel
+    {
+        $channel = 'user.' . $this->user->id;
+        \Illuminate\Support\Facades\Log::info("📡 Broadcasting SpaceInvitationNotification on PUBLIC channel: " . $channel);
+        return new \Illuminate\Broadcasting\Channel($channel);
     }
 
     /**
@@ -44,7 +55,7 @@ class SpaceInvitationNotification extends Notification implements ShouldQueue
      */
     public function broadcastAs(): string
     {
-        return 'space-invitation';
+        return 'space.invitation';
     }
 
     /**

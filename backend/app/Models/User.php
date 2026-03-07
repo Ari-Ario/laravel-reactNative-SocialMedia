@@ -100,4 +100,11 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
+    /**
+     * Route notifications for the broadcast channel.
+     */
+    public function receivesBroadcastNotificationsOn()
+    {
+        return new \Illuminate\Broadcasting\Channel('user.' . $this->id);
+    }
 }

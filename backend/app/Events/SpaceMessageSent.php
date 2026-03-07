@@ -8,38 +8,51 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class SpaceMarkedUnread implements ShouldBroadcast
+class SpaceMessageSent implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public $spaceId;
     public $userId;
-    public $isUnread;
+    public $message;
 
-    public function __construct($spaceId, $userId, $isUnread)
+    /**
+     * Create a new event instance.
+     */
+    public function __construct($spaceId, $userId, $message)
     {
         $this->spaceId = $spaceId;
         $this->userId = $userId;
-        $this->isUnread = $isUnread;
+        $this->message = $message;
     }
 
+    /**
+     * Get the channels the event should broadcast on.
+     */
     public function broadcastOn(): array
     {
         return [
-            new \Illuminate\Broadcasting\Channel('user.' . $this->userId),
+            new Channel('user.' . $this->userId),
         ];
     }
 
+    /**
+     * The event's broadcast name.
+     */
     public function broadcastAs()
     {
-        return 'space.unread';
+        return 'space.message';
     }
 
+    /**
+     * Get the data to broadcast.
+     */
     public function broadcastWith()
     {
         return [
             'space_id' => $this->spaceId,
-            'is_unread' => $this->isUnread
+            'message' => $this->message,
+            'timestamp' => now()->toISOString(),
         ];
     }
 }

@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
     padding: 0,
     margin: 0,
     width: '100%',
-    height: '100%',
+    height: '90%',
   },
   container: {
     flex: 1,

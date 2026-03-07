@@ -64,6 +64,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
   const [localIsPinned, setLocalIsPinned] = useState(isPinned || spaceData?.my_permissions?.is_pinned || false);
   const [localIsArchived, setLocalIsArchived] = useState(spaceData?.my_permissions?.is_archived || false);
   const [localIsUnread, setLocalIsUnread] = useState(unreadCount > 0 || spaceData?.my_permissions?.is_unread || false);
+  const [localIsFavorite, setLocalIsFavorite] = useState(spaceData?.my_permissions?.is_favorite || false);
 
   const containerRef = useRef<View>(null);
   const collaborationService = CollaborationService.getInstance();
@@ -424,6 +425,26 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
     }
   };
 
+  const handleFavoriteSpace = async () => {
+    if (Platform.OS !== 'web') {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+
+    const previousState = localIsFavorite;
+    setLocalIsFavorite(!previousState);
+    setShowCollaborationMenu(false);
+
+    try {
+      if (type === 'space' || type === 'chat') {
+        await collaborationService.favoriteSpace(id);
+      }
+    } catch (error) {
+      console.error('Error favoriting space:', error);
+      setLocalIsFavorite(previousState);
+      Alert.alert('Error', 'Failed to toggle favorite status');
+    }
+  };
+
   const handleClearChat = async () => {
     if (Platform.OS !== 'web') {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -598,6 +619,11 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
         icon: (localIsMuted ? "volume-high-outline" : "volume-mute-outline") as any,
         label: localIsMuted ? "Unmute Notifications" : "Mute Notifications",
         onPress: handleMuteSpace,
+      },
+      {
+        icon: (localIsFavorite ? "heart-dislike-outline" : "heart-outline") as any,
+        label: localIsFavorite ? "Remove from Favorites" : "Add to Favorites",
+        onPress: handleFavoriteSpace,
       }
     ];
 
@@ -703,19 +729,31 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
               )}
             </Text>
 
-            {type === 'chat' ? (
-              unreadCount > 0 && (
+            <View style={styles.indicatorRow}>
+              {localIsMuted && (
+                <Ionicons name="volume-mute" size={14} color="#999" style={styles.indicatorIcon} />
+              )}
+              {(localIsPinned || isPinned) && (
+                <Ionicons name="pin" size={16} color="#b1b1b1" style={styles.pinIcon} />
+              )}
+              {localIsFavorite && (
+                <Ionicons name="heart" size={16} color="#FF3B30" style={styles.indicatorIcon} />
+              )}
+
+              {unreadCount > 0 ? (
                 <View style={[styles.badge, { backgroundColor: '#25D366' }]}>
                   <Text style={styles.badgeText}>
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </Text>
                 </View>
-              )
-            ) : type === 'space' && !isDirectSpace ? (
-              <Ionicons name={getSpaceIcon() as any} size={20} color="#007AFF" />
-            ) : (
-              <Ionicons name="chatbubble-outline" size={20} color="#007AFF" />
-            )}
+              ) : (
+                <Ionicons 
+                  name={type === 'space' && !isDirectSpace ? getSpaceIcon() as any : "chatbubble-outline"} 
+                  size={20} 
+                  color="#007AFF" 
+                />
+              )}
+            </View>
           </View>
 
           {/* Evolution level indicator for spaces */}
@@ -728,10 +766,6 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
             </View>
           )}
         </View>
-
-        {type === 'chat' && isPinned && (
-          <Ionicons name="pin" size={16} color="#666" style={styles.pinIcon} />
-        )}
 
         <GenericMenu
           visible={showCollaborationMenu}
@@ -867,6 +901,17 @@ const styles = StyleSheet.create({
   aiIcon: {
     marginRight: 4,
   },
+  pinIcon: {
+    marginLeft: 0,
+  },
+  indicatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  indicatorIcon: {
+    marginLeft: 0,
+  },
   timestamp: {
     fontSize: 12,
     color: '#666',
@@ -899,11 +944,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '600',
-  },
-  pinIcon: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
   },
   evolutionIndicator: {
     flexDirection: 'row',

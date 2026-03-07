@@ -18,11 +18,13 @@ class ParticipantJoined implements ShouldBroadcast
 
     public $space;
     public $user;
+    public $role;
 
-    public function __construct(CollaborationSpace $space, User $user)
+    public function __construct(CollaborationSpace $space, User $user, $role = 'participant')
     {
         $this->space = $space;
         $this->user = $user;
+        $this->role = $role;
     }
 
     public function broadcastOn()
@@ -42,6 +44,7 @@ class ParticipantJoined implements ShouldBroadcast
                 'id' => $this->user->id,
                 'name' => $this->user->name,
                 'profile_photo' => $this->user->profile_photo,
+                'role' => $this->role,
             ],
             'space_id' => $this->space->id,
             'joined_at' => now()->toISOString(),

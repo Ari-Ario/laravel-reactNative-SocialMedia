@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CollaborationSpace;
+use Illuminate\Support\Facades\Log;
 use App\Models\SpaceParticipation;
 use App\Models\Conversation;
 use App\Models\Post;
@@ -18,7 +19,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Notification;
 use App\Notifications\SpaceInvitationNotification;
@@ -86,6 +86,13 @@ class SpaceController extends Controller
                     'updated_at' => $space->updated_at,
                     'my_role' => $participation ? $participation->role : null,
                     'is_online_in_space' => $participation ? ($participation->presence_data['is_online'] ?? false) : false,
+                    'my_permissions' => $participation ? $participation->permissions : [
+                        'is_muted' => false,
+                        'is_pinned' => false,
+                        'is_archived' => false,
+                        'is_unread' => false,
+                        'is_favorite' => false,
+                    ],
                 ];
             });
             
@@ -642,6 +649,13 @@ public function updateContentState(Request $request, $id)
             ->where('user_id', auth()->id())
             ->first();
             
+        Log::info("🔍 Invitation attempt", [
+            'space_id' => $id,
+            'inviter_id' => auth()->id(),
+            'participation_found' => !!$currentParticipation,
+            'role' => $currentParticipation ? $currentParticipation->role : 'none'
+        ]);
+
         if (!$currentParticipation || !in_array($currentParticipation->role, ['owner', 'moderator'])) {
             return response()->json([
                 'message' => 'You do not have permission to invite users to this space'
@@ -660,7 +674,7 @@ public function updateContentState(Request $request, $id)
                 $user = User::find($userId);
                 if ($user) {
                     // Send database notification
-                    $user->notify(new \App\Notifications\SpaceInvitationNotification($space, $inviter, $request->message));
+                    $user->notify(new \App\Notifications\SpaceInvitationNotification($space, $inviter, $user, $request->message));
                     
                     // Broadcast real-time event
                     broadcast(new SpaceInvitationSent($space, $inviter, $userId, $request->message))->toOthers();
@@ -1222,15 +1236,22 @@ public function endCall(Request $request, $id)
         }
 
         
-        // ✅ FIX: Broadcast to presence channel only, not to private-user
+        // ✅ FIX: Broadcast to presence channel and all participants' individual user channels
         try {
+            // General presence channel for those inside the space
             broadcast(new \App\Events\MessageSent($message, $space->id, $user))->toOthers();
+            
+            // Individual user channels for those on the chat list page
+            foreach ($space->participations as $p) {
+                if ($p->user_id !== $user->id) {
+                    broadcast(new \App\Events\SpaceMessageSent($space->id, $p->user_id, $message))->toOthers();
+                }
+            }
         } catch (\Exception $e) {
             \Log::error('Failed to broadcast message:', [
                 'error' => $e->getMessage(),
                 'space_id' => $space->id
             ]);
-            // Don't fail the request if broadcast fails
         }
         
         return response()->json([
@@ -2387,7 +2408,7 @@ public function endCall(Request $request, $id)
                  return response()->json(['message' => 'Participation not found'], 404);
             }
 
-            broadcast(new SpaceArchived($id, $user->id, $isArchived))->toOthers();
+            broadcast(new SpaceArchived($id, $user->id, $isArchived));
 
             return response()->json([
                 'message' => $isArchived ? 'Space archived' : 'Space unarchived',
@@ -2412,7 +2433,7 @@ public function endCall(Request $request, $id)
                  return response()->json(['message' => 'Participation not found'], 404);
             }
 
-            broadcast(new SpacePinned($id, $user->id, $isPinned))->toOthers();
+            broadcast(new SpacePinned($id, $user->id, $isPinned));
 
             return response()->json([
                 'message' => $isPinned ? 'Space pinned' : 'Space unpinned',
@@ -2437,7 +2458,7 @@ public function endCall(Request $request, $id)
                  return response()->json(['message' => 'Participation not found'], 404);
             }
 
-            broadcast(new SpaceMarkedUnread($id, $user->id, $isUnread))->toOthers();
+            broadcast(new SpaceMarkedUnread($id, $user->id, $isUnread));
 
             return response()->json([
                 'message' => $isUnread ? 'Space marked as unread' : 'Space marked as read',
@@ -2445,6 +2466,30 @@ public function endCall(Request $request, $id)
             ]);
         } catch (\Exception $e) {
             \Log::error('Error marking space unread: ' . $e->getMessage());
+            return response()->json(['message' => 'Server error'], 500);
+        }
+    }
+    /**
+     * Toggle Favorite status for the current user in a space
+     */
+    public function favoriteSpace(Request $request, $id)
+    {
+        try {
+            $user = Auth::user();
+            $isFavorite = $this->toggleSpaceProperty($id, $user->id, 'is_favorite');
+            
+            if ($isFavorite === false && !is_bool($isFavorite)) {
+                 return response()->json(['message' => 'Participation not found'], 404);
+            }
+
+            broadcast(new \App\Events\SpaceFavorited($id, $user->id, $isFavorite));
+
+            return response()->json([
+                'message' => $isFavorite ? 'Space favorited' : 'Space unfavorited',
+                'is_favorite' => $isFavorite
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error favoriting space: ' . $e->getMessage());
             return response()->json(['message' => 'Server error'], 500);
         }
     }

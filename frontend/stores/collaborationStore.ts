@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Alert } from 'react-native';
 import CollaborationService, { CollaborationSpace, SpaceParticipation, MagicEvent, CollaborativeActivity } from '@/services/ChatScreen/CollaborationService';
 import PusherService from '@/services/PusherService';
 import { useNotificationStore } from '@/stores/notificationStore';
@@ -19,7 +20,10 @@ interface CollaborationState {
   activitiesLastFetched: Record<string, number>; // Add this
   totalActivitiesCount: number; // Add this
 
-  subscribedSpaceIds: string[]; // Add this
+  subscribedSpaceIds: string[];
+
+  // Custom Tabs (Folders)
+  customTabs: CustomTab[];
 
   // Actions
   setSpaces: (spaces: CollaborationSpace[]) => void;
@@ -51,6 +55,20 @@ interface CollaborationState {
   subscribeToAllSpaces: (spaceIds: string[]) => void;
   unsubscribeFromAllSpaces: () => void;
   handleSpaceEvent: (event: any) => void;
+
+  // Custom Tab Actions
+  createCustomTab: (name: string, spaceIds?: string[]) => void;
+  deleteCustomTab: (id: string) => void;
+  addSpaceToTab: (tabId: string, spaceId: string) => void;
+  removeSpaceFromTab: (tabId: string, spaceId: string) => void;
+  setSpacesInTab: (tabId: string, spaceIds: string[]) => void;
+  renameCustomTab: (tabId: string, newName: string) => void;
+}
+
+export interface CustomTab {
+  id: string;
+  name: string;
+  spaceIds: string[];
 }
 
 export const useCollaborationStore = create<CollaborationState>()(
@@ -67,6 +85,7 @@ export const useCollaborationStore = create<CollaborationState>()(
       activitiesLastFetched: {},
       totalActivitiesCount: 0,
       subscribedSpaceIds: [],
+      customTabs: [],
 
 
       subscribeToAllSpaces: (spaceIds) => {
@@ -335,7 +354,7 @@ export const useCollaborationStore = create<CollaborationState>()(
       hasSpaceActivities: (spaceId) => {
         const lastFetched = get().activitiesLastFetched[spaceId];
         // Consider cached if fetched within last 5 minutes
-        return lastFetched && (Date.now() - lastFetched) < 5 * 60 * 1000;
+        return !!lastFetched && (Date.now() - lastFetched) < 5 * 60 * 1000;
       },
 
       clearActivitiesCache: () => set({
@@ -418,6 +437,48 @@ export const useCollaborationStore = create<CollaborationState>()(
           totalUnreadSpaces: totalUnread
         };
       }),
+
+      // Custom Tab Actions
+      createCustomTab: (name, spaceIds = []) => set((state) => {
+        if (state.customTabs.length >= 10) {
+          Alert.alert('Limit reached', 'You can create up to 10 custom tabs.');
+          return state;
+        }
+        const newTab: CustomTab = {
+          id: Date.now().toString(),
+          name: name.substring(0, 12),
+          spaceIds: spaceIds
+        };
+        return { customTabs: [...state.customTabs, newTab] };
+      }),
+
+      deleteCustomTab: (id) => set((state) => ({
+        customTabs: state.customTabs.filter(t => t.id !== id)
+      })),
+
+      addSpaceToTab: (tabId, spaceId) => set((state) => ({
+        customTabs: state.customTabs.map(t => 
+          t.id === tabId ? { ...t, spaceIds: [...new Set([...t.spaceIds, spaceId])] } : t
+        )
+      })),
+
+      removeSpaceFromTab: (tabId, spaceId) => set((state) => ({
+        customTabs: state.customTabs.map(t => 
+          t.id === tabId ? { ...t, spaceIds: t.spaceIds.filter(id => id !== spaceId) } : t
+        )
+      })),
+
+      setSpacesInTab: (tabId, spaceIds) => set((state) => ({
+        customTabs: state.customTabs.map(t => 
+          t.id === tabId ? { ...t, spaceIds } : t
+        )
+      })),
+
+      renameCustomTab: (tabId, newName) => set((state) => ({
+        customTabs: state.customTabs.map(t => 
+          t.id === tabId ? { ...t, name: newName.substring(0, 12) } : t
+        )
+      })),
     }),
     {
       name: 'collaboration-storage',
@@ -426,6 +487,7 @@ export const useCollaborationStore = create<CollaborationState>()(
         spaces: state.spaces,
         spaceUnreadCounts: state.spaceUnreadCounts,
         totalUnreadSpaces: state.totalUnreadSpaces,
+        customTabs: state.customTabs,
       }),
     }
   )

@@ -8,38 +8,50 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class SpaceMarkedUnread implements ShouldBroadcast
+class SpaceFavorited implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public $spaceId;
     public $userId;
-    public $isUnread;
+    public $isFavorite;
 
-    public function __construct($spaceId, $userId, $isUnread)
+    /**
+     * Create a new event instance.
+     */
+    public function __construct($spaceId, $userId, $isFavorite)
     {
         $this->spaceId = $spaceId;
         $this->userId = $userId;
-        $this->isUnread = $isUnread;
+        $this->isFavorite = $isFavorite;
     }
 
+    /**
+     * Get the channels the event should broadcast on.
+     */
     public function broadcastOn(): array
     {
         return [
-            new \Illuminate\Broadcasting\Channel('user.' . $this->userId),
+            new Channel('user.' . $this->userId),
         ];
     }
 
+    /**
+     * Get the event name to broadcast as.
+     */
     public function broadcastAs()
     {
-        return 'space.unread';
+        return 'space.favorited';
     }
 
-    public function broadcastWith()
+    /**
+     * Get the data to broadcast.
+     */
+    public function broadcastWith(): array
     {
         return [
             'space_id' => $this->spaceId,
-            'is_unread' => $this->isUnread
+            'is_favorite' => $this->isFavorite,
         ];
     }
 }

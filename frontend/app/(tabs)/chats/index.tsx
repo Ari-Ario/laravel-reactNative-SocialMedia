@@ -31,6 +31,9 @@ import CollaborativeActivities from "@/components/ChatScreen/CollaborativeActivi
 import SpaceCreationModal from "@/components/ChatScreen/SpaceCreationModal";
 import { useCollaborationStore } from "@/stores/collaborationStore";
 import { createShadow } from "@/utils/styles";
+import CreateTabModal from "@/components/ChatScreen/CreateTabModal";
+import GenericMenu, { MenuItem } from '@/components/GenericMenu';
+import { calculateAnchor, AnchorPosition } from '@/utils/layout';
 
 interface Chat {
   id: string;
@@ -45,6 +48,7 @@ interface Chat {
   type: 'chat' | 'contact' | 'space';
   spaceData?: CollaborationSpace;
   conversationId?: number;
+  updatedAt: string;
   email?: string;
   username?: string;
   // For search results integration
@@ -95,6 +99,21 @@ const ChatPage = () => {
   // New Unified Space Creation Flow State
   const [showSpaceCreationModal, setShowSpaceCreationModal] = useState(false);
 
+  // Space Tabs state
+  const [activeTab, setActiveTab] = useState<string>('all');
+  const { customTabs, createCustomTab, deleteCustomTab, renameCustomTab, setSpacesInTab } = useCollaborationStore();
+
+  // Custom Tab Modal State
+  const [tabModalVisible, setTabModalVisible] = useState(false);
+  const [tabModalMode, setTabModalMode] = useState<'create' | 'edit'>('create');
+  const [tabModalStep, setTabModalStep] = useState<1 | 2>(1);
+  const [editingTab, setEditingTab] = useState<any>(null);
+
+  // Tab Context Menu State
+  const [showTabMenu, setShowTabMenu] = useState(false);
+  const [tabMenuPosition, setTabMenuPosition] = useState<AnchorPosition>();
+  const [menuTargetTab, setMenuTargetTab] = useState<any>(null);
+
   // Configure notifications
   useEffect(() => {
     notificationService.configure();
@@ -140,6 +159,7 @@ const ChatPage = () => {
             user_id: data.space.creator_id.toString(),
             type: 'space',
             spaceData: data.space,
+            updatedAt: new Date().toISOString(),
           };
 
           setSpaces(prev => [newChat, ...prev]);
@@ -158,6 +178,82 @@ const ChatPage = () => {
           });
         }
       };
+
+      // ✅ Listen to user-specific space updates (Mute, Pin, etc.)
+      realTimeService.subscribeToUserChannelUpdates(user.id, (event: string, data: any) => {
+        if (event === 'space_update') {
+          console.log(`🔄 Specific space update: ${data.update_type} for space ${data.space_id}`, data);
+
+          const sortSpaces = (list: Chat[]) => {
+            return [...list].sort((a, b) => {
+              // 1. Pinned priority
+              const aPinned = a.isPinned || a.spaceData?.my_permissions?.is_pinned;
+              const bPinned = b.isPinned || b.spaceData?.my_permissions?.is_pinned;
+              if (aPinned && !bPinned) return -1;
+              if (!aPinned && bPinned) return 1;
+
+              // 2. Live priority
+              if (a.spaceData?.is_live && !b.spaceData?.is_live) return -1;
+              if (!a.spaceData?.is_live && b.spaceData?.is_live) return 1;
+
+              // 3. Date-based sorting (Last received at top)
+              const dateA = new Date(a.updatedAt || 0).getTime();
+              const dateB = new Date(b.updatedAt || 0).getTime();
+              return dateB - dateA;
+            });
+          };
+
+          setSpaces(prev => {
+            const index = prev.findIndex(s => s.id === data.space_id);
+            if (index === -1) return prev;
+
+            const space = prev[index];
+            const updatedPermissions = { ...(space.spaceData?.my_permissions || {}) };
+            let updatedTopLevel = { ...space };
+
+            switch (data.update_type) {
+              case 'muted':
+                updatedPermissions.is_muted = data.is_muted;
+                break;
+              case 'pinned':
+                updatedPermissions.is_pinned = data.is_pinned;
+                updatedTopLevel.isPinned = data.is_pinned;
+                break;
+              case 'archived':
+                updatedPermissions.is_archived = data.is_archived;
+                break;
+              case 'unread':
+                updatedPermissions.is_unread = data.is_unread;
+                break;
+              case 'favorited':
+                updatedPermissions.is_favorite = data.is_favorite;
+                break;
+              case 'message':
+                updatedTopLevel.lastMessage = data.message.content;
+                updatedTopLevel.timestamp = 'Just now';
+                updatedTopLevel.updatedAt = new Date().toISOString();
+                updatedTopLevel.unreadCount = (updatedTopLevel.unreadCount || 0) + 1;
+                break;
+            }
+
+            const updatedSpace = {
+              ...updatedTopLevel,
+              spaceData: {
+                ...space.spaceData!,
+                my_permissions: updatedPermissions
+              }
+            };
+
+            const newList = [...prev];
+            newList[index] = updatedSpace;
+
+            return sortSpaces(newList);
+          });
+        } else if (event === 'invitation') {
+          console.log(`🔄 Invitation update detected, refreshing list`);
+          fetchUserSpaces();
+        }
+      });
 
       // ✅ Global sync: listen to spaces channel for updates
       const pusherService = (PusherService as any).getInstance ? (PusherService as any).getInstance() : PusherService;
@@ -387,6 +483,7 @@ const ChatPage = () => {
         type: 'contact' as const,
         email: user.email,
         username: user.username,
+        updatedAt: new Date(0).toISOString(), // Contacts always at bottom
       };
     });
   };
@@ -402,7 +499,8 @@ const ChatPage = () => {
       avatar: 'https://i.pravatar.cc/150?img=1',
       isOnline: true,
       user_id: 'contact-1',
-      type: 'contact'
+      type: 'contact',
+      updatedAt: new Date(0).toISOString(),
     },
     {
       id: 'contact-2',
@@ -412,7 +510,8 @@ const ChatPage = () => {
       avatar: 'https://i.pravatar.cc/150?img=2',
       isOnline: false,
       user_id: 'contact-2',
-      type: 'contact'
+      type: 'contact',
+      updatedAt: new Date(0).toISOString(),
     },
   ];
 
@@ -436,11 +535,14 @@ const ChatPage = () => {
           chatAvatar = otherUser.profile_photo || chatAvatar;
         }
 
+        const updatedAt = space.updated_at || space.created_at || new Date().toISOString();
+
         return {
           id: space.id,
           name: chatName,
           lastMessage: getSpaceDescription(space),
-          timestamp: formatTimestamp(space.updated_at || space.created_at || new Date().toISOString()),
+          timestamp: formatTimestamp(updatedAt),
+          updatedAt: updatedAt,
           unreadCount: spaceUnreadCounts[space.id] || 0,
           avatar: chatAvatar,
           isOnline: isDirect && otherUser ? (otherUser as any).is_online ?? space.is_live : space.is_live,
@@ -451,14 +553,20 @@ const ChatPage = () => {
         };
       });
 
-      // Sort by activity
-      spaceChats.sort((a, b) => {
+      // Sort by activity using robust date field
+      const sortedSpaces = [...spaceChats].sort((a, b) => {
+        const aPinned = a.isPinned || a.spaceData?.my_permissions?.is_pinned;
+        const bPinned = b.isPinned || b.spaceData?.my_permissions?.is_pinned;
+        if (aPinned && !bPinned) return -1;
+        if (!aPinned && bPinned) return 1;
+
         if (a.spaceData?.is_live && !b.spaceData?.is_live) return -1;
         if (!a.spaceData?.is_live && b.spaceData?.is_live) return 1;
-        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
       });
 
-      setSpaces(spaceChats);
+      setSpaces(sortedSpaces);
 
       // Cache the result
       await offlineService.cacheUserSpaces(user.id, spaceChats);
@@ -532,19 +640,67 @@ const ChatPage = () => {
   const filteredData = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
 
+    // 1. Filtering by Tab
+    let activeSpaces = spaces;
+
+    switch (activeTab) {
+      case 'all':
+        // Show all non-archived spaces
+        activeSpaces = spaces.filter(s => !s.spaceData?.my_permissions?.is_archived);
+        break;
+      case 'favorites':
+        // Show only favorite spaces
+        activeSpaces = spaces.filter(s => s.spaceData?.my_permissions?.is_favorite);
+        break;
+      case 'unread':
+        // Show only unread spaces (either marked as unread or has new messages)
+        activeSpaces = spaces.filter(s => s.unreadCount! > 0 || s.spaceData?.my_permissions?.is_unread);
+        break;
+      case 'archived':
+        // Show only archived spaces
+        activeSpaces = spaces.filter(s => s.spaceData?.my_permissions?.is_archived);
+        break;
+    }
+
+    const customTab = customTabs.find(t => t.id === activeTab);
+    if (customTab) {
+      const filteredSpaces = spaces.filter(s => customTab.spaceIds.includes(s.id));
+      const filteredContacts = contacts.filter(c => customTab.spaceIds.includes(c.id));
+      activeSpaces = [...filteredSpaces, ...filteredContacts];
+    }
+
     if (!query) {
       const sections: SectionData[] = [];
-      if (spaces.length > 0) {
-        sections.push({ title: '🎯 Collaboration Spaces', data: spaces, type: 'spaces' });
+      if (activeSpaces.length > 0 || customTab) {
+        let title = '🎯 Collaboration Spaces';
+        if (activeTab === 'favorites') title = '❤️ Favorite Spaces';
+        else if (activeTab === 'unread') title = '🔴 Unread Chats';
+        else if (activeTab === 'archived') title = '📦 Archived Chats';
+        else if (customTab) title = `📂 ${customTab.name}`;
+
+        const data = [...activeSpaces];
+        if (customTab) {
+          data.push({
+            id: 'add-to-tab',
+            name: 'Add or Remove Items',
+            type: 'space',
+            timestamp: '',
+            user_id: '',
+          } as any);
+        }
+
+        sections.push({ title, data, type: 'spaces' });
       }
-      if (contacts.length > 0) {
+
+      // Only show contacts in the 'all' tab or when searching
+      if (activeTab === 'all' && contacts.length > 0) {
         sections.push({ title: '👥 Contacts', data: contacts, type: 'contacts' });
       }
       return sections;
     }
 
     // When searching
-    const localSpaces = spaces.filter(item =>
+    const localSpaces = activeSpaces.filter(item =>
       item.name.toLowerCase().includes(query) ||
       item.spaceData?.description?.toLowerCase().includes(query)
     );
@@ -587,6 +743,7 @@ const ChatPage = () => {
           user_id: result.data?.id?.toString() || result.id,
           type: result.type as 'chat' | 'contact' | 'space',
           spaceData: result.type === 'space' ? result.data : undefined,
+          updatedAt: (result as any).updatedAt || new Date(0).toISOString(),
           isSearchResult: true,
           searchRelevance: result.relevance,
           searchType: result.type,
@@ -597,7 +754,7 @@ const ChatPage = () => {
     }
 
     return sections;
-  }, [searchQuery, contacts, spaces, searchResults]);
+  }, [searchQuery, contacts, spaces, searchResults, activeTab, customTabs]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -625,6 +782,120 @@ const ChatPage = () => {
     router.push(`/(spaces)/${newSpace.id}`);
     onRefresh(); // Refresh the list in the background
   };
+
+  // Calculate counts for badges
+  const unreadCount = useMemo(() => spaces.filter(s => s.unreadCount! > 0 || s.spaceData?.my_permissions?.is_unread).length, [spaces]);
+  const favoritesCount = useMemo(() => spaces.filter(s => s.spaceData?.my_permissions?.is_favorite).length, [spaces]);
+  const archivedCount = useMemo(() => spaces.filter(s => s.spaceData?.my_permissions?.is_archived).length, [spaces]);
+
+  const SpaceTabsToolbar = () => (
+    <View style={styles.tabsWrapper}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.tabsContainer}
+      >
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'all' && styles.activeTab]}
+          onPress={() => {
+            setActiveTab('all');
+            if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }}
+        >
+          <Text style={[styles.tabText, activeTab === 'all' && styles.activeTabText]}>All</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'favorites' && styles.activeTab]}
+          onPress={() => {
+            setActiveTab('favorites');
+            if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }}
+        >
+          <View style={styles.tabContentWithIcon}>
+            <Ionicons name="heart" size={14} color={activeTab === 'favorites' ? '#fff' : '#667781'} style={styles.tabIcon} />
+            <Text style={[styles.tabText, activeTab === 'favorites' && styles.activeTabText]}>Favorites</Text>
+          </View>
+          {favoritesCount > 0 && activeTab !== 'favorites' && (
+            <View style={styles.tabBadge}>
+              <Text style={styles.tabBadgeText}>{favoritesCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'unread' && styles.activeTab]}
+          onPress={() => {
+            setActiveTab('unread');
+            if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }}
+        >
+          <Text style={[styles.tabText, activeTab === 'unread' && styles.activeTabText]}>Unread</Text>
+          {unreadCount > 0 && (
+            <View style={[styles.tabBadge, { backgroundColor: '#25D366' }]}>
+              <Text style={styles.tabBadgeText}>{unreadCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'archived' && styles.activeTab]}
+          onPress={() => {
+            setActiveTab('archived');
+            if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }}
+        >
+          <Text style={[styles.tabText, activeTab === 'archived' && styles.activeTabText]}>Archived</Text>
+          {archivedCount > 0 && (
+            <View style={[styles.tabBadge, { backgroundColor: '#667781' }]}>
+              <Text style={styles.tabBadgeText}>{archivedCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        {customTabs.map(tab => (
+          <TouchableOpacity
+            key={tab.id}
+            style={[styles.tab, activeTab === tab.id && styles.activeTab]}
+            onPress={() => {
+              setActiveTab(tab.id);
+              if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }}
+            onLongPress={(e) => {
+              if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+
+              const { pageX, pageY } = e.nativeEvent;
+              // Use 40/40 as approximate trigger size or just center on touch
+              const position = calculateAnchor(pageX - 20, pageY - 20, 40, 40, 220);
+              setTabMenuPosition(position);
+              setMenuTargetTab(tab);
+              setShowTabMenu(true);
+            }}
+          >
+            <Text style={[styles.tabText, activeTab === tab.id && styles.activeTabText]}>{tab.name}</Text>
+            {tab.spaceIds.length > 0 && (
+              <View style={[styles.tabBadge, { backgroundColor: '#007AFF' }]}>
+                <Text style={styles.tabBadgeText}>{tab.spaceIds.length}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        ))}
+
+        <TouchableOpacity
+          style={styles.addTabButton}
+          onPress={() => {
+            if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            setTabModalMode('create');
+            setTabModalStep(1);
+            setEditingTab(null);
+            setTabModalVisible(true);
+          }}
+        >
+          <Ionicons name="add" size={20} color="#007AFF" />
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  );
 
   const handleClearSearch = () => {
     setSearchQuery('');
@@ -849,7 +1120,6 @@ const ChatPage = () => {
           style={styles.searchInput}
           placeholder="Search chats, spaces, contacts..."
           value={searchQuery}
-          // onChangeText={debouncedSearch}
           onChangeText={handleSearch}
           clearButtonMode="while-editing"
           returnKeyType="search"
@@ -910,6 +1180,8 @@ const ChatPage = () => {
         </TouchableOpacity>
       </View>
 
+      <SpaceTabsToolbar />
+
       <Modal
         visible={showCreativeGenerator}
         animationType="slide"
@@ -966,6 +1238,29 @@ const ChatPage = () => {
                 item={item}
                 index={index}
               />
+            );
+          }
+
+          // Extra row for adding spaces to custom tab if empty or just because
+          if (item.id === 'add-to-tab') {
+            return (
+              <TouchableOpacity
+                style={styles.addSpaceRow}
+                onPress={() => {
+                  const currentCustomTab = customTabs.find(t => t.id === activeTab);
+                  if (currentCustomTab) {
+                    setTabModalMode('edit');
+                    setTabModalStep(2);
+                    setEditingTab(currentCustomTab);
+                    setTabModalVisible(true);
+                  }
+                }}
+              >
+                <View style={styles.addSpaceIconContainer}>
+                  <Ionicons name="add" size={24} color="#007AFF" />
+                </View>
+                <Text style={styles.addSpaceText}>Add or Remove Spaces</Text>
+              </TouchableOpacity>
             );
           }
 
@@ -1048,6 +1343,94 @@ const ChatPage = () => {
         maxToRenderPerBatch={10}
         removeClippedSubviews={Platform.OS === 'android'}
       />
+      <CreateTabModal
+        visible={tabModalVisible}
+        onClose={() => setTabModalVisible(false)}
+        mode={tabModalMode}
+        initialStep={tabModalStep}
+        initialData={editingTab}
+        allSpaces={[...spaces, ...contacts]}
+        onSave={(data) => {
+          if (tabModalMode === 'create') {
+            createCustomTab(data.name, data.spaceIds);
+          } else if (data.id) {
+            renameCustomTab(data.id, data.name);
+            setSpacesInTab(data.id, data.spaceIds);
+          }
+        }}
+      />
+
+      <GenericMenu
+        visible={showTabMenu}
+        onClose={() => setShowTabMenu(false)}
+        anchorPosition={tabMenuPosition}
+        items={[
+          {
+            icon: 'pencil',
+            label: 'Rename Tab',
+            onPress: () => {
+              setTabModalMode('edit');
+              setTabModalStep(1);
+              setEditingTab(menuTargetTab);
+              setTabModalVisible(true);
+            }
+          },
+          {
+            icon: 'list',
+            label: 'Edit Items',
+            onPress: () => {
+              setTabModalMode('edit');
+              setTabModalStep(2);
+              setEditingTab(menuTargetTab);
+              setTabModalVisible(true);
+            }
+          },
+          {
+            icon: 'trash',
+            label: 'Delete Tab',
+            destructive: true,
+            onPress: () => {
+              const tabToDelete = menuTargetTab;
+              if (tabToDelete) {
+                const performDelete = () => {
+                  deleteCustomTab(tabToDelete.id);
+                  if (activeTab === tabToDelete.id) {
+                    setActiveTab('all');
+                  }
+                };
+
+                if (Platform.OS === 'web') {
+                  if (window.confirm(`Are you sure you want to delete "${tabToDelete.name}"?`)) {
+                    performDelete();
+                  }
+                } else {
+                  Alert.alert(
+                    'Delete Tab',
+                    `Are you sure you want to delete "${tabToDelete.name}"?`,
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Delete',
+                        style: 'destructive',
+                        onPress: performDelete
+                      }
+                    ]
+                  );
+                }
+              }
+            }
+          }
+        ]}
+      />
+
+      {showSpaceCreationModal && (
+        <SpaceCreationModal
+          visible={showSpaceCreationModal}
+          onClose={() => setShowSpaceCreationModal(false)}
+          contacts={contacts}
+          onSpaceCreated={onSpaceCreated}
+        />
+      )}
     </Animated.View >
   );
 };
@@ -1108,6 +1491,67 @@ const styles = StyleSheet.create({
     marginRight: 8,
     fontSize: 14,
     color: '#1A73E8',
+  },
+  tabsWrapper: {
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E9EDEF',
+    paddingVertical: 10,
+  },
+  tabsContainer: {
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    gap: 8,
+  },
+  tab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F0F2F5',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  activeTab: {
+    backgroundColor: '#007AFF',
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#667781',
+  },
+  activeTabText: {
+    color: '#fff',
+  },
+  tabContentWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  tabIcon: {
+    marginRight: 4,
+  },
+  tabBadge: {
+    marginLeft: 6,
+    backgroundColor: '#007AFF',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  tabBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  addTabButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F0F2F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -1508,6 +1952,28 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
+  },
+  addSpaceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F2F5',
+  },
+  addSpaceIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E7F3FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  addSpaceText: {
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: '600',
   },
 });
 

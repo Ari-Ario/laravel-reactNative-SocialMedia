@@ -856,6 +856,20 @@ class CollaborationService {
     }
   }
 
+  async favoriteSpace(spaceId: string): Promise<{ is_favorite: boolean }> {
+    try {
+      const response = await axios.post(
+        `${this.baseURL}/spaces/${spaceId}/favorite`,
+        {},
+        { headers: this.getHeaders() }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error favoriting space:', error);
+      throw error;
+    }
+  }
+
   // 📞 VOICE/VIDEO CALLS
 
   async startCall(spaceId: string, callType: 'audio' | 'video' | 'screen_share'): Promise<any> {

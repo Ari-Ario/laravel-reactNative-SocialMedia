@@ -160,6 +160,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('/{id}/archive', [SpaceController::class , 'archiveSpace']);
             Route::post('/{id}/pin', [SpaceController::class , 'pinSpace']);
             Route::post('/{id}/unread', [SpaceController::class , 'markAsUnread']);
+            Route::post('/{id}/favorite', [SpaceController::class , 'favoriteSpace']);
 
             // Poll routes
             Route::get('/{id}/polls', [PollController::class , 'index']);
