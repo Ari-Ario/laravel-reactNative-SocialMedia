@@ -34,6 +34,8 @@ interface EnhancedChatRowProps {
   storyId?: number;
   email?: string;
   username?: string;
+  onLeave?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
 export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
@@ -53,6 +55,8 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
   storyId,
   email,
   username,
+  onLeave,
+  onDelete,
 }) => {
   const [showCollaborationMenu, setShowCollaborationMenu] = useState(false);
   const [showContactMenu, setShowContactMenu] = useState(false);
@@ -336,6 +340,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
         if (type === 'space') {
           await collaborationService.deleteSpace(id);
           simpleAlert('Success', 'Space deleted forever.');
+          if (onDelete) onDelete(id);
         }
         setShowCollaborationMenu(false);
       } catch (error) {
@@ -355,6 +360,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
         await collaborationService.leaveSpace(id);
         simpleAlert('Success', 'You have left the space.');
         setShowCollaborationMenu(false);
+        if (onLeave) onLeave(id);
       } catch (error: any) {
         console.error('Error leaving space:', error);
         // Handle sole owner warning from backend
@@ -702,13 +708,13 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
         onLongPress={handleLongPress}
       >
         <View style={styles.avatarContainer}>
-          {type === 'space' && !isDirectSpace ? (
+          {(type === 'space' || type === 'chat') && !isDirectSpace && !spaceData?.image_url ? (
             <View style={[styles.spaceAvatar, { backgroundColor: spaceBgColor }]}>
               <Ionicons name={getSpaceIcon() as any} size={24} color="#fff" />
             </View>
           ) : (
             <Avatar
-              source={displayAvatar || null}
+              source={spaceData?.image_url || displayAvatar || null}
               name={displayTitle}
               size={50}
               isOnline={isOnline}

@@ -28,8 +28,27 @@ const Avatar: React.FC<AvatarProps> = ({
   const [imgError, setImgError] = useState(false);
 
   // Resolve URI: relative paths become full API storage URLs
-  const resolveUri = (src: string) =>
-    src.startsWith('http') ? src : `${getApiBaseImage()}/storage/${src}`;
+  const resolveUri = (src: string) => {
+    if (!src) return '';
+    if (
+      src.startsWith('http') ||
+      src.startsWith('blob:') ||
+      src.startsWith('file:') ||
+      src.startsWith('data:')
+    ) {
+      return src;
+    }
+
+    const base = getApiBaseImage();
+    const cleanSrc = src.startsWith('/') ? src.substring(1) : src;
+
+    // If it already starts with storage/, don't double it
+    if (cleanSrc.startsWith('storage/')) {
+      return `${base}/${cleanSrc}`;
+    }
+
+    return `${base}/storage/${cleanSrc}`;
+  };
 
   // Build initials: up to 2 characters from name words
   const initials = name

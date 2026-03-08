@@ -41,7 +41,10 @@ class CollaborationSpace extends Model
         'linked_conversation_id',
         'linked_post_id',
         'linked_story_id',
+        'image_path',
     ];
+
+    protected $appends = ['image_url'];
 
     protected $casts = [
         'settings' => 'array',
@@ -94,7 +97,12 @@ class CollaborationSpace extends Model
 
     public function aiInteractions(): HasMany
     {
-        return $this->hasMany(AiInteraction::class, 'space_id', 'id');
+        return $this->hasMany(AIInteraction::class, 'space_id', 'id');
+    }
+
+    public function getImageUrlAttribute()
+    {
+        return $this->image_path ? \Illuminate\Support\Facades\Storage::url($this->image_path) : null;
     }
 
     // Scope for user's spaces

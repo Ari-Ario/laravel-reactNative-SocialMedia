@@ -46,6 +46,7 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
     const [spaceName, setSpaceName] = useState('');
     const [spaceDescription, setSpaceDescription] = useState('');
     const [spacePhoto, setSpacePhoto] = useState<string | null>(null);
+    const [spacePhotoFile, setSpacePhotoFile] = useState<File | null>(null);
     const [privacyTier, setPrivacyTier] = useState<PrivacyTier>('general');
     const [enableAI, setEnableAI] = useState(false);
 
@@ -61,6 +62,7 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
             setSpaceName('');
             setSpaceDescription('');
             setSpacePhoto(null);
+            setSpacePhotoFile(null);
             setPrivacyTier('general');
             setEnableAI(false);
             setIsCreating(false);
@@ -151,6 +153,7 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
                 const file = event.target?.files?.[0];
                 if (file) {
                     setSpacePhoto(URL.createObjectURL(file));
+                    setSpacePhotoFile(file);
                 }
             };
             input.click();
@@ -204,10 +207,14 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
             const newSpaceId = response.id;
 
             // 2. Upload photo if selected
-            if (spacePhoto && !spacePhoto.startsWith('http') && !spacePhoto.startsWith('blob:')) {
+            if (spacePhoto) {
                 setIsUploadingPhoto(true);
                 try {
-                    await uploadSpacePhoto(newSpaceId, spacePhoto);
+                    if (Platform.OS === 'web' && spacePhotoFile) {
+                        await uploadSpacePhotoWeb(newSpaceId, spacePhotoFile);
+                    } else if (Platform.OS !== 'web' && !spacePhoto.startsWith('http')) {
+                        await uploadSpacePhoto(newSpaceId, spacePhoto);
+                    }
                 } catch (photoError) {
                     console.error('Photo upload failed, but space was created:', photoError);
                 }
@@ -273,6 +280,7 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
                 name: `space_photo_${Date.now()}.jpg`,
             } as any);
             formData.append('type', 'image');
+            formData.append('is_logo', 'true');
 
             await fetch(`${API_BASE}/spaces/${spaceId}/upload-media`, {
                 method: 'POST',
@@ -283,6 +291,27 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
             });
         } catch (err) {
             console.error('Photo upload error during creation:', err);
+        }
+    };
+
+    const uploadSpacePhotoWeb = async (spaceId: string, file: File) => {
+        try {
+            const token = await getToken();
+            const API_BASE = getApiBase();
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('type', 'image');
+            formData.append('is_logo', 'true');
+
+            await fetch(`${API_BASE}/spaces/${spaceId}/upload-media`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+                body: formData,
+            });
+        } catch (err) {
+            console.error('Photo upload error during creation (web):', err);
         }
     };
 

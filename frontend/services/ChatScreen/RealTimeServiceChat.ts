@@ -35,8 +35,9 @@ class RealTimeService {
   async initialize(userId: string) {
     // ✅ FIX: Check if PusherService is already initialized
     if (this.pusherService.isReady()) {
-      console.log('✅ RealTimeService: Pusher already initialized, subscribing to user channel');
+      console.log('✅ RealTimeService: Pusher already initialized, subscribing to channels');
       this.subscribeToUserChannel(userId);
+      this.subscribeToPublicChannel();
       return;
     }
 
@@ -46,13 +47,50 @@ class RealTimeService {
     for (let i = 0; i < 6; i++) {
       await new Promise(resolve => setTimeout(resolve, 500));
       if (this.pusherService.isReady()) {
-        console.log('✅ RealTimeService: Pusher became ready, subscribing to user channel');
+        console.log('✅ RealTimeService: Pusher became ready, subscribing to channels');
         this.subscribeToUserChannel(userId);
+        this.subscribeToPublicChannel();
         return;
       }
     }
 
     console.warn('⚠️ RealTimeService: Pusher not ready after waiting');
+  }
+
+  /**
+   * ✅ NEW: Subscribe to public 'spaces' channel for global updates
+   */
+  subscribeToPublicChannel() {
+    const pusher = this.getPusherInstance();
+    if (!pusher) return;
+
+    const channelName = 'spaces';
+    if (this.channels.has(channelName)) return;
+
+    const channel = pusher.subscribe(channelName);
+    this.channels.set(channelName, channel);
+
+    channel.bind('space.updated', (data: any) => {
+      console.log('🌐 RealTimeService (Public): Space updated:', data);
+      const updateType = data.changes?.update_type || data.update_type || 'general';
+      
+      // We notify subscribers as 'user' updates so index.tsx can handle them uniformly
+      // index.tsx will filter if it's relevant to the current user's list
+      this.subscriptions.forEach((callbacks, key) => {
+        if (key.startsWith('user-')) {
+          this.notifySubscribers('user', key.replace('user-', ''), 'space_update', { ...data, update_type: updateType });
+        }
+      });
+    });
+
+    channel.bind('space.deleted', (data: any) => {
+      console.log('🌐 RealTimeService (Public): Space deleted:', data);
+      this.subscriptions.forEach((callbacks, key) => {
+        if (key.startsWith('user-')) {
+          this.notifySubscribers('user', key.replace('user-', ''), 'space_update', { ...data, update_type: 'deleted' });
+        }
+      });
+    });
   }
 
   /**
@@ -138,6 +176,12 @@ class RealTimeService {
     channel.bind('space.invitation', (data: any) => {
       console.log('📨 RealTimeService: Space invitation received:', data);
       this.notifySubscribers('user', userId, 'invitation', data);
+    });
+
+    // Handle when current user is removed or leaves a space
+    channel.bind('user.left_space', (data: any) => {
+      console.log('🚶 RealTimeService: Left space:', data);
+      this.notifySubscribers('user', userId, 'space_update', { ...data, update_type: 'left' });
     });
 
     // Bind to call events

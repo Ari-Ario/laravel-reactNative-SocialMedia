@@ -30,7 +30,7 @@ interface Message {
   user_id: number;
   user_name?: string;
   content: string;
-  type: 'text' | 'image' | 'video' | 'file' | 'voice' | 'poll' | 'album' | '__divider__';
+  type: 'text' | 'image' | 'video' | 'file' | 'voice' | 'poll' | 'album' | 'system' | '__divider__';
   metadata?: any;
   file_path?: string;
   mime_type?: string;
@@ -754,6 +754,17 @@ const MessageList: React.FC<MessageListProps> = ({
         </View>
       );
     }
+    
+    // ── System Message row (WhatsApp style) ──────────────────
+    if (item.type === 'system') {
+      return (
+        <View style={styles.systemMessageContainer}>
+          <View style={styles.systemMessageBadge}>
+            <Text style={styles.systemMessageText}>{item.content}</Text>
+          </View>
+        </View>
+      );
+    }
 
     // ── Normal message ───────────────────────────────────────
     const isCurrentUser = item.user_id === currentUserId;
@@ -1416,6 +1427,26 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
     backgroundColor: '#fff',
+  },
+  
+  // WhatsApp-style system message
+  systemMessageContainer: {
+    alignItems: 'center',
+    marginVertical: 12,
+    paddingHorizontal: 20,
+  },
+  systemMessageBadge: {
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  systemMessageText: {
+    color: '#666',
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 16,
   },
 });
 

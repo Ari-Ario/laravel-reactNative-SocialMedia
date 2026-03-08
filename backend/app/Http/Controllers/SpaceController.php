@@ -12,7 +12,8 @@ use App\Models\MagicEvent;
 use App\Models\User;
 use App\Models\Message;
 use App\Models\Call;
-use App\Models\AiInteraction;
+use App\Models\AIInteraction;
+use App\Models\Poll;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -38,6 +39,7 @@ use App\Events\SpaceMarkedUnread;
 use App\Events\SpaceFavorited;
 use App\Events\MessageSent;
 use App\Events\SpaceMessageSent;
+use App\Events\SpaceDeleted;
 use App\Events\MessageDeleted;
 use App\Events\MessageReacted;
 use App\Events\MessagePinned;
@@ -62,7 +64,7 @@ class SpaceController extends Controller
                 ->select([
                     'id', 'title', 'description', 'space_type', 'creator_id',
                     'is_live', 'has_ai_assistant', 'linked_conversation_id',
-                    'created_at', 'updated_at'
+                    'image_path', 'created_at', 'updated_at'
                 ])
                 ->with(['creator:id,name,profile_photo,username'])
                 ->withCount('participations')
@@ -94,6 +96,7 @@ class SpaceController extends Controller
                     'created_at' => $space->created_at,
                     'updated_at' => $space->updated_at,
                     'my_role' => $participation ? $participation->role : null,
+                    'image_url' => $space->image_url,
                     'is_online_in_space' => $participation ? ($participation->presence_data['is_online'] ?? false) : false,
                     'my_permissions' => $participation ? $participation->permissions : [
                         'is_muted' => false,
@@ -337,7 +340,7 @@ class SpaceController extends Controller
             })
             ->select([
                 'id', 'title', 'space_type', 'description', 'creator_id', 
-                'is_live', 'has_ai_assistant', 'settings',
+                'is_live', 'has_ai_assistant', 'settings', 'image_path',
                 'created_at', 'updated_at'
             ])
             ->with(['creator:id,name,profile_photo,username'])
@@ -618,6 +621,9 @@ public function updateContentState(Request $request, $id)
         // Broadcast participation update globally
         broadcast(new SpaceUpdated($space, $authUser->id, ['update_type' => 'participation']))->toOthers();
         
+        // WhatsApp-style system message
+        $this->sendSystemMessage($space, $authUser->name . " joined the space");
+        
         return response()->json([
             'participation' => $participation->load('user'),
             'message' => 'Successfully joined space'
@@ -654,8 +660,16 @@ public function updateContentState(Request $request, $id)
             broadcast(new ParticipantLeft($space, auth()->user()))->toOthers();
             $participation->delete();
 
-            // Broadcast participation update globally
-            broadcast(new SpaceUpdated($space, auth()->id(), ['update_type' => 'participation']))->toOthers();
+            // Broadcast participation update to everyone in the space channel 
+            // AND to the public 'spaces' channel so list views can update count
+            broadcast(new SpaceUpdated($space, auth()->id(), [
+                'update_type' => 'left',
+                'user_id' => auth()->id(),
+                'space_id' => $id
+            ]));
+
+            // WhatsApp-style system message
+            $this->sendSystemMessage($space, auth()->user()->name . " left the space");
         }
         
         return response()->json([
@@ -757,6 +771,9 @@ public function updateContentState(Request $request, $id)
 
         // Broadcast participation update globally
         broadcast(new SpaceUpdated($space, $userId, ['update_type' => 'participation']))->toOthers();
+
+        // WhatsApp-style system message
+        $this->sendSystemMessage($space, $authUser->name . " joined via invitation");
         
         return response()->json([
             'participation' => $participation->load('user'),
@@ -1100,6 +1117,11 @@ public function endCall(Request $request, $id)
             ],
         ]);
         
+        // Handle as space logo if requested
+        if ($request->boolean('is_logo')) {
+            $space->update(['image_path' => $path]);
+        }
+        
         // Add to space content state if it's a message
         if ($request->has('message_content')) {
             $contentState = $space->content_state ?? [];
@@ -1334,6 +1356,34 @@ public function endCall(Request $request, $id)
         if (!$isAuthor && !$isModerator) {
             return response()->json(['message' => 'Not authorized to delete this message'], 403);
         }
+
+        // --- MEDIA CLEANUP START ---
+        $filesToDelete = [];
+        
+        // 1. Check for single file path
+        if (!empty($msg['file_path'])) {
+            $filesToDelete[] = $msg['file_path'];
+        }
+        
+        // 2. Check for album media items
+        if (($msg['type'] ?? '') === 'album' && !empty($msg['metadata']['media_items'])) {
+            foreach ($msg['metadata']['media_items'] as $item) {
+                if (!empty($item['file_path'])) {
+                    $filesToDelete[] = $item['file_path'];
+                }
+            }
+        }
+        
+        // 3. Perform Deletion
+        foreach (array_unique($filesToDelete) as $path) {
+            // Delete from Storage
+            if (Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
+            }
+            // Delete Media Record
+            \App\Models\Media::where('file_path', $path)->delete();
+        }
+        // --- MEDIA CLEANUP END ---
 
         // Remove the message
         array_splice($messages, $messageIndex, 1);
@@ -1618,7 +1668,7 @@ public function endCall(Request $request, $id)
     //     $aiResponse = $this->queryAI($request->query, $context, $request->action);
         
     //     // Log the interaction
-    //     $interaction = AiInteraction::create([
+    //     $interaction = AIInteraction::create([
     //         'id' => Str::uuid(),
     //         'space_id' => $space->id,
     //         'user_id' => $user->id,
@@ -2559,19 +2609,60 @@ public function endCall(Request $request, $id)
 
             DB::beginTransaction();
             
-            // Delete all participations
+            // 1. Delete all participations
             $space->participations()->delete();
             
-            // Delete magic events
+            // 2. Delete magic events
             $space->magicEvents()->delete();
+
+            // 3. Delete AI interactions
+            $space->aiInteractions()->delete();
+
+            // 4. Delete associated Media and files
+            $mediaItems = \App\Models\Media::where('model_type', CollaborationSpace::class)
+                ->where('model_id', $id)
+                ->get();
             
-            // Delete the space itself
+            foreach ($mediaItems as $item) {
+                if (Storage::disk('public')->exists($item->file_path)) {
+                    Storage::disk('public')->delete($item->file_path);
+                }
+                $item->delete();
+            }
+
+            // Also delete the space directory entirely for speed/completeness
+            Storage::disk('public')->deleteDirectory("spaces/{$id}");
+
+            // 5. Delete linked conversation in main chat system
+            if ($space->linked_conversation_id) {
+                $conversation = \App\Models\Conversation::find($space->linked_conversation_id);
+                if ($conversation) {
+                    $conversation->messages()->delete();
+                    $conversation->participants()->detach();
+                    $conversation->delete();
+                }
+            }
+
+            // 6. Delete Polls
+            $polls = \App\Models\Poll::where('space_id', $id)->get();
+            foreach ($polls as $poll) {
+                $poll->votes()->delete();
+                $poll->options()->delete();
+                $poll->delete();
+            }
+            
+            // Broadcast space deleted BEFORE deleting the record
+            try {
+                broadcast(new SpaceUpdated($space, $user->id, ['update_type' => 'deleted']));
+                broadcast(new SpaceDeleted($id, $user->id));
+            } catch (\Exception $e) {
+                Log::warning('Broadcast failed during space deletion: ' . $e->getMessage());
+            }
+            
+            // 6. Delete the space itself
             $space->delete();
 
             DB::commit();
-
-            // Broadcast space deleted if we have an event (optional, but good for real-time UI removal)
-            // broadcast(new \App\Events\SpaceDeleted($id))->toOthers();
 
             return response()->json(['message' => 'Space deleted forever']);
         } catch (\Exception $e) {
@@ -2687,5 +2778,44 @@ public function endCall(Request $request, $id)
         }
         
         return null;
+    }
+
+    /**
+     * Send a system message to the space (WhatsApp style join/leave)
+     */
+    private function sendSystemMessage($space, $content)
+    {
+        $contentState = $space->content_state ?? [];
+        $messages = $contentState['messages'] ?? [];
+        
+        $message = [
+            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'user_id' => 0,
+            'user_name' => 'System',
+            'content' => $content,
+            'type' => 'system',
+            'created_at' => now()->toISOString(),
+            'metadata' => ['is_system' => true],
+        ];
+        
+        $messages[] = $message;
+        $contentState['messages'] = $messages;
+        
+        $space->update([
+            'content_state' => $contentState,
+            'updated_at' => now(),
+        ]);
+        
+        try {
+            // General presence channel for those inside the space
+            broadcast(new \App\Events\MessageSent($message, $space->id, null))->toOthers();
+            
+            // Individual user channels for those on the chat list page
+            foreach ($space->participations as $p) {
+                broadcast(new \App\Events\SpaceMessageSent($space->id, $p->user_id, $message))->toOthers();
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('System message broadcast failed: ' . $e->getMessage());
+        }
     }
 }

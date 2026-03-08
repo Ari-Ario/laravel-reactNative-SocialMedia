@@ -52,7 +52,7 @@ const SpaceSettingsModal: React.FC<SpaceSettingsModalProps> = ({
     const [editingDescription, setEditingDescription] = useState(space?.description || '');
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState(false);
-    const [spacePhoto, setSpacePhoto] = useState<string | null>(space?.avatar || null);
+    const [spacePhoto, setSpacePhoto] = useState<string | null>(space?.image_url || space?.avatar || null);
     const [selectedParticipant, setSelectedParticipant] = useState<any>(null);
     const [showRoleSheet, setShowRoleSheet] = useState(false);
 
@@ -306,6 +306,7 @@ const SpaceSettingsModal: React.FC<SpaceSettingsModalProps> = ({
                 name: `space_photo_${Date.now()}.jpg`,
             } as any);
             formData.append('type', 'image');
+            formData.append('is_logo', 'true');
 
             const res = await fetch(`${API_BASE}/spaces/${space.id}/upload-media`, {
                 method: 'POST',
@@ -325,7 +326,7 @@ const SpaceSettingsModal: React.FC<SpaceSettingsModalProps> = ({
             const photoUrl = data?.media?.url || data?.url || data?.path || null;
             if (photoUrl) {
                 setSpacePhoto(photoUrl);
-                onSpaceUpdated({ ...space, avatar: photoUrl });
+                onSpaceUpdated({ ...space, image_url: photoUrl });
             }
 
             if (Platform.OS !== 'web') {
@@ -350,6 +351,7 @@ const SpaceSettingsModal: React.FC<SpaceSettingsModalProps> = ({
             const formData = new FormData();
             formData.append('file', file);
             formData.append('type', 'image');
+            formData.append('is_logo', 'true');
 
             const res = await fetch(`${API_BASE}/spaces/${space.id}/upload-media`, {
                 method: 'POST',
@@ -368,7 +370,7 @@ const SpaceSettingsModal: React.FC<SpaceSettingsModalProps> = ({
             const photoUrl = data?.media?.url || data?.url || data?.path || null;
             if (photoUrl) {
                 setSpacePhoto(photoUrl);
-                onSpaceUpdated({ ...space, avatar: photoUrl });
+                onSpaceUpdated({ ...space, image_url: photoUrl });
             }
 
             Alert.alert('Success', 'Space photo updated!');

@@ -21,6 +21,7 @@ export interface CollaborationSpace {
   id: string;
   title: string;
   description?: string;
+  image_url?: string;
   space_type: 'chat' | 'whiteboard' | 'meeting' | 'document' | 'brainstorm' | 'story' | 'voice_channel' | 'direct' | 'general' | 'protected' | 'channel';
   creator_id: number;
   settings: any;
@@ -645,7 +646,8 @@ class CollaborationService {
     onMessageDeleted?: (data: any) => void;
     onMessagePinned?: (data: any) => void;
     onMessageReacted?: (data: any) => void;
-    onMessageReplied?: (data: any) => void;  // ✅ NEW
+    onMessageReplied?: (data: any) => void;
+    onSpaceDeleted?: (data: any) => void;
   }) {
     try {
       // ✅ FIX: Only check if Pusher is ready - DON'T initialize
@@ -697,15 +699,24 @@ class CollaborationService {
       bind('call.ended', callbacks.onCallEnded, '📵 Call ended');
       bind('magic.triggered', callbacks.onMagicEvent, '✨ Magic event');
       bind('space.updated', callbacks.onSpaceUpdate, '🔄 Space updated');
+      bind('space.deleted', callbacks.onSpaceDeleted, '🗑️ Space deleted');
       bind('participant.joined', (data) => {
         console.log(`👤 [${spaceId}] Participant joined`, data);
-        callbacks.onParticipantJoined?.(data);
-        callbacks.onParticipantUpdate?.(data);
+        const normalized = {
+          ...data,
+          user_id: data.user?.id || data.user_id,
+        };
+        callbacks.onParticipantJoined?.(normalized);
+        callbacks.onParticipantUpdate?.(normalized);
       });
       bind('participant.left', (data) => {
         console.log(`👤 [${spaceId}] Participant left`, data);
-        callbacks.onParticipantLeft?.(data);
-        callbacks.onParticipantUpdate?.(data);
+        const normalized = {
+          ...data,
+          user_id: data.user?.id || data.user_id,
+        };
+        callbacks.onParticipantLeft?.(normalized);
+        callbacks.onParticipantUpdate?.(normalized);
       });
       bind('participant.updated', (data) => {
         callbacks.onParticipantUpdate?.(data);

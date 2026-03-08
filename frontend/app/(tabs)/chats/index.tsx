@@ -204,7 +204,30 @@ const ChatPage = () => {
           };
 
           setSpaces(prev => {
-            const index = prev.findIndex(s => s.id === data.space_id);
+            const spaceId = data.space_id || data.space?.id || data.changes?.space_id;
+            if (!spaceId) return prev;
+
+            const index = prev.findIndex(s => s.id === spaceId);
+            
+            // Handle invitation even if not in list yet
+            if (data.update_type === 'invitation') {
+                console.log('🔄 Invitation received via space_update case');
+                fetchUserSpaces();
+                return prev; 
+            }
+
+            // Handle deletion/leaving even if not in list (filter is safe)
+            if (data.update_type === 'deleted') {
+                console.log('🗑️ Space deleted, removing from list:', spaceId);
+                return prev.filter(s => s.id !== spaceId);
+            }
+
+            if (data.update_type === 'left' && (String(data.user_id) === String(user?.id) || String(data.changes?.user_id) === String(user?.id))) {
+                console.log('🚶 I left the space, removing from list:', spaceId);
+                return prev.filter(s => s.id !== spaceId);
+            }
+
+            // From here on, we need the space to exist in the list
             if (index === -1) return prev;
 
             const space = prev[index];
@@ -242,10 +265,6 @@ const ChatPage = () => {
                   };
                 }
                 break;
-              case 'invitation':
-                console.log('🔄 Invitation received via space_update case');
-                fetchUserSpaces();
-                return prev; // fetchUserSpaces will handle the state update
             }
 
             const updatedSpace = {
@@ -1280,6 +1299,12 @@ const ChatPage = () => {
           return (
             <EnhancedChatRow
               {...item}
+              onLeave={(leftId) => {
+                setSpaces(prev => prev.filter(s => s.id !== leftId));
+              }}
+              onDelete={(deletedId) => {
+                setSpaces(prev => prev.filter(s => s.id !== deletedId));
+              }}
             />
 
           );

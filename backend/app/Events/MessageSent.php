@@ -61,10 +61,10 @@ class MessageSent extends LaravelNotification implements ShouldBroadcast
         return [
             'type' => 'new_message',
             'title' => 'New Message',
-            'message' => ($this->user->name ?? 'Someone') . ': ' . $displayText,
+            'message' => (($this->user->name ?? 'System')) . ': ' . $displayText,
             'messageId' => $this->message['id'] ?? null,
             'spaceId' => $this->spaceId,
-            'userId' => $this->user->id ?? null,
+            'userId' => $this->user->id ?? 0,
             'profile_photo' => $this->user->profile_photo ?? null,
             'timestamp' => now()->toISOString(),
             'message_type' => $type,

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AiInteraction;
+use App\Models\AIInteraction;
 use App\Models\ChatbotTraining;
 use App\Models\CollaborationSpace;
 use App\Models\Post;
@@ -22,7 +22,7 @@ class AIController extends Controller
     {
         $user = Auth::user();
         
-        $interactions = AiInteraction::where('user_id', $user->id)
+        $interactions = AIInteraction::where('user_id', $user->id)
             ->with(['space', 'trainingMatch'])
             ->orderBy('created_at', 'desc')
             ->paginate(20);
@@ -30,10 +30,10 @@ class AIController extends Controller
         return response()->json([
             'interactions' => $interactions,
             'stats' => [
-                'total_interactions' => AiInteraction::where('user_id', $user->id)->count(),
-                'helpful_count' => AiInteraction::where('user_id', $user->id)
+                'total_interactions' => AIInteraction::where('user_id', $user->id)->count(),
+                'helpful_count' => AIInteraction::where('user_id', $user->id)
                     ->where('was_helpful', true)->count(),
-                'average_confidence' => AiInteraction::where('user_id', $user->id)
+                'average_confidence' => AIInteraction::where('user_id', $user->id)
                     ->avg('confidence_score'),
             ]
         ]);
@@ -46,7 +46,7 @@ class AIController extends Controller
     {
         $user = Auth::user();
         
-        $interaction = AiInteraction::where('id', $interactionId)
+        $interaction = AIInteraction::where('id', $interactionId)
             ->where('user_id', $user->id)
             ->firstOrFail();
         
@@ -78,7 +78,7 @@ class AIController extends Controller
             
             // Update success rate
             $totalUses = $training->usage_count;
-            $helpfulUses = AiInteraction::where('training_match_id', $training->id)
+            $helpfulUses = AIInteraction::where('training_match_id', $training->id)
                 ->where('was_helpful', true)
                 ->count();
             
@@ -262,7 +262,7 @@ class AIController extends Controller
         $patterns = [];
         
         // Get all interactions in this space
-        $interactions = AiInteraction::where('space_id', $space->id)
+        $interactions = AIInteraction::where('space_id', $space->id)
             ->where('was_helpful', true)
             ->get();
         

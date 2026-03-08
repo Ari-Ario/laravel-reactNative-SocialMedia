@@ -77,6 +77,28 @@ const SpaceDetailScreen = () => {
   const collaborationService = CollaborationService.getInstance();
   const windowHeight = Dimensions.get('window').height;
   const { width: windowWidth } = useWindowDimensions();
+  
+  // ✅ Web-compatible alert/confirm helpers
+  const simpleAlert = (title: string, message: string) => {
+    if (Platform.OS === 'web') {
+      alert(`${title}\n\n${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
+  const confirmAction = (title: string, message: string, confirmText: string, onConfirm: () => void) => {
+    if (Platform.OS === 'web') {
+      if (window.confirm(`${title}\n\n${message}`)) {
+        onConfirm();
+      }
+    } else {
+      Alert.alert(title, message, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: confirmText, onPress: onConfirm, style: 'destructive' }
+      ]);
+    }
+  };
 
   // Space Settings States
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -97,6 +119,7 @@ const SpaceDetailScreen = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
   const [isArchived, setIsArchived] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // ✅ Real-time space management listener
   useEffect(() => {
@@ -253,14 +276,44 @@ const SpaceDetailScreen = () => {
           console.log('Space updated:', updatedSpace.title);
           setSpace(updatedSpace);
         },
+        onParticipantJoined: (participant) => {
+          setParticipants(prev => {
+            const pId = participant.user_id || participant.user?.id;
+            if (!pId) return prev;
+            if (prev.some(p => String(p.user_id) === String(pId))) return prev;
+            return [...prev, participant];
+          });
+        },
+        onParticipantLeft: (participant) => {
+          const pId = participant.user_id || participant.user?.id;
+          console.log(`👤 Removing participant ${pId} from space ${id}`);
+          if (pId) {
+            setParticipants(prev => prev.filter(p => String(p.user_id) !== String(pId)));
+            
+            // Redirect if I am the one who left (from another device/tab)
+            if (String(pId) === String(user?.id)) {
+              router.replace('/(tabs)/chats');
+            }
+          }
+        },
+        onSpaceDeleted: () => {
+          console.log('🗑️ Space deleted event received, redirecting...');
+          router.replace('/(tabs)/chats');
+          simpleAlert('Space Deleted', 'This space has been deleted by the owner.');
+        },
         onParticipantUpdate: (participant) => {
           setParticipants(prev => {
-            const existingIndex = prev.findIndex(p => p.user_id === participant.user_id);
+            const pId = participant.user_id || participant.user?.id;
+            if (!pId) return prev;
+
+            const existingIndex = prev.findIndex(p => String(p.user_id) === String(pId));
             if (existingIndex >= 0) {
               const updated = [...prev];
-              updated[existingIndex] = participant;
+              // Merge existing with updated data to preserve fields like 'user' object
+              updated[existingIndex] = { ...updated[existingIndex], ...participant };
               return updated;
             } else {
+              // If not found and it's an update, we still add it for consistency
               return [...prev, participant];
             }
           });
@@ -590,49 +643,47 @@ const SpaceDetailScreen = () => {
   };
 
   const handleLeaveSpace = async () => {
-    Alert.alert(
+    confirmAction(
       'Leave Space',
       'Are you sure you want to leave this space?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Leave',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await collaborationService.leaveSpace(id as string);
-              router.back();
-            } catch (error) {
-              console.error('Error leaving space:', error);
-              Alert.alert('Error', 'Failed to leave space');
-            }
+      'Leave',
+      async () => {
+        try {
+          await collaborationService.leaveSpace(id as string);
+          router.replace('/(tabs)/chats');
+        } catch (error: any) {
+          console.error('Error leaving space:', error);
+          if (error.response?.status === 403 && error.response?.data?.message) {
+            simpleAlert('Cannot Leave', error.response.data.message);
+          } else {
+            simpleAlert('Error', 'Failed to leave space');
           }
         }
-      ]
+      }
     );
     setShowSpaceMenu(false);
   };
 
   const handleDeleteSpace = async () => {
-    Alert.alert(
-      'Delete Space',
-      'Are you sure you want to permanently delete this space? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await collaborationService.deleteSpace(id as string);
-              router.back();
-            } catch (error) {
-              console.error('Error deleting space:', error);
-              Alert.alert('Error', 'Failed to delete space');
-            }
-          }
+    const warningMessage = 'The space will be deleted forever for all participants with all messages and belongings. Proceed?';
+    
+    confirmAction(
+      'Delete Space Forever',
+      warningMessage,
+      'Delete',
+      async () => {
+        setIsDeleting(true);
+        try {
+          await collaborationService.deleteSpace(id as string);
+          router.replace('/(tabs)/chats');
+          simpleAlert('Success', 'Space deleted forever.');
+        } catch (error) {
+          console.error('Error deleting space:', error);
+          simpleAlert('Error', 'Failed to delete space');
+        } finally {
+          setIsDeleting(false);
         }
-      ]
+      }
     );
     setShowSpaceMenu(false);
   };
@@ -934,7 +985,7 @@ const SpaceDetailScreen = () => {
 
   const displayPhoto = isDirectChat && otherParticipant
     ? ((otherParticipant.profile_photo_url || otherParticipant.profile_photo) as string)
-    : (space?.creator?.profile_photo || null);
+    : (space?.image_url || space?.creator?.profile_photo || null);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -951,7 +1002,7 @@ const SpaceDetailScreen = () => {
             `Title: ${displayTitle} \nType: ${space?.space_type || 'chat'} \nParticipants: ${participants.length} \nCreated: ${space?.created_at ? new Date(space.created_at).toLocaleDateString() : 'N/A'} `
           )}
         >
-          {isDirectChat && otherParticipant ? (
+          {displayPhoto ? (
             <View style={styles.headerAvatar}>
               <Avatar source={displayPhoto} size={36} name={displayTitle} />
             </View>
@@ -1076,16 +1127,16 @@ const SpaceDetailScreen = () => {
             },
           },
           {
-            icon: 'download-outline',
+            icon: 'download-outline' as const,
             label: 'Export Content',
             onPress: handleExportContentClick,
           },
-          {
-            icon: 'exit-outline',
+          ...(space?.my_role !== 'owner' ? [{
+            icon: 'exit-outline' as const,
             label: 'Leave Space',
             destructive: true,
             onPress: handleLeaveSpace,
-          },
+          }] : []),
           ...(space?.my_role === 'owner' ? [{
             icon: 'trash-outline' as const,
             label: 'Delete Space',
@@ -1112,6 +1163,17 @@ const SpaceDetailScreen = () => {
       {/* Main Content Area */}
       <View style={styles.contentArea}>
         {renderContent()}
+
+        {/* Deleting Overlay */}
+        {isDeleting && (
+          <View style={styles.deletingOverlay}>
+            <View style={styles.deletingContent}>
+              <ActivityIndicator size="large" color="#007AFF" />
+              <Text style={styles.deletingText}>Deleting space...</Text>
+              <Text style={styles.deletingSubtext}>Permanently removing all messages and media</Text>
+            </View>
+          </View>
+        )}
 
         {/* Magic Events Floating Orbs */}
         {magicEvents
@@ -2203,6 +2265,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#007AFF',
     fontWeight: '600',
+  },
+  deletingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  deletingContent: {
+    alignItems: 'center',
+    padding: 24,
+  },
+  deletingText: {
+    marginTop: 16,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  deletingSubtext: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
   },
 });
 
