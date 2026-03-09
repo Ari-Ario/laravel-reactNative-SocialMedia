@@ -863,6 +863,17 @@ public function startCall(Request $request, $id)
     }
 
     broadcast(new CallStarted($space, $call, auth()->user()))->toOthers();
+    
+    // Create persistent call log message
+    $this->sendSystemMessage($space, auth()->user()->name . " started a " . $request->call_type . " call", [
+        'call_log' => [
+            'id' => $call->id,
+            'type' => $request->call_type,
+            'status' => 'active',
+            'initiator_id' => auth()->id(),
+            'initiator_name' => auth()->user()->name
+        ]
+    ]);
 
     return response()->json([
         'call' => $call->load('initiator'),
@@ -1029,6 +1040,23 @@ public function endCall(Request $request, $id)
         // Broadcast call ended
         broadcast(new CallEnded($space, $call))->toOthers();
         
+        // Create persistent call log message for end of call
+        $duration = $call->duration_seconds;
+        $minutes = floor($duration / 60);
+        $seconds = $duration % 60;
+        $durationStr = $minutes > 0 ? "{$minutes}m {$seconds}s" : "{$seconds}s";
+        
+        $this->sendSystemMessage($space, "Call ended (" . $durationStr . ")", [
+            'call_log' => [
+                'id' => $call->id,
+                'type' => $call->type,
+                'status' => 'ended',
+                'initiator_id' => $call->initiator_id,
+                'duration' => $duration,
+                'duration_formatted' => $durationStr
+            ]
+        ]);
+        
         return response()->json([
             'success' => true,
             'message' => 'Call ended successfully',
@@ -1119,6 +1147,10 @@ public function endCall(Request $request, $id)
         
         // Handle as space logo if requested
         if ($request->boolean('is_logo')) {
+            // Delete old photo if exists
+            if ($space->image_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($space->image_path)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($space->image_path);
+            }
             $space->update(['image_path' => $path]);
         }
         
@@ -2783,7 +2815,7 @@ public function endCall(Request $request, $id)
     /**
      * Send a system message to the space (WhatsApp style join/leave)
      */
-    private function sendSystemMessage($space, $content)
+    private function sendSystemMessage($space, $content, $metadata = [])
     {
         $contentState = $space->content_state ?? [];
         $messages = $contentState['messages'] ?? [];
@@ -2795,7 +2827,7 @@ public function endCall(Request $request, $id)
             'content' => $content,
             'type' => 'system',
             'created_at' => now()->toISOString(),
-            'metadata' => ['is_system' => true],
+            'metadata' => array_merge(['is_system' => true], $metadata),
         ];
         
         $messages[] = $message;

@@ -11,15 +11,17 @@ import {
     Alert,
     ActivityIndicator,
     Image,
-    FlatList,
     Linking,
     Platform,
+    useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
+import { MediaCompressor } from '@/utils/mediaCompressor';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import getApiBase from '@/services/getApiBase';
+import getApiBaseImage from '@/services/getApiBaseImage';
 import { getToken } from '@/services/TokenService';
 
 interface SpaceSettingsModalProps {
@@ -33,7 +35,7 @@ interface SpaceSettingsModalProps {
     onParticipantRemoved?: (participantId: number) => void;
 }
 
-type SettingsTab = 'general' | 'participants' | 'media' | 'danger';
+type SettingsTab = 'general' | 'media' | 'danger';
 
 const SpaceSettingsModal: React.FC<SpaceSettingsModalProps> = ({
     visible,
@@ -45,6 +47,10 @@ const SpaceSettingsModal: React.FC<SpaceSettingsModalProps> = ({
     onParticipantRoleChanged,
     onParticipantRemoved,
 }) => {
+    const { width: windowWidth } = useWindowDimensions();
+    const isWeb = Platform.OS === 'web';
+    const isLargeScreen = isWeb && windowWidth > 768;
+
     const collaborationService = CollaborationService.getInstance();
 
     const [activeTab, setActiveTab] = useState<SettingsTab>('general');
@@ -53,9 +59,6 @@ const SpaceSettingsModal: React.FC<SpaceSettingsModalProps> = ({
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [spacePhoto, setSpacePhoto] = useState<string | null>(space?.image_url || space?.avatar || null);
-    const [selectedParticipant, setSelectedParticipant] = useState<any>(null);
-    const [showRoleSheet, setShowRoleSheet] = useState(false);
-
     const isOwnerOrModerator = currentUserRole === 'owner' || currentUserRole === 'moderator';
     const isOwner = currentUserRole === 'owner';
 
@@ -132,77 +135,13 @@ const SpaceSettingsModal: React.FC<SpaceSettingsModalProps> = ({
         return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
     };
 
-    const renderMediaTab = () => (
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.mediaContainer}>
-            {loadingMedia ? (
-                <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 40 }} />
-            ) : mediaItems.length === 0 ? (
-                <View style={styles.mediaEmpty}>
-                    <Ionicons name="cloud-upload-outline" size={56} color="#ccc" />
-                    <Text style={styles.mediaEmptyTitle}>No files yet</Text>
-                    <Text style={styles.mediaEmptySub}>Files uploaded in this space will appear here.</Text>
-                </View>
-            ) : (
-                <View style={styles.mediaGrid}>
-                    {mediaItems.map((item) => {
-                        const isImg = item.type === 'image';
-                        const cfg = mediaTypeConfig[item.type] ?? mediaTypeConfig.document;
-                        const isDel = deletingMediaId === item.id;
-                        return (
-                            <View key={item.id} style={styles.mediaCard}>
-                                {/* Thumbnail or icon */}
-                                {isImg && item.url ? (
-                                    <Image source={{ uri: item.url }} style={styles.mediaThumb} resizeMode="cover" />
-                                ) : (
-                                    <View style={[styles.mediaThumb, styles.mediaIconBg, { backgroundColor: cfg.color + '22' }]}>
-                                        <Ionicons name={cfg.icon} size={32} color={cfg.color} />
-                                    </View>
-                                )}
-                                {/* Info */}
-                                <View style={styles.mediaCardInfo}>
-                                    <Text style={styles.mediaFileName} numberOfLines={2}>{item.file_name}</Text>
-                                    <Text style={styles.mediaMeta}>
-                                        {formatBytes(item.file_size)} · {item.uploader?.name ?? 'Unknown'}
-                                    </Text>
-                                </View>
-                                {/* Actions */}
-                                <View style={styles.mediaActions}>
-                                    <TouchableOpacity
-                                        onPress={() => item.url && Linking.openURL(item.url)}
-                                        style={styles.mediaActionBtn}
-                                        hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-                                    >
-                                        {isDel
-                                            ? <ActivityIndicator size="small" color="#FF3B30" />
-                                            : <Ionicons name="open-outline" size={20} color="#007AFF" />}
-                                    </TouchableOpacity>
-                                    {isOwnerOrModerator && (
-                                        <TouchableOpacity
-                                            onPress={() => handleDeleteMedia(item)}
-                                            style={[styles.mediaActionBtn, { marginTop: 6 }]}
-                                            hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-                                            disabled={isDel}
-                                        >
-                                            <Ionicons name="trash-outline" size={20} color="#FF3B30" />
-                                        </TouchableOpacity>
-                                    )}
-                                </View>
-                            </View>
-                        );
-                    })}
-                </View>
-            )}
-        </ScrollView>
-    );
-
-    // ─── General Settings ────────────────────────────────────────────────────────
+    // ─── General Settings Logic ──────────────────────────────────────────────────
 
     const handleSave = useCallback(async () => {
         if (!editingTitle.trim()) {
             Alert.alert('Validation', 'Space name cannot be empty.');
             return;
         }
-
         setSaving(true);
         try {
             const updated = await collaborationService.updateSpace(space.id, {
@@ -210,69 +149,95 @@ const SpaceSettingsModal: React.FC<SpaceSettingsModalProps> = ({
                 description: editingDescription.trim(),
             });
             onSpaceUpdated(updated);
-            if (Platform.OS !== 'web') {
-                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            }
+            if (Platform.OS !== 'web') await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             Alert.alert('Saved', 'Space settings updated successfully.');
-            onClose();
         } catch (err) {
             console.error('[SpaceSettings] Save error:', err);
-            Alert.alert('Error', 'Could not save settings. Please try again.');
+            Alert.alert('Error', 'Could not save settings.');
         } finally {
             setSaving(false);
         }
     }, [editingTitle, editingDescription, space?.id]);
 
-    // ─── Photo Upload (Web-safe, CORS-fixed) ─────────────────────────────────────
-
-    const pickFromGallery = useCallback(async () => {
+    const uploadPhotoNative = async (uri: string, mimeType: string) => {
+        setUploading(true);
         try {
-            const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (!perm.granted) {
-                Alert.alert('Permission Required', 'Allow access to your photo library.');
-                return;
-            }
-            const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                aspect: [1, 1],
-                quality: 0.85,
-            });
-            if (!result.canceled && result.assets?.[0]) {
-                const asset = result.assets[0];
-                await uploadPhotoNative(asset.uri, asset.mimeType || 'image/jpeg');
-            }
-        } catch (err) {
-            console.error('[SpaceSettings] Gallery pick error:', err);
-            Alert.alert('Error', 'Could not open gallery.');
-        }
-    }, [space?.id]);
+            const compressed = await MediaCompressor.prepareMediaForUpload(uri);
+            const token = await getToken();
+            const formData = new FormData();
+            formData.append('file', {
+                uri: compressed.uri,
+                type: compressed.type || 'image/jpeg',
+                name: compressed.fileName || `space_photo_${Date.now()}.jpg`,
+            } as any);
+            formData.append('type', 'image');
+            formData.append('is_logo', 'true');
 
-    const pickFromCamera = useCallback(async () => {
-        try {
-            const perm = await ImagePicker.requestCameraPermissionsAsync();
-            if (!perm.granted) {
-                Alert.alert('Permission Required', 'Allow camera access to take a photo.');
-                return;
-            }
-            const result = await ImagePicker.launchCameraAsync({
-                allowsEditing: true,
-                aspect: [1, 1],
-                quality: 0.85,
+            const res = await fetch(`${getApiBase()}/spaces/${space.id}/upload-media`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                body: formData,
             });
-            if (!result.canceled && result.assets?.[0]) {
-                const asset = result.assets[0];
-                await uploadPhotoNative(asset.uri, asset.mimeType || 'image/jpeg');
+
+            if (!res.ok) throw new Error('Upload failed');
+            const data = await res.json();
+            const photoUrl = data?.media?.url || data?.url || data?.path || null;
+            if (photoUrl) {
+                setSpacePhoto(photoUrl);
+                onSpaceUpdated({ ...space, image_url: photoUrl });
             }
+            if (Platform.OS !== 'web') await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            Alert.alert('Success', 'Space photo updated!');
         } catch (err) {
-            console.error('[SpaceSettings] Camera pick error:', err);
-            Alert.alert('Error', 'Could not open camera.');
+            console.error('[SpaceSettings] Upload error:', err);
+            Alert.alert('Upload Failed', 'Could not upload image.');
+        } finally {
+            setUploading(false);
         }
-    }, [space?.id]);
+    };
+
+    const uploadPhotoFile = async (file: File) => {
+        setUploading(true);
+        try {
+            const uri = URL.createObjectURL(file);
+            const compressed = await MediaCompressor.prepareMediaForUpload(uri, file.name);
+            let finalFile: any = file;
+            if (compressed.uri !== uri) {
+                const response = await fetch(compressed.uri);
+                const blob = await response.blob();
+                finalFile = new File([blob], compressed.fileName, { type: compressed.type });
+            }
+
+            const token = await getToken();
+            const formData = new FormData();
+            formData.append('file', finalFile);
+            formData.append('type', 'image');
+            formData.append('is_logo', 'true');
+
+            const res = await fetch(`${getApiBase()}/spaces/${space.id}/upload-media`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                body: formData,
+            });
+
+            if (!res.ok) throw new Error('Upload failed');
+            const data = await res.json();
+            const photoUrl = data?.media?.url || data?.url || data?.path || null;
+            if (photoUrl) {
+                setSpacePhoto(photoUrl);
+                onSpaceUpdated({ ...space, image_url: photoUrl });
+            }
+            Alert.alert('Success', 'Space photo updated!');
+        } catch (err) {
+            console.error('[SpaceSettings] Web upload error:', err);
+            Alert.alert('Upload Failed', 'Could not upload image.');
+        } finally {
+            setUploading(false);
+        }
+    };
 
     const handlePickPhoto = useCallback(async () => {
         if (Platform.OS === 'web') {
-            // On web: trigger native OS file dialog directly — no custom popup
             const input = document.createElement('input');
             input.type = 'file';
             input.accept = 'image/*';
@@ -284,296 +249,175 @@ const SpaceSettingsModal: React.FC<SpaceSettingsModalProps> = ({
             return;
         }
 
-        // Native: system Alert with two choices — no custom menu component needed
         Alert.alert('Upload Space Photo', 'Choose a source', [
-            { text: 'Camera', onPress: pickFromCamera },
-            { text: 'Photo Library', onPress: pickFromGallery },
+            { text: 'Camera', onPress: async () => {
+                const perm = await ImagePicker.requestCameraPermissionsAsync();
+                if (!perm.granted) return;
+                const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.8 });
+                if (!result.canceled && result.assets?.[0]) {
+                    await uploadPhotoNative(result.assets[0].uri, result.assets[0].mimeType || 'image/jpeg');
+                }
+            }},
+            { text: 'Photo Library', onPress: async () => {
+                const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                if (!perm.granted) return;
+                const result = await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.8 });
+                if (!result.canceled && result.assets?.[0]) {
+                    await uploadPhotoNative(result.assets[0].uri, result.assets[0].mimeType || 'image/jpeg');
+                }
+            }},
             { text: 'Cancel', style: 'cancel' },
         ]);
-    }, [pickFromGallery, pickFromCamera]);
-
-    const uploadPhotoNative = async (uri: string, mimeType: string) => {
-        setUploading(true);
-        try {
-            const token = await getToken();
-            if (!token) throw new Error('No auth token');
-
-            const API_BASE = getApiBase();
-            const formData = new FormData();
-            formData.append('file', {
-                uri,
-                type: mimeType,
-                name: `space_photo_${Date.now()}.jpg`,
-            } as any);
-            formData.append('type', 'image');
-            formData.append('is_logo', 'true');
-
-            const res = await fetch(`${API_BASE}/spaces/${space.id}/upload-media`, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    // Do NOT set Content-Type manually for multipart – browser fills it in automatically
-                },
-                body: formData,
-            });
-
-            if (!res.ok) {
-                const body = await res.text();
-                throw new Error(`Upload failed (${res.status}): ${body}`);
-            }
-
-            const data = await res.json();
-            const photoUrl = data?.media?.url || data?.url || data?.path || null;
-            if (photoUrl) {
-                setSpacePhoto(photoUrl);
-                onSpaceUpdated({ ...space, image_url: photoUrl });
-            }
-
-            if (Platform.OS !== 'web') {
-                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            }
-            Alert.alert('Success', 'Space photo updated!');
-        } catch (err: any) {
-            console.error('[SpaceSettings] Upload error:', err);
-            Alert.alert('Upload Failed', err.message || 'Could not upload image. Please try again.');
-        } finally {
-            setUploading(false);
-        }
-    };
-
-    const uploadPhotoFile = async (file: File) => {
-        setUploading(true);
-        try {
-            const token = await getToken();
-            if (!token) throw new Error('No auth token');
-
-            const API_BASE = getApiBase();
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('type', 'image');
-            formData.append('is_logo', 'true');
-
-            const res = await fetch(`${API_BASE}/spaces/${space.id}/upload-media`, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-                body: formData,
-            });
-
-            if (!res.ok) {
-                const body = await res.text();
-                throw new Error(`Upload failed (${res.status}): ${body}`);
-            }
-
-            const data = await res.json();
-            const photoUrl = data?.media?.url || data?.url || data?.path || null;
-            if (photoUrl) {
-                setSpacePhoto(photoUrl);
-                onSpaceUpdated({ ...space, image_url: photoUrl });
-            }
-
-            Alert.alert('Success', 'Space photo updated!');
-        } catch (err: any) {
-            console.error('[SpaceSettings] Web upload error:', err);
-            Alert.alert('Upload Failed', err.message || 'Could not upload image. Please try again.');
-        } finally {
-            setUploading(false);
-        }
-    };
-
-    // ─── Participant Management ───────────────────────────────────────────────────
-
-    const handleRoleChange = useCallback(async (participantId: number, newRole: string) => {
-        try {
-            await collaborationService.updateParticipantRole(space.id, participantId, newRole);
-            onParticipantRoleChanged?.(participantId, newRole);
-            setShowRoleSheet(false);
-            setSelectedParticipant(null);
-            if (Platform.OS !== 'web') {
-                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            }
-            Alert.alert('Updated', `Role changed to ${newRole}.`);
-        } catch (err) {
-            console.error('[SpaceSettings] Role change error:', err);
-            Alert.alert('Error', 'Could not change role. Please try again.');
-        }
     }, [space?.id]);
-
-    const handleRemoveParticipant = useCallback(async (participantId: number, name: string) => {
-        Alert.alert(
-            'Remove Participant',
-            `Remove ${name} from this space?`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Remove',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await collaborationService.removeParticipant(space.id, participantId);
-                            onParticipantRemoved?.(participantId);
-                            if (Platform.OS !== 'web') {
-                                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-                            }
-                        } catch (err) {
-                            console.error('[SpaceSettings] Remove participant error:', err);
-                            Alert.alert('Error', 'Could not remove participant.');
-                        }
-                    },
-                },
-            ]
-        );
-    }, [space?.id]);
-
-    // ─── Render ───────────────────────────────────────────────────────────────────
 
     const renderGeneralTab = () => (
-        <ScrollView style={styles.tabContent} keyboardShouldPersistTaps="handled">
-            {/* Space Photo */}
-            <Text style={styles.sectionTitle}>Space Photo</Text>
-            <TouchableOpacity
-                style={styles.photoArea}
-                onPress={handlePickPhoto}
-                disabled={uploading || !isOwnerOrModerator}
-                activeOpacity={0.7}
-            >
-                {uploading ? (
-                    <View style={styles.photoPlaceholder}>
+        <ScrollView style={styles.tabContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            {/* Space Header Info (Name & Description) */}
+            <View style={styles.generalHeader}>
+                <TouchableOpacity
+                    style={styles.mainPhotoContainer}
+                    onPress={handlePickPhoto}
+                    disabled={uploading || !isOwnerOrModerator}
+                >
+                    {uploading ? (
                         <ActivityIndicator size="large" color="#007AFF" />
-                        <Text style={styles.photoHint}>Uploading…</Text>
-                    </View>
-                ) : spacePhoto ? (
-                    <View>
-                        <Image source={{ uri: spacePhoto }} style={styles.photoPreview} />
-                        {isOwnerOrModerator && (
-                            <View style={styles.photoEditBadge}>
-                                <Ionicons name="camera" size={14} color="#fff" />
-                            </View>
-                        )}
-                    </View>
-                ) : (
-                    <View style={styles.photoPlaceholder}>
-                        <Ionicons name="camera-outline" size={36} color="#999" />
-                        <Text style={styles.photoHint}>
-                            {isOwnerOrModerator ? 'Tap to upload photo' : 'No photo set'}
-                        </Text>
-                    </View>
-                )}
-            </TouchableOpacity>
+                    ) : spacePhoto ? (
+                        <Image 
+                            source={{ uri: spacePhoto.startsWith('http') ? spacePhoto : `${getApiBaseImage()}${spacePhoto}` }} 
+                            style={styles.mainPhoto} 
+                        />
+                    ) : (
+                        <View style={styles.mainPhotoPlaceholder}>
+                            <Ionicons name="camera" size={40} color="#fff" />
+                        </View>
+                    )}
+                    {isOwnerOrModerator && !uploading && (
+                        <View style={styles.mainPhotoEditBadge}>
+                            <Ionicons name="pencil" size={16} color="#fff" />
+                        </View>
+                    )}
+                </TouchableOpacity>
 
-            {/* Space Name */}
-            <Text style={styles.sectionTitle}>Space Name</Text>
-            <TextInput
-                style={[styles.input, !isOwnerOrModerator && styles.inputDisabled]}
-                value={editingTitle}
-                onChangeText={setEditingTitle}
-                placeholder="Space name…"
-                maxLength={60}
-                editable={isOwnerOrModerator}
-                returnKeyType="next"
-            />
-
-            {/* Description */}
-            <Text style={styles.sectionTitle}>Description</Text>
-            <TextInput
-                style={[styles.input, styles.textarea, !isOwnerOrModerator && styles.inputDisabled]}
-                value={editingDescription}
-                onChangeText={setEditingDescription}
-                placeholder="Describe your space…"
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-                maxLength={500}
-                editable={isOwnerOrModerator}
-            />
-
-            {/* Stats Row */}
-            <Text style={styles.sectionTitle}>Info</Text>
-            <View style={styles.infoCard}>
-                <View style={styles.infoRow}>
-                    <Ionicons name="cube-outline" size={16} color="#666" />
-                    <Text style={styles.infoLabel}>Type</Text>
-                    <Text style={styles.infoValue}>
-                        {(space?.space_type || 'chat').charAt(0).toUpperCase() +
-                            (space?.space_type || 'chat').slice(1)}
+                <View style={styles.generalInfoText}>
+                    <Text style={styles.mainTitle}>{editingTitle || 'Untitled Space'}</Text>
+                    <Text style={styles.mainDescription} numberOfLines={3}>
+                        {editingDescription || 'No description provided.'}
                     </Text>
                 </View>
+            </View>
+
+            {/* Edit Section (if owner/moderator) */}
+            {isOwnerOrModerator && (
+                <View style={styles.editSection}>
+                    <Text style={styles.sectionTitle}>Edit Space Details</Text>
+                    <TextInput
+                        style={styles.input}
+                        value={editingTitle}
+                        onChangeText={setEditingTitle}
+                        placeholder="Space Name"
+                        maxLength={60}
+                    />
+                    <TextInput
+                        style={[styles.input, styles.textarea]}
+                        value={editingDescription}
+                        onChangeText={setEditingDescription}
+                        placeholder="Description"
+                        multiline
+                        maxLength={500}
+                    />
+                </View>
+            )}
+
+            {/* Stats Row */}
+            <Text style={styles.sectionTitle}>Statistics</Text>
+            <View style={styles.infoCard}>
                 <View style={styles.infoRow}>
-                    <Ionicons name="people-outline" size={16} color="#666" />
-                    <Text style={styles.infoLabel}>Participants</Text>
+                    <Ionicons name="people-outline" size={20} color="#007AFF" />
+                    <Text style={styles.infoLabel}>Members</Text>
                     <Text style={styles.infoValue}>{participants.length}</Text>
                 </View>
                 <View style={styles.infoRow}>
-                    <Ionicons name="chatbubble-outline" size={16} color="#666" />
+                    <Ionicons name="chatbubble-ellipses-outline" size={20} color="#34C759" />
                     <Text style={styles.infoLabel}>Messages</Text>
-                    <Text style={styles.infoValue}>
-                        {space?.content_state?.messages?.length || 0}
-                    </Text>
+                    <Text style={styles.infoValue}>{space?.content_state?.messages?.length || 0}</Text>
                 </View>
                 <View style={styles.infoRow}>
-                    <Ionicons name="calendar-outline" size={16} color="#666" />
-                    <Text style={styles.infoLabel}>Created</Text>
+                    <Ionicons name="calendar-outline" size={20} color="#FF9500" />
+                    <Text style={styles.infoLabel}>Since</Text>
                     <Text style={styles.infoValue}>
-                        {space?.created_at
-                            ? new Date(space.created_at).toLocaleDateString()
-                            : 'N/A'}{' '}
-                        by {space?.creator?.name || 'Unknown'}
+                        {space?.created_at ? new Date(space.created_at).toLocaleDateString() : 'N/A'}
                     </Text>
                 </View>
             </View>
         </ScrollView>
     );
 
-    const renderParticipantsTab = () => (
-        <ScrollView style={styles.tabContent}>
-            <Text style={styles.sectionTitle}>{participants.length} Participant{participants.length !== 1 ? 's' : ''}</Text>
-            {participants.length === 0 ? (
-                <Text style={styles.emptyText}>No participants yet.</Text>
+    const renderMediaTab = () => (
+        <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+            {loadingMedia ? (
+                <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 40 }} />
+            ) : mediaItems.length === 0 ? (
+                <View style={styles.mediaEmpty}>
+                    <Ionicons name="images-outline" size={64} color="#eee" />
+                    <Text style={styles.mediaEmptyTitle}>No Media</Text>
+                    <Text style={styles.mediaEmptySub}>Photos, videos and documents will appear here.</Text>
+                </View>
             ) : (
-                participants.map((p: any) => {
-                    const name = p.user?.name || 'Unknown';
-                    const role = p.role || 'participant';
-                    const roleColor = role === 'owner' ? '#FFD700' : role === 'moderator' ? '#007AFF' : '#666';
-                    return (
-                        <View key={p.user_id} style={styles.participantRow}>
-                            <View style={styles.participantInfo}>
-                                <View style={[styles.participantAvatar, { backgroundColor: `${roleColor}20` }]}>
-                                    <Text style={[styles.participantInitial, { color: roleColor }]}>
-                                        {name.charAt(0).toUpperCase()}
-                                    </Text>
-                                </View>
-                                <View>
-                                    <Text style={styles.participantName}>{name}</Text>
-                                    <Text style={[styles.participantRole, { color: roleColor }]}>
-                                        {role.charAt(0).toUpperCase() + role.slice(1)}
-                                    </Text>
-                                </View>
-                            </View>
-                            {isOwnerOrModerator && role !== 'owner' && (
-                                <View style={styles.participantActions}>
-                                    <TouchableOpacity
-                                        style={styles.participantActionBtn}
-                                        onPress={() => {
-                                            setSelectedParticipant(p);
-                                            setShowRoleSheet(true);
-                                        }}
-                                    >
-                                        <Ionicons name="shield-outline" size={18} color="#007AFF" />
-                                    </TouchableOpacity>
-                                    {isOwner && (
-                                        <TouchableOpacity
-                                            style={[styles.participantActionBtn, styles.dangerBtn]}
-                                            onPress={() => handleRemoveParticipant(p.user_id, name)}
+                <View>
+                    {/* Images & Videos Grid */}
+                    {mediaItems.filter(m => m.type === 'image' || m.type === 'video').length > 0 && (
+                        <View style={styles.mediaSection}>
+                            <Text style={styles.mediaSectionTitle}>Media</Text>
+                            <View style={styles.mediaGrid}>
+                                {mediaItems
+                                    .filter(m => m.type === 'image' || m.type === 'video')
+                                    .map((item) => (
+                                        <TouchableOpacity 
+                                            key={item.id} 
+                                            style={styles.gridItem}
+                                            onPress={() => item.url && Linking.openURL(item.url.startsWith('http') ? item.url : `${getApiBaseImage()}${item.url}`)}
                                         >
-                                            <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+                                            {item.type === 'image' ? (
+                                                <Image 
+                                                    source={{ uri: item.url?.startsWith('http') ? item.url : `${getApiBaseImage()}${item.url}` }} 
+                                                    style={styles.gridImage} 
+                                                />
+                                            ) : (
+                                                <View style={styles.gridVideoPlaceholder}>
+                                                    <Ionicons name="play-circle" size={32} color="#fff" />
+                                                </View>
+                                            )}
                                         </TouchableOpacity>
-                                    )}
-                                </View>
-                            )}
+                                    ))}
+                            </View>
                         </View>
-                    );
-                })
+                    )}
+
+                    {/* Documents List */}
+                    {mediaItems.filter(m => m.type !== 'image' && m.type !== 'video').length > 0 && (
+                        <View style={styles.docsSection}>
+                            <Text style={styles.mediaSectionTitle}>Documents</Text>
+                            {mediaItems
+                                .filter(m => m.type !== 'image' && m.type !== 'video')
+                                .map((item) => (
+                                    <TouchableOpacity 
+                                        key={item.id} 
+                                        style={styles.docRow}
+                                        onPress={() => item.url && Linking.openURL(item.url.startsWith('http') ? item.url : `${getApiBaseImage()}${item.url}`)}
+                                    >
+                                        <View style={styles.docIconContainer}>
+                                            <Ionicons name="document-text" size={24} color="#007AFF" />
+                                        </View>
+                                        <View style={styles.docInfo}>
+                                            <Text style={styles.docName} numberOfLines={1}>{item.file_name}</Text>
+                                            <Text style={styles.docMeta}>{formatBytes(item.file_size)}</Text>
+                                        </View>
+                                        <Ionicons name="chevron-forward" size={16} color="#ccc" />
+                                    </TouchableOpacity>
+                                ))}
+                        </View>
+                    )}
+                </View>
             )}
         </ScrollView>
     );
@@ -655,43 +499,61 @@ const SpaceSettingsModal: React.FC<SpaceSettingsModalProps> = ({
     return (
         <Modal
             visible={visible}
-            animationType="slide"
+            animationType={isWeb ? 'fade' : 'slide'}
             transparent
             onRequestClose={onClose}
         >
-            <View style={styles.overlay}>
-                <View style={styles.sheet}>
+            <TouchableOpacity 
+                style={styles.overlay} 
+                activeOpacity={1} 
+                onPress={onClose}
+            >
+                <TouchableOpacity 
+                    activeOpacity={1} 
+                    style={[
+                        styles.sheet,
+                        isLargeScreen && styles.sheetWeb
+                    ] as any}
+                >
                     {/* Header */}
                     <View style={styles.header}>
-                        <Text style={styles.headerTitle}>Space Settings</Text>
-                        <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}>
+                        <View>
+                            <Text style={styles.headerTitle}>Space Settings</Text>
+                            <Text style={styles.headerSubtitle}>{space?.title || 'Collaboration'}</Text>
+                        </View>
+                        <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }} style={styles.closeBtn as any}>
                             <Ionicons name="close" size={24} color="#333" />
                         </TouchableOpacity>
                     </View>
 
                     {/* Tab Bar */}
                     <View style={styles.tabBar}>
-                        {(['general', 'participants', 'media', 'danger'] as SettingsTab[]).map((tab) => (
+                        {(['general', 'media', 'danger'] as SettingsTab[]).map((tab) => (
                             <TouchableOpacity
                                 key={tab}
                                 style={[styles.tab, activeTab === tab && styles.tabActive]}
                                 onPress={() => setActiveTab(tab)}
                             >
+                                <Ionicons 
+                                    name={tab === 'general' ? 'information-circle-outline' : tab === 'media' ? 'images-outline' : 'warning-outline'} 
+                                    size={18} 
+                                    color={activeTab === tab ? '#007AFF' : '#888'} 
+                                />
                                 <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                                    {tab === 'general' ? 'General'
-                                        : tab === 'participants' ? 'Members'
-                                            : tab === 'media' ? 'Media'
-                                                : 'Danger'}
+                                    {tab === 'general' ? 'Info'
+                                        : tab === 'media' ? 'Media'
+                                            : 'Danger'}
                                 </Text>
                             </TouchableOpacity>
                         ))}
                     </View>
 
                     {/* Tab Content */}
-                    {activeTab === 'general' && renderGeneralTab()}
-                    {activeTab === 'participants' && renderParticipantsTab()}
-                    {activeTab === 'media' && renderMediaTab()}
-                    {activeTab === 'danger' && renderDangerTab()}
+                    <View style={styles.tabContentContainer}>
+                        {activeTab === 'general' && renderGeneralTab()}
+                        {activeTab === 'media' && renderMediaTab()}
+                        {activeTab === 'danger' && renderDangerTab()}
+                    </View>
 
                     {/* Save Button (only on General tab) */}
                     {activeTab === 'general' && isOwnerOrModerator && (
@@ -704,67 +566,18 @@ const SpaceSettingsModal: React.FC<SpaceSettingsModalProps> = ({
                                 <ActivityIndicator size="small" color="#fff" />
                             ) : (
                                 <>
-                                    <Ionicons name="checkmark" size={20} color="#fff" />
+                                    <Ionicons name="checkmark-circle" size={20} color="#fff" />
                                     <Text style={styles.saveButtonText}>Save Changes</Text>
                                 </>
                             )}
                         </TouchableOpacity>
                     )}
-                </View>
-
-                {/* Role Sheet */}
-                <Modal
-                    visible={showRoleSheet}
-                    animationType="slide"
-                    transparent
-                    onRequestClose={() => setShowRoleSheet(false)}
-                >
-                    <View style={styles.overlay}>
-                        <View style={styles.roleSheet}>
-                            <Text style={styles.roleSheetTitle}>
-                                Change role for {selectedParticipant?.user?.name}
-                            </Text>
-                            {['participant', 'moderator', 'owner'].map((role) => {
-                                const isCurrentRole = selectedParticipant?.role === role;
-                                const roleColor = role === 'owner' ? '#FFD700' : role === 'moderator' ? '#007AFF' : '#666';
-                                return (
-                                    <TouchableOpacity
-                                        key={role}
-                                        style={[styles.roleOption, isCurrentRole && styles.roleOptionActive]}
-                                        onPress={() => handleRoleChange(selectedParticipant?.user_id, role)}
-                                        disabled={isCurrentRole}
-                                    >
-                                        <Ionicons
-                                            name={role === 'owner' ? 'ribbon-outline' : role === 'moderator' ? 'shield' : 'person'}
-                                            size={20}
-                                            color={roleColor}
-                                        />
-                                        <View style={{ flex: 1, marginLeft: 12 }}>
-                                            <Text style={styles.roleOptionTitle}>
-                                                {role.charAt(0).toUpperCase() + role.slice(1)}
-                                            </Text>
-                                            <Text style={styles.roleOptionDesc}>
-                                                {role === 'owner'
-                                                    ? 'Full control'
-                                                    : role === 'moderator'
-                                                        ? 'Can manage members and content'
-                                                        : 'Standard participation'}
-                                            </Text>
-                                        </View>
-                                        {isCurrentRole && <Ionicons name="checkmark-circle" size={20} color="#007AFF" />}
-                                    </TouchableOpacity>
-                                );
-                            })}
-                            <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowRoleSheet(false)}>
-                                <Text style={styles.cancelBtnText}>Cancel</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </Modal>
-            </View>
+                </TouchableOpacity>
+            </TouchableOpacity>
         </Modal>
     );
 };
+
 
 const styles = StyleSheet.create({
     overlay: {
@@ -774,10 +587,11 @@ const styles = StyleSheet.create({
     },
     sheet: {
         backgroundColor: '#fff',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        maxHeight: '90%',
-        paddingBottom: 24,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        height: '90%', // Fixed height for consistency on Android
+        paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+        overflow: 'hidden',
     },
     header: {
         flexDirection: 'row',
@@ -792,42 +606,142 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#1a1a1a',
     },
+    headerSubtitle: {
+        fontSize: 12,
+        color: '#888',
+        marginTop: 2,
+    },
+    closeBtn: {
+        padding: 4,
+    },
+    sheetWeb: {
+        width: 500,
+        alignSelf: 'center',
+        borderRadius: 24,
+        marginTop: '10%',
+        maxHeight: '80%',
+        ...Platform.select({
+            web: {
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            }
+        } as any),
+    },
     tabBar: {
         flexDirection: 'row',
         borderBottomWidth: 1,
         borderBottomColor: '#f0f0f0',
+        paddingHorizontal: 10,
     },
     tab: {
         flex: 1,
-        paddingVertical: 12,
+        paddingVertical: 14,
         alignItems: 'center',
+        justifyContent: 'center',
     },
     tabActive: {
-        borderBottomWidth: 2,
+        borderBottomWidth: 3,
         borderBottomColor: '#007AFF',
     },
     tabText: {
-        fontSize: 14,
+        fontSize: 11,
         color: '#888',
-        fontWeight: '500',
+        fontWeight: '600',
+        marginTop: 2,
     },
     tabTextActive: {
         color: '#007AFF',
         fontWeight: '700',
     },
+    tabContentContainer: {
+        flex: 1,
+        backgroundColor: '#fff',
+    },
     tabContent: {
         flex: 1,
+    },
+    roleSheetWeb: {
+        width: 400,
+        alignSelf: 'center',
+        marginTop: '20%',
+    },
+    // Unified Header Style
+    generalHeader: {
+        padding: 20,
+        alignItems: 'center',
+        backgroundColor: '#fafafa',
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+    },
+    mainPhotoContainer: {
+        width: 140,
+        height: 140,
+        borderRadius: 70,
+        backgroundColor: '#007AFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
+        elevation: 6,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
+    },
+    mainPhoto: {
+        width: 140,
+        height: 140,
+        borderRadius: 70,
+    },
+    mainPhotoPlaceholder: {
+        width: 140,
+        height: 140,
+        borderRadius: 70,
+        backgroundColor: '#ccc',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    mainPhotoEditBadge: {
+        position: 'absolute',
+        bottom: 5,
+        right: 5,
+        backgroundColor: '#007AFF',
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        borderWidth: 3,
+        borderColor: '#fafafa',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    generalInfoText: {
+        alignItems: 'center',
+    },
+    mainTitle: {
+        fontSize: 22,
+        fontWeight: '700',
+        color: '#1a1a1a',
+        textAlign: 'center',
+    },
+    mainDescription: {
+        fontSize: 14,
+        color: '#666',
+        textAlign: 'center',
+        marginTop: 6,
+        lineHeight: 20,
         paddingHorizontal: 20,
-        paddingTop: 16,
+    },
+    editSection: {
+        paddingHorizontal: 20,
+        marginTop: 10,
     },
     sectionTitle: {
         fontSize: 13,
         fontWeight: '700',
-        color: '#888',
+        color: '#007AFF',
         textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        marginBottom: 8,
-        marginTop: 16,
+        letterSpacing: 1,
+        marginBottom: 10,
+        marginTop: 20,
+        paddingHorizontal: 20,
     },
     photoArea: {
         alignItems: 'center',
@@ -1056,10 +970,40 @@ const styles = StyleSheet.create({
         color: '#FF3B30',
         textAlign: 'center',
     },
-    // ─── Media tab styles ─────────────────────────────────────────────────────────────
-    mediaContainer: {
-        padding: 12,
-        paddingBottom: 32,
+    // ─── Media Refined Grid ─────────────────────────────────────────────────────────────
+    mediaSection: {
+        marginTop: 20,
+    },
+    mediaSectionTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#1a1a1a',
+        paddingHorizontal: 16,
+        marginBottom: 12,
+    },
+    mediaGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        paddingHorizontal: 14,
+        gap: 4,
+    },
+    gridItem: {
+        width: '32%', 
+        aspectRatio: 1,
+        borderRadius: 4,
+        backgroundColor: '#f0f0f0',
+        overflow: 'hidden',
+    },
+    gridImage: {
+        width: '100%',
+        height: '100%',
+    },
+    gridVideoPlaceholder: {
+        width: '100%',
+        height: '100%',
+        backgroundColor: '#333',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     mediaEmpty: {
         alignItems: 'center',
@@ -1077,52 +1021,50 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         paddingHorizontal: 24,
     },
-    mediaGrid: {
-        flexDirection: 'column',
-        gap: 10,
+    docsSection: {
+        marginTop: 24,
+        paddingBottom: 40,
     },
-    mediaCard: {
+    docRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#fafafa',
-        borderRadius: 14,
-        padding: 10,
-        gap: 12,
-        borderWidth: 1,
-        borderColor: '#eee',
+        padding: 14,
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#f5f5f5',
+        marginHorizontal: 16,
+        borderRadius: 12,
+        marginBottom: 8,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
     },
-    mediaThumb: {
-        width: 60,
-        height: 60,
-        borderRadius: 10,
-        backgroundColor: '#f0f0f0',
-    },
-    mediaIconBg: {
+    docIconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 8,
+        backgroundColor: '#f0f7ff',
         justifyContent: 'center',
         alignItems: 'center',
+        marginRight: 12,
     },
-    mediaCardInfo: {
+    docInfo: {
         flex: 1,
-        gap: 4,
     },
-    mediaFileName: {
+    docName: {
         fontSize: 14,
         fontWeight: '600',
         color: '#1a1a1a',
     },
-    mediaMeta: {
+    docMeta: {
         fontSize: 12,
         color: '#888',
-    },
-    mediaActions: {
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    mediaActionBtn: {
-        padding: 6,
-        borderRadius: 8,
-        backgroundColor: '#f0f0f0',
+        marginTop: 2,
     },
 });
+
+
 
 export default SpaceSettingsModal;

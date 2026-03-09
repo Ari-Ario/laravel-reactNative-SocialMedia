@@ -267,6 +267,7 @@ class CollaborationService {
         id: apiSpace.id,
         title: apiSpace.title,
         description: apiSpace.description,
+        image_url: apiSpace.image_url,
         space_type: apiSpace.space_type,
         creator_id: apiSpace.creator_id,
         settings: apiSpace.settings || {},

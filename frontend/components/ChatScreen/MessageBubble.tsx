@@ -48,6 +48,7 @@ interface MessageBubbleProps {
   currentUserId?: number;
   currentUserRole?: string;
   highlighted?: boolean;
+  onJumpToMessage?: (messageId: string) => void;
 }
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({
@@ -67,6 +68,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   currentUserRole,
   translatedContent,
   highlighted,
+  onJumpToMessage,
 }) => {
   const bubbleRef = useRef<React.ElementRef<typeof TouchableOpacity>>(null);
   const [isSelfHighlighted, setIsSelfHighlighted] = useState(false);
@@ -79,10 +81,23 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     }
   }, [highlighted]);
   const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString([], {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+
+    const timeStr = date.toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit'
     });
+
+    if (isToday) return timeStr;
+
+    const dateStr = date.toLocaleDateString([], {
+      month: 'short',
+      day: 'numeric'
+    });
+
+    return `${dateStr}, ${timeStr}`;
   };
 
   const downloadMedia = async (url: string, filename: string) => {
@@ -337,17 +352,24 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   const renderReplyHeader = () => {
     if (!repliedToMessage) return null;
     return (
-      <View style={[styles.replyHeaderContainer, isCurrentUser ? styles.currentUserReplyHeader : styles.otherUserReplyHeader]}>
-        <View style={styles.replyHeaderBar} />
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => onJumpToMessage?.(message.reply_to_id!)}
+        style={[
+          styles.replyHeaderContainer,
+          isCurrentUser ? styles.currentUserReplyHeader : styles.otherUserReplyHeader
+        ]}
+      >
+        <View style={[styles.replyHeaderBar, isCurrentUser && { backgroundColor: '#fff' }]} />
         <View style={styles.replyHeaderContent}>
-          <Text style={styles.replyHeaderName} numberOfLines={1}>
+          <Text style={[styles.replyHeaderName, isCurrentUser && { color: '#fff' }]} numberOfLines={1}>
             {repliedToMessage.user?.name || repliedToMessage.user_name || 'User'}
           </Text>
-          <Text style={styles.replyHeaderText} numberOfLines={1}>
+          <Text style={[styles.replyHeaderText, isCurrentUser && { color: 'rgba(255,255,255,0.8)' }]} numberOfLines={1}>
             {repliedToMessage.type === 'text' ? repliedToMessage.content : `[${repliedToMessage.type}]`}
           </Text>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -477,7 +499,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         {renderContent()}
 
         <View style={styles.messageFooter}>
-          <Text style={styles.timestamp}>
+          <Text style={[styles.timestamp, !isCurrentUser && { color: '#333333ff' }]}>
             {formatTime(message.created_at)}
           </Text>
           {isCurrentUser && (

@@ -59,6 +59,7 @@ interface MessageListProps {
   highlightMessageId?: string;
   /** ISO timestamp of user's last read position in this space */
   lastReadAt?: string | null;
+  onStartCall?: (type: 'audio' | 'video') => void;
 }
 const MessageList: React.FC<MessageListProps> = ({
   spaceId,
@@ -72,6 +73,7 @@ const MessageList: React.FC<MessageListProps> = ({
   participants = [],
   highlightMessageId,
   lastReadAt,
+  onStartCall,
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,6 +99,7 @@ const MessageList: React.FC<MessageListProps> = ({
   // Poll edit modal state
   const [editPollVisible, setEditPollVisible] = useState(false);
   const [editingPollData, setEditingPollData] = useState<any>(null);
+  const [internalHighlightId, setInternalHighlightId] = useState<string | null>(null);
 
   const { user: currentUser } = useContext(AuthContext);
 
@@ -289,6 +292,38 @@ const MessageList: React.FC<MessageListProps> = ({
     const t2 = setTimeout(doScroll, 900);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [highlightMessageId, listData.length]);
+
+  // ─── Internal Jump Scroll: when user clicks a reply header ───────────────
+  useEffect(() => {
+    if (!internalHighlightId || listData.length === 0) return;
+    const idx = listData.findIndex(m => String(m.id) === String(internalHighlightId));
+    if (idx === -1) return;
+
+    const doScroll = () => {
+      try {
+        flatListRef.current?.scrollToIndex({
+          index: idx,
+          animated: true,
+          viewPosition: 0.4,
+        });
+      } catch {
+        let offset = 0;
+        for (let i = 0; i < idx; i++) {
+          offset += itemHeights.current[listData[i].id] ?? 72;
+        }
+        flatListRef.current?.scrollToOffset({ offset, animated: true });
+      }
+    };
+
+    const t = setTimeout(doScroll, 100);
+    // Clear highlight after 2 seconds
+    const tClear = setTimeout(() => setInternalHighlightId(null), 2500);
+    return () => { clearTimeout(t); clearTimeout(tClear); };
+  }, [internalHighlightId]);
+
+  const handleJumpToMessage = React.useCallback((messageId: string) => {
+    setInternalHighlightId(messageId);
+  }, []);
 
   const enrichMessageWithParticipantData = (msg: Message) => {
     if (!participants || participants.length === 0) return msg;
@@ -754,14 +789,84 @@ const MessageList: React.FC<MessageListProps> = ({
         </View>
       );
     }
-    
-    // ── System Message row (WhatsApp style) ──────────────────
+
+    // ── System Message row (FaceTime / Premium style) ──────────────────
     if (item.type === 'system') {
+      const isCallLog = item.metadata?.call_log;
+      const isOutgoing = isCallLog?.initiator_id === currentUserId;
+      const isMissed = isCallLog?.status === 'ended' && isCallLog?.duration === 0;
+
+      const createdDate = new Date(item.created_at);
+      const isToday = createdDate.toDateString() === new Date().toDateString();
+
+      const timeStr = createdDate.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      const dateStr = isToday ? 'Today' : createdDate.toLocaleDateString([], {
+        month: 'short',
+        day: 'numeric'
+      });
+
       return (
         <View style={styles.systemMessageContainer}>
-          <View style={styles.systemMessageBadge}>
-            <Text style={styles.systemMessageText}>{item.content}</Text>
-          </View>
+          <TouchableOpacity
+            activeOpacity={isCallLog ? 0.7 : 1}
+            disabled={!isCallLog || !onStartCall}
+            onPress={() => isCallLog && onStartCall && onStartCall(isCallLog.type === 'video' ? 'video' : 'audio')}
+            style={[
+              isCallLog ? styles.callLogBadge : styles.systemMessageBadge,
+              isMissed && styles.missedCallBadge
+            ]}
+          >
+            <View style={styles.callLogContent}>
+              <View style={[
+                styles.callIconContainer,
+                !isCallLog && { width: 28, height: 28, borderRadius: 14, marginRight: 8 },
+                isMissed && { backgroundColor: 'rgba(255, 59, 48, 0.12)' }
+              ]}>
+                <Ionicons
+                  name={isCallLog ? (isCallLog.type === 'video' ? 'videocam' : 'call') : 'information-circle'}
+                  size={isCallLog ? 22 : 16}
+                  color={isMissed ? '#FF3B30' : (isCallLog ? '#007AFF' : '#666')}
+                />
+                {isCallLog && (
+                  <View style={[
+                    styles.callDirectionIndicator,
+                    { backgroundColor: isMissed ? '#FF3B30' : '#34C759' }
+                  ]}>
+                    <Ionicons
+                      name={isOutgoing ? "arrow-up" : "arrow-down"}
+                      size={12}
+                      color="#fff"
+                    />
+                  </View>
+                )}
+              </View>
+
+              <View style={[
+                styles.callLogTextContainer,
+                !isCallLog && { flex: 0, flexShrink: 1, minWidth: Platform.OS === 'web' ? 300 : undefined, maxWidth: Platform.OS === 'web' ? 1000 : undefined }
+              ]}>
+                <Text style={[
+                  styles.systemMessageText,
+                  (isCallLog || !isCallLog) && { textAlign: 'left' },
+                  isCallLog && styles.callLogText,
+                  isMissed && styles.missedCallText
+                ]}>
+                  {item.content}
+                </Text>
+                <Text style={styles.callLogTimeText}>
+                  {isToday ? timeStr : dateStr}
+                </Text>
+              </View>
+
+              {isCallLog && (
+                <Ionicons name="chevron-forward" size={16} color="#C7C7CC" style={{ marginLeft: 4 }} />
+              )}
+            </View>
+          </TouchableOpacity>
         </View>
       );
     }
@@ -796,7 +901,8 @@ const MessageList: React.FC<MessageListProps> = ({
           onLongPressWithPosition={(msg, _x, pageY) => handleMessageLongPress(item, pageY, isCurrentUser)}
           onPollPress={onPollPress}
           onToggleTranslation={() => handleTranslate(item)}
-          highlighted={String(item.id) === String(highlightMessageId)}
+          highlighted={String(item.id) === String(highlightMessageId) || String(item.id) === String(internalHighlightId)}
+          onJumpToMessage={handleJumpToMessage}
           spaceId={spaceId}
           currentUserId={currentUserId}
           currentUserRole={currentUserRole}
@@ -1428,7 +1534,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#f0f0f0',
     backgroundColor: '#fff',
   },
-  
+
   // WhatsApp-style system message
   systemMessageContainer: {
     alignItems: 'center',
@@ -1438,8 +1544,64 @@ const styles = StyleSheet.create({
   systemMessageBadge: {
     backgroundColor: 'rgba(0,0,0,0.05)',
     paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingVertical: 8,
+    borderRadius: 12,
+    maxWidth: Platform.OS === 'web' ? '80%' : '100%',
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  callLogBadge: {
+    backgroundColor: Platform.OS === 'web' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.98)',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+    width: Platform.OS === 'web' ? 'auto' : '94%',
+    maxWidth: Platform.OS === 'web' ? 450 : '94%',
+    minWidth: Platform.OS === 'web' ? 300 : '94%',
+    alignSelf: 'center',
+    ...createShadow({
+      width: 0,
+      height: 4,
+      opacity: 0.1,
+      radius: 12,
+      elevation: 4,
+    }),
+  },
+  missedCallBadge: {
+    borderColor: 'rgba(255, 59, 48, 0.15)',
+  },
+  callLogContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  callIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 122, 255, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  callDirectionIndicator: {
+    position: 'absolute',
+    bottom: -6,
+    right: -6,
+    borderRadius: 11,
+    width: 22,
+    height: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2.5,
+    borderColor: '#fff',
+    ...createShadow({ width: 0, height: 1, opacity: 0.3, radius: 2, elevation: 2 }),
+  },
+  callLogTextContainer: {
+    flex: 1,
   },
   systemMessageText: {
     color: '#666',
@@ -1447,6 +1609,23 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textAlign: 'center',
     lineHeight: 16,
+  },
+  callLogText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1C1C1E',
+    textAlign: 'left',
+    marginBottom: 1,
+    flexWrap: 'wrap',
+  },
+  missedCallText: {
+    color: '#FF3B30',
+  },
+  callLogTimeText: {
+    fontSize: 11,
+    color: '#8E8E93',
+    fontWeight: '500',
+    letterSpacing: 0.2,
   },
 });
 

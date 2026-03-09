@@ -16,6 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
+import { MediaCompressor } from '@/utils/mediaCompressor';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import getApiBase from '@/services/getApiBase';
 import { getToken } from '@/services/TokenService';
@@ -271,13 +272,17 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
 
     const uploadSpacePhoto = async (spaceId: string, uri: string) => {
         try {
+            // Compress first
+            const compressed = await MediaCompressor.prepareMediaForUpload(uri);
+            const finalUri = compressed.uri;
+
             const token = await getToken();
             const API_BASE = getApiBase();
             const formData = new FormData();
             formData.append('file', {
-                uri,
-                type: 'image/jpeg',
-                name: `space_photo_${Date.now()}.jpg`,
+                uri: finalUri,
+                type: compressed.type || 'image/jpeg',
+                name: compressed.fileName || `space_photo_${Date.now()}.jpg`,
             } as any);
             formData.append('type', 'image');
             formData.append('is_logo', 'true');
@@ -296,10 +301,22 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
 
     const uploadSpacePhotoWeb = async (spaceId: string, file: File) => {
         try {
+            // Prepare for web (compression happens inside if more than 2MB)
+            const uri = URL.createObjectURL(file);
+            const compressed = await MediaCompressor.prepareMediaForUpload(uri, file.name);
+            
+            let finalFile: any = file;
+            if (compressed.uri !== uri) {
+                // If it was actually compressed, convert back to blob/file
+                const response = await fetch(compressed.uri);
+                const blob = await response.blob();
+                finalFile = new File([blob], compressed.fileName, { type: compressed.type });
+            }
+
             const token = await getToken();
             const API_BASE = getApiBase();
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', finalFile);
             formData.append('type', 'image');
             formData.append('is_logo', 'true');
 

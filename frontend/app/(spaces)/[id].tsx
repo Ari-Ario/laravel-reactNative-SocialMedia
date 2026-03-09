@@ -809,6 +809,7 @@ const SpaceDetailScreen = () => {
             currentUserRole={space?.my_role}
             onNavigateToAllPolls={() => setActiveTab('polls')}
             highlightMessageId={params.highlightMessageId as string}
+            onStartCall={handleStartCall}
           />
         );
 

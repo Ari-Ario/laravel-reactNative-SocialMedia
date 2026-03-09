@@ -34,6 +34,7 @@ interface SpaceChatTabProps {
     currentUserRole?: string;
     onNavigateToAllPolls?: () => void;
     highlightMessageId?: string;
+    onStartCall?: (type: 'audio' | 'video') => void;
 }
 
 const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
@@ -47,6 +48,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
     currentUserRole,
     onNavigateToAllPolls,
     highlightMessageId,
+    onStartCall,
 }) => {
     const [content, setContent] = useState<string>('');
     const [showMediaUploader, setShowMediaUploader] = useState(false);
@@ -138,6 +140,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                     highlightMessageId={highlightMessageId}
                     lastReadAt={space?.my_participation?.last_active_at ?? null}
                     onPollPress={() => { }} // No-op now that polls are inline
+                    onStartCall={onStartCall}
                 />
 
                 {/* ─── Reply Preview ─── */}
