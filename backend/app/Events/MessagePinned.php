@@ -16,20 +16,31 @@ class MessagePinned implements ShouldBroadcast
     public $messageId;
     public $isPinned;
     public $spaceId;
+    public $userIds;
 
-    public function __construct($messageId, $isPinned, $spaceId)
+    public function __construct($messageId, $isPinned, $spaceId, $userIds = [])
     {
         $this->messageId = $messageId;
         $this->isPinned = $isPinned;
         $this->spaceId = $spaceId;
+        $this->userIds = is_array($userIds) ? $userIds : [$userIds];
     }
 
     public function broadcastOn()
     {
+        $channels = [];
+        
         if ($this->spaceId) {
-            return new PresenceChannel('space.' . $this->spaceId);
+            $channels[] = new PresenceChannel('space.' . $this->spaceId);
         }
-        return [];
+        
+        foreach ($this->userIds as $userId) {
+            if ($userId) {
+                $channels[] = new \Illuminate\Broadcasting\Channel('user.' . $userId);
+            }
+        }
+
+        return $channels;
     }
 
     public function broadcastAs()

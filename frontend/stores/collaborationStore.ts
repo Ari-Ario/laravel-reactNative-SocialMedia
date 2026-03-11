@@ -4,7 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 import CollaborationService, { CollaborationSpace, SpaceParticipation, MagicEvent, CollaborativeActivity } from '@/services/ChatScreen/CollaborationService';
 import PusherService from '@/services/PusherService';
-import { useNotificationStore } from '@/stores/notificationStore';
+
+// import { useNotificationStore } from '@/stores/notificationStore';
 
 interface CollaborationState {
   spaces: CollaborationSpace[];
@@ -27,6 +28,7 @@ interface CollaborationState {
 
   // Actions
   setSpaces: (spaces: CollaborationSpace[]) => void;
+  recalculateTotalUnread: () => void;
   setActiveSpace: (space: CollaborationSpace | null) => void;
   addSpace: (space: CollaborationSpace) => void;
   updateSpace: (spaceId: string, updates: Partial<CollaborationSpace>) => void;
@@ -271,7 +273,7 @@ export const useCollaborationStore = create<CollaborationState>()(
 
               const space = get().spaces.find(s => s.id === data.space_id);
               const callerId = data.caller_id || data.user_id || data.user?.id;
-              const currentUserId = useNotificationStore.getState().currentUserId;
+              const currentUserId = require('@/stores/notificationStore').useNotificationStore.getState().currentUserId;
 
               if (callerId && currentUserId && callerId == currentUserId) break;
             }
@@ -296,19 +298,29 @@ export const useCollaborationStore = create<CollaborationState>()(
             }
             break;
 
+          case 'poll-created':
+          case 'poll.created':
+            if (data.space_id) {
+              set((state) => ({
+                spaces: state.spaces.map(s => 
+                  s.id.toString() === data.space_id.toString() 
+                    ? { ...s, updated_at: new Date().toISOString() } 
+                    : s
+                )
+              }));
+            }
+            break;
+
           case 'space-read':
             if (data.space_id) {
               // Internal reset/update without API call to avoid loops
               set((state) => {
-                const currentCount = state.spaceUnreadCounts[data.space_id] || 0;
-                
-                // If it's a full read (Telegram style) or we should reset, set to 0.
-                // For now, simpler multi-device read sync:
-                const newCounts: Record<string, number> = { ...state.spaceUnreadCounts, [data.space_id]: 0 };
+                const sid = data.space_id.toString();
+                const newCounts: Record<string, number> = { ...state.spaceUnreadCounts, [sid]: 0 };
                 const totalUnread = Object.values(newCounts).reduce((sum, count) => sum + count, 0);
                 
                 // Clear notifications for this space
-                useNotificationStore.getState().markSpaceNotificationsAsRead(data.space_id);
+                require('@/stores/notificationStore').useNotificationStore.getState().markSpaceNotificationsAsRead(sid);
 
                 return {
                   spaceUnreadCounts: newCounts,
@@ -390,32 +402,30 @@ export const useCollaborationStore = create<CollaborationState>()(
 
 
 
-      setSpaces: (spaces) => set((state) => {
-        // Initialize unread counts from the fetched spaces if they aren't already tracked
-        const newUnreadCounts = { ...state.spaceUnreadCounts };
-        let hasChanges = false;
-
+      setSpaces: (spaces) => {
+        // Recalculate unread counts from the fresh space data
+        const newUnreadCounts: Record<string, number> = {};
+        let totalUnread = 0;
+        
         spaces.forEach(space => {
           const sid = space.id.toString();
-          // If the fetched space has an unread_count and we don't have one cached, 
-          // or the fetched one is higher, use it.
           const fetchedUnread = (space as any).unread_count || 0;
-          if (fetchedUnread > (newUnreadCounts[sid] || 0)) {
+          if (fetchedUnread > 0) {
             newUnreadCounts[sid] = fetchedUnread;
-            hasChanges = true;
+            totalUnread += fetchedUnread;
           }
         });
 
-        if (hasChanges) {
-          const totalUnread = Object.values(newUnreadCounts).reduce((sum, count) => sum + count, 0);
-          return { 
-            spaces, 
-            spaceUnreadCounts: newUnreadCounts,
-            totalUnreadSpaces: totalUnread
-          };
-        }
+        set({ 
+          spaces, 
+          spaceUnreadCounts: newUnreadCounts, 
+          totalUnreadSpaces: totalUnread 
+        });
+      },
 
-        return { spaces };
+      recalculateTotalUnread: () => set((state) => {
+        const total = Object.values(state.spaceUnreadCounts).reduce((sum, count) => sum + count, 0);
+        return { totalUnreadSpaces: total };
       }),
 
       setActiveSpace: (space) => set({ activeSpace: space }),
@@ -579,7 +589,7 @@ export const useCollaborationStore = create<CollaborationState>()(
               0
             );
             // Also clear any space-related notification badges
-            useNotificationStore.getState().markSpaceNotificationsAsRead(id);
+            require('@/stores/notificationStore').useNotificationStore.getState().markSpaceNotificationsAsRead(id);
             
             // Clear the is_unread manual flag if it exists
             const newSpaces = state.spaces.map(space => 
@@ -612,43 +622,80 @@ export const useCollaborationStore = create<CollaborationState>()(
           name: name.substring(0, 12),
           spaceIds: spaceIds
         };
-        return { customTabs: [...state.customTabs, newTab] };
+        const newTabs = [...state.customTabs, newTab];
+        
+        // Background sync
+        CollaborationService.getInstance().updateUserPreferences({ custom_tabs: newTabs });
+        
+        return { customTabs: newTabs };
       }),
 
-      deleteCustomTab: (id) => set((state) => ({
-        customTabs: state.customTabs.filter(t => t.id !== id)
-      })),
+      deleteCustomTab: (id) => set((state) => {
+        const newTabs = state.customTabs.filter(t => t.id !== id);
+        
+        // Background sync
+        CollaborationService.getInstance().updateUserPreferences({ custom_tabs: newTabs });
+        
+        return { customTabs: newTabs };
+      }),
 
-      addSpaceToTab: (tabId, spaceId) => set((state) => ({
-        customTabs: state.customTabs.map(t => 
+      addSpaceToTab: (tabId, spaceId) => set((state) => {
+        const newTabs = state.customTabs.map(t => 
           t.id === tabId ? { ...t, spaceIds: [...new Set([...t.spaceIds, spaceId])] } : t
-        )
-      })),
+        );
+        
+        // Background sync
+        CollaborationService.getInstance().updateUserPreferences({ custom_tabs: newTabs });
+        
+        return { customTabs: newTabs };
+      }),
 
-      removeSpaceFromTab: (tabId, spaceId) => set((state) => ({
-        customTabs: state.customTabs.map(t => 
+      removeSpaceFromTab: (tabId, spaceId) => set((state) => {
+        const newTabs = state.customTabs.map(t => 
           t.id === tabId ? { ...t, spaceIds: t.spaceIds.filter(id => id !== spaceId) } : t
-        )
-      })),
+        );
+        
+        // Background sync
+        CollaborationService.getInstance().updateUserPreferences({ custom_tabs: newTabs });
+        
+        return { customTabs: newTabs };
+      }),
 
-      setSpacesInTab: (tabId, spaceIds) => set((state) => ({
-        customTabs: state.customTabs.map(t => 
+      setSpacesInTab: (tabId, spaceIds) => set((state) => {
+        const newTabs = state.customTabs.map(t => 
           t.id === tabId ? { ...t, spaceIds } : t
-        )
-      })),
+        );
+        
+        // Background sync
+        CollaborationService.getInstance().updateUserPreferences({ custom_tabs: newTabs });
+        
+        return { customTabs: newTabs };
+      }),
 
-      renameCustomTab: (tabId, newName) => set((state) => ({
-        customTabs: state.customTabs.map(t => 
+      renameCustomTab: (tabId, newName) => set((state) => {
+        const newTabs = state.customTabs.map(t => 
           t.id === tabId ? { ...t, name: newName.substring(0, 12) } : t
-        )
-      })),
+        );
+        
+        // Background sync
+        CollaborationService.getInstance().updateUserPreferences({ custom_tabs: newTabs });
+        
+        return { customTabs: newTabs };
+      }),
       
       fetchUserSpaces: async (userId) => {
         try {
           console.log('🌐 Store: Fetching spaces for user:', userId);
-          const spaces = await CollaborationService.getInstance().fetchUserSpaces(userId);
+          const result = await CollaborationService.getInstance().fetchUserSpaces(userId);
+          const { spaces, user_preferences } = result;
           
-          set({ spaces });
+          // Use our new setSpaces logic to also update unread counts
+          get().setSpaces(spaces);
+
+          // Correct mapping from raw API result if present
+          if (user_preferences?.custom_tabs) {
+             set({ customTabs: user_preferences.custom_tabs });
+          }
           
           // Also automatically subscribe to all fetched spaces
           const spaceIds = spaces.map(s => s.id);

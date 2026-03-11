@@ -262,6 +262,27 @@ class ApiAuthController extends Controller
         ]);
     }
 
+    public function updatePreferences(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'User not authenticated'], 401);
+        }
+
+        $request->validate([
+            'custom_tabs' => 'nullable|array',
+            'theme_preference' => 'nullable|string',
+            'locale' => 'nullable|string'
+        ]);
+
+        $user->update($request->only(['custom_tabs', 'theme_preference', 'locale']));
+
+        return response()->json([
+            'message' => 'Preferences updated successfully',
+            'user' => $user
+        ]);
+    }
+
     private function generateUsername($name, $email)
     {
         $baseUsername = preg_replace('/\s+/', '', strtolower($name));

@@ -13,16 +13,20 @@ class SpaceMessageSent implements ShouldBroadcast
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public $spaceId;
-    public $userId;
+    public $userIds; // Changed from userId to userIds
     public $message;
 
     /**
      * Create a new event instance.
+     * @param string $spaceId
+     * @param array|int|string $userIds One or more user IDs to broadcast to
+     * @param array $message
      */
-    public function __construct($spaceId, $userId, $message)
+    public function __construct($spaceId, $userIds, $message)
     {
         $this->spaceId = $spaceId;
-        $this->userId = $userId;
+        // Ensure it's always an array
+        $this->userIds = is_array($userIds) ? $userIds : [$userIds];
         $this->message = $message;
     }
 
@@ -31,9 +35,11 @@ class SpaceMessageSent implements ShouldBroadcast
      */
     public function broadcastOn(): array
     {
-        return [
-            new Channel('user.' . $this->userId),
-        ];
+        $channels = [];
+        foreach ($this->userIds as $id) {
+            $channels[] = new Channel('user.' . $id);
+        }
+        return $channels;
     }
 
     /**

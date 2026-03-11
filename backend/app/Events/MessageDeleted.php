@@ -17,8 +17,9 @@ class MessageDeleted implements ShouldBroadcast
     public $message;
     public $messageId;
     public $spaceId;
+    public $userIds;
 
-    public function __construct($messageOrId, $spaceId = null)
+    public function __construct($messageOrId, $spaceId = null, $userIds = [])
     {
         if ($messageOrId instanceof Message) {
             $this->message = clone $messageOrId;
@@ -29,18 +30,27 @@ class MessageDeleted implements ShouldBroadcast
             $this->messageId = $messageOrId;
             $this->spaceId = $spaceId;
         }
+        $this->userIds = is_array($userIds) ? $userIds : [$userIds];
     }
 
     public function broadcastOn()
     {
+        $channels = [];
+        
         if ($this->spaceId) {
-            return new PresenceChannel('space.' . $this->spaceId);
+            $channels[] = new PresenceChannel('space.' . $this->spaceId);
         }
         else if ($this->message && $this->message->conversation_id) {
-            return new PresenceChannel('chat.' . $this->message->conversation_id);
+            $channels[] = new PresenceChannel('chat.' . $this->message->conversation_id);
+        }
+        
+        foreach ($this->userIds as $userId) {
+            if ($userId) {
+                $channels[] = new \Illuminate\Broadcasting\Channel('user.' . $userId);
+            }
         }
 
-        return [];
+        return $channels;
     }
 
     public function broadcastAs()

@@ -366,8 +366,8 @@ class PusherService {
       channel.bind('message_reaction', (data: any) => {
         console.log('❤️ RAW DATA (message_reaction via notification):', data);
         const notification = {
-          type: data.type || 'message_reaction',
-          title: data.title || 'New Reaction',
+          type: 'message_reaction',
+          title: 'New Reaction',
           message: data.message || `Someone reacted ${data.reaction || ''} to your message`,
           data: data,
           userId: data.userId,
@@ -377,6 +377,23 @@ class PusherService {
           createdAt: new Date()
         };
         console.log('❤️ SENDING TO NOTIFICATION STORE:', notification);
+        onNotification(notification);
+      });
+
+      // ✅ NEW: Bind space.message for global notifications
+      channel.bind('space.message', (data: any) => {
+        console.log('💬 RAW DATA (space.message via notification):', data);
+        const notification = {
+          type: 'new_message',
+          title: 'New Message',
+          message: data.message?.content || 'New message in space',
+          data: data,
+          userId: data.message?.user_id || data.message?.userId,
+          spaceId: data.space_id || data.spaceId,
+          avatar: data.message?.user?.profile_photo || data.message?.avatar,
+          createdAt: new Date()
+        };
+        console.log('💬 SENDING TO NOTIFICATION STORE:', notification);
         onNotification(notification);
       });
 
@@ -585,7 +602,38 @@ class PusherService {
           createdAt: new Date()
         };
         console.log('🖥️ SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification); // ✅ ADD THIS LINE
+        onNotification(notification);
+      });
+
+      // Poll created
+      channel.bind('poll-created', (data: any) => {
+        console.log('📊 Poll created notification:', data);
+        const notification = {
+          type: 'poll_created',
+          title: 'New Poll',
+          message: `${data.creator_name || 'Someone'} created a poll in "${data.space_title || 'a space'}"`,
+          data: data,
+          spaceId: data.space_id,
+          userId: data.created_by,
+          createdAt: new Date()
+        };
+        console.log('📊 SENDING TO NOTIFICATION STORE:', notification);
+        onNotification(notification);
+      });
+
+      // Poll deleted
+      channel.bind('poll-deleted', (data: any) => {
+        console.log('📊 Poll deleted notification:', data);
+        const notification = {
+          type: 'poll_deleted',
+          title: 'Poll Deleted',
+          message: `A poll has been deleted in "${data.space_title || 'a space'}"`,
+          data: data,
+          spaceId: data.space_id,
+          createdAt: new Date()
+        };
+        console.log('📊 SENDING TO NOTIFICATION STORE:', notification);
+        onNotification(notification);
       });
 
       // New collaborative activity
@@ -1015,11 +1063,15 @@ class PusherService {
       try {
         // Unsubscribe from all channels first if connection is still active
         const connectionState = this.pusher.connection.state;
-        const canUnsubscribe = connectionState !== 'disconnected' && connectionState !== 'unavailable' && connectionState !== 'failed';
+        const canUnsubscribe = connectionState === 'connected';
 
         this.channels.forEach((channel, channelName) => {
           if (canUnsubscribe) {
-            this.pusher?.unsubscribe(channelName);
+            try {
+              this.pusher?.unsubscribe(channelName);
+            } catch (e) {
+              // Silently ignore closure errors during disconnect
+            }
           }
         });
 

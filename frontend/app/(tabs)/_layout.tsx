@@ -58,6 +58,9 @@ export default function TabLayout() {
           // Initialize both stores explicitly once
           initializeRealtime(token);
           initNotifications(token, Number(user.id));
+          
+          // Pre-fetch spaces to ensure the Chats tab badge exists offline instantly
+          useCollaborationStore.getState().fetchUserSpaces(Number(user.id));
 
           if (typeof setInitializationTime === 'function') {
             setInitializationTime(new Date());
@@ -205,16 +208,7 @@ export default function TabLayout() {
           </Tabs>
         </>
       ) : (
-        // FIX: Make sure LoginScreen is properly rendered
-        <View style={{ flex: 1 }}>
-          <Stack.Screen
-            name="Login"
-            options={{
-              headerShown: false,
-            }}
-          />
-          <LoginScreen />
-        </View>
+        <Redirect href="/LoginScreen" />
       )}
     </AuthContext.Provider>
   );

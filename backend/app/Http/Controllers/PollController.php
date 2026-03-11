@@ -114,7 +114,8 @@ class PollController extends Controller
             DB::commit();
 
             \Log::info('Poll created successfully: ' . $poll->id);
-            broadcast(new PollCreated($poll, $spaceId))->toOthers();
+            $userIds = SpaceParticipation::where('space_id', $spaceId)->where('user_id', '!=', $user->id)->pluck('user_id')->toArray();
+            broadcast(new PollCreated($poll, $spaceId, $userIds))->toOthers();
 
             return response()->json([
                 'poll' => $poll->load('options'),
@@ -195,7 +196,8 @@ class PollController extends Controller
                 if ($forwardedPolls->count() > 0) {
                     foreach ($forwardedPolls as $forwardedPoll) {
                         // Broadcast deletion event to each space
-                        broadcast(new PollDeleted($forwardedPoll->id, $forwardedPoll->space_id))->toOthers();
+                        $userIds = SpaceParticipation::where('space_id', $forwardedPoll->space_id)->where('user_id', '!=', $user->id)->pluck('user_id')->toArray();
+                        broadcast(new PollDeleted($forwardedPoll->id, $forwardedPoll->space_id, $userIds))->toOthers();
                         $forwardedPoll->delete();
                     }
                 }
@@ -583,7 +585,8 @@ class PollController extends Controller
                     $forwardedPolls[] = $forwardedPoll;
 
                     // Broadcast that a new poll was created in the target space
-                    broadcast(new PollCreated($forwardedPoll, $targetSpaceId))->toOthers();
+                    $userIds = SpaceParticipation::where('space_id', $targetSpaceId)->where('user_id', '!=', $user->id)->pluck('user_id')->toArray();
+                    broadcast(new PollCreated($forwardedPoll, $targetSpaceId, $userIds))->toOthers();
 
                 }
                 catch (\Exception $e) {
@@ -720,7 +723,8 @@ class PollController extends Controller
                 if ($forwardedPolls->count() > 0) {
                     foreach ($forwardedPolls as $forwardedPoll) {
                         // Broadcast deletion event to each space before deleting
-                        broadcast(new PollDeleted($forwardedPoll->id, $forwardedPoll->space_id))->toOthers();
+                        $userIds = SpaceParticipation::where('space_id', $forwardedPoll->space_id)->where('user_id', '!=', $user->id)->pluck('user_id')->toArray();
+                        broadcast(new PollDeleted($forwardedPoll->id, $forwardedPoll->space_id, $userIds))->toOthers();
                         $deletedSpaces[] = $forwardedPoll->space_id;
                         $forwardedPoll->delete();
                         $forwardedCount++;
@@ -731,7 +735,8 @@ class PollController extends Controller
                 $childPolls = Poll::where('parent_poll_id', $pollId)->get();
                 foreach ($childPolls as $childPoll) {
                     if (!$forwardedPolls->contains('id', $childPoll->id)) {
-                        broadcast(new PollDeleted($childPoll->id, $childPoll->space_id))->toOthers();
+                        $userIds = SpaceParticipation::where('space_id', $childPoll->space_id)->where('user_id', '!=', $user->id)->pluck('user_id')->toArray();
+                        broadcast(new PollDeleted($childPoll->id, $childPoll->space_id, $userIds))->toOthers();
                         $deletedSpaces[] = $childPoll->space_id;
                         $childPoll->delete();
                         $forwardedCount++;
@@ -776,7 +781,8 @@ class PollController extends Controller
                 DB::commit();
 
                 // Broadcast deletion event for the original poll
-                broadcast(new PollDeleted($pollId, $spaceId))->toOthers();
+                $userIds = SpaceParticipation::where('space_id', $spaceId)->where('user_id', '!=', $user->id)->pluck('user_id')->toArray();
+                broadcast(new PollDeleted($pollId, $spaceId, $userIds))->toOthers();
 
                 $responseData = [
                     'message' => 'Poll deleted successfully',

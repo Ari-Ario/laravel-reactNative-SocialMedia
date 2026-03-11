@@ -530,7 +530,6 @@ const styles = StyleSheet.create({
     },
     webBackdrop: {
         backgroundColor: 'rgba(0,0,0,0.42)',
-        backdropFilter: 'blur(6px)',
     } as any,
     // ── Card ────────────────────────────────────────────────
     card: {

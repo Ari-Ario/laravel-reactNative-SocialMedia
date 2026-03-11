@@ -16,16 +16,28 @@ class PollDeleted implements ShouldBroadcast
 
     public $pollId;
     public $spaceId;
+    public $userIds;
 
-    public function __construct($pollId, $spaceId)
+    public function __construct($pollId, $spaceId, $userIds = [])
     {
         $this->pollId = $pollId;
         $this->spaceId = $spaceId;
+        $this->userIds = is_array($userIds) ? $userIds : [$userIds];
     }
 
     public function broadcastOn()
     {
-        return new PresenceChannel('space.' . $this->spaceId);
+        $channels = [
+            new PresenceChannel('space.' . $this->spaceId)
+        ];
+        
+        foreach ($this->userIds as $userId) {
+            if ($userId) {
+                $channels[] = new \Illuminate\Broadcasting\Channel('user.' . $userId);
+            }
+        }
+        
+        return $channels;
     }
 
     public function broadcastAs()

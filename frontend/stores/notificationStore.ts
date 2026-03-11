@@ -6,7 +6,8 @@ import PusherService from '@/services/PusherService';
 import axios from 'axios';
 import getApiBase from '@/services/getApiBase';
 import { getToken } from '@/services/TokenService';
-import { useCollaborationStore } from '@/stores/collaborationStore';
+
+// import { useCollaborationStore } from '@/stores/collaborationStore';
 
 export interface Notification {
   id: string;
@@ -635,7 +636,7 @@ export const useNotificationStore = create<NotificationStore>()(
             
             // ✅ Bridge to CollaborationStore if it's a space event
             if (notificationData.spaceId || notificationData.space_id) {
-               useCollaborationStore.getState().handleSpaceEvent({
+                require('@/stores/collaborationStore').useCollaborationStore.getState().handleSpaceEvent({
                  type: notificationData.type || 'new_message',
                  data: {
                    ...notificationData,
@@ -651,7 +652,7 @@ export const useNotificationStore = create<NotificationStore>()(
  
             // ✅ Bridge to CollaborationStore if it's a space event
             if (notificationData.spaceId || notificationData.space_id) {
-               useCollaborationStore.getState().handleSpaceEvent({
+               require('@/stores/collaborationStore').useCollaborationStore.getState().handleSpaceEvent({
                  type: notificationData.type || 'new_message',
                  data: {
                    ...notificationData,
@@ -989,6 +990,13 @@ export const useNotificationStore = create<NotificationStore>()(
             ...notif,
             createdAt: new Date(notif.createdAt)
           }));
+          
+          // RECALCULATE SPECIFIC BADGE COUNTS ON STARTUP
+          state.unreadCallCount = state.notifications.filter(n => !n.isRead && isCallNotification(n.type)).length;
+          state.unreadMessageCount = state.notifications.filter(n => !n.isRead && isMessageNotification(n.type)).length;
+          state.unreadSpaceCount = state.notifications.filter(n => !n.isRead && isSpaceNotification(n.type)).length;
+          state.unreadActivityCount = state.notifications.filter(n => !n.isRead && isActivityNotification(n.type)).length;
+          state.unreadChatbotTrainingCount = state.notifications.filter(n => !n.isRead && isChatbotTrainingNotification(n.type)).length;
         }
       },
     }

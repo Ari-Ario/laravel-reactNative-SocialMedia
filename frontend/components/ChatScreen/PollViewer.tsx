@@ -493,7 +493,8 @@ const PollViewer: React.FC<PollViewerProps> = ({
     const loadAvailableSpaces = useCallback(async () => {
         setIsLoadingSpaces(true);
         try {
-            const userSpaces = await collaborationService.fetchUserSpaces(currentUserId);
+            const result = await collaborationService.fetchUserSpaces(currentUserId);
+            const userSpaces = result.spaces;
             const filtered = userSpaces.filter(s => s.id !== spaceId);
             setAvailableSpaces(filtered);
         } catch (error) {

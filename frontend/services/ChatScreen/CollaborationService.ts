@@ -225,14 +225,14 @@ class CollaborationService {
 
   // 🔥 CORE SPACE OPERATIONS
 
-  async fetchUserSpaces(userId: number): Promise<CollaborationSpace[]> {
+  async fetchUserSpaces(userId: number): Promise<{ spaces: CollaborationSpace[]; user_preferences?: any }> {
     try {
       const response = await axios.get(`${this.baseURL}/spaces`, {
         headers: this.getHeaders(),
         params: { user_id: userId }
       });
 
-      return response.data.spaces.map((space: any) => ({
+      const spaces = response.data.spaces.map((space: any) => ({
         ...space,
         participants_count: space.participants_count || 0,
         is_live: space.is_live || false,
@@ -241,6 +241,11 @@ class CollaborationService {
         has_ai_assistant: space.has_ai_assistant || false,
         ai_capabilities: space.ai_capabilities || [],
       }));
+
+      return {
+        spaces,
+        user_preferences: response.data.user_preferences
+      };
     } catch (error) {
       console.error('Error fetching spaces:', error);
       throw error;
@@ -598,6 +603,18 @@ class CollaborationService {
       throw error;
     }
   }
+
+  async updateUserPreferences(preferences: { custom_tabs?: any[]; theme_preference?: string; locale?: string }): Promise<void> {
+    try {
+      await axios.post(`${this.baseURL}/update-preferences`, preferences, {
+        headers: this.getHeaders(),
+      });
+    } catch (error) {
+      console.error('Error updating user preferences:', error);
+      throw error;
+    }
+  }
+
   /**
    * Delete a poll permanently
    * @param spaceId - The ID of the space containing the poll

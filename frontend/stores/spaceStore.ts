@@ -50,4 +50,11 @@ export const useSpaceStore = create<SpaceStoreState>((set, get) => ({
     updateSpace: (updatedSpace) => set((state) => ({
         spaces: state.spaces.map(s => s.id === updatedSpace.id ? { ...s, ...updatedSpace } : s)
     })),
+
+    reset: () => set({
+        currentSpace: null,
+        participants: [],
+        magicEvents: [],
+        spaces: [],
+    }),
 }));

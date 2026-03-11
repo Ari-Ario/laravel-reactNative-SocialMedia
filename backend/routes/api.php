@@ -271,3 +271,4 @@ Route::post('/resend-verification-code', [ApiAuthController::class , 'resendVeri
 Route::post('/forgot-password', [ApiAuthController::class , 'forgotPassword']);
 Route::post('/verify-reset-code', [ApiAuthController::class , 'verifyResetCode']);
 Route::post('/reset-password', [ApiAuthController::class , 'resetPassword']);
+Route::post('/update-preferences', [ApiAuthController::class , 'updatePreferences'])->middleware('auth:sanctum');

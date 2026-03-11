@@ -113,6 +113,11 @@ class SpaceController extends Controller
             
             return response()->json([
                 'spaces' => $spacesWithParticipation,
+                'user_preferences' => [
+                    'custom_tabs' => $user->custom_tabs ?? [],
+                    'theme_preference' => $user->theme_preference,
+                    'locale' => $user->locale
+                ],
                 'pagination' => [
                     'current_page' => $spaces->currentPage(),
                     'last_page' => $spaces->lastPage(),
@@ -427,7 +432,12 @@ class SpaceController extends Controller
             ];
         });
 
-        return response()->json(['spaces' => $formattedSpaces]);
+        return response()->json([
+            'spaces' => $formattedSpaces,
+            'user_preferences' => [
+                'custom_tabs' => Auth::user()->custom_tabs ?? [],
+            ]
+        ]);
     }
 
     /**
@@ -1390,13 +1400,19 @@ public function endCall(Request $request, $id)
             broadcast(new \App\Events\MessageSent($message, $space->id, $user))->toOthers();
             
             // Individual user channels for those on the chat list page
-            foreach ($space->participations as $p) {
-                if ($p->user_id !== $user->id) {
-                    broadcast(new \App\Events\SpaceMessageSent($space->id, $p->user_id, $message))->toOthers();
-                }
+            $participants = $space->participations->where('user_id', '!=', $user->id);
+            $userIds = $participants->pluck('user_id')->toArray();
+            
+            if (!empty($userIds)) {
+                // 1. Real-time broadcast for chat list snippet updates
+                broadcast(new \App\Events\SpaceMessageSent($space->id, $userIds, $message))->toOthers();
+
+                // 2. Persistent Database Notification for offline/header fetch
+                $targetUsers = User::whereIn('id', $userIds)->get();
+                \Illuminate\Support\Facades\Notification::send($targetUsers, new \App\Events\MessageSent($message, $space->id, $user));
             }
         } catch (\Exception $e) {
-            Log::error('Failed to broadcast message:', [
+            Log::error('Failed to broadcast/notify message:', [
                 'error' => $e->getMessage(),
                 'space_id' => $space->id
             ]);
@@ -1482,7 +1498,8 @@ public function endCall(Request $request, $id)
         ]);
 
         try {
-            broadcast(new \App\Events\MessageDeleted($messageId, $space->id))->toOthers();
+            $userIds = $space->participations->where('user_id', '!==', $user->id)->pluck('user_id')->toArray();
+            broadcast(new \App\Events\MessageDeleted($messageId, $space->id, $userIds))->toOthers();
         } catch (\Exception $e) {
             Log::error('Failed to broadcast message deletion: ' . $e->getMessage());
         }
@@ -1641,7 +1658,8 @@ public function endCall(Request $request, $id)
         $space->update(['content_state' => $contentState]);
 
         try {
-            broadcast(new \App\Events\MessagePinned($messageId, $isPinned, $space->id))->toOthers();
+            $userIds = $space->participations->where('user_id', '!==', $user->id)->pluck('user_id')->toArray();
+            broadcast(new \App\Events\MessagePinned($messageId, $isPinned, $space->id, $userIds))->toOthers();
         } catch (\Exception $e) {
             Log::error('Failed to broadcast message pin: ' . $e->getMessage());
         }

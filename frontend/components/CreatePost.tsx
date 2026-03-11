@@ -489,7 +489,8 @@ const styles = StyleSheet.create({
     flex: 1,
     maxWidth: 500,
     width: "100%",
-    alignSelf: 'center'
+    alignSelf: 'center',
+    top: 60,
   },
   cameraContainer: {
     flex: 1,

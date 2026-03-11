@@ -17,14 +17,16 @@ class PollCreated implements ShouldBroadcast
 
     public $pollId;
     public $spaceId;
+    public $userIds;
 
     /**
      * Create a new event instance.
      */
-    public function __construct(Poll $poll, $spaceId)
+    public function __construct(Poll $poll, $spaceId, $userIds = [])
     {
         $this->pollId = $poll->id;
         $this->spaceId = $spaceId;
+        $this->userIds = is_array($userIds) ? $userIds : [$userIds];
     }
 
     /**
@@ -34,9 +36,17 @@ class PollCreated implements ShouldBroadcast
      */
     public function broadcastOn(): array
     {
-        return [
-            new PresenceChannel('space.' . $this->spaceId),
+        $channels = [
+            new PresenceChannel('space.' . $this->spaceId)
         ];
+        
+        foreach ($this->userIds as $userId) {
+            if ($userId) {
+                $channels[] = new \Illuminate\Broadcasting\Channel('user.' . $userId);
+            }
+        }
+        
+        return $channels;
     }
 
     /**

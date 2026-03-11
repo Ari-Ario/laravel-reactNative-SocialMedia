@@ -340,7 +340,8 @@ const ChatPage = () => {
 
     try {
       // Fetch spaces first
-      const userSpaces = await collaborationService.fetchUserSpaces(Number(user.id));
+      const result = await collaborationService.fetchUserSpaces(Number(user.id));
+      const userSpaces = result.spaces;
 
       let totalActivities = 0;
       let allActivities: CollaborativeActivity[] = [];
@@ -522,7 +523,8 @@ const ChatPage = () => {
     if (!user?.id || !token) return;
 
     try {
-      const userSpaces = await collaborationService.fetchUserSpaces(Number(user.id));
+      const result = await collaborationService.fetchUserSpaces(Number(user.id));
+      const userSpaces = result.spaces;
 
       // Update the store with the fetched spaces
       useCollaborationStore.getState().setSpaces(userSpaces);

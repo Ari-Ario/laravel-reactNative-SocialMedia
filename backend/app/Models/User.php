@@ -39,6 +39,7 @@ class User extends Authenticatable
         'is_admin',          // Admin role flag
         'theme_preference',  // Light/dark mode
         'locale', 
+        'custom_tabs',
     ];
 
     /**
@@ -61,6 +62,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'custom_tabs' => 'array',
         ];
     }
 
