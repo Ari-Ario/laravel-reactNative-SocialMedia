@@ -16,6 +16,7 @@ import { calculateAnchor, AnchorPosition } from '@/utils/layout';
 import GenericMenu, { MenuItem } from '@/components/GenericMenu';
 import EnhancedInviteModal, { InviteRecipient } from '@/components/ChatScreen/EnhancedInviteModal';
 import { useRef } from 'react';
+import { useCollaborationStore } from '@/stores/collaborationStore';
 
 interface EnhancedChatRowProps {
   id: string;
@@ -397,6 +398,9 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
 
     const previousState = localIsPinned;
     setLocalIsPinned(!previousState);
+    if (type === 'space') {
+      useCollaborationStore.getState().updateSpacePermissions(id, { is_pinned: !previousState });
+    }
     setShowCollaborationMenu(false);
 
     try {
@@ -406,6 +410,9 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
     } catch (error) {
       console.error('Error pinning space:', error);
       setLocalIsPinned(previousState);
+      if (type === 'space') {
+        useCollaborationStore.getState().updateSpacePermissions(id, { is_pinned: previousState });
+      }
       simpleAlert('Error', 'Failed to toggle pin status');
     }
   };
@@ -417,6 +424,9 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
 
     const previousState = localIsArchived;
     setLocalIsArchived(!previousState);
+    if (type === 'space') {
+      useCollaborationStore.getState().updateSpacePermissions(id, { is_archived: !previousState });
+    }
     setShowCollaborationMenu(false);
 
     try {
@@ -426,6 +436,9 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
     } catch (error) {
       console.error('Error archiving space:', error);
       setLocalIsArchived(previousState);
+      if (type === 'space') {
+        useCollaborationStore.getState().updateSpacePermissions(id, { is_archived: previousState });
+      }
       simpleAlert('Error', 'Failed to toggle archive status');
     }
   };
@@ -437,6 +450,9 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
 
     const previousState = localIsUnread;
     setLocalIsUnread(!previousState);
+    if (type === 'space') {
+      useCollaborationStore.getState().updateSpacePermissions(id, { is_unread: !previousState });
+    }
     setShowCollaborationMenu(false);
 
     try {
@@ -446,6 +462,9 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
     } catch (error) {
       console.error('Error marking unread space:', error);
       setLocalIsUnread(previousState);
+      if (type === 'space') {
+        useCollaborationStore.getState().updateSpacePermissions(id, { is_unread: previousState });
+      }
       simpleAlert('Error', 'Failed to toggle read status');
     }
   };
@@ -457,6 +476,9 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
 
     const previousState = localIsFavorite;
     setLocalIsFavorite(!previousState);
+    if (type === 'space') {
+      useCollaborationStore.getState().updateSpacePermissions(id, { is_favorite: !previousState });
+    }
     setShowCollaborationMenu(false);
 
     try {
@@ -466,6 +488,9 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
     } catch (error) {
       console.error('Error favoriting space:', error);
       setLocalIsFavorite(previousState);
+      if (type === 'space') {
+        useCollaborationStore.getState().updateSpacePermissions(id, { is_favorite: previousState });
+      }
       simpleAlert('Error', 'Failed to toggle favorite status');
     }
   };

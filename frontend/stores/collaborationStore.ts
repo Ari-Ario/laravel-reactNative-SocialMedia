@@ -30,6 +30,7 @@ interface CollaborationState {
   setActiveSpace: (space: CollaborationSpace | null) => void;
   addSpace: (space: CollaborationSpace) => void;
   updateSpace: (spaceId: string, updates: Partial<CollaborationSpace>) => void;
+  updateSpacePermissions: (spaceId: string, permissions: Partial<any>) => void;
   removeSpace: (spaceId: string) => void;
 
   // Participant actions
@@ -44,8 +45,10 @@ interface CollaborationState {
 
   // Unread counts
   incrementUnreadCount: (spaceId: string) => void;
+  decrementUnreadCount: (spaceId: string) => void;
   resetUnreadCount: (spaceId: string) => void;
-  markSpaceAsRead: (spaceId: string) => void;
+  setUnreadCounts: (counts: Record<string, number>) => void;
+  markSpaceAsRead: (spaceId: string, lastReadAt?: string) => Promise<void>;
 
   setSpaceActivities: (spaceId: string, activities: CollaborativeActivity[], total: number) => void;
   getSpaceActivities: (spaceId: string) => CollaborativeActivity[];
@@ -63,6 +66,8 @@ interface CollaborationState {
   removeSpaceFromTab: (tabId: string, spaceId: string) => void;
   setSpacesInTab: (tabId: string, spaceIds: string[]) => void;
   renameCustomTab: (tabId: string, newName: string) => void;
+  fetchUserSpaces: (userId: number) => Promise<CollaborationSpace[]>;
+  reset: () => void;
 }
 
 export interface CustomTab {
@@ -158,6 +163,10 @@ export const useCollaborationStore = create<CollaborationState>()(
             onMagicEvent: handleMagicTriggered,
             onScreenShareStarted: handleScreenShareStarted,
             onScreenShareEnded: handleScreenShareEnded,
+            onScreenShareToggled: (data: any) => {
+              console.log('🖥️ Screen share toggled:', data);
+              get().handleSpaceEvent({ type: 'screen.share.toggled', data });
+            },
             // ✅ NEW: forward message.deleted/reacted/replied as notifications
             onMessageDeleted: (data: any) => {
               console.log('🗑️ Message deleted in space:', data);
@@ -170,6 +179,10 @@ export const useCollaborationStore = create<CollaborationState>()(
             onMessageReplied: (data: any) => {
               console.log('↩️ Message replied in space:', data);
               get().handleSpaceEvent({ type: 'message-replied', data });
+            },
+            onSpaceRead: (data: any) => {
+              console.log('📖 Space read on another device:', data);
+              get().handleSpaceEvent({ type: 'space-read', data });
             },
           });
         });
@@ -193,9 +206,59 @@ export const useCollaborationStore = create<CollaborationState>()(
 
         // Update the store based on event type
         switch (type) {
-          case 'message-sent':
+          case 'message.sent':
+          case 'message.message':
+          case 'space.message':
+          case 'new_message':
+            // Normalize space_id (handle both snake_case and camelCase)
+            const sid = (data.space_id || data.spaceId)?.toString();
+            console.log(`💬 [CollaborationStore] ${type} in space:`, sid);
+            
+            if (sid) {
+              get().incrementUnreadCount(sid);
+              
+              // Also update the updated_at timestamp so the space moves to the top
+              set((state) => ({
+                spaces: state.spaces.map(s => 
+                  s.id.toString() === sid 
+                    ? { ...s, updated_at: new Date().toISOString() } 
+                    : s
+                )
+              }));
+              
+              // We NO LONGER call addNotification here because NotificationStore 
+              // already adds it before bridging to this handler.
+              // This prevents double notifications in the Home header.
+            }
+            break;
+
+
+          case 'space-updated':
+          case 'space.updated':
+          case 'space.update':
+            if (data.space_id && data.space) {
+              get().updateSpace(data.space_id, data.space);
+            }
+            break;
+
+          case 'participant-joined':
+          case 'participant.joined':
             if (data.space_id) {
-              get().incrementUnreadCount(data.space_id);
+              // Refresh or add participant
+              if (data.user) {
+                get().addParticipant({
+                  ...data.user,
+                  space_id: data.space_id,
+                  role: data.role || 'participant'
+                } as any);
+              }
+            }
+            break;
+
+          case 'magic.triggered':
+          case 'magic_event':
+            if (data.space_id && data.event) {
+              get().addMagicEvent(data.event);
             }
             break;
 
@@ -205,6 +268,12 @@ export const useCollaborationStore = create<CollaborationState>()(
                 is_live: true,
                 current_focus: 'call'
               });
+
+              const space = get().spaces.find(s => s.id === data.space_id);
+              const callerId = data.caller_id || data.user_id || data.user?.id;
+              const currentUserId = useNotificationStore.getState().currentUserId;
+
+              if (callerId && currentUserId && callerId == currentUserId) break;
             }
             break;
 
@@ -224,6 +293,28 @@ export const useCollaborationStore = create<CollaborationState>()(
               if (typeof (get() as any).refreshSpace === 'function') {
                 (get() as any).refreshSpace(data.space_id);
               }
+            }
+            break;
+
+          case 'space-read':
+            if (data.space_id) {
+              // Internal reset/update without API call to avoid loops
+              set((state) => {
+                const currentCount = state.spaceUnreadCounts[data.space_id] || 0;
+                
+                // If it's a full read (Telegram style) or we should reset, set to 0.
+                // For now, simpler multi-device read sync:
+                const newCounts: Record<string, number> = { ...state.spaceUnreadCounts, [data.space_id]: 0 };
+                const totalUnread = Object.values(newCounts).reduce((sum, count) => sum + count, 0);
+                
+                // Clear notifications for this space
+                useNotificationStore.getState().markSpaceNotificationsAsRead(data.space_id);
+
+                return {
+                  spaceUnreadCounts: newCounts,
+                  totalUnreadSpaces: totalUnread
+                };
+              });
             }
             break;
         }
@@ -295,24 +386,37 @@ export const useCollaborationStore = create<CollaborationState>()(
             default: return 'New activity in space';
           }
         })();
-
-        // Also send to notification store
-        useNotificationStore.getState().addNotification({
-          type: notificationType,
-          title: `${titles[notificationType] || 'Update'} in ${spaceTitle}`,
-          message: notificationMessage,
-          data: data,
-          spaceId: data.space_id,
-          messageId: msgObj?.id || data?.id,   // ✅ ensure messageId is always set
-          userId: senderId,
-          avatar: data.user?.profile_photo || msgObj?.user?.profile_photo,
-          createdAt: new Date()
-        });
       },
 
 
 
-      setSpaces: (spaces) => set({ spaces }),
+      setSpaces: (spaces) => set((state) => {
+        // Initialize unread counts from the fetched spaces if they aren't already tracked
+        const newUnreadCounts = { ...state.spaceUnreadCounts };
+        let hasChanges = false;
+
+        spaces.forEach(space => {
+          const sid = space.id.toString();
+          // If the fetched space has an unread_count and we don't have one cached, 
+          // or the fetched one is higher, use it.
+          const fetchedUnread = (space as any).unread_count || 0;
+          if (fetchedUnread > (newUnreadCounts[sid] || 0)) {
+            newUnreadCounts[sid] = fetchedUnread;
+            hasChanges = true;
+          }
+        });
+
+        if (hasChanges) {
+          const totalUnread = Object.values(newUnreadCounts).reduce((sum, count) => sum + count, 0);
+          return { 
+            spaces, 
+            spaceUnreadCounts: newUnreadCounts,
+            totalUnreadSpaces: totalUnread
+          };
+        }
+
+        return { spaces };
+      }),
 
       setActiveSpace: (space) => set({ activeSpace: space }),
 
@@ -372,6 +476,17 @@ export const useCollaborationStore = create<CollaborationState>()(
           : state.activeSpace,
       })),
 
+      updateSpacePermissions: (spaceId, permissions) => set((state) => ({
+        spaces: state.spaces.map(space =>
+          space.id === spaceId
+            ? { ...space, my_permissions: { ...space.my_permissions, ...permissions } }
+            : space
+        ),
+        activeSpace: state.activeSpace?.id === spaceId
+          ? { ...state.activeSpace, my_permissions: { ...state.activeSpace.my_permissions, ...permissions } }
+          : state.activeSpace,
+      })),
+
       removeSpace: (spaceId) => set((state) => ({
         spaces: state.spaces.filter(space => space.id !== spaceId),
         activeSpace: state.activeSpace?.id === spaceId ? null : state.activeSpace,
@@ -404,10 +519,28 @@ export const useCollaborationStore = create<CollaborationState>()(
       })),
 
       incrementUnreadCount: (spaceId) => set((state) => {
-        const currentCount = state.spaceUnreadCounts[spaceId] || 0;
+        const id = spaceId.toString();
+        const currentCount = state.spaceUnreadCounts[id] || 0;
         const newCounts = {
           ...state.spaceUnreadCounts,
-          [spaceId]: currentCount + 1
+          [id]: currentCount + 1
+        };
+        const totalUnread = Object.values(newCounts).reduce((sum, count) => sum + count, 0);
+
+        return {
+          spaceUnreadCounts: newCounts,
+          totalUnreadSpaces: totalUnread
+        };
+      }),
+
+      decrementUnreadCount: (spaceId) => set((state) => {
+        const id = spaceId.toString();
+        const currentCount = state.spaceUnreadCounts[id] || 0;
+        if (currentCount <= 0) return state;
+
+        const newCounts = {
+          ...state.spaceUnreadCounts,
+          [id]: currentCount - 1
         };
         const totalUnread = Object.values(newCounts).reduce((sum, count) => sum + count, 0);
 
@@ -428,15 +561,45 @@ export const useCollaborationStore = create<CollaborationState>()(
         };
       }),
 
-      markSpaceAsRead: (spaceId) => set((state) => {
-        const newCounts = { ...state.spaceUnreadCounts, [spaceId]: 0 };
-        const totalUnread = Object.values(newCounts).reduce((sum, count) => sum + count, 0);
+      setUnreadCounts: (counts) => {
+        const totalUnread = Object.values(counts).reduce((sum, count) => sum + count, 0);
+        set({ spaceUnreadCounts: counts, totalUnreadSpaces: totalUnread });
+      },
 
-        return {
-          spaceUnreadCounts: newCounts,
-          totalUnreadSpaces: totalUnread
-        };
-      }),
+      markSpaceAsRead: async (spaceId, lastReadAt) => {
+        const id = spaceId.toString();
+        
+        // ✅ Only clear local badge if we are doing a full reset (lastReadAt is null)
+        // For partial reads during scroll, we let MessageList handle progressive decrement.
+        if (!lastReadAt) {
+          set((state) => {
+            const newCounts: Record<string, number> = { ...state.spaceUnreadCounts, [id]: 0 };
+            const totalUnread = Object.values(newCounts).reduce(
+              (sum: number, count: number) => sum + count,
+              0
+            );
+            // Also clear any space-related notification badges
+            useNotificationStore.getState().markSpaceNotificationsAsRead(id);
+            
+            // Clear the is_unread manual flag if it exists
+            const newSpaces = state.spaces.map(space => 
+              space.id === spaceId && space.my_permissions?.is_unread
+                ? { ...space, my_permissions: { ...space.my_permissions, is_unread: false } }
+                : space
+            );
+
+            return { spaceUnreadCounts: newCounts, totalUnreadSpaces: totalUnread, spaces: newSpaces };
+          });
+        }
+
+        try {
+          // Persist to backend
+          await CollaborationService.getInstance().markAsRead(spaceId, lastReadAt ?? undefined);
+          console.log(`🔖 [CollaborationStore] Space ${spaceId} marked as read (lastReadAt: ${lastReadAt ?? 'now'})`);
+        } catch (error) {
+          console.warn(`⚠️ [CollaborationStore] Failed to persist mark-as-read for space ${spaceId}:`, error);
+        }
+      },
 
       // Custom Tab Actions
       createCustomTab: (name, spaceIds = []) => set((state) => {
@@ -479,6 +642,42 @@ export const useCollaborationStore = create<CollaborationState>()(
           t.id === tabId ? { ...t, name: newName.substring(0, 12) } : t
         )
       })),
+      
+      fetchUserSpaces: async (userId) => {
+        try {
+          console.log('🌐 Store: Fetching spaces for user:', userId);
+          const spaces = await CollaborationService.getInstance().fetchUserSpaces(userId);
+          
+          set({ spaces });
+          
+          // Also automatically subscribe to all fetched spaces
+          const spaceIds = spaces.map(s => s.id);
+          get().subscribeToAllSpaces(spaceIds);
+          
+          return spaces;
+        } catch (error) {
+          console.error('❌ Store: Error fetching user spaces:', error);
+          throw error;
+        }
+      },
+
+      reset: () => {
+        get().unsubscribeFromAllSpaces();
+        set({
+          spaces: [],
+          activeSpace: null,
+          participants: [],
+          magicEvents: [],
+          spaceUnreadCounts: {},
+          totalUnreadSpaces: 0,
+          spaceActivities: {},
+          activitiesLastFetched: {},
+          totalActivitiesCount: 0,
+          subscribedSpaceIds: [],
+          customTabs: [],
+        });
+        console.log('🧹 CollaborationStore reset complete');
+      },
     }),
     {
       name: 'collaboration-storage',

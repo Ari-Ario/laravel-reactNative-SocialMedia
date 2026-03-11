@@ -37,6 +37,7 @@ use App\Events\SpacePinned;
 use App\Events\SpaceArchived;
 use App\Events\SpaceMarkedUnread;
 use App\Events\SpaceFavorited;
+use App\Events\SpaceRead;
 use App\Events\MessageSent;
 use App\Events\SpaceMessageSent;
 use App\Events\SpaceDeleted;
@@ -56,6 +57,7 @@ class SpaceController extends Controller
     public function index(Request $request)
     {
         try {
+            /** @var \App\Models\User $user */
             $user = Auth::user();
             
             // Use eager loading to prevent N+1 queries
@@ -64,7 +66,7 @@ class SpaceController extends Controller
                 ->select([
                     'id', 'title', 'description', 'space_type', 'creator_id',
                     'is_live', 'has_ai_assistant', 'linked_conversation_id',
-                    'image_path', 'created_at', 'updated_at'
+                    'image_path', 'created_at', 'updated_at', 'content_state'
                 ])
                 ->with(['creator:id,name,profile_photo,username'])
                 ->withCount('participations')
@@ -105,6 +107,7 @@ class SpaceController extends Controller
                         'is_unread' => false,
                         'is_favorite' => false,
                     ],
+                    'unread_count' => $participation ? $this->calculateUnreadCount($space, $participation) : 0,
                 ];
             });
             
@@ -124,6 +127,36 @@ class SpaceController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Helper to calculate unread counts from JSON content_state
+     */
+    private function calculateUnreadCount($space, $participation)
+    {
+        // Get the user's last read timestamp for this space
+        $lastReadAt = $participation->last_read_at;
+        $messages = $space->content_state['messages'] ?? [];
+        $userId = $participation->user_id;
+
+        if (!$lastReadAt) {
+            // If never read, everything from OTHERS is unread
+            return collect($messages)->where('user_id', '!=', $userId)->count();
+        }
+
+        $lastReadTime = $lastReadAt instanceof \Carbon\Carbon ? $lastReadAt->timestamp : strtotime($lastReadAt);
+        
+        $unreadCount = 0;
+        foreach ($messages as $msg) {
+            if (isset($msg['created_at']) && isset($msg['user_id'])) {
+                // Only count messages from others sent AFTER last read
+                if (strtotime($msg['created_at']) > $lastReadTime && $msg['user_id'] != $userId) {
+                    $unreadCount++;
+                }
+            }
+        }
+
+        return $unreadCount;
     }
 
     /**
@@ -153,6 +186,7 @@ class SpaceController extends Controller
                 ], 422);
             }
 
+            /** @var \App\Models\User $user */
             $user = Auth::user();
 
             // Create the space
@@ -261,6 +295,7 @@ class SpaceController extends Controller
         DB::beginTransaction();
         
         try {
+            /** @var \App\Models\User $user */
             $user = Auth::user();
             
             $space = CollaborationSpace::create([
@@ -657,7 +692,10 @@ public function updateContentState(Request $request, $id)
             }
 
             // Broadcast before deleting
-            broadcast(new ParticipantLeft($space, auth()->user()))->toOthers();
+            $authUser = auth()->user();
+            if ($authUser instanceof \App\Models\User) {
+                broadcast(new ParticipantLeft($space, $authUser))->toOthers();
+            }
             $participation->delete();
 
             // Broadcast participation update to everyone in the space channel 
@@ -669,7 +707,7 @@ public function updateContentState(Request $request, $id)
             ]));
 
             // WhatsApp-style system message
-            $this->sendSystemMessage($space, auth()->user()->name . " left the space");
+            $this->sendSystemMessage($space, $authUser->name . " left the space");
         }
         
         return response()->json([
@@ -687,6 +725,7 @@ public function updateContentState(Request $request, $id)
         ]);
         
         $space = CollaborationSpace::findOrFail($id);
+        /** @var \App\Models\User $inviter */
         $inviter = auth()->user();
         
         // Check if user has permission to invite
@@ -717,7 +756,7 @@ public function updateContentState(Request $request, $id)
                 $invited[] = $userId;
                 
                 $user = User::find($userId);
-                if ($user) {
+                if ($user && $inviter instanceof \App\Models\User) {
                     // Send database notification
                     $user->notify(new \App\Notifications\SpaceInvitationNotification($space, $inviter, $user, $request->message));
                     
@@ -762,9 +801,10 @@ public function updateContentState(Request $request, $id)
         ]);
         
         // Broadcast participant joined
-        /** @var \App\Models\User $authUser */
         $authUser = auth()->user();
-        broadcast(new ParticipantJoined($space, $authUser))->toOthers();
+        if ($authUser instanceof \App\Models\User) {
+            broadcast(new ParticipantJoined($space, $authUser))->toOthers();
+        }
         
         // Broadcast invitation accepted to the joining user's private channel (to refresh list)
         broadcast(new SpaceUpdated($space, $userId, ['update_type' => 'invitation']))->toOthers();
@@ -854,24 +894,27 @@ public function startCall(Request $request, $id)
     ]);
 
     // Notify all participants
-    foreach ($participantIds as $participantId) {
-        if ($participantId != auth()->id()) {
-            $user = User::find($participantId);
-            
-            broadcast(new CallStarted($space, $call, auth()->user(), $user->id))->toOthers();
+    $authUser = auth()->user();
+    if ($authUser instanceof \App\Models\User) {
+        foreach ($participantIds as $participantId) {
+            if ($participantId != $authUser->id) {
+                $user = User::find($participantId);
+                
+                broadcast(new CallStarted($space, $call, $authUser, $user->id))->toOthers();
+            }
         }
-    }
 
-    broadcast(new CallStarted($space, $call, auth()->user()))->toOthers();
+        broadcast(new CallStarted($space, $call, $authUser))->toOthers();
+    }
     
     // Create persistent call log message
-    $this->sendSystemMessage($space, auth()->user()->name . " started a " . $request->call_type . " call", [
+    $this->sendSystemMessage($space, $authUser->name . " started a " . $request->call_type . " call", [
         'call_log' => [
             'id' => $call->id,
             'type' => $request->call_type,
             'status' => 'active',
-            'initiator_id' => auth()->id(),
-            'initiator_name' => auth()->user()->name
+            'initiator_id' => $authUser->id,
+            'initiator_name' => $authUser->name
         ]
     ]);
 
@@ -897,17 +940,21 @@ public function callSignal(Request $request, $id)
     ]);
     
     $space = CollaborationSpace::findOrFail($id);
+    /** @var \App\Models\User $user */
     $user = auth()->user();
+    if (!$user) return response()->json(['message' => 'Unauthenticated'], 401);
     
     // Broadcast signal to target user
-    broadcast(new WebRTCSignal(
-        $space,
-        $user,
-        $request->target_user_id,
-        $request->type,
-        $request->only(['offer', 'answer', 'candidate']),
-        $request->call_id
-    ))->toOthers();
+    if ($user instanceof \App\Models\User) {
+        broadcast(new WebRTCSignal(
+            $space,
+            $user,
+            $request->target_user_id,
+            $request->type,
+            $request->only(['offer', 'answer', 'candidate']),
+            $request->call_id
+        ))->toOthers();
+    }
     
     return response()->json(['success' => true]);
 }
@@ -937,7 +984,9 @@ public function callMute(Request $request, $id)
     }
     
     // Broadcast mute state to space
-    broadcast(new \App\Events\MuteStateChanged($space, $user, $request->is_muted))->toOthers();
+    if ($user instanceof \App\Models\User) {
+        broadcast(new \App\Events\MuteStateChanged($space, $user, $request->is_muted))->toOthers();
+    }
     
     return response()->json(['success' => true]);
 }
@@ -967,7 +1016,9 @@ public function callVideo(Request $request, $id)
     }
     
     // Broadcast video state to space
-    broadcast(new \App\Events\VideoStateChanged($space, $user, $request->has_video))->toOthers();
+    if ($user instanceof \App\Models\User) {
+        broadcast(new \App\Events\VideoStateChanged($space, $user, $request->has_video))->toOthers();
+    }
     
     return response()->json(['success' => true]);
 }
@@ -997,7 +1048,9 @@ public function callScreenShare(Request $request, $id)
     }
     
     // Broadcast screen share state to space
-    broadcast(new \App\Events\ScreenShareToggled($space, $user, $request->is_sharing))->toOthers();
+    if ($user instanceof \App\Models\User) {
+        broadcast(new \App\Events\ScreenShareToggled($space, $user, $request->is_sharing))->toOthers();
+    }
     
     return response()->json(['success' => true]);
 }
@@ -1104,7 +1157,9 @@ public function endCall(Request $request, $id)
         }
         
         // Broadcast screen share state
-        broadcast(new ScreenShareToggled($space, $user, $request->is_sharing))->toOthers();
+        if ($user instanceof \App\Models\User) {
+            broadcast(new ScreenShareToggled($space, $user, $request->is_sharing))->toOthers();
+        }
         
         return response()->json([
             'is_sharing' => $request->is_sharing,
@@ -2505,6 +2560,7 @@ public function endCall(Request $request, $id)
     public function muteSpace(Request $request, $id)
     {
         try {
+            /** @var \App\Models\User $user */
             $user = Auth::user();
             $isMuted = $this->toggleSpaceProperty($id, $user->id, 'is_muted');
             
@@ -2530,6 +2586,7 @@ public function endCall(Request $request, $id)
     public function archiveSpace(Request $request, $id)
     {
         try {
+            /** @var \App\Models\User $user */
             $user = Auth::user();
             $isArchived = $this->toggleSpaceProperty($id, $user->id, 'is_archived');
             
@@ -2555,6 +2612,7 @@ public function endCall(Request $request, $id)
     public function pinSpace(Request $request, $id)
     {
         try {
+            /** @var \App\Models\User $user */
             $user = Auth::user();
             $isPinned = $this->toggleSpaceProperty($id, $user->id, 'is_pinned');
             
@@ -2580,6 +2638,7 @@ public function endCall(Request $request, $id)
     public function markAsUnread(Request $request, $id)
     {
         try {
+            /** @var \App\Models\User $user */
             $user = Auth::user();
             $isUnread = $this->toggleSpaceProperty($id, $user->id, 'is_unread');
             
@@ -2598,12 +2657,62 @@ public function endCall(Request $request, $id)
             return response()->json(['message' => 'Server error'], 500);
         }
     }
+
+    /**
+     * Mark a space as read for the current user (global sync)
+     */
+    public function markAsRead(Request $request, $id)
+    {
+        try {
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
+            $participation = SpaceParticipation::where('space_id', $id)
+                ->where('user_id', $user->id)
+                ->first();
+
+            if (!$participation) {
+                return response()->json(['message' => 'Participation not found'], 404);
+            }
+
+            $lastReadAt = $request->last_read_at ? new \Illuminate\Support\Carbon($request->last_read_at) : now();
+            
+            // Only update if the new timestamp is later than the current one
+            if ($participation->last_read_at && $lastReadAt <= $participation->last_read_at && $request->last_read_at) {
+                 return response()->json(['message' => 'Already read up to this point', 'last_read_at' => $participation->last_read_at]);
+            }
+
+            $participation->last_read_at = $lastReadAt;
+
+            // Also clear the manual 'is_unread' flag if it exists
+            $permissions = is_string($participation->permissions)
+                ? json_decode($participation->permissions, true)
+                : ($participation->permissions ?? []);
+            
+            if (isset($permissions['is_unread']) && $permissions['is_unread']) {
+                $permissions['is_unread'] = false;
+                $participation->permissions = $permissions;
+            }
+
+            $participation->save();
+
+            broadcast(new \App\Events\SpaceRead($id, $user->id, $lastReadAt->toIso8601String()));
+
+            return response()->json([
+                'message' => 'Space marked as read',
+                'last_read_at' => $lastReadAt->toIso8601String()
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error marking space read: ' . $e->getMessage());
+            return response()->json(['message' => 'Server error'], 500);
+        }
+    }
     /**
      * Toggle Favorite status for the current user in a space
      */
     public function favoriteSpace(Request $request, $id)
     {
         try {
+            /** @var \App\Models\User $user */
             $user = Auth::user();
             $isFavorite = $this->toggleSpaceProperty($id, $user->id, 'is_favorite');
             

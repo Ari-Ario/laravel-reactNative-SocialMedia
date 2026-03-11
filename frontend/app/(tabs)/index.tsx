@@ -17,6 +17,7 @@ import AddStory from "@/components/AddStory";
 import { fetchStories } from "@/services/StoryService";
 import { useProfileView } from "@/context/ProfileViewContext";
 import { usePostStore } from "@/stores/postStore"; // ✅ Zustand store
+import { useCollaborationStore } from "@/stores/collaborationStore";
 import { useNotificationStore } from '@/stores/notificationStore'; // NEW
 import { usePostListService } from "@/services/PostListService";
 import { getToken } from "@/services/TokenService";
@@ -79,6 +80,7 @@ const HomePage = () => {
     if (user?.id) {
       // HomePage no longer initializes real-time; TabLayout handles it globally.
       setIsTokenReady(true);
+      setCurrentUserId(Number(user.id));
     }
   }, [user?.id]);
 
@@ -182,143 +184,26 @@ const HomePage = () => {
     }
   }, [posts.length, isTokenReady, isRealtimeReady]);
 
-  // ✅ Global space fetch + per-space real-time subscriptions
+  const fetchUserSpacesFromStore = useCollaborationStore(state => state.fetchUserSpaces);
+
+  // ✅ Global space fetch + centralized real-time logic
   useEffect(() => {
     if (!isRealtimeReady || !isTokenReady || !user?.id) return;
 
-    let subscribedSpaceIds: string[] = [];
-
-    const setupSpaceSubscriptions = async () => {
+    const initializeSpaces = async () => {
+      if (!user?.id) return;
       try {
-        // ✅ Ensure CollaborationService has the auth token (critical on Android)
-        const token = await getToken();
-        if (token) {
-          await collaborationService.setToken(token);
-        }
+        // ✅ The store now handles per-space subscriptions internally via handleSpaceEvent
+        // We just need to ensure spaces are fetched once real-time is connected.
+        await fetchUserSpacesFromStore(Number(user.id));
 
-        console.log('🌐 Fetching all spaces for global subscription...');
-        const userSpaces = await collaborationService.fetchUserSpaces(Number(user.id));
-        console.log(`🌐 Found ${userSpaces.length} spaces to subscribe to`);
-
-        subscribedSpaceIds = userSpaces.map(s => s.id);
-
-        userSpaces.forEach(space => {
-          // ✅ Use collaborationService (not PusherService directly) so callbacks
-          // are properly added even when the channel already exists from chats/index.tsx
-          collaborationService.subscribeToSpace(space.id, {
-            onMessage: (data: any) => {
-              // The backend sends the message as an object under data.message or directly
-              const msgObj = data?.message || data;
-
-              // Check sender ID from multiple possible locations
-              // Use loose equality (==) to handle string vs number ID mismatch
-              const senderId = msgObj?.sender_id ?? msgObj?.user_id ?? data?.sender_id ?? data?.user_id;
-
-              if (senderId == user.id) return;
-
-              console.log(`💬 New message in space "${space.title}":`, data);
-
-              // Extract content safely
-              const msgText: string =
-                typeof msgObj?.content === 'string' ? msgObj.content :
-                  typeof data?.content === 'string' ? data.content :
-                    typeof msgObj?.text === 'string' ? msgObj.text :
-                      'New message received';
-
-              addNotification({
-                type: 'new_message',
-                title: `New message in ${space.title}`,
-                message: msgText,
-                userId: Number(senderId), // ✅ Pass as number for global filtering
-                spaceId: space.id, // ✅ Pass at top level
-                data: { messageId: msgObj?.id },
-                createdAt: new Date(),
-              });
-            },
-            onCallStarted: (data: any) => {
-              const callerId = data.caller_id || data.user_id;
-              if (callerId == user.id) return;
-
-              console.log(`📞 Call started in space "${space.title}":`, data);
-              addNotification({
-                type: 'call_started',
-                title: `Call started in ${space.title}`,
-                message: data.caller_name ? `${data.caller_name} started a call` : 'A call has started',
-                userId: Number(callerId), // Ensure number
-                spaceId: space.id,
-                data: { ...data },
-                createdAt: new Date(),
-              });
-            },
-            onCallEnded: (data: any) => {
-              console.log(`📵 Call ended in space "${space.title}":`, data);
-              addNotification({
-                type: 'call_ended',
-                title: `Call ended in ${space.title}`,
-                message: 'The call has ended',
-                userId: data.user_id || data.caller_id, // ✅ Pass at top level
-                spaceId: space.id,
-                data: { ...data },
-                createdAt: new Date(),
-              });
-            },
-            onParticipantUpdate: (data: any) => {
-              const participantId = data.user_id || data.id;
-              if (participantId == user.id) return;
-              // Only notify for join events (not leave/update)
-              if (data?.type === 'left') return;
-
-              console.log(`👋 Participant joined space "${space.title}":`, data);
-              addNotification({
-                type: 'participant_joined',
-                title: `Someone joined ${space.title}`,
-                message: data.user_name ? `${data.user_name} joined the space` : 'A new participant joined',
-                userId: Number(participantId),
-                spaceId: space.id,
-                data: { ...data },
-                createdAt: new Date(),
-              });
-            },
-            onMagicEvent: (data: any) => {
-              const triggerId = data.triggered_by || data.user_id;
-              if (triggerId == user.id) return;
-
-              console.log(`✨ Magic event in space "${space.title}":`, data);
-              addNotification({
-                type: 'magic_event',
-                title: `Magic event in ${space.title}`,
-                message: data.description || 'A magic event occurred',
-                userId: Number(triggerId),
-                spaceId: space.id,
-                data: { ...data },
-                createdAt: new Date(),
-              });
-            },
-            onScreenShareStarted: (data: any) => {
-              const sharerId = data.user_id || data.id;
-              if (sharerId == user.id) return;
-
-              console.log(`🖥️ Screen share started in space "${space.title}":`, data);
-              addNotification({
-                type: 'screen_share',
-                title: `Screen share in ${space.title}`,
-                message: data.user_name ? `${data.user_name} is sharing their screen` : 'Screen sharing started',
-                userId: Number(sharerId),
-                spaceId: space.id,
-                data: { ...data },
-                createdAt: new Date(),
-              });
-            },
-          });
-        });
-
-        // Also subscribe to the global 'spaces' channel for newly created spaces
+        // Listen for NEWLY created spaces globally (not yet in our list)
         PusherService.subscribeToAllSpaces((data: any) => {
-          console.log('🌐 New space created globally:', data);
           if (data?.space) {
             const creatorId = data.space.creator_id;
             if (creatorId == user.id) return;
 
+            console.log('🌐 New space created globally:', data.space.title);
             addNotification({
               type: 'space_updated',
               title: 'New Space Available',
@@ -331,22 +216,19 @@ const HomePage = () => {
           }
         });
 
-        console.log('✅ Global space subscriptions set up successfully');
       } catch (error) {
-        console.error('❌ Error setting up global space subscriptions:', error);
+        console.error('❌ Error initializing spaces on Home:', error);
       }
     };
 
-    setupSpaceSubscriptions();
+    initializeSpaces();
 
     return () => {
-      console.log('🧹 Cleaning up space subscriptions');
-      subscribedSpaceIds.forEach(spaceId => {
-        collaborationService.unsubscribeFromSpace(spaceId);
-      });
+      // PusherService handles its own channel disposal on disconnect,
+      // but we can explicitly unsubscribe from global channel here if desired.
       PusherService.unsubscribeFromChannel('spaces');
     };
-  }, [isTokenReady, user?.id, isRealtimeReady]);
+  }, [isTokenReady, user?.id, isRealtimeReady, fetchUserSpacesFromStore]);
 
   // Combined Data Loading Effect: Load posts and stories once when user is available
   useEffect(() => {
@@ -428,14 +310,17 @@ const HomePage = () => {
     setProfilePreviewVisible(true);
   };
 
-  const renderProfilePhoto = () => (
-    <TouchableOpacity onPress={() => handleProfilePress(user.id)}>
-      <Avatar
-        user={user}
-        size={60}
-      />
-    </TouchableOpacity>
-  );
+  const renderProfilePhoto = () => {
+    if (!user) return null;
+    return (
+      <TouchableOpacity onPress={() => handleProfilePress(user.id)}>
+        <Avatar
+          user={user}
+          size={60}
+        />
+      </TouchableOpacity>
+    );
+  };
 
   useEffect(() => {
     if (!user) {
@@ -452,8 +337,7 @@ const HomePage = () => {
   if ((loading && !refreshing) || !user) return <View style={styles.loadingContainer}><ActivityIndicator size="large" /></View>;
 
   return (
-    <AuthContext.Provider value={{ user, setUser }}>
-      <View style={styles.container}>
+    <View style={styles.container}>
         {activeNotificationType === 'regular' || activeNotificationType === 'all' ? (
           <NotificationPanel
             visible={isNotificationPanelVisible}
@@ -636,7 +520,7 @@ const HomePage = () => {
 
             <View style={styles.storiesContainer}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 10 }} snapToAlignment="start" decelerationRate="fast" snapToInterval={80}>
-                <TouchableOpacity style={styles.storyItem} onPress={() => handleProfilePress(user?.id)}>
+                <TouchableOpacity style={styles.storyItem} onPress={() => user?.id && handleProfilePress(user.id)}>
                   <View style={styles.myStoryCircle}>
                     {renderProfilePhoto()}
                     <View style={styles.addStoryIcon}>
@@ -693,9 +577,8 @@ const HomePage = () => {
           router.setParams({ postId: null });
           setIsCreateModalVisible(true);
         }} />
-      </View>
 
-      {/* Your existing modals */}
+        {/* Your existing modals */}
       <CreatePost
         visible={isCreateModalVisible}
         onClose={() => setIsCreateModalVisible(false)}
@@ -719,7 +602,7 @@ const HomePage = () => {
         onClose={() => setAddStoryVisible(false)}
         onStoryCreated={fetchStoriesAndHandleState}
       />
-    </AuthContext.Provider>
+    </View>
   );
 };
 

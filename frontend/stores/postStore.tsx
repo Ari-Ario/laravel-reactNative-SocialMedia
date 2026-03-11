@@ -135,6 +135,9 @@ interface PostStore {
   markReactionAsPending: (reactionId: number) => void;
   clearPendingComment: (commentId: number) => void;
   clearPendingReaction: (reactionId: number) => void;
+
+  // Cleanup
+  reset: () => void;
 }
 
 export const usePostStore = create<PostStore>((set, get) => ({
@@ -818,6 +821,18 @@ export const usePostStore = create<PostStore>((set, get) => ({
     console.log('🔄 Disconnecting real-time...');
     get().unsubscribeFromAllPosts();
     PusherService.disconnect();
+  },
+
+  reset: () => {
+    set({
+      posts: [],
+      subscribedPostIds: [],
+      expandedPostId: null,
+      pendingCommentIds: new Set(),
+      pendingReactionIds: new Set(),
+      pendingPostIds: new Set(),
+    });
+    console.log('🧹 PostStore reset complete');
   },
 }));
 

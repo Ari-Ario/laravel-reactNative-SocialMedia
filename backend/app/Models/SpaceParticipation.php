@@ -25,6 +25,7 @@ class SpaceParticipation extends Model
         'audio_video_state',
         'current_activity',
         'reaction_stream',
+        'last_read_at',
     ];
 
     protected $casts = [
@@ -35,6 +36,7 @@ class SpaceParticipation extends Model
         'cursor_state' => 'array',
         'audio_video_state' => 'array',
         'reaction_stream' => 'array',
+        'last_read_at' => 'datetime',
     ];
 
     // Relationships

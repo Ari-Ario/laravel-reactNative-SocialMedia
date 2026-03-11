@@ -23,6 +23,7 @@ import AuthContext from '@/context/AuthContext';
 import { useContext } from 'react';
 import { createShadow } from '@/utils/styles';
 import ContactService from '@/services/ChatScreen/ContactService';
+import { useCollaborationStore } from '@/stores/collaborationStore';
 
 interface Message {
   id: string;
@@ -102,6 +103,9 @@ const MessageList: React.FC<MessageListProps> = ({
   const [internalHighlightId, setInternalHighlightId] = useState<string | null>(null);
 
   const { user: currentUser } = useContext(AuthContext);
+  const markSpaceAsRead = useCollaborationStore(state => state.markSpaceAsRead);
+  const decrementUnreadCount = useCollaborationStore(state => state.decrementUnreadCount);
+  const spaceUnreadCounts = useCollaborationStore(state => state.spaceUnreadCounts);
 
   const collaborationService = CollaborationService.getInstance();
   const flatListRef = useRef<FlatList>(null);
@@ -110,19 +114,52 @@ const MessageList: React.FC<MessageListProps> = ({
   // guard: only do the initial scroll once
   const initialScrollDone = useRef(false);
 
-  // ─── Divider: inject before FIRST unread message ──────────────────────────
-  // The divider position is determined by lastReadAt, NOT by highlightMessageId.
-  // highlightMessageId is only used to visually highlight + scroll to a specific message.
-  const listData = React.useMemo(() => {
-    if (!lastReadAt || messages.length === 0) return messages;
+  // ─── Static Divider Position ──────────────────────────────────────────────
+  // We capture the entry timestamp to keep the divider static during the visit.
+  const entryLastReadAt = useRef<string | null>(lastReadAt ?? null);
+  // Update entry point only if spaceId changes
+  useEffect(() => { entryLastReadAt.current = lastReadAt ?? null; }, [spaceId]);
 
-    const lastReadTime = new Date(lastReadAt).getTime();
-    // Find the first message that was created AFTER the last read time
+  // ─── Local read progressive tracking ───────────────────────────────────────
+  // `localLastReadAt` now only tracks read status internally for seenUnreadIds filtration.
+  const [localLastReadAt, setLocalLastReadAt] = React.useState<string | null>(
+    lastReadAt ?? null
+  );
+  useEffect(() => { setLocalLastReadAt(lastReadAt ?? null); }, [lastReadAt]);
+
+  // Refs for stable callback access (avoid stale closures in onViewableItemsChanged)
+  const latestSeenTimestamp = useRef<string | null>(null);
+  const seenUnreadIds       = useRef<Set<string>>(new Set());
+  const debounceTimer       = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const spaceIdRef          = useRef(spaceId);
+  const markAsReadRef       = useRef(markSpaceAsRead);
+  const decrementRef        = useRef(decrementUnreadCount);
+  const spaceUnreadRef      = useRef(spaceUnreadCounts);
+  const localLastReadRef    = useRef(localLastReadAt);
+  const listDataRef         = useRef<Message[]>([]);
+
+  // ─── Keep refs in sync ────────────────────────────────────────────────────
+  React.useEffect(() => {
+    spaceIdRef.current = spaceId;
+    markAsReadRef.current = markSpaceAsRead;
+    decrementRef.current = decrementUnreadCount;
+    spaceUnreadRef.current = spaceUnreadCounts;
+    localLastReadRef.current = localLastReadAt;
+  }, [spaceId, markSpaceAsRead, decrementUnreadCount, spaceUnreadCounts, localLastReadAt]);
+
+  // ─── Divider: injected before the FIRST message after initial entry point ──
+  // Keeps the divider static at its entry position.
+  const listData = React.useMemo(() => {
+    const dividerTime = entryLastReadAt.current;
+    if (!dividerTime || messages.length === 0) return messages;
+
+    const lastReadPoint = new Date(dividerTime).getTime();
+    // Find the first message created AFTER the user's initial last-read position
     const firstUnreadIdx = messages.findIndex(
-      (m) => new Date(m.created_at).getTime() > lastReadTime
+      (m) => m.created_at && new Date(m.created_at).getTime() > lastReadPoint
     );
 
-    // No unread messages, or all messages are unread from the start — no divider
+    // No divider needed if all read or first message is unread
     if (firstUnreadIdx <= 0) return messages;
 
     const divider: Message = {
@@ -132,8 +169,121 @@ const MessageList: React.FC<MessageListProps> = ({
       content: '',
       created_at: '',
     };
-    return [...messages.slice(0, firstUnreadIdx), divider, ...messages.slice(firstUnreadIdx)];
-  }, [messages, lastReadAt]);
+    return [
+      ...messages.slice(0, firstUnreadIdx),
+      divider,
+      ...messages.slice(firstUnreadIdx),
+    ];
+  }, [messages]); // Note: Only depends on messages, entryLastReadAt is captured.
+
+  // Keep listDataRef in sync for the stable callback
+  React.useEffect(() => { listDataRef.current = listData; }, [listData]);
+
+  // ─── Viewability config (stable reference — never re-created) ─────────────
+  // itemVisiblePercentThreshold: how much of the item must be visible to count.
+  // minimumViewTime: ms the item must stay visible before it's "seen".
+  // On web, lower minimumViewTime for faster response.
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 20,
+    minimumViewTime: Platform.OS === 'web' ? 200 : 400,
+  }).current;
+
+  // ─── Commit a backend sync (debounced via timer) ───────────────────────────
+  // Always perform a full reset (markSpaceAsRead clears to 0). This is safe because
+  // the store is optimistic — it immediately sets the count to 0 and fires the API.
+  const flushReadToBackend = React.useCallback((sId: string, timestamp: string | null) => {
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    debounceTimer.current = setTimeout(() => {
+      const markRead = markAsReadRef.current;
+      if (markRead && sId) {
+        // Pass the latest seen timestamp so backend saves last_read_at accurately.
+        // If null, backend defaults to now().
+        markRead(sId, timestamp ?? undefined);
+        console.log(`🔖 [MessageList] Synced read state to backend for space: ${sId}`);
+      }
+    }, 1500); // 1.5s debounce — fast enough for UX, light enough for mobile
+  }, []);
+
+  // Cleanup timer on unmount
+  React.useEffect(() => () => {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+  }, []);
+
+  // ─── onViewableItemsChanged: fired by FlatList as the user scrolls ─────────
+  const onViewableItemsChanged = React.useRef(({ viewableItems }: any) => {
+    const sId = spaceIdRef.current;
+    const lData = listDataRef.current;
+    const counts = spaceUnreadRef.current;
+    const currentLocalLastRead = localLastReadRef.current;
+    const decrement = decrementRef.current;
+
+    if (!sId || !viewableItems?.length || lData.length === 0) return;
+
+    // If no unreads tracked, skip expensive loop
+    const currentUnread = (counts[sId] ?? counts[sId?.toString()] ?? 0);
+    if (currentUnread === 0) return;
+
+    const lastReadPoint = currentLocalLastRead
+      ? new Date(currentLocalLastRead).getTime()
+      : 0;
+
+    let latestTimestamp: string | null = null;
+    let newlyReadCount = 0;
+
+    for (const v of viewableItems) {
+      const msg = v.item as Message;
+      if (!msg?.created_at || msg.type === '__divider__') continue;
+      if (msg.user_id === 0) continue; // skip system messages
+
+      const msgTime = new Date(msg.created_at).getTime();
+
+      // Only messages from others, newer than our current session's read position
+      if (msgTime > lastReadPoint && !seenUnreadIds.current.has(msg.id)) {
+        seenUnreadIds.current.add(msg.id);
+        newlyReadCount++;
+
+        if (!latestTimestamp || msgTime > new Date(latestTimestamp).getTime()) {
+          latestTimestamp = msg.created_at;
+        }
+      }
+    }
+
+    if (newlyReadCount === 0 || !latestTimestamp) return;
+
+    // ✅ Progressive visual feedback: decrement local badge one by one
+    if (decrement && sId) {
+      for (let i = 0; i < newlyReadCount; i++) {
+        decrement(sId);
+      }
+    }
+
+    // Update internal read line for the logic
+    if (!latestSeenTimestamp.current ||
+        new Date(latestTimestamp).getTime() > new Date(latestSeenTimestamp.current).getTime()
+    ) {
+      latestSeenTimestamp.current = latestTimestamp;
+    }
+
+    // ✅ Check if the bottom is visible → definitive full reset
+    const lastRealMsg = [...lData].reverse().find(m => m.type !== '__divider__');
+    const isBottomVisible = lastRealMsg
+      ? viewableItems.some((v: any) => v.item.id === lastRealMsg.id)
+      : false;
+
+    if (isBottomVisible) {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+      const markRead = markAsReadRef.current;
+      if (markRead) {
+        markRead(sId, undefined); // undefined → backend saves now(), count → 0
+        console.log(`✅ [MessageList] Bottom reached — full mark-as-read for space: ${sId}`);
+      }
+    } else {
+      // Partial read: debounce the backend update
+      flushReadToBackend(sId, latestTimestamp);
+    }
+  }).current;
 
   const handleTranslate = React.useCallback(async (msg: any) => {
     if (!msg.content) return;
@@ -1089,6 +1239,8 @@ const MessageList: React.FC<MessageListProps> = ({
           // Load more messages
         }}
         onEndReachedThreshold={0.5}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
         onScrollToIndexFailed={(info) => {
           // Fallback when item height is unknown
           let offset = 0;

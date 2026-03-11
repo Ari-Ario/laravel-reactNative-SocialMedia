@@ -58,9 +58,12 @@ class PusherService {
                 // Ensure we hit the correct auth endpoint. Laravel's Broadcast::routes() 
                 // by default registers at /broadcasting/auth. 
                 // If it's not under /api, we should use the root URL.
-                const authUrl = apiUrl.endsWith('/api')
-                  ? `${apiUrl}/broadcasting/auth` // If registered in routes/api.php
-                  : `${apiUrl.split('/api')[0] || ''}/broadcasting/auth`; // If registered in BroadcastServiceProvider
+                const authUrl = apiUrl.includes('/api')
+                  ? `${apiUrl.split('/api')[0]}/broadcasting/auth` // Standard Laravel: /broadcasting/auth
+                  : `${apiUrl}/broadcasting/auth`; // Fallback: /broadcasting/auth on current path
+                
+                // If the app uses a custom API prefix for auth:
+                const apiAuthUrl = apiUrl.endsWith('/api') ? `${apiUrl}/broadcasting/auth` : null;
 
                 console.log(`🔐 Authorizing channel: ${channel.name} with socket: ${socketId}`);
                 console.log(`🔐 Using token: ${token ? token.substring(0, 20) + '...' : 'MISSING'}`);
@@ -111,7 +114,8 @@ class PusherService {
 
         // Connection event handlers
         this.pusher.connection.bind('connected', () => {
-          console.log('✅ Pusher connected successfully - Socket ID:', this.pusher?.connection.socket_id);
+          const socketId = this.pusher?.connection.socket_id;
+          console.log('✅ Pusher connected successfully - Socket ID:', socketId);
           this.isInitialized = true;
           this.connectionAttempts = 0;
 
@@ -437,20 +441,44 @@ class PusherService {
 
       // New message in space (for users not currently in the space)
       channel.bind('message.sent', (data: any) => {
-        console.log('💬 New message notification:', data);
-        const notification = {
-          type: data.type || 'new_message',
-          title: data.title || 'New Message',
-          message: `${data.user?.name || 'Someone'}: ${data.message?.content?.substring(0, 50)}...`,
-          data: data,
+        console.log('💬 New message notification (message.sent):', data);
+        
+        // Extract content properly for notification display
+        const msgObj = data.message || {};
+        const userName = msgObj.user_name || data.user?.name || 'Someone';
+        const content = msgObj.content || data.content || 'New message';
+        const spaceTitle = data.space?.title || 'a space';
+
+        onNotification({
+          id: msgObj.id || `msg-${Date.now()}`,
+          type: 'new_message',
+          title: `New message in ${spaceTitle}`,
+          message: `${userName}: ${typeof content === 'string' ? content : 'Sent a message'}`,
           spaceId: data.space_id,
-          messageId: data.message?.id,
-          userId: data.user?.id,
-          avatar: data.message?.user?.profile_photo,
+          userId: msgObj.user_id || data.user?.id,
+          data: { ...data, messageId: msgObj.id },
           createdAt: new Date()
-        };
-        console.log('💬 SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification); // ✅ ADD THIS LINE
+        });
+      });
+
+      // ✅ ADDED: space.message (used by SpaceMessageSent event)
+      channel.bind('space.message', (data: any) => {
+        console.log('💬 New message notification (space.message):', data);
+        
+        const msgObj = data.message || {};
+        const userName = msgObj.user_name || 'Someone';
+        const content = msgObj.content || 'New message';
+
+        onNotification({
+          id: msgObj.id || `msg-${Date.now()}`,
+          type: 'new_message',
+          title: 'New Message',
+          message: `${userName}: ${typeof content === 'string' ? content : 'Sent a message'}`,
+          spaceId: data.space_id,
+          userId: msgObj.user_id,
+          data: { ...data, messageId: msgObj.id },
+          createdAt: new Date()
+        });
       });
 
       // ✅ SPACE MANAGEMENT EVENTS

@@ -6,6 +6,7 @@ import PusherService from '@/services/PusherService';
 import axios from 'axios';
 import getApiBase from '@/services/getApiBase';
 import { getToken } from '@/services/TokenService';
+import { useCollaborationStore } from '@/stores/collaborationStore';
 
 export interface Notification {
   id: string;
@@ -164,6 +165,7 @@ interface NotificationStore {
   markChatbotNotificationsAsRead: () => void;
   markAllFollowerNotificationsAsRead: () => void;
   removeNotification: (notificationId: string) => void;
+  markSpaceNotificationsAsRead: (spaceId: string) => void;
   clearAll: () => void;
 
   // Real-time
@@ -182,6 +184,7 @@ interface NotificationStore {
   getMessages: () => Notification[];
   getSpaces: () => Notification[];
   getActivities: () => Notification[];
+  reset: () => void;
 }
 
 // Helper to check if notification is follower type (existing)
@@ -326,7 +329,7 @@ export const useNotificationStore = create<NotificationStore>()(
           ID: ${newNotification.id}
           Type: ${newNotification.type}
           Title: ${newNotification.title}
-          Message: ${newNotification.message?.substring(0, 30)}...
+          Message: ${typeof newNotification.message === 'string' ? newNotification.message.substring(0, 30) : '[Object]'}...
           UserId (Actor): ${newNotification.userId}
           PostId: ${newNotification.postId}
           isFollower: ${isFollower}, isCall: ${isCall}, isMessage: ${isMessage}, isSpace: ${isSpace}, isActivity: ${isActivity}, isRegular: ${isRegular}
@@ -519,6 +522,32 @@ export const useNotificationStore = create<NotificationStore>()(
         });
       },
 
+      markSpaceNotificationsAsRead: (spaceId: string) => {
+        set((state) => {
+          const updatedNotifications = state.notifications.map(notif =>
+            notif.spaceId === spaceId ? { ...notif, isRead: true } : notif
+          );
+
+          // Recalculate all counts
+          const newUnreadCount = updatedNotifications.filter(n => !n.isRead && !isCallNotification(n.type) && !isMessageNotification(n.type) && !isSpaceNotification(n.type) && !isActivityNotification(n.type) && !isChatbotTrainingNotification(n.type)).length;
+          const newUnreadCallCount = updatedNotifications.filter(n => !n.isRead && isCallNotification(n.type)).length;
+          const newUnreadMessageCount = updatedNotifications.filter(n => !n.isRead && isMessageNotification(n.type)).length;
+          const newUnreadSpaceCount = updatedNotifications.filter(n => !n.isRead && isSpaceNotification(n.type)).length;
+          const newUnreadActivityCount = updatedNotifications.filter(n => !n.isRead && isActivityNotification(n.type)).length;
+          const newUnreadChatbotTrainingCount = updatedNotifications.filter(n => !n.isRead && isChatbotTrainingNotification(n.type)).length;
+
+          return {
+            notifications: updatedNotifications,
+            unreadCount: newUnreadCount,
+            unreadCallCount: newUnreadCallCount,
+            unreadMessageCount: newUnreadMessageCount,
+            unreadSpaceCount: newUnreadSpaceCount,
+            unreadActivityCount: newUnreadActivityCount,
+            unreadChatbotTrainingCount: newUnreadChatbotTrainingCount,
+          };
+        });
+      },
+
 
       removeNotification: (notificationId) => {
         set((state) => {
@@ -578,6 +607,16 @@ export const useNotificationStore = create<NotificationStore>()(
         unreadChatbotTrainingCount: 0,
       }),
 
+      reset: () => {
+        get().disconnectRealtime();
+        get().clearAll();
+        set({
+            isConnected: false,
+            currentUserId: null
+        });
+        console.log('🧹 NotificationStore reset complete');
+      },
+
       initializeRealtime: (token: string, userId: number) => {
         const { isConnected, currentUserId } = get();
         if (isConnected && currentUserId === userId) {
@@ -593,11 +632,33 @@ export const useNotificationStore = create<NotificationStore>()(
           PusherService.subscribeToUserNotifications(userId, (notificationData) => {
             console.log('🔔 PUSHER EVENT RECEIVED → ADDING TO STORE:', notificationData);
             get().addNotification(notificationData);
+            
+            // ✅ Bridge to CollaborationStore if it's a space event
+            if (notificationData.spaceId || notificationData.space_id) {
+               useCollaborationStore.getState().handleSpaceEvent({
+                 type: notificationData.type || 'new_message',
+                 data: {
+                   ...notificationData,
+                   space_id: (notificationData.space_id || notificationData.spaceId)?.toString()
+                 }
+               });
+            }
           });
           // ✅ NEW: Subscribe to private user channel for your custom events
           PusherService.subscribeToPrivateUser(userId, (notificationData) => {
             console.log('🔔 PRIVATE CHANNEL EVENT → ADDING TO STORE:', notificationData);
             get().addNotification(notificationData);
+ 
+            // ✅ Bridge to CollaborationStore if it's a space event
+            if (notificationData.spaceId || notificationData.space_id) {
+               useCollaborationStore.getState().handleSpaceEvent({
+                 type: notificationData.type || 'new_message',
+                 data: {
+                   ...notificationData,
+                   space_id: (notificationData.space_id || notificationData.spaceId)?.toString()
+                 }
+               });
+            }
           });
           get().fetchMissedNotifications(token, userId);
 

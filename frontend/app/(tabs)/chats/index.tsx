@@ -64,6 +64,65 @@ interface SectionData {
   isSearchSection?: boolean;
 }
 
+// ============ HELPER FUNCTIONS (DEFINE OUTSIDE COMPONENT) ============
+
+const getSpaceDescription = (space: CollaborationSpace): string => {
+  const descriptions: Record<string, string> = {
+    chat: `💬 Chat with ${space.participants_count || 0} people`,
+    whiteboard: `🎨 Whiteboard collaboration`,
+    meeting: `📹 Meeting room`,
+    document: `📄 Document collaboration`,
+    brainstorm: `💡 Brainstorming session`,
+    story: `📖 Collaborative story`,
+    voice_channel: `🎤 Voice channel`,
+  };
+
+  return descriptions[space.space_type] || 'Collaboration space';
+};
+
+const formatTimestamp = (timestamp: string | Date): string => {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffTime = Math.abs(now.getTime() - date.getTime());
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } else if (diffDays === 1) {
+    return 'Yesterday';
+  } else if (diffDays < 7) {
+    return date.toLocaleDateString([], { weekday: 'short' });
+  } else {
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  }
+};
+
+const getSpaceTypeIcon = (type: string): string => {
+  const icons: Record<string, string> = {
+    whiteboard: 'easel',
+    meeting: 'videocam',
+    document: 'document-text',
+    brainstorm: 'bulb',
+    voice_channel: 'mic',
+    chat: 'chatbubbles',
+    story: 'book',
+  };
+  return icons[type] || 'cube';
+};
+
+const getSpaceTypeColor = (type: string): string => {
+  const colors: Record<string, string> = {
+    whiteboard: '#4CAF50',
+    meeting: '#FF6B6B',
+    document: '#FFA726',
+    brainstorm: '#9C27B0',
+    voice_channel: '#3F51B5',
+    chat: '#2196F3',
+    story: '#E91E63',
+  };
+  return colors[type] || '#666';
+};
+
 const ChatPage = () => {
   const notificationService = NotificationService.getInstance();
   const searchService = SearchService.getInstance();
@@ -75,7 +134,19 @@ const ChatPage = () => {
 
   const { user } = useContext(AuthContext);
   const { posts } = usePostStore();
-  const [spaces, setSpaces] = useState<Chat[]>([]);
+  
+  // ✅ Unified Space Store
+  const { 
+    spaces: storeSpaces, 
+    spaceUnreadCounts, 
+    fetchUserSpaces: fetchUserSpacesFromStore,
+    customTabs, 
+    createCustomTab, 
+    deleteCustomTab, 
+    renameCustomTab, 
+    setSpacesInTab 
+  } = useCollaborationStore();
+
   const [contacts, setContacts] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -101,7 +172,6 @@ const ChatPage = () => {
 
   // Space Tabs state
   const [activeTab, setActiveTab] = useState<string>('all');
-  const { customTabs, createCustomTab, deleteCustomTab, renameCustomTab, setSpacesInTab } = useCollaborationStore();
 
   // Custom Tab Modal State
   const [tabModalVisible, setTabModalVisible] = useState(false);
@@ -143,157 +213,59 @@ const ChatPage = () => {
     }
   }, [user]);
 
-  // Initialize real-time service
+  // ✅ Map store spaces to Chat interface reactively
+  const spaces = useMemo<Chat[]>(() => {
+    return storeSpaces.map(space => {
+      const isDirect = space.settings?.is_direct || space.space_type === 'direct';
+      const otherUser = space.other_participant;
+
+      let chatName = space.title || 'Direct Message';
+      let chatAvatar = space.creator?.profile_photo || undefined;
+
+      if (isDirect && otherUser) {
+        chatName = otherUser.name || otherUser.username || chatName;
+        chatAvatar = otherUser.profile_photo || chatAvatar;
+      }
+
+      const updatedAt = space.updated_at || space.created_at || new Date().toISOString();
+
+      return {
+        id: space.id,
+        name: chatName,
+        lastMessage: getSpaceDescription(space),
+        timestamp: formatTimestamp(updatedAt),
+        updatedAt: updatedAt,
+        unreadCount: spaceUnreadCounts[space.id] || 0,
+        avatar: chatAvatar,
+        isOnline: isDirect && otherUser ? (otherUser as any).is_online ?? space.is_live : space.is_live,
+        user_id: isDirect && otherUser ? otherUser.id.toString() : space.creator_id.toString(),
+        type: 'space' as const,
+        spaceData: space,
+        conversationId: space.linked_conversation_id,
+        isPinned: space.my_permissions?.is_pinned || false,
+        email: undefined,
+        username: undefined,
+      };
+    }).sort((a, b) => {
+      // 1. Pinned priority
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+
+      // 2. Live priority
+      if (a.spaceData?.is_live && !b.spaceData?.is_live) return -1;
+      if (!a.spaceData?.is_live && b.spaceData?.is_live) return 1;
+
+      // 3. Date-based sorting
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+  }, [storeSpaces, spaceUnreadCounts]);
+
+  // Initialize real-time service (User channel only, rooms now handled by store)
   useEffect(() => {
     if (user?.id) {
       realTimeService.initialize(user.id);
-
-      const handleNewSpace = (data: any) => {
-        if (data.space && !spaces.some(s => s.id === data.space.id)) {
-          const newChat: Chat = {
-            id: data.space.id,
-            name: data.space.title,
-            lastMessage: getSpaceDescription(data.space),
-            timestamp: 'Just now',
-            unreadCount: 0,
-            user_id: data.space.creator_id.toString(),
-            type: 'space',
-            spaceData: data.space,
-            updatedAt: new Date().toISOString(),
-          };
-
-          setSpaces(prev => [newChat, ...prev]);
-          if (Platform.OS !== 'web') {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          }
-
-          // Show notification
-          notificationService.scheduleLocalNotification({
-            title: 'New Space Created',
-            body: `${data.space.title} is ready`,
-            data: {
-              type: 'space_created',
-              spaceId: data.space.id,
-            },
-          });
-        }
-      };
-
-      // ✅ Listen to user-specific space updates (Mute, Pin, etc.)
-      realTimeService.subscribeToUserChannelUpdates(user.id, (event: string, data: any) => {
-        if (event === 'space_update') {
-          console.log(`🔄 Specific space update: ${data.update_type} for space ${data.space_id}`, data);
-
-          const sortSpaces = (list: Chat[]) => {
-            return [...list].sort((a, b) => {
-              // 1. Pinned priority
-              const aPinned = a.isPinned || a.spaceData?.my_permissions?.is_pinned;
-              const bPinned = b.isPinned || b.spaceData?.my_permissions?.is_pinned;
-              if (aPinned && !bPinned) return -1;
-              if (!aPinned && bPinned) return 1;
-
-              // 2. Live priority
-              if (a.spaceData?.is_live && !b.spaceData?.is_live) return -1;
-              if (!a.spaceData?.is_live && b.spaceData?.is_live) return 1;
-
-              // 3. Date-based sorting (Last received at top)
-              const dateA = new Date(a.updatedAt || 0).getTime();
-              const dateB = new Date(b.updatedAt || 0).getTime();
-              return dateB - dateA;
-            });
-          };
-
-          setSpaces(prev => {
-            const spaceId = data.space_id || data.space?.id || data.changes?.space_id;
-            if (!spaceId) return prev;
-
-            const index = prev.findIndex(s => s.id === spaceId);
-            
-            // Handle invitation even if not in list yet
-            if (data.update_type === 'invitation') {
-                console.log('🔄 Invitation received via space_update case');
-                fetchUserSpaces();
-                return prev; 
-            }
-
-            // Handle deletion/leaving even if not in list (filter is safe)
-            if (data.update_type === 'deleted') {
-                console.log('🗑️ Space deleted, removing from list:', spaceId);
-                return prev.filter(s => s.id !== spaceId);
-            }
-
-            if (data.update_type === 'left' && (String(data.user_id) === String(user?.id) || String(data.changes?.user_id) === String(user?.id))) {
-                console.log('🚶 I left the space, removing from list:', spaceId);
-                return prev.filter(s => s.id !== spaceId);
-            }
-
-            // From here on, we need the space to exist in the list
-            if (index === -1) return prev;
-
-            const space = prev[index];
-            const updatedPermissions = { ...(space.spaceData?.my_permissions || {}) };
-            let updatedTopLevel = { ...space };
-
-            switch (data.update_type) {
-              case 'muted':
-                updatedPermissions.is_muted = data.is_muted;
-                break;
-              case 'pinned':
-                updatedPermissions.is_pinned = data.is_pinned;
-                updatedTopLevel.isPinned = data.is_pinned;
-                break;
-              case 'archived':
-                updatedPermissions.is_archived = data.is_archived;
-                break;
-              case 'unread':
-                updatedPermissions.is_unread = data.is_unread;
-                break;
-              case 'favorited':
-                updatedPermissions.is_favorite = data.is_favorite;
-                break;
-              case 'message':
-                updatedTopLevel.lastMessage = data.message.content;
-                updatedTopLevel.timestamp = 'Just now';
-                updatedTopLevel.updatedAt = new Date().toISOString();
-                updatedTopLevel.unreadCount = (updatedTopLevel.unreadCount || 0) + 1;
-                break;
-              case 'participation':
-                if (data.space) {
-                  updatedTopLevel.spaceData = {
-                    ...space.spaceData!,
-                    participants_count: data.space.participants_count ?? space.spaceData?.participants_count
-                  };
-                }
-                break;
-            }
-
-            const updatedSpace = {
-              ...updatedTopLevel,
-              spaceData: {
-                ...space.spaceData!,
-                my_permissions: updatedPermissions
-              }
-            };
-
-            const newList = [...prev];
-            newList[index] = updatedSpace;
-
-            return sortSpaces(newList);
-          });
-        } else if (event === 'invitation') {
-          console.log(`🔄 Invitation update detected, refreshing list`);
-          fetchUserSpaces();
-        }
-      });
-
-      // ✅ Global sync: listen to spaces channel for updates
-      const pusherService = (PusherService as any).getInstance ? (PusherService as any).getInstance() : PusherService;
-      if (pusherService && typeof pusherService.subscribeToAllSpaces === 'function') {
-        pusherService.subscribeToAllSpaces((data: any) => {
-          console.log('🔄 Remote space update detected, refreshing spaces list', data);
-          fetchUserSpaces();
-        });
-      }
+      // NOTE: Room subscriptions and space_update events are now handled centrally 
+      // by CollaborationStore and NotificationStore.
     }
 
     return () => {
@@ -552,119 +524,17 @@ const ChatPage = () => {
     try {
       const userSpaces = await collaborationService.fetchUserSpaces(Number(user.id));
 
-      const spaceUnreadCounts = useCollaborationStore.getState().spaceUnreadCounts;
+      // Update the store with the fetched spaces
+      useCollaborationStore.getState().setSpaces(userSpaces);
 
-      const spaceChats: Chat[] = userSpaces.map(space => {
-        const isDirect = space.settings?.is_direct || space.space_type === 'direct';
-        const otherUser = space.other_participant;
-
-        let chatName = space.title || 'Direct Message';
-        let chatAvatar = space.creator?.profile_photo || undefined;
-
-        if (isDirect && otherUser) {
-          chatName = otherUser.name || otherUser.username || chatName;
-          chatAvatar = otherUser.profile_photo || chatAvatar;
-        }
-
-        const updatedAt = space.updated_at || space.created_at || new Date().toISOString();
-
-        return {
-          id: space.id,
-          name: chatName,
-          lastMessage: getSpaceDescription(space),
-          timestamp: formatTimestamp(updatedAt),
-          updatedAt: updatedAt,
-          unreadCount: spaceUnreadCounts[space.id] || 0,
-          avatar: chatAvatar,
-          isOnline: isDirect && otherUser ? (otherUser as any).is_online ?? space.is_live : space.is_live,
-          user_id: isDirect && otherUser ? otherUser.id.toString() : space.creator_id.toString(),
-          type: 'space' as const,
-          spaceData: space,
-          conversationId: space.linked_conversation_id,
-        };
-      });
-
-      // Sort by activity using robust date field
-      const sortedSpaces = [...spaceChats].sort((a, b) => {
-        const aPinned = a.isPinned || a.spaceData?.my_permissions?.is_pinned;
-        const bPinned = b.isPinned || b.spaceData?.my_permissions?.is_pinned;
-        if (aPinned && !bPinned) return -1;
-        if (!aPinned && bPinned) return 1;
-
-        if (a.spaceData?.is_live && !b.spaceData?.is_live) return -1;
-        if (!a.spaceData?.is_live && b.spaceData?.is_live) return 1;
-
-        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-      });
-
-      setSpaces(sortedSpaces);
-
-      // Cache the result
-      await offlineService.cacheUserSpaces(user.id, spaceChats);
+      // Store automatically sorts and updates
+      console.log('🌐 Fetched spaces from store:', userSpaces.length);
+      // Cache the raw spaces from store
+      await offlineService.cacheUserSpaces(user.id, userSpaces);
     } catch (error) {
       console.error('Error fetching spaces:', error);
       // ... rest of error handling
     }
-  };
-
-  // ============ HELPER FUNCTIONS (DEFINE FIRST) ============
-
-  const getSpaceDescription = (space: CollaborationSpace): string => {
-    const descriptions: Record<string, string> = {
-      chat: `💬 Chat with ${space.participants_count || 0} people`,
-      whiteboard: `🎨 Whiteboard collaboration`,
-      meeting: `📹 Meeting room`,
-      document: `📄 Document collaboration`,
-      brainstorm: `💡 Brainstorming session`,
-      story: `📖 Collaborative story`,
-      voice_channel: `🎤 Voice channel`,
-    };
-
-    return descriptions[space.space_type] || 'Collaboration space';
-  };
-
-  const formatTimestamp = (timestamp: string | Date): string => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else if (diffDays === 1) {
-      return 'Yesterday';
-    } else if (diffDays < 7) {
-      return date.toLocaleDateString([], { weekday: 'short' });
-    } else {
-      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-    }
-  };
-
-  // These are at the bottom of your file - move them up too
-  const getSpaceTypeIcon = (type: string): string => {
-    const icons: Record<string, string> = {
-      whiteboard: 'easel',
-      meeting: 'videocam',
-      document: 'document-text',
-      brainstorm: 'bulb',
-      voice_channel: 'mic',
-      chat: 'chatbubbles',
-      story: 'book',
-    };
-    return icons[type] || 'cube';
-  };
-
-  const getSpaceTypeColor = (type: string): string => {
-    const colors: Record<string, string> = {
-      whiteboard: '#4CAF50',
-      meeting: '#FF6B6B',
-      document: '#FFA726',
-      brainstorm: '#9C27B0',
-      voice_channel: '#3F51B5',
-      chat: '#2196F3',
-      story: '#E91E63',
-    };
-    return colors[type] || '#666';
   };
 
   // Enhanced filtered data with search results integration
@@ -709,7 +579,10 @@ const ChatPage = () => {
         else if (activeTab === 'archived') title = '📦 Archived Chats';
         else if (customTab) title = `📂 ${customTab.name}`;
 
-        const data = [...activeSpaces];
+        const data = activeSpaces.map(s => ({
+          ...s,
+          unreadCount: spaceUnreadCounts[s.id] || 0
+        }));
         if (customTab) {
           data.push({
             id: 'add-to-tab',
@@ -785,7 +658,7 @@ const ChatPage = () => {
     }
 
     return sections;
-  }, [searchQuery, contacts, spaces, searchResults, activeTab, customTabs]);
+  }, [searchQuery, contacts, spaces, searchResults, activeTab, customTabs, spaceUnreadCounts]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -815,7 +688,7 @@ const ChatPage = () => {
   };
 
   // Calculate counts for badges
-  const unreadCount = useMemo(() => spaces.filter(s => s.unreadCount! > 0 || s.spaceData?.my_permissions?.is_unread).length, [spaces]);
+  const unreadCount = useMemo(() => spaces.filter(s => (spaceUnreadCounts[s.id] || 0) > 0 || s.spaceData?.my_permissions?.is_unread).length, [spaces, spaceUnreadCounts]);
   const favoritesCount = useMemo(() => spaces.filter(s => s.spaceData?.my_permissions?.is_favorite).length, [spaces]);
   const archivedCount = useMemo(() => spaces.filter(s => s.spaceData?.my_permissions?.is_archived).length, [spaces]);
 
@@ -960,9 +833,9 @@ const ChatPage = () => {
       console.error('Search error:', error);
 
       // Fallback to local search
-      const allItems = [
-        ...spaces.map(item => ({ ...item, type: 'space' })),
-        ...contacts.map(item => ({ ...item, type: 'contact' })),
+      const allItems: Chat[] = [
+        ...spaces,
+        ...contacts,
       ];
 
       // Basic matching logic
@@ -971,8 +844,8 @@ const ChatPage = () => {
       const localResults = allItems.filter(item =>
         matchesQuery(item.name) ||
         matchesQuery(item.lastMessage) ||
-        matchesQuery(item.username) ||
-        matchesQuery(item.email)
+        (item.username && matchesQuery(item.username)) ||
+        (item.email && matchesQuery(item.email))
       ).map(item => ({
         ...item,
         isSearchResult: true,
@@ -1300,10 +1173,10 @@ const ChatPage = () => {
             <EnhancedChatRow
               {...item}
               onLeave={(leftId) => {
-                setSpaces(prev => prev.filter(s => s.id !== leftId));
+                useCollaborationStore.getState().removeSpace(leftId);
               }}
               onDelete={(deletedId) => {
-                setSpaces(prev => prev.filter(s => s.id !== deletedId));
+                useCollaborationStore.getState().removeSpace(deletedId);
               }}
             />
 

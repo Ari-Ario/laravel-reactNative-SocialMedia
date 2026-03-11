@@ -4,6 +4,11 @@ import axios from "@/services/axios";
 import { getToken, setToken } from "./TokenService";
 import getApiBase from "./getApiBase";
 import { router } from "expo-router";
+import PusherService from "./PusherService";
+import { usePostStore } from "@/stores/postStore";
+import { useNotificationStore } from "@/stores/notificationStore";
+import { useCollaborationStore } from "@/stores/collaborationStore";
+import { useSpaceStore } from "@/stores/spaceStore";
 
 const API_BASE = getApiBase() + '/api'; // One single source of truth
 
@@ -76,6 +81,16 @@ export async function sendPasswordResetLink(email: string) {
 
 export async function logout() {
   try {
+    console.log("🚀 Starting comprehensive logout cleanup...");
+
+    // 1. Disconnect and cleanup Real-time
+    PusherService.disconnect();
+
+    // 2. Reset all Zustand stores to clear local data
+    usePostStore.getState().reset();
+    useNotificationStore.getState().reset();
+    useCollaborationStore.getState().reset();
+    useSpaceStore.getState().reset();
     const token = await getToken();
     if (token) {
       await axios.post(`/logout`, {});

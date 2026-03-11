@@ -35,8 +35,8 @@ class SpaceEventsListener
         try {
             // Broadcast space update to all participants
             $this->pusher->trigger(
-                "presence-space-{$event->space->id}",
-                'space-updated',
+                "presence-space.{$event->space->id}",
+                'space.updated',
                 [
                     'space' => [
                         'id' => $event->space->id,
@@ -66,8 +66,8 @@ class SpaceEventsListener
         try {
             // Broadcast new participant
             $this->pusher->trigger(
-                "presence-space-{$event->space->id}",
-                'participant-joined',
+                "presence-space.{$event->space->id}",
+                'participant.joined',
                 [
                     'user' => [
                         'id' => $event->user->id,
@@ -109,8 +109,8 @@ class SpaceEventsListener
         try {
             // Broadcast magic event
             $this->pusher->trigger(
-                "presence-space-{$event->space->id}",
-                'magic-triggered',
+                "presence-space.{$event->space->id}",
+                'magic.triggered',
                 [
                     'event' => [
                         'id' => $event->magicEvent->id,
@@ -139,8 +139,8 @@ class SpaceEventsListener
         try {
             // Broadcast voice annotation to space
             $this->pusher->trigger(
-                "presence-space-{$event->post->linked_project_id}",
-                'voice-annotation-added',
+                "presence-space.{$event->post->linked_project_id}",
+                'voice.annotation.added',
                 [
                     'post_id' => $event->post->id,
                     'user_id' => $event->user->id ?? null,

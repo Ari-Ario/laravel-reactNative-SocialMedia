@@ -138,7 +138,12 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                     participants={participants}
                     onReply={(msg) => setReplyingTo(msg)}
                     highlightMessageId={highlightMessageId}
-                    lastReadAt={space?.my_participation?.last_active_at ?? null}
+                    lastReadAt={
+                      space?.my_participation?.last_read_at ??
+                      space?.my_permissions?.last_read_at ??
+                      space?.my_participation?.last_active_at ??
+                      null
+                    }
                     onPollPress={() => { }} // No-op now that polls are inline
                     onStartCall={onStartCall}
                 />

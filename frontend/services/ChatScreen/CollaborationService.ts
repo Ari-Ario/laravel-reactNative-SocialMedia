@@ -54,6 +54,12 @@ export interface CollaborationSpace {
   magic_events?: any[];
   my_role?: string;
   my_permissions?: any;
+  /** The current user's participation record — includes last_read_at for unread tracking */
+  my_participation?: {
+    last_read_at?: string | null;
+    last_active_at?: string | null;
+    role?: string;
+  } | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -287,6 +293,11 @@ class CollaborationService {
         magic_events: response.data.magic_events || [],
         my_role: participation?.role,
         my_permissions: participation?.permissions,
+        my_participation: participation ? {
+          last_read_at: participation.last_read_at ?? null,
+          last_active_at: participation.last_active_at ?? null,
+          role: participation.role,
+        } : null,
         creator: apiSpace.creator,
         created_at: apiSpace.created_at,
         updated_at: apiSpace.updated_at,
@@ -641,6 +652,8 @@ class CollaborationService {
     onScreenShareEnded?: (data: any) => void;
     onMuteStateChanged?: (data: any) => void;
     onVideoStateChanged?: (data: any) => void;
+    onScreenShareToggled?: (data: any) => void;
+    onMagicTriggered?: (data: any) => void;
     onPollCreated?: (poll: any) => void;
     onPollUpdated?: (poll: any) => void;
     onPollDeleted?: (poll: any) => void;
@@ -648,6 +661,7 @@ class CollaborationService {
     onMessagePinned?: (data: any) => void;
     onMessageReacted?: (data: any) => void;
     onMessageReplied?: (data: any) => void;
+    onSpaceRead?: (data: any) => void;
     onSpaceDeleted?: (data: any) => void;
   }) {
     try {
@@ -698,8 +712,12 @@ class CollaborationService {
       bind('message.sent', callbacks.onMessage || callbacks.onMessageSent, '📨 Message received');
       bind('call.started', callbacks.onCallStarted, '📞 Call started');
       bind('call.ended', callbacks.onCallEnded, '📵 Call ended');
-      bind('magic.triggered', callbacks.onMagicEvent, '✨ Magic event');
+      bind('magic.triggered', (data) => {
+        callbacks.onMagicEvent?.(data);
+        callbacks.onMagicTriggered?.(data);
+      }, '✨ Magic event');
       bind('space.updated', callbacks.onSpaceUpdate, '🔄 Space updated');
+      bind('space.read', callbacks.onSpaceRead, '📖 Space read');
       bind('space.deleted', callbacks.onSpaceDeleted, '🗑️ Space deleted');
       bind('participant.joined', (data) => {
         console.log(`👤 [${spaceId}] Participant joined`, data);
@@ -731,8 +749,9 @@ class CollaborationService {
 
       // Collaboration specific events
       bind('content.updated', (data) => callbacks.onContentUpdate?.(data.content_state || data), '📝 Content updated');
-      bind('screen_share.started', callbacks.onScreenShareStarted, '🖥️ Screen share started');
-      bind('screen_share.ended', callbacks.onScreenShareEnded, '🖥️ Screen share ended');
+      bind('screen.share.started', callbacks.onScreenShareStarted, '🖥️ Screen share started');
+      bind('screen.share.ended', callbacks.onScreenShareEnded, '🖥️ Screen share ended');
+      bind('screen.share.toggled', callbacks.onScreenShareToggled, '🖥️ Screen share toggled');
 
       // RTC events (usually hyphenated because they are client-side often)
       bind('client-webrtc-offer', callbacks.onWebRTCOffer);
@@ -876,6 +895,20 @@ class CollaborationService {
       return response.data;
     } catch (error) {
       console.error('Error marking space as unread:', error);
+      throw error;
+    }
+  }
+
+  async markAsRead(spaceId: string, lastReadAt?: string): Promise<{ message: string; last_read_at: string }> {
+    try {
+      const response = await axios.post(
+        `${this.baseURL}/spaces/${spaceId}/mark-as-read`,
+        { last_read_at: lastReadAt },
+        { headers: this.getHeaders() }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error marking space as read:', error);
       throw error;
     }
   }

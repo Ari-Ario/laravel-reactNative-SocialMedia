@@ -29,6 +29,7 @@ interface SpaceStoreState {
     setSpaces: (spaces: Space[]) => void;
     addSpace: (space: Space) => void;
     updateSpace: (space: Space) => void;
+    reset: () => void;
 }
 
 export const useSpaceStore = create<SpaceStoreState>((set, get) => ({

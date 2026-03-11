@@ -11,6 +11,7 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import LoginScreen from '../LoginScreen';
 import { usePostStore } from '@/stores/postStore';
 import { useNotificationStore } from '@/stores/notificationStore';
+import { useCollaborationStore } from '@/stores/collaborationStore';
 import { logout } from '@/services/AuthService';
 import { getToken } from '@/services/TokenService';
 import { NotificationToast } from '@/components/Notifications/NotificationToast';
@@ -27,6 +28,7 @@ export default function TabLayout() {
     setInitializationTime,
     setIsRealtimeReady: setGlobalRealtimeReady
   } = useNotificationStore();
+  const totalUnreadSpaces = useCollaborationStore(state => state.totalUnreadSpaces);
 
   const realtimeInitialized = useRef(false);
   const [isRealtimeReady, setIsRealtimeReady] = useState(false);
@@ -175,6 +177,7 @@ export default function TabLayout() {
               options={{
                 title: 'Chats',
                 tabBarIcon: ({ color }) => <FontAwesome size={28} name="comments" color={color} />,
+                tabBarBadge: totalUnreadSpaces > 0 ? totalUnreadSpaces : undefined,
               }}
             />
             <Tabs.Screen

@@ -18,6 +18,8 @@ import { Notification } from '@/types/Notification';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { router } from 'expo-router';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
+import AuthContext from '@/context/AuthContext';
+import { useCollaborationStore } from '@/stores/collaborationStore';
 
 type SpacesPanelProps = {
     visible: boolean;
@@ -31,6 +33,8 @@ const SpacesPanel = ({ visible, onClose, anchorPosition }: SpacesPanelProps) => 
         markAsRead,
         removeNotification
     } = useNotificationStore();
+    
+    const { user } = React.useContext(AuthContext);
 
     const spaces = getSpaces();
 
@@ -112,10 +116,19 @@ const SpacesPanel = ({ visible, onClose, anchorPosition }: SpacesPanelProps) => 
                         }
 
                         try {
-                            await CollaborationService.getInstance().acceptSpaceInvitation(spaceId.toString());
+                            const response = await CollaborationService.getInstance().acceptSpaceInvitation(spaceId.toString());
 
                             markAsRead(item.id);
                             removeNotification(item.id);
+
+                            // Update global store so the UI reflects the new space immediately
+                            if (user?.id) {
+                                if (response?.space) {
+                                    useCollaborationStore.getState().addSpace(response.space);
+                                } else {
+                                    useCollaborationStore.getState().fetchUserSpaces(Number(user.id));
+                                }
+                            }
 
                             router.push({
                                 pathname: '/(spaces)/[id]',
