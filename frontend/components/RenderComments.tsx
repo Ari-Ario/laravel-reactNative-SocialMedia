@@ -14,7 +14,8 @@ interface RenderCommentsProps {
   onReactComment: (commentId: number) => void;
   onDeleteCommentReaction: (commentId: number, emoji: string) => void;
   onDeleteComment: (commentId: number) => void;
-  highlightedCommentId?: string | null; // Add this
+  highlightedCommentId?: string | null;
+  onCommentLayout?: (commentId: string, y: number) => void; // Add this
 }
 
 const RenderComments = ({
@@ -27,7 +28,8 @@ const RenderComments = ({
   onReactComment,
   onDeleteCommentReaction,
   onDeleteComment,
-  highlightedCommentId
+  highlightedCommentId,
+  onCommentLayout
 }: RenderCommentsProps) => {
   // Get the latest comments from Zustand store
   const { posts } = usePostStore();
@@ -66,14 +68,21 @@ const RenderComments = ({
 
   const renderComment = ({ item }: { item: any }) => {
     const groupedReactions = getGroupedReactionsComments(item);
-    const isMyComment = item.user_id === user?.id;
+    const isMyComment = String(item.user_id) === String(user?.id);
     const isHighlighted = highlightedCommentId && item.id.toString() === highlightedCommentId;
 
     return (
-      <View style={[
-        styles.commentContainer,
-        isHighlighted && styles.highlightedComment // Add highlighted style
-      ]}>
+      <View 
+        style={[
+          styles.commentContainer,
+          isHighlighted && styles.highlightedComment
+        ]}
+        onLayout={(e) => {
+          if (isHighlighted && onCommentLayout) {
+            onCommentLayout(item.id.toString(), e.nativeEvent.layout.y);
+          }
+        }}
+      >
         {/* Comment header */}
         <View style={styles.commentHeader}>
           <TouchableOpacity onPress={() => onProfilePress(item.user.id)}>
@@ -104,7 +113,7 @@ const RenderComments = ({
                 contentContainerStyle={styles.commentReactionsScrollContent}
               >
                 {groupedReactions.map((reaction, idx) => {
-                  const isMyReaction = reaction.user_ids?.includes(user?.id);
+                  const isMyReaction = reaction.user_ids?.some(id => String(id) === String(user?.id));
 
                   return isMyReaction ? (
                     <TouchableOpacity

@@ -45,6 +45,8 @@ Route::group(["middleware" => ["auth:sanctum"]], function () {
     Route::get('/user', [AuthenticatedSessionController::class , 'getUser']);
     Route::get('/profiles/{user}', [ProfileController::class , 'show']);
     Route::post('/profiles/{user}/follow', [ProfileController::class , 'follow']);
+    Route::post('/profiles/{user}/block', [ProfileController::class , 'block']);
+    Route::post('/profiles/{user}/unblock', [ProfileController::class , 'unblock']);
 
     Route::post('/chatbot', [ChatbotController::class , 'handleMessage']);
     Route::post('/test-csrf', fn() => [1, 2, 3]);

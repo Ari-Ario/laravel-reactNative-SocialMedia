@@ -17,6 +17,8 @@ import GenericMenu, { MenuItem } from '@/components/GenericMenu';
 import EnhancedInviteModal, { InviteRecipient } from '@/components/ChatScreen/EnhancedInviteModal';
 import { useRef } from 'react';
 import { useCollaborationStore } from '@/stores/collaborationStore';
+import { useProfileView } from '@/context/ProfileViewContext';
+import { blockUser, unblockUser } from '@/services/UserService';
 
 interface EnhancedChatRowProps {
   id: string;
@@ -63,6 +65,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
   const [showContactMenu, setShowContactMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState<AnchorPosition>();
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const { setProfilePreviewVisible, setProfileViewUserId } = useProfileView();
 
   // Optimistic UI state
   const [localIsMuted, setLocalIsMuted] = useState(spaceData?.my_permissions?.is_muted || false);
@@ -109,7 +112,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
   const handleStartChat = async () => {
     try {
       const spaceRes = await collaborationService.getOrCreateDirectSpace(user_id);
-      router.push(`/spaces/${spaceRes.space.id}`);
+      router.push(`/(spaces)/${spaceRes.space.id}`);
       setShowContactMenu(false);
     } catch (error) {
       console.error('Error starting chat:', error);
@@ -128,7 +131,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       const callData = await collaborationService.startCall(spaceId, 'video');
 
       // Navigate to space with call active
-      router.push(`/(spaces)/${spaceId}?call=${callData.call?.id || 'active'}`);
+      router.push(`/(spaces)/${spaceId}?call=${callData.call?.id || 'active'}&type=video`);
       setShowContactMenu(false);
     } catch (error: any) {
       console.error('Error starting video call:', error);
@@ -148,7 +151,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       const callData = await collaborationService.startCall(spaceId, 'audio');
 
       // Navigate to the space
-      router.push(`/(spaces)/${spaceId}?call=${callData.call?.id || 'active'}`);
+      router.push(`/(spaces)/${spaceId}?call=${callData.call?.id || 'active'}&type=audio`);
       setShowContactMenu(false);
     } catch (error) {
       console.error('Error starting voice call:', error);
@@ -519,8 +522,34 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
 
   const handleViewProfile = () => {
     // Navigate to user profile
-    router.push(`/profile/${user_id}`);
+    setProfileViewUserId(user_id);
+    setProfilePreviewVisible(true);
     setShowContactMenu(false);
+  };
+
+  const handleBlockUser = async () => {
+    if (Platform.OS !== 'web') {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    }
+
+    confirmAction(
+      'Block User',
+      `Are you sure you want to block ${name}? They will not be able to message you or call you.`,
+      'Block',
+      async () => {
+        try {
+          // Real-time: ideally we would remove them from list or mark them
+          await blockUser(user_id);
+          simpleAlert('Success', `${name} has been blocked.`);
+          setShowContactMenu(false);
+          // If we want to remove them from contacts list immediately:
+          // onDelete && onDelete(id);
+        } catch (error) {
+          console.error('Error blocking user:', error);
+          simpleAlert('Error', 'Failed to block user');
+        }
+      }
+    );
   };
 
   const getSpaceBackgroundColor = (spaceType?: string) => {
@@ -540,11 +569,12 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
   // Render contact-specific content
   const renderContactContent = () => (
     <Pressable
+      ref={containerRef}
       style={styles.container}
-      onPress={handleContactPress}
+      onPress={handlePress}
       onLongPress={handleLongPress}
     >
-      <View style={styles.avatarContainer}>
+      <Pressable style={styles.avatarContainer} onPress={handleViewProfile}>
         <Avatar
           source={avatar || null}
           name={name}
@@ -552,7 +582,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
           isOnline={isOnline}
           showStatus={true}
         />
-      </View>
+      </Pressable>
 
       <View style={styles.content}>
         <View style={styles.header}>
@@ -590,51 +620,6 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
           </View>
         </View>
       </View>
-
-      {/* Contact Action Menu */}
-      {showContactMenu && (
-        <View style={styles.contactMenu}>
-          <TouchableOpacity
-            style={styles.contactMenuItem}
-            onPress={handleStartChat}
-          >
-            <Ionicons name="chatbubble-outline" size={20} color="#007AFF" />
-            <Text style={styles.contactMenuText}>Start Chat</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.contactMenuItem}
-            onPress={handleStartVideoCall}
-          >
-            <Ionicons name="videocam-outline" size={20} color="#007AFF" />
-            <Text style={styles.contactMenuText}>Video Call</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.contactMenuItem}
-            onPress={handleStartVoiceCall}
-          >
-            <Ionicons name="call-outline" size={20} color="#007AFF" />
-            <Text style={styles.contactMenuText}>Voice Call</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.contactMenuItem}
-            onPress={handleStartWhiteboard}
-          >
-            <Ionicons name="easel-outline" size={20} color="#007AFF" />
-            <Text style={styles.contactMenuText}>Whiteboard</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.contactMenuItem, styles.contactMenuClose]}
-            onPress={() => setShowContactMenu(false)}
-          >
-            <Ionicons name="close" size={20} color="#666" />
-            <Text style={styles.contactMenuText}>Close</Text>
-          </TouchableOpacity>
-        </View>
-      )}
     </Pressable>
   );
 
@@ -649,80 +634,12 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
     let isDirectSpace = false;
 
     if (type === 'space' && spaceData) {
-      const isDirect = spaceData.settings?.is_direct || spaceType === 'direct';
+      const isDirect = (spaceData.settings?.is_direct || spaceType === 'direct' || spaceType === 'chat') && !!spaceData.other_participant;
       if (isDirect && spaceData.other_participant) {
         isDirectSpace = true;
         displayTitle = spaceData.other_participant.name || spaceData.other_participant.username || displayTitle;
         displayAvatar = spaceData.other_participant.profile_photo || displayAvatar;
       }
-    }
-
-    const menuItems: MenuItem[] = [
-      {
-        icon: (localIsPinned ? "pin-outline" : "pin") as any,
-        label: localIsPinned ? "Unpin Chat" : "Pin Chat",
-        onPress: handlePinSpace,
-      },
-      {
-        icon: (localIsUnread ? "mail-open-outline" : "mail-unread-outline") as any,
-        label: localIsUnread ? "Mark as Read" : "Mark as Unread",
-        onPress: handleMarkUnread,
-      },
-      {
-        icon: (localIsArchived ? "archive" : "archive-outline") as any,
-        label: localIsArchived ? "Unarchive Chat" : "Archive Chat",
-        onPress: handleArchiveSpace,
-      },
-      {
-        icon: (localIsMuted ? "volume-high-outline" : "volume-mute-outline") as any,
-        label: localIsMuted ? "Unmute Notifications" : "Mute Notifications",
-        onPress: handleMuteSpace,
-      },
-      {
-        icon: (localIsFavorite ? "heart-dislike-outline" : "heart-outline") as any,
-        label: localIsFavorite ? "Remove from Favorites" : "Add to Favorites",
-        onPress: handleFavoriteSpace,
-      }
-    ];
-
-    // Add space-specific actions
-    if (type === 'space' && !isDirectSpace) {
-      // Invite People: Only for owner/moderator
-      if (spaceData?.my_role === 'owner' || spaceData?.my_role === 'moderator') {
-        menuItems.push({
-          icon: "person-add-outline" as any,
-          label: "Invite People",
-          onPress: () => {
-            setShowInviteModal(true);
-            setShowCollaborationMenu(false);
-          },
-        });
-      }
-
-      menuItems.push({
-        icon: "exit-outline" as any,
-        label: "Leave Space",
-        onPress: handleLeaveSpace,
-        destructive: true,
-      });
-    }
-
-    menuItems.push({
-      icon: "remove-circle-outline" as any,
-      label: "Clear Chat",
-      onPress: handleClearChat,
-    });
-
-    // Only owners can delete spaces (including direct chats if user is part of it)
-    const canDelete = spaceData?.my_role === 'owner' || (isDirectSpace && spaceData?.my_role === 'owner');
-
-    if (canDelete) {
-      menuItems.push({
-        icon: "trash-outline" as any,
-        label: "Delete Chat",
-        onPress: handleDeleteSpace,
-        destructive: true,
-      });
     }
 
     return (
@@ -827,59 +744,119 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
             </View>
           )}
         </View>
-
-        <GenericMenu
-          visible={showCollaborationMenu}
-          onClose={() => setShowCollaborationMenu(false)}
-          anchorPosition={menuPosition}
-          items={menuItems}
-        />
-
-        <GenericMenu
-          visible={showContactMenu}
-          onClose={() => setShowContactMenu(false)}
-          anchorPosition={menuPosition}
-          items={[
-            {
-              icon: 'chatbubble-outline',
-              label: 'Message',
-              onPress: handleStartChat,
-            },
-            {
-              icon: 'videocam-outline',
-              label: 'Video Call',
-              onPress: handleStartVideoCall,
-            },
-            {
-              icon: 'call-outline',
-              label: 'Voice Call',
-              onPress: handleStartVoiceCall,
-            },
-            {
-              icon: 'person-outline',
-              label: 'View Profile',
-              onPress: handleViewProfile,
-            },
-          ]}
-        />
-        <EnhancedInviteModal
-          visible={showInviteModal}
-          spaceId={id}
-          spaceTitle={name}
-          onClose={() => setShowInviteModal(false)}
-          onInvite={handleInviteUsers}
-        />
       </Pressable>
     );
   };
 
-  // 🚨 CRITICAL FIX: Remove ALL Link wrappers - they cause navigation conflicts
-  // Just return the Pressable component directly
-  if (type === 'contact') {
-    return renderContactContent();
-  }
+  return (
+    <View style={{ flex: 1 }}>
+      {type === 'contact' ? renderContactContent() : renderContent()}
 
-  return renderContent();
+      <GenericMenu
+        visible={showCollaborationMenu}
+        onClose={() => setShowCollaborationMenu(false)}
+        anchorPosition={menuPosition}
+        items={type === 'space' ? (
+          (() => {
+            const spaceType = spaceData?.space_type || 'chat';
+            const isDirectSpace = (spaceData?.settings?.is_direct || spaceType === 'direct' || spaceType === 'chat') && !!spaceData?.other_participant;
+            
+            const menuItems: MenuItem[] = [
+              {
+                icon: (localIsPinned ? "pin-outline" : "pin") as any,
+                label: localIsPinned ? "Unpin Chat" : "Pin Chat",
+                onPress: handlePinSpace,
+              },
+              {
+                icon: (localIsUnread ? "mail-open-outline" : "mail-unread-outline") as any,
+                label: localIsUnread ? "Mark as Read" : "Mark as Unread",
+                onPress: handleMarkUnread,
+              },
+              {
+                icon: (localIsArchived ? "archive" : "archive-outline") as any,
+                label: localIsArchived ? "Unarchive Chat" : "Archive Chat",
+                onPress: handleArchiveSpace,
+              },
+              {
+                icon: (localIsMuted ? "volume-high-outline" : "volume-mute-outline") as any,
+                label: localIsMuted ? "Unmute Notifications" : "Mute Notifications",
+                onPress: handleMuteSpace,
+              },
+              {
+                icon: (localIsFavorite ? "heart-dislike-outline" : "heart-outline") as any,
+                label: localIsFavorite ? "Remove from Favorites" : "Add to Favorites",
+                onPress: handleFavoriteSpace,
+              }
+            ];
+
+            if (!isDirectSpace) {
+              if (spaceData?.my_role === 'owner' || spaceData?.my_role === 'moderator') {
+                menuItems.push({
+                  icon: "person-add-outline" as any,
+                  label: "Invite People",
+                  onPress: () => {
+                    setShowInviteModal(true);
+                    setShowCollaborationMenu(false);
+                  },
+                });
+              }
+
+              menuItems.push({
+                icon: "exit-outline" as any,
+                label: "Leave Space",
+                onPress: handleLeaveSpace,
+                destructive: true,
+              });
+            }
+
+            menuItems.push({
+              icon: "remove-circle-outline" as any,
+              label: "Clear Chat",
+              onPress: handleClearChat,
+            });
+
+            if (spaceData?.my_role === 'owner') {
+              menuItems.push({
+                icon: "trash-outline" as any,
+                label: "Delete Chat",
+                onPress: handleDeleteSpace,
+                destructive: true,
+              });
+            }
+
+            return menuItems;
+          })()
+        ) : []}
+      />
+
+      <GenericMenu
+        visible={showContactMenu}
+        onClose={() => setShowContactMenu(false)}
+        anchorPosition={menuPosition}
+        items={[
+          {
+            icon: 'chatbubble-ellipses-outline',
+            label: 'Message',
+            onPress: handleStartChat,
+          },
+          {
+            icon: 'ban-outline',
+            label: 'Block User',
+            onPress: handleBlockUser,
+            destructive: true,
+          },
+        ]}
+      />
+
+      <EnhancedInviteModal
+        visible={showInviteModal}
+        spaceId={id}
+        spaceTitle={name}
+        onClose={() => setShowInviteModal(false)}
+        onInvite={handleInviteUsers}
+      />
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({

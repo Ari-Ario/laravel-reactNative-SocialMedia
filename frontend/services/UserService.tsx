@@ -4,7 +4,7 @@ import getApiBase from "./getApiBase";
 
 const API_BASE = getApiBase();
 
-export async function fetchUserProfile(userId) {
+export async function fetchUserProfile(userId: string) {
   const token = await getToken();
   const response = await axios.get(`${API_BASE}/users/${userId}`, {
     headers: {
@@ -26,7 +26,7 @@ export const fetchProfile = async (userId: string) => {
   }
 };
 
-export const followUser = async (userId: string, action) => {
+export const followUser = async (userId: string, action: 'follow' | 'unfollow') => {
   try {
     // const action = isFollowing ? 'unfollow' : 'follow';
     const response = await axios.post(`${API_BASE}/profiles/${userId}/follow`, {
@@ -50,6 +50,26 @@ export const updateProfile = async (profileData: {
     return response.data;
   } catch (error) {
     console.error('Error updating profile:', error);
+    throw error;
+  }
+};
+
+export const blockUser = async (userId: string) => {
+  try {
+    const response = await axios.post(`${API_BASE}/profiles/${userId}/block`);
+    return response.data;
+  } catch (error) {
+    console.error('Error blocking user:', error);
+    throw error;
+  }
+};
+
+export const unblockUser = async (userId: string) => {
+  try {
+    const response = await axios.post(`${API_BASE}/profiles/${userId}/unblock`);
+    return response.data;
+  } catch (error) {
+    console.error('Error unblocking user:', error);
     throw error;
   }
 };

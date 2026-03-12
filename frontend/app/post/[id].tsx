@@ -12,15 +12,18 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
+  FlatList,
   Modal,
   Pressable,
   Dimensions
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { usePostStore } from '@/stores/postStore';
 import { fetchPostById, commentOnPost, deleteReactionFromPost, deleteComment, reactToPost, reactToComment, deleteReactionFromComment } from '@/services/PostService';
 import RenderComments from '@/components/RenderComments';
 import { useProfileView } from '@/context/ProfileViewContext';
+import { useModal } from '@/context/ModalContext';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { Ionicons } from '@expo/vector-icons';
 import AuthContext from '@/context/AuthContext';
@@ -28,6 +31,47 @@ import EmojiPicker from 'rn-emoji-keyboard';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { usePostListService } from '@/services/PostListService';
 import { createShadow } from '@/utils/styles';
+import PostMenu from '@/components/PostMenu';
+import { MediaViewer } from '@/components/MediaViewer';
+
+const VideoCarouselItem = ({ uri, index, service, styles }: { uri: string, index: number, service: any, styles: any }) => {
+  const player = useVideoPlayer(uri);
+  return (
+    <TouchableOpacity 
+      activeOpacity={0.9} 
+      style={styles.carouselItem}
+      onPress={() => service.openMediaViewer(index)}
+    >
+      <View style={styles.videoWrapper}>
+        <VideoView
+          player={player}
+          style={styles.carouselMedia}
+          contentFit="cover"
+          nativeControls={false}
+        />
+        <View style={styles.videoPlayOverlay}>
+          <Ionicons name="play" size={48} color="white" />
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+const ImageCarouselItem = ({ uri, index, service, styles }: { uri: string, index: number, service: any, styles: any }) => {
+  return (
+    <TouchableOpacity 
+      activeOpacity={0.9} 
+      style={styles.carouselItem}
+      onPress={() => service.openMediaViewer(index)}
+    >
+      <Image
+        source={{ uri }}
+        style={styles.carouselMedia}
+        resizeMode="cover"
+      />
+    </TouchableOpacity>
+  );
+};
 
 const PostDetailScreen = () => {
   const { id, highlightCommentId } = useLocalSearchParams();
@@ -35,6 +79,7 @@ const PostDetailScreen = () => {
   const { user } = useContext(AuthContext);
   const post = posts.find(p => p.id.toString() === id);
   const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
+  const { openModal } = useModal();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [commentText, setCommentText] = useState('');
@@ -44,6 +89,11 @@ const PostDetailScreen = () => {
   const [currentReactingItem, setCurrentReactingItem] = useState<{ postId: number; commentId?: number } | null>(null);
   const [currentReactingComment, setCurrentReactingComment] = useState<{ postId: number; commentId: number } | null>(null);
   const [showComments, setShowComments] = useState(false);
+  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const [mediaViewerVisible, setMediaViewerVisible] = useState(false);
+  const [mediaViewerIndex, setMediaViewerIndex] = useState(0);
   const service = usePostListService(user);
 
   const scrollViewRef = useRef<ScrollView>(null);
@@ -93,13 +143,23 @@ const PostDetailScreen = () => {
         }),
       ]).start();
 
+      // Initial scroll to comments section
       setTimeout(() => {
         commentsSectionRef.current?.measure((x, y, width, height, pageX, pageY) => {
-          scrollViewRef.current?.scrollTo({ y: pageY - 100, animated: true });
+          scrollViewRef.current?.scrollTo({ y: y + pageY - 100, animated: true });
         });
-      }, 300);
+      }, 500);
     }
   }, [highlightCommentId]);
+
+  const handleCommentLayout = (commentId: string, y: number) => {
+    if (highlightCommentId === commentId) {
+      commentsSectionRef.current?.measure((_x, _y, _width, _height, _pageX, pageY) => {
+         // Y is relative to the start of RenderComments
+         scrollViewRef.current?.scrollTo({ y: pageY + y - 80, animated: true });
+      });
+    }
+  };
 
   console.log('📱 PostDetailScreen opened with:', {
     id: postId,
@@ -223,12 +283,20 @@ const PostDetailScreen = () => {
   };
 
   const handleSharePost = async () => {
-    try {
-      // Implement share post logic
-      console.log('Share post:', postId);
-    } catch (error) {
-      console.error('Error sharing post:', error);
+    if (post) {
+      openModal('share', { post });
     }
+  };
+
+  const handleOpenMenu = (event: any) => {
+    const { pageY, pageX } = event.nativeEvent;
+    setMenuPosition({ top: pageY, left: pageX });
+    setMenuVisible(true);
+  };
+
+  const handleOpenMediaViewer = (index: number) => {
+    setMediaViewerIndex(index);
+    setMediaViewerVisible(true);
   };
 
   const handleBookmarkPost = async () => {
@@ -303,237 +371,240 @@ const PostDetailScreen = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      {/* Header with Back Button */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="chevron-back" size={24} color="#000" />
-          <Text style={styles.backButtonText}>Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Post</Text>
-        <View style={styles.headerSpacer} />
-      </View>
-
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Post Header */}
-        <View style={styles.postHeader}>
+      <View style={styles.webWrapper}>
+        {/* Header with Back Button - Premium Blur Header */}
+        <BlurView intensity={80} tint="light" style={styles.header}>
           <TouchableOpacity
-            style={styles.userInfo}
-            onPress={() => handleProfilePress(post.user.id.toString())}
+            style={styles.backButton}
+            onPress={() => router.back()}
           >
-            <Image
-              source={{
-                uri: `${getApiBaseImage()}/storage/${post.user.profile_photo}`,
-                cache: 'force-cache'
-              }}
-              style={styles.userAvatar}
-              defaultSource={require('@/assets/images/favicon.png')}
-            />
-            <Text style={styles.userName}>{post.user.name}</Text>
+            <Ionicons name="chevron-back" size={24} color="#000" />
+            <Text style={styles.backButtonText}>Back</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.moreButton}>
-            <Ionicons name="ellipsis-horizontal" size={20} color="#000" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Post Content */}
-        <View style={styles.postContent}>
-          <Text style={styles.contentText}>
-            <Text style={styles.userName}>{post.user.name} </Text>
-            {post.caption || post.content}
-          </Text>
-          {post.caption && post.content && post.caption !== post.content && (
-            <Text style={styles.additionalContent}>
-              {post.content}
-            </Text>
-          )}
-        </View>
-
-        {/* Post media – supports multiple images / videos (Instagram-style) */}
-        {post.media && post.media.length > 0 && (
-          <View style={styles.mediaContainer}>
-            {/* Sort media exactly like in PostListItem */}
-            {(() => {
-              const sortedMedia = [...post.media].sort((a, b) => {
-                if (a.type === 'video' && b.type !== 'video') return 1;
-                if (a.type !== 'video' && b.type === 'video') return -1;
-                return 0;
-              });
-
-              return sortedMedia.length === 1 ? (
-                <TouchableOpacity onPress={() => service.openMediaViewer(0)}>
-                  {sortedMedia[0].type === 'video' ? (
-                    <VideoView
-                      player={useVideoPlayer(
-                        `${getApiBaseImage()}/storage/${sortedMedia[0].file_path}`
-                      )}
-                      style={styles.singleMedia}
-                      contentFit="cover"
-                      nativeControls={false}
-                    />
-                  ) : (
-                    <Image
-                      source={{ uri: `${getApiBaseImage()}/storage/${sortedMedia[0].file_path}` }}
-                      style={styles.singleMedia}
-                      resizeMode="cover"
-                    />
-                  )}
-                </TouchableOpacity>
-              ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  {sortedMedia.map((media, index) => (
-                    <TouchableOpacity
-                      key={`${media.id}-${index}`}
-                      onPress={() => service.openMediaViewer(index)}
-                      style={styles.multiMediaItem}
-                    >
-                      {media.type === 'video' ? (
-                        <VideoView
-                          player={useVideoPlayer(
-                            `${getApiBaseImage()}/storage/${media.file_path}`
-                          )}
-                          style={styles.multiMediaContent}
-                          contentFit="cover"
-                          nativeControls={false}
-                        />
-                      ) : (
-                        <Image
-                          source={{ uri: `${getApiBaseImage()}/storage/${media.file_path}` }}
-                          style={styles.multiMediaContent}
-                          resizeMode="cover"
-                        />
-                      )}
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              );
-            })()}
+          <Text style={styles.headerTitle}>Post</Text>
+          <View style={styles.headerSpacer}>
+            <TouchableOpacity 
+              onPress={handleSharePost}
+              style={styles.headerIcon}
+            >
+              <Ionicons name="share-outline" size={22} color="#000" />
+            </TouchableOpacity>
           </View>
-        )}
+        </BlurView>
 
-        {/* Post Actions */}
-        <View style={styles.postActions}>
-          <View style={styles.leftActions}>
-            {groupedReactions.length === 0 && (
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+        >
+          {/* Post Header */}
+          <View style={styles.postHeader}>
+            <TouchableOpacity
+              style={styles.userInfo}
+              onPress={() => handleProfilePress(post.user.id.toString())}
+            >
+              <Image
+                source={{
+                  uri: `${getApiBaseImage()}/storage/${post.user.profile_photo}`,
+                  cache: 'force-cache'
+                }}
+                style={styles.userAvatar}
+                defaultSource={require('@/assets/images/favicon.png')}
+              />
+              <Text style={styles.userName}>{post.user.name}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.moreButton} onPress={handleOpenMenu}>
+              <Ionicons name="ellipsis-horizontal" size={20} color="#000" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Post Content */}
+          <View style={styles.postContent}>
+            <Text style={styles.contentText}>
+              <Text style={styles.userName}>{post.user.name} </Text>
+              {post.caption || post.content}
+            </Text>
+            {post.caption && post.content && post.caption !== post.content && (
+              <Text style={styles.additionalContent}>
+                {post.content}
+              </Text>
+            )}
+          </View>
+
+          {/* Post media – Premium Gallery */}
+          {post.media && post.media.length > 0 && (
+            <View style={styles.premiumMediaContainer}>
+              {(() => {
+                const sortedMedia = [...post.media].sort((a, b) => {
+                  if (a.type === 'video' && b.type !== 'video') return 1;
+                  if (a.type !== 'video' && b.type === 'video') return -1;
+                  return 0;
+                });
+
+                const containerWidth = Dimensions.get('window').width * (Platform.OS === 'web' ? 0.8 : 1.0);
+
+                return (
+                  <>
+                    <FlatList
+                      data={sortedMedia}
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      snapToInterval={containerWidth}
+                      snapToAlignment="start"
+                      decelerationRate="fast"
+                      onMomentumScrollEnd={(e) => {
+                        const index = Math.round(e.nativeEvent.contentOffset.x / containerWidth);
+                        setActiveMediaIndex(index);
+                      }}
+                      keyExtractor={(item, index) => `${item.id}-${index}`}
+                      renderItem={({ item, index }) => {
+                        const mediaUrl = (item.file_path || item.url).startsWith('http') 
+                          ? (item.file_path || item.url) 
+                          : `${getApiBaseImage()}/storage/${item.file_path}`;
+                          
+                        if (item.type === 'video') {
+                          return (
+                            <View style={{ width: containerWidth }}>
+                              <VideoCarouselItem uri={mediaUrl} index={index} service={{...service, openMediaViewer: handleOpenMediaViewer}} styles={styles} />
+                            </View>
+                          );
+                        }
+                        return (
+                          <View style={{ width: containerWidth }}>
+                            <ImageCarouselItem uri={mediaUrl} index={index} service={{...service, openMediaViewer: handleOpenMediaViewer}} styles={styles} />
+                          </View>
+                        );
+                      }}
+                    />
+                    {sortedMedia.length > 1 && (
+                      <View style={styles.paginationContainer}>
+                        {sortedMedia.map((_, i) => (
+                          <View
+                            key={i}
+                            style={[
+                              styles.paginationDot,
+                              activeMediaIndex === i && styles.paginationDotActive
+                            ]}
+                          />
+                        ))}
+                      </View>
+                    )}
+                  </>
+                );
+              })()}
+            </View>
+          )}
+
+          {/* Post Actions */}
+          <View style={styles.postActions}>
+            <View style={styles.leftActions}>
+              {groupedReactions.length === 0 && (
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => {
+                    setCurrentReactingItem({ postId: post.id });
+                    setIsEmojiPickerOpen(true);
+                  }}
+                >
+                  <Ionicons
+                    name={userHasReacted ? "heart" : "heart-outline"}
+                    size={28}
+                    color={userHasReacted ? "#ff3040" : "#000"}
+                  />
+                </TouchableOpacity>
+              )}
 
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => {
-                  setCurrentReactingItem({ postId: post.id });
-                  setIsEmojiPickerOpen(true);
+                  setShowComments(true);
+                  setTimeout(() => {
+                    commentsSectionRef.current?.measure((x, y, width, height, pageX, pageY) => {
+                      scrollViewRef.current?.scrollTo({ y: pageY - 100, animated: true });
+                    });
+                  }, 100);
                 }}
               >
-                <Ionicons
-                  name={userHasReacted ? "heart" : "heart-outline"}
-                  size={28}
-                  color={userHasReacted ? "#ff3040" : "#000"}
-                />
+                <Ionicons name="chatbubble-outline" size={26} color="#000" />
+                {post.comments_count > 0 && (
+                  <View style={styles.commentCountBadge}>
+                    <Text style={styles.commentCountText}>{post.comments_count}</Text>
+                  </View>
+                )}
               </TouchableOpacity>
-            )
-            }
 
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => {
-                setShowComments(true);
-                setTimeout(() => {
-                  commentsSectionRef.current?.measure((x, y, width, height, pageX, pageY) => {
-                    scrollViewRef.current?.scrollTo({ y: pageY - 100, animated: true });
-                  });
-                }, 100);
-              }}
-            >
-              <Ionicons name="chatbubble-outline" size={26} color="#000" />
-              {post.comments_count > 0 && (
-                <View style={styles.commentCountBadge}>
-                  <Text style={styles.commentCountText}>{post.comments_count}</Text>
+              <TouchableOpacity style={styles.actionButton} onPress={handleSharePost}>
+                <Ionicons name="paper-plane-outline" size={26} color="#000" />
+              </TouchableOpacity>
+
+              {/* Post Reactions */}
+              {groupedReactions.length > 0 && (
+                <View style={styles.reactionsContainer}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View style={styles.reactionsList}>
+                      {groupedReactions.map((reaction, index) => {
+                        const isMyReaction = reaction.user_ids.includes(Number(user?.id));
+                        return (
+                          <TouchableOpacity
+                            key={index}
+                            style={[
+                              styles.reactionItem,
+                              isMyReaction && styles.reactionItemMine
+                            ]}
+                            onPress={() => isMyReaction ? handleDeletePostReaction() : handleReact(reaction.emoji)}
+                          >
+                            <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
+                            {reaction.count > 1 && (
+                              <Text style={[
+                                styles.reactionCount,
+                                isMyReaction && styles.reactionCountMine
+                              ]}>
+                                {reaction.count}
+                              </Text>
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                      <TouchableOpacity
+                        style={styles.addReactionButton}
+                        onPress={() => {
+                          setCurrentReactingItem({ postId: post.id });
+                          setIsEmojiPickerOpen(true);
+                        }}
+                      >
+                        <Ionicons name="add" size={16} color="#666" />
+                      </TouchableOpacity>
+                    </View>
+                  </ScrollView>
                 </View>
               )}
+            </View>
+            <TouchableOpacity style={styles.actionButton} onPress={handleBookmarkPost}>
+              <Ionicons name="bookmark-outline" size={26} color="#000" />
             </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionButton} onPress={handleSharePost}>
-              <Ionicons name="paper-plane-outline" size={26} color="#000" />
-            </TouchableOpacity>
-            {/* Post Reactions */}
-            {groupedReactions.length > 0 && (
-              <View style={styles.reactionsContainer}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View style={styles.reactionsList}>
-                    {groupedReactions.map((reaction, index) => {
-                      const isMyReaction = reaction.user_ids.includes(Number(user?.id));
-                      return (
-                        <TouchableOpacity
-                          key={index}
-                          style={[
-                            styles.reactionItem,
-                            isMyReaction && styles.reactionItemMine
-                          ]}
-                          onPress={() => isMyReaction ? handleDeletePostReaction() : handleReact(reaction.emoji)}
-                        >
-                          <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
-                          {reaction.count > 1 && (
-                            <Text style={[
-                              styles.reactionCount,
-                              isMyReaction && styles.reactionCountMine
-                            ]}>
-                              {reaction.count}
-                            </Text>
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })}
-                    <TouchableOpacity
-                      style={styles.addReactionButton}
-                      onPress={() => {
-                        setCurrentReactingItem({ postId: post.id });
-                        setIsEmojiPickerOpen(true);
-                      }}
-                    >
-                      <Ionicons name="add" size={16} color="#666" />
-                    </TouchableOpacity>
-                  </View>
-                </ScrollView>
-              </View>
-            )}
           </View>
-          <TouchableOpacity style={styles.actionButton} onPress={handleBookmarkPost}>
-            <Ionicons name="bookmark-outline" size={26} color="#000" />
-          </TouchableOpacity>
-        </View>
 
+          {/* Comments Section */}
+          <View style={styles.commentsSection}>
+            <TouchableOpacity
+              style={styles.commentsHeader}
+              onPress={() => setShowComments(!showComments)}
+            >
+              <Text style={styles.commentsTitle}>
+                Comments • {post.comments_count || 0}
+              </Text>
+              <Ionicons
+                name={showComments ? "chevron-up" : "chevron-down"}
+                size={20}
+                color="#666"
+              />
+            </TouchableOpacity>
 
-        {/* Post Stats */}
-        {/* <View style={styles.postStats}>
-          <Text style={styles.likesCount}>{post.reactions_count || 0} Reactions</Text>
-          <Text style={styles.timestamp}>
-            {post.created_at ? new Date(post.created_at).toLocaleDateString() : 'Recently'}
-          </Text>
-        </View> */}
-
-        {/* Comments Section */}
-        <View style={styles.commentsSection}>
-          <TouchableOpacity
-            style={styles.commentsHeader}
-            onPress={() => setShowComments(!showComments)}
-          >
-            <Text style={styles.commentsTitle}>
-              Comments • {post.comments_count || 0}
-            </Text>
-            <Ionicons
-              name={showComments ? "chevron-up" : "chevron-down"}
-              size={20}
-              color="#666"
-            />
-          </TouchableOpacity>
-
-          {showComments && (
-            <Animated.View style={[styles.highlightContainer, { backgroundColor: interpolatedBackgroundColor }]}>
+            <Animated.View 
+              ref={commentsSectionRef}
+              style={[styles.highlightContainer, { backgroundColor: interpolatedBackgroundColor }]}
+            >
               <RenderComments
                 user={user}
                 service={{
@@ -548,47 +619,104 @@ const PostDetailScreen = () => {
                 onDeleteCommentReaction={handleDeleteCommentReaction}
                 onDeleteComment={handleDeleteComment}
                 highlightedCommentId={highlightedCommentId}
+                onCommentLayout={handleCommentLayout}
               />
             </Animated.View>
-          )}
-        </View>
-      </ScrollView>
+          </View>
+        </ScrollView>
 
-      {/* Comment Input */}
-      <View style={styles.commentInputContainer}>
-        <Image
-          source={{
-            uri: user?.profile_photo
-              ? `${getApiBaseImage()}/storage/${user.profile_photo}`
-              : require('@/assets/images/favicon.png')
-          }}
-          style={styles.currentUserAvatar}
-          defaultSource={require('@/assets/images/favicon.png')}
-        />
-        <TextInput
-          style={styles.commentInput}
-          placeholder="Add a comment..."
-          value={commentText}
-          onChangeText={setCommentText}
-          multiline
-          maxLength={500}
-        />
-        <TouchableOpacity
-          style={[
-            styles.postButton,
-            (!commentText.trim() || isSubmitting) && styles.postButtonDisabled
-          ]}
-          onPress={handleSubmitComment}
-          disabled={!commentText.trim() || isSubmitting}
-        >
-          <Text style={[
-            styles.postButtonText,
-            (!commentText.trim() || isSubmitting) && styles.postButtonTextDisabled
-          ]}>
-            Post
-          </Text>
-        </TouchableOpacity>
+        {/* Comment Input */}
+        <View style={styles.commentInputContainer}>
+          <Image
+            source={{
+              uri: user?.profile_photo
+                ? `${getApiBaseImage()}/storage/${user.profile_photo}`
+                : require('@/assets/images/favicon.png')
+            }}
+            style={styles.currentUserAvatar}
+            defaultSource={require('@/assets/images/favicon.png')}
+          />
+          <TextInput
+            style={styles.commentInput}
+            placeholder="Add a comment..."
+            value={commentText}
+            onChangeText={setCommentText}
+            multiline
+            maxLength={500}
+          />
+          <TouchableOpacity
+            style={[
+              styles.postButton,
+              (!commentText.trim() || isSubmitting) && styles.postButtonDisabled
+            ]}
+            onPress={handleSubmitComment}
+            disabled={!commentText.trim() || isSubmitting}
+          >
+            <Text style={[
+              styles.postButtonText,
+              (!commentText.trim() || isSubmitting) && styles.postButtonTextDisabled
+            ]}>
+              Post
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* Overlays & Modals */}
+      <PostMenu
+        visible={menuVisible}
+        onClose={() => setMenuVisible(false)}
+        onDelete={() => {
+          setMenuVisible(false);
+          if (post) service.handleDelete(post.id);
+        }}
+          onEdit={() => {
+            setMenuVisible(false);
+            if (post) service.handleEdit(post as any);
+          }}
+        onReport={() => {
+          setMenuVisible(false);
+          service.handleReport();
+        }}
+          isOwner={post ? service.isOwner(post.user.id) : false}
+          anchorPosition={menuPosition}
+        />
+
+        {post && (
+          <MediaViewer
+            visible={mediaViewerVisible}
+            mediaItems={post.media as any}
+            startIndex={mediaViewerIndex}
+            onClose={() => setMediaViewerVisible(false)}
+            post={post as any}
+            getApiBaseImage={getApiBaseImage}
+            onNavigateNext={() => {}} 
+            onNavigatePrev={() => {}} 
+            onReact={handleReact}
+            onDeleteReaction={handleDeletePostReaction}
+            onRepost={() => {}} 
+            onShare={handleSharePost}
+            onBookmark={handleBookmarkPost}
+            onCommentPress={() => {
+              setMediaViewerVisible(false);
+              setShowComments(true);
+              setTimeout(() => {
+                commentsSectionRef.current?.measure((x, y, width, height, pageX, pageY) => {
+                  scrollViewRef.current?.scrollTo({ y: pageY - 100, animated: true });
+                });
+              }, 300);
+            }}
+            onDoubleTap={() => handleReact('❤️')}
+            currentReactingItem={currentReactingItem}
+            setCurrentReactingItem={setCurrentReactingItem}
+            setIsEmojiPickerOpen={setIsEmojiPickerOpen}
+            // @ts-ignore
+            onCommentSubmit={async (content) => commentOnPost(post.id, content)}
+            getGroupedReactions={(p) => service.getGroupedReactions(p as any)}
+            handleReactComment={(emoji) => {}} 
+            deleteCommentReaction={(emoji) => {}} 
+          />
+        )}
 
       {/* Emoji Picker */}
       <EmojiPicker
@@ -614,32 +742,48 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+    alignItems: 'center', // Center on web
+  },
+  webWrapper: {
+    width: '100%',
+    maxWidth: Platform.OS === 'web' ? '80%' : '100%',
+    flex: 1,
+    backgroundColor: '#fff',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#dbdbdb',
-    backgroundColor: '#fff',
+    paddingTop: Platform.OS === 'ios' ? 50 : 12,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    zIndex: 10,
+  },
+  headerIcon: {
+    padding: 4,
   },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
   },
   backButtonText: {
     fontSize: 16,
-    marginLeft: 4,
     color: '#000',
+    fontWeight: '500',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.4,
   },
   headerSpacer: {
-    width: 60, // Balance the header layout
+    width: 60,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
   },
   scrollView: {
     flex: 1,
@@ -672,9 +816,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#dbdbdb',
+    padding: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
   },
   userInfo: {
     flexDirection: 'row',
@@ -698,41 +842,61 @@ const styles = StyleSheet.create({
     height: 400,
     backgroundColor: '#fafafa',
   },
-  mediaContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'center',
-    marginTop: 8,
-    overflow: 'hidden',
-  },
-  singleMedia: {
-    aspectRatio: 16 / 9,
+  premiumMediaContainer: {
     width: '100%',
+    backgroundColor: '#000',
+    position: 'relative',
   },
-  singleMediaContent: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 8,
-  },
-  multiMediaItem: {
-    width: Dimensions.get('window').width * 0.5,
+  carouselItem: {
+    width: Platform.OS === 'web' ? Dimensions.get('window').width * 0.8 : Dimensions.get('window').width,
     aspectRatio: 1,
-    marginHorizontal: 4,
-    maxWidth: Platform.OS === 'web' ? 400 : Dimensions.get('window').width * 0.5,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  multiMediaContent: {
+  carouselMedia: {
     width: '100%',
     height: '100%',
-    borderRadius: 8,
+  },
+  videoWrapper: {
+    width: '100%',
+    height: '100%',
+    position: 'relative',
+  },
+  videoPlayOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+  },
+  paginationContainer: {
+    flexDirection: 'row',
+    position: 'absolute',
+    bottom: 20,
+    alignSelf: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  paginationDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.4)',
+  },
+  paginationDotActive: {
+    backgroundColor: '#fff',
+    width: 14,
   },
   postActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#dbdbdb',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
   },
   leftActions: {
     flexDirection: 'row',
@@ -805,13 +969,14 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   postContent: {
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#dbdbdb',
+    padding: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
   },
   contentText: {
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: 15,
+    lineHeight: 20,
+    color: '#000',
   },
   additionalContent: {
     fontSize: 14,

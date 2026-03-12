@@ -1439,7 +1439,7 @@ class CollaborationService {
   // Message handling functions
   async sendMessage(spaceId: string, messageData: {
     content: string;
-    type?: 'text' | 'image' | 'video' | 'file' | 'voice' | 'poll' | 'album';
+    type?: 'text' | 'image' | 'video' | 'file' | 'voice' | 'poll' | 'album' | 'post_share';
     file_path?: string;
     metadata?: any;
     reply_to_id?: string;

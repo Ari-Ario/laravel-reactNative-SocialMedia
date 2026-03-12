@@ -39,9 +39,15 @@ const CallsPanel = ({ visible, onClose, anchorPosition }: CallsPanelProps) => {
 
         if (item.spaceId || item.data?.space_id) {
             const spaceId = item.spaceId || item.data?.space_id;
+            const callId = item.data?.call_id || item.data?.call?.id || 'active';
+            
             router.push({
                 pathname: '/(spaces)/[id]',
-                params: { id: spaceId, tab: 'meeting' }
+                params: { 
+                    id: spaceId, 
+                    tab: 'meeting',
+                    call: callId
+                }
             });
         }
         onClose();

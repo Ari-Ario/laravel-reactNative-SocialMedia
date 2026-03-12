@@ -647,7 +647,8 @@ export const usePostListService = (user: any) => {
 
   // Check if user is owner
   const isOwner = (postUserId: number | string) => {
-    return user?.id === postUserId;
+    if (!user?.id || !postUserId) return false;
+    return String(user.id) === String(postUserId);
   };
 
   return {

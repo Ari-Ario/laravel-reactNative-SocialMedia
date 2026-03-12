@@ -9,11 +9,15 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
+import { BlurView } from 'expo-blur';
 import Avatar from '@/components/Image/Avatar';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import PollViewer from './PollViewer';
+import { router } from 'expo-router';
+import { createShadow } from '@/utils/styles';
 
 interface MessageBubbleProps {
   message: {
@@ -301,6 +305,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         );
       }
 
+      case 'post_share':
+        return null; // Handled by specialized block below
+
       case 'text':
       default:
         // Use translation if provided
@@ -450,6 +457,213 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         </TouchableOpacity>
       );
     }
+  }
+  // ────────────────────────────────────────────────────────────────────────────
+
+  // ── Post Share messages: Premium Instagram-style card ──
+  if (message.type === 'post_share') {
+    const metadata = message.metadata || {};
+    const postId = metadata.post_id;
+    const creatorName = metadata.creator_name || 'Anonymous';
+    const creatorAvatar = metadata.creator_avatar;
+    const allMedia = metadata.media || [];
+    const caption = metadata.caption;
+    const sharedMessage = metadata.shared_message;
+
+    const handlePostPress = () => {
+      if (postId) {
+        router.push({ pathname: '/post/[id]', params: { id: postId } });
+      }
+    };
+
+    const renderMediaCollection = () => {
+      if (!allMedia || allMedia.length === 0) {
+        return (
+          <View style={styles.sharedPostPlaceholder}>
+            <Ionicons name="document-text-outline" size={40} color="#ccc" />
+          </View>
+        );
+      }
+
+      if (allMedia.length === 1) {
+        const item = allMedia[0];
+        const mediaUrl = (item.file_path || item.url).startsWith('http') 
+          ? (item.file_path || item.url) 
+          : `${getApiBaseImage()}/storage/${item.file_path || item.url}`;
+        
+        return (
+          <View style={styles.sharedPostMediaContainer}>
+            <Image 
+              source={{ uri: mediaUrl }} 
+              style={styles.sharedPostMedia} 
+              resizeMode="cover"
+            />
+            {item.type === 'video' && (
+              <View style={styles.playIconOverlay}>
+                <Ionicons name="play" size={42} color="white" />
+              </View>
+            )}
+            <View style={styles.mediaTypeBadge}>
+               <Ionicons 
+                 name={item.type === 'video' ? "videocam" : "image"} 
+                 size={12} 
+                 color="white" 
+               />
+            </View>
+          </View>
+        );
+      }
+
+      const displayMedia = allMedia.slice(0, 4);
+      const remainingCount = allMedia.length - 4;
+
+      return (
+        <View style={styles.mediaGrid}>
+          {displayMedia.map((item: any, index: number) => {
+            const mediaUrl = (item.file_path || item.url).startsWith('http') 
+              ? (item.file_path || item.url) 
+              : `${getApiBaseImage()}/storage/${item.file_path || item.url}`;
+            
+            return (
+              <View 
+                key={index} 
+                style={[
+                  styles.gridItem,
+                  allMedia.length === 2 && styles.gridItemHalf,
+                  allMedia.length === 3 && index === 0 && styles.gridItemFullWidth,
+                ]}
+              >
+                <Image 
+                  source={{ uri: mediaUrl }} 
+                  style={styles.gridImage} 
+                  resizeMode="cover"
+                />
+                {item.type === 'video' && (
+                  <View style={styles.playIconOverlaySmall}>
+                    <Ionicons name="play" size={20} color="white" />
+                  </View>
+                )}
+                {index === 3 && remainingCount > 0 && (
+                  <View style={styles.remainingOverlay}>
+                    <Text style={styles.remainingText}>+{remainingCount}</Text>
+                  </View>
+                )}
+              </View>
+            );
+          })}
+        </View>
+      );
+    };
+
+    const renderPostCard = () => (
+      <TouchableOpacity
+        ref={bubbleRef}
+        activeOpacity={0.9}
+        onPress={handlePostPress}
+        onLongPress={() => {
+          if (onLongPressWithPosition) {
+            bubbleRef.current?.measure((_x, _y, width, _height, pageX, pageY) => {
+              onLongPressWithPosition(message, pageX + width / 2, pageY);
+            });
+          } else if (onLongPress) {
+            onLongPress();
+          }
+        }}
+        delayLongPress={200}
+        style={[
+          styles.sharedPostContainer,
+          isCurrentUser ? styles.currentUserSharedPost : styles.otherUserSharedPost,
+          isSelected && styles.selectedContainer,
+          sharedMessage && { borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderWidth: 0 }
+        ]}
+      >
+        <BlurView intensity={20} tint="light" style={styles.sharedPostHeader}>
+          <Avatar 
+            source={creatorAvatar} 
+            size={24} 
+            name={creatorName}
+            showStatus={false}
+          />
+          <Text style={styles.sharedPostCreatorName} numberOfLines={1}>
+            {creatorName}
+          </Text>
+          <Ionicons name="chevron-forward" size={12} color="#8E8E93" style={{marginLeft: 'auto'}} />
+        </BlurView>
+
+        {renderMediaCollection()}
+
+        <View style={styles.sharedPostFooter}>
+           <Text style={styles.sharedPostCaption} numberOfLines={2}>
+              <Text style={styles.sharedPostCreatorLabel}>{creatorName} </Text>
+              {caption}
+           </Text>
+           <View style={styles.sharedPostMeta}>
+              <Text style={styles.sharedPostTime}>
+                {formatTime(message.created_at)}
+              </Text>
+           </View>
+        </View>
+        
+        {!sharedMessage && renderReactions()}
+      </TouchableOpacity>
+    );
+
+    return (
+      <View style={[
+        styles.container,
+        isCurrentUser ? styles.currentUserContainer : styles.otherUserContainer,
+      ]}>
+        {!isCurrentUser && showAvatar && (
+          <View style={styles.avatarContainer}>
+            <Avatar
+              source={message.user?.profile_photo}
+              size={32}
+              name={message.user?.name}
+              showStatus={false}
+            />
+          </View>
+        )}
+
+        {sharedMessage ? (
+          <View style={[
+            styles.wrappedShareContainer,
+            isCurrentUser ? styles.currentUserWrappedShare : styles.otherUserWrappedShare,
+            isSelected && styles.selectedContainer
+          ]}>
+            {renderPostCard()}
+            <View style={styles.appendedMessageContainer}>
+               <Text style={styles.appendedMessageText}>{sharedMessage}</Text>
+               <View style={styles.appendedMessageMeta}>
+                  <Text style={styles.appendedMessageTime}>
+                    {formatTime(message.created_at)}
+                  </Text>
+                  {isCurrentUser && (
+                    <Ionicons
+                      name="checkmark-done"
+                      size={12}
+                      color="rgba(255,255,255,0.8)"
+                    />
+                  )}
+               </View>
+            </View>
+            {renderReactions()}
+          </View>
+        ) : (
+          renderPostCard()
+        )}
+
+        {isCurrentUser && showAvatar && (
+          <View style={styles.avatarContainer}>
+            <Avatar
+              source={message.user?.profile_photo}
+              size={32}
+              name={message.user?.name}
+              showStatus={false}
+            />
+          </View>
+        )}
+      </View>
+    );
   }
   // ────────────────────────────────────────────────────────────────────────────
 
@@ -805,9 +1019,140 @@ const styles = StyleSheet.create({
   },
   pollFallbackText: {
     fontSize: 14,
-    color: '#444',
+    color: '#007AFF',
     fontWeight: '600',
     flex: 1,
+  },
+  // Shared Post Styles
+  sharedPostContainer: {
+    width: 280,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: 'rgba(229, 229, 234, 0.5)',
+    ...createShadow({
+      width: 0,
+      height: 8,
+      opacity: 0.12,
+      radius: 12,
+      elevation: 10,
+    }),
+  },
+  currentUserSharedPost: {
+    borderBottomRightRadius: 6,
+  },
+  otherUserSharedPost: {
+    borderBottomLeftRadius: 6,
+  },
+  sharedPostHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    gap: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.65)',
+  },
+  sharedPostCreatorName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1C1C1E',
+  },
+  sharedPostMediaContainer: {
+    width: '100%',
+    aspectRatio: 1,
+    backgroundColor: '#F2F2F7',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  sharedPostMedia: {
+    width: '100%',
+    height: '100%',
+  },
+  mediaTypeBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    padding: 4,
+    borderRadius: 6,
+  },
+  mediaGrid: {
+    width: '100%',
+    aspectRatio: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 1,
+    backgroundColor: '#fff',
+  },
+  gridItem: {
+    width: '49.8%',
+    height: '49.8%',
+    position: 'relative',
+  },
+  gridItemHalf: {
+    width: '49.8%',
+    height: '100%',
+  },
+  gridItemFullWidth: {
+    width: '100%',
+    height: '49.8%',
+  },
+  gridImage: {
+    width: '100%',
+    height: '100%',
+  },
+  remainingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  remainingText: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  playIconOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.15)',
+  },
+  playIconOverlaySmall: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.1)',
+  },
+  sharedPostPlaceholder: {
+    width: '100%',
+    aspectRatio: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F2F2F7',
+  },
+  sharedPostFooter: {
+    padding: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+  },
+  sharedPostCaption: {
+    fontSize: 14,
+    color: '#2C2C2E',
+    lineHeight: 20,
+  },
+  sharedPostCreatorLabel: {
+    fontWeight: '800',
+    color: '#000',
+  },
+  sharedPostMeta: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sharedPostTime: {
+    fontSize: 11,
+    color: '#8E8E93',
+    fontWeight: '500',
   },
   /* ── Reply Header Styles ── */
   replyHeaderContainer: {
@@ -850,6 +1195,46 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF9C4', // Soft yellow highlight
     borderWidth: 1,
     borderColor: '#FBC02D',
+  },
+  wrappedShareContainer: {
+    backgroundColor: '#007AFF', // Standard blue for the "cover"
+    borderRadius: 20,
+    overflow: 'hidden',
+    width: 280,
+    ...createShadow({
+      width: 0,
+      height: 4,
+      opacity: 0.15,
+      radius: 8,
+      elevation: 5,
+    }),
+  },
+  currentUserWrappedShare: {
+    borderBottomRightRadius: 6,
+  },
+  otherUserWrappedShare: {
+    borderBottomLeftRadius: 6,
+  },
+  appendedMessageContainer: {
+    padding: 12,
+    paddingTop: 8,
+  },
+  appendedMessageText: {
+    color: '#fff',
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '500',
+  },
+  appendedMessageMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: 4,
+    gap: 4,
+  },
+  appendedMessageTime: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.7)',
   },
 });
 

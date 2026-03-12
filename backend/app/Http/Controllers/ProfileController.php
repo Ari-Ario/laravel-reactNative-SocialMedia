@@ -9,6 +9,7 @@ use App\Models\Follower;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class ProfileController extends Controller
 {
@@ -148,7 +149,7 @@ class ProfileController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('PostController@show error: '.$e->getMessage());
+            Log::error('PostController@show error: '.$e->getMessage());
             return response()->json(['error' => 'Server error'], 500);
         }
     }
@@ -189,7 +190,7 @@ class ProfileController extends Controller
                 'message' => $message
             ]);
         } catch (\Exception $e) {
-            \Log::error('Follow action failed: ' . $e->getMessage(), [
+            Log::error('Follow action failed: ' . $e->getMessage(), [
                 'userId' => $userId,
                 'action' => $request->action,
                 'error' => $e->getTraceAsString(),
@@ -251,4 +252,52 @@ public function following(Request $request) {
     return response()->json($following);
 }
 
+    /**
+     * Block a user
+     */
+    public function block(Request $request, $userId)
+    {
+        try {
+            $currentUser = Auth::user();
+            if ($currentUser->id == $userId) {
+                return response()->json(['message' => 'You cannot block yourself'], 400);
+            }
+
+            $currentUser->blockedUsers()->syncWithoutDetaching([$userId]);
+            
+            // Optional: Unfollow them automatically when blocking
+            $currentUser->following()->detach($userId);
+            $userToBlock = User::find($userId);
+            if ($userToBlock) {
+                 $userToBlock->following()->detach($currentUser->id);
+            }
+
+            return response()->json([
+                'message' => 'User blocked successfully',
+                'is_blocked' => true
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Block action failed: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to block user'], 500);
+        }
+    }
+
+    /**
+     * Unblock a user
+     */
+    public function unblock($userId)
+    {
+        try {
+            $currentUser = Auth::user();
+            $currentUser->blockedUsers()->detach($userId);
+
+            return response()->json([
+                'message' => 'User unblocked successfully',
+                'is_blocked' => false
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Unblock action failed: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to unblock user'], 500);
+        }
+    }
 }

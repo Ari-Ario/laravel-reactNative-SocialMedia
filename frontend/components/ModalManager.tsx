@@ -6,11 +6,14 @@ import CreatePost from './CreatePost'; // Use your exact component name
 // import DeleteConfirmationModal from './DeleteConfirmationModal';
 import ReportPost from './ReportPost';
 import ProfilePreview from './ProfilePreview';
+import PostShareModal from './PostShareModal';
 
 export default function ModalManager() {
   const { modalType, modalProps, closeModal } = useModal();
 
   switch (modalType) {
+    case 'share':
+      return <PostShareModal visible={true} onClose={closeModal} {...modalProps} />;
     case 'edit':
       return (
         <CreatePost 
@@ -31,8 +34,8 @@ export default function ModalManager() {
     // ... other cases ...
     case 'create':
       return <CreatePost visible={true} onClose={closeModal} {...modalProps} />;
-    case 'delete':
-      return <DeleteConfirmationModal visible={true} onClose={closeModal} {...modalProps} />;
+    // case 'delete':
+    //   return <DeleteConfirmationModal visible={true} onClose={closeModal} {...modalProps} />;
     case 'report':
       return <ReportPost visible={true} onClose={closeModal} {...modalProps} />;
     case 'profile':

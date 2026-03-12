@@ -208,109 +208,6 @@ export const useCollaborationStore = create<CollaborationState>()(
 
         // Update the store based on event type
         switch (type) {
-          case 'message.sent':
-          case 'message.message':
-          case 'space.message':
-          case 'new_message':
-            // Normalize space_id (handle both snake_case and camelCase)
-            const sid = (data.space_id || data.spaceId)?.toString();
-            console.log(`💬 [CollaborationStore] ${type} in space:`, sid);
-            
-            if (sid) {
-              get().incrementUnreadCount(sid);
-              
-              // Also update the updated_at timestamp so the space moves to the top
-              set((state) => ({
-                spaces: state.spaces.map(s => 
-                  s.id.toString() === sid 
-                    ? { ...s, updated_at: new Date().toISOString() } 
-                    : s
-                )
-              }));
-              
-              // We NO LONGER call addNotification here because NotificationStore 
-              // already adds it before bridging to this handler.
-              // This prevents double notifications in the Home header.
-            }
-            break;
-
-
-          case 'space-updated':
-          case 'space.updated':
-          case 'space.update':
-            if (data.space_id && data.space) {
-              get().updateSpace(data.space_id, data.space);
-            }
-            break;
-
-          case 'participant-joined':
-          case 'participant.joined':
-            if (data.space_id) {
-              // Refresh or add participant
-              if (data.user) {
-                get().addParticipant({
-                  ...data.user,
-                  space_id: data.space_id,
-                  role: data.role || 'participant'
-                } as any);
-              }
-            }
-            break;
-
-          case 'magic.triggered':
-          case 'magic_event':
-            if (data.space_id && data.event) {
-              get().addMagicEvent(data.event);
-            }
-            break;
-
-          case 'call-started':
-            if (data.space_id) {
-              get().updateSpace(data.space_id, {
-                is_live: true,
-                current_focus: 'call'
-              });
-
-              const space = get().spaces.find(s => s.id === data.space_id);
-              const callerId = data.caller_id || data.user_id || data.user?.id;
-              const currentUserId = require('@/stores/notificationStore').useNotificationStore.getState().currentUserId;
-
-              if (callerId && currentUserId && callerId == currentUserId) break;
-            }
-            break;
-
-          case 'call-ended':
-            if (data.space_id) {
-              get().updateSpace(data.space_id, {
-                is_live: false,
-                current_focus: null
-              });
-            }
-            break;
-
-          case 'participant-joined':
-          case 'participant-left':
-            if (data.space_id) {
-              // Safe check for method existence
-              if (typeof (get() as any).refreshSpace === 'function') {
-                (get() as any).refreshSpace(data.space_id);
-              }
-            }
-            break;
-
-          case 'poll-created':
-          case 'poll.created':
-            if (data.space_id) {
-              set((state) => ({
-                spaces: state.spaces.map(s => 
-                  s.id.toString() === data.space_id.toString() 
-                    ? { ...s, updated_at: new Date().toISOString() } 
-                    : s
-                )
-              }));
-            }
-            break;
-
           case 'space-read':
             if (data.space_id) {
               // Internal reset/update without API call to avoid loops
@@ -327,6 +224,86 @@ export const useCollaborationStore = create<CollaborationState>()(
                   totalUnreadSpaces: totalUnread
                 };
               });
+            }
+            break;
+
+          case 'message-sent':
+          case 'message.sent':
+          case 'space.message':
+          case 'new_message':
+            const spaceId = (data.space_id || data.spaceId)?.toString();
+            if (spaceId) {
+                const state = get();
+                const spaceExists = state.spaces.some(s => s.id.toString() === spaceId);
+                
+                // If the event carries enough space info, we can use it
+                if (data.space && (data.space.participations || data.space.other_participant)) {
+                    // Normalize space info
+                    const spaceData = { ...data.space };
+                    
+                    // If we have participations but no other_participant, derive it
+                    if (spaceData.participations && !spaceData.other_participant) {
+                        const currentUserId = require('@/stores/notificationStore').useNotificationStore.getState().currentUserId;
+                        const other = spaceData.participations.find((p: any) => p.user_id != currentUserId);
+                        if (other && other.user) {
+                            spaceData.other_participant = other.user;
+                        }
+                    }
+                    
+                    if (spaceExists) {
+                        get().updateSpace(spaceId, spaceData);
+                    } else {
+                        get().addSpace(spaceData);
+                    }
+                } else if (!spaceExists) {
+                    console.log(`🆕 New space detected from message: ${spaceId}. Triggering fetch.`);
+                    const currentUserId = require('@/stores/notificationStore').useNotificationStore.getState().currentUserId;
+                    if (currentUserId) {
+                        get().fetchUserSpaces(currentUserId);
+                    }
+                }
+
+                // Always increment unread count for messages from others
+                // (Though notifications are handled in NotificationStore, we update counts here for UI)
+                get().incrementUnreadCount(spaceId);
+            }
+            break;
+
+          case 'space-updated':
+          case 'space.updated':
+          case 'space.update':
+            if (data.space_id && data.space) {
+              get().updateSpace(data.space_id, data.space);
+            }
+            break;
+
+          case 'participant-joined':
+          case 'participant.joined':
+            if (data.space_id && data.user) {
+              get().addParticipant({
+                ...data.user,
+                space_id: data.space_id,
+                role: data.role || 'participant'
+              } as any);
+            }
+            break;
+
+          case 'magic.triggered':
+          case 'magic_event':
+            if (data.space_id && data.event) {
+              get().addMagicEvent(data.event);
+            }
+            break;
+
+          case 'call-started':
+            if (data.space_id) {
+               get().updateSpace(data.space_id, { is_live: true, current_focus: 'call' });
+            }
+            break;
+
+          case 'call-ended':
+            if (data.space_id) {
+               get().updateSpace(data.space_id, { is_live: false, current_focus: null });
             }
             break;
         }
@@ -477,14 +454,42 @@ export const useCollaborationStore = create<CollaborationState>()(
         totalActivitiesCount: 0
       }),
 
-      updateSpace: (spaceId, updates) => set((state) => ({
-        spaces: state.spaces.map(space =>
-          space.id === spaceId ? { ...space, ...updates } : space
-        ),
-        activeSpace: state.activeSpace?.id === spaceId
-          ? { ...state.activeSpace, ...updates }
-          : state.activeSpace,
-      })),
+      updateSpace: (spaceId, updates) => set((state) => {
+        const spaceIdStr = spaceId.toString();
+        const currentUserId = require('@/stores/notificationStore').useNotificationStore.getState().currentUserId;
+
+        return {
+          spaces: state.spaces.map(space => {
+            if (space.id.toString() === spaceIdStr) {
+               const newSpace = { ...space, ...updates };
+               
+               // Dynamically derive other_participant if it's a direct chat and missing
+               const isDirect = (newSpace.settings?.is_direct || newSpace.space_type === 'direct' || newSpace.space_type === 'chat');
+               if (isDirect && !newSpace.other_participant && newSpace.participations) {
+                 const other = newSpace.participations.find((p: any) => (p.user_id || p.userId) != currentUserId);
+                 if (other) {
+                    const user = other.user || (other as any).user;
+                    if (user) {
+                      newSpace.other_participant = user;
+                    } else if (other.name || (other as any).name) {
+                      // Fallback for flat participation objects
+                      newSpace.other_participant = { 
+                        id: other.user_id || other.userId, 
+                        name: other.name || (other as any).name, 
+                        profile_photo: other.profile_photo || (other as any).profile_photo 
+                      };
+                    }
+                 }
+               }
+               return newSpace;
+            }
+            return space;
+          }),
+          activeSpace: state.activeSpace?.id.toString() === spaceIdStr
+            ? { ...state.activeSpace, ...updates }
+            : state.activeSpace,
+        };
+      }),
 
       updateSpacePermissions: (spaceId, permissions) => set((state) => ({
         spaces: state.spaces.map(space =>

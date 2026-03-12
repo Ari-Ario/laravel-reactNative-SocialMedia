@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { requestRecordingPermissionsAsync, setAudioModeAsync } from 'expo-audio';
 import Animated, {
@@ -59,6 +59,8 @@ interface CallResponse {
 
 const ImmersiveCallView: React.FC<{ spaceId: string }> = ({ spaceId }) => {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const initialCallType = (params.type as string) || 'video';
   const collaborationService = CollaborationService.getInstance();
   const webRTCService = WebRTCService.getInstance();
   const { currentSpace } = useSpaceStore();
@@ -67,7 +69,7 @@ const ImmersiveCallView: React.FC<{ spaceId: string }> = ({ spaceId }) => {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [isMuted, setIsMuted] = useState(false);
-  const [hasVideo, setHasVideo] = useState(true);
+  const [hasVideo, setHasVideo] = useState(initialCallType === 'video');
   const [isSharingScreen, setIsSharingScreen] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [activeSpeaker, setActiveSpeaker] = useState<string | null>(null);
@@ -213,7 +215,7 @@ const ImmersiveCallView: React.FC<{ spaceId: string }> = ({ spaceId }) => {
       console.log('Starting call for space:', spaceId);
 
       // Start call or join existing
-      const response = await collaborationService.startCall(spaceId, 'video') as any;
+      const response = await collaborationService.startCall(spaceId, initialCallType as any) as any;
 
       // Handle response structure
       let callData;

@@ -58,6 +58,10 @@ class SpaceMessageSent implements ShouldBroadcast
         return [
             'space_id' => $this->spaceId,
             'message' => $this->message,
+            'space' => [
+                'id' => $this->spaceId,
+                'participations' => \App\Models\SpaceParticipation::where('space_id', $this->spaceId)->with('user:id,name,username,profile_photo')->get(),
+            ],
             'timestamp' => now()->toISOString(),
         ];
     }

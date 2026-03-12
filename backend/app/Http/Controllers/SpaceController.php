@@ -60,59 +60,24 @@ class SpaceController extends Controller
             /** @var \App\Models\User $user */
             $user = Auth::user();
             
-            // Use eager loading to prevent N+1 queries
-            // Select limited fields to avoid sending huge JSON blobs (like content_state) for list views
             $spaces = CollaborationSpace::forUser($user->id)
                 ->select([
                     'id', 'title', 'description', 'space_type', 'creator_id',
                     'is_live', 'has_ai_assistant', 'linked_conversation_id',
-                    'image_path', 'created_at', 'updated_at', 'content_state'
+                    'image_path', 'created_at', 'updated_at', 'content_state', 'settings'
                 ])
                 ->with(['creator:id,name,profile_photo,username'])
                 ->withCount('participations')
                 ->orderBy('updated_at', 'desc')
                 ->paginate(20);
             
-            // Fetch the user's participation for these spaces in a single query
-            $spaceIds = $spaces->pluck('id')->toArray();
-            $participations = SpaceParticipation::whereIn('space_id', $spaceIds)
-                ->where('user_id', $user->id)
-                ->get()
-                ->keyBy('space_id');
-            
-            $spacesWithParticipation = $spaces->map(function($space) use ($participations) {
-                $participation = $participations->get($space->id);
-                
-                return [
-                    'id' => $space->id,
-                    'title' => $space->title,
-                    'description' => $space->description,
-                    'space_type' => $space->space_type,
-                    'creator_id' => $space->creator_id,
-                    // Omitted content_state and settings to keep payload small
-                    'is_live' => $space->is_live,
-                    'has_ai_assistant' => $space->has_ai_assistant,
-                    'linked_conversation_id' => $space->linked_conversation_id,
-                    'participants_count' => $space->participations_count, // From withCount
-                    'creator' => $space->creator,
-                    'created_at' => $space->created_at,
-                    'updated_at' => $space->updated_at,
-                    'my_role' => $participation ? $participation->role : null,
-                    'image_url' => $space->image_url,
-                    'is_online_in_space' => $participation ? ($participation->presence_data['is_online'] ?? false) : false,
-                    'my_permissions' => $participation ? $participation->permissions : [
-                        'is_muted' => false,
-                        'is_pinned' => false,
-                        'is_archived' => false,
-                        'is_unread' => false,
-                        'is_favorite' => false,
-                    ],
-                    'unread_count' => $participation ? $this->calculateUnreadCount($space, $participation) : 0,
-                ];
+            // Format for frontend using centralized helper
+            $formattedSpaces = $spaces->getCollection()->map(function($space) use ($user) {
+                return $this->formatSpaceData($space, $user);
             });
             
             return response()->json([
-                'spaces' => $spacesWithParticipation,
+                'spaces' => $formattedSpaces,
                 'user_preferences' => [
                     'custom_tabs' => $user->custom_tabs ?? [],
                     'theme_preference' => $user->theme_preference,
@@ -278,7 +243,7 @@ class SpaceController extends Controller
             // event(new SpaceCreated($space, auth()->user()));
 
             return response()->json([
-                'space' => $space->load(['creator']),
+                'space' => $this->formatSpaceData($space, $user),
                 'message' => 'Space created successfully'
             ], 201);
             
@@ -365,7 +330,7 @@ class SpaceController extends Controller
         }
 
         return response()->json([
-            'space' => $space,
+            'space' => $this->formatSpaceData($space, auth()->user()),
             'participation' => $participation,
             'participants' => $space->participations()->with('user')->get(),
             'magic_events' => $space->magicEvents
@@ -459,6 +424,11 @@ class SpaceController extends Controller
             ->get();
             
         $space = $spaces->firstWhere('participations_count', 2);
+            
+        if ($space) {
+            // Ensure both participants are owners (backward compatibility)
+            SpaceParticipation::where('space_id', $space->id)->update(['role' => 'owner']);
+        }
 
         if (!$space) {
             $targetUser = User::find($targetUserId);
@@ -487,7 +457,7 @@ class SpaceController extends Controller
                     'has_ai_assistant' => false,
                 ]);
 
-                // Add both users
+                // Add both users as owners for direct spaces
                 SpaceParticipation::create([
                     'space_id' => $space->id,
                     'user_id' => $user->id,
@@ -497,7 +467,7 @@ class SpaceController extends Controller
                 SpaceParticipation::create([
                     'space_id' => $space->id,
                     'user_id' => $targetUserId,
-                    'role' => 'participant',
+                    'role' => 'owner',
                 ]);
 
                 DB::commit();
@@ -508,7 +478,7 @@ class SpaceController extends Controller
         }
 
         return response()->json([
-            'space' => $space->load('participations.user', 'creator')
+            'space' => $this->formatSpaceData($space, $user)
         ]);
     }
 
@@ -578,11 +548,15 @@ public function update(Request $request, $id)
     // Refresh the space to get updated data
     $space->refresh();
 
-    // Broadcast update event - make sure space is not null
-    broadcast(new SpaceUpdated($space, $user->id))->toOthers();
+    // Broadcast update event
+    try {
+        broadcast(new SpaceUpdated($space, $user->id))->toOthers();
+    } catch (\Exception $e) {
+        Log::warning('Broadcast failed during space update: ' . $e->getMessage());
+    }
 
     return response()->json([
-        'space' => $space,
+        'space' => $this->formatSpaceData($space, $user),
         'message' => 'Space updated successfully'
     ]);
 }
@@ -625,10 +599,14 @@ public function updateContentState(Request $request, $id)
     $space->refresh()->load('creator');
     
     // Broadcast update
-    broadcast(new SpaceUpdated($space, $user->id, ['content_state' => true]))->toOthers();
+    try {
+        broadcast(new SpaceUpdated($space, $user->id, ['content_state' => true]))->toOthers();
+    } catch (\Exception $e) {
+        Log::warning('Broadcast failed during content update: ' . $e->getMessage());
+    }
     
     return response()->json([
-        'space' => $space,
+        'space' => $this->formatSpaceData($space, $user),
         'message' => 'Content updated successfully'
     ]);
 }
@@ -908,12 +886,12 @@ public function startCall(Request $request, $id)
     if ($authUser instanceof \App\Models\User) {
         foreach ($participantIds as $participantId) {
             if ($participantId != $authUser->id) {
-                $user = User::find($participantId);
-                
-                broadcast(new CallStarted($space, $call, $authUser, $user->id))->toOthers();
+                // Individual direct notification on user's private channel
+                broadcast(new CallStarted($space, $call, $authUser, $participantId))->toOthers();
             }
         }
 
+        // General space-wide presence notification
         broadcast(new CallStarted($space, $call, $authUser))->toOthers();
     }
     
@@ -1321,7 +1299,7 @@ public function endCall(Request $request, $id)
     {
         $request->validate([
             'content' => 'nullable|string',
-            'type' => 'sometimes|in:text,image,video,document,voice,poll,album',
+            'type' => 'sometimes|in:text,image,video,document,voice,poll,album,post_share',
             'file_path' => 'sometimes|string',
             'metadata' => 'sometimes|array',
             'reply_to_id' => 'sometimes|nullable|string',
@@ -2796,7 +2774,7 @@ public function endCall(Request $request, $id)
             if ($space->linked_conversation_id) {
                 $conversation = \App\Models\Conversation::find($space->linked_conversation_id);
                 if ($conversation) {
-                    $conversation->messages()->delete();
+                    \App\Models\Message::where('conversation_id', $conversation->id)->delete();
                     $conversation->participants()->detach();
                     $conversation->delete();
                 }
@@ -2976,5 +2954,70 @@ public function endCall(Request $request, $id)
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('System message broadcast failed: ' . $e->getMessage());
         }
+    }
+    /**
+     * Centralized helper to format space data for frontend
+     */
+    private function formatSpaceData($space, $user)
+    {
+        // 1. Get participation for this user
+        $participation = SpaceParticipation::where('space_id', $space->id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        // 2. Decode settings if necessary
+        $settings = is_string($space->settings) ? json_decode($space->settings, true) : $space->settings;
+
+        // 3. For direct chats, find the OTHER participant
+        $otherParticipant = null;
+        $isDirect = ($settings['is_direct'] ?? false) || $space->space_type === 'direct' || $space->space_type === 'chat';
+        
+        if ($isDirect) {
+            $otherParticipation = SpaceParticipation::where('space_id', $space->id)
+                ->where('user_id', '!=', $user->id)
+                ->with('user:id,name,username,profile_photo')
+                ->first();
+            
+            if ($otherParticipation) {
+                $otherParticipant = $otherParticipation->user;
+            }
+        }
+
+        return [
+            'id' => $space->id,
+            'title' => $space->title,
+            'description' => $space->description,
+            'space_type' => $space->space_type,
+            'creator_id' => $space->creator_id,
+            'content_state' => $space->content_state,
+            'activity_metrics' => $space->activity_metrics,
+            'evolution_level' => $space->evolution_level,
+            'unlocked_features' => $space->unlocked_features,
+            'is_live' => $space->is_live,
+            'current_focus' => $space->current_focus,
+            'has_ai_assistant' => $space->has_ai_assistant,
+            'ai_personality' => $space->ai_personality,
+            'ai_capabilities' => $space->ai_capabilities,
+            'linked_conversation_id' => $space->linked_conversation_id,
+            'linked_post_id' => $space->linked_post_id,
+            'linked_story_id' => $space->linked_story_id,
+            'participants_count' => $space->participations_count ?? $space->participations()->count(),
+            'creator' => $space->relationLoaded('creator') ? $space->creator : $space->creator()->select(['id','name','profile_photo','username'])->first(),
+            'created_at' => $space->created_at,
+            'updated_at' => $space->updated_at,
+            'my_role' => $participation ? $participation->role : null,
+            'image_url' => $space->image_url,
+            'is_online_in_space' => $participation ? ($participation->presence_data['is_online'] ?? false) : false,
+            'my_permissions' => $participation ? $participation->permissions : [
+                'is_muted' => false,
+                'is_pinned' => false,
+                'is_archived' => false,
+                'is_unread' => false,
+                'is_favorite' => false,
+            ],
+            'unread_count' => $participation ? $this->calculateUnreadCount($space, $participation) : 0,
+            'other_participant' => $otherParticipant,
+            'settings' => $settings,
+        ];
     }
 }

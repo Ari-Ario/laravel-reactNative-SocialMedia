@@ -111,7 +111,7 @@ class MessagesController extends Controller
             'conversation_id' => 'required_without:space_id|exists:conversations,id',
             'space_id' => 'required_without:conversation_id|exists:collaboration_spaces,id',
             'content' => 'required_without_all:file_path,voice_path|string',
-            'type' => 'required|in:text,image,video,document,voice,poll',
+            'type' => 'required|in:text,image,video,document,voice,poll,post_share',
             'file_path' => 'sometimes|string',
             'voice_path' => 'sometimes|string',
             'reply_to_id' => 'sometimes|exists:messages,id',

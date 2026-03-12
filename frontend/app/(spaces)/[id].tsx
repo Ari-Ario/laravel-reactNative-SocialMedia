@@ -220,10 +220,12 @@ const SpaceDetailScreen = () => {
       setIsPinned(perms.is_pinned || false);
       setIsArchived(perms.is_archived || false);
 
-      // ✅ FIX: Default to chat always, unless tab param explicitly passed
+      // ✅ FIX: Default to chat always, unless tab or call param explicitly passed
       if (!hasInitialTabSet) {
         const validTabs = ['chat', 'whiteboard', 'meeting', 'document', 'brainstorm', 'calendar', 'files', 'ai', 'polls'];
-        if (params.tab && validTabs.includes(params.tab as string)) {
+        if (params.call) {
+          setActiveTab('meeting');
+        } else if (params.tab && validTabs.includes(params.tab as string)) {
           setActiveTab(params.tab as any);
         } else {
           setActiveTab('chat');

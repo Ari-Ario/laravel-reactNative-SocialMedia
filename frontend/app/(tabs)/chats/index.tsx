@@ -543,7 +543,20 @@ const ChatPage = () => {
   const filteredData = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
 
-    // 1. Filtering by Tab
+    // 1. Identify which contacts already have a direct space
+    const directSpaceUserIds = new Set<string | number>(
+      spaces
+        .filter(s => s.spaceData?.other_participant?.id)
+        .map(s => s.spaceData?.other_participant?.id!)
+    );
+
+    // 2. Filter contacts to exclude those already in a direct space
+    const deduplicatedContacts = contacts.filter(c => {
+      // Handle both string and number user_ids
+      return !directSpaceUserIds.has(c.user_id) && !directSpaceUserIds.has(String(c.user_id));
+    });
+
+    // 3. Filtering by Tab
     let activeSpaces = spaces;
 
     switch (activeTab) {
@@ -599,8 +612,8 @@ const ChatPage = () => {
       }
 
       // Only show contacts in the 'all' tab or when searching
-      if (activeTab === 'all' && contacts.length > 0) {
-        sections.push({ title: '👥 Contacts', data: contacts, type: 'contacts' });
+      if (activeTab === 'all' && deduplicatedContacts.length > 0) {
+        sections.push({ title: '👥 Contacts', data: deduplicatedContacts, type: 'contacts' });
       }
       return sections;
     }
@@ -611,7 +624,7 @@ const ChatPage = () => {
       item.spaceData?.description?.toLowerCase().includes(query)
     );
 
-    const localContacts = contacts.filter(item =>
+    const localContacts = deduplicatedContacts.filter(item =>
       item.name.toLowerCase().includes(query) ||
       item.email?.toLowerCase().includes(query) ||
       item.username?.toLowerCase().includes(query)

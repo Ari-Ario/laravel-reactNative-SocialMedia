@@ -64,7 +64,7 @@ export const PostActionButtons = ({
           color={
             !post.comments || post.comments.length === 0
               ? '#888'
-              : post.comments.some(comment => comment.user_id === user?.id)
+              : post.comments.some(comment => String(comment.user_id) === String(user?.id))
                 ? '#10b981'
                 : '#000'
           }

@@ -20,17 +20,25 @@ class CallStarted implements ShouldBroadcast
     public $space;
     public $call;
     public $user;
+    public $toUserId;
 
-    public function __construct(CollaborationSpace $space, Call $call, User $user)
+    public function __construct(CollaborationSpace $space, Call $call, User $user, $toUserId = null)
     {
         $this->space = $space;
         $this->call = $call;
         $this->user = $user;
+        $this->toUserId = $toUserId;
     }
 
     public function broadcastOn()
     {
-        return new PresenceChannel('space.' . $this->space->id);
+        $channels = [new PresenceChannel('space.' . $this->space->id)];
+        
+        if ($this->toUserId) {
+            $channels[] = new PrivateChannel('user.' . $this->toUserId);
+        }
+        
+        return $channels;
     }
 
     public function broadcastAs()

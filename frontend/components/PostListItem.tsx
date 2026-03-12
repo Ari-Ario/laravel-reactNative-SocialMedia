@@ -89,7 +89,11 @@ export default function PostListItem({
 
 
   return (
-    <View style={styles.container}>
+    <Pressable 
+      style={styles.container}
+      onLongPress={service.handleMenuPress}
+      delayLongPress={300}
+    >
 
       {/* Show repost header if this is a repost */}
       {(post.reposts?.length > 0 && (post.reposts[0].user.name !== user?.name)) && (
@@ -217,7 +221,7 @@ export default function PostListItem({
         }}
         onDeleteReaction={() => service.deletePostReaction(post.id)}
         onRepost={() => onRepost(post.id)}
-        onShare={() => onShare(post.id)}
+        onShare={() => openModal('share', { post: currentPost })}
         onBookmark={() => onBookmark(post.id)}
         onCommentPress={() => service.setShowComments(!service.showComments)}
         onDoubleTap={handleDoubleTap}
@@ -244,7 +248,7 @@ export default function PostListItem({
         onReact={(emoji) => service.handleReact(emoji, post.id)}
         onDeleteReaction={() => service.deletePostReaction(post.id)}
         onRepost={() => onRepost(post.id)}
-        onShare={() => onShare(post.id)}
+        onShare={() => openModal('share', { post: currentPost })}
         onBookmark={() => onBookmark(post.id)}
         onCommentPress={() => service.setShowComments(!service.showComments)}
         currentReactingItem={service.currentReactingItem}
@@ -370,7 +374,7 @@ export default function PostListItem({
         onClose={() => service.setReportVisible(false)}
         onReportSubmitted={service.handleReportSubmitted}
       />
-    </View>
+    </Pressable>
   );
 }
 

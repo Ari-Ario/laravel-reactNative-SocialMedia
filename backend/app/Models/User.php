@@ -103,6 +103,44 @@ class User extends Authenticatable
     }
 
     /**
+     * Users that this user has blocked.
+     */
+    public function blockedUsers()
+    {
+        return $this->belongsToMany(User::class, 'blocked_users', 'blocker_id', 'blocked_id')
+            ->withTimestamps();
+    }
+
+    /**
+     * Users that have blocked this user.
+     */
+    public function blockedBy()
+    {
+        return $this->belongsToMany(User::class, 'blocked_users', 'blocked_id', 'blocker_id')
+            ->withTimestamps();
+    }
+
+    /**
+     * Check if this user has blocked another user.
+     */
+    public function hasBlocked($userId)
+    {
+        return $this->blockedUsers()->where(function($q) use ($userId) {
+             $q->where('blocked_id', '=', $userId);
+        })->exists();
+    }
+
+    /**
+     * Check if this user is blocked by another user.
+     */
+    public function isBlockedBy($userId)
+    {
+        return $this->blockedBy()->where(function($q) use ($userId) {
+             $q->where('blocker_id', '=', $userId);
+        })->exists();
+    }
+
+    /**
      * Route notifications for the broadcast channel.
      */
     public function receivesBroadcastNotificationsOn()
