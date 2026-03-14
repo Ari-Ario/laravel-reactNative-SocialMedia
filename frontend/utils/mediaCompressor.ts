@@ -42,29 +42,32 @@ export class MediaCompressor {
       let currentWidth = finalOptions.maxWidth;
       let resultUri = uri;
 
-      // Loop up to 5 times to shrink it under 2MB (targeting 1.9MB for safety)
-      for (let attempt = 0; attempt < 5; attempt++) {
+      // Aggressive compression loop to stay under 2MB
+      // USER REQ: Laravel limit is 2MB, so we target 1.8MB for safety
+      const SAFE_LIMIT = 1.8 * 1024 * 1024;
+
+      for (let attempt = 0; attempt < 6; attempt++) {
+        const fileInfo = await FileSystem.getInfoAsync(resultUri) as any;
+        if (fileInfo.size <= SAFE_LIMIT && attempt > 0) break;
+        if (fileInfo.size <= TWO_MB && !options.maxWidth && attempt === 0) return uri;
+
         const result = await ImageManipulator.manipulateAsync(
           uri,
           [{ resize: { width: currentWidth } }],
           {
             compress: currentQuality,
             format: ImageManipulator.SaveFormat.JPEG,
-            base64: false,
           }
         );
 
         resultUri = result.uri;
         const newFileInfo = await FileSystem.getInfoAsync(resultUri) as any;
-        sizeBytes = newFileInfo.size || 0;
+        
+        if (newFileInfo.size <= SAFE_LIMIT) break;
 
-        if (sizeBytes <= NINETEEN_HUNDRED_KB) {
-          break;
-        }
-
-        // Drop quality and resolution further
-        currentQuality = Math.max(0.1, currentQuality - 0.15);
-        currentWidth = Math.floor(currentWidth * 0.8);
+        // More aggressive drops
+        currentQuality = Math.max(0.1, currentQuality - 0.2);
+        currentWidth = Math.floor(currentWidth * 0.7);
       }
 
       return resultUri;
@@ -80,8 +83,15 @@ export class MediaCompressor {
   ): Promise<string> {
     // Note: Standard Expo doesn't have a high-level video compressor.
     // We rely on ImagePicker.launchImageLibraryAsync with videoExportPreset 
-    // and videoQuality: High which handles the social media standards (1080p H.264).
-    console.log('Video compression handled by Picker presets. Returning URI.');
+    // and videoQuality: Medium/Low which handles the social media standards.
+    // However, we can check the size here.
+    try {
+      const fileInfo = await FileSystem.getInfoAsync(uri) as any;
+      if (fileInfo.size > TWO_MB) {
+        console.warn(`Video is over 2MB (${(fileInfo.size / 1024 / 1024).toFixed(2)}MB). Ensure it's trimmed and quality is reduced.`);
+      }
+    } catch (e) {}
+    
     return uri;
   }
 

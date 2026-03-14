@@ -26,14 +26,15 @@ import getApiBaseImage from '@/services/getApiBaseImage';
 import { useProfileView } from '@/context/ProfileViewContext';
 import { useModal } from '@/context/ModalContext';
 import { usePostStore } from '@/stores/postStore';
-import { VideoView, useVideoPlayer } from 'expo-video';
 import { MediaViewer } from './MediaViewer';
 import React from 'react';
 import { PostActionButtons } from './PostActionButtons';
+import { PostVideoPlayer } from './PostVideoPlayer';
 import { usePostListService } from '@/services/PostListService';
 import RenderComments from './RenderComments';
 import { createShadow } from '@/utils/styles';
 import PusherService from '@/services/PusherService';
+
 
 interface PostListItemProps {
   post: any;
@@ -158,13 +159,10 @@ export default function PostListItem({
           {sortedMedia.length === 1 ? (
             <TouchableOpacity onPress={() => service.openMediaViewer(0)}>
               {sortedMedia[0].type === 'video' ? (
-                <VideoView
-                  player={useVideoPlayer(
-                    `${getApiBaseImage()}/storage/${sortedMedia[0].file_path}`
-                  )}
+                <PostVideoPlayer
+                  uri={`${getApiBaseImage()}/storage/${sortedMedia[0].file_path}`}
                   style={styles.singleMedia}
                   contentFit="cover"
-                  nativeControls={false}
                 />
               ) : (
                 <Image
@@ -183,13 +181,10 @@ export default function PostListItem({
                   style={styles.multiMediaItem}
                 >
                   {media.type === 'video' ? (
-                    <VideoView
-                      player={useVideoPlayer(
-                        `${getApiBaseImage()}/storage/${media.file_path}`
-                      )}
+                    <PostVideoPlayer
+                      uri={`${getApiBaseImage()}/storage/${media.file_path}`}
                       style={styles.multiMediaContent}
                       contentFit="cover"
-                      nativeControls={false}
                     />
                   ) : (
                     <Image

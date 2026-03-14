@@ -89,7 +89,7 @@ const Page = () => {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 1,
@@ -125,7 +125,7 @@ const Page = () => {
     }
 
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 1,
@@ -191,7 +191,7 @@ const Page = () => {
         }, 100);
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to delete profile photo:', error);
       const errorMessage = error.message || 'An error occurred. Please try again.';
 
@@ -212,7 +212,7 @@ const Page = () => {
         />
       );
     } else {
-      const initials = `${user?.name?.charAt(0) || ''}${user?.last_name?.charAt(0) || ''}`;
+      const initials = `${user?.name?.charAt(0) || ''}${(user as any)?.last_name?.charAt(0) || ''}`;
       return (
         <View style={[styles.profilePhoto, styles.initialsContainer]}>
           <Text style={styles.initials}>{initials}</Text>

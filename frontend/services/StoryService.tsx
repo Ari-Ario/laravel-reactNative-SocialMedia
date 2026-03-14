@@ -1,3 +1,4 @@
+import axiosLib from "axios";
 import axios from "@/services/axios";
 import { getToken } from "./TokenService";
 import getApiBase from "./getApiBase";
@@ -7,16 +8,23 @@ export async function createStory(formData: FormData) {
     const token = await getToken();
     const API_BASE = getApiBase();
 
-    // For web platform, we need to set the Content-Type header to undefined
-    // so the browser can set it automatically with the correct boundary
-    const config = {
+    // Use a fresh axios instance for multipart uploads on web
+    // to avoid global headers interfering with the boundary selection.
+    const instance = axiosLib.create();
+
+    const config: any = {
         headers: {
             Authorization: `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data'
+            Accept: 'application/json',
         }
     };
 
-    const response = await axios.post(`${API_BASE}/stories`, formData, config);
+    if (Platform.OS !== 'web') {
+        config.headers['Content-Type'] = 'multipart/form-data';
+    }
+    // On web, we leave Content-Type empty so the browser sets it with boundary
+
+    const response = await instance.post(`${API_BASE}/stories`, formData, config);
     return response.data;
 }
 
@@ -87,6 +95,26 @@ export async function fetchStory(storyId: number) {
         return response.data;
     } catch (error) {
         console.error('Error fetching story:', error);
+        throw error;
+    }
+}
+
+export async function sendStoryReply(storyId: number, message: string) {
+    const token = await getToken();
+    const API_BASE = getApiBase();
+    try {
+        const response = await axios.post(
+            `${API_BASE}/stories/${storyId}/reply`,
+            { message },
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Error sending story reply:', error);
         throw error;
     }
 }

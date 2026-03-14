@@ -129,7 +129,18 @@ class PusherService {
 
         this.pusher.connection.bind('error', (err: any) => {
           console.error('❌ Pusher connection error:', err);
-          this.isInitialized = false;
+          
+          // Code 4200 means "Please reconnect immediately"
+          const errorCode = err?.error?.data?.code || err?.data?.code;
+          if (errorCode === 4200 || errorCode === 4201) {
+            console.log('🔄 Pusher: Reconnecting as requested by server...');
+            this.pusher?.disconnect();
+            setTimeout(() => {
+              this.pusher?.connect();
+            }, 1000);
+          } else {
+            this.isInitialized = false;
+          }
         });
 
         this.pusher.connection.bind('disconnected', () => {

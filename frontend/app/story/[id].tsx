@@ -19,7 +19,7 @@ interface StoryGroup {
 }
 
 export default function StoryScreen() {
-  const { id } = useLocalSearchParams();
+  const { id, standalone } = useLocalSearchParams();
   const router = useRouter();
   const [storyGroups, setStoryGroups] = useState<StoryGroup[]>([]);
   const [currentGroupIndex, setCurrentGroupIndex] = useState(0);
@@ -29,24 +29,36 @@ export default function StoryScreen() {
     const loadStories = async () => {
       try {
         setLoading(true);
-        const data = await fetchStories();
         
-        // Order: groups with unviewed stories first, then viewed
-        const orderedGroups = [...data].sort((a, b) => 
-          a.all_viewed === b.all_viewed ? 0 : a.all_viewed ? 1 : -1
-        );
-        
-        setStoryGroups(orderedGroups);
-        
-        // Find the group containing the requested story
-        const groupIndex = orderedGroups.findIndex(group => 
-          group.stories.some(story => story.id.toString() === id)
-        );
-        
-        if (groupIndex !== -1) {
-          setCurrentGroupIndex(groupIndex);
+        if (standalone === 'true') {
+          const storyData = await fetchStory(Number(id));
+          const singleGroup: StoryGroup = {
+            user: storyData.user,
+            stories: [storyData],
+            all_viewed: storyData.viewed
+          };
+          setStoryGroups([singleGroup]);
+          setCurrentGroupIndex(0);
         } else {
-          router.back();
+          const data = await fetchStories();
+          
+          // Order: groups with unviewed stories first, then viewed
+          const orderedGroups = [...data].sort((a, b) => 
+            a.all_viewed === b.all_viewed ? 0 : a.all_viewed ? 1 : -1
+          );
+          
+          setStoryGroups(orderedGroups);
+          
+          // Find the group containing the requested story
+          const groupIndex = orderedGroups.findIndex(group => 
+            group.stories.some((story: any) => story.id.toString() === id)
+          );
+          
+          if (groupIndex !== -1) {
+            setCurrentGroupIndex(groupIndex);
+          } else {
+            router.back();
+          }
         }
       } catch (error) {
         console.error('Error loading stories:', error);
@@ -57,7 +69,7 @@ export default function StoryScreen() {
     };
 
     loadStories();
-  }, [id]);
+  }, [id, standalone]);
 
   const handleClose = () => {
     router.back();

@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Story;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class StoryController extends Controller
 {
@@ -99,20 +101,31 @@ class StoryController extends Controller
     {
         try {
             $request->validate([
-                'media' => 'required|file|mimes:jpg,jpeg,png,mp4|max:10240',
+                'media' => 'required|file|mimes:jpg,jpeg,png,mp4,mov,webm|max:40960', // up to 40MB
                 'caption' => 'nullable|string|max:2000',
+                'location' => 'nullable|string',
+                'stickers' => 'nullable|string',
+                'type' => 'required|string|in:photo,video',
             ]);
 
-            // Upload and store the new story
-            $path = $request->file('media')->store('stories/' . Auth::id(), 'public');
-
-            // Handle file upload
-            $path = $request->file('media')->store('stories/' . Auth::id(), 'public');
+            $file = $request->file('media');
+            $extension = $file->getClientOriginalExtension() ?: ($request->type === 'video' ? 'mp4' : 'jpg');
+            
+            // Custom renaming as per Laravel 12 patterns suggested
+            $fileName = time() . '_' . Str::random(10) . '.' . $extension;
+            $directory = 'stories/' . Auth::id();
+            
+            // Store the file using the public disk
+            $path = $file->storeAs($directory, $fileName, 'public');
 
             $story = Story::create([
                 'user_id' => Auth::id(),
                 'media_path' => $path,
                 'caption' => $request->caption,
+                'location' => json_decode($request->location, true),
+                'stickers' => json_decode($request->stickers, true),
+                'type' => $request->type,
+                'expires_at' => now()->addHours(24),
             ]);
 
             return response()->json([

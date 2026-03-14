@@ -93,3 +93,14 @@ Emulator	         RAMUse	Storage	Best For
 Pixel 6 (API 34)	2GB	   8GB	   Daily debugging
 PixelFold(API 35) 4GB	   12GB	   Foldable-specific testing
 Pixel 8 (API 36)	3GB	   10GB	   Android 15 features          (Not in use, just info)
+
+
+
+## Video Trimming must be installed in deployment server if it does not exist
+
+```bash
+sudo apt install ffmpeg
+```
+
+Laravel Forge: Usually comes with FFmpeg pre-installed on standard PHP servers. You can verify this in the Forge dashboard under "Recipes" or by running ffmpeg -version via SSH.
+DigitalOcean: If you are using a raw Droplet (not via Forge), you must install it yourself using sudo apt install ffmpeg. Once installed, it stays on the server forever.

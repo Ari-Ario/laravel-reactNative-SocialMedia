@@ -461,31 +461,35 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   // ────────────────────────────────────────────────────────────────────────────
 
   // ── Post Share messages: Premium Instagram-style card ──
-  if (message.type === 'post_share') {
+  if (message.type === 'post_share' || message.type === 'story_share') {
+    const isStory = message.type === 'story_share';
     const metadata = message.metadata || {};
-    const postId = metadata.post_id;
+    const itemId = isStory ? metadata.story_id : metadata.post_id;
     const creatorName = metadata.creator_name || 'Anonymous';
     const creatorAvatar = metadata.creator_avatar;
-    const allMedia = metadata.media || [];
+    const allMedia = isStory ? [{ file_path: metadata.media_url, type: metadata.media_type }] : (metadata.media || []);
     const caption = metadata.caption;
-    const sharedMessage = metadata.shared_message;
 
-    const handlePostPress = () => {
-      if (postId) {
-        router.push({ pathname: '/post/[id]', params: { id: postId } });
+    const handlePress = () => {
+      if (itemId) {
+        if (isStory) {
+          router.push({ pathname: '/story/[id]', params: { id: itemId, standalone: 'true' } });
+        } else {
+          router.push({ pathname: '/post/[id]', params: { id: itemId } });
+        }
       }
     };
 
     const renderMediaCollection = () => {
-      if (!allMedia || allMedia.length === 0) {
+      if (!allMedia || allMedia.length === 0 || !allMedia[0].file_path) {
         return (
           <View style={styles.sharedPostPlaceholder}>
-            <Ionicons name="document-text-outline" size={40} color="#ccc" />
+            <Ionicons name={isStory ? "camera-outline" : "document-text-outline"} size={40} color="#ccc" />
           </View>
         );
       }
 
-      if (allMedia.length === 1) {
+      if (allMedia.length === 1 || isStory) {
         const item = allMedia[0];
         const mediaUrl = (item.file_path || item.url).startsWith('http') 
           ? (item.file_path || item.url) 
@@ -495,21 +499,26 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           <View style={styles.sharedPostMediaContainer}>
             <Image 
               source={{ uri: mediaUrl }} 
-              style={styles.sharedPostMedia} 
+              style={[styles.sharedPostMedia, isStory && { height: 350 }]} 
               resizeMode="cover"
             />
-            {item.type === 'video' && (
+            {(item.type === 'video' || metadata.media_type === 'video') && (
               <View style={styles.playIconOverlay}>
                 <Ionicons name="play" size={42} color="white" />
               </View>
             )}
             <View style={styles.mediaTypeBadge}>
                <Ionicons 
-                 name={item.type === 'video' ? "videocam" : "image"} 
+                 name={(item.type === 'video' || metadata.media_type === 'video') ? "videocam" : "image"} 
                  size={12} 
                  color="white" 
                />
             </View>
+            {isStory && (
+              <View style={styles.storyOverlayBadge}>
+                <Text style={styles.storyOverlayText}>STORY</Text>
+              </View>
+            )}
           </View>
         );
       }
@@ -555,59 +564,6 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       );
     };
 
-    const renderPostCard = () => (
-      <TouchableOpacity
-        ref={bubbleRef}
-        activeOpacity={0.9}
-        onPress={handlePostPress}
-        onLongPress={() => {
-          if (onLongPressWithPosition) {
-            bubbleRef.current?.measure((_x, _y, width, _height, pageX, pageY) => {
-              onLongPressWithPosition(message, pageX + width / 2, pageY);
-            });
-          } else if (onLongPress) {
-            onLongPress();
-          }
-        }}
-        delayLongPress={200}
-        style={[
-          styles.sharedPostContainer,
-          isCurrentUser ? styles.currentUserSharedPost : styles.otherUserSharedPost,
-          isSelected && styles.selectedContainer,
-          sharedMessage && { borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderWidth: 0 }
-        ]}
-      >
-        <BlurView intensity={20} tint="light" style={styles.sharedPostHeader}>
-          <Avatar 
-            source={creatorAvatar} 
-            size={24} 
-            name={creatorName}
-            showStatus={false}
-          />
-          <Text style={styles.sharedPostCreatorName} numberOfLines={1}>
-            {creatorName}
-          </Text>
-          <Ionicons name="chevron-forward" size={12} color="#8E8E93" style={{marginLeft: 'auto'}} />
-        </BlurView>
-
-        {renderMediaCollection()}
-
-        <View style={styles.sharedPostFooter}>
-           <Text style={styles.sharedPostCaption} numberOfLines={2}>
-              <Text style={styles.sharedPostCreatorLabel}>{creatorName} </Text>
-              {caption}
-           </Text>
-           <View style={styles.sharedPostMeta}>
-              <Text style={styles.sharedPostTime}>
-                {formatTime(message.created_at)}
-              </Text>
-           </View>
-        </View>
-        
-        {!sharedMessage && renderReactions()}
-      </TouchableOpacity>
-    );
-
     return (
       <View style={[
         styles.container,
@@ -624,33 +580,56 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           </View>
         )}
 
-        {sharedMessage ? (
-          <View style={[
-            styles.wrappedShareContainer,
-            isCurrentUser ? styles.currentUserWrappedShare : styles.otherUserWrappedShare,
-            isSelected && styles.selectedContainer
-          ]}>
-            {renderPostCard()}
-            <View style={styles.appendedMessageContainer}>
-               <Text style={styles.appendedMessageText}>{sharedMessage}</Text>
-               <View style={styles.appendedMessageMeta}>
-                  <Text style={styles.appendedMessageTime}>
-                    {formatTime(message.created_at)}
-                  </Text>
-                  {isCurrentUser && (
-                    <Ionicons
-                      name="checkmark-done"
-                      size={12}
-                      color="rgba(255,255,255,0.8)"
-                    />
-                  )}
-               </View>
-            </View>
-            {renderReactions()}
-          </View>
-        ) : (
-          renderPostCard()
-        )}
+        <TouchableOpacity
+          ref={bubbleRef}
+          activeOpacity={0.9}
+          onPress={handlePress}
+          onLongPress={() => {
+            if (onLongPressWithPosition) {
+              bubbleRef.current?.measure((_x, _y, width, _height, pageX, pageY) => {
+                onLongPressWithPosition(message, pageX + width / 2, pageY);
+              });
+            } else if (onLongPress) {
+              onLongPress();
+            }
+          }}
+          delayLongPress={200}
+          style={[
+            styles.sharedPostContainer,
+            isCurrentUser ? styles.currentUserSharedPost : styles.otherUserSharedPost,
+            isSelected && styles.selectedContainer,
+            isStory && { width: 250 }
+          ]}
+        >
+          <BlurView intensity={20} tint="light" style={styles.sharedPostHeader}>
+            <Avatar 
+              source={creatorAvatar} 
+              size={24} 
+              name={creatorName}
+              showStatus={false}
+            />
+            <Text style={styles.sharedPostCreatorName} numberOfLines={1}>
+              {creatorName}
+            </Text>
+            <Ionicons name="chevron-forward" size={12} color="#8E8E93" style={{marginLeft: 'auto'}} />
+          </BlurView>
+
+          {renderMediaCollection()}
+
+          <BlurView intensity={30} tint="light" style={styles.sharedPostFooter}>
+             <Text style={styles.sharedPostCaption} numberOfLines={2}>
+                <Text style={styles.sharedPostCreatorLabel}>{creatorName} </Text>
+                {caption}
+             </Text>
+             <View style={styles.sharedPostMeta}>
+                <Text style={styles.sharedPostTime}>
+                  {formatTime(message.created_at)}
+                </Text>
+             </View>
+          </BlurView>
+
+          {renderReactions()}
+        </TouchableOpacity>
 
         {isCurrentUser && showAvatar && (
           <View style={styles.avatarContainer}>
@@ -1235,6 +1214,21 @@ const styles = StyleSheet.create({
   appendedMessageTime: {
     fontSize: 10,
     color: 'rgba(255,255,255,0.7)',
+  },
+  storyOverlayBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  storyOverlayText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
 });
 

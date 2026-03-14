@@ -186,7 +186,9 @@ class PostController extends Controller
         $request->validate([
             'caption' => 'nullable|string|max:500',
             'media' => 'sometimes|array|max:10',
-            'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,webm,avi,mp3,wav,pdf,doc,docx|max:20480'
+            'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,webm,avi,mp3,wav,pdf,doc,docx,ogg,oga,opus,flac,aac,m4a,m4b,m4p,m4r,m4v,mp2,mp3,mp4,mpeg,mpeg4,mpegps,mpg,mpegts,mpegv,mts,oga,ogg,opus,wav,webm,mpga|max:40960', // 40MB
+            'trim_start' => 'sometimes|array',
+            'trim_end' => 'sometimes|array',
         ]);
 
         $post = Post::create([
@@ -195,11 +197,24 @@ class PostController extends Controller
         ]);
         
         if ($request->hasFile('media')) {
-            foreach ($request->file('media') as $file) {
+            $files = $request->file('media');
+            $trimStarts = $request->input('trim_start', []);
+            $trimEnds = $request->input('trim_end', []);
+
+            foreach ($files as $index => $file) {
                 $type = $this->getMediaType($file->getMimeType());
                 $folder = $this->getMediaFolder($type);
                 $path = $file->store("media/{$folder}/" . Auth::id(), 'public');
                 
+                // Perform trimming if requested and it's a video
+                if ($type === 'video' && isset($trimStarts[$index]) && isset($trimEnds[$index])) {
+                    $start = (float) $trimStarts[$index];
+                    $end = (float) $trimEnds[$index];
+                    if ($start > 0 || $end > 0) {
+                        $path = $this->trimVideo($path, $start, $end);
+                    }
+                }
+
                 $post->media()->create([
                     'file_path' => $path,
                     'type' => $type,
@@ -299,9 +314,11 @@ class PostController extends Controller
         $request->validate([
             'caption' => 'nullable|string|max:500',
             'media' => 'sometimes|array|max:10',
-            'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,webm,avi,mp3,wav,pdf,doc,docx|max:20480',
+            'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,webm,avi,mp3,wav,pdf,doc,docx,ogg,oga,opus,flac,aac,m4a,m4b,m4p,m4r,m4v,mp2,mp3,mp4,mpeg,mpeg4,mpegps,mpg,mpegts,mpegv,mts,oga,ogg,opus,wav,webm,mpga|max:40960', // 40MB
             'delete_media' => 'sometimes|array',
-            'delete_media.*' => 'exists:media,id'
+            'delete_media.*' => 'exists:media,id',
+            'trim_start' => 'sometimes|array',
+            'trim_end' => 'sometimes|array',
         ]);
 
         $changes = [];
@@ -343,11 +360,24 @@ class PostController extends Controller
         // Track new media uploads
         $newMedia = [];
         if ($request->hasFile('media')) {
-            foreach ($request->file('media') as $file) {
+            $files = $request->file('media');
+            $trimStarts = $request->input('trim_start', []);
+            $trimEnds = $request->input('trim_end', []);
+
+            foreach ($files as $index => $file) {
                 $type = $this->getMediaType($file->getMimeType());
                 $folder = $this->getMediaFolder($type);
                 $path = $file->store("media/{$folder}/" . Auth::id(), 'public');
                 
+                // Perform trimming if requested and it's a video
+                if ($type === 'video' && isset($trimStarts[$index]) && isset($trimEnds[$index])) {
+                    $start = (float) $trimStarts[$index];
+                    $end = (float) $trimEnds[$index];
+                    if ($start > 0 || $end > 0) {
+                        $path = $this->trimVideo($path, $start, $end);
+                    }
+                }
+
                 $media = $post->media()->create([
                     'file_path' => $path,
                     'type' => $type,
@@ -639,6 +669,51 @@ class PostController extends Controller
     }
 
 
+
+    private function trimVideo($path, $start, $end)
+    {
+        $fullPath = storage_path('app/public/' . $path);
+        if (!file_exists($fullPath)) return $path;
+
+        $extension = pathinfo($fullPath, PATHINFO_EXTENSION);
+        $trimmedPath = str_replace(".{$extension}", "_trimmed.{$extension}", $path);
+        $fullTrimmedPath = storage_path('app/public/' . $trimmedPath);
+
+        // Check if FFmpeg is installed
+        $ffmpeg = shell_exec('which ffmpeg');
+        if (!$ffmpeg) {
+            Log::warning('FFmpeg not found. Video trimming skipped.', ['path' => $path]);
+            return $path;
+        }
+
+        $duration = $end - $start;
+        // Fast trim with stream copy, seeking before input for speed
+        $command = sprintf(
+            'ffmpeg -ss %s -i %s -t %s -c copy -map 0 %s 2>&1',
+            escapeshellarg((string)$start),
+            escapeshellarg($fullPath),
+            escapeshellarg((string)$duration),
+            escapeshellarg($fullTrimmedPath)
+        );
+
+        $output = [];
+        $resultCode = 0;
+        exec($command, $output, $resultCode);
+
+        if ($resultCode === 0 && file_exists($fullTrimmedPath)) {
+            // Delete original oversized file
+            unlink($fullPath);
+            return $trimmedPath;
+        }
+
+        Log::error('FFmpeg trim failed', [
+            'command' => $command,
+            'output' => $output,
+            'result_code' => $resultCode
+        ]);
+
+        return $path;
+    }
 
     private function getMediaFolder($type)
     {

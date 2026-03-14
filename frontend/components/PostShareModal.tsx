@@ -26,13 +26,15 @@ import { BlurView } from 'expo-blur';
 interface PostShareModalProps {
   visible: boolean;
   onClose: () => void;
-  post: any;
+  post?: any;
+  story?: any;
 }
 
-export default function PostShareModal({ visible, onClose, post }: PostShareModalProps) {
+export default function PostShareModal({ visible, onClose, post, story }: PostShareModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState<string | null>(null); // spaceId if sending
   const [additionalMessage, setAdditionalMessage] = useState('');
+  const [sharedSpaces, setSharedSpaces] = useState<Set<string>>(new Set());
   const { spaces } = useCollaborationStore();
 
   // Filter out channels (unless owner/mod) and apply search
@@ -55,57 +57,76 @@ export default function PostShareModal({ visible, onClose, post }: PostShareModa
     setLoading(spaceId);
 
     try {
-      const baseUrl = getApiBaseImage();
-      const postUrl = `${baseUrl}/post/${post.id}`;
-      
-      // Find suitable media preview
-      const mediaPreview = post.media?.length > 0 
-        ? (post.media[0].file_path || post.media[0].url) 
-        : null;
-      const mediaType = post.media?.length > 0 ? post.media[0].type : 'text';
-
       const collaborationService = CollaborationService.getInstance();
+      const baseUrl = getApiBaseImage();
+      const itemToShare = post || story;
+      const isStory = !!story;
+      
+      const shareUrl = isStory 
+        ? `${baseUrl}/story/${story.id}`
+        : `${baseUrl}/post/${post.id}`;
+      
+      const mediaPreview = isStory 
+        ? story.media_path 
+        : (post.media?.length > 0 ? (post.media[0].file_path || post.media[0].url) : null);
+        
+      const mediaType = isStory 
+        ? (story.type || 'image') 
+        : (post.media?.length > 0 ? post.media[0].type : 'text');
 
-      // 1. Send the post share message (Packed with additional message)
+      // 1. Send the share message
       await collaborationService.sendMessage(spaceId, {
-        content: post.caption || 'Shared a post',
-        type: 'post_share',
+        content: (isStory ? story.caption : post.caption) || (isStory ? 'Shared a story' : 'Shared a post'),
+        type: isStory ? 'story_share' : 'post_share',
         metadata: {
-          post_id: post.id,
-          creator_name: post.user?.name || 'Anonymous',
-          creator_avatar: post.user?.profile_photo,
+          post_id: !isStory ? post.id : undefined,
+          story_id: isStory ? story.id : undefined,
+          creator_name: (isStory ? story.user?.name : post.user?.name) || 'Anonymous',
+          creator_avatar: isStory ? story.user?.profile_photo : post.user?.profile_photo,
           media_url: mediaPreview,
           media_type: mediaType,
-          media: post.media || [],
-          caption: post.caption,
+          media: isStory ? [] : (post.media || []),
+          caption: isStory ? story.caption : post.caption,
           is_internal_share: true,
-          post_url: postUrl,
-          shared_message: additionalMessage.trim() || null
+          post_url: shareUrl
         }
       });
+
+      // 2. Send additional message separately if it exists
+      if (additionalMessage.trim()) {
+        await collaborationService.sendMessage(spaceId, {
+          content: additionalMessage.trim(),
+          type: 'text'
+        });
+      }
 
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
       
-      setAdditionalMessage('');
-      onClose();
+      // Track that we've shared to this space in this session
+      setSharedSpaces(prev => new Set(prev).add(spaceId));
+      // Modal stays open for more shares
     } catch (error) {
       console.error('Error sharing post to space:', error);
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
-      // You might want to show an alert here
     } finally {
       setLoading(null);
     }
-  }, [post, loading, onClose]);
+  }, [post, loading, additionalMessage]);
 
   const handleExternalShare = async () => {
     try {
       const baseUrl = getApiBaseImage();
-      const postUrl = `${baseUrl}/post/${post.id}`;
-      const message = `${post.caption ? post.caption + '\n\n' : ''}Check out this post: ${postUrl}`;
+      const isStory = !!story;
+      const shareUrl = isStory 
+        ? `${baseUrl}/story/${story.id}`
+        : `${baseUrl}/post/${post.id}`;
+      
+      const caption = isStory ? story.caption : post.caption;
+      const message = `${caption ? caption + '\n\n' : ''}Check out this ${isStory ? 'story' : 'post'}: ${shareUrl}`;
 
       if (Platform.OS === 'web' && !navigator.share) {
         // Web fallback: Copy to clipboard
@@ -117,8 +138,8 @@ export default function PostShareModal({ visible, onClose, post }: PostShareModa
 
       const result = await Share.share({
         message: message,
-        url: postUrl, // iOS
-        title: 'Share Post'
+        url: shareUrl, // iOS
+        title: `Share ${isStory ? 'Story' : 'Post'}`
       });
       
       if (result.action === Share.sharedAction) {
@@ -134,6 +155,7 @@ export default function PostShareModal({ visible, onClose, post }: PostShareModa
 
   const renderItem = ({ item }: { item: any }) => {
     const isSending = loading === item.id;
+    const hasShared = sharedSpaces.has(item.id.toString());
     const isDirect = item.space_type === 'direct' || item.space_type === 'chat';
     const displayName = isDirect ? (item.other_participant?.name || item.title) : item.title;
     
@@ -144,9 +166,10 @@ export default function PostShareModal({ visible, onClose, post }: PostShareModa
 
     return (
       <TouchableOpacity 
-        style={styles.spaceItem} 
-        onPress={() => handleSendInternal(item.id.toString())}
-        activeOpacity={0.7}
+        style={[styles.spaceItem, hasShared && styles.sharedSpaceItem]} 
+        onPress={() => !hasShared && handleSendInternal(item.id.toString())}
+        activeOpacity={hasShared ? 1 : 0.7}
+        disabled={hasShared}
       >
         <View style={styles.imageContainer}>
           <Avatar 
@@ -159,12 +182,16 @@ export default function PostShareModal({ visible, onClose, post }: PostShareModa
         </View>
         
         <View style={styles.spaceInfo}>
-          <Text style={styles.spaceName} numberOfLines={1}>{displayName}</Text>
+          <Text style={[styles.spaceName, hasShared && styles.sharedText]} numberOfLines={1}>{displayName}</Text>
           <Text style={styles.spaceType}>{item.space_type.toUpperCase()}</Text>
         </View>
-
+ 
         {isSending ? (
           <ActivityIndicator size="small" color="#007AFF" />
+        ) : hasShared ? (
+          <View style={styles.sentBadge}>
+            <Ionicons name="checkmark-circle" size={24} color="#4CD964" />
+          </View>
         ) : (
           <View style={styles.sendButton}>
             <Text style={styles.sendButtonText}>Send</Text>
@@ -195,7 +222,7 @@ export default function PostShareModal({ visible, onClose, post }: PostShareModa
           <View style={styles.handle} />
           
           <View style={styles.header}>
-            <Text style={styles.title}>Share Post</Text>
+            <Text style={styles.title}>Share {story ? 'Story' : 'Post'}</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color="#000" />
             </TouchableOpacity>
@@ -433,5 +460,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     maxHeight: 100,
     color: '#000',
+  },
+  sharedSpaceItem: {
+    opacity: 0.8,
+  },
+  sharedText: {
+    color: '#8E8E93',
+  },
+  sentBadge: {
+    width: 60,
+    alignItems: 'center',
   },
 });

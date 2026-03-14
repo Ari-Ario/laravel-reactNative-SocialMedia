@@ -10,9 +10,21 @@ class Story extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'media_path', 'caption', 'expires_at'];
+    protected $fillable = [
+        'user_id', 
+        'media_path', 
+        'caption', 
+        'location', 
+        'stickers', 
+        'type',
+        'expires_at'
+    ];
 
-    protected $dates = ['expires_at'];
+    protected $casts = [
+        'expires_at' => 'datetime',
+        'location' => 'array',
+        'stickers' => 'array',
+    ];
 
     protected static function boot()
     {
