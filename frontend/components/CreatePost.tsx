@@ -33,6 +33,15 @@ import { BlurView } from 'expo-blur';
 import { MotiView, AnimatePresence } from 'moti';
 import * as Haptics from 'expo-haptics';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import ShareLocation from '@/components/ChatScreen/ShareLocation';
+
+interface LocationData {
+  name: string;
+  latitude: number;
+  longitude: number;
+  id?: string;
+  address?: string;
+}
 
 const { width, height } = Dimensions.get('window');
 const RECORDING_LIMIT_MS = 120000; // 120 seconds
@@ -45,6 +54,7 @@ interface CreatePostProps {
     postId?: string | null;
     caption?: string;
     media?: string;
+    location?: string;
   };
 }
 
@@ -64,11 +74,8 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
   const [zoom, setZoom] = useState(0);
 
   // Location state
-  const [location, setLocation] = useState<{ name: string; lat: number; lng: number; id?: string } | null>(null);
+  const [location, setLocation] = useState<LocationData | null>(null);
   const [showLocationSearch, setShowLocationSearch] = useState(false);
-  const [locationSearch, setLocationSearch] = useState('');
-  const [locationResults, setLocationResults] = useState<any[]>([]);
-  const [searchingLocation, setSearchingLocation] = useState(false);
 
   // Use the new platform camera ref
   const cameraRef = useRef<any>(null);
@@ -100,8 +107,8 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
 
         // Parse location if available in edit mode
         try {
-          if (params.location) {
-            const parsedLocation = JSON.parse(params.location as string);
+          if ((params as any).location) {
+            const parsedLocation = JSON.parse((params as any).location as string);
             setLocation(parsedLocation);
           }
         } catch (e) {
@@ -121,7 +128,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
       setLocation(null);
       setLongVideosDetected(false);
     }
-  }, [visible, isEditing, params.caption, params.media, params.location]);
+  }, [visible, isEditing, params.caption, params.media, (params as any).location]);
 
   // Check for long videos whenever media changes
   useEffect(() => {
@@ -146,38 +153,15 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
     };
   }, []);
 
-  const searchLocations = async (query: string) => {
-    if (!query.trim()) {
-      setLocationResults([]);
-      return;
-    }
-
-    setSearchingLocation(true);
-    try {
-      // Use OpenStreetMap Nominatim for free location search
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`
-      );
-      const data = await response.json();
-      setLocationResults(data);
-    } catch (error) {
-      console.error('Location search error:', error);
-    } finally {
-      setSearchingLocation(false);
-    }
-  };
-
-  const selectLocation = (item: any) => {
-    const locData = {
-      name: item.display_name.split(',')[0],
-      lat: parseFloat(item.lat),
-      lng: parseFloat(item.lon),
-      id: item.place_id,
+  const handleLocationSelect = (locData: any) => {
+    const mappedLoc: LocationData = {
+      name: locData.name || 'Selected Location',
+      latitude: locData.latitude,
+      longitude: locData.longitude,
+      address: locData.address,
     };
-    setLocation(locData);
+    setLocation(mappedLoc);
     setShowLocationSearch(false);
-    setLocationSearch('');
-    setLocationResults([]);
   };
 
   const removeLocation = () => {
@@ -243,7 +227,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
 
         // Check if we need to auto-trim the first long video
         const firstLongVideoIndex = processedAssets.findIndex(
-          item => item.type === 'video' && item.duration > 120000
+          item => item.type === 'video' && (item.duration || 0) > 120000
         );
 
         if (firstLongVideoIndex !== -1) {
@@ -346,10 +330,10 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
   };
 
   const handleLongPress = () => {
-    if (cameraMode === 'picture') {
-      setCameraMode('video');
-    }
     longPressTimeout.current = setTimeout(() => {
+      if (cameraMode === 'picture') {
+        setCameraMode('video');
+      }
       startRecording();
     }, 200);
   };
@@ -898,73 +882,11 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
           />
         )}
 
-        {/* Location Search Modal */}
-        <Modal visible={showLocationSearch} transparent animationType="fade">
-          <BlurView intensity={40} style={StyleSheet.absoluteFill} />
-          <SafeAreaView style={styles.locationSearchContainer}>
-            <View style={styles.locationSearchHeader}>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowLocationSearch(false);
-                  setLocationSearch('');
-                  setLocationResults([]);
-                }}
-                style={styles.locationSearchClose}
-              >
-                <Ionicons name="arrow-back" size={24} color="white" />
-              </TouchableOpacity>
-              <Text style={styles.locationSearchTitle}>Add Location</Text>
-              <View style={{ width: 40 }} />
-            </View>
-
-            <View style={styles.locationSearchInput}>
-              <Ionicons name="search" size={20} color="rgba(255,255,255,0.6)" />
-              <TextInput
-                style={styles.locationSearchField}
-                placeholder="Search for a place..."
-                placeholderTextColor="rgba(255,255,255,0.5)"
-                value={locationSearch}
-                onChangeText={(text) => {
-                  setLocationSearch(text);
-                  searchLocations(text);
-                }}
-                autoFocus
-              />
-            </View>
-
-            {searchingLocation && (
-              <ActivityIndicator style={styles.locationSearchLoading} color="white" />
-            )}
-
-            <FlatList
-              data={locationResults}
-              keyExtractor={(item) => item.place_id.toString()}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.locationResult}
-                  onPress={() => selectLocation(item)}
-                >
-                  <View style={styles.locationResultIcon}>
-                    <Ionicons name="location" size={20} color="#0084ff" />
-                  </View>
-                  <View style={styles.locationResultInfo}>
-                    <Text style={styles.locationResultName}>
-                      {item.display_name.split(',')[0]}
-                    </Text>
-                    <Text style={styles.locationResultAddress} numberOfLines={1}>
-                      {item.display_name.split(',').slice(1).join(',').trim()}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-              ListEmptyComponent={
-                locationSearch.trim() !== '' && !searchingLocation ? (
-                  <Text style={styles.locationEmpty}>No locations found</Text>
-                ) : null
-              }
-            />
-          </SafeAreaView>
-        </Modal>
+        <ShareLocation
+          visible={showLocationSearch}
+          onClose={() => setShowLocationSearch(false)}
+          onShareLocation={handleLocationSelect}
+        />
     </Modal>
   );
 }
@@ -1278,27 +1200,6 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold'
   },
-  locationSearchContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.95)',
-  },
-  locationSearchHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
-  },
-  locationSearchClose: {
-    padding: 5,
-  },
-  locationSearchTitle: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
   cameraOverlay: {
     flex: 1,
     width: '100%',
@@ -1410,59 +1311,5 @@ const styles = StyleSheet.create({
     height: 44,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  locationSearchInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    margin: 20,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 10,
-    gap: 10,
-  },
-  locationSearchField: {
-    flex: 1,
-    color: 'white',
-    fontSize: 16,
-    padding: 0,
-  },
-  locationSearchLoading: {
-    marginTop: 20,
-  },
-  locationResult: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
-  },
-  locationResultIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,132,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
-  },
-  locationResultInfo: {
-    flex: 1,
-  },
-  locationResultName: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  locationResultAddress: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 14,
-  },
-  locationEmpty: {
-    color: 'rgba(255,255,255,0.6)',
-    textAlign: 'center',
-    marginTop: 50,
   },
 });

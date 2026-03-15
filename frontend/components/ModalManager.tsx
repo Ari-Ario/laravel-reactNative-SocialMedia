@@ -7,6 +7,7 @@ import CreatePost from './CreatePost'; // Use your exact component name
 import ReportPost from './ReportPost';
 import ProfilePreview from './ProfilePreview';
 import PostShareModal from './PostShareModal';
+import LocationModal from './LocationModal';
 
 export default function ModalManager() {
   const { modalType, modalProps, closeModal } = useModal();
@@ -40,6 +41,8 @@ export default function ModalManager() {
       return <ReportPost visible={true} onClose={closeModal} {...modalProps} />;
     case 'profile':
       return <ProfilePreview visible={true} onClose={closeModal} {...modalProps} />;
+    case 'location':
+      return <LocationModal visible={true} onClose={closeModal} {...modalProps} />;
     default:
       return null;
   }

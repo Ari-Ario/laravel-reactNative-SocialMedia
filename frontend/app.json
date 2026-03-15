@@ -21,6 +21,11 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.anonymous.graf",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDVsZaS67NSKA-13blSRq7X0vvfhdlKX2Y"
+        }
+      },
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",

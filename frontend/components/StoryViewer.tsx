@@ -23,6 +23,7 @@ import AnimatedComponent, {
   withDelay,
 } from 'react-native-reanimated';
 import { GestureHandlerRootView, Gesture, GestureDetector, PanGestureHandler, State } from 'react-native-gesture-handler';
+import { useModal } from '@/context/ModalContext';
 
 const { width, height } = Dimensions.get('window');
 const STORY_DURATION = 10000; // 10 seconds
@@ -87,6 +88,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
   const videoRef = useRef<any>(null);
   const replyInputRef = useRef<TextInput>(null);
   const router = useRouter();
+  const { openModal } = useModal();
 
   // Animation values
   const replyButtonScale = useSharedValue(1);
@@ -251,22 +253,12 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
   }, [onClose]);
 
   const handleLocationPress = useCallback((location: any) => {
-    setLocationData(location);
-    setShowLocationPopup(true);
+    openModal('location', { location });
     setPaused(true);
-    locationPopupScale.value = withSpring(1);
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-  }, []);
-
-  const closeLocationPopup = useCallback(() => {
-    locationPopupScale.value = withTiming(0, { duration: 200 });
-    setTimeout(() => {
-      setShowLocationPopup(false);
-      setPaused(false);
-    }, 200);
-  }, []);
+  }, [openModal]);
 
   const handleSendReply = useCallback(async () => {
     if (!replyText.trim() || !currentStory) return;
@@ -585,58 +577,6 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
             </View>
           </LinearGradient>
 
-          {/* Location Popup Modal */}
-          <Modal visible={showLocationPopup} transparent animationType="fade">
-            <BlurView intensity={90} style={styles.modalOverlay}>
-              <AnimatedComponent.View
-                style={[
-                  styles.locationPopup,
-                  { transform: [{ scale: locationPopupScale }] }
-                ]}
-              >
-                <LinearGradient
-                  colors={['#1a1a1a', '#2a2a2a']}
-                  style={styles.locationPopupContent}
-                >
-                  <View style={styles.locationPopupHeader}>
-                    <Ionicons name="location" size={24} color="#FF9F0A" />
-                    <Text style={styles.locationPopupTitle}>{locationData?.name}</Text>
-                    <TouchableOpacity onPress={closeLocationPopup}>
-                      <Ionicons name="close" size={24} color="white" />
-                    </TouchableOpacity>
-                  </View>
-
-                  {locationData?.lat && locationData?.lng ? (
-                    <View style={styles.locationMap}>
-                       <Ionicons name="map-outline" size={40} color="rgba(255,159,10,0.5)" />
-                       <Text style={styles.locationCoordinates}>
-                        Interactive Map coming soon to this location:
-                      </Text>
-                      <Text style={styles.locationCoordinates}>
-                        {locationData.lat.toFixed(6)}, {locationData.lng.toFixed(6)}
-                      </Text>
-                    </View>
-                  ) : (
-                    <View style={styles.locationMap}>
-                       <Ionicons name="location-outline" size={40} color="rgba(255,159,10,0.5)" />
-                       <Text style={styles.locationCoordinates}>Location data unavailable</Text>
-                    </View>
-                  )}
-
-                  <TouchableOpacity 
-                    style={styles.locationAction}
-                    onPress={() => {
-                      // Open external maps if needed
-                      closeLocationPopup();
-                    }}
-                  >
-                    <Ionicons name="navigate" size={20} color="#FF9F0A" />
-                    <Text style={styles.locationActionText}>Get Directions</Text>
-                  </TouchableOpacity>
-                </LinearGradient>
-              </AnimatedComponent.View>
-            </BlurView>
-          </Modal>
 
           {/* Reactions Panel */}
           <Modal visible={showReactions} transparent animationType="none">

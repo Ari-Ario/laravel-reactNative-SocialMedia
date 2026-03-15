@@ -31,8 +31,10 @@ import { createStory } from '@/services/StoryService';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
+import ShareLocation from '@/components/ChatScreen/ShareLocation';
 import { GestureHandlerRootView, Gesture, GestureDetector, PanGestureHandler, PinchGestureHandler, State } from 'react-native-gesture-handler';
 import Animated, {
+  SharedValue,
   useSharedValue,
   useAnimatedStyle,
   withSpring,
@@ -47,6 +49,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
 import VideoTrimmer from './Shared/VideoTrimmer';
 
 const { width, height } = Dimensions.get('window');
@@ -86,9 +89,10 @@ interface Sticker {
 
 interface LocationData {
   name: string;
-  lat?: number;
-  lng?: number;
+  latitude: number;
+  longitude: number;
   id?: string;
+  address?: string;
 }
 
 interface FeelingData {
@@ -123,18 +127,15 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
   const [selectedSticker, setSelectedSticker] = useState<string | null>(null);
   const [location, setLocation] = useState<LocationData | null>(null);
   const [showLocationSearch, setShowLocationSearch] = useState(false);
-  const [locationSearch, setLocationSearch] = useState('');
-  const [locationResults, setLocationResults] = useState<any[]>([]);
   const [showTextEditor, setShowTextEditor] = useState(false);
-  const [currentText, setCurrentText] = useState('');
-  const [currentColor, setCurrentColor] = useState('#FFFFFF');
-  const [currentFont, setCurrentFont] = useState('System');
-  const [currentFontSize, setCurrentFontSize] = useState(32);
-  const [searchingLocation, setSearchingLocation] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showFeelingInput, setShowFeelingInput] = useState(false);
   const [tempEmoji, setTempEmoji] = useState('');
   const [feelingText, setFeelingText] = useState('');
+  const [currentText, setCurrentText] = useState('');
+  const [currentColor, setCurrentColor] = useState('#FFFFFF');
+  const [currentFont, setCurrentFont] = useState('System');
+  const [currentFontSize, setCurrentFontSize] = useState(32);
   const [needsTrimming, setNeedsTrimming] = useState(false);
   const [showTrimmer, setShowTrimmer] = useState(false);
   const [videoDuration, setVideoDuration] = useState(0);
@@ -146,10 +147,10 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
 
   // Animation values for stickers - store refs to shared values
   const stickerAnimations = useRef<Map<string, {
-    translateX: Animated.SharedValue<number>;
-    translateY: Animated.SharedValue<number>;
-    scale: Animated.SharedValue<number>;
-    rotation: Animated.SharedValue<number>;
+    translateX: SharedValue<number>;
+    translateY: SharedValue<number>;
+    scale: SharedValue<number>;
+    rotation: SharedValue<number>;
   }>>(new Map()).current;
 
   const updateStickerPosition = useCallback((id: string, x: number, y: number) => {
@@ -175,17 +176,6 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
     setSelectedSticker(prev => prev === id ? null : prev);
     // Clean up animation values
     stickerAnimations.delete(id);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, []);
-
-  const duplicateSticker = useCallback((sticker: Sticker) => {
-    const newSticker = {
-      ...sticker,
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      x: sticker.x + 20,
-      y: sticker.y + 20,
-    };
-    setStickers(prev => [...prev, newSticker]);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, []);
 
@@ -357,71 +347,45 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
     }
   };
 
-  const searchLocations = async (query: string) => {
-    if (!query.trim()) {
-      setLocationResults([]);
-      return;
-    }
-
-    setSearchingLocation(true);
-    try {
-      // Use OpenStreetMap Nominatim for free location search
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`
-      );
-      const data = await response.json();
-      setLocationResults(data);
-    } catch (error) {
-      console.error('Location search error:', error);
-    } finally {
-      setSearchingLocation(false);
-    }
-  };
-
-  const selectLocation = (item: any) => {
-    const locData: LocationData = {
-      name: item.display_name.split(',')[0],
-      lat: parseFloat(item.lat),
-      lng: parseFloat(item.lon),
-      id: item.place_id,
+  const handleLocationSelect = (locData: any) => {
+    const mappedLoc: LocationData = {
+      name: locData.name || 'Selected Location',
+      latitude: locData.latitude,
+      longitude: locData.longitude,
+      address: locData.address,
     };
 
-    // Attach to selected sticker if it exists
     if (selectedSticker) {
       setStickers(prev => prev.map(s =>
-        s.id === selectedSticker ? { ...s, location: locData } : s
+        s.id === selectedSticker ? { ...s, location: mappedLoc } : s
       ));
     } else if (stickers.length > 0) {
-      // If no sticker selected but stickers exist, attach to the first one
       setStickers(prev => {
-        const newStickers = [...prev];
-        newStickers[0] = { ...newStickers[0], location: locData };
-        return newStickers;
+        const next = [...prev];
+        next[0] = { ...next[0], location: mappedLoc };
+        return next;
       });
       setSelectedSticker(stickers[0].id);
     } else {
-      // Create a specific sticker for location if no text stickers exist
       const newSticker: Sticker = {
         id: Math.random().toString(36).substr(2, 9),
         type: 'text',
         text: '',
-        x: width / 2 - 100,
-        y: height / 2 - 25,
+        x: width / 2 - 75,
+        y: height / 2 - 50,
         color: '#FFFFFF',
         fontSize: 24,
         fontFamily: 'System',
         rotation: 0,
         scale: 1,
-        location: locData
+        location: mappedLoc
       };
       setStickers(prev => [...prev, newSticker]);
       setSelectedSticker(newSticker.id);
     }
 
-    setLocation(locData);
+    setLocation(mappedLoc);
     setShowLocationSearch(false);
-    setLocationSearch('');
-    setLocationResults([]);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
@@ -520,6 +484,32 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
     });
     setNeedsTrimming(false);
     setShowTrimmer(false);
+  };
+
+  const handleSave = async () => {
+    if (!media?.uri) return;
+
+    if (Platform.OS === 'web') {
+      // For web, open in new tab to allow download
+      window.open(media.uri, '_blank');
+      return;
+    }
+
+    // For native, save to gallery
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please allow gallery access to save media.');
+        return;
+      }
+
+      await MediaLibrary.saveToLibraryAsync(media.uri);
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Success', 'Media saved to gallery!');
+    } catch (error) {
+      console.error('Error saving media:', error);
+      Alert.alert('Error', 'Failed to save media.');
+    }
   };
 
   const handleShare = async () => {
@@ -767,12 +757,13 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                   player={videoPlayer}
                   style={styles.previewMedia}
                   contentFit="cover"
+                  nativeControls
                 />
               ) : (
                 <Image source={{ uri: media?.uri }} style={styles.previewMedia} resizeMode="cover" />
               )}
 
-              <SafeAreaView style={styles.previewOverlay}>
+              <SafeAreaView style={styles.previewOverlay} pointerEvents="box-none">
                 <View style={styles.topControls}>
                   <TouchableOpacity onPress={() => setMedia(null)} style={styles.iconButton}>
                     <Ionicons name="chevron-back" size={30} color="white" />
@@ -792,28 +783,31 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                 </View>
 
                 {/* RENDER STICKERS - Use unique key that doesn't change on position update */}
-                <AnimatePresence>
-                  {stickers.map((sticker) => (
-                    <MotiView
-                      key={sticker.id}
-                      from={{ opacity: 0, scale: 0.5 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.5 }}
-                      transition={{ type: 'spring', damping: 15 }}
-                    >
-                      <DraggableSticker
-                        sticker={sticker}
-                        isSelected={selectedSticker === sticker.id}
-                        stickerAnimations={stickerAnimations}
-                        onSelect={setSelectedSticker}
-                        onUpdatePosition={updateStickerPosition}
-                        onSetStickers={setStickers}
-                        onDelete={deleteSticker}
-                        onDuplicate={duplicateSticker}
-                      />
-                    </MotiView>
-                  ))}
-                </AnimatePresence>
+                <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+                  <AnimatePresence>
+                    {stickers.map((sticker) => (
+                      <MotiView
+                        key={sticker.id}
+                        from={{ opacity: 0, scale: 0.5 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.5 }}
+                        transition={{ type: 'spring', damping: 15 }}
+                        style={StyleSheet.absoluteFill}
+                        pointerEvents="box-none"
+                      >
+                        <DraggableSticker
+                          sticker={sticker}
+                          isSelected={selectedSticker === sticker.id}
+                          stickerAnimations={stickerAnimations}
+                          onSelect={setSelectedSticker}
+                          onUpdatePosition={updateStickerPosition}
+                          onSetStickers={setStickers}
+                          onDelete={deleteSticker}
+                        />
+                      </MotiView>
+                    ))}
+                  </AnimatePresence>
+                </View>
 
 
                 {needsTrimming && (
@@ -836,7 +830,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                 )}
 
                 <View style={styles.previewBottom}>
-                  <TouchableOpacity style={styles.saveDraft}>
+                  <TouchableOpacity style={styles.saveDraft} onPress={handleSave}>
                     <Ionicons name="download-outline" size={24} color="white" />
                     <Text style={styles.previewBottomText}>Save</Text>
                   </TouchableOpacity>
@@ -1030,73 +1024,12 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                 </KeyboardAvoidingView>
               </Modal>
 
-              {/* LOCATION SEARCH MODAL */}
-              <Modal visible={showLocationSearch} transparent animationType="fade">
-                <BlurView intensity={40} style={StyleSheet.absoluteFill} />
-                <SafeAreaView style={styles.locationSearchContainer}>
-                  <View style={styles.locationSearchHeader}>
-                    <TouchableOpacity
-                      onPress={() => {
-                        setShowLocationSearch(false);
-                        setLocationSearch('');
-                        setLocationResults([]);
-                      }}
-                      style={styles.locationSearchClose}
-                    >
-                      <Ionicons name="arrow-back" size={24} color="white" />
-                    </TouchableOpacity>
-                    <Text style={styles.locationSearchTitle}>Add Location</Text>
-                    <View style={{ width: 40 }} />
-                  </View>
-
-                  <View style={styles.locationSearchInput}>
-                    <Ionicons name="search" size={20} color="rgba(255,255,255,0.6)" />
-                    <TextInput
-                      style={styles.locationSearchField}
-                      placeholder="Search for a place..."
-                      placeholderTextColor="rgba(255,255,255,0.5)"
-                      value={locationSearch}
-                      onChangeText={(text) => {
-                        setLocationSearch(text);
-                        searchLocations(text);
-                      }}
-                      autoFocus
-                    />
-                  </View>
-
-                  {searchingLocation && (
-                    <ActivityIndicator style={styles.locationSearchLoading} color="white" />
-                  )}
-
-                  <FlatList
-                    data={locationResults}
-                    keyExtractor={(item) => item.place_id.toString()}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity
-                        style={styles.locationResult}
-                        onPress={() => selectLocation(item)}
-                      >
-                        <View style={styles.locationResultIcon}>
-                          <Ionicons name="location" size={20} color="#0084ff" />
-                        </View>
-                        <View style={styles.locationResultInfo}>
-                          <Text style={styles.locationResultName}>
-                            {item.display_name.split(',')[0]}
-                          </Text>
-                          <Text style={styles.locationResultAddress} numberOfLines={1}>
-                            {item.display_name.split(',').slice(1).join(',').trim()}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    )}
-                    ListEmptyComponent={
-                      locationSearch.trim() !== '' && !searchingLocation ? (
-                        <Text style={styles.locationEmpty}>No locations found</Text>
-                      ) : null
-                    }
-                  />
-                </SafeAreaView>
-              </Modal>
+              {/* SHARE LOCATION NEW COMPONENT */}
+              <ShareLocation
+                visible={showLocationSearch}
+                onClose={() => setShowLocationSearch(false)}
+                onShareLocation={handleLocationSelect}
+              />
             </View>
           )}
         </View>
@@ -1109,6 +1042,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'black',
+    width: Platform.OS === 'web' ? '100%' : undefined,
+    height: Platform.OS === 'web' ? '100%' : undefined,
   },
   cameraContainer: {
     flex: 1,
@@ -1128,14 +1063,23 @@ const styles = StyleSheet.create({
   },
   previewContainer: {
     flex: 1,
+    width: '100%',
+    height: '100%',
   },
   previewMedia: {
     ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
   },
   previewOverlay: {
     flex: 1,
     justifyContent: 'space-between',
     padding: 20,
+    width: '100%',
+    height: '100%',
+    position: Platform.OS === 'web' ? 'absolute' : 'relative',
+    top: 0,
+    left: 0,
   },
   topControls: {
     flexDirection: 'row',
@@ -1250,7 +1194,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 80, // Moved up to reveal video controls
   },
   saveDraft: {
     flexDirection: 'row',
@@ -1365,7 +1309,7 @@ const styles = StyleSheet.create({
   },
   editorContainer: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     padding: 20,
     backgroundColor: 'rgba(0,0,0,0.9)',
@@ -1638,7 +1582,6 @@ const DraggableSticker = ({
   onUpdatePosition,
   onSetStickers,
   onDelete,
-  onDuplicate
 }: {
   sticker: Sticker;
   isSelected: boolean;
@@ -1647,7 +1590,6 @@ const DraggableSticker = ({
   onUpdatePosition: (id: string, x: number, y: number) => void;
   onSetStickers: React.Dispatch<React.SetStateAction<Sticker[]>>;
   onDelete: (id: string) => void;
-  onDuplicate: (sticker: Sticker) => void;
 }) => {
   // Create shared values that persist for the lifetime of this component
   const translateX = useSharedValue(sticker.x);
@@ -1771,12 +1713,6 @@ const DraggableSticker = ({
             animate={{ opacity: 1 }}
             style={styles.stickerControls}
           >
-            <TouchableOpacity
-              style={styles.stickerControl}
-              onPress={() => onDuplicate(sticker)}
-            >
-              <Ionicons name="copy-outline" size={16} color="white" />
-            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.stickerControl, styles.stickerDelete]}
               onPress={() => onDelete(sticker.id)}

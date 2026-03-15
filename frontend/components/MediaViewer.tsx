@@ -415,15 +415,20 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
                 if (Platform.OS === 'web') {
                   try {
                     const response = await fetch(uri);
-                    if (!response.ok) throw new Error('CORS or network error');
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = media.file_path.split('/').pop() || 'media';
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
+                    if (response.ok) {
+                      const blob = await response.blob();
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = media.file_path.split('/').pop() || 'media';
+                      a.target = '_blank';
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      window.URL.revokeObjectURL(url);
+                    } else {
+                      window.open(uri, '_blank');
+                    }
                   } catch (fetchErr) {
                     console.warn('Fetch download failed, falling back to window.open:', fetchErr);
                     window.open(uri, '_blank');

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 
-type ModalType = 'create' | 'edit' | 'delete' | 'report' | 'profile' | 'share';
+type ModalType = 'create' | 'edit' | 'delete' | 'report' | 'profile' | 'share' | 'location';
 
 interface ModalContextType {
   modalType: ModalType | null;

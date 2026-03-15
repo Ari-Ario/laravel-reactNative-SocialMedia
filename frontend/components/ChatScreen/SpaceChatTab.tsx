@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import MessageList from './MessageList';
 import AdvancedMediaUploader, { AdvancedMediaUploaderRef } from './AdvancedMediaUploader';
 import AttachmentPicker from './AttachmentPicker';
+import ShareLocation, { LocationData } from './ShareLocation';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import { useCollaborationStore } from '@/stores/collaborationStore';
 import { createShadow } from '@/utils/styles';
@@ -53,6 +54,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
     const [content, setContent] = useState<string>('');
     const [showMediaUploader, setShowMediaUploader] = useState(false);
     const [showAttachmentPicker, setShowAttachmentPicker] = useState(false);
+    const [showLocationPicker, setShowLocationPicker] = useState(false);
     const [pendingAsset, setPendingAsset] = useState<any>(null);
     const [replyingTo, setReplyingTo] = useState<any>(null);
     const uploaderRef = useRef<AdvancedMediaUploaderRef>(null);
@@ -101,6 +103,64 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
             console.error('Error sending message:', error);
             // Restore content on error
             setContent(trimmed);
+        }
+    };
+
+    const handleShareLocation = async (location: LocationData) => {
+        try {
+            const message = await collaborationService.sendMessage(spaceId, {
+                content: location.address || 'Shared location',
+                type: 'location',
+                metadata: {
+                    latitude: location.latitude,
+                    longitude: location.longitude,
+                    name: location.name,
+                    address: location.address,
+                    isLive: false,
+                },
+                reply_to_id: replyingTo?.id,
+            });
+
+            setReplyingTo(null);
+            setSpace((prev: any) => ({
+                ...prev,
+                content_state: {
+                    ...prev.content_state,
+                    messages: [...(prev?.content_state?.messages || []), message]
+                }
+            }));
+        } catch (error) {
+            console.error('Error sharing location:', error);
+            Alert.alert('Error', 'Failed to share location.');
+        }
+    };
+
+    const handleShareLiveLocation = async (location: LocationData, duration: number) => {
+        try {
+            const message = await collaborationService.sendMessage(spaceId, {
+                content: `Live location for ${duration} min`,
+                type: 'live_location',
+                metadata: {
+                    latitude: location.latitude,
+                    longitude: location.longitude,
+                    isLive: true,
+                    liveDuration: duration,
+                    expiresAt: new Date(Date.now() + duration * 60 * 1000).toISOString(),
+                },
+                reply_to_id: replyingTo?.id,
+            });
+
+            setReplyingTo(null);
+            setSpace((prev: any) => ({
+                ...prev,
+                content_state: {
+                    ...prev.content_state,
+                    messages: [...(prev?.content_state?.messages || []), message]
+                }
+            }));
+        } catch (error) {
+            console.error('Error sharing live location:', error);
+            Alert.alert('Error', 'Failed to share live location.');
         }
     };
 
@@ -224,10 +284,19 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                     } else if (action === 'document') {
                         uploaderRef.current?.openFilePicker();
                         setShowMediaUploader(true);
+                    } else if (action === 'location') {
+                        setShowLocationPicker(true);
                     } else {
                         Alert.alert('Coming Soon', `${action} features are coming soon!`);
                     }
                 }}
+            />
+
+            <ShareLocation
+                visible={showLocationPicker}
+                onClose={() => setShowLocationPicker(false)}
+                onShareLocation={handleShareLocation}
+                onShareLiveLocation={handleShareLiveLocation}
             />
 
             <AdvancedMediaUploader

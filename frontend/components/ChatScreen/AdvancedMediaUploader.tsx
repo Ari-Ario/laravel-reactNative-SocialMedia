@@ -14,14 +14,17 @@ import {
   Keyboard,
   ActivityIndicator,
   Dimensions,
+  StatusBar,
   ScrollView,
 } from 'react-native';
-import { MotiView } from 'moti';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { MotiView, AnimatePresence } from 'moti';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import PlatformCameraView from '@/components/PlatformCameraView';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import * as FileSystem from 'expo-file-system';
+import * as Haptics from 'expo-haptics';
 import { safeHaptics } from '@/utils/haptics';
 import { MediaCompressor } from '@/utils/mediaCompressor';
 import { getToken } from '@/services/TokenService';
@@ -122,6 +125,7 @@ async function uploadToSpaceAPI(
 }
 
 const { width, height } = Dimensions.get('window');
+const RECORDING_LIMIT_MS = 120000; // 120 seconds
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
@@ -152,9 +156,14 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
 
   // Camera & Recording State
   const [cameraType, setCameraType] = useState<'back' | 'front'>('back');
+  const [cameraMode, setCameraMode] = useState<'picture' | 'video'>('picture');
+  const [flash, setFlash] = useState<'off' | 'on' | 'auto'>('off');
+  const [zoom, setZoom] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
+  const [recordingProgress, setRecordingProgress] = useState(0);
   const [recordingTime, setRecordingTime] = useState(0);
-  const [recordingTimer, setRecordingTimer] = useState<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<any>(null);
+  const longPressTimeout = useRef<any>(null);
   const cameraRef = useRef<any>(null);
 
   // Video Preview Player (SDK 52)
@@ -168,9 +177,10 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
 
   useEffect(() => {
     return () => {
-      if (recordingTimer) clearInterval(recordingTimer);
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (longPressTimeout.current) clearTimeout(longPressTimeout.current);
     };
-  }, [recordingTimer]);
+  }, []);
 
   // ─── Picker Actions ─────────────────────────────────────────────────────────
 
@@ -218,64 +228,114 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
     }
   }, []);
 
+  const takePhoto = async () => {
+    if (cameraRef.current) {
+      try {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        const photo = await cameraRef.current.takePictureAsync({
+          quality: 0.8,
+          skipProcessing: false,
+        });
+
+        if (photo) {
+          handleAssetPicked(
+            photo.uri,
+            'image',
+            `photo-${Date.now()}.jpg`,
+            'image/jpeg'
+          );
+        }
+      } catch (error) {
+        console.error('Error taking photo:', error);
+      }
+    }
+  };
+
   const startRecording = async () => {
     if (cameraRef.current && !isRecording) {
       try {
         setIsRecording(true);
-        setRecordingTime(0);
-        const timer = setInterval(() => setRecordingTime(prev => prev + 1), 1000);
-        setRecordingTimer(timer);
+        setRecordingProgress(0);
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+        // Start progress timer
+        const startTime = Date.now();
+        timerRef.current = setInterval(() => {
+          const elapsed = Date.now() - startTime;
+          const progress = elapsed / RECORDING_LIMIT_MS;
+
+          if (progress >= 1) {
+            stopRecording();
+          } else {
+            setRecordingProgress(progress);
+          }
+        }, 50);
 
         const video = await cameraRef.current.recordAsync({
-          maxDuration: 60,
+          maxDuration: 120,
+          quality: '1080p',
         });
 
         if (video) {
           handleAssetPicked(
             video.uri,
             'video',
-            `video_${Date.now()}.mp4`,
+            `video-${Date.now()}.mp4`,
             'video/mp4'
           );
         }
-      } catch (err) {
-        console.error('Recording error:', err);
-        stopRecording();
+      } catch (error) {
+        console.error('Error starting recording:', error);
+        setIsRecording(false);
+        if (timerRef.current) clearInterval(timerRef.current);
       }
     }
   };
 
   const stopRecording = async () => {
     if (cameraRef.current && isRecording) {
-      cameraRef.current.stopRecording();
-      if (recordingTimer) clearInterval(recordingTimer);
-      setRecordingTimer(null);
-      setIsRecording(false);
-    }
-  };
-
-  const capturePhoto = async () => {
-    if (cameraRef.current) {
       try {
-        const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.8,
-        });
-        if (photo) {
-          handleAssetPicked(
-            photo.uri,
-            'image',
-            `photo_${Date.now()}.jpg`,
-            'image/jpeg'
-          );
-        }
-      } catch (err) {
-        console.error('Capture error:', err);
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setIsRecording(false);
+        setRecordingProgress(0);
+        if (timerRef.current) clearInterval(timerRef.current);
+
+        await cameraRef.current.stopRecording();
+      } catch (error) {
+        console.error('Error stopping recording:', error);
       }
     }
   };
 
-  const toggleCameraType = () => {
+  const handleLongPress = () => {
+    longPressTimeout.current = setTimeout(() => {
+      if (cameraMode === 'picture') {
+        setCameraMode('video');
+      }
+      startRecording();
+    }, 200);
+  };
+
+  const handlePressOut = () => {
+    if (longPressTimeout.current) {
+      clearTimeout(longPressTimeout.current);
+    }
+
+    if (isRecording) {
+      stopRecording();
+    } else {
+      if (cameraMode === 'picture') {
+        takePhoto();
+      }
+    }
+  };
+
+  const toggleFacing = () => {
     setCameraType(prev => (prev === 'back' ? 'front' : 'back'));
+  };
+
+  const toggleFlash = () => {
+    setFlash(prev => (prev === 'off' ? 'on' : prev === 'on' ? 'auto' : 'off'));
   };
 
   const formatRecordingTime = (seconds: number) => {
@@ -466,31 +526,99 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
-  const renderCameraView = () => {
-    const handleCapture = (uri: string) => {
-      handleAssetPicked(uri, 'image', `photo_${Date.now()}.jpg`, 'image/jpeg');
-    };
+  const renderCameraView = () => (
+    <Modal visible={cameraVisible} animationType="slide" transparent={false}>
+      <View style={styles.cameraContainer}>
+        <PlatformCameraView
+          cameraRef={cameraRef}
+          style={styles.camera}
+          facing={cameraType}
+          flash={flash}
+          zoom={zoom}
+        >
+          <SafeAreaView style={styles.cameraOverlay}>
+            <View style={styles.cameraHeader}>
+              <TouchableOpacity onPress={() => setCameraVisible(false)} style={styles.cameraClose}>
+                <Ionicons name="close" size={30} color="white" />
+              </TouchableOpacity>
 
-    return (
-      <Modal visible={cameraVisible} animationType="fade" transparent={false}>
-        <View style={styles.cameraContainer}>
-          <PlatformCameraView
-            style={{ flex: 1 } as any}
-            facing={cameraType}
-            showControls
-            onCapture={handleCapture}
-            cameraRef={cameraRef}
-          />
-          <TouchableOpacity
-            style={{ position: 'absolute', top: 50, left: 20, padding: 8 }}
-            onPress={() => setCameraVisible(false)}
-          >
-            <Ionicons name="close" size={32} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </Modal>
-    );
-  };
+              <View style={styles.cameraTopRight}>
+                <TouchableOpacity onPress={toggleFlash} style={styles.cameraIconBtn}>
+                  <Ionicons
+                    name={flash === 'off' ? 'flash-off' : flash === 'on' ? 'flash' : 'flash-outline'}
+                    size={24}
+                    color="white"
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.cameraBottomWrapper}>
+              <View style={styles.cameraControlsMain}>
+                <View style={{ width: 44 }} />
+
+                <View style={styles.captureCenter}>
+                  <TouchableOpacity
+                    onPressIn={handleLongPress}
+                    onPressOut={handlePressOut}
+                    style={styles.captureOuter}
+                    activeOpacity={0.8}
+                  >
+                    <MotiView
+                      animate={{
+                        scale: isRecording ? 1.2 : 1,
+                        backgroundColor: isRecording ? '#FF3B30' : 'white'
+                      }}
+                      transition={{ type: 'timing', duration: 150 }}
+                      style={styles.captureInnerCircle}
+                    />
+                    {isRecording && (
+                      <MotiView
+                        from={{ opacity: 0, scale: 1 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        style={styles.progressRingLayer}
+                      >
+                        <View
+                          style={[
+                            styles.progressFillBar,
+                            { width: `${recordingProgress * 100}%` }
+                          ]}
+                        />
+                      </MotiView>
+                    )}
+                  </TouchableOpacity>
+                  <Text style={styles.cameraHint}>
+                    {cameraMode === 'video'
+                      ? isRecording ? `Recording ${Math.floor(recordingProgress * RECORDING_LIMIT_MS / 1000)}s` : 'Hold for Video'
+                      : 'Tap for Photo'}
+                  </Text>
+                </View>
+
+                <TouchableOpacity style={styles.cameraFlipBtn} onPress={toggleFacing}>
+                  <Ionicons name="camera-reverse-outline" size={32} color="white" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.cameraModeSelector}>
+                <TouchableOpacity
+                  onPress={() => setCameraMode('picture')}
+                  style={[styles.cameraModeBtn, cameraMode === 'picture' && styles.activeCameraModeBtn]}
+                >
+                  <Text style={[styles.cameraModeTxt, cameraMode === 'picture' && styles.activeCameraModeTxt]}>PHOTO</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setCameraMode('video')}
+                  style={[styles.cameraModeBtn, cameraMode === 'video' && styles.activeCameraModeBtn]}
+                >
+                  <Text style={[styles.cameraModeTxt, cameraMode === 'video' && styles.activeCameraModeTxt]}>VIDEO</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </SafeAreaView>
+        </PlatformCameraView>
+      </View>
+    </Modal>
+  );
 
   if (cameraVisible) return renderCameraView();
 
@@ -955,85 +1083,110 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
   },
   cameraHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    paddingTop: Platform.OS === 'ios' ? 0 : 40,
     paddingHorizontal: 20,
+    paddingBottom: 20,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   cameraClose: {
     padding: 8,
   },
-  cameraFlip: {
-    padding: 8,
-  },
-  recordingIndicator: {
+  cameraTopRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,0,0,0.7)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 8,
   },
-  redDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#fff',
+  cameraIconBtn: {
+    padding: 8,
   },
-  recordingText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 14,
+  cameraBottomWrapper: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    paddingBottom: 40,
   },
-  cameraBottom: {
+  cameraControlsMain: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingBottom: 20,
+    justifyContent: 'space-around',
+    paddingHorizontal: 30,
+    marginBottom: 30,
   },
-  captureContainer: {
+  captureCenter: {
     alignItems: 'center',
-    gap: 12,
   },
-  outerCircle: {
+  captureOuter: {
     width: 80,
     height: 80,
     borderRadius: 40,
     borderWidth: 4,
-    borderColor: '#fff',
+    borderColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.2)',
   },
-  outerCircleRecording: {
-    borderColor: '#ff3b30',
-    transform: [{ scale: 1.2 }],
-  },
-  innerCircle: {
+  captureInnerCircle: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#fff',
+    backgroundColor: 'white',
   },
-  innerCircleRecording: {
-    backgroundColor: '#ff3b30',
-    borderRadius: 8,
-    width: 30,
-    height: 30,
+  progressRingLayer: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 5,
+    borderColor: '#FF3B30',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  hintText: {
-    color: '#fff',
+  progressFillBar: {
+    position: 'absolute',
+    left: -5,
+    top: -5,
+    height: 80,
+    borderWidth: 5,
+    borderColor: '#FF3B30',
+    borderRadius: 40,
+    opacity: 0.5,
+  },
+  cameraHint: {
+    color: 'white',
     fontSize: 14,
-    fontWeight: '500',
-    ...Platform.select({
-      web: {
-        textShadow: '0px 1px 4px rgba(0, 0, 0, 0.5)',
-      },
-      default: {
-        textShadowColor: 'rgba(0, 0, 0, 0.5)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 4,
-      },
-    }),
+    fontWeight: '600',
+    marginTop: 12,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  cameraFlipBtn: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cameraModeSelector: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 30,
+  },
+  cameraModeBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  activeCameraModeBtn: {
+    borderBottomWidth: 2,
+    borderBottomColor: '#FFD700',
+  },
+  cameraModeTxt: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  activeCameraModeTxt: {
+    color: 'white',
   },
   previewVideo: {
     width: '100%',

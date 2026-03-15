@@ -17,6 +17,9 @@ import Avatar from '@/components/Image/Avatar';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import PollViewer from './PollViewer';
 import { router } from 'expo-router';
+import * as Linking from 'expo-linking';
+import { MotiView } from 'moti';
+import LocationPreview from './LocationPreview';
 import { createShadow } from '@/utils/styles';
 
 interface MessageBubbleProps {
@@ -107,15 +110,26 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   const downloadMedia = async (url: string, filename: string) => {
     if (Platform.OS === 'web') {
       try {
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // Try fetch/blob approach first to force download with filename
+        const response = await fetch(url);
+        if (response.ok) {
+          const blob = await response.blob();
+          const blobUrl = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = filename;
+          link.target = '_blank';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(blobUrl);
+        } else {
+          // Fallback to direct opening in new tab
+          window.open(url, '_blank');
+        }
       } catch (err) {
-        console.error('Web download failed:', err);
-        Alert.alert('Error', 'Failed to download media on web.');
+        console.warn('Web download fetch failed, falling back to window.open:', err);
+        window.open(url, '_blank');
       }
       return;
     }
@@ -302,6 +316,147 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               {pollData?.question || 'Poll'}
             </Text>
           </View>
+        );
+      }
+
+      case 'document': {
+        const rawUrl = message.metadata?.url || message.file_path || '';
+        const isNetworkUrl = rawUrl.startsWith('http://') || rawUrl.startsWith('https://');
+        const isFileUrl = rawUrl.startsWith('file://');
+        const isDataUrl = rawUrl.startsWith('data:');
+
+        const url = (isNetworkUrl || isFileUrl || isDataUrl)
+          ? rawUrl
+          : (rawUrl ? `${getApiBaseImage()}/storage/${rawUrl}` : '');
+
+        const fileName = message.metadata?.file_name || message.metadata?.name || 'Document';
+        const fileSize = message.metadata?.file_size;
+
+        return (
+          <TouchableOpacity
+            style={[
+              styles.documentContainer,
+              isCurrentUser ? styles.currentUserDocument : styles.otherUserDocument
+            ]}
+            onPress={() => downloadMedia(url, fileName)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.documentIconContainer}>
+              <Ionicons name="document-text" size={24} color="#007AFF" />
+            </View>
+            <View style={styles.documentInfo}>
+              <Text
+                style={[
+                  styles.documentName,
+                  isCurrentUser ? styles.currentUserText : styles.otherUserText
+                ]}
+                numberOfLines={1}
+              >
+                {fileName}
+              </Text>
+              {fileSize && (
+                <Text style={[styles.documentSize, isCurrentUser && { color: 'rgba(255,255,255,0.7)' }]}>
+                  {(fileSize / (1024 * 1024)).toFixed(2)} MB
+                </Text>
+              )}
+            </View>
+            <Ionicons name="download-outline" size={20} color={isCurrentUser ? "#fff" : "#007AFF"} />
+          </TouchableOpacity>
+        );
+      }
+
+      case 'location': {
+        const { latitude, longitude, name, address } = message.metadata || {};
+        if (!latitude || !longitude) return null;
+
+        const openInMaps = () => {
+          const scheme = Platform.select({ ios: 'maps:0,0?q=', android: 'geo:0,0?q=' });
+          const latLng = `${latitude},${longitude}`;
+          const label = name || 'Location';
+          const url = Platform.select({
+            ios: `${scheme}${label}@${latLng}`,
+            android: `${scheme}${latLng}(${label})`,
+            web: `https://www.google.com/maps/search/?api=1&query=${latLng}`
+          });
+          if (url) {
+            if (Platform.OS === 'web') {
+              window.open(url, '_blank');
+            } else {
+              Linking.openURL(url);
+            }
+          }
+        };
+
+        return (
+          <TouchableOpacity
+            style={[
+              styles.locationBubbleContainer,
+              isCurrentUser ? styles.currentUserBubble : styles.otherUserBubble
+            ]}
+            onPress={openInMaps}
+            activeOpacity={0.9}
+          >
+            <View style={styles.locationMapContainer}>
+              <LocationPreview 
+                latitude={latitude} 
+                longitude={longitude} 
+                name={name}
+                style={styles.locationMiniMap} 
+              />
+            </View>
+            <View style={styles.locationInfo}>
+              <Text style={[styles.locationName, isCurrentUser && { color: '#fff' }]} numberOfLines={1}>
+                {name || 'Selected Location'}
+              </Text>
+              {address && (
+                <Text style={[styles.locationAddress, isCurrentUser ? { color: 'rgba(255,255,255,1)' } : { color: '#007AFF', fontWeight: '500' }]} numberOfLines={2}>
+                  {address}
+                </Text>
+              )}
+            </View>
+          </TouchableOpacity>
+        );
+      }
+
+      case 'live_location': {
+        const { latitude, longitude, expiresAt } = message.metadata || {};
+        const isExpired = expiresAt ? new Date(expiresAt) < new Date() : false;
+
+        return (
+          <TouchableOpacity
+            style={[
+              styles.locationBubbleContainer,
+              isCurrentUser ? styles.currentUserBubble : styles.otherUserBubble
+            ]}
+            activeOpacity={0.9}
+          >
+            <View style={styles.locationMapContainer}>
+               <View style={[styles.locationMiniMap, { backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center' }]}>
+                  {!isExpired && (
+                    <MotiView
+                      from={{ scale: 1, opacity: 0.5 }}
+                      animate={{ scale: 2, opacity: 0 }}
+                      transition={{ type: 'timing', duration: 1500, loop: true }}
+                      style={styles.livePulse}
+                    />
+                  )}
+                  <Ionicons name="location" size={32} color={isExpired ? "#8E8E93" : "#FF3B30"} />
+               </View>
+            </View>
+            <View style={styles.locationInfo}>
+              <View style={styles.liveHeader}>
+                <View style={[styles.liveIndicator, isExpired && { backgroundColor: '#8E8E93' }]} />
+                <Text style={[styles.locationName, isCurrentUser && { color: '#fff' }]}>
+                  {isExpired ? 'Live location ended' : 'Live Location'}
+                </Text>
+              </View>
+              {!isExpired && (
+                <Text style={[styles.locationAddress, isCurrentUser && { color: 'rgba(255,255,255,0.7)' }]}>
+                  Sharing until {expiresAt ? new Date(expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '...'}
+                </Text>
+              )}
+            </View>
+          </TouchableOpacity>
         );
       }
 
@@ -1229,6 +1384,101 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1,
+  },
+  /* ── Document Styles ── */
+  documentContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 12,
+    gap: 12,
+    minWidth: 200,
+  },
+  currentUserDocument: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  otherUserDocument: {
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  documentIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...createShadow({ width: 0, height: 2, opacity: 0.1, radius: 4, elevation: 2 }),
+  },
+  documentInfo: {
+    flex: 1,
+  },
+  documentName: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  documentSize: {
+    fontSize: 11,
+    color: '#8E8E93',
+    marginTop: 2,
+  },
+  /* ── Location Styles ── */
+  locationBubbleContainer: {
+    width: 240,
+    borderRadius: 16,
+    overflow: 'hidden',
+    padding: 4,
+  },
+  locationMapContainer: {
+    width: '100%',
+    height: 140,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  locationMiniMap: {
+    width: '100%',
+    height: '100%',
+  },
+  webMapPlaceholder: {
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  webMapText: {
+    fontSize: 12,
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  locationInfo: {
+    padding: 8,
+    gap: 2,
+  },
+  locationName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1a1a1a',
+  },
+  locationAddress: {
+    fontSize: 12,
+    color: '#8E8E93',
+  },
+  liveHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  liveIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF3B30',
+  },
+  livePulse: {
+    position: 'absolute',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,59,48,0.3)',
   },
 });
 
