@@ -12,7 +12,12 @@ class Post extends Model
     protected $fillable = [
         'user_id', // Add this line
         'caption',
+        'location',
         // Add any other fields that should be mass assignable
+    ];
+
+    protected $casts = [
+        'location' => 'array',
     ];
     protected $with = ['user', 'media', 'reactions', 'comments'];
 

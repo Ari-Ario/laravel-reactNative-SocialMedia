@@ -21,6 +21,11 @@ import * as Linking from 'expo-linking';
 import { MotiView } from 'moti';
 import LocationPreview from './LocationPreview';
 import { createShadow } from '@/utils/styles';
+import { useModal } from '@/context/ModalContext';
+
+import { fetchPostById } from '@/services/PostService';
+import { fetchStory } from '@/services/StoryService';
+import { PostVideoPlayer } from '../PostVideoPlayer';
 
 interface MessageBubbleProps {
   message: {
@@ -77,6 +82,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   highlighted,
   onJumpToMessage,
 }) => {
+  const { openModal } = useModal();
   const bubbleRef = useRef<React.ElementRef<typeof TouchableOpacity>>(null);
   const [isSelfHighlighted, setIsSelfHighlighted] = useState(false);
 
@@ -177,10 +183,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               style={styles.image}
             >
               {isVideo ? (
-                <View style={[styles.image, styles.videoPlaceholder]}>
-                  <Ionicons name="videocam" size={48} color="#fff" />
-                  <Text style={styles.videoText}>Video Message</Text>
-                </View>
+                <PostVideoPlayer
+                  uri={url}
+                  style={styles.image}
+                  shouldPlay={true}
+                  isMuted={true}
+                  contentFit="cover"
+                />
               ) : (
                 <Image
                   source={{ uri: url, cache: 'force-cache' }}
@@ -244,9 +253,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                     ]}
                   >
                     {isVideo ? (
-                      <View style={[styles.albumMedia, styles.videoPlaceholderSmall]}>
-                        <Ionicons name="play" size={24} color="#fff" />
-                      </View>
+                      <PostVideoPlayer
+                        uri={url}
+                        style={styles.albumMedia}
+                        shouldPlay={true}
+                        isMuted={true}
+                        contentFit="cover"
+                      />
                     ) : (
                       <Image
                         source={{ uri: url, cache: 'force-cache' }}
@@ -369,31 +382,18 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         const { latitude, longitude, name, address } = message.metadata || {};
         if (!latitude || !longitude) return null;
 
-        const openInMaps = () => {
-          const scheme = Platform.select({ ios: 'maps:0,0?q=', android: 'geo:0,0?q=' });
-          const latLng = `${latitude},${longitude}`;
-          const label = name || 'Location';
-          const url = Platform.select({
-            ios: `${scheme}${label}@${latLng}`,
-            android: `${scheme}${latLng}(${label})`,
-            web: `https://www.google.com/maps/search/?api=1&query=${latLng}`
-          });
-          if (url) {
-            if (Platform.OS === 'web') {
-              window.open(url, '_blank');
-            } else {
-              Linking.openURL(url);
-            }
-          }
+        const handleLocationPress = () => {
+          openModal('location', { location: message.metadata });
         };
 
-        return (
+        const renderLocationContent = () => (
           <TouchableOpacity
             style={[
               styles.locationBubbleContainer,
-              isCurrentUser ? styles.currentUserBubble : styles.otherUserBubble
+              isCurrentUser ? styles.currentUserBubble : styles.otherUserBubble,
+              message.metadata?.appended_message && { borderRadius: 12 }
             ]}
-            onPress={openInMaps}
+            onPress={handleLocationPress}
             activeOpacity={0.9}
           >
             <View style={styles.locationMapContainer}>
@@ -416,6 +416,55 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             </View>
           </TouchableOpacity>
         );
+
+        if (message.metadata?.appended_message) {
+          return (
+            <View style={[
+              styles.container,
+              isCurrentUser ? styles.currentUserContainer : styles.otherUserContainer,
+            ]}>
+              {!isCurrentUser && showAvatar && (
+                <View style={styles.avatarContainer}>
+                  <Avatar source={message.user?.profile_photo} size={32} name={message.user?.name} showStatus={false} />
+                </View>
+              )}
+              <View style={[
+                styles.wrappedShareContainer,
+                isCurrentUser ? styles.currentUserWrappedShare : styles.otherUserWrappedShare,
+                isSelected && styles.selectedContainer
+              ]}>
+                {renderLocationContent()}
+                <View style={styles.appendedMessageContainer}>
+                  <Text style={[styles.appendedMessageText, !isCurrentUser && { color: '#333' }]}>
+                    {message.metadata.appended_message}
+                  </Text>
+                  <View style={styles.appendedMessageMeta}>
+                    <Text style={[styles.appendedMessageTime, !isCurrentUser && { color: '#666' }]}>
+                      {formatTime(message.created_at)}
+                    </Text>
+                    {isCurrentUser && (
+                      <Ionicons name="checkmark-done" size={12} color={message.metadata?.read ? "#fff" : "rgba(255,255,255,0.6)"} />
+                    )}
+                  </View>
+                </View>
+              </View>
+            </View>
+          );
+        }
+
+        return (
+          <View style={[
+            styles.container,
+            isCurrentUser ? styles.currentUserContainer : styles.otherUserContainer,
+          ]}>
+            {!isCurrentUser && showAvatar && (
+              <View style={styles.avatarContainer}>
+                <Avatar source={message.user?.profile_photo} size={32} name={message.user?.name} showStatus={false} />
+              </View>
+            )}
+            {renderLocationContent()}
+          </View>
+        );
       }
 
       case 'live_location': {
@@ -428,6 +477,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               styles.locationBubbleContainer,
               isCurrentUser ? styles.currentUserBubble : styles.otherUserBubble
             ]}
+            onPress={() => openModal('location', { location: message.metadata })}
             activeOpacity={0.9}
           >
             <View style={styles.locationMapContainer}>
@@ -625,12 +675,35 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     const allMedia = isStory ? [{ file_path: metadata.media_url, type: metadata.media_type }] : (metadata.media || []);
     const caption = metadata.caption;
 
-    const handlePress = () => {
-      if (itemId) {
+    const handlePress = async () => {
+      if (!itemId) return;
+
+      try {
         if (isStory) {
+          await fetchStory(Number(itemId));
           router.push({ pathname: '/story/[id]', params: { id: itemId, standalone: 'true' } });
         } else {
+          await fetchPostById(Number(itemId));
           router.push({ pathname: '/post/[id]', params: { id: itemId } });
+        }
+      } catch (error: any) {
+        const isNotFound = error?.response?.status === 404 || error?.status === 404 || error?.message?.includes('404');
+        
+        if (isNotFound) {
+          const alertMsg = `This ${isStory ? 'story' : 'post'} has been deleted and is no longer available.`;
+          if (Platform.OS === 'web') {
+            alert(alertMsg);
+          } else {
+            Alert.alert("Content Unavailable", alertMsg, [{ text: "OK" }]);
+          }
+        } else {
+          console.error(`Error checking shared ${isStory ? 'story' : 'post'}:`, error);
+          const errorMsg = `Could not load this ${isStory ? 'story' : 'post'}. Please try again later.`;
+          if (Platform.OS === 'web') {
+            alert(errorMsg);
+          } else {
+            Alert.alert("Error", errorMsg);
+          }
         }
       }
     };
@@ -652,23 +725,21 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         
         return (
           <View style={styles.sharedPostMediaContainer}>
-            <Image 
-              source={{ uri: mediaUrl }} 
-              style={[styles.sharedPostMedia, isStory && { height: 350 }]} 
-              resizeMode="cover"
-            />
-            {(item.type === 'video' || metadata.media_type === 'video') && (
-              <View style={styles.playIconOverlay}>
-                <Ionicons name="play" size={42} color="white" />
-              </View>
+            {(item.type === 'video' || metadata.media_type === 'video') ? (
+              <PostVideoPlayer
+                uri={mediaUrl}
+                style={[styles.sharedPostMedia, isStory && { height: 350 }]}
+                contentFit="cover"
+                shouldPlay={true}
+                isMuted={true}
+              />
+            ) : (
+              <Image 
+                source={{ uri: mediaUrl }} 
+                style={[styles.sharedPostMedia, isStory && { height: 350 }]} 
+                resizeMode="cover"
+              />
             )}
-            <View style={styles.mediaTypeBadge}>
-               <Ionicons 
-                 name={(item.type === 'video' || metadata.media_type === 'video') ? "videocam" : "image"} 
-                 size={12} 
-                 color="white" 
-               />
-            </View>
             {isStory && (
               <View style={styles.storyOverlayBadge}>
                 <Text style={styles.storyOverlayText}>STORY</Text>
@@ -719,6 +790,96 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       );
     };
 
+    const renderShareCard = () => (
+      <TouchableOpacity
+        ref={bubbleRef}
+        activeOpacity={0.9}
+        onPress={handlePress}
+        onLongPress={() => {
+          if (onLongPressWithPosition) {
+            bubbleRef.current?.measure((_x, _y, width, _height, pageX, pageY) => {
+              onLongPressWithPosition(message, pageX + width / 2, pageY);
+            });
+          } else if (onLongPress) {
+            onLongPress();
+          }
+        }}
+        delayLongPress={200}
+        style={[
+          styles.sharedPostContainer,
+          isCurrentUser ? styles.currentUserSharedPost : styles.otherUserSharedPost,
+          isSelected && styles.selectedContainer,
+          isStory && { width: 250 },
+          metadata.appended_message && { borderRadius: 12 }
+        ]}
+      >
+        <BlurView intensity={20} tint="light" style={styles.sharedPostHeader}>
+          <Avatar 
+            source={creatorAvatar} 
+            size={24} 
+            name={creatorName}
+            showStatus={false}
+          />
+          <Text style={styles.sharedPostCreatorName} numberOfLines={1}>
+            {creatorName}
+          </Text>
+          <Ionicons name="chevron-forward" size={12} color="#8E8E93" style={{marginLeft: 'auto'}} />
+        </BlurView>
+
+        {renderMediaCollection()}
+
+        <BlurView intensity={30} tint="light" style={styles.sharedPostFooter}>
+           <Text style={styles.sharedPostCaption} numberOfLines={2}>
+              <Text style={styles.sharedPostCreatorLabel}>{creatorName} </Text>
+              {caption}
+           </Text>
+           <View style={styles.sharedPostMeta}>
+              <Text style={styles.sharedPostTime}>
+                {formatTime(message.created_at)}
+              </Text>
+           </View>
+        </BlurView>
+
+        {renderReactions()}
+      </TouchableOpacity>
+    );
+
+    if (metadata.appended_message) {
+      return (
+        <View style={[
+          styles.container,
+          isCurrentUser ? styles.currentUserContainer : styles.otherUserContainer,
+        ]}>
+          {!isCurrentUser && showAvatar && (
+            <View style={styles.avatarContainer}>
+              <Avatar source={message.user?.profile_photo} size={32} name={message.user?.name} showStatus={false} />
+            </View>
+          )}
+          <View style={[
+            styles.wrappedShareContainer,
+            isCurrentUser ? styles.currentUserWrappedShare : styles.otherUserWrappedShare,
+            isSelected && styles.selectedContainer,
+            isStory && { width: 250 }
+          ]}>
+            {renderShareCard()}
+            <View style={styles.appendedMessageContainer}>
+              <Text style={[styles.appendedMessageText, !isCurrentUser && { color: '#333' }]}>
+                {metadata.appended_message}
+              </Text>
+              <View style={styles.appendedMessageMeta}>
+                <Text style={[styles.appendedMessageTime, !isCurrentUser && { color: '#666' }]}>
+                  {formatTime(message.created_at)}
+                </Text>
+                {isCurrentUser && (
+                  <Ionicons name="checkmark-done" size={12} color={message.metadata?.read ? "#fff" : "rgba(255,255,255,0.6)"} />
+                )}
+              </View>
+            </View>
+          </View>
+        </View>
+      );
+    }
+
     return (
       <View style={[
         styles.container,
@@ -726,76 +887,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       ]}>
         {!isCurrentUser && showAvatar && (
           <View style={styles.avatarContainer}>
-            <Avatar
-              source={message.user?.profile_photo}
-              size={32}
-              name={message.user?.name}
-              showStatus={false}
-            />
+            <Avatar source={message.user?.profile_photo} size={32} name={message.user?.name} showStatus={false} />
           </View>
         )}
-
-        <TouchableOpacity
-          ref={bubbleRef}
-          activeOpacity={0.9}
-          onPress={handlePress}
-          onLongPress={() => {
-            if (onLongPressWithPosition) {
-              bubbleRef.current?.measure((_x, _y, width, _height, pageX, pageY) => {
-                onLongPressWithPosition(message, pageX + width / 2, pageY);
-              });
-            } else if (onLongPress) {
-              onLongPress();
-            }
-          }}
-          delayLongPress={200}
-          style={[
-            styles.sharedPostContainer,
-            isCurrentUser ? styles.currentUserSharedPost : styles.otherUserSharedPost,
-            isSelected && styles.selectedContainer,
-            isStory && { width: 250 }
-          ]}
-        >
-          <BlurView intensity={20} tint="light" style={styles.sharedPostHeader}>
-            <Avatar 
-              source={creatorAvatar} 
-              size={24} 
-              name={creatorName}
-              showStatus={false}
-            />
-            <Text style={styles.sharedPostCreatorName} numberOfLines={1}>
-              {creatorName}
-            </Text>
-            <Ionicons name="chevron-forward" size={12} color="#8E8E93" style={{marginLeft: 'auto'}} />
-          </BlurView>
-
-          {renderMediaCollection()}
-
-          <BlurView intensity={30} tint="light" style={styles.sharedPostFooter}>
-             <Text style={styles.sharedPostCaption} numberOfLines={2}>
-                <Text style={styles.sharedPostCreatorLabel}>{creatorName} </Text>
-                {caption}
-             </Text>
-             <View style={styles.sharedPostMeta}>
-                <Text style={styles.sharedPostTime}>
-                  {formatTime(message.created_at)}
-                </Text>
-             </View>
-          </BlurView>
-
-          {renderReactions()}
-        </TouchableOpacity>
-
-        {isCurrentUser && showAvatar && (
-          <View style={styles.avatarContainer}>
-            <Avatar
-              source={message.user?.profile_photo}
-              size={32}
-              name={message.user?.name}
-              showStatus={false}
-            />
-          </View>
-        )}
+        {renderShareCard()}
       </View>
     );
   }

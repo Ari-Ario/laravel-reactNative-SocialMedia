@@ -185,6 +185,7 @@ class PostController extends Controller
     {
         $request->validate([
             'caption' => 'nullable|string|max:500',
+            'location' => 'nullable|string', // JSON string from frontend
             'media' => 'sometimes|array|max:10',
             'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,webm,avi,mp3,wav,pdf,doc,docx,ogg,oga,opus,flac,aac,m4a,m4b,m4p,m4r,m4v,mp2,mp3,mp4,mpeg,mpeg4,mpegps,mpg,mpegts,mpegv,mts,oga,ogg,opus,wav,webm,mpga|max:40960', // 40MB
             'trim_start' => 'sometimes|array',
@@ -193,7 +194,8 @@ class PostController extends Controller
 
         $post = Post::create([
             'user_id' => Auth::id(),
-            'caption' => $request->caption
+            'caption' => $request->caption,
+            'location' => $request->has('location') ? json_decode($request->location, true) : null,
         ]);
         
         if ($request->hasFile('media')) {
@@ -313,6 +315,7 @@ class PostController extends Controller
 
         $request->validate([
             'caption' => 'nullable|string|max:500',
+            'location' => 'nullable|string', // JSON string
             'media' => 'sometimes|array|max:10',
             'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,webm,avi,mp3,wav,pdf,doc,docx,ogg,oga,opus,flac,aac,m4a,m4b,m4p,m4r,m4v,mp2,mp3,mp4,mpeg,mpeg4,mpegps,mpg,mpegts,mpegv,mts,oga,ogg,opus,wav,webm,mpga|max:40960', // 40MB
             'delete_media' => 'sometimes|array',
@@ -333,6 +336,22 @@ class PostController extends Controller
             $updatedFields[] = 'caption';
             
             $post->caption = $request->caption;
+        }
+
+        // Track location changes
+        if ($request->has('location')) {
+            $newLocation = json_decode($request->location, true);
+            if ($newLocation != $post->location) {
+                $changes['location'] = [
+                    'old' => $post->location,
+                    'new' => $newLocation
+                ];
+                $updatedFields[] = 'location';
+                $post->location = $newLocation;
+            }
+        }
+
+        if (!empty($updatedFields)) {
             $post->save();
         }
 

@@ -1299,7 +1299,7 @@ public function endCall(Request $request, $id)
     {
         $request->validate([
             'content' => 'nullable|string',
-            'type' => 'sometimes|in:text,image,video,document,voice,poll,album,post_share,location,live_location',
+            'type' => 'sometimes|in:text,image,video,document,voice,poll,album,post_share,story_share,location,live_location',
             'file_path' => 'sometimes|string',
             'metadata' => 'sometimes|array',
             'reply_to_id' => 'sometimes|nullable|string',

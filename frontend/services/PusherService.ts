@@ -43,11 +43,17 @@ class PusherService {
 
       // Dynamically import pusher-js to avoid SSR window crash
       import('pusher-js').then((mod) => {
-        const Pusher = mod.default;
+        const Pusher = (mod as any).default || mod;
 
-        // Set up React Native XHR/WebSocket overrides
-        (Pusher as any).Runtime.createXHR = () => new XMLHttpRequest();
-        (Pusher as any).Runtime.createWebSocket = (url: string) => new WebSocket(url);
+        // ✅ FIX: Only apply React Native overrides if NOT on web
+        if (Platform.OS !== 'web' && (Pusher as any).Runtime) {
+          console.log(`📱 Applying React Native Pusher overrides for ${Platform.OS}`);
+          (Pusher as any).Runtime.createXHR = () => new XMLHttpRequest();
+          (Pusher as any).Runtime.createWebSocket = (url: string) => new WebSocket(url);
+        } else {
+          console.log('🌐 Using native browser environment for Pusher');
+        }
+
         // ✅ FIX: Add authorizer for presence channels
         this.pusher = new Pusher(pusherKey, {
           cluster: pusherCluster,
@@ -113,7 +119,7 @@ class PusherService {
         });
 
         // Connection event handlers
-        this.pusher.connection.bind('connected', () => {
+        this.pusher?.connection.bind('connected', () => {
           const socketId = this.pusher?.connection.socket_id;
           console.log('✅ Pusher connected successfully - Socket ID:', socketId);
           this.isInitialized = true;
@@ -127,7 +133,7 @@ class PusherService {
           }
         });
 
-        this.pusher.connection.bind('error', (err: any) => {
+        this.pusher?.connection.bind('error', (err: any) => {
           console.error('❌ Pusher connection error:', err);
           
           // Code 4200 means "Please reconnect immediately"
@@ -143,7 +149,7 @@ class PusherService {
           }
         });
 
-        this.pusher.connection.bind('disconnected', () => {
+        this.pusher?.connection.bind('disconnected', () => {
           console.log('🔌 Pusher disconnected');
           this.isInitialized = false;
         });
@@ -1052,6 +1058,57 @@ class PusherService {
     }
   }
   // Generic unsubscribe method
+  // ✅ NEW: Subscribe to global stories channel
+  subscribeToStories(
+    onStoryCreated: (data: any) => void,
+    onStoryDeleted: (data: any) => void
+  ): boolean {
+    if (!this.pusher || !this.isInitialized) {
+      console.log('⏳ Pusher not ready. Queuing stories subscription.');
+      this.pendingSubscriptions.push(() =>
+        this.subscribeToStories(onStoryCreated, onStoryDeleted)
+      );
+      return true;
+    }
+
+    try {
+      const channelName = 'stories.global';
+
+      if (this.channels.has(channelName)) {
+        console.log(`ℹ️ Already subscribed to global stories channel`);
+        // If already subscribed, we still want to bind the callbacks if they are new, 
+        // but for now we assume they are passed once at the layout level.
+        return true;
+      }
+
+      const channel = this.pusher.subscribe(channelName);
+
+      channel.bind('story-created', (data: any) => {
+        console.log('✨ Global channel: story created received');
+        onStoryCreated(data);
+      });
+
+      channel.bind('story-deleted', (data: any) => {
+        console.log('🗑️ Global channel: story deletion received');
+        onStoryDeleted(data);
+      });
+
+      channel.bind('pusher:subscription_succeeded', () => {
+        console.log(`✅ SUBSCRIBED TO GLOBAL STORIES CHANNEL`);
+      });
+
+      this.channels.set(channelName, channel);
+      return true;
+    } catch (error) {
+      console.error(`❌ ERROR SUBSCRIBING TO GLOBAL STORIES:`, error);
+      return false;
+    }
+  }
+
+  unsubscribeFromStories(): void {
+    this.unsubscribeFromChannel('stories.global');
+  }
+
   unsubscribeFromChannel(channelName: string): void {
     const channel = this.channels.get(channelName);
     if (channel && this.pusher) {

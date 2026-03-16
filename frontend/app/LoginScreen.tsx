@@ -13,7 +13,7 @@ export default function () {
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [errors, setErrors] = useState("");
+    const [errors, setErrors] = useState<any>({});
 
     async function handleLogin() {
 
@@ -109,7 +109,7 @@ export default function () {
                     </Link>
                 </View>
             </View>
-        </ SafeAreaView>
+        </SafeAreaView>
     )
 }
 

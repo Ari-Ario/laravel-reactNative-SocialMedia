@@ -1,20 +1,36 @@
-import { View, Text, TextInput, StyleSheet } from "react-native"
+import React, { memo } from "react";
+import { View, Text, TextInput, StyleSheet, TextInputProps } from "react-native"
 
-export default function FormTextField({ label, errors=[], ...rest }){
+interface FormTextFieldProps extends TextInputProps {
+    label?: string;
+    errors?: string[];
+}
+
+const FormTextField = memo(({ label, errors = [], ...rest }: FormTextFieldProps) => {
     return (
-        <View>
+        <View style={styles.container}>
             {label && <Text style={styles.label}>{label}</Text>}
-            <TextInput style={styles.textInput} autoCapitalize='none' {...rest} />
-            {errors.map((err) => {
-              return <Text key={err} style={styles.error}>{err}</Text>
+            <TextInput 
+                style={styles.textInput} 
+                autoCapitalize='none' 
+                placeholderTextColor="#94a3b8"
+                {...rest} 
+            />
+            {Array.isArray(errors) && errors.map((err) => {
+                return <Text key={err} style={styles.error}>{err}</Text>
             })}
         </View>
     );
-}
+});
+
+export default FormTextField;
 const styles = StyleSheet.create({
+  container: {
+    marginBottom: 4,
+  },
   label: {
     color: '#334155',
-    fontWeight: 500,
+    fontWeight: '500',
   },
   textInput: {
     backgroundColor: '#fff',

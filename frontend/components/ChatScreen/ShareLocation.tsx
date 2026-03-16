@@ -12,29 +12,30 @@ import {
     Dimensions,
     ScrollView,
     KeyboardAvoidingView,
-    SafeAreaView,
     StatusBar,
     FlatList,
     Image,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { MotiView } from 'moti';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Dynamic imports for platform-specific map implementations
 let MapView: any;
 let Marker: any;
+let LoadScript: any;
 
 if (Platform.OS === 'web') {
     // Web-specific imports
     try {
         // We'll use a dynamic import pattern for web
-        const { GoogleMap, LoadScript, MarkerF } = require('@react-google-maps/api');
+        const { GoogleMap, LoadScript: GoogleLoadScript, MarkerF } = require('@react-google-maps/api');
         MapView = GoogleMap;
         Marker = MarkerF;
+        LoadScript = GoogleLoadScript;
     } catch (e) {
         console.warn('Google Maps API not available on web');
     }
@@ -308,6 +309,36 @@ export const ShareLocation: React.FC<ShareLocationProps> = ({
         return `${distance.toFixed(1)} km`;
     };
 
+    // Helper to get a descriptive name from Google Places if reverse geocode is generic
+    const getNearbyPlaceName = async (lat: number, lng: number): Promise<string | null> => {
+        if (!googlePlacesApiKey || googlePlacesApiKey === 'YOUR_API_KEY') return null;
+
+        try {
+            const response = await fetch(
+                `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=500&key=${googlePlacesApiKey}`
+            );
+            const data = await response.json();
+
+            if (data.results && data.results.length > 0) {
+                // Filter for "real" places (avoiding generic ones if possible)
+                const candidates = data.results.filter((p: any) => 
+                    !p.types.includes('locality') && 
+                    !p.types.includes('political') &&
+                    !p.types.includes('route')
+                );
+                
+                if (candidates.length > 0) {
+                    return candidates[0].name;
+                }
+                
+                return data.results[0].name;
+            }
+        } catch (error) {
+            console.error('Error fetching nearby place name:', error);
+        }
+        return null;
+    };
+
     // Start live location sharing
     const startLiveLocation = useCallback(async () => {
         if (!location && locationStatus !== 'granted') return;
@@ -402,11 +433,14 @@ export const ShareLocation: React.FC<ShareLocationProps> = ({
                 }, 1000);
             }
 
-            setSelectedLocation({
-                latitude,
-                longitude,
-                name: 'Current Location',
-                address: address,
+            // For current location, try to get a better name than "Current Location"
+            getNearbyPlaceName(latitude, longitude).then(nearbyName => {
+                setSelectedLocation({
+                    latitude,
+                    longitude,
+                    name: nearbyName || 'Current Location',
+                    address: address,
+                });
             });
         }
     };
@@ -443,8 +477,20 @@ export const ShareLocation: React.FC<ShareLocationProps> = ({
                     addressResult.country,
                 ].filter(Boolean).join(', ');
 
+                // Check if the reverse geocode name is just a number or generic
+                const isGenericName = !addressResult.name || /^[0-9-]+$/.test(addressResult.name);
+                
+                let resolvedName = addressResult.name;
+                if (isGenericName) {
+                    const nearbyName = await getNearbyPlaceName(latitude, longitude);
+                    if (nearbyName) {
+                        resolvedName = nearbyName;
+                    }
+                }
+
                 setSelectedLocation(prev => ({
                     ...prev!,
+                    name: resolvedName || undefined,
                     address: formattedAddress,
                 }));
             }

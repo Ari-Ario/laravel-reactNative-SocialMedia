@@ -14,7 +14,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+    //
     }
 
     /**
@@ -22,18 +22,18 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        if (app()->environment('local')) {
-            // Auto-refresh stories daily at midnight
-            if (now()->format('H:i') === '00:00') {
-                \Artisan::call('db:seed --class=StoriesTableSeeder');
-            }
-        }
+    // if (app()->environment('local')) {
+    //     // Auto-refresh stories daily at midnight
+    //     if (now()->format('H:i') === '00:00') {
+    //         \Artisan::call('db:seed --class=StoriesTableSeeder');
+    //     }
+    // }
     }
 
-    // public function boot()
-    // {
-    //     ResetPassword::createUrlUsing(function ($user, string $token) {
-    //         return "myapp://reset-password?token=$token&email=" . urlencode($user->email);
-    //     });
-    // }
+// public function boot()
+// {
+//     ResetPassword::createUrlUsing(function ($user, string $token) {
+//         return "myapp://reset-password?token=$token&email=" . urlencode($user->email);
+//     });
+// }
 }

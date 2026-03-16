@@ -1,14 +1,16 @@
-import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions, Animated, ActivityIndicator, TextInput, ScrollView, Platform, Vibration, Keyboard } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions, Animated, ActivityIndicator, TextInput, ScrollView, Platform, Keyboard, Modal, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState, useMemo, useContext } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { markStoryAsViewed, fetchUserStories, sendStoryReply } from '@/services/StoryService';
+import { markStoryAsViewed, fetchUserStories, deleteStory } from '@/services/StoryService';
+import CollaborationService from '@/services/ChatScreen/CollaborationService';
+import PusherService from '@/services/PusherService';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { PostVideoPlayer } from './PostVideoPlayer';
 import PostShareModal from './PostShareModal';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
+import { safeHaptics } from '@/utils/haptics';
 import AnimatedComponent, {
   useSharedValue,
   useAnimatedStyle,
@@ -20,10 +22,12 @@ import AnimatedComponent, {
   SlideInDown,
   SlideOutDown,
   withSequence,
-  withDelay,
 } from 'react-native-reanimated';
-import { GestureHandlerRootView, Gesture, GestureDetector, PanGestureHandler, State } from 'react-native-gesture-handler';
+import { AnimatePresence } from 'moti';
+import { GestureHandlerRootView, GestureDetector, Gesture, TapGestureHandlerEventPayload } from 'react-native-gesture-handler';
 import { useModal } from '@/context/ModalContext';
+import AuthContext from '@/context/AuthContext';
+import { useStoryStore } from '@/stores/storyStore';
 
 const { width, height } = Dimensions.get('window');
 const STORY_DURATION = 10000; // 10 seconds
@@ -45,18 +49,6 @@ interface Story {
   };
 }
 
-interface LocationData {
-  name: string;
-  lat?: number;
-  lng?: number;
-  id?: string;
-}
-
-interface FeelingData {
-  emoji: string;
-  text: string;
-}
-
 interface StoryViewerProps {
   userId: number;
   initialStoryId: number;
@@ -66,35 +58,63 @@ interface StoryViewerProps {
 }
 
 const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }: StoryViewerProps) => {
-  const [stories, setStories] = useState<Story[]>([]);
+  const { storyGroups, setStoriesForUser } = useStoryStore();
+  const stories = useMemo(() => {
+    const group = storyGroups.find(g => g.user.id === userId);
+    return group ? group.stories : [];
+  }, [storyGroups, userId]);
+
   const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
+  // Ensure loading state is handled correctly since stories come from store
+  useEffect(() => {
+    if (stories.length > 0) {
+      setLoading(false);
+    }
+  }, [stories.length]);
   const [loading, setLoading] = useState(true);
   const [paused, setPaused] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [showLocationPopup, setShowLocationPopup] = useState(false);
-  const [locationData, setLocationData] = useState<any>(null);
   const [replyText, setReplyText] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
-  const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
   const [isLongPressing, setIsLongPressing] = useState(false);
   const [volume, setVolume] = useState(1);
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [deleteStatus, setDeleteStatus] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
 
   const progressAnim = useRef(new Animated.Value(0)).current;
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const videoRef = useRef<any>(null);
   const replyInputRef = useRef<TextInput>(null);
-  const router = useRouter();
   const { openModal } = useModal();
+  const { user } = useContext(AuthContext);
 
   // Animation values
   const replyButtonScale = useSharedValue(1);
-  const locationPopupScale = useSharedValue(0);
   const reactionPanelY = useSharedValue(height);
   const volumeSliderOpacity = useSharedValue(0);
+
+  // Initialize current index based on initialStoryId
+  useEffect(() => {
+    if (stories.length > 0) {
+      const initialIndex = stories.findIndex((story: any) => story.id === initialStoryId);
+      const firstUnviewedIndex = stories.findIndex((story: any) => !story.viewed);
+      
+      setCurrentStoryIndex(prev => {
+        // If we already have an index and it's valid for new array, keep it or adjust
+        if (prev >= stories.length) return Math.max(0, stories.length - 1);
+        
+        // Initial load
+        if (prev === 0) {
+          return firstUnviewedIndex !== -1 ? firstUnviewedIndex :
+                 initialIndex !== -1 ? initialIndex : 0;
+        }
+        return prev;
+      });
+    }
+  }, [initialStoryId, stories.length, stories]); // Run once when stories loaded
 
   // Load all stories for this user
   useEffect(() => {
@@ -102,25 +122,23 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
       try {
         setLoading(true);
         const data = await fetchUserStories(userId);
-        setStories(data);
-
-        // Find the index of the initial story
-        const initialIndex = data.findIndex((story: Story) => story.id === initialStoryId);
-        const firstUnviewedIndex = data.findIndex((story: Story) => !story.viewed);
-        setCurrentStoryIndex(
-          firstUnviewedIndex !== -1 ? firstUnviewedIndex :
-            initialIndex !== -1 ? initialIndex : 0
-        );
+        setStoriesForUser(userId, data); // Update the store
       } catch (error) {
         console.error('Error loading stories:', error);
         onClose();
       } finally {
-        setLoading(false);
+        // Loading state is now managed by the stories.length check
       }
     };
 
-    loadStories();
-  }, [userId, initialStoryId]);
+    // Only load if stories for this user are not already in the store or are empty
+    const group = storyGroups.find(g => g.user.id === userId);
+    if (!group || group.stories.length === 0) {
+      loadStories();
+    } else {
+      setLoading(false); // If stories are already there, we're not loading
+    }
+  }, [userId, onClose, setStoriesForUser, storyGroups]);
 
   // Mark story as viewed when it's displayed
   useEffect(() => {
@@ -129,18 +147,57 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
       if (currentStory && !currentStory.viewed) {
         markStoryAsViewed(currentStory.id)
           .then(() => {
-            setStories(prevStories =>
-              prevStories.map((story, idx) =>
-                idx === currentStoryIndex ? { ...story, viewed: true } : story
-              )
-            );
+            // Update the story in the store
+            setStoriesForUser(userId, stories.map((story, idx) =>
+              idx === currentStoryIndex ? { ...story, viewed: true } : story
+            ));
           })
           .catch(error => {
             console.error('Error marking story as viewed:', error);
           });
       }
     }
-  }, [currentStoryIndex, loading, stories]);
+  }, [currentStoryIndex, loading, stories, userId, setStoriesForUser]);
+
+  const currentStory = useMemo(() => stories[currentStoryIndex], [stories, currentStoryIndex]);
+
+  const handleNext = useCallback(() => {
+    if (currentStoryIndex < stories.length - 1) {
+      setCurrentStoryIndex(prev => prev + 1);
+    } else {
+      onNextUser(currentStoryIndex);
+    }
+  }, [currentStoryIndex, stories.length, onNextUser]);
+
+  const handlePrev = useCallback(() => {
+    if (currentStoryIndex > 0) {
+      setCurrentStoryIndex(prev => prev - 1);
+    } else {
+      onPrevUser(currentStoryIndex);
+    }
+  }, [currentStoryIndex, onPrevUser]);
+
+  const togglePause = useCallback(() => {
+    setPaused(prev => !prev);
+    safeHaptics.impact();
+  }, []);
+
+  const handleLongPress = useCallback(() => {
+    setIsLongPressing(true);
+    setPaused(true);
+    safeHaptics.impact();
+
+    // Show reactions after long press
+    setShowReactions(true);
+    reactionPanelY.value = withSpring(0, { damping: 20 });
+  }, [reactionPanelY]);
+
+  const handleLongPressRelease = useCallback(() => {
+    setIsLongPressing(false);
+    if (!showReactions) {
+      setPaused(false);
+    }
+  }, [showReactions]);
 
   // Handle story progression with pause support
   useEffect(() => {
@@ -176,54 +233,34 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
     return () => {
       progressAnim.stopAnimation();
     };
-  }, [currentStoryIndex, stories, paused, showLocationPopup, showShareModal, showReactions, isLongPressing, showInfo, loading]);
+  }, [currentStoryIndex, stories, paused, showLocationPopup, showShareModal, showReactions, isLongPressing, showInfo, loading, progressAnim, handleNext]);
 
-  const currentStory = useMemo(() => stories[currentStoryIndex], [stories, currentStoryIndex]);
-
-  const handleNext = useCallback(() => {
-    if (currentStoryIndex < stories.length - 1) {
-      setCurrentStoryIndex(prev => prev + 1);
-    } else {
-      onNextUser(currentStoryIndex);
+  // Handle remote deletion by observing store changes
+  useEffect(() => {
+    if (!loading) {
+      if (stories.length === 0) {
+        onClose();
+      } else if (currentStoryIndex >= stories.length) {
+        setCurrentStoryIndex(stories.length - 1);
+      }
     }
-  }, [currentStoryIndex, stories.length, onNextUser]);
+  }, [stories.length, loading, currentStoryIndex, onClose]);
 
-  const handlePrev = useCallback(() => {
-    if (currentStoryIndex > 0) {
-      setCurrentStoryIndex(prev => prev - 1);
-    } else {
-      onPrevUser(currentStoryIndex);
-    }
-  }, [currentStoryIndex, onPrevUser]);
+  // Animated Styles
+  const animatedVolumeStyle = useAnimatedStyle(() => ({
+    opacity: volumeSliderOpacity.value,
+  }));
 
-  const togglePause = useCallback(() => {
-    setPaused(prev => !prev);
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-  }, []);
+  const animatedReplyButtonStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: replyButtonScale.value }],
+  }));
 
-  const handleLongPress = useCallback(() => {
-    setIsLongPressing(true);
-    setPaused(true);
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    }
+  const animatedReactionPanelStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: reactionPanelY.value }],
+  }));
 
-    // Show reactions after long press
-    setShowReactions(true);
-    reactionPanelY.value = withSpring(0, { damping: 20 });
-  }, []);
-
-  const handleLongPressRelease = useCallback(() => {
-    setIsLongPressing(false);
-    if (!showReactions) {
-      setPaused(false);
-    }
-  }, [showReactions]);
-
-  const handleTap = useCallback((evt: any) => {
-    const { pageX } = evt.nativeEvent;
+  const handleTap = useCallback((event: any) => {
+    const { pageX } = event.nativeEvent;
     const screenThird = width / 3;
 
     if (pageX < screenThird) {
@@ -235,29 +272,15 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
     }
   }, [handlePrev, handleNext, togglePause]);
 
-  const handleDoubleTap = useCallback(() => {
-    // Like story
-    if (Platform.OS !== 'web') {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
-    // Show heart animation
-    setShowReactions(true);
-    setTimeout(() => setShowReactions(false), 1500);
-  }, []);
-
   const handleSwipeDown = useCallback(() => {
     onClose();
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    safeHaptics.impact();
   }, [onClose]);
 
   const handleLocationPress = useCallback((location: any) => {
     openModal('location', { location });
     setPaused(true);
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    safeHaptics.impact();
   }, [openModal]);
 
   const handleSendReply = useCallback(async () => {
@@ -270,46 +293,139 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
     );
 
     try {
-      await sendStoryReply(currentStory.id, replyText);
+      // Direct sharing to owner via CollaborationService
+      const collaborationService = CollaborationService.getInstance();
+      const directSpace = await collaborationService.getOrCreateDirectSpace(currentStory.user.id);
+
+      if (directSpace && directSpace.id) {
+        const baseUrl = getApiBaseImage();
+        const shareUrl = `${baseUrl}/story/${currentStory.id}`;
+        
+        const metadata = {
+          story_id: currentStory.id,
+          creator_name: currentStory.user.name,
+          creator_avatar: currentStory.user.profile_photo,
+          media_url: currentStory.media_path,
+          media_type: currentStory.type || 'image',
+          caption: currentStory.caption,
+          is_internal_share: true,
+          post_url: shareUrl
+        };
+
+        await collaborationService.sendMessage(directSpace.id, {
+          content: currentStory.caption || 'Shared a story',
+          type: 'story_share' as any,
+          metadata: {
+            ...metadata,
+            appended_message: replyText.trim()
+          }
+        });
+      }
+
       setReplyText('');
       Keyboard.dismiss();
 
       if (Platform.OS !== 'web') {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        safeHaptics.success();
       }
     } catch (error) {
-      console.error('Error sending reply:', error);
-      if (Platform.OS !== 'web') {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      }
+      console.error('Error sending reply/share:', error);
+      safeHaptics.error();
     } finally {
       setIsSendingReply(false);
     }
-  }, [replyText, currentStory]);
+  }, [replyText, currentStory, replyButtonScale]);
 
   const toggleMute = useCallback(() => {
     setIsMuted(prev => !prev);
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    safeHaptics.impact();
   }, []);
+
+  const handleDeleteStory = useCallback(async () => {
+    console.log('🗑️ Delete icon pressed');
+    if (!currentStory) return;
+
+    const performDelete = async () => {
+      try {
+        setIsSendingReply(true);
+        console.log('🗑️ Deleting story via API:', currentStory.id);
+        await deleteStory(currentStory.id);
+        
+        console.log('✅ Story deleted successfully');
+        safeHaptics.success();
+
+        // Show success message
+        setDeleteStatus({ message: 'Story deleted successfully', visible: true });
+        safeHaptics.success();
+
+        // Note: We don't need to manually update state here anymore because Pusher 
+        // will broadcast 'story-deleted' and storyStore will handle it globally!
+        // But if we want it to be instant for the owner, we can call it:
+        // useStoryStore.getState().handleStoryDeleted({ storyId, userId: user!.id });
+        
+        // Navigate to next story or close if last
+        setTimeout(() => {
+          setDeleteStatus({ message: '', visible: false });
+          if (stories.length > 1) {
+            if (currentStoryIndex < stories.length - 1) {
+              handleNext();
+            } else {
+              handlePrev();
+            }
+          } else {
+            onClose();
+          }
+        }, 1500);
+      } catch (error) {
+        console.error('❌ Failed to delete story:', error);
+        if (Platform.OS === 'web') {
+          alert('Could not delete story. Please try again.');
+        } else {
+          Alert.alert('Error', 'Could not delete story. Please try again.');
+        }
+      } finally {
+        setIsSendingReply(false);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      console.log('🖥️ Web: Showing browser confirmation');
+      if (window.confirm('Are you sure you want to delete this story?')) {
+        await performDelete();
+      } else {
+        console.log('❌ Web: Deletion cancelled');
+      }
+    } else {
+      Alert.alert(
+        'Delete Story',
+        'Are you sure you want to delete this story?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Delete', 
+            style: 'destructive',
+            onPress: performDelete
+          }
+        ]
+      );
+    }
+  }, [currentStory, stories, currentStoryIndex, onClose]);
 
   const handleVolumeChange = useCallback((newVolume: number) => {
     setVolume(newVolume);
     setShowVolumeSlider(true);
     volumeSliderOpacity.value = withTiming(1);
 
-    // Auto hide after 2 seconds
     setTimeout(() => {
       volumeSliderOpacity.value = withTiming(0);
       setTimeout(() => setShowVolumeSlider(false), 200);
     }, 2000);
-  }, []);
+  }, [volumeSliderOpacity]);
 
   // Gesture for swipe down to close
   const panGesture = Gesture.Pan()
     .onUpdate((event) => {
-      if (event.translationY > 80) { // Increased threshold for better feel
+      if (event.translationY > 80) {
         runOnJS(handleSwipeDown)();
       }
     });
@@ -347,12 +463,27 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
     );
   }
 
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <GestureDetector gesture={panGesture}>
         <View style={styles.container}>
           <BlurView intensity={100} style={StyleSheet.absoluteFill} />
+
+          {/* Delete Status Message */}
+          <AnimatePresence>
+            {deleteStatus.visible && (
+              <AnimatedComponent.View
+                entering={FadeIn.duration(300)}
+                exiting={FadeOut.duration(300)}
+                style={styles.deleteStatus}
+              >
+                <BlurView intensity={80} tint="dark" style={styles.deleteStatusContent}>
+                  <Ionicons name="checkmark-circle" size={20} color="#4CD964" />
+                  <Text style={styles.deleteStatusText}>{deleteStatus.message}</Text>
+                </BlurView>
+              </AnimatedComponent.View>
+            )}
+          </AnimatePresence>
 
           {/* Progress bars for all stories */}
           <View style={styles.progressBarsContainer}>
@@ -383,7 +514,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
             ))}
           </View>
 
-          {/* Premium Header with Glassmorphism */}
+          {/* Header */}
           <LinearGradient
             colors={['rgba(0,0,0,0.5)', 'transparent']}
             style={styles.headerGradient}
@@ -408,9 +539,15 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                     color="white"
                   />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => setShowInfo(true)} style={styles.headerButton}>
-                  <Ionicons name="information-circle-outline" size={24} color="white" />
-                </TouchableOpacity>
+                {storyLocation ? (
+                  <TouchableOpacity onPress={() => handleLocationPress(storyLocation)} style={styles.headerButton}>
+                    <Ionicons name="location" size={24} color="#0084ff" />
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity onPress={() => setShowInfo(true)} style={styles.headerButton}>
+                    <Ionicons name="information-circle-outline" size={24} color="white" />
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity onPress={onClose} style={styles.headerButton}>
                   <Ionicons name="close" size={24} color="white" />
                 </TouchableOpacity>
@@ -418,165 +555,184 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
             </View>
           </LinearGradient>
 
-          {/* Story content with gesture handling */}
+          {/* Story content */}
           <View style={styles.contentWrapper}>
-            <GestureDetector gesture={panGesture}>
-              <TouchableOpacity
-                style={styles.contentContainer}
-                activeOpacity={1}
-                onPress={handleTap}
-                onLongPress={handleLongPress}
-                onPressOut={handleLongPressRelease}
-                delayLongPress={LONG_PRESS_DURATION}
-              >
-                {currentStory.type === 'video' ? (
-                  <PostVideoPlayer
-                    ref={videoRef}
-                    uri={currentStory.media_path.startsWith('http') ? currentStory.media_path : `${getApiBaseImage()}/storage/${currentStory.media_path}`}
-                    style={styles.storyMedia}
-                    contentFit="contain"
-                    shouldPlay={!paused && !showLocationPopup && !showShareModal && !showReactions && !showInfo}
-                    isMuted={isMuted}
-                    volume={volume}
-                    onVolumeChange={handleVolumeChange}
-                  />
-                ) : (
-                  <Image
-                    source={{ uri: currentStory.media_path.startsWith('http') ? currentStory.media_path : `${getApiBaseImage()}/storage/${currentStory.media_path}` }}
-                    style={styles.storyMedia}
-                    resizeMode="contain"
-                  />
-                )}
+            <TouchableOpacity
+              style={styles.contentContainer}
+              activeOpacity={1}
+              onPress={handleTap}
+              onLongPress={handleLongPress}
+              onPressOut={handleLongPressRelease}
+              delayLongPress={LONG_PRESS_DURATION}
+            >
+              {currentStory.type === 'video' ? (
+                <PostVideoPlayer
+                  ref={videoRef}
+                  uri={currentStory.media_path.startsWith('http') ? currentStory.media_path : `${getApiBaseImage()}/storage/${currentStory.media_path}`}
+                  style={styles.storyMedia}
+                  contentFit="contain"
+                  shouldPlay={!paused && !showLocationPopup && !showShareModal && !showReactions && !showInfo}
+                  isMuted={isMuted}
+                  volume={volume}
+                  onVolumeChange={handleVolumeChange}
+                />
+              ) : (
+                <Image
+                  source={{ uri: currentStory.media_path.startsWith('http') ? currentStory.media_path : `${getApiBaseImage()}/storage/${currentStory.media_path}` }}
+                  style={styles.storyMedia}
+                  resizeMode="contain"
+                />
+              )}
 
-                {/* Sticker Overlays with animations */}
-                {storyStickers.map((sticker: any, index: number) => (
-                  <AnimatedComponent.View
-                    key={sticker.id || index}
-                    entering={FadeIn.delay(index * 100).springify()}
-                    style={[
-                      styles.stickerWrapper,
-                      {
-                        left: sticker.x * width,
-                        top: sticker.y * height,
-                        transform: [
-                          { scale: sticker.scale || 1 },
-                          { rotate: `${sticker.rotation || 0}rad` }
-                        ]
-                      }
-                    ]}
-                  >
-                    <View style={styles.stickerContent}>
-                      {sticker.text !== '' && (
-                        <Text
-                          style={[
-                            styles.stickerText,
-                            {
-                              color: sticker.color || 'white',
-                              fontSize: sticker.fontSize || 32,
-                              fontFamily: sticker.fontFamily || 'System',
-                            }
-                          ]}
-                        >
-                          {sticker.text}
-                        </Text>
-                      )}
-                      
-                      {sticker.location && (
+              {/* Stickers */}
+              {storyStickers.map((sticker: any, index: number) => (
+                <AnimatedComponent.View
+                  key={sticker.id || index}
+                  entering={FadeIn.delay(index * 100).springify()}
+                  style={[
+                    styles.stickerWrapper,
+                    {
+                      left: sticker.x * width,
+                      top: sticker.y * height,
+                      transform: [
+                        { scale: sticker.scale || 1 },
+                        { rotate: `${sticker.rotation || 0}rad` }
+                      ]
+                    }
+                  ]}
+                >
+                  <View style={styles.stickerContent}>
+                    {sticker.text !== '' && (
+                      <Text
+                        style={[
+                          styles.stickerText,
+                          {
+                            color: sticker.color || 'white',
+                            fontSize: sticker.fontSize || 32,
+                            fontFamily: sticker.fontFamily || 'System',
+                          }
+                        ]}
+                      >
+                        {sticker.text}
+                      </Text>
+                    )}
+                    
+                    {sticker.location && (
+                      <TouchableOpacity 
+                        onPress={() => handleLocationPress(sticker.location)}
+                        activeOpacity={0.7}
+                      >
                         <BlurView intensity={80} tint="dark" style={styles.integratedLocationSticker}>
                           <Ionicons name="location" size={14} color="#0084ff" />
                           <Text style={styles.integratedLocationStickerText}>{sticker.location.name}</Text>
                         </BlurView>
-                      )}
+                      </TouchableOpacity>
+                    )}
 
-                      {sticker.feeling && (
-                        <BlurView intensity={80} tint="dark" style={styles.integratedFeelingSticker}>
-                          <Text style={styles.integratedFeelingEmoji}>{sticker.feeling.emoji}</Text>
-                          <Text style={styles.integratedFeelingText}>{sticker.feeling.text}</Text>
-                        </BlurView>
-                      )}
+                    {sticker.feeling && (
+                      <BlurView intensity={80} tint="dark" style={styles.integratedFeelingSticker}>
+                        <Text style={styles.integratedFeelingEmoji}>{sticker.feeling.emoji}</Text>
+                        <Text style={styles.integratedFeelingText}>{sticker.feeling.text}</Text>
+                      </BlurView>
+                    )}
+                  </View>
+                </AnimatedComponent.View>
+              ))}
+
+              {currentStory.caption && (
+                <BlurView intensity={60} style={styles.captionContainer}>
+                  <Text style={styles.caption}>{currentStory.caption}</Text>
+                </BlurView>
+              )}
+
+              {showReactions && (
+                <AnimatedComponent.View
+                  entering={FadeIn.springify()}
+                  exiting={FadeOut.springify()}
+                  style={styles.heartOverlay}
+                >
+                  <Ionicons name="heart" size={80} color="white" />
+                </AnimatedComponent.View>
+              )}
+
+              {showVolumeSlider && (
+                <AnimatedComponent.View 
+                  style={[styles.volumeSliderContainer, animatedVolumeStyle]}
+                >
+                  <BlurView intensity={80} style={styles.volumeSlider}>
+                    <Ionicons name={volume === 0 ? 'volume-mute' : 'volume-medium'} size={18} color="white" />
+                    <View style={styles.volumeBar}>
+                      <View style={[styles.volumeFill, { width: `${volume * 100}%` }]} />
                     </View>
-                  </AnimatedComponent.View>
-                ))}
-
-
-                {/* Caption with blur background */}
-                {currentStory.caption && (
-                  <BlurView intensity={60} style={styles.captionContainer}>
-                    <Text style={styles.caption}>{currentStory.caption}</Text>
                   </BlurView>
-                )}
-
-                {/* Double tap heart animation placeholder */}
-                {showReactions && (
-                  <AnimatedComponent.View
-                    entering={FadeIn.springify()}
-                    exiting={FadeOut.springify()}
-                    style={styles.heartOverlay}
-                  >
-                    <Ionicons name="heart" size={80} color="white" />
-                  </AnimatedComponent.View>
-                )}
-
-                {/* Volume Slider Overlay */}
-                {showVolumeSlider && (
-                  <AnimatedComponent.View 
-                    style={[styles.volumeSliderContainer, { opacity: volumeSliderOpacity }]}
-                  >
-                    <BlurView intensity={80} style={styles.volumeSlider}>
-                      <Ionicons name={volume === 0 ? 'volume-mute' : 'volume-medium'} size={18} color="white" />
-                      <View style={styles.volumeBar}>
-                        <View style={[styles.volumeFill, { width: `${volume * 100}%` }]} />
-                      </View>
-                    </BlurView>
-                  </AnimatedComponent.View>
-                )}
-              </TouchableOpacity>
-            </GestureDetector>
+                </AnimatedComponent.View>
+              )}
+            </TouchableOpacity>
           </View>
 
-          {/* Premium Footer with Reply */}
+          {/* Footer */}
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.5)']}
             style={styles.footerGradient}
           >
             <View style={styles.footer}>
-              <View style={styles.replyContainer}>
-                <TextInput
-                  ref={replyInputRef}
-                  style={styles.replyInput}
-                  placeholder="Send message..."
-                  placeholderTextColor="rgba(255,255,255,0.6)"
-                  value={replyText}
-                  onChangeText={setReplyText}
-                  editable={!isSendingReply}
-                />
-                <AnimatedComponent.View style={{ transform: [{ scale: replyButtonScale }] }}>
+              {Number(currentStory.user.id) === Number(user?.id) ? (
+                <View style={styles.ownerFooterActions}>
                   <TouchableOpacity
-                    style={[
-                      styles.sendButton,
-                      !replyText.trim() && styles.sendButtonDisabled
-                    ]}
-                    onPress={handleSendReply}
-                    disabled={!replyText.trim() || isSendingReply}
+                    style={styles.deleteButton}
+                    onPress={handleDeleteStory}
+                    disabled={isSendingReply}
                   >
-                    {isSendingReply ? (
-                      <ActivityIndicator size="small" color="white" />
-                    ) : (
-                      <Ionicons name="send" size={20} color="white" />
-                    )}
+                    <Ionicons name="trash-outline" size={24} color="#FF3B30" />
                   </TouchableOpacity>
-                </AnimatedComponent.View>
-              </View>
+                  
+                  <TouchableOpacity
+                    style={styles.shareButton}
+                    onPress={() => setShowShareModal(true)}
+                  >
+                    <Ionicons name="paper-plane-outline" size={24} color="white" />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.replyContainer}>
+                  <TextInput
+                    ref={replyInputRef}
+                    style={styles.replyInput}
+                    placeholder="Send message..."
+                    placeholderTextColor="rgba(255,255,255,0.6)"
+                    value={replyText}
+                    onChangeText={setReplyText}
+                    editable={!isSendingReply}
+                  />
+                  <AnimatedComponent.View style={animatedReplyButtonStyle}>
+                    <TouchableOpacity
+                      style={[
+                        styles.sendButton,
+                        !replyText.trim() && styles.sendButtonDisabled
+                      ]}
+                      onPress={handleSendReply}
+                      disabled={!replyText.trim() || isSendingReply}
+                    >
+                      {isSendingReply ? (
+                        <ActivityIndicator size="small" color="white" />
+                      ) : (
+                        <Ionicons name="send" size={20} color="white" />
+                      )}
+                    </TouchableOpacity>
+                  </AnimatedComponent.View>
+                </View>
+              )}
 
-              <TouchableOpacity
-                style={styles.shareButton}
-                onPress={() => setShowShareModal(true)}
-              >
-                <Ionicons name="paper-plane-outline" size={24} color="white" />
-              </TouchableOpacity>
+              {Number(currentStory.user.id) !== Number(user?.id) && (
+                <TouchableOpacity
+                  style={styles.shareButton}
+                  onPress={() => setShowShareModal(true)}
+                >
+                  <Ionicons name="paper-plane-outline" size={24} color="white" />
+                </TouchableOpacity>
+              )}
             </View>
           </LinearGradient>
-
 
           {/* Reactions Panel */}
           <Modal visible={showReactions} transparent animationType="none">
@@ -584,7 +740,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
               <AnimatedComponent.View
                 style={[
                   styles.reactionsPanel,
-                  { transform: [{ translateY: reactionPanelY }] }
+                  animatedReactionPanelStyle
                 ]}
               >
                 <View style={styles.reactionsHeader}>
@@ -598,17 +754,14 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                 </View>
 
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  {['❤️', '😂', '😮', '😢', '👏', '🔥'].map((emoji, index) => (
+                  {['❤️', '😂', '😮', '😢', '👏', '🔥'].map((emoji) => (
                     <TouchableOpacity
                       key={emoji}
                       style={styles.reactionEmoji}
                       onPress={() => {
-                        // Handle reaction
                         reactionPanelY.value = withSpring(height);
                         setTimeout(() => setShowReactions(false), 200);
-                        if (Platform.OS !== 'web') {
-                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                        }
+                        safeHaptics.success();
                       }}
                     >
                       <Text style={styles.emojiText}>{emoji}</Text>
@@ -662,7 +815,6 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
             </BlurView>
           </Modal>
 
-          {/* Share Modal */}
           <PostShareModal
             visible={showShareModal}
             onClose={() => setShowShareModal(false)}
@@ -773,24 +925,6 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 5,
   },
-  locationWrapper: {
-    position: 'absolute',
-    alignSelf: 'center',
-  },
-  locationBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 25,
-    gap: 8,
-    overflow: 'hidden',
-  },
-  locationText: {
-    color: 'white',
-    fontWeight: '600',
-    fontSize: 14,
-  },
   captionContainer: {
     position: 'absolute',
     bottom: 100,
@@ -827,7 +961,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 15,
-    gap: 10,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+    gap: 12,
+  },
+  ownerFooterActions: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  deleteButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 59, 48, 0.3)',
   },
   replyContainer: {
     flex: 1,
@@ -869,42 +1020,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  locationPopup: {
-    width: width * 0.8,
-    borderRadius: 24,
-    overflow: 'hidden',
-  },
-  locationPopupContent: {
-    padding: 20,
-  },
-  locationPopupHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  locationPopupTitle: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-    flex: 1,
-    marginLeft: 10,
-  },
-  locationMap: {
-    height: 150,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  locationCoordinates: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 14,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    textAlign: 'center',
-    marginTop: 10,
-  },
   volumeSliderContainer: {
     position: 'absolute',
     left: 20,
@@ -933,20 +1048,6 @@ const styles = StyleSheet.create({
   volumeFill: {
     backgroundColor: 'white',
     borderRadius: 2,
-  },
-  locationAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    backgroundColor: 'rgba(255,159,10,0.2)',
-    borderRadius: 25,
-  },
-  locationActionText: {
-    color: '#FF9F0A',
-    fontSize: 16,
-    fontWeight: '600',
   },
   reactionsPanel: {
     position: 'absolute',
@@ -1057,9 +1158,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  deleteStatus: {
+    position: 'absolute',
+    top: 100,
+    left: 20,
+    right: 20,
+    zIndex: 1000,
+    alignItems: 'center',
+  },
+  deleteStatusContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    gap: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(76, 217, 100, 0.3)',
+  },
+  deleteStatusText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });
-
-// Add missing Modal import
-import { Modal } from 'react-native';
 
 export default StoryViewer;

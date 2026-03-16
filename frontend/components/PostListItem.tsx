@@ -74,6 +74,18 @@ export default function PostListItem({
   const totalReactions = reactionsToShow.reduce((acc, r) => acc + r.count, 0);
   const comments = currentPost.comments || [];
 
+  // Parse location safely
+  const postLocation = useMemo(() => {
+    if (!post.location) return null;
+    try {
+      return typeof post.location === 'string'
+        ? JSON.parse(post.location)
+        : post.location;
+    } catch {
+      return null;
+    }
+  }, [post.location]);
+
   const handleDoubleTap = service.useDoubleTap(
     () => {
       service.setCurrentReactingItem({ postId: post.id });
@@ -125,7 +137,18 @@ export default function PostListItem({
             </TouchableOpacity>
 
             <View style={styles.nameCaption}>
-              <Text style={styles.username}>{post.user.name}</Text>
+              <View style={styles.usernameRow}>
+                <Text style={styles.username}>{post.user.name}</Text>
+                {postLocation && (
+                  <TouchableOpacity 
+                    onPress={() => openModal('location', { location: postLocation })}
+                    style={styles.locationPill}
+                  >
+                    <Ionicons name="location" size={10} color="#0084ff" />
+                    <Text style={styles.locationName} numberOfLines={1}>{postLocation.name}</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
               <View style={styles.menuContainer}>
                 {post.caption && (
                   <Pressable onPress={() => toggleExpandedPostId(post.id)}>
@@ -418,6 +441,27 @@ const styles = StyleSheet.create({
   nameCaption: {
     width: '84%'
   },
+  usernameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2,
+  },
+  locationPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 132, 255, 0.05)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    gap: 4,
+    maxWidth: 150,
+  },
+  locationName: {
+    fontSize: 11,
+    color: '#0084ff',
+    fontWeight: '600',
+  },
   caption: {
     padding: 0,
     margin: 0,
@@ -637,5 +681,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
   },
-
 });
+

@@ -82,6 +82,7 @@ Route::group(["middleware" => ["auth:sanctum"]], function () {
         Route::get('/users/{user}/stories', [StoryController::class , 'userStories']);
         Route::post('/stories/{story}/view', [StoryController::class , 'markAsViewed']);
         Route::post('/stories/{story}/share', [StoryController::class , 'share']);
+        Route::delete('/stories/{story}', [StoryController::class , 'destroy']);
 
         // Posts
         Route::get('/posts', [PostController::class , 'index']);

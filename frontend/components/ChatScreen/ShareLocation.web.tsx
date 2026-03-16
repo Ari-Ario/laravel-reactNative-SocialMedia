@@ -8,17 +8,17 @@ import {
     ActivityIndicator,
     Dimensions,
     ScrollView,
-    SafeAreaView,
     StatusBar,
     FlatList,
     Platform,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { MotiView } from 'moti';
 import { BlurView } from 'expo-blur';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GoogleMap, useJsApiLoader, MarkerF } from '@react-google-maps/api';
 import * as Haptics from 'expo-haptics';
+import * as Location from 'expo-location';
 
 const { width, height } = Dimensions.get('window');
 
@@ -331,8 +331,8 @@ const ShareLocation: React.FC<ShareLocationProps> = ({
 
                 if (type) request.type = type;
 
-                service.nearbySearch(request, (results: any[], status: string) => {
-                    if (status === 'OK' && results) {
+                service.nearbySearch(request, (results: google.maps.places.PlaceResult[] | null, status: google.maps.places.PlacesServiceStatus) => {
+                    if (status === google.maps.places.PlacesServiceStatus.OK && results) {
                         const places: Place[] = results.slice(0, 10).map((place: any) => ({
                             id: place.place_id,
                             name: place.name,

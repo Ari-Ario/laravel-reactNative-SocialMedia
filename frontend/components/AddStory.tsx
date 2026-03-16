@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   Platform,
   Dimensions,
-  SafeAreaView,
   KeyboardAvoidingView,
   StatusBar,
   PanResponder,
@@ -18,6 +17,7 @@ import {
   FlatList,
   Keyboard
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -348,8 +348,23 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
   };
 
   const handleLocationSelect = (locData: any) => {
+    // Determine the most descriptive name for the location
+    let finalName = locData.name;
+    
+    // If name is generic or missing, try alternative descriptive fields
+    if (!finalName || finalName === 'Selected Location' || finalName === 'Dropped Pin') {
+      if (locData.address) {
+        // Extract the first part of the address (e.g., "Main St")
+        finalName = locData.address.split(',')[0];
+      } else if (locData.region) {
+        finalName = locData.region;
+      } else {
+        finalName = 'Location Pin';
+      }
+    }
+
     const mappedLoc: LocationData = {
-      name: locData.name || 'Selected Location',
+      name: finalName,
       latitude: locData.latitude,
       longitude: locData.longitude,
       address: locData.address,

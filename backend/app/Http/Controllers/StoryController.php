@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Story;
+use App\Events\StoryCreated;
+use App\Events\StoryDeleted;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -127,6 +129,8 @@ class StoryController extends Controller
                 'type' => $request->type,
                 'expires_at' => now()->addHours(24),
             ]);
+
+            event(new StoryCreated($story));
 
             return response()->json([
                 'success' => true,
@@ -268,5 +272,31 @@ class StoryController extends Controller
             'original_story' => $story,
             'message' => 'Added to story chain'
         ]);
+    }
+
+    /**
+     * Delete story
+     */
+    public function destroy($id)
+    {
+        $story = Story::findOrFail($id);
+
+        if ($story->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Delete media file
+        if ($story->media_path) {
+            Storage::disk('public')->delete($story->media_path);
+        }
+
+        $userId = $story->user_id;
+        $storyId = $story->id;
+        
+        $story->delete();
+
+        event(new StoryDeleted($storyId, $userId));
+
+        return response()->json(['success' => true, 'message' => 'Story deleted successfully']);
     }
 }

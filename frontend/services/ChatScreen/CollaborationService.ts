@@ -170,7 +170,10 @@ class CollaborationService {
     this.userToken = await getToken();
   }
 
-  getHeaders() {
+  async getHeaders() {
+    if (!this.userToken) {
+      this.userToken = await getToken();
+    }
     return {
       Authorization: `Bearer ${this.userToken}`,
       'Content-Type': 'application/json',
@@ -228,7 +231,7 @@ class CollaborationService {
   async fetchUserSpaces(userId: number): Promise<{ spaces: CollaborationSpace[]; user_preferences?: any }> {
     try {
       const response = await axios.get(`${this.baseURL}/spaces`, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
         params: { user_id: userId }
       });
 
@@ -266,7 +269,7 @@ class CollaborationService {
       console.log(`Fetching space details for: ${spaceId}`);
 
       const response = await axios.get(`${this.baseURL}/spaces/${spaceId}`, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
 
       console.log('Space API response:', response.data);
@@ -422,7 +425,7 @@ class CollaborationService {
   }): Promise<CollaborationSpace> {
     try {
       const response = await axios.post(`${this.baseURL}/spaces`, spaceData, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
 
       await this.triggerHapticSuccess();
@@ -437,7 +440,7 @@ class CollaborationService {
   async joinSpace(spaceId: string): Promise<SpaceParticipation> {
     try {
       const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/join`, {}, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
 
       await this.triggerHapticSuccess();
@@ -456,7 +459,7 @@ class CollaborationService {
         role,
         message,
       }, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
 
       console.log('Invitation response:', response.data);
@@ -483,7 +486,7 @@ class CollaborationService {
   async acceptSpaceInvitation(spaceId: string): Promise<any> {
     try {
       const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/accept-invitation`, {}, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
 
       try {
@@ -504,7 +507,7 @@ class CollaborationService {
   async clearChat(spaceId: string): Promise<void> {
     try {
       await axios.post(`${this.baseURL}/spaces/${spaceId}/clear-messages`, {}, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
       await this.triggerHapticLight();
     } catch (error) {
@@ -517,7 +520,7 @@ class CollaborationService {
   async createPoll(spaceId: string, pollData: any): Promise<any> {
     try {
       const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/polls`, pollData, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
       await this.triggerHapticSuccess();
       return response.data.poll;
@@ -530,7 +533,7 @@ class CollaborationService {
   async updatePoll(spaceId: string, pollId: string, pollData: any): Promise<any> {
     try {
       const response = await axios.put(`${this.baseURL}/spaces/${spaceId}/polls/${pollId}`, pollData, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
       await this.triggerHapticSuccess();
       return response.data.poll;
@@ -543,7 +546,7 @@ class CollaborationService {
   async getPolls(spaceId: string): Promise<any[]> {
     try {
       const response = await axios.get(`${this.baseURL}/spaces/${spaceId}/polls`, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
       return response.data.polls;
     } catch (error) {
@@ -557,7 +560,7 @@ class CollaborationService {
       await axios.post(`${this.baseURL}/spaces/${spaceId}/polls/${pollId}/vote`, {
         option_ids: optionIds,
       }, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
       await this.triggerHapticLight();
     } catch (error) {
@@ -569,7 +572,7 @@ class CollaborationService {
   async closePoll(spaceId: string, pollId: string): Promise<void> {
     try {
       await axios.post(`${this.baseURL}/spaces/${spaceId}/polls/${pollId}/close`, {}, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
       await this.triggerHapticWarning();
     } catch (error) {
@@ -583,7 +586,7 @@ class CollaborationService {
       await axios.post(`${this.baseURL}/polls/${pollId}/forward`, {
         target_space_ids: targetSpaceIds,
       }, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
       await this.triggerHapticSuccess();
     } catch (error) {
@@ -595,7 +598,7 @@ class CollaborationService {
   async getPollResults(spaceId: string, pollId: string): Promise<any> {
     try {
       const response = await axios.get(`${this.baseURL}/spaces/${spaceId}/polls/${pollId}/results`, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
       return response.data.results;
     } catch (error) {
@@ -607,7 +610,7 @@ class CollaborationService {
   async updateUserPreferences(preferences: { custom_tabs?: any[]; theme_preference?: string; locale?: string }): Promise<void> {
     try {
       await axios.post(`${this.baseURL}/update-preferences`, preferences, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
     } catch (error) {
       console.error('Error updating user preferences:', error);
@@ -624,7 +627,7 @@ class CollaborationService {
     try {
       // Using DELETE HTTP method for deletion
       const response = await axios.delete(`${this.baseURL}/spaces/${spaceId}/polls/${pollId}`, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
 
       // Provide haptic feedback for deletion (warning style)
@@ -831,7 +834,7 @@ class CollaborationService {
       const response = await axios.put(`${this.baseURL}/spaces/${spaceId}/content`, {
         content_state: contentState,
       }, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
 
       this.broadcastContentUpdate(spaceId, contentState);
@@ -848,7 +851,7 @@ class CollaborationService {
       await axios.put(`${this.baseURL}/spaces/${spaceId}/cursor`, {
         cursor_state: cursorState,
       }, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
 
       this.broadcastCursorUpdate(spaceId, cursorState);
@@ -865,7 +868,7 @@ class CollaborationService {
       const response = await axios.post(
         `${this.baseURL}/spaces/${spaceId}/mute`,
         {},
-        { headers: this.getHeaders() }
+        { headers: await this.getHeaders() }
       );
       return response.data;
     } catch (error) {
@@ -879,7 +882,7 @@ class CollaborationService {
       const response = await axios.post(
         `${this.baseURL}/spaces/${spaceId}/archive`,
         {},
-        { headers: this.getHeaders() }
+        { headers: await this.getHeaders() }
       );
       return response.data;
     } catch (error) {
@@ -893,7 +896,7 @@ class CollaborationService {
       const response = await axios.post(
         `${this.baseURL}/spaces/${spaceId}/pin`,
         {},
-        { headers: this.getHeaders() }
+        { headers: await this.getHeaders() }
       );
       return response.data;
     } catch (error) {
@@ -907,7 +910,7 @@ class CollaborationService {
       const response = await axios.post(
         `${this.baseURL}/spaces/${spaceId}/unread`,
         {},
-        { headers: this.getHeaders() }
+        { headers: await this.getHeaders() }
       );
       return response.data;
     } catch (error) {
@@ -921,7 +924,7 @@ class CollaborationService {
       const response = await axios.post(
         `${this.baseURL}/spaces/${spaceId}/mark-as-read`,
         { last_read_at: lastReadAt },
-        { headers: this.getHeaders() }
+        { headers: await this.getHeaders() }
       );
       return response.data;
     } catch (error) {
@@ -935,7 +938,7 @@ class CollaborationService {
       const response = await axios.post(
         `${this.baseURL}/spaces/${spaceId}/favorite`,
         {},
-        { headers: this.getHeaders() }
+        { headers: await this.getHeaders() }
       );
       return response.data;
     } catch (error) {
@@ -951,7 +954,7 @@ class CollaborationService {
       const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/start-call`, {
         call_type: callType,
       }, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
 
       try {
@@ -972,7 +975,7 @@ class CollaborationService {
   async sendWebRTCSignal(spaceId: string, signalData: any): Promise<void> {
     try {
       const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/call/signal`, signalData, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
 
       if (response.status !== 200) {
@@ -989,7 +992,7 @@ class CollaborationService {
       await axios.post(`${this.baseURL}/spaces/${spaceId}/end-call`, {
         call_id: callId,
       }, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
     } catch (error) {
       console.error('Error ending call:', error);
@@ -1002,7 +1005,7 @@ class CollaborationService {
       await axios.put(`${this.baseURL}/spaces/${spaceId}/screen-share`, {
         is_sharing: isSharing,
       }, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
 
       this.broadcastScreenShareState(spaceId, isSharing);
@@ -1026,7 +1029,7 @@ class CollaborationService {
         context,
         action,
       }, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
 
       await this.triggerHapticSuccess();
@@ -1083,7 +1086,7 @@ class CollaborationService {
   async getAISuggestions(spaceId: string): Promise<any[]> {
     try {
       const response = await axios.get(`${this.baseURL}/spaces/${spaceId}/ai-suggestions`, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
 
       return response.data.suggestions;
@@ -1099,7 +1102,7 @@ class CollaborationService {
         was_helpful: wasHelpful,
         feedback,
       }, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
     } catch (error) {
       console.error('Error providing AI feedback:', error);
@@ -1115,7 +1118,7 @@ class CollaborationService {
         event_type: eventType,
         data,
       }, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
 
       await this.triggerHapticWarning();
@@ -1130,7 +1133,7 @@ class CollaborationService {
   async discoverMagicEvent(eventId: string): Promise<void> {
     try {
       await axios.post(`${this.baseURL}/magic-events/${eventId}/discover`, {}, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -1150,7 +1153,7 @@ class CollaborationService {
   }): Promise<CollaborationSpace> {
     try {
       const response = await axios.post(`${this.baseURL}/posts/${postId}/make-collaborative`, options, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -1177,7 +1180,7 @@ class CollaborationService {
 
       const response = await axios.post(`${this.baseURL}/posts/${postId}/add-voice-annotation`, formData, {
         headers: {
-          ...this.getHeaders(),
+          ...(await this.getHeaders()),
           'Content-Type': 'multipart/form-data',
         },
       });
@@ -1199,7 +1202,7 @@ class CollaborationService {
         changes,
         description,
       }, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -1219,7 +1222,7 @@ class CollaborationService {
   }): Promise<CollaborationSpace> {
     try {
       const response = await axios.post(`${this.baseURL}/stories/${storyId}/make-collaborative`, options, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -1239,7 +1242,7 @@ class CollaborationService {
         caption,
         branch_choice: branchChoice,
       }, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -1331,7 +1334,7 @@ class CollaborationService {
   async enhancePostWithAI(postId: number): Promise<any> {
     try {
       const response = await axios.get(`${this.baseURL}/ai/posts/${postId}/enhance`, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
 
       return response.data;
@@ -1344,7 +1347,7 @@ class CollaborationService {
   async suggestStoryContinuation(storyId: number): Promise<any> {
     try {
       const response = await axios.get(`${this.baseURL}/ai/stories/${storyId}/continue`, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
 
       return response.data;
@@ -1368,7 +1371,7 @@ class CollaborationService {
   }): Promise<CollaborativeActivity> {
     try {
       const response = await axios.post(`${this.baseURL}/collaborative-activities`, activityData, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
 
       });
 
@@ -1388,7 +1391,7 @@ class CollaborationService {
   }> {
     try {
       const response = await axios.get(`${this.baseURL}/collaborative-activities/space/${spaceId}`, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
         params: { page, limit }
       });
 
@@ -1411,7 +1414,7 @@ class CollaborationService {
   }): Promise<CollaborativeActivity> {
     try {
       const response = await axios.post(`${this.baseURL}/collaborative-activities/${activityId}/status`, data, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
 
       await this.triggerHapticLight();
@@ -1426,7 +1429,7 @@ class CollaborationService {
   async getSpaceActivityStatistics(spaceId: string): Promise<any> {
     try {
       const response = await axios.get(`${this.baseURL}/collaborative-activities/space/${spaceId}/statistics`, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
 
       return response.data.statistics;
@@ -1446,7 +1449,7 @@ class CollaborationService {
   }): Promise<any> {
     try {
       const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/send-message`, messageData, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
 
       await this.triggerHapticSuccess();
@@ -1463,7 +1466,7 @@ class CollaborationService {
   async deleteSpaceMessage(spaceId: string, messageId: string): Promise<void> {
     try {
       await axios.delete(`${this.baseURL}/spaces/${spaceId}/messages/${messageId}`, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
     } catch (error) {
       console.error('Error deleting space message:', error);
@@ -1474,7 +1477,7 @@ class CollaborationService {
   async hideSpaceMessage(spaceId: string, messageId: string): Promise<void> {
     try {
       await axios.delete(`${this.baseURL}/spaces/${spaceId}/messages/${messageId}/local`, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
     } catch (error) {
       console.error('Error hiding space message locally:', error);
@@ -1488,7 +1491,7 @@ class CollaborationService {
         message_ids: messageIds,
         destination_space_id: destinationSpaceId
       }, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
       return response.data;
     } catch (error) {
@@ -1500,7 +1503,7 @@ class CollaborationService {
   async getUserSpaces(userId: number): Promise<any> {
     try {
       const response = await axios.get(`${this.baseURL}/users/${userId}/spaces`, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
       return response.data;
     } catch (error) {
@@ -1514,7 +1517,7 @@ class CollaborationService {
       const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/messages/${messageId}/react`, {
         emoji,
       }, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
       return response.data;
     } catch (error) {
@@ -1526,7 +1529,7 @@ class CollaborationService {
   async pinSpaceMessage(spaceId: string, messageId: string): Promise<any> {
     try {
       const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/messages/${messageId}/pin`, {}, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
       return response.data;
     } catch (error) {
@@ -1543,7 +1546,7 @@ class CollaborationService {
       await axios.post(`${this.baseURL}/messages/${messageId}/react`, {
         reaction,
       }, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
     } catch (error) {
       console.error('Error reacting to message:', error);
@@ -1554,7 +1557,7 @@ class CollaborationService {
   async getMessageReactions(messageId: string): Promise<any[]> {
     try {
       const response = await axios.get(`${this.baseURL}/messages/${messageId}/reactions`, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
 
       return response.data.reactions;
@@ -1592,7 +1595,7 @@ class CollaborationService {
   }): Promise<CollaborationSpace> {
     try {
       const response = await axios.put(`${this.baseURL}/spaces/${spaceId}`, data, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
 
       await this.triggerHapticSuccess();
@@ -1609,7 +1612,7 @@ class CollaborationService {
       await axios.post(`${this.baseURL}/spaces/${spaceId}/participants/${userId}/role`, {
         role,
       }, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
 
       await this.triggerHapticSuccess();
@@ -1622,7 +1625,7 @@ class CollaborationService {
   async removeParticipant(spaceId: string, userId: number): Promise<void> {
     try {
       await axios.delete(`${this.baseURL}/spaces/${spaceId}/participants/${userId}`, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
 
       await this.triggerHapticWarning();
@@ -1635,7 +1638,7 @@ class CollaborationService {
   async leaveSpace(spaceId: string): Promise<void> {
     try {
       await axios.post(`${this.baseURL}/spaces/${spaceId}/leave`, {}, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
 
       await this.triggerHapticWarning();
@@ -1648,7 +1651,7 @@ class CollaborationService {
   async deleteSpace(spaceId: string): Promise<void> {
     try {
       await axios.delete(`${this.baseURL}/spaces/${spaceId}`, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
 
       await this.triggerHapticWarning();
@@ -1669,7 +1672,7 @@ class CollaborationService {
 
       const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/photo`, formData, {
         headers: {
-          ...this.getHeaders(),
+          ...(await this.getHeaders()),
           'Content-Type': 'multipart/form-data',
         },
       });
@@ -1744,7 +1747,7 @@ class CollaborationService {
   async addWhiteboardElement(spaceId: string, element: WhiteboardElement) {
     try {
       const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/whiteboard/elements`, element, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
       return response.data;
     } catch (error) {
@@ -1756,7 +1759,7 @@ class CollaborationService {
   async updateWhiteboardElement(spaceId: string, element: WhiteboardElement) {
     try {
       const response = await axios.put(`${this.baseURL}/spaces/${spaceId}/whiteboard/elements/${element.id}`, element, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
       return response.data;
     } catch (error) {
@@ -1768,7 +1771,7 @@ class CollaborationService {
   async removeWhiteboardElement(spaceId: string, elementId: string) {
     try {
       const response = await axios.delete(`${this.baseURL}/spaces/${spaceId}/whiteboard/elements/${elementId}`, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
       return response.data;
     } catch (error) {
@@ -1780,7 +1783,7 @@ class CollaborationService {
   async clearWhiteboard(spaceId: string) {
     try {
       const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/whiteboard/clear`, {}, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
       return response.data;
     } catch (error) {
@@ -1795,7 +1798,7 @@ class CollaborationService {
         x,
         y,
       }, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
     } catch (error) {
       // Silent fail for cursor updates - not critical
@@ -1815,7 +1818,7 @@ class CollaborationService {
         target_user_id: userId,
         ...data
       }, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
       return response.data;
     } catch (error) {
@@ -1826,7 +1829,7 @@ class CollaborationService {
   async getOrCreateDirectSpace(userId: number | string): Promise<any> {
     try {
       const response = await axios.get(`${this.baseURL}/spaces/direct/${userId}`, {
-        headers: this.getHeaders(),
+        headers: await this.getHeaders(),
       });
       return response.data;
     } catch (error) {

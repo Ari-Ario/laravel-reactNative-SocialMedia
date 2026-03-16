@@ -118,3 +118,19 @@ export async function sendStoryReply(storyId: number, message: string) {
         throw error;
     }
 }
+
+export async function deleteStory(storyId: number) {
+    const token = await getToken();
+    const API_BASE = getApiBase();
+    try {
+        const response = await axios.delete(`${API_BASE}/stories/${storyId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error deleting story:', error);
+        throw error;
+    }
+}

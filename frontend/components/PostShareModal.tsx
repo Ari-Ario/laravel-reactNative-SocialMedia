@@ -13,6 +13,7 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   Clipboard,
+  Image,
 } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useCollaborationStore } from '@/stores/collaborationStore';
@@ -28,9 +29,10 @@ interface PostShareModalProps {
   onClose: () => void;
   post?: any;
   story?: any;
+  location?: any;
 }
 
-export default function PostShareModal({ visible, onClose, post, story }: PostShareModalProps) {
+export default function PostShareModal({ visible, onClose, post, story, location }: PostShareModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState<string | null>(null); // spaceId if sending
   const [additionalMessage, setAdditionalMessage] = useState('');
@@ -59,46 +61,65 @@ export default function PostShareModal({ visible, onClose, post, story }: PostSh
     try {
       const collaborationService = CollaborationService.getInstance();
       const baseUrl = getApiBaseImage();
-      const itemToShare = post || story;
+      const itemToShare = post || story || location;
       const isStory = !!story;
+      const isLocation = !!location;
       
-      const shareUrl = isStory 
-        ? `${baseUrl}/story/${story.id}`
-        : `${baseUrl}/post/${post.id}`;
-      
-      const mediaPreview = isStory 
-        ? story.media_path 
-        : (post.media?.length > 0 ? (post.media[0].file_path || post.media[0].url) : null);
-        
-      const mediaType = isStory 
-        ? (story.type || 'image') 
-        : (post.media?.length > 0 ? post.media[0].type : 'text');
+      let shareUrl = '';
+      let content = '';
+      let type = '';
+      let metadata: any = {};
 
-      // 1. Send the share message
-      await collaborationService.sendMessage(spaceId, {
-        content: (isStory ? story.caption : post.caption) || (isStory ? 'Shared a story' : 'Shared a post'),
-        type: isStory ? 'story_share' : 'post_share',
-        metadata: {
-          post_id: !isStory ? post.id : undefined,
+      if (isLocation) {
+        shareUrl = `https://maps.google.com/?q=${location.latitude},${location.longitude}`;
+        content = `Shared a location: ${location.name || 'Location Pin'}`;
+        type = 'location';
+        metadata = {
+          location_name: location.name,
+          location_address: location.address,
+          latitude: location.latitude,
+          longitude: location.longitude,
+          is_internal_share: true,
+          location_url: shareUrl,
+          appended_message: additionalMessage.trim() || undefined
+        };
+      } else {
+        shareUrl = isStory 
+          ? `${baseUrl}/story/${story.id}`
+          : `${baseUrl}/post/${post.id}`;
+        
+        const mediaPreview = isStory 
+          ? story.media_path 
+          : (post.media?.length > 0 ? (post.media[0].file_path || post.media[0].url) : null);
+          
+        const mediaType = isStory 
+          ? (story.type || 'image') 
+          : (post.media?.length > 0 ? post.media[0].type : 'text');
+
+        content = (isStory ? story.caption : post.caption) || (isStory ? 'Shared a story' : 'Shared a post');
+        type = isStory ? 'story_share' : 'post_share';
+        metadata = {
+          ...metadata,
+          post_id: !isStory && !isLocation ? post.id : undefined,
           story_id: isStory ? story.id : undefined,
-          creator_name: (isStory ? story.user?.name : post.user?.name) || 'Anonymous',
-          creator_avatar: isStory ? story.user?.profile_photo : post.user?.profile_photo,
+          creator_name: isLocation ? undefined : ((isStory ? story.user?.name : post.user?.name) || 'Anonymous'),
+          creator_avatar: isLocation ? undefined : (isStory ? story.user?.profile_photo : post.user?.profile_photo),
           media_url: mediaPreview,
           media_type: mediaType,
-          media: isStory ? [] : (post.media || []),
-          caption: isStory ? story.caption : post.caption,
+          media: isStory || isLocation ? [] : (post.media || []),
+          caption: isLocation ? undefined : (isStory ? story.caption : post.caption),
           is_internal_share: true,
-          post_url: shareUrl
-        }
-      });
-
-      // 2. Send additional message separately if it exists
-      if (additionalMessage.trim()) {
-        await collaborationService.sendMessage(spaceId, {
-          content: additionalMessage.trim(),
-          type: 'text'
-        });
+          post_url: shareUrl,
+          appended_message: additionalMessage.trim() || undefined
+        };
       }
+
+      // 1. Send the bundled share message
+      await collaborationService.sendMessage(spaceId, {
+        content,
+        type: type as any,
+        metadata
+      });
 
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -108,38 +129,51 @@ export default function PostShareModal({ visible, onClose, post, story }: PostSh
       setSharedSpaces(prev => new Set(prev).add(spaceId));
       // Modal stays open for more shares
     } catch (error) {
-      console.error('Error sharing post to space:', error);
+      console.error('Error sharing to space:', error);
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
     } finally {
       setLoading(null);
     }
-  }, [post, loading, additionalMessage]);
+  }, [post, story, location, loading, additionalMessage]);
 
   const handleExternalShare = async () => {
     try {
       const baseUrl = getApiBaseImage();
       const isStory = !!story;
-      const shareUrl = isStory 
-        ? `${baseUrl}/story/${story.id}`
-        : `${baseUrl}/post/${post.id}`;
+      const isLocation = !!location;
       
-      const caption = isStory ? story.caption : post.caption;
-      const message = `${caption ? caption + '\n\n' : ''}Check out this ${isStory ? 'story' : 'post'}: ${shareUrl}`;
+      let shareUrl = '';
+      let message = '';
+      let title = '';
+
+      if (isLocation) {
+        shareUrl = `https://maps.google.com/?q=${location.latitude},${location.longitude}`;
+        message = `📍 *${location.name || 'Location'}*\n${location.address || ''}\n\n🗺️ ${shareUrl}`;
+        title = 'Share Location';
+      } else {
+        shareUrl = isStory 
+          ? `${baseUrl}/story/${story.id}`
+          : `${baseUrl}/post/${post.id}`;
+        
+        const caption = isStory ? story.caption : post.caption;
+        message = `${caption ? caption + '\n\n' : ''}Check out this ${isStory ? 'story' : 'post'}: ${shareUrl}`;
+        title = `Share ${isStory ? 'Story' : 'Post'}`;
+      }
 
       if (Platform.OS === 'web' && !navigator.share) {
         // Web fallback: Copy to clipboard
         Clipboard.setString(message);
-        alert('Post link copied to clipboard!');
+        alert('Link copied to clipboard!');
         onClose();
         return;
       }
 
       const result = await Share.share({
-        message: message,
+        message,
         url: shareUrl, // iOS
-        title: `Share ${isStory ? 'Story' : 'Post'}`
+        title
       });
       
       if (result.action === Share.sharedAction) {
@@ -151,6 +185,58 @@ export default function PostShareModal({ visible, onClose, post, story }: PostSh
     } catch (error: any) {
       console.error('Error sharing externally:', error.message);
     }
+  };
+
+  const renderPreview = () => {
+    if (!post && !story && !location) return null;
+
+    const isStory = !!story;
+    const isLocation = !!location;
+    const baseUrl = getApiBaseImage();
+
+    let title = '';
+    let subtitle = '';
+    let imageUri = '';
+    let typeIcon = '';
+
+    if (isLocation) {
+      title = location.name || 'Location Pin';
+      subtitle = location.address || `${location.latitude?.toFixed(4)}, ${location.longitude?.toFixed(4)}`;
+      typeIcon = 'location';
+    } else if (isStory) {
+      title = story.user?.name || 'Story';
+      subtitle = story.caption || 'Shared a story';
+      imageUri = story.media_path?.startsWith('http') ? story.media_path : `${baseUrl}/storage/${story.media_path}`;
+      typeIcon = 'play-circle';
+    } else {
+      title = post.user?.name || 'Post';
+      subtitle = post.caption || 'Shared a post';
+      const firstMedia = post.media?.[0];
+      if (firstMedia) {
+        imageUri = (firstMedia.file_path || firstMedia.url)?.startsWith('http') 
+          ? (firstMedia.file_path || firstMedia.url) 
+          : `${baseUrl}/storage/${firstMedia.file_path || firstMedia.url}`;
+      }
+      typeIcon = 'image';
+    }
+
+    return (
+      <View style={styles.previewContainer}>
+        <View style={styles.previewContent}>
+          {imageUri ? (
+            <Image source={{ uri: imageUri }} style={styles.previewImage} />
+          ) : (
+            <View style={styles.previewIconBackground}>
+              <Ionicons name={typeIcon as any} size={24} color="#007AFF" />
+            </View>
+          )}
+          <View style={styles.previewTextContainer}>
+            <Text style={styles.previewTitle} numberOfLines={1}>{title}</Text>
+            <Text style={styles.previewSubtitle} numberOfLines={1}>{subtitle}</Text>
+          </View>
+        </View>
+      </View>
+    );
   };
 
   const renderItem = ({ item }: { item: any }) => {
@@ -222,11 +308,13 @@ export default function PostShareModal({ visible, onClose, post, story }: PostSh
           <View style={styles.handle} />
           
           <View style={styles.header}>
-            <Text style={styles.title}>Share {story ? 'Story' : 'Post'}</Text>
+            <Text style={styles.title}>Share {location ? 'Location' : story ? 'Story' : 'Post'}</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color="#000" />
             </TouchableOpacity>
           </View>
+
+          {renderPreview()}
 
           <View style={styles.searchContainer}>
             <Ionicons name="search" size={20} color="#888" style={styles.searchIcon} />
@@ -470,5 +558,53 @@ const styles = StyleSheet.create({
   sentBadge: {
     width: 60,
     alignItems: 'center',
+  },
+  previewContainer: {
+    padding: 15,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E5EA',
+    backgroundColor: '#F9F9F9',
+  },
+  previewContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    padding: 10,
+    borderRadius: 12,
+    ...createShadow({
+      width: 0,
+      height: 2,
+      opacity: 0.05,
+      radius: 4,
+      elevation: 2,
+    }),
+  },
+  previewImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+    backgroundColor: '#F2F2F7',
+  },
+  previewIconBackground: {
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+    backgroundColor: '#F2F2F7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  previewTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#000',
+  },
+  previewSubtitle: {
+    fontSize: 13,
+    color: '#8E8E93',
+    marginTop: 2,
   },
 });
