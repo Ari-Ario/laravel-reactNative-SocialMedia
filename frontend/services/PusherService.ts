@@ -397,60 +397,64 @@ class PusherService {
         onNotification(notification);
       });
 
-      // ✅ NEW: Bind space.message for global notifications
-      channel.bind('space.message', (data: any) => {
-        console.log('💬 RAW DATA (space.message via notification):', data);
+      channel.bind('space.deleted', (data: any) => {
+        console.log('🗑️ User channel: Space deleted received:', data);
         const notification = {
-          type: 'new_message',
-          title: 'New Message',
-          message: data.message?.content || 'New message in space',
+          type: 'space-deleted',
+          title: 'Space Deleted',
+          message: data.message || 'A space was deleted',
           data: data,
-          userId: data.message?.user_id || data.message?.userId,
-          spaceId: data.space_id || data.spaceId,
-          avatar: data.message?.user?.profile_photo || data.message?.avatar,
+          spaceId: data.space_id,
           createdAt: new Date()
         };
-        console.log('💬 SENDING TO NOTIFICATION STORE:', notification);
         onNotification(notification);
       });
 
+      // Handle Laravel's generic BroadcastNotificationCreated events
       // Handle Laravel's generic BroadcastNotificationCreated events
       channel.bind('Illuminate\\Notifications\\Events\\BroadcastNotificationCreated', (data: any) => {
         console.log('📨 Laravel notification received:', data);
 
         // Extract inner data which contains the actual message
         const innerData = data.data || {};
-        const notifType = innerData.type || data.type || 'generic';
+        let notifType = innerData.type || data.type || 'generic';
+
+        // Normalize type names
+        const upperNotifType = notifType.toUpperCase();
+        if (upperNotifType.includes('SPACEINVITATION') || upperNotifType.includes('SPACE_INVITATION')) {
+           console.log('🚫 Skipping redundant SpaceInvitation broadcast (robust check), handled by dedicated event');
+           return;
+        }
+        if (notifType.includes('MessageReacted')) notifType = 'message_reaction';
+        if (notifType.includes('MessageReplied')) notifType = 'message_reply';
+        if (notifType.includes('MessageSent')) notifType = 'new_message';
 
         // Map generic Laravel notification to our store format
         const notification: any = {
           id: data.id || Date.now().toString(),
           type: notifType,
-          title: innerData.title || 'New Notification',
-          message: innerData.message || 'You have a new update',
+          title: innerData.title || (notifType === 'space_invitation' ? 'Space Invitation' : 'New Notification'),
+          message: innerData.message,
           data: innerData,
           userId: innerData.userId || innerData.user_id || innerData.inviter_id || innerData.followerId,
           postId: innerData.postId || innerData.post_id,
           spaceId: innerData.spaceId || innerData.space_id,
-          // ✅ CRITICAL: Extract messageId for routing to the specific message
           messageId: innerData.messageId || innerData.message_id || innerData.message?.id,
-          avatar: innerData.avatar || innerData.profile_photo || innerData.inviter_avatar
-            || innerData.user?.profile_photo,
+          avatar: innerData.avatar || innerData.profile_photo || innerData.inviter_avatar || innerData.user?.profile_photo,
           createdAt: new Date(data.created_at || Date.now()),
           isRead: false,
         };
 
-        // Special handling for common types if they come through this event
-        if (notification.type.includes('NewComment')) notification.type = 'comment';
-        if (notification.type.includes('NewReaction')) notification.type = 'reaction';
-        if (notification.type.includes('NewPost')) notification.type = 'new_post';
-        if (notification.type.includes('SpaceInvitation')) notification.type = 'space_invitation';
-        // ✅ NEW: Map chat notification class names to store types
-        if (notification.type.includes('MessageReacted')) notification.type = 'message_reaction';
-        if (notification.type.includes('MessageReplied')) notification.type = 'message_reply';
-        if (notification.type.includes('MessageSent') || notification.type.includes('NewMessage')) notification.type = 'new_message';
+        // Construct message if missing (common for Laravel notifications with raw data)
+        if (!notification.message && notifType === 'space_invitation') {
+          const inviter = innerData.inviter_name || 'Someone';
+          const space = innerData.space_title || innerData.space?.title || 'a space';
+          notification.message = `${inviter} invited you to join "${space}"`;
+        } else if (!notification.message) {
+          notification.message = 'You have a new update';
+        }
 
-        console.log('📨 SENDING BROADCAST NOTIFICATION TO STORE:', notification.type, '| spaceId:', notification.spaceId, '| messageId:', notification.messageId);
+        console.log('📨 SENDING BROADCAST NOTIFICATION TO STORE:', notification.type, '| spaceId:', notification.spaceId);
         onNotification(notification);
       });
 
@@ -471,28 +475,6 @@ class PusherService {
         };
         console.log('📞 SENDING TO NOTIFICATION STORE:', notification);
         onNotification(notification); // ✅ ADD THIS LINE
-      });
-
-      // New message in space (for users not currently in the space)
-      channel.bind('message.sent', (data: any) => {
-        console.log('💬 New message notification (message.sent):', data);
-        
-        // Extract content properly for notification display
-        const msgObj = data.message || {};
-        const userName = msgObj.user_name || data.user?.name || 'Someone';
-        const content = msgObj.content || data.content || 'New message';
-        const spaceTitle = data.space?.title || 'a space';
-
-        onNotification({
-          id: msgObj.id || `msg-${Date.now()}`,
-          type: 'new_message',
-          title: `New message in ${spaceTitle}`,
-          message: `${userName}: ${typeof content === 'string' ? content : 'Sent a message'}`,
-          spaceId: data.space_id,
-          userId: msgObj.user_id || data.user?.id,
-          data: { ...data, messageId: msgObj.id },
-          createdAt: new Date()
-        });
       });
 
       // ✅ ADDED: space.message (used by SpaceMessageSent event)
@@ -554,7 +536,15 @@ class PusherService {
 
       // Space invitation
       channel.bind('space.invitation', (data: any) => {
-        console.log('📨 Space invitation notification:', data);
+        console.log('📨 Space invitation event received:', data);
+
+        // ✅ FILTER: If this is a Laravel notification wrapper sent via the same event name, skip it.
+        // The raw event has 'type: space_invitation', while the notification wrapper has the class name.
+        if (data.type && data.type.includes('Notifications')) {
+          console.log('🚫 Skipping redundant Laravel notification wrapper sent via space.invitation');
+          return;
+        }
+
         const notification = {
           id: data.id,
           type: 'space_invitation',
@@ -1005,6 +995,11 @@ class PusherService {
       channel.bind('space.updated', (data: any) => {
         console.log('🪐 Global space update received:', data);
         onSpaceUpdated(data);
+      });
+
+      channel.bind('space.deleted', (data: any) => {
+        console.log('🗑️ Global space deletion received:', data);
+        onSpaceUpdated({ ...data, type: 'space-deleted' });
       });
 
       channel.bind('pusher:subscription_succeeded', () => {

@@ -92,7 +92,10 @@ export default function RootLayout() {
 
   const pathname = usePathname();
 
-  // ... rest of your existing pathname logic (UNCHANGED)
+  // Tracking initial load to handle web reloads/app restarts
+  const isInitialLoad = useRef(true);
+
+  // User checking and routing logic
   useEffect(() => {
     if (!isReady) return;
 
@@ -141,6 +144,18 @@ export default function RootLayout() {
 
     // User is logged in
     if (user.email_verified_at) {
+      // ✅ STRICT REDIRECT ON RELOAD: If this is the initial mount (reload/restart),
+      // and we are NOT on a tab or root, force redirect to tabs home.
+      // This solves the web refresh issue where subscriptions break.
+      if (isInitialLoad.current) {
+        isInitialLoad.current = false;
+        if (!pathname?.startsWith('/(tabs)') && pathname !== '/(tabs)' && pathname !== '/') {
+          console.log("🔄 Initial load/reload detected outside tabs, redirecting to home:", pathname);
+          router.replace('/(tabs)');
+          return;
+        }
+      }
+
       // If fully verified, redirect away from root, login, register, and verification screens
       const authScreens = ['/', '/LoginScreen', '/RegisterScreen', '/VerificationScreen'];
       if (authScreens.includes(pathname || '') && pathname !== '/(tabs)') {

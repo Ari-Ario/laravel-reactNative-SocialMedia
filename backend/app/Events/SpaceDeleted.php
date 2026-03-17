@@ -15,19 +15,27 @@ class SpaceDeleted implements ShouldBroadcast
 
     public $spaceId;
     public $userId;
+    public $participantIds;
 
-    public function __construct($spaceId, $userId = null)
+    public function __construct($spaceId, $userId = null, $participantIds = [])
     {
         $this->spaceId = $spaceId;
         $this->userId = $userId;
+        $this->participantIds = $participantIds;
     }
 
     public function broadcastOn()
     {
-        return [
+        $channels = [
             new Channel('spaces'),
             new PresenceChannel('space.' . $this->spaceId)
         ];
+
+        foreach ($this->participantIds as $participantId) {
+            $channels[] = new \Illuminate\Broadcasting\PrivateChannel('user.' . $participantId);
+        }
+
+        return $channels;
     }
 
     public function broadcastAs()

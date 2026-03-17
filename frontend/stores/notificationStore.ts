@@ -48,7 +48,8 @@ export const NOTIFICATION_TYPES = {
   NEW_MESSAGE: 'new_message',
   MESSAGE_REACTION: 'message_reaction',
   MESSAGE_REPLY: 'message_reply',
-  MESSAGE_DELETED: 'message_deleted',       // ✅ NEW
+  MESSAGE_DELETED: 'message_deleted',
+  SPACE_DELETED: 'space-deleted',          // ✅ NEW
   PARTICIPANT_JOINED: 'participant_joined',
   MAGIC_EVENT: 'magic_event',
   SCREEN_SHARE: 'screen_share',
@@ -67,6 +68,7 @@ export const getNotificationIcon = (type: string): string => {
     case NOTIFICATION_TYPES.MESSAGE_REPLY: return 'arrow-undo-outline';
     case NOTIFICATION_TYPES.MESSAGE_REACTION: return 'heart-outline';
     case NOTIFICATION_TYPES.MESSAGE_DELETED: return 'trash-outline';
+    case NOTIFICATION_TYPES.SPACE_DELETED: return 'trash-outline';
     case NOTIFICATION_TYPES.PARTICIPANT_JOINED: return 'person-add-outline';
     case NOTIFICATION_TYPES.MAGIC_EVENT: return 'sparkles-outline';
     case NOTIFICATION_TYPES.SCREEN_SHARE: return 'desktop-outline';
@@ -95,6 +97,7 @@ export const getNotificationColor = (type: string): string => {
     case NOTIFICATION_TYPES.MESSAGE_REPLY: return '#007AFF';
     case NOTIFICATION_TYPES.MESSAGE_REACTION: return '#FF3B30';
     case NOTIFICATION_TYPES.MESSAGE_DELETED: return '#FF3B30';
+    case NOTIFICATION_TYPES.SPACE_DELETED: return '#FF3B30';
     case NOTIFICATION_TYPES.PARTICIPANT_JOINED: return '#FF9500';
     case NOTIFICATION_TYPES.MAGIC_EVENT: return '#FF2D55';
     case NOTIFICATION_TYPES.SCREEN_SHARE: return '#5856D6';
@@ -218,7 +221,8 @@ const isSpaceNotification = (type: string): boolean => {
   return [
     NOTIFICATION_TYPES.SPACE_INVITATION,
     NOTIFICATION_TYPES.SPACE_UPDATED,
-    NOTIFICATION_TYPES.SPACE_CREATED,    // ✅ NEW
+    NOTIFICATION_TYPES.SPACE_CREATED,
+    NOTIFICATION_TYPES.SPACE_DELETED,    // ✅ NEW
   ].includes(type);
 };
 
@@ -280,7 +284,6 @@ export const useNotificationStore = create<NotificationStore>()(
         console.log(`📣 addNotification triggered: Type=${notificationData.type}, ActorId=${notificationData.userId}, CurrentUserId=${currentUserId}`);
 
         // ✅ GLOBAL FILTER: Don't add notifications for events created by the current user
-        // Use loose equality (==) to handle string/number mismatch
         if (notificationData.userId && currentUserId && notificationData.userId == currentUserId) {
           console.log('🚫 Skipping notification created by self:', notificationData.type);
           return;
@@ -308,72 +311,58 @@ export const useNotificationStore = create<NotificationStore>()(
         const isActivity = isActivityNotification(newNotification.type);
         const isRegular = !isFollower && !isCall && !isMessage && !isSpace && !isActivity;
 
-        // Prevent duplicates
-        const { notifications, followerNotifications } = get();
-        const targetArray = isFollower ? followerNotifications : notifications;
-
-        const isDuplicate = targetArray.some(notif =>
-          notif.id === newNotification.id ||
-          (notif.type === newNotification.type &&
-            notif.postId === newNotification.postId &&
-            notif.messageId === newNotification.messageId &&
-            notif.spaceId === newNotification.spaceId &&
-            Math.abs(new Date(notif.createdAt).getTime() - newNotification.createdAt.getTime()) < 60000)
-        );
-
-        if (isDuplicate) {
-          console.log('🔄 Skipping duplicate notification:', newNotification.id);
-          return;
-        }
-
-        console.log(`🔔 ADDING NOTIFICATION:
-          ID: ${newNotification.id}
-          Type: ${newNotification.type}
-          Title: ${newNotification.title}
-          Message: ${typeof newNotification.message === 'string' ? newNotification.message.substring(0, 30) : '[Object]'}...
-          UserId (Actor): ${newNotification.userId}
-          PostId: ${newNotification.postId}
-          isFollower: ${isFollower}, isCall: ${isCall}, isMessage: ${isMessage}, isSpace: ${isSpace}, isActivity: ${isActivity}, isRegular: ${isRegular}
-        `);
-
         set((state) => {
+          const targetArray = isFollower ? state.followerNotifications : state.notifications;
+
+          // ✅ Atomic Duplicate Check
+          const isDuplicate = targetArray.some(notif => {
+            if (notif.id === newNotification.id) return true;
+
+            const isSameSpaceInv = notif.type === 'space_invitation' && 
+                                 newNotification.type === 'space_invitation' && 
+                                 String(notif.spaceId) === String(newNotification.spaceId);
+
+            const isSameMetadata = notif.type === newNotification.type &&
+                                 notif.postId === newNotification.postId &&
+                                 notif.messageId === newNotification.messageId &&
+                                 notif.spaceId === newNotification.spaceId;
+            
+            const withinWindow = Math.abs(new Date(notif.createdAt).getTime() - newNotification.createdAt.getTime()) < 60000;
+
+            return (isSameSpaceInv || isSameMetadata) && withinWindow;
+          });
+
+          if (isDuplicate) {
+            console.log('🔄 Skipping duplicate notification (atomic check):', newNotification.id, `Type: ${newNotification.type}`);
+            return state;
+          }
+
+          console.log(`🔔 ADDING NOTIFICATION:
+            ID: ${newNotification.id}
+            Type: ${newNotification.type}
+            Title: ${newNotification.title}
+            Message: ${typeof newNotification.message === 'string' ? newNotification.message.substring(0, 30) : '[Object]'}...
+            UserId (Actor): ${newNotification.userId}
+            PostId: ${newNotification.postId}
+            isFollower: ${isFollower}, isCall: ${isCall}, isMessage: ${isMessage}, isSpace: ${isSpace}, isActivity: ${isActivity}, isRegular: ${isRegular}
+          `);
+
           if (isFollower) {
             const newFollowerNotifications = [newNotification, ...state.followerNotifications].slice(0, 50);
-            const newUnreadFollowerCount = newFollowerNotifications.filter(n => !n.isRead).length;
-
             return {
               followerNotifications: newFollowerNotifications,
-              unreadFollowerCount: newUnreadFollowerCount,
-              // Keep other counts
-              notifications: state.notifications,
-              unreadCount: state.unreadCount,
-              unreadCallCount: state.unreadCallCount,
-              unreadMessageCount: state.unreadMessageCount,
-              unreadSpaceCount: state.unreadSpaceCount,
-              unreadActivityCount: state.unreadActivityCount,
+              unreadFollowerCount: newFollowerNotifications.filter(n => !n.isRead).length,
             };
           } else {
-            // Add to main notifications
             const newNotifications = [newNotification, ...state.notifications].slice(0, 50);
-
-            // Calculate all counts
-            const newUnreadCount = newNotifications.filter(n => !n.isRead && !isCallNotification(n.type) && !isMessageNotification(n.type) && !isSpaceNotification(n.type) && !isActivityNotification(n.type) && !isChatbotTrainingNotification(n.type)).length;
-            const newUnreadCallCount = newNotifications.filter(n => !n.isRead && isCallNotification(n.type)).length;
-            const newUnreadMessageCount = newNotifications.filter(n => !n.isRead && isMessageNotification(n.type)).length;
-            const newUnreadSpaceCount = newNotifications.filter(n => !n.isRead && isSpaceNotification(n.type)).length;
-            const newUnreadActivityCount = newNotifications.filter(n => !n.isRead && isActivityNotification(n.type)).length;
-            const newUnreadChatbotTrainingCount = newNotifications.filter(n => !n.isRead && isChatbotTrainingNotification(n.type)).length;
-
             return {
               notifications: newNotifications,
-              unreadCount: newUnreadCount,
-              unreadCallCount: newUnreadCallCount,
-              unreadMessageCount: newUnreadMessageCount,
-              unreadSpaceCount: newUnreadSpaceCount,
-              unreadActivityCount: newUnreadActivityCount,
-              unreadChatbotTrainingCount: newUnreadChatbotTrainingCount,
-              followerNotifications: state.followerNotifications,
-              unreadFollowerCount: state.unreadFollowerCount,
+              unreadCount: newNotifications.filter(n => !n.isRead && !isCallNotification(n.type) && !isMessageNotification(n.type) && !isSpaceNotification(n.type) && !isActivityNotification(n.type) && !isChatbotTrainingNotification(n.type)).length,
+              unreadCallCount: newNotifications.filter(n => !n.isRead && isCallNotification(n.type)).length,
+              unreadMessageCount: newNotifications.filter(n => !n.isRead && isMessageNotification(n.type)).length,
+              unreadSpaceCount: newNotifications.filter(n => !n.isRead && isSpaceNotification(n.type)).length,
+              unreadActivityCount: newNotifications.filter(n => !n.isRead && isActivityNotification(n.type)).length,
+              unreadChatbotTrainingCount: newNotifications.filter(n => !n.isRead && isChatbotTrainingNotification(n.type)).length,
             };
           }
         });

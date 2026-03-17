@@ -28,6 +28,7 @@ import { GestureHandlerRootView, GestureDetector, Gesture, TapGestureHandlerEven
 import { useModal } from '@/context/ModalContext';
 import AuthContext from '@/context/AuthContext';
 import { useStoryStore } from '@/stores/storyStore';
+import { useCollaborationStore } from '@/stores/collaborationStore';
 
 const { width, height } = Dimensions.get('window');
 const STORY_DURATION = 10000; // 10 seconds
@@ -84,6 +85,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [deleteStatus, setDeleteStatus] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
+  const [isTyping, setIsTyping] = useState(false);
 
   const progressAnim = useRef(new Animated.Value(0)).current;
   const videoRef = useRef<any>(null);
@@ -209,7 +211,8 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
       showShareModal || 
       showReactions || 
       isLongPressing ||
-      showInfo;
+      showInfo ||
+      isTyping;
 
     if (shouldBePaused) {
       progressAnim.stopAnimation();
@@ -296,30 +299,35 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
       // Direct sharing to owner via CollaborationService
       const collaborationService = CollaborationService.getInstance();
       const directSpace = await collaborationService.getOrCreateDirectSpace(currentStory.user.id);
+      const spaceId = directSpace?.space?.id || directSpace?.id;
 
-      if (directSpace && directSpace.id) {
+      if (spaceId) {
         const baseUrl = getApiBaseImage();
         const shareUrl = `${baseUrl}/story/${currentStory.id}`;
         
         const metadata = {
           story_id: currentStory.id,
-          creator_name: currentStory.user.name,
+          creator_name: currentStory.user.name || 'Anonymous',
           creator_avatar: currentStory.user.profile_photo,
           media_url: currentStory.media_path,
           media_type: currentStory.type || 'image',
+          media: [], // Consistent with PostShareModal
           caption: currentStory.caption,
           is_internal_share: true,
-          post_url: shareUrl
+          post_url: shareUrl,
+          appended_message: replyText.trim()
         };
 
-        await collaborationService.sendMessage(directSpace.id, {
+        await collaborationService.sendMessage(spaceId, {
           content: currentStory.caption || 'Shared a story',
           type: 'story_share' as any,
-          metadata: {
-            ...metadata,
-            appended_message: replyText.trim()
-          }
+          metadata
         });
+
+        // ✅ Ensure the sender's chat list is updated immediately
+        if (user?.id) {
+          useCollaborationStore.getState().fetchUserSpaces(user.id);
+        }
       }
 
       setReplyText('');
@@ -703,6 +711,14 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                     value={replyText}
                     onChangeText={setReplyText}
                     editable={!isSendingReply}
+                    onFocus={() => {
+                      setIsTyping(true);
+                      setPaused(true);
+                    }}
+                    onBlur={() => {
+                      setIsTyping(false);
+                      setPaused(false);
+                    }}
                   />
                   <AnimatedComponent.View style={animatedReplyButtonStyle}>
                     <TouchableOpacity

@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use App\Notifications\SpaceInvitationNotification;
+use App\Services\SpaceService;
 
 use App\Events\SpaceCreated;
 use App\Events\SpaceUpdated;
@@ -51,6 +52,13 @@ use App\Events\ParticipantUpdated;
 
 class SpaceController extends Controller
 {
+    protected $spaceService;
+
+    public function __construct(SpaceService $spaceService)
+    {
+        $this->spaceService = $spaceService;
+    }
+
     /**
      * Get all spaces for current user
      */
@@ -323,6 +331,19 @@ class SpaceController extends Controller
         $participation = $space->participations()
             ->where('user_id', auth()->id())
             ->first();
+
+        // ✅ Permisions Fix (WhatsApp/Telegram Style)
+        // 1. Direct and Protected spaces are strictly private
+        $settings = is_string($space->settings) ? json_decode($space->settings, true) : $space->settings;
+        $isPrivateType = in_array($space->space_type, ['direct', 'protected']);
+        $isDirectChat = $isPrivateType || ($space->space_type === 'chat' && ($settings['is_direct'] ?? false));
+        
+        if (($isPrivateType || $isDirectChat) && !$participation) {
+            return response()->json([
+                'message' => '❌ Auth failed - not a participant',
+                'space_id' => $id
+            ], 403);
+        }
 
         // Update last active
         if ($participation) {
@@ -629,10 +650,15 @@ public function updateContentState(Request $request, $id)
             ]);
         }
         
+        // ✅ Permisions Fix (WhatsApp/Telegram Style)
+        // 3. Selective Join role
+        $role = 'participant'; 
+        $canWrite = $space->space_type !== 'channel'; // Channel write is admin-only, General is open
+
         $participation = $space->participations()->create([
             'user_id' => auth()->id(),
-            'role' => 'participant',
-            'permissions' => ['read' => true, 'write' => true],
+            'role' => $role,
+            'permissions' => ['read' => true, 'write' => $canWrite],
             'last_active_at' => now(),
         ]);
         
@@ -649,6 +675,7 @@ public function updateContentState(Request $request, $id)
         
         return response()->json([
             'participation' => $participation->load('user'),
+            'space' => $this->formatSpaceData($space->load(['creator', 'participations.user']), $authUser),
             'message' => 'Successfully joined space'
         ]);
     }
@@ -1318,6 +1345,22 @@ public function endCall(Request $request, $id)
                 'message' => 'You must be a participant to send messages'
             ], 403);
         }
+
+        // ✅ Permisions Fix (WhatsApp/Telegram Style)
+        // 2. Write access control
+        $role = $participation->role;
+        $isChannel = $space->space_type === 'channel';
+        $isAdmin = in_array($role, ['owner', 'moderator', 'admin']);
+
+        // Channel: Only admins can write
+        if ($isChannel && !$isAdmin) {
+            return response()->json([
+                'message' => '🚫 Only admins can send messages in this channel'
+            ], 403);
+        }
+
+        // General: Standard participant check (already done by !$participation)
+        // Now everyone can participate immediately in General
         
         // Update space content state
         $contentState = $space->content_state ?? [];
@@ -2349,7 +2392,7 @@ public function endCall(Request $request, $id)
     public function updateParticipantRole(Request $request, $id, $userId)
     {
         $request->validate([
-            'role' => 'required|in:owner,moderator,participant,viewer',
+            'role' => 'required|in:owner,moderator,participant,viewer,pending',
         ]);
 
         $space = CollaborationSpace::findOrFail($id);
@@ -2744,67 +2787,15 @@ public function endCall(Request $request, $id)
                 return response()->json(['message' => 'Only the owner can delete this space'], 403);
             }
 
-            DB::beginTransaction();
-            
-            // 1. Delete all participations
-            $space->participations()->delete();
-            
-            // 2. Delete magic events
-            $space->magicEvents()->delete();
+            $success = $this->spaceService->deleteSpace($id, $user->id);
 
-            // 3. Delete AI interactions
-            $space->aiInteractions()->delete();
-
-            // 4. Delete associated Media and files
-            $mediaItems = \App\Models\Media::where('model_type', CollaborationSpace::class)
-                ->where('model_id', $id)
-                ->get();
-            
-            foreach ($mediaItems as $item) {
-                if (Storage::disk('public')->exists($item->file_path)) {
-                    Storage::disk('public')->delete($item->file_path);
-                }
-                $item->delete();
+            if ($success) {
+                return response()->json(['message' => 'Space deleted forever']);
+            } else {
+                return response()->json(['message' => 'Error deleting space'], 500);
             }
-
-            // Also delete the space directory entirely for speed/completeness
-            Storage::disk('public')->deleteDirectory("spaces/{$id}");
-
-            // 5. Delete linked conversation in main chat system
-            if ($space->linked_conversation_id) {
-                $conversation = \App\Models\Conversation::find($space->linked_conversation_id);
-                if ($conversation) {
-                    \App\Models\Message::where('conversation_id', $conversation->id)->delete();
-                    $conversation->participants()->detach();
-                    $conversation->delete();
-                }
-            }
-
-            // 6. Delete Polls
-            $polls = \App\Models\Poll::where('space_id', $id)->get();
-            foreach ($polls as $poll) {
-                $poll->votes()->delete();
-                $poll->options()->delete();
-                $poll->delete();
-            }
-            
-            // Broadcast space deleted BEFORE deleting the record
-            try {
-                broadcast(new SpaceUpdated($space, $user->id, ['update_type' => 'deleted']));
-                broadcast(new SpaceDeleted($id, $user->id));
-            } catch (\Exception $e) {
-                Log::warning('Broadcast failed during space deletion: ' . $e->getMessage());
-            }
-            
-            // 6. Delete the space itself
-            $space->delete();
-
-            DB::commit();
-
-            return response()->json(['message' => 'Space deleted forever']);
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error deleting space: ' . $e->getMessage());
+            Log::error('Error in SpaceController@destroy: ' . $e->getMessage());
             return response()->json(['message' => 'Error deleting space'], 500);
         }
     }

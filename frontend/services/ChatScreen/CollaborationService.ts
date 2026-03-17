@@ -68,7 +68,7 @@ export interface SpaceParticipation {
   id: number;
   space_id: string;
   user_id: number;
-  role: 'owner' | 'moderator' | 'participant' | 'viewer';
+  role: 'owner' | 'moderator' | 'participant' | 'viewer' | 'pending';
   permissions?: any;
   presence_data?: any;
   contribution_map?: any;
@@ -307,6 +307,7 @@ class CollaborationService {
           role: participation.role,
         } : null,
         creator: apiSpace.creator,
+        other_participant: apiSpace.other_participant,
         created_at: apiSpace.created_at,
         updated_at: apiSpace.updated_at,
       };
@@ -437,7 +438,7 @@ class CollaborationService {
     }
   }
 
-  async joinSpace(spaceId: string): Promise<SpaceParticipation> {
+  async joinSpace(spaceId: string): Promise<{ participation: SpaceParticipation; space: CollaborationSpace }> {
     try {
       const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/join`, {}, {
         headers: await this.getHeaders(),
@@ -445,7 +446,7 @@ class CollaborationService {
 
       await this.triggerHapticSuccess();
 
-      return response.data.participation;
+      return response.data;
     } catch (error) {
       console.error('Error joining space:', error);
       throw error;
@@ -549,7 +550,11 @@ class CollaborationService {
         headers: await this.getHeaders(),
       });
       return response.data.polls;
-    } catch (error) {
+    } catch (error: any) {
+      if (error.response?.status === 403) {
+        console.warn('📡 Access denied to polls for space:', spaceId);
+        return [];
+      }
       console.error('Error fetching polls:', error);
       throw error;
     }
@@ -662,7 +667,7 @@ class CollaborationService {
     onContentUpdate?: (contentState: any) => void;
     onMagicEvent?: (event: any) => void;
     onVoiceActivity?: (data: any) => void;
-    onMessageSent?: (data: any) => void; // Alias for compatibility
+    onMessageSent?: (data: any) => void;
     onWebRTCOffer?: (data: any) => void;
     onWebRTCAnswer?: (data: any) => void;
     onWebRTCIceCandidate?: (data: any) => void;
@@ -671,7 +676,7 @@ class CollaborationService {
     onScreenShareStarted?: (data: any) => void;
     onScreenShareEnded?: (data: any) => void;
     onMuteStateChanged?: (data: any) => void;
-    onVideoStateChanged?: (data: any) => void;
+    onvideoStateChanged?: (data: any) => void;
     onScreenShareToggled?: (data: any) => void;
     onMagicTriggered?: (data: any) => void;
     onPollCreated?: (poll: any) => void;
@@ -685,7 +690,6 @@ class CollaborationService {
     onSpaceDeleted?: (data: any) => void;
   }) {
     try {
-      // ✅ FIX: Only check if Pusher is ready - DON'T initialize
       const initialized = await this.ensurePusherInitialized();
       if (!initialized) {
         console.warn('📡 Pusher not ready for space subscription - retrying in 2s');
@@ -694,117 +698,67 @@ class CollaborationService {
       }
 
       const pusher = this.getPusherInstance();
-      if (!pusher) {
-        console.error('❌ Pusher instance failed in CollaborationService');
-        return;
-      }
+      if (!pusher) return;
 
       const channelName = `presence-space.${spaceId}`;
       let channel = this.spaceSubscriptions.get(spaceId);
 
-      if (!channel) {
-        console.log(`🔌 Channel: Subscribing to: ${channelName}`);
-        channel = pusher.subscribe(channelName);
-        this.spaceSubscriptions.set(spaceId, channel);
-
-        channel.bind('pusher:subscription_succeeded', () => {
-          console.log(`✅ Channel: Subscribed successfully to: ${spaceId}`);
-        });
-
-        channel.bind('pusher:subscription_error', (err: any) => {
-          console.error(`❌ Channel: Subscription failed for: ${spaceId}:`, err);
-        });
-      } else {
-        console.log(`🔌 Channel: Reusing existing subscription for: ${spaceId}`);
+      if (channel) {
+        // Already subscribed. In Phase 61, we didn't have multi-callback support.
+        console.log(`🔌 Channel: Already subscribed to ${spaceId}`);
+        return;
       }
 
-      // Helper to bind events and log them
-      const bind = (id: string, cb?: (d: any) => void, log?: string) => {
-        if (cb) {
-          channel!.bind(id, (data: any) => {
-            if (log) console.log(`📡 [${spaceId}] ${log}`, data);
-            cb(data);
-          });
-        }
-      };
+      console.log(`🔌 Channel: Subscribing to: ${channelName}`);
+      channel = pusher.subscribe(channelName);
+      this.spaceSubscriptions.set(spaceId, channel);
 
-      // ✅ DOT-NOTATION (Matches Backend Logs)
-      bind('message.sent', callbacks.onMessage || callbacks.onMessageSent, '📨 Message received');
-      bind('call.started', callbacks.onCallStarted, '📞 Call started');
-      bind('call.ended', callbacks.onCallEnded, '📵 Call ended');
-      bind('magic.triggered', (data) => {
+      // Simple direct binding
+      channel.bind('message.sent', (data: any) => callbacks.onMessage?.(data));
+      channel.bind('call.started', (data: any) => callbacks.onCallStarted?.(data));
+      channel.bind('call.ended', (data: any) => callbacks.onCallEnded?.(data));
+      channel.bind('magic.triggered', (data: any) => {
         callbacks.onMagicEvent?.(data);
         callbacks.onMagicTriggered?.(data);
-      }, '✨ Magic event');
-      bind('space.updated', callbacks.onSpaceUpdate, '🔄 Space updated');
-      bind('space.read', callbacks.onSpaceRead, '📖 Space read');
-      bind('space.deleted', callbacks.onSpaceDeleted, '🗑️ Space deleted');
-      bind('participant.joined', (data) => {
-        console.log(`👤 [${spaceId}] Participant joined`, data);
-        const normalized = {
-          ...data,
-          user_id: data.user?.id || data.user_id,
-        };
+      });
+      channel.bind('space.updated', (data: any) => callbacks.onSpaceUpdate?.(data));
+      channel.bind('space.read', (data: any) => callbacks.onSpaceRead?.(data));
+      channel.bind('space.deleted', (data: any) => callbacks.onSpaceDeleted?.(data));
+
+      channel.bind('participant.joined', (data: any) => {
+        const normalized = { ...data, user_id: data.user?.id || data.user_id };
         callbacks.onParticipantJoined?.(normalized);
         callbacks.onParticipantUpdate?.(normalized);
       });
-      bind('participant.left', (data) => {
-        console.log(`👤 [${spaceId}] Participant left`, data);
-        const normalized = {
-          ...data,
-          user_id: data.user?.id || data.user_id,
-        };
+
+      channel.bind('participant.left', (data: any) => {
+        const normalized = { ...data, user_id: data.user?.id || data.user_id };
         callbacks.onParticipantLeft?.(normalized);
         callbacks.onParticipantUpdate?.(normalized);
       });
-      bind('participant.updated', (data) => {
-        callbacks.onParticipantUpdate?.(data);
+
+      channel.bind('message.reacted', (data: any) => callbacks.onMessageReacted?.(data));
+      channel.bind('message.deleted', (data: any) => callbacks.onMessageDeleted?.(data));
+      channel.bind('message.pinned', (data: any) => callbacks.onMessagePinned?.(data));
+      channel.bind('message.replied', (data: any) => callbacks.onMessageReplied?.(data));
+
+      channel.bind('content.updated', (data: any) => callbacks.onContentUpdate?.(data.content_state || data));
+      channel.bind('poll.created', (data: any) => callbacks.onPollCreated?.(data.poll || data));
+      channel.bind('poll.updated', (data: any) => callbacks.onPollUpdated?.(data.poll || data));
+      channel.bind('poll.deleted', (data: any) => callbacks.onPollDeleted?.(data.poll_id));
+
+      // ✅ ADD: Graceful handling for subscription errors (e.g. 403 when user is not a participant)
+      channel.bind('pusher:subscription_error', (err: any) => {
+        if (err?.status === 403) {
+          console.warn(`📡 Channel authorization denied for space: ${spaceId}. User might not be a participant yet. Clearing stale channel object.`);
+          this.spaceSubscriptions.delete(spaceId);
+        } else {
+          console.error(`❌ Channel: Subscription failed for: ${spaceId}:`, err);
+        }
       });
-
-      // Message specific events
-      bind('message.reacted', callbacks.onMessageReacted, '👍 Message reacted');
-      bind('message.deleted', callbacks.onMessageDeleted, '🗑️ Message deleted');
-      bind('message.pinned', callbacks.onMessagePinned, '📌 Message pinned');
-      bind('message.replied', callbacks.onMessageReplied, '↩️ Message replied'); // ✅ NEW
-
-      // Collaboration specific events
-      bind('content.updated', (data) => callbacks.onContentUpdate?.(data.content_state || data), '📝 Content updated');
-      bind('screen.share.started', callbacks.onScreenShareStarted, '🖥️ Screen share started');
-      bind('screen.share.ended', callbacks.onScreenShareEnded, '🖥️ Screen share ended');
-      bind('screen.share.toggled', callbacks.onScreenShareToggled, '🖥️ Screen share toggled');
-
-      // RTC events (usually hyphenated because they are client-side often)
-      bind('client-webrtc-offer', callbacks.onWebRTCOffer);
-      bind('client-webrtc-answer', callbacks.onWebRTCAnswer);
-      bind('client-webrtc-ice-candidate', callbacks.onWebRTCIceCandidate);
-
-      // Media controls
-      bind('mute.state.changed', callbacks.onMuteStateChanged);
-      bind('video.state.changed', callbacks.onVideoStateChanged);
-      bind('voice.activity', callbacks.onVoiceActivity);
-
-      // Poll events
-      bind('poll.created', (data) => {
-        console.log(`📊 Poll created in space ${spaceId}:`, data.poll?.question);
-        callbacks.onPollCreated?.(data.poll || data);
-      }, '📊 Poll created');
-
-      bind('poll.updated', (data) => {
-        console.log(`📊 Poll updated in space ${spaceId}`);
-        callbacks.onPollUpdated?.(data.poll || data);
-      }, '📊 Poll updated');
-
-      // ✅ ADD THIS - Poll deleted event
-      bind('poll.deleted', (data) => {
-        console.log(`🗑️ Poll deleted from space ${spaceId}:`, data.poll_id);
-        // The data contains poll_id, not poll object
-        callbacks.onPollDeleted?.(data.poll_id);
-      }, '🗑️ Poll deleted');
-      console.log(`📡 Space ${spaceId} active handlers registered.`);
 
     } catch (error) {
       console.error('❌ Error in subscribeToSpace:', error);
-      throw error;
     }
   }
 
@@ -814,14 +768,11 @@ class CollaborationService {
       if (!pusher) return;
 
       const channel = this.spaceSubscriptions.get(spaceId);
-
       if (channel) {
         const channelName = `presence-space.${spaceId}`;
-
         channel.unbind_all();
         pusher.unsubscribe(channelName);
         this.spaceSubscriptions.delete(spaceId);
-
         console.log(`📡 Unsubscribed from space ${spaceId}`);
       }
     } catch (error) {

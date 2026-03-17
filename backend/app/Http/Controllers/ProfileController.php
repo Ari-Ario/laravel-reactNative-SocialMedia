@@ -10,9 +10,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use App\Services\SpaceService;
 
 class ProfileController extends Controller
 {
+    protected $spaceService;
+
+    public function __construct(SpaceService $spaceService)
+    {
+        $this->spaceService = $spaceService;
+    }
+
     public function uploadPhoto(Request $request)
     {
         $request->validate([
@@ -272,12 +280,18 @@ public function following(Request $request) {
                  $userToBlock->following()->detach($currentUser->id);
             }
 
+            // Find and delete direct space between both users real-time
+            $directSpace = $this->spaceService->findDirectSpace($currentUser->id, $userId);
+            if ($directSpace) {
+                $this->spaceService->deleteSpace($directSpace->id, $currentUser->id);
+            }
+
             return response()->json([
                 'message' => 'User blocked successfully',
                 'is_blocked' => true
             ]);
         } catch (\Exception $e) {
-            \Log::error('Block action failed: ' . $e->getMessage());
+            Log::error('Block action failed: ' . $e->getMessage());
             return response()->json(['message' => 'Failed to block user'], 500);
         }
     }
@@ -296,7 +310,7 @@ public function following(Request $request) {
                 'is_blocked' => false
             ]);
         } catch (\Exception $e) {
-            \Log::error('Unblock action failed: ' . $e->getMessage());
+            Log::error('Unblock action failed: ' . $e->getMessage());
             return response()->json(['message' => 'Failed to unblock user'], 500);
         }
     }

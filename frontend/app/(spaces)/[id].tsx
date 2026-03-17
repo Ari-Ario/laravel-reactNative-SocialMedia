@@ -100,6 +100,36 @@ const SpaceDetailScreen = () => {
     }
   };
 
+  // ✅ Phase 57: Security Fallback for stale/unauthorized spaces
+  const handleSpaceSecurityFallback = (error: any, context: string) => {
+    const status = error?.response?.status;
+    const errorMsg = error?.response?.data?.message || error?.message || '';
+    const isModelNotFound = errorMsg.includes('No query results') || errorMsg.includes('not found') || status === 404;
+
+    if (status === 404 || status === 403 || isModelNotFound) {
+      console.log(`🛡️ Security/Stale fallback triggered (${status}) from ${context} for space ${id}`);
+      
+      // Remove from collaboration store instantly
+      const store = useCollaborationStore.getState();
+      store.removeSpace(id as string);
+      
+      if (store.activeSpace?.id === id) {
+        store.setActiveSpace(null);
+      }
+
+      const title = status === 404 || isModelNotFound ? 'Space Deleted' : 'Access Denied';
+      const msg = status === 404 || isModelNotFound 
+        ? 'This space no longer exists and has been removed from your list.' 
+        : 'You are no longer a participant in this space.';
+
+      Alert.alert(title, msg, [
+        { text: 'OK', onPress: () => router.replace('/(tabs)/chats') }
+      ]);
+      return true; // Error was handled by cleanup/redirect
+    }
+    return false; // Error was not a security/stale fallback case
+  };
+
   // Space Settings States
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showParticipantsModal, setShowParticipantsModal] = useState(false);
@@ -144,9 +174,16 @@ const SpaceDetailScreen = () => {
     return () => unsubscribe();
   }, [id]);
 
+  // ✅ Load initial details
   useEffect(() => {
     if (id && user && id !== 'Login' && id !== 'undefined' && id !== '[id]') {
       loadSpaceDetails();
+    }
+  }, [id, user]);
+
+  // ✅ Manage real-time subscription - reactive to participation changes
+  useEffect(() => {
+    if (id && user && id !== 'Login' && id !== 'undefined' && id !== '[id]') {
       subscribeToSpace();
     }
 
@@ -155,7 +192,9 @@ const SpaceDetailScreen = () => {
         unsubscribeFromSpace();
       }
     };
-  }, [id, user]);
+  }, [id, user, !!space?.my_participation]);
+  // Note: !!space?.my_participation ensures we re-subscribe once the user joins
+  // presence-space channels require authorization which fails if not joined.
 
   // Eagerly load polls when space loads (so banner + header badge show correctly)
   // Also re-load when switching to polls tab
@@ -163,7 +202,7 @@ const SpaceDetailScreen = () => {
     if (space?.id) {
       loadPolls();
     }
-  }, [space?.id]);
+  }, [space?.id, !!space?.my_participation]);
 
   useEffect(() => {
     if (activeTab === 'polls' && space?.id) {
@@ -241,8 +280,12 @@ const SpaceDetailScreen = () => {
           }, 1500);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading space:', error);
+      
+      // ✅ Phase 57: Centralized security/stale fallback
+      if (handleSpaceSecurityFallback(error, 'loadSpaceDetails')) return;
+
       Alert.alert('Error', 'Failed to load space details');
     } finally {
       setLoading(false);
@@ -268,6 +311,8 @@ const SpaceDetailScreen = () => {
       });
     } catch (error) {
       console.error('Error loading polls:', error);
+      // ✅ Phase 57: Fallback if polls fail due to deletion/auth
+      handleSpaceSecurityFallback(error, 'loadPolls');
     }
   };
 
@@ -551,6 +596,7 @@ const SpaceDetailScreen = () => {
       console.log('Subscribed to space updates');
     } catch (error) {
       console.error('Error subscribing to space:', error);
+      handleSpaceSecurityFallback(error, 'subscribeToSpace');
     }
   };
 
@@ -973,10 +1019,10 @@ const SpaceDetailScreen = () => {
       </View>
     );
   }
-  const isDirectChat = space?.settings?.is_direct || space?.space_type === 'direct';
-  const otherParticipant = isDirectChat
-    ? participants.find(p => p.user?.id !== user?.id)?.user || participants.find(p => p.user_id !== user?.id)?.user
-    : null;
+  const isDirectChat = space?.settings?.is_direct || space?.space_type === 'direct' || space?.space_type === 'chat' && !!space?.other_participant;
+  const otherParticipant = space?.other_participant || (isDirectChat
+    ? participants.find(p => String(p.user?.id || p.user_id) !== String(user?.id))?.user
+    : null);
 
   const displayTitle = isDirectChat && otherParticipant
     ? (otherParticipant.name || otherParticipant.username)

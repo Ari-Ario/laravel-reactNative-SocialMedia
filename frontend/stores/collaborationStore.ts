@@ -26,6 +26,8 @@ interface CollaborationState {
   // Custom Tabs (Folders)
   customTabs: CustomTab[];
 
+  processedEventIds: string[];
+
   // Actions
   setSpaces: (spaces: CollaborationSpace[]) => void;
   recalculateTotalUnread: () => void;
@@ -93,6 +95,7 @@ export const useCollaborationStore = create<CollaborationState>()(
       totalActivitiesCount: 0,
       subscribedSpaceIds: [],
       customTabs: [],
+      processedEventIds: [],
 
 
       subscribeToAllSpaces: (spaceIds) => {
@@ -175,8 +178,12 @@ export const useCollaborationStore = create<CollaborationState>()(
               get().handleSpaceEvent({ type: 'message-deleted', data });
             },
             onMessageReacted: (data: any) => {
-              console.log('❤️ Message reacted in space:', data);
+              console.log('👍 Message reacted in space:', data);
               get().handleSpaceEvent({ type: 'message-reacted', data });
+            },
+            onSpaceDeleted: (data: any) => {
+              console.log('🗑️ Space deleted event received:', data);
+              get().handleSpaceEvent({ type: 'space-deleted', data });
             },
             onMessageReplied: (data: any) => {
               console.log('↩️ Message replied in space:', data);
@@ -206,6 +213,28 @@ export const useCollaborationStore = create<CollaborationState>()(
       handleSpaceEvent: (event) => {
         const { type, data } = event;
 
+        // --- DEDUPLICATION LOGIC ---
+        // Generate a unique event ID to prevent duplicate processing from multiple channels
+        const msgObj = data.message || data.data?.message;
+        const eventId = (() => {
+          if (msgObj?.id) return `msg:${msgObj.id}`;
+          if (data.id) return `notif:${data.id}`;
+          if (type.includes('call') && data.space_id) return `call:${data.space_id}:${type}:${data.timestamp || Date.now().toString().substring(0, 10)}`;
+          return `${type}:${data.space_id || 'global'}:${data.timestamp || Date.now()}`;
+        })();
+
+        const { processedEventIds } = get();
+        if (processedEventIds.includes(eventId)) {
+          console.log(`♻️ Skipping duplicate event: ${eventId} (${type})`);
+          return;
+        }
+
+        // Keep a sliding window of the last 100 event IDs
+        set((state) => ({
+          processedEventIds: [eventId, ...state.processedEventIds].slice(0, 100)
+        }));
+        // ---------------------------
+
         // Update the store based on event type
         switch (type) {
           case 'space-read':
@@ -231,41 +260,61 @@ export const useCollaborationStore = create<CollaborationState>()(
           case 'message.sent':
           case 'space.message':
           case 'new_message':
-            const spaceId = (data.space_id || data.spaceId)?.toString();
+            const spaceId = (data.space_id || data.spaceId || data.data?.space_id || data.data?.spaceId)?.toString();
             if (spaceId) {
                 const state = get();
                 const spaceExists = state.spaces.some(s => s.id.toString() === spaceId);
+                const currentUserId = require('@/stores/notificationStore').useNotificationStore.getState().currentUserId;
+                
+                // Extraction of space data from various possible nesting levels
+                const spaceInfo = data.space || data.data?.space;
                 
                 // If the event carries enough space info, we can use it
-                if (data.space && (data.space.participations || data.space.other_participant)) {
+                if (spaceInfo) {
                     // Normalize space info
-                    const spaceData = { ...data.space };
+                    const spaceData = { ...spaceInfo };
                     
+                    // Ensure core fields exist
+                    spaceData.id = spaceId;
+                    spaceData.creator_id = spaceData.creator_id || data.creator_id || data.data?.creator_id;
+                    spaceData.title = spaceData.title || data.title || data.data?.title;
+                    spaceData.space_type = spaceData.space_type || data.space_type || data.data?.space_type;
+
                     // If we have participations but no other_participant, derive it
                     if (spaceData.participations && !spaceData.other_participant) {
-                        const currentUserId = require('@/stores/notificationStore').useNotificationStore.getState().currentUserId;
-                        const other = spaceData.participations.find((p: any) => p.user_id != currentUserId);
-                        if (other && other.user) {
-                            spaceData.other_participant = other.user;
+                        const other = spaceData.participations.find((p: any) => (p.user_id || p.userId) != currentUserId);
+                        const user = other?.user || (other as any)?.user;
+                        if (user) {
+                            spaceData.other_participant = user;
                         }
                     }
                     
+                    // Only add if it has core fields
+                    const hasRequiredFields = spaceData.creator_id && (spaceData.title || spaceData.other_participant?.name);
+
                     if (spaceExists) {
                         get().updateSpace(spaceId, spaceData);
-                    } else {
+                    } else if (hasRequiredFields) {
                         get().addSpace(spaceData);
+                    } else {
+                        // Fallback to fetch if data is incomplete
+                        console.log(`🆕 Incomplete space data for ${spaceId} (missing creator_id or title). Triggering fetch.`);
+                        if (currentUserId) get().fetchUserSpaces(currentUserId);
                     }
                 } else if (!spaceExists) {
                     console.log(`🆕 New space detected from message: ${spaceId}. Triggering fetch.`);
-                    const currentUserId = require('@/stores/notificationStore').useNotificationStore.getState().currentUserId;
                     if (currentUserId) {
                         get().fetchUserSpaces(currentUserId);
                     }
                 }
 
                 // Always increment unread count for messages from others
-                // (Though notifications are handled in NotificationStore, we update counts here for UI)
-                get().incrementUnreadCount(spaceId);
+                const senderId = data?.user_id || data?.userId || data?.data?.user_id || data?.message?.user_id || data?.message?.userId;
+                if (senderId && currentUserId && senderId == currentUserId) {
+                    console.log('🚫 Skipping unread increment for self-sent message');
+                } else {
+                    get().incrementUnreadCount(spaceId);
+                }
             }
             break;
 
@@ -304,6 +353,21 @@ export const useCollaborationStore = create<CollaborationState>()(
           case 'call-ended':
             if (data.space_id) {
                get().updateSpace(data.space_id, { is_live: false, current_focus: null });
+            }
+            break;
+
+          case 'space-deleted':
+          case 'space.deleted':
+            const deletedId = (data.space_id || data.id || data.spaceId)?.toString();
+            if (deletedId) {
+                console.log(`🗑️ Removing space ${deletedId} from store due to deletion event`);
+                get().removeSpace(deletedId);
+                
+                // If this was the active space, clear it
+                if (get().activeSpace?.id === deletedId) {
+                    get().setActiveSpace(null);
+                    Alert.alert('Space Deleted', 'This space has been deleted by the owner.');
+                }
             }
             break;
         }
@@ -347,16 +411,16 @@ export const useCollaborationStore = create<CollaborationState>()(
           'screen_share': 'Screen share started',
         };
 
-        const msgObj = data?.message || data;
-        const senderId = data?.user?.id || msgObj?.user_id || msgObj?.sender_id || data?.user_id || data?.sender_id;
-        const senderName = data?.user?.name || msgObj?.user_name || 'Someone';
+        const msgObjInternal = data?.message || data;
+        const senderId = data?.user?.id || msgObjInternal?.user_id || msgObjInternal?.sender_id || data?.user_id || data?.sender_id;
+        const senderName = data?.user?.name || msgObjInternal?.user_name || 'Someone';
         const spaceTitle = data?.space?.title || 'Collaboration space';
 
         const notificationMessage: string = (() => {
           switch (type) {
             case 'message-sent':
             case 'message.sent':
-              return `${senderName}: ${msgObj?.content?.substring(0, 60) || 'New message'}`;
+              return `${senderName}: ${msgObjInternal?.content?.substring(0, 60) || 'New message'}`;
             case 'message-deleted':
             case 'message.deleted':
               return `${senderName} deleted a message`;
@@ -468,15 +532,15 @@ export const useCollaborationStore = create<CollaborationState>()(
                if (isDirect && !newSpace.other_participant && newSpace.participations) {
                  const other = newSpace.participations.find((p: any) => (p.user_id || p.userId) != currentUserId);
                  if (other) {
-                    const user = other.user || (other as any).user;
+                    const user = (other as any).user;
                     if (user) {
                       newSpace.other_participant = user;
-                    } else if (other.name || (other as any).name) {
+                    } else if ((other as any).name) {
                       // Fallback for flat participation objects
                       newSpace.other_participant = { 
-                        id: other.user_id || other.userId, 
-                        name: other.name || (other as any).name, 
-                        profile_photo: other.profile_photo || (other as any).profile_photo 
+                        id: (other as any).user_id || (other as any).userId, 
+                        name: (other as any).name, 
+                        profile_photo: (other as any).profile_photo 
                       };
                     }
                  }
@@ -502,10 +566,20 @@ export const useCollaborationStore = create<CollaborationState>()(
           : state.activeSpace,
       })),
 
-      removeSpace: (spaceId) => set((state) => ({
-        spaces: state.spaces.filter(space => space.id !== spaceId),
-        activeSpace: state.activeSpace?.id === spaceId ? null : state.activeSpace,
-      })),
+      removeSpace: (spaceId) => set((state) => {
+        const sid = spaceId.toString();
+        const newUnreadCounts = { ...state.spaceUnreadCounts };
+        delete newUnreadCounts[sid];
+        
+        const newTotalUnread = Object.values(newUnreadCounts).reduce((sum, count) => (sum as number) + (count as number), 0);
+
+        return {
+          spaces: state.spaces.filter(space => space.id !== spaceId),
+          activeSpace: state.activeSpace?.id === spaceId ? null : state.activeSpace,
+          spaceUnreadCounts: newUnreadCounts,
+          totalUnreadSpaces: newTotalUnread as number,
+        };
+      }),
 
       setParticipants: (participants) => set({ participants }),
 
@@ -727,6 +801,7 @@ export const useCollaborationStore = create<CollaborationState>()(
           totalActivitiesCount: 0,
           subscribedSpaceIds: [],
           customTabs: [],
+          processedEventIds: [],
         });
         console.log('🧹 CollaborationStore reset complete');
       },

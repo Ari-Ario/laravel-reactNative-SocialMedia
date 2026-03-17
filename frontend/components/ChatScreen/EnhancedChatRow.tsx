@@ -815,7 +815,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
               onPress: handleClearChat,
             });
 
-            if (spaceData?.my_role === 'owner') {
+            if (spaceData?.my_role === 'owner' || isDirectSpace) {
               menuItems.push({
                 icon: "trash-outline" as any,
                 label: "Delete Chat",

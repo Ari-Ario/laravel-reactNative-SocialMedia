@@ -11,15 +11,18 @@ import {
     Animated,
     Platform,
     Alert,
+    ActivityIndicator,
 } from 'react-native';
 import AnimatedRN, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import MessageList from './MessageList';
 import AdvancedMediaUploader, { AdvancedMediaUploaderRef } from './AdvancedMediaUploader';
 import AttachmentPicker from './AttachmentPicker';
 import ShareLocation, { LocationData } from './ShareLocation';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import { useCollaborationStore } from '@/stores/collaborationStore';
+import { useNotificationStore } from '@/stores/notificationStore';
 import { createShadow } from '@/utils/styles';
 
 interface SpaceChatTabProps {
@@ -57,6 +60,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
     const [showLocationPicker, setShowLocationPicker] = useState(false);
     const [pendingAsset, setPendingAsset] = useState<any>(null);
     const [replyingTo, setReplyingTo] = useState<any>(null);
+    const [isJoining, setIsJoining] = useState(false);
     const uploaderRef = useRef<AdvancedMediaUploaderRef>(null);
     const collaborationService = CollaborationService.getInstance();
 
@@ -103,6 +107,34 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
             console.error('Error sending message:', error);
             // Restore content on error
             setContent(trimmed);
+        }
+    };
+
+    const handleJoin = async () => {
+        setIsJoining(true);
+        try {
+            const { participation, space: joinedSpace } = await collaborationService.joinSpace(spaceId);
+            
+            // ✅ Update global store immediately
+            useCollaborationStore.getState().addSpace(joinedSpace);
+
+            setSpace((prev: any) => ({
+                ...prev,
+                ...joinedSpace, // Comprehensive update
+                my_participation: participation,
+                my_permissions: participation.permissions,
+                my_role: participation.role,
+            }));
+            
+            if (Platform.OS !== 'web') {
+                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }
+            // No alert needed for success if participation is instant
+        } catch (error) {
+            console.error('Error joining space:', error);
+            Alert.alert('Error', 'Failed to join space.');
+        } finally {
+            setIsJoining(false);
         }
     };
 
@@ -229,43 +261,91 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                     </View>
                 )}
 
-                {/* ─── Input Bar ─── */}
-                <AnimatedRN.View style={[styles.chatInputContainer, animatedInputStyle]}>
-                    <View style={styles.attachActions}>
-                        <TouchableOpacity
-                            onPress={() => setShowAttachmentPicker(!showAttachmentPicker)}
-                            style={styles.actionButton}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                            <Ionicons
-                                name={showAttachmentPicker ? "close" : "attach"}
-                                size={24}
-                                color="#007AFF"
+                {/* ─── Input Bar / Join Bar ─── */}
+                {(() => {
+                    const myParticipation = space?.my_participation || space?.participation;
+                    const isParticipant = !!myParticipation;
+                    const isChannel = space?.space_type === 'channel';
+                    const isGeneral = space?.space_type === 'general';
+                    const isAdmin = ['owner', 'moderator', 'admin'].includes(myParticipation?.role || currentUserRole || '');
+
+                    // Case 1: Not joined a public space (General or Channel)
+                    if (!myParticipation && (isChannel || isGeneral)) {
+                        return (
+                            <View style={styles.joinBarContainer}>
+                                <TouchableOpacity 
+                                    style={styles.joinButton} 
+                                    onPress={handleJoin}
+                                    disabled={isJoining}
+                                >
+                                    {isJoining ? (
+                                        <ActivityIndicator color="#fff" size="small" />
+                                    ) : (
+                                        <>
+                                            <Ionicons name={isChannel ? "add-circle" : "enter"} size={20} color="#fff" />
+                                            <Text style={styles.joinButtonText}>
+                                                {isChannel ? "Join Channel" : "Join Space"}
+                                            </Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+                                <Text style={styles.joinHint}>
+                                    {isChannel ? "Join to receive updates and participate." : "This is a public space. You must join to send messages."}
+                                </Text>
+                            </View>
+                        );
+                    }
+
+                    // Case 3: Joined a Channel but not an Admin
+                    if (isChannel && !isAdmin) {
+                        return (
+                            <View style={styles.adminOnlyBar}>
+                                <Ionicons name="lock-closed" size={16} color="#8E8E93" />
+                                <Text style={styles.adminOnlyText}>Only admins can post messages in this channel</Text>
+                            </View>
+                        );
+                    }
+
+                    // Default Case: Standard Chat Input (Joined or Private Space)
+                    return (
+                        <AnimatedRN.View style={[styles.chatInputContainer, animatedInputStyle]}>
+                            <View style={styles.attachActions}>
+                                <TouchableOpacity
+                                    onPress={() => setShowAttachmentPicker(!showAttachmentPicker)}
+                                    style={styles.actionButton}
+                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                >
+                                    <Ionicons
+                                        name={showAttachmentPicker ? "close" : "attach"}
+                                        size={24}
+                                        color="#007AFF"
+                                    />
+                                </TouchableOpacity>
+                            </View>
+
+                            <TextInput
+                                style={styles.messageInput}
+                                placeholder={`Message in ${space?.title || 'space'}...`}
+                                value={content}
+                                onChangeText={setContent}
+                                multiline
+                                maxLength={2000}
+                                placeholderTextColor="#9a9a9a"
+                                returnKeyType="default"
+                                blurOnSubmit={false}
+                                onFocus={() => setShowAttachmentPicker(false)}
                             />
-                        </TouchableOpacity>
-                    </View>
 
-                    <TextInput
-                        style={styles.messageInput}
-                        placeholder={`Message in ${space?.title || 'space'}...`}
-                        value={content}
-                        onChangeText={setContent}
-                        multiline
-                        maxLength={2000}
-                        placeholderTextColor="#9a9a9a"
-                        returnKeyType="default"
-                        blurOnSubmit={false}
-                        onFocus={() => setShowAttachmentPicker(false)}
-                    />
-
-                    <TouchableOpacity
-                        style={[styles.sendButton, !content.trim() && { backgroundColor: '#FF9500' }]}
-                        onPress={content.trim() ? handleSendMessage : () => Alert.alert('Coming Soon', 'Voice recording features are coming soon!')}
-                        activeOpacity={0.8}
-                    >
-                        <Ionicons name={content.trim() ? "send" : "mic"} size={content.trim() ? 18 : 22} color="#fff" />
-                    </TouchableOpacity>
-                </AnimatedRN.View>
+                            <TouchableOpacity
+                                style={[styles.sendButton, !content.trim() && { backgroundColor: '#FF9500' }]}
+                                onPress={content.trim() ? handleSendMessage : () => Alert.alert('Coming Soon', 'Voice recording features are coming soon!')}
+                                activeOpacity={0.8}
+                            >
+                                <Ionicons name={content.trim() ? "send" : "mic"} size={content.trim() ? 18 : 22} color="#fff" />
+                            </TouchableOpacity>
+                        </AnimatedRN.View>
+                    );
+                })()}
             </View>
 
             <AttachmentPicker
@@ -515,6 +595,53 @@ const styles = StyleSheet.create({
     },
     replyPreviewClose: {
         padding: 4,
+    },
+    /* ── Join / Admin Only Bars ── */
+    joinBarContainer: {
+        padding: 16,
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        borderTopWidth: 1,
+        borderTopColor: '#e8e8e8',
+        gap: 10,
+    },
+    joinButton: {
+        backgroundColor: '#007AFF',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 25,
+        gap: 8,
+        width: '100%',
+        ...createShadow({ width: 0, height: 2, opacity: 0.1, radius: 4, elevation: 3 }),
+    },
+    joinButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    joinHint: {
+        fontSize: 13,
+        color: '#8E8E93',
+        textAlign: 'center',
+    },
+    adminOnlyBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F2F2F7',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderTopWidth: 1,
+        borderTopColor: '#e8e8e8',
+        gap: 8,
+    },
+    adminOnlyText: {
+        fontSize: 14,
+        color: '#8E8E93',
+        fontWeight: '500',
     },
 });
 

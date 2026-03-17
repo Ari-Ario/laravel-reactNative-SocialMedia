@@ -520,7 +520,7 @@ const MessageList: React.FC<MessageListProps> = ({
   const subscribeToMessages = () => {
     if (!spaceId) return;
 
-    collaborationService.subscribeToSpace(spaceId, {
+    return collaborationService.subscribeToSpace(spaceId, {
       onMessage: (data: any) => {
         console.log('📨 New message received:', data);
 
@@ -568,7 +568,7 @@ const MessageList: React.FC<MessageListProps> = ({
         }
       },
 
-      onContentUpdate: (contentState) => {
+      onContentUpdate: (contentState: any) => {
         if (contentState.messages) {
           const mappedMessages = contentState.messages.map((m: any) => {
             if (m.type === 'poll' || (m.metadata?.isPoll && m.metadata?.pollData)) {
@@ -582,7 +582,7 @@ const MessageList: React.FC<MessageListProps> = ({
         }
       },
 
-      onPollUpdated: (pollData) => {
+      onPollUpdated: (pollData: any) => {
         console.log('🔄 Inline poll updating via socket:', pollData?.id);
         setMessages(prev => prev.map(msg => {
           const isPollMsg = msg.type === 'poll' || msg.metadata?.isPoll;
@@ -596,22 +596,18 @@ const MessageList: React.FC<MessageListProps> = ({
       },
 
       // ✅ FIX: Remove deleted polls from chat window in real-time
-      onPollDeleted: (deletedPollId) => {
+      onPollDeleted: (deletedPollId: any) => {
         console.log('🗑️ Poll deleted via socket, removing from chat:', deletedPollId);
         setMessages(prev => prev.filter(msg => {
           const isPollMsg = msg.type === 'poll' || msg.metadata?.isPoll;
-          const matchesPollId = msg.poll?.id === deletedPollId || msg.metadata?.pollData?.id === deletedPollId;
-
-          return !(isPollMsg && matchesPollId);
+          const matchesPoll = msg.poll?.id === deletedPollId;
+          return !(isPollMsg && matchesPoll);
         }));
       },
 
       onMessageDeleted: (data: any) => {
-        console.log('🗑️ Message deleted via socket:', data.id);
-        const deletedId = data.id || data.message_id;
-        if (deletedId) {
-          setMessages(prev => prev.filter(msg => msg.id !== deletedId));
-        }
+        console.log('🗑️ Message deleted via socket:', data.message_id);
+        setMessages(prev => prev.filter(m => m.id !== data.message_id));
       },
 
       onMessagePinned: (data: any) => {

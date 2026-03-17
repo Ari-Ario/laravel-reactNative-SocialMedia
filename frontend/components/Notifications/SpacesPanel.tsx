@@ -94,10 +94,12 @@ const SpacesPanel = ({ visible, onClose, anchorPosition }: SpacesPanelProps) => 
                     </View>
                     <Text style={styles.spaceMessage}>{item.message}</Text>
 
-                    {item.data?.space?.title && (
+                    {(item.data?.space?.title || item.data?.space_title) && (
                         <View style={styles.metadataContainer}>
                             <Ionicons name="cube" size={12} color="#5856D6" />
-                            <Text style={styles.metadataText}>{item.data.space.title}</Text>
+                            <Text style={styles.metadataText}>
+                                {item.data?.space?.title || item.data?.space_title}
+                            </Text>
                         </View>
                     )}
                 </View>

@@ -60,6 +60,9 @@ class SpaceMessageSent implements ShouldBroadcast
             'message' => $this->message,
             'space' => [
                 'id' => $this->spaceId,
+                'creator_id' => \App\Models\CollaborationSpace::where('id', $this->spaceId)->value('creator_id'),
+                'title' => \App\Models\CollaborationSpace::where('id', $this->spaceId)->value('title'),
+                'space_type' => \App\Models\CollaborationSpace::where('id', $this->spaceId)->value('space_type'),
                 'participations' => \App\Models\SpaceParticipation::where('space_id', $this->spaceId)->with('user:id,name,username,profile_photo')->get(),
             ],
             'timestamp' => now()->toISOString(),

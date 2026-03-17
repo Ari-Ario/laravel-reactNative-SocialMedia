@@ -13,4 +13,9 @@ class Conversation extends Model
         'created_by',
         // add any other fields you insert via ::create()
     ];
+
+    public function participants()
+    {
+        return $this->belongsToMany(User::class, 'conversation_user');
+    }
 }

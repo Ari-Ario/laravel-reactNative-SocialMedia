@@ -238,7 +238,7 @@ const ChatPage = () => {
         unreadCount: spaceUnreadCounts[space.id] || 0,
         avatar: chatAvatar,
         isOnline: isDirect && otherUser ? (otherUser as any).is_online ?? space.is_live : space.is_live,
-        user_id: isDirect && otherUser ? otherUser.id.toString() : space.creator_id.toString(),
+        user_id: isDirect && otherUser ? otherUser.id?.toString() || '' : space.creator_id?.toString() || '',
         type: 'space' as const,
         spaceData: space,
         conversationId: space.linked_conversation_id,
