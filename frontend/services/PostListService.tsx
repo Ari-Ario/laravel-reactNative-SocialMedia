@@ -40,6 +40,9 @@ export interface Repost {
     profile_photo: string | null;
   };
   created_at: string;
+  context_tag?: string;
+  personal_note?: string;
+  collection_id?: number;
 }
 
 export interface Post {

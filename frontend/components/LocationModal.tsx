@@ -27,6 +27,7 @@ import { useModal } from '@/context/ModalContext';
 import * as Clipboard from 'expo-clipboard';
 
 const { width, height } = Dimensions.get('window');
+const LIBRARIES: any = ['places'];
 
 // Conditional imports for maps
 let MapView: any;
@@ -82,13 +83,35 @@ const LocationModal: React.FC<LocationModalProps> = ({
   const [mapLoaded, setMapLoaded] = useState(false);
   const [copied, setCopied] = useState<'coordinates' | 'address' | null>(null);
 
-  const lat = parseFloat(location.latitude?.toString() || '0');
-  const lng = parseFloat(location.longitude?.toString() || '0');
+  // More robust coordinate parsing
+  const latStr = location.latitude?.toString() || location.lat?.toString();
+  const lngStr = location.longitude?.toString() || location.lng?.toString();
+  
+  const lat = latStr ? parseFloat(latStr) : 0;
+  const lng = lngStr ? parseFloat(lngStr) : 0;
+  
   const saved = isFavorite(lat, lng);
   const [distance, setDistance] = useState<string | null>(null);
   const [travelTime, setTravelTime] = useState<string | null>(null);
+  
+  // Debug log for coordinates
+  useEffect(() => {
+    if (visible) {
+      console.log('📍 LocationModal Coordinates:', { lat, lng, original: location });
+    }
+  }, [visible, lat, lng, location]);
+
   const [directionsMode, setDirectionsMode] = useState<'drive' | 'walk' | 'transit'>('drive');
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationStatus, setLocationStatus] = useState<Location.PermissionStatus | null>(null);
+
+  // Check location permission
+  useEffect(() => {
+    (async () => {
+      const { status } = await Location.getForegroundPermissionsAsync();
+      setLocationStatus(status);
+    })();
+  }, []);
 
   const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -97,7 +120,7 @@ const LocationModal: React.FC<LocationModalProps> = ({
     ? (useJsApiLoader ? useJsApiLoader({
       id: 'google-map-script',
       googleMapsApiKey: apiKey || '',
-      libraries: ['places']
+      libraries: LIBRARIES
     }) : { isLoaded: false })
     : { isLoaded: true };
 
@@ -252,15 +275,6 @@ const LocationModal: React.FC<LocationModalProps> = ({
     openModal('share', { location: { ...location, latitude: lat, longitude: lng } });
   }, [location, lat, lng, openModal]);
 
-  const handleCopyCoords = useCallback(async () => {
-    const coords = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-    await Clipboard.setStringAsync(coords);
-    setCopied('coordinates');
-    if (Platform.OS !== 'web') {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
-    setTimeout(() => setCopied(null), 2000);
-  }, [lat, lng]);
 
   const handleCopyAddress = useCallback(async () => {
     if (!location.address) return;
@@ -305,7 +319,10 @@ const LocationModal: React.FC<LocationModalProps> = ({
     return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
   };
 
-  if (!lat || !lng) return null;
+  if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0 && !location.name)) {
+    console.warn('📍 LocationModal: Invalid coordinates', { lat, lng });
+    return null;
+  }
 
   return (
     <Modal
@@ -359,26 +376,6 @@ const LocationModal: React.FC<LocationModalProps> = ({
                 <Text style={styles.title} numberOfLines={1}>
                   {location.name || 'Location Pin'}
                 </Text>
-                <TouchableOpacity
-                  style={styles.coordinates}
-                  onPress={handleCopyCoords}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="navigate-outline" size={12} color="rgba(255,255,255,0.4)" />
-                  <Text style={styles.coordinatesText}>
-                    {lat.toFixed(6)}, {lng.toFixed(6)}
-                  </Text>
-                  {copied === 'coordinates' && (
-                    <MotiView
-                      from={{ opacity: 0, scale: 0.5 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      style={styles.copiedBadge}
-                    >
-                      <Text style={styles.copiedBadgeText}>Copied!</Text>
-                    </MotiView>
-                  )}
-                </TouchableOpacity>
-
                 {location.address && (
                   <TouchableOpacity onPress={handleCopyAddress} activeOpacity={0.7}>
                     <Text style={styles.headerAddress} numberOfLines={1}>
@@ -435,11 +432,15 @@ const LocationModal: React.FC<LocationModalProps> = ({
                     latitudeDelta: 0.005,
                     longitudeDelta: 0.005,
                   }}
-                  onMapReady={() => setMapLoaded(true)}
-                  provider="google"
+                  onMapReady={() => {
+                    console.log('📍 LocationModal: Map Ready');
+                    setMapLoaded(true);
+                  }}
+                  // provider="google" - Removing explicit Google provider to allow default fallback on Simulator
                   customMapStyle={darkMapStyle}
-                  showsUserLocation={true}
+                  showsUserLocation={locationStatus === 'granted'}
                   showsMyLocationButton={false}
+                  loadingEnabled={true}
                   showsCompass={false}
                   showsScale={false}
                   rotateEnabled={false}
@@ -499,19 +500,6 @@ const LocationModal: React.FC<LocationModalProps> = ({
 
             {/* Quick Actions Strip - Moved to Top */}
             <View style={styles.quickActions}>
-              <TouchableOpacity style={styles.quickAction} onPress={handleCopyCoords}>
-                <BlurView intensity={60} tint="dark" style={styles.quickActionBlur}>
-                  <Ionicons
-                    name={copied === 'coordinates' ? 'checkmark' : 'copy-outline'}
-                    size={18}
-                    color={copied === 'coordinates' ? '#4CAF50' : 'white'}
-                  />
-                  <Text style={styles.quickActionText}>
-                    {copied === 'coordinates' ? 'Copied!' : 'Coords'}
-                  </Text>
-                </BlurView>
-              </TouchableOpacity>
-
               <TouchableOpacity style={styles.quickAction} onPress={handleCopyAddress}>
                 <BlurView intensity={60} tint="dark" style={styles.quickActionBlur}>
                   <Ionicons
@@ -698,16 +686,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     letterSpacing: 0.5,
     marginBottom: 4,
-  },
-  coordinates: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  coordinatesText: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 10,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   closeButton: {
     marginLeft: 10,

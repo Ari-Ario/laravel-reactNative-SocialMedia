@@ -120,8 +120,11 @@ export default function PlatformCameraView({
                     });
                 },
                 stopRecording: () => {
-                    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+                    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
                         mediaRecorderRef.current.stop();
+                    } else if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'inactive') {
+                        // If it's already inactive or never started, resolve the promise if it exists
+                        recordingPromiseRef.current?.resolve({ uri: null });
                     }
                 }
             };

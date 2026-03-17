@@ -9,7 +9,7 @@ class Repost extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'post_id'];
+    protected $fillable = ['user_id', 'post_id', 'context_tag', 'personal_note', 'collection_id', 'visibility'];
 
     public function user()
     {
@@ -24,5 +24,10 @@ class Repost extends Model
     public function originalPost()
     {
         return $this->belongsTo(Post::class, 'post_id');
+    }
+
+    public function collection()
+    {
+        return $this->belongsTo(RepostCollection::class, 'collection_id');
     }
 }

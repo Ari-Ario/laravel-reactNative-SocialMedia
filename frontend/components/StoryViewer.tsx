@@ -326,7 +326,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
 
         // ✅ Ensure the sender's chat list is updated immediately
         if (user?.id) {
-          useCollaborationStore.getState().fetchUserSpaces(user.id);
+          useCollaborationStore.getState().fetchUserSpaces(Number(user.id));
         }
       }
 
@@ -449,6 +449,11 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
       return [];
     }
   }, [currentStory?.stickers]);
+
+  const backgroundColors = useMemo(() => {
+    const bgMetadata = storyStickers.find((s: any) => s.type === 'background');
+    return bgMetadata ? (bgMetadata.colors || bgMetadata.gradient) : null;
+  }, [storyStickers]);
 
   // Parse location safely
   const storyLocation = useMemo(() => {
@@ -573,6 +578,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
               onPressOut={handleLongPressRelease}
               delayLongPress={LONG_PRESS_DURATION}
             >
+              {/* Main Media or Background Color */}
               {currentStory.type === 'video' ? (
                 <PostVideoPlayer
                   ref={videoRef}
@@ -584,6 +590,15 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                   volume={volume}
                   onVolumeChange={handleVolumeChange}
                 />
+              ) : backgroundColors ? (
+                backgroundColors.length > 1 ? (
+                  <LinearGradient
+                    colors={backgroundColors}
+                    style={styles.storyMedia}
+                  />
+                ) : (
+                  <View style={[styles.storyMedia, { backgroundColor: backgroundColors[0] }]} />
+                )
               ) : (
                 <Image
                   source={{ uri: currentStory.media_path.startsWith('http') ? currentStory.media_path : `${getApiBaseImage()}/storage/${currentStory.media_path}` }}
@@ -593,7 +608,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
               )}
 
               {/* Stickers */}
-              {storyStickers.map((sticker: any, index: number) => (
+              {storyStickers.filter((s: any) => s.type !== 'background').map((sticker: any, index: number) => (
                 <AnimatedComponent.View
                   key={sticker.id || index}
                   entering={FadeIn.delay(index * 100).springify()}
@@ -616,7 +631,8 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                           styles.stickerText,
                           {
                             color: sticker.color || 'white',
-                            fontSize: sticker.fontSize || 32,
+                            // Scale normalized font size back to current screen width
+                            fontSize: sticker.fontSize ? (sticker.fontSize / 375) * width : 32,
                             fontFamily: sticker.fontFamily || 'System',
                           }
                         ]}

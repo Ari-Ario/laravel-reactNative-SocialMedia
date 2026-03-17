@@ -59,7 +59,9 @@ class PostController extends Controller
                             ->withCount('reaction_comments');
                     },
                     // Add more levels if needed
-                    'reposts.user',
+                    'reposts' => function ($query) {
+                        $query->with('user')->latest();
+                    },
                 ])
                 ->withCount([
                     'reactions',
@@ -127,7 +129,9 @@ class PostController extends Controller
                         $query->with(['user', 'reaction_comments.user'])
                             ->withCount('reaction_comments');
                     },
-                    'reposts.user',
+                    'reposts' => function ($query) {
+                        $query->with('user')->latest();
+                    },
                 ])
                 ->withCount([
                     'reactions',
@@ -744,7 +748,7 @@ class PostController extends Controller
         };
     }
 
-    public function repost(Post $post)
+    public function repost(Request $request, Post $post)
     {
         $user = Auth::user();
         
@@ -767,13 +771,18 @@ class PostController extends Controller
         // Create new repost
         $repost = Repost::create([
             'user_id' => $user->id,
-            'post_id' => $post->id
+            'post_id' => $post->id,
+            'context_tag' => $request->context_tag,
+            'personal_note' => $request->personal_note,
+            'collection_id' => $request->collection_id,
+            'visibility' => $request->visibility ?? 'public',
         ]);
 
         return response()->json([
             'message' => 'Post reposted',
             'reposted' => !$existingRepost,
             'reposts_count' => $post->reposts()->count(),
+            'repost' => $repost->load('user'),
             'repost_user' => [
                 'id' => $user->id,
                 'name' => $user->name,

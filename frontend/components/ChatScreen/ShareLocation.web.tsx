@@ -329,7 +329,15 @@ const ShareLocation: React.FC<ShareLocationProps> = ({
                     radius: 1500,
                 };
 
-                if (type) request.type = type;
+                if (type) {
+                    if (type.includes('|')) {
+                        request.keyword = type;
+                    } else {
+                        request.type = type;
+                    }
+                } else {
+                    request.keyword = 'point of interest';
+                }
 
                 service.nearbySearch(request, (results: google.maps.places.PlaceResult[] | null, status: google.maps.places.PlacesServiceStatus) => {
                     if (status === google.maps.places.PlacesServiceStatus.OK && results) {
@@ -358,7 +366,14 @@ const ShareLocation: React.FC<ShareLocationProps> = ({
     const fetchOSMNearby = async (lat: number, lng: number, type?: string) => {
         try {
             // Use Nominatim search with bounded BOX/viewbox for nearby effect
-            const query = type || 'point of interest';
+            // Nominatim doesn't support '|' and needs broader terms for 'All'
+            let query = type || 'point of interest';
+            if (type && type.includes('|')) {
+                if (type === 'shopping_mall|store') query = 'shop';
+                else query = type.split('|')[0];
+            }
+            if (!type) query = 'amenity,shop,tourism,point of interest';
+
             const v = 0.01; // approx ~1km
             const viewbox = `${lng-v},${lat-v},${lng+v},${lat+v}`;
             

@@ -15,6 +15,7 @@ interface Props {
     onCapture?: (uri: string) => void;
     showControls?: boolean;
     cameraRef?: React.RefObject<any>;
+    mode?: 'picture' | 'video';
     children?: React.ReactNode;
 }
 
@@ -25,6 +26,7 @@ export default function PlatformCameraView({
     zoom = 0,
     showControls = false,
     cameraRef,
+    mode = 'picture',
     children,
 }: Props) {
     const internalRef = React.useRef<any>(null);
@@ -48,7 +50,7 @@ export default function PlatformCameraView({
                 flash={flash}
                 zoom={zoom}
                 responsiveOrientationWhenOrientationLocked
-                mode="picture" // Default mode, recordAsync will change this if needed
+                mode={mode}
             />
             {showControls && (
                 <View style={styles.controls}>

@@ -21,9 +21,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { useCameraPermissions } from 'expo-camera';
+import { useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import PlatformCameraView from './PlatformCameraView';
 import { VideoView, useVideoPlayer } from 'expo-video';
+import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { MotiView, AnimatePresence } from 'moti';
 import EmojiPicker from 'rn-emoji-keyboard';
@@ -48,7 +49,7 @@ import Animated, {
   cancelAnimation
 } from 'react-native-reanimated';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-import * as FileSystem from 'expo-file-system';
+import * as ExpoFileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
 import VideoTrimmer from './Shared/VideoTrimmer';
 
@@ -58,7 +59,8 @@ const MAX_VIDEO_DURATION = 10; // seconds
 const COLORS = [
   '#FFFFFF', '#000000', '#FF3B30', '#FF9500', '#FFCC00',
   '#34C759', '#00C7BE', '#007AFF', '#5856D6', '#AF52DE',
-  '#FF2D55', '#A2845E'
+  '#FF2D55', '#A2845E', '#E5E5EA', '#3A3A3C', '#FFD60A',
+  '#30D158', '#64D2FF', '#0A84FF', '#BF5AF2', '#FF375F'
 ];
 const FONTS = [
   'System',
@@ -71,34 +73,12 @@ const FONTS = [
   'Roboto'
 ];
 
-interface Sticker {
-  id: string;
-  type: 'text';
-  text: string;
-  x: number;
-  y: number;
-  color: string;
-  fontSize: number;
-  fontFamily: string;
-  rotation: number;
-  scale: number;
-  isDragging?: boolean;
-  location?: LocationData;
-  feeling?: FeelingData;
-}
 
-interface LocationData {
-  name: string;
-  latitude: number;
-  longitude: number;
-  id?: string;
-  address?: string;
-}
 
-interface FeelingData {
-  emoji: string;
-  text: string;
-}
+import { Sticker, LocationData, FeelingData } from './Shared/StoryTypes';
+import { DraggableSticker } from './Shared/DraggableSticker';
+import { TextStoryCreator } from './Shared/TextStoryCreator';
+import LocationModal from './LocationModal';
 
 interface AddStoryProps {
   visible: boolean;
@@ -108,7 +88,8 @@ interface AddStoryProps {
 
 const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated }) => {
   const [permission, requestPermission] = useCameraPermissions();
-  const [cameraMode, setCameraMode] = useState<'picture' | 'video'>('picture');
+  const [micPermission, requestMicPermission] = useMicrophonePermissions();
+  const [cameraMode, setCameraMode] = useState<'picture' | 'video' | 'text'>('picture');
   const [isRecording, setIsRecording] = useState(false);
   const [recordingProgress, setRecordingProgress] = useState(0);
   const [media, setMedia] = useState<{
@@ -116,6 +97,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
     type: 'photo' | 'video';
     startTime?: number;
     endTime?: number;
+    gradient?: string[];
   } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [facing, setFacing] = useState<'front' | 'back'>('front');
@@ -130,6 +112,8 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
   const [showTextEditor, setShowTextEditor] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showFeelingInput, setShowFeelingInput] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [selectedLocationForModal, setSelectedLocationForModal] = useState<any>(null);
   const [tempEmoji, setTempEmoji] = useState('');
   const [feelingText, setFeelingText] = useState('');
   const [currentText, setCurrentText] = useState('');
@@ -144,6 +128,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
   const timerRef = useRef<any>(null);
   const longPressTimeout = useRef<any>(null);
   const textInputRef = useRef<TextInput>(null);
+  const shouldRecordRef = useRef(false);
 
   // Animation values for stickers - store refs to shared values
   const stickerAnimations = useRef<Map<string, {
@@ -151,7 +136,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
     translateY: SharedValue<number>;
     scale: SharedValue<number>;
     rotation: SharedValue<number>;
-  }>>(new Map()).current;
+  }>>(new Map());
 
   const updateStickerPosition = useCallback((id: string, x: number, y: number) => {
     setStickers(prev => {
@@ -175,7 +160,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
     setStickers(prev => prev.filter(s => s.id !== id));
     setSelectedSticker(prev => prev === id ? null : prev);
     // Clean up animation values
-    stickerAnimations.delete(id);
+    stickerAnimations.current.delete(id);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, []);
 
@@ -218,10 +203,13 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
   };
 
   useEffect(() => {
-    if (visible && !permission?.granted) {
-      requestPermission();
+    if (visible && (!permission?.granted || !micPermission?.granted)) {
+      (async () => {
+        await requestPermission();
+        await requestMicPermission();
+      })();
     }
-  }, [visible]);
+  }, [visible, permission?.granted, micPermission?.granted]);
 
   // Handle Recording Progress
   useEffect(() => {
@@ -275,12 +263,18 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
   const startRecording = async () => {
     if (cameraRef.current) {
       try {
+        shouldRecordRef.current = true;
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
         setIsRecording(true);
         setRecordingProgress(0);
 
         // Small delay to ensure haptic feedback is felt
         await new Promise(resolve => setTimeout(resolve, 100));
+
+        if (!shouldRecordRef.current) {
+          setIsRecording(false);
+          return;
+        }
 
         const video = await cameraRef.current.recordAsync({
           maxDuration: 10,
@@ -290,10 +284,19 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
         if (video) {
           setMedia({ uri: video.uri, type: 'video' });
         }
-      } catch (e) {
-        console.error('Recording error:', e);
+      } catch (e: any) {
         setIsRecording(false);
-        Alert.alert('Error', 'Failed to record video');
+        // Don't alert or log if it was just a manual stop or a too-short recording
+        const msg = e.message?.toLowerCase() || '';
+        const isUserAborted = msg.includes('stopped') || 
+                              msg.includes('data') || 
+                              msg.includes('aborted') ||
+                              msg.includes('cancel');
+        
+        if (!isUserAborted) {
+          console.error('Recording error:', e);
+          Alert.alert('Error', 'Failed to record video');
+        }
       }
     }
   };
@@ -317,10 +320,13 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
   }, [isRecording, cameraMode]);
 
   const stopRecording = () => {
+    shouldRecordRef.current = false;
     if (cameraRef.current && isRecording) {
       cameraRef.current.stopRecording();
       setIsRecording(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } else {
+      setIsRecording(false);
     }
   };
 
@@ -374,13 +380,6 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
       setStickers(prev => prev.map(s =>
         s.id === selectedSticker ? { ...s, location: mappedLoc } : s
       ));
-    } else if (stickers.length > 0) {
-      setStickers(prev => {
-        const next = [...prev];
-        next[0] = { ...next[0], location: mappedLoc };
-        return next;
-      });
-      setSelectedSticker(stickers[0].id);
     } else {
       const newSticker: Sticker = {
         id: Math.random().toString(36).substr(2, 9),
@@ -402,6 +401,11 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
     setLocation(mappedLoc);
     setShowLocationSearch(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handlePressLocationSticker = (loc: any) => {
+    setSelectedLocationForModal(loc);
+    setShowLocationModal(true);
   };
 
   const handleEmojiSelect = (emojiObject: any) => {
@@ -464,7 +468,8 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
         x: width / 2 - 75,
         y: height / 2 - 50,
         color: currentColor,
-        fontSize: currentFontSize,
+        // Normalize fontSize to a 375px reference width
+        fontSize: currentFontSize * (375 / width),
         fontFamily: currentFont,
         rotation: 0,
         scale: 1,
@@ -536,16 +541,38 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
 
       const formData = new FormData();
 
-      const filename = media.uri.split('/').pop() || (media.type === 'video' ? 'story.mp4' : 'story.jpg');
-      const match = /\.(\w+)$/.exec(filename);
-      const ext = match ? match[1].toLowerCase() : (media.type === 'video' ? 'mp4' : 'jpg');
-
-      // Strict mime type assignment based on media type
+      const isDataUri = media.uri.startsWith('data:');
+      let filename = 'story_media';
       let type = '';
-      if (media.type === 'video') {
-        type = 'video/mp4';
+
+      if (isDataUri) {
+        // Extract type from data URI (e.g., "image/png")
+        const typeMatch = media.uri.match(/^data:([^;]+);/);
+        type = typeMatch ? typeMatch[1] : (media.type === 'video' ? 'video/mp4' : 'image/jpeg');
+        const ext = type.split('/')[1] || 'jpg';
+        filename = `story_background.${ext}`;
       } else {
-        type = ext === 'png' ? 'image/png' : 'image/jpeg';
+        filename = media.uri.split('/').pop() || (media.type === 'video' ? 'story.mp4' : 'story.jpg');
+        const match = /\.(\w+)$/.exec(filename);
+        const ext = match ? match[1].toLowerCase() : (media.type === 'video' ? 'mp4' : 'jpg');
+        
+        if (media.type === 'video') {
+          type = 'video/mp4';
+        } else {
+          type = ext === 'png' ? 'image/png' : 'image/jpeg';
+        }
+      }
+
+      let finalUri = media.uri;
+      if (Platform.OS !== 'web' && media.uri.startsWith('data:image')) {
+        const base64Data = media.uri.split(',')[1];
+        // @ts-ignore
+        const tempFilePath = `${ExpoFileSystem.cacheDirectory}story_background.png`;
+        // @ts-ignore
+        await ExpoFileSystem.writeAsStringAsync(tempFilePath, base64Data, {
+          encoding: 'base64',
+        });
+        finalUri = tempFilePath;
       }
 
       if (Platform.OS === 'web') {
@@ -568,11 +595,17 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
             type = 'video/mp4';
           }
         }
+        
+        // Handle data:image/png;base64 for text backgrounds
+        if (media.uri.startsWith('data:image')) {
+          finalFilename = 'background.png';
+          type = 'image/png';
+        }
 
-        formData.append('media', blob, finalFilename);
+        formData.append('media', blob, filename);
       } else {
         formData.append('media', {
-          uri: media.uri,
+          uri: finalUri,
           name: filename,
           type,
         } as any);
@@ -582,12 +615,31 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
 
       // Process stickers with their positions and styles
       // Guard: deduplicate by ID just in case to avoid any potential UI race conditions
-      const uniqueStickers = Array.from(new Map(stickers.map(s => [s.id, s])).values());
+      // Add background metadata if it's a text story
+      // Use a copy to avoid mutating state
+      const baseStickers = [...stickers];
+      if (media.type === 'photo' && media.gradient) {
+        baseStickers.push({
+          id: 'bg-metadata',
+          type: 'background' as any,
+          colors: media.gradient,
+          x: 0,
+          y: 0,
+          scale: 1,
+          rotation: 0,
+          text: '',
+          color: '',
+          fontSize: 0,
+          fontFamily: '',
+        });
+      }
+
+      const uniqueStickers = Array.from(new Map(baseStickers.map(s => [s.id, s])).values());
       const stickersData = uniqueStickers.map(s => ({
         ...s,
-        // Normalize positions to percentages
-        x: s.x / width,
-        y: s.y / height,
+        // Normalize positions to percentages (only for actual stickers)
+        x: s.id === 'bg-metadata' ? 0 : s.x / width,
+        y: s.id === 'bg-metadata' ? 0 : s.y / height,
       }));
       formData.append('stickers', JSON.stringify(stickersData));
 
@@ -621,7 +673,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
     setNeedsTrimming(false);
     setShowTrimmer(false);
     // Clear animation map
-    stickerAnimations.clear();
+    stickerAnimations.current.clear();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onClose();
   };
@@ -640,11 +692,17 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
+
   if (!visible) return null;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <Modal visible={visible} animationType="slide" transparent={false}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={handleClose}
+    >
+      <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={styles.container}>
           <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
@@ -664,105 +722,124 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
           )}
 
           {!media && !showTrimmer ? (
-            // CAMERA VIEW
             <View style={styles.cameraContainer}>
-              <PlatformCameraView
-                cameraRef={cameraRef}
-                style={styles.camera}
-                facing={facing}
-              >
-                <SafeAreaView style={styles.cameraOverlay}>
-                  <View style={styles.topControls}>
-                    <TouchableOpacity onPress={handleClose} style={styles.iconButton}>
-                      <Ionicons name="close" size={30} color="white" />
-                    </TouchableOpacity>
-
-                    <View style={styles.topRightControls}>
-                      <TouchableOpacity onPress={toggleFlash} style={styles.iconButton}>
-                        <Ionicons
-                          name={flash === 'off' ? 'flash-off' : 'flash'}
-                          size={24}
-                          color="white"
-                        />
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={() => { }} style={styles.iconButton}>
-                        <Ionicons name="settings-outline" size={24} color="white" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-
-                  <View style={styles.bottomWrapper}>
-                    <View style={styles.bottomControls}>
-                      <TouchableOpacity style={styles.galleryButton} onPress={pickFromGallery}>
-                        <Ionicons name="images-outline" size={28} color="white" />
+              {cameraMode === 'text' ? (
+                <TextStoryCreator
+                  onSetMedia={setMedia}
+                  onClose={handleClose}
+                />
+              ) : (
+                <PlatformCameraView
+                  cameraRef={cameraRef}
+                  style={styles.camera}
+                  facing={facing}
+                  mode={cameraMode === 'video' || isRecording ? 'video' : 'picture'}
+                >
+                  <SafeAreaView style={styles.cameraOverlay}>
+                    <View style={styles.topControls}>
+                      <TouchableOpacity onPress={handleClose} style={styles.iconButton}>
+                        <Ionicons name="close" size={30} color="white" />
                       </TouchableOpacity>
 
-                      <View style={styles.captureContainer}>
-                        <TouchableOpacity
-                          onPressIn={handleLongPress}
-                          onPressOut={handlePressOut}
-                          style={styles.captureOuter}
-                          activeOpacity={0.8}
-                        >
-                          <MotiView
-                            animate={{
-                              scale: isRecording ? 1.2 : 1,
-                              backgroundColor: isRecording ? '#FF3B30' : 'white'
-                            }}
-                            transition={{ type: 'timing', duration: 150 }}
-                            style={styles.captureInner}
+                      <View style={styles.topRightControls}>
+                        <TouchableOpacity onPress={toggleFlash} style={styles.iconButton}>
+                          <Ionicons
+                            name={flash === 'off' ? 'flash-off' : 'flash'}
+                            size={24}
+                            color="white"
                           />
-                          {isRecording && (
-                            <MotiView
-                              from={{ opacity: 0, scale: 1 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              style={[
-                                styles.progressRing,
-                                {
-                                  borderWidth: 5,
-                                  borderColor: '#FF3B30',
-                                  borderRadius: 40,
-                                }
-                              ]}
-                            >
-                              <View
-                                style={[
-                                  styles.progressFill,
-                                  { width: `${recordingProgress * 100}%` }
-                                ]}
-                              />
-                            </MotiView>
-                          )}
                         </TouchableOpacity>
-                        <Text style={styles.modeText}>
-                          {cameraMode === 'video'
-                            ? isRecording ? `Recording ${Math.floor(recordingProgress * 10)}s` : 'Hold for Video'
-                            : 'Tap for Photo'}
-                        </Text>
+                        <TouchableOpacity onPress={() => { }} style={styles.iconButton}>
+                          <Ionicons name="settings-outline" size={24} color="white" />
+                        </TouchableOpacity>
                       </View>
-
-                      <TouchableOpacity style={styles.flipButton} onPress={toggleFacing}>
-                        <Ionicons name="camera-reverse-outline" size={32} color="white" />
-                      </TouchableOpacity>
                     </View>
 
-                    <View style={styles.modeSelector}>
-                      <TouchableOpacity
-                        onPress={() => setCameraMode('picture')}
-                        style={[styles.modeButton, cameraMode === 'picture' && styles.activeModeButton]}
-                      >
-                        <Text style={[styles.modeItem, cameraMode === 'picture' && styles.activeMode]}>PHOTO</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => setCameraMode('video')}
-                        style={[styles.modeButton, cameraMode === 'video' && styles.activeModeButton]}
-                      >
-                        <Text style={[styles.modeItem, cameraMode === 'video' && styles.activeMode]}>VIDEO</Text>
-                      </TouchableOpacity>
+                    <View style={styles.bottomWrapper}>
+                      <View style={styles.bottomControls}>
+                        <TouchableOpacity
+                          style={styles.galleryButton}
+                          onPress={pickFromGallery}
+                        >
+                          <Ionicons name="images-outline" size={28} color="white" />
+                        </TouchableOpacity>
+
+                        <View style={styles.captureContainer}>
+                          <TouchableOpacity
+                            onPressIn={handleLongPress}
+                            onPressOut={handlePressOut}
+                            style={styles.captureOuter}
+                            activeOpacity={0.8}
+                          >
+                            <MotiView
+                              animate={{
+                                scale: isRecording ? 1.2 : 1,
+                                backgroundColor: isRecording ? '#FF3B30' : 'white'
+                              }}
+                              transition={{ type: 'timing', duration: 150 }}
+                              style={styles.captureInner}
+                            />
+                            {isRecording && (
+                              <MotiView
+                                from={{ opacity: 0, scale: 1 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                style={[
+                                  styles.progressRing,
+                                  {
+                                    borderWidth: 5,
+                                    borderColor: '#FF3B30',
+                                    borderRadius: 40,
+                                  }
+                                ]}
+                              >
+                                <View
+                                  style={[
+                                    styles.progressFill,
+                                    { width: `${recordingProgress * 100}%` }
+                                  ]}
+                                />
+                              </MotiView>
+                            )}
+                          </TouchableOpacity>
+                          <Text style={styles.modeText}>
+                            {cameraMode === 'video'
+                                ? isRecording ? `Recording ${Math.floor(recordingProgress * 10)}s` : 'Hold for Video'
+                                : 'Tap for Photo'}
+                          </Text>
+                        </View>
+
+                        <TouchableOpacity
+                          style={styles.flipButton}
+                          onPress={toggleFacing}
+                        >
+                          <Ionicons name="camera-reverse-outline" size={32} color="white" />
+                        </TouchableOpacity>
+                      </View>
                     </View>
-                  </View>
-                </SafeAreaView>
-              </PlatformCameraView>
+                  </SafeAreaView>
+                </PlatformCameraView>
+              )}
+
+              <View style={styles.modeSelector}>
+                <TouchableOpacity
+                  onPress={() => setCameraMode('text')}
+                  style={[styles.modeButton, cameraMode === 'text' && styles.activeModeButton]}
+                >
+                  <Text style={[styles.modeItem, cameraMode === 'text' && styles.activeMode]}>Aa TEXT</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setCameraMode('picture')}
+                  style={[styles.modeButton, cameraMode === 'picture' && styles.activeModeButton]}
+                >
+                  <Text style={[styles.modeItem, cameraMode === 'picture' && styles.activeMode]}>PHOTO</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setCameraMode('video')}
+                  style={[styles.modeButton, cameraMode === 'video' && styles.activeModeButton]}
+                >
+                  <Text style={[styles.modeItem, cameraMode === 'video' && styles.activeMode]}>VIDEO</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ) : !showTrimmer && (
             // PREVIEW VIEW
@@ -774,9 +851,15 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                   contentFit="cover"
                   nativeControls
                 />
+              ) : media?.gradient ? (
+                <LinearGradient
+                  colors={media.gradient as [string, string, ...string[]]}
+                  style={styles.previewMedia}
+                />
               ) : (
                 <Image source={{ uri: media?.uri }} style={styles.previewMedia} resizeMode="cover" />
               )}
+
 
               <SafeAreaView style={styles.previewOverlay} pointerEvents="box-none">
                 <View style={styles.topControls}>
@@ -795,33 +878,6 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                       <Ionicons name="happy-outline" size={24} color="white" />
                     </TouchableOpacity>
                   </View>
-                </View>
-
-                {/* RENDER STICKERS - Use unique key that doesn't change on position update */}
-                <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-                  <AnimatePresence>
-                    {stickers.map((sticker) => (
-                      <MotiView
-                        key={sticker.id}
-                        from={{ opacity: 0, scale: 0.5 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.5 }}
-                        transition={{ type: 'spring', damping: 15 }}
-                        style={StyleSheet.absoluteFill}
-                        pointerEvents="box-none"
-                      >
-                        <DraggableSticker
-                          sticker={sticker}
-                          isSelected={selectedSticker === sticker.id}
-                          stickerAnimations={stickerAnimations}
-                          onSelect={setSelectedSticker}
-                          onUpdatePosition={updateStickerPosition}
-                          onSetStickers={setStickers}
-                          onDelete={deleteSticker}
-                        />
-                      </MotiView>
-                    ))}
-                  </AnimatePresence>
                 </View>
 
 
@@ -867,189 +923,227 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                 </View>
               </SafeAreaView>
 
-              {/* TEXT EDITOR MODAL */}
-              <Modal visible={showTextEditor} transparent animationType="fade">
-                <KeyboardAvoidingView
-                  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                  style={styles.editorContainer}
-                >
-                  <BlurView intensity={40} style={StyleSheet.absoluteFill} />
-
-                  <TouchableOpacity
-                    style={styles.editorClose}
-                    onPress={() => setShowTextEditor(false)}
-                  >
-                    <Ionicons name="close" size={24} color="white" />
-                  </TouchableOpacity>
-
-                  <View style={styles.editorContent}>
-                    <TextInput
-                      ref={textInputRef}
-                      style={[
-                        styles.editorInput,
-                        {
-                          color: currentColor,
-                          fontSize: currentFontSize,
-                          fontFamily: currentFont,
-                        }
-                      ]}
-                      value={currentText}
-                      onChangeText={setCurrentText}
-                      placeholder="Type something..."
-                      placeholderTextColor="rgba(255,255,255,0.5)"
-                      selectionColor="white"
-                      multiline
-                      autoFocus
-                    />
-
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      style={styles.colorPicker}
+              {/* RENDER STICKERS - Move to top of hierarchy for best touch interception */}
+              <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+                <AnimatePresence>
+                  {stickers.filter(s => s.type !== 'background').map((sticker) => (
+                    <MotiView
+                      key={sticker.id}
+                      from={{ opacity: 0, scale: 0.5 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.5 }}
+                      transition={{ type: 'spring', damping: 15 }}
+                      style={{ position: 'absolute' }}
+                      pointerEvents="box-none"
                     >
-                      {COLORS.map((color) => (
-                        <TouchableOpacity
-                          key={color}
-                          style={[
-                            styles.colorOption,
-                            { backgroundColor: color },
-                            currentColor === color && styles.colorOptionSelected
-                          ]}
-                          onPress={() => setCurrentColor(color)}
-                        />
-                      ))}
-                    </ScrollView>
-
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      style={styles.fontPicker}
-                    >
-                      {FONTS.map((font) => (
-                        <TouchableOpacity
-                          key={font}
-                          style={[
-                            styles.fontOption,
-                            currentFont === font && styles.fontOptionSelected
-                          ]}
-                          onPress={() => setCurrentFont(font)}
-                        >
-                          <Text style={[styles.fontOptionText, { fontFamily: font }]}>
-                            {font}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-
-                    <View style={styles.fontSizePicker}>
-                      <TouchableOpacity
-                        onPress={() => setCurrentFontSize(Math.max(12, currentFontSize - 4))}
-                        style={styles.fontSizeButton}
-                      >
-                        <Ionicons name="remove-circle-outline" size={24} color="white" />
-                      </TouchableOpacity>
-                      <Text style={styles.fontSizeText}>{currentFontSize}px</Text>
-                      <TouchableOpacity
-                        onPress={() => setCurrentFontSize(Math.min(72, currentFontSize + 4))}
-                        style={styles.fontSizeButton}
-                      >
-                        <Ionicons name="add-circle-outline" size={24} color="white" />
-                      </TouchableOpacity>
-                    </View>
-
-                    <TouchableOpacity
-                      style={[
-                        styles.editorDoneBottom,
-                        !currentText.trim() && styles.editorDoneDisabled
-                      ]}
-                      onPress={handleAddText}
-                      disabled={!currentText.trim()}
-                    >
-                      <Text style={styles.editorDoneText}>Add Text</Text>
-                    </TouchableOpacity>
-                  </View>
-                </KeyboardAvoidingView>
-              </Modal>
-
-              {/* EMOJI PICKER */}
-              <EmojiPicker
-                open={showEmojiPicker}
-                onClose={() => setShowEmojiPicker(false)}
-                onEmojiSelected={handleEmojiSelect}
-                theme={{
-                  backdrop: 'rgba(0,0,0,0.8)',
-                  knob: '#0084ff',
-                  container: '#1a1a1a',
-                  header: '#ffffff',
-                  skinTonesContainer: '#252525',
-                  category: {
-                    icon: '#0084ff',
-                    iconActive: '#ffffff',
-                    container: '#252525',
-                    containerActive: '#0084ff',
-                  },
-                  search: {
-                    background: '#252525',
-                    text: '#ffffff',
-                    placeholder: '#888888',
-                    icon: '#888888',
-                  },
-                }}
-              />
-
-              {/* FEELING TEXT INPUT MODAL */}
-              <Modal visible={showFeelingInput} transparent animationType="slide">
-                <KeyboardAvoidingView
-                  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                  style={styles.feelingInputContainer}
-                >
-                  <BlurView intensity={90} tint="dark" style={styles.feelingInputContent}>
-                    <Text style={styles.feelingInputTitle}>How are you feeling?</Text>
-                    <View style={styles.feelingInputRow}>
-                      <Text style={styles.feelingEmojiPreview}>{tempEmoji}</Text>
-                      <TextInput
-                        style={styles.feelingTextInput}
-                        placeholder="e.g. happy, thinking, eating..."
-                        placeholderTextColor="#666"
-                        value={feelingText}
-                        onChangeText={setFeelingText}
-                        autoFocus
-                        onSubmitEditing={handleFinishFeeling}
-                        maxLength={20}
+                      <DraggableSticker
+                        sticker={sticker}
+                        isSelected={selectedSticker === sticker.id}
+                        stickerAnimations={stickerAnimations.current}
+                        onSelect={setSelectedSticker}
+                        onUpdatePosition={updateStickerPosition}
+                        onSetStickers={setStickers}
+                        onDelete={deleteSticker}
+                        onPressLocation={handlePressLocationSticker}
                       />
-                    </View>
-                    <View style={styles.feelingInputButtons}>
-                      <TouchableOpacity
-                        style={styles.feelingCancelButton}
-                        onPress={() => {
-                          setShowFeelingInput(false);
-                          setFeelingText('');
-                        }}
-                      >
-                        <Text style={styles.feelingCancelText}>Cancel</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.feelingDoneButton}
-                        onPress={handleFinishFeeling}
-                      >
-                        <Text style={styles.feelingDoneText}>Add Feeling</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </BlurView>
-                </KeyboardAvoidingView>
-              </Modal>
+                    </MotiView>
+                  ))}
+                </AnimatePresence>
+              </View>
 
-              {/* SHARE LOCATION NEW COMPONENT */}
-              <ShareLocation
-                visible={showLocationSearch}
-                onClose={() => setShowLocationSearch(false)}
-                onShareLocation={handleLocationSelect}
-              />
             </View>
           )}
+
+          {/* SHARED MODALS - Accessible in all modes */}
+          {/* TEXT EDITOR MODAL */}
+          <Modal visible={showTextEditor} transparent animationType="fade">
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={styles.editorContainer}
+            >
+              <BlurView intensity={40} style={StyleSheet.absoluteFill} />
+
+              <TouchableOpacity
+                style={styles.editorClose}
+                onPress={() => setShowTextEditor(false)}
+              >
+                <Ionicons name="close" size={24} color="white" />
+              </TouchableOpacity>
+
+              <View style={styles.editorContent}>
+                <TextInput
+                  ref={textInputRef}
+                  style={[
+                    styles.editorInput,
+                    {
+                      color: currentColor,
+                      fontSize: currentFontSize,
+                      fontFamily: currentFont,
+                    }
+                  ]}
+                  value={currentText}
+                  onChangeText={setCurrentText}
+                  placeholder="Type something..."
+                  placeholderTextColor="rgba(255,255,255,0.5)"
+                  selectionColor="white"
+                  multiline
+                  autoFocus
+                />
+
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.colorPicker}
+                >
+                  {COLORS.map((color) => (
+                    <TouchableOpacity
+                      key={color}
+                      style={[
+                        styles.colorOption,
+                        { backgroundColor: color },
+                        currentColor === color && styles.colorOptionSelected
+                      ]}
+                      onPress={() => setCurrentColor(color)}
+                    />
+                  ))}
+                </ScrollView>
+
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.fontPicker}
+                >
+                  {FONTS.map((font) => (
+                    <TouchableOpacity
+                      key={font}
+                      style={[
+                        styles.fontOption,
+                        currentFont === font && styles.fontOptionSelected
+                      ]}
+                      onPress={() => setCurrentFont(font)}
+                    >
+                      <Text style={[styles.fontOptionText, { fontFamily: font }]}>
+                        {font}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+
+                <View style={styles.fontSizePicker}>
+                  <TouchableOpacity
+                    onPress={() => setCurrentFontSize(Math.max(12, currentFontSize - 4))}
+                    style={styles.fontSizeButton}
+                  >
+                    <Ionicons name="remove-circle-outline" size={24} color="white" />
+                  </TouchableOpacity>
+                  <Text style={styles.fontSizeText}>{currentFontSize}px</Text>
+                  <TouchableOpacity
+                    onPress={() => setCurrentFontSize(Math.min(72, currentFontSize + 4))}
+                    style={styles.fontSizeButton}
+                  >
+                    <Ionicons name="add-circle-outline" size={24} color="white" />
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.editorDoneBottom,
+                    !currentText.trim() && styles.editorDoneDisabled
+                  ]}
+                  onPress={handleAddText}
+                  disabled={!currentText.trim()}
+                >
+                  <Text style={styles.editorDoneText}>Add Text</Text>
+                </TouchableOpacity>
+              </View>
+            </KeyboardAvoidingView>
+          </Modal>
+
+          {/* EMOJI PICKER */}
+          <EmojiPicker
+            open={showEmojiPicker}
+            onClose={() => setShowEmojiPicker(false)}
+            onEmojiSelected={handleEmojiSelect}
+            theme={{
+              backdrop: 'rgba(0,0,0,0.8)',
+              knob: '#0084ff',
+              container: '#1a1a1a',
+              header: '#ffffff',
+              skinTonesContainer: '#252525',
+              category: {
+                icon: '#0084ff',
+                iconActive: '#ffffff',
+                container: '#252525',
+                containerActive: '#0084ff',
+              },
+              search: {
+                background: '#252525',
+                text: '#ffffff',
+                placeholder: '#888888',
+                icon: '#888888',
+              },
+            }}
+          />
+
+          {/* FEELING TEXT INPUT MODAL */}
+          <Modal visible={showFeelingInput} transparent animationType="slide">
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={styles.feelingInputContainer}
+            >
+              <BlurView intensity={90} tint="dark" style={styles.feelingInputContent}>
+                <Text style={feelingText ? styles.feelingInputTitle : [styles.feelingInputTitle, { opacity: 0 }]}>How are you feeling?</Text>
+                <View style={styles.feelingInputRow}>
+                  <Text style={styles.feelingEmojiPreview}>{tempEmoji}</Text>
+                  <TextInput
+                    style={styles.feelingTextInput}
+                    placeholder="e.g. happy, thinking, eating..."
+                    placeholderTextColor="#666"
+                    value={feelingText}
+                    onChangeText={setFeelingText}
+                    autoFocus
+                    onSubmitEditing={handleFinishFeeling}
+                    maxLength={20}
+                  />
+                </View>
+                <View style={styles.feelingInputButtons}>
+                  <TouchableOpacity
+                    style={styles.feelingCancelButton}
+                    onPress={() => {
+                      setShowFeelingInput(false);
+                      setFeelingText('');
+                    }}
+                  >
+                    <Text style={styles.feelingCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.feelingDoneButton}
+                    onPress={handleFinishFeeling}
+                  >
+                    <Text style={styles.feelingDoneText}>Add Feeling</Text>
+                  </TouchableOpacity>
+                </View>
+              </BlurView>
+            </KeyboardAvoidingView>
+          </Modal>
+
+          {/* SHARE LOCATION NEW COMPONENT */}
+          <ShareLocation
+            visible={showLocationSearch}
+            onClose={() => setShowLocationSearch(false)}
+            onShareLocation={handleLocationSelect}
+          />
+
+          {selectedLocationForModal && (
+            <LocationModal
+              visible={showLocationModal}
+              onClose={() => setShowLocationModal(false)}
+              location={selectedLocationForModal}
+            />
+          )}
         </View>
-      </Modal>
-    </GestureHandlerRootView>
+      </GestureHandlerRootView>
+    </Modal>
   );
 };
 
@@ -1065,6 +1159,10 @@ const styles = StyleSheet.create({
   },
   camera: {
     flex: 1,
+  },
+  textModeBackground: {
+    flex: 1,
+    overflow: 'hidden',
   },
   cameraOverlay: {
     flex: 1,
@@ -1587,158 +1685,5 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
-
-// Draggable Sticker Component defined outside to prevent re-mounting during parent renders
-const DraggableSticker = ({
-  sticker,
-  isSelected,
-  stickerAnimations,
-  onSelect,
-  onUpdatePosition,
-  onSetStickers,
-  onDelete,
-}: {
-  sticker: Sticker;
-  isSelected: boolean;
-  stickerAnimations: Map<string, any>;
-  onSelect: (id: string) => void;
-  onUpdatePosition: (id: string, x: number, y: number) => void;
-  onSetStickers: React.Dispatch<React.SetStateAction<Sticker[]>>;
-  onDelete: (id: string) => void;
-}) => {
-  // Create shared values that persist for the lifetime of this component
-  const translateX = useSharedValue(sticker.x);
-  const translateY = useSharedValue(sticker.y);
-  const scale = useSharedValue(sticker.scale || 1);
-  const rotation = useSharedValue(sticker.rotation || 0);
-
-  // Update shared values when sticker props change
-  useEffect(() => {
-    translateX.value = sticker.x;
-    translateY.value = sticker.y;
-    scale.value = sticker.scale || 1;
-    rotation.value = sticker.rotation || 0;
-  }, [sticker.x, sticker.y, sticker.scale, sticker.rotation]);
-
-  // Register animation values in map (only once)
-  useEffect(() => {
-    if (!stickerAnimations.has(sticker.id)) {
-      stickerAnimations.set(sticker.id, { translateX, translateY, scale, rotation });
-    }
-
-    return () => {
-      // Cleanup on unmount
-      stickerAnimations.delete(sticker.id);
-    };
-  }, []); // Empty dependency array - only run once on mount
-
-  const panGesture = Gesture.Pan()
-    .onStart(() => {
-      runOnJS(onSelect)(sticker.id);
-      runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
-    })
-    .onUpdate((event) => {
-      translateX.value = sticker.x + event.translationX;
-      translateY.value = sticker.y + event.translationY;
-    })
-    .onEnd((event) => {
-      const finalX = sticker.x + event.translationX;
-      const finalY = sticker.y + event.translationY;
-      runOnJS(onUpdatePosition)(sticker.id, finalX, finalY);
-    });
-
-  const pinchGesture = Gesture.Pinch()
-    .onUpdate((event) => {
-      scale.value = (sticker.scale || 1) * event.scale;
-    })
-    .onEnd(() => {
-      runOnJS(onSetStickers)(prev => prev.map(s =>
-        s.id === sticker.id ? { ...s, scale: scale.value } : s
-      ));
-    });
-
-  const rotateGesture = Gesture.Rotation()
-    .onUpdate((event) => {
-      rotation.value = (sticker.rotation || 0) + event.rotation;
-    })
-    .onEnd(() => {
-      runOnJS(onSetStickers)(prev => prev.map(s =>
-        s.id === sticker.id ? { ...s, rotation: rotation.value } : s
-      ));
-    });
-
-  const doubleTap = Gesture.Tap()
-    .numberOfTaps(2)
-    .onEnd(() => {
-      runOnJS(onDelete)(sticker.id);
-    });
-
-  const composed = Gesture.Simultaneous(
-    panGesture,
-    pinchGesture,
-    rotateGesture,
-    doubleTap
-  );
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.value },
-      { translateY: translateY.value },
-      { scale: scale.value },
-      { rotate: `${rotation.value}rad` },
-    ],
-  }));
-
-  return (
-    <GestureDetector gesture={composed}>
-      <Animated.View style={[styles.sticker, animatedStyle]}>
-        <View style={styles.stickerContent}>
-          {sticker.text !== '' && (
-            <Text
-              style={[
-                styles.stickerText,
-                {
-                  color: sticker.color,
-                  fontSize: sticker.fontSize,
-                  fontFamily: sticker.fontFamily,
-                }
-              ]}
-            >
-              {sticker.text}
-            </Text>
-          )}
-
-          {sticker.location && (
-            <BlurView intensity={80} tint="dark" style={styles.integratedLocationSticker}>
-              <Ionicons name="location" size={14} color="#0084ff" />
-              <Text style={styles.integratedLocationStickerText}>{sticker.location.name}</Text>
-            </BlurView>
-          )}
-
-          {sticker.feeling && (
-            <BlurView intensity={80} tint="dark" style={styles.integratedFeelingSticker}>
-              <Text style={styles.integratedFeelingEmoji}>{sticker.feeling.emoji}</Text>
-              <Text style={styles.integratedFeelingText}>{sticker.feeling.text}</Text>
-            </BlurView>
-          )}
-        </View>
-        {isSelected && (
-          <MotiView
-            from={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            style={styles.stickerControls}
-          >
-            <TouchableOpacity
-              style={[styles.stickerControl, styles.stickerDelete]}
-              onPress={() => onDelete(sticker.id)}
-            >
-              <Ionicons name="close" size={16} color="white" />
-            </TouchableOpacity>
-          </MotiView>
-        )}
-      </Animated.View>
-    </GestureDetector>
-  );
-};
 
 export default AddStory;

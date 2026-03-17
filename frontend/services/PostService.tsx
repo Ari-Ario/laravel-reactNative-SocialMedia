@@ -309,9 +309,15 @@ export async function commentOnPost(postId: number, content: string, parentId?: 
   return response.data;
 }
 
-export async function repostPost(postId: number): Promise<{
+export async function repostPost(
+  postId: number, 
+  contextTag?: string, 
+  personalNote?: string
+): Promise<{
+  message: string;
   reposted: boolean;
   reposts_count: number;
+  repost?: any;
   repost_user?: {
     id: number;
     name: string;
@@ -323,7 +329,10 @@ export async function repostPost(postId: number): Promise<{
   try {
     const response = await axios.post(
       `${API_BASE}/posts/${postId}/repost`,
-      {},
+      { 
+        context_tag: contextTag, 
+        personal_note: personalNote 
+      },
       {
         headers: {
           Authorization: `Bearer ${token}`,

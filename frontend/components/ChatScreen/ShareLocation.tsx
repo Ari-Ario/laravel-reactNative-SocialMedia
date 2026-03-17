@@ -86,10 +86,10 @@ interface Place {
 const NEARBY_PLACE_TYPES = [
     { icon: 'cafe', types: 'cafe', name: 'Coffee Shops' },
     { icon: 'restaurant', types: 'restaurant', name: 'Restaurants' },
-    { icon: 'shopping-bag', types: 'shopping_mall|store', name: 'Shopping' },
-    { icon: 'park', types: 'park', name: 'Parks' },
-    { icon: 'gas-station', types: 'gas_station', name: 'Gas Stations' },
-    { icon: 'hospital', types: 'hospital', name: 'Hospitals' },
+    { icon: 'cart-outline', types: 'shopping_mall|store', name: 'Shopping' },
+    { icon: 'leaf-outline', types: 'park', name: 'Parks' },
+    { icon: 'car-outline', types: 'gas_station', name: 'Gas Stations' },
+    { icon: 'medkit-outline', types: 'hospital', name: 'Hospitals' },
 ];
 
 // Live location duration options (in minutes)
@@ -261,9 +261,14 @@ export const ShareLocation: React.FC<ShareLocationProps> = ({
 
         setLoadingNearby(true);
         try {
-            const typesParam = type ? `&type=${type}` : '';
+            // Google nearbysearch requires at least one of: type, keyword, or name.
+            // When multiple types are separated by '|', use 'keyword' instead of 'type'.
+            const searchParam = type 
+                ? (type.includes('|') ? `&keyword=${encodeURIComponent(type)}` : `&type=${type}`)
+                : `&keyword=point of interest`; // Broad default for 'All' tab
+
             const response = await fetch(
-                `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=1500${typesParam}&key=${googlePlacesApiKey}`
+                `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=1500${searchParam}&key=${googlePlacesApiKey}`
             );
             const data = await response.json();
 
@@ -283,11 +288,52 @@ export const ShareLocation: React.FC<ShareLocationProps> = ({
                     ),
                 }));
                 setNearbyPlaces(places);
+            } else {
+                fetchOSMNearby(lat, lng, type);
             }
         } catch (error) {
             console.error('Error fetching nearby places:', error);
+            fetchOSMNearby(lat, lng, type);
         } finally {
             setLoadingNearby(false);
+        }
+    };
+
+    const fetchOSMNearby = async (lat: number, lng: number, type?: string) => {
+        try {
+            // Nominatim doesn't support '|' and needs broader terms for 'All'
+            let query = type || 'point of interest';
+            if (type && type.includes('|')) {
+                if (type === 'shopping_mall|store') query = 'shop';
+                else query = type.split('|')[0];
+            }
+            if (!type) query = 'amenity,shop,tourism,point of interest';
+
+            const v = 0.01; // approx ~1km
+            const viewbox = `${lng - v},${lat - v},${lng + v},${lat + v}`;
+
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&viewbox=${viewbox}&bounded=1&limit=10`
+            );
+
+            const data = await response.json();
+            const places: Place[] = data.map((item: any) => ({
+                id: item.place_id.toString(),
+                name: item.name || item.display_name.split(',')[0],
+                address: item.display_name.split(',').slice(1, 3).join(',').trim(),
+                latitude: parseFloat(item.lat),
+                longitude: parseFloat(item.lon),
+                distance: calculateDistance(
+                    lat,
+                    lng,
+                    parseFloat(item.lat),
+                    parseFloat(item.lon)
+                ),
+            }));
+
+            setNearbyPlaces(places);
+        } catch (error) {
+            console.error('OSM Nearby error:', error);
         }
     };
 

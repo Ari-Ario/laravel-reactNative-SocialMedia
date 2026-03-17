@@ -34,6 +34,10 @@ import { usePostListService } from '@/services/PostListService';
 import RenderComments from './RenderComments';
 import { createShadow } from '@/utils/styles';
 import PusherService from '@/services/PusherService';
+import { CuratorFrame } from './CuratorFrame';
+import { CuratorCircle } from './CuratorCircle';
+import { ContextTagSelector } from './ContextTagSelector';
+import { repostPost } from '@/services/PostService';
 
 
 interface PostListItemProps {
@@ -59,6 +63,7 @@ export default function PostListItem({
   const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
   const { openModal } = useModal();
   const { posts, updatePost: updatePostInStore, expandedPostId, toggleExpandedPostId } = usePostStore();
+  const [tagSelectorVisible, setTagSelectorVisible] = useState(false);
   const currentPost = posts.find(p => p.id === post.id) || post;
 
   // Use the PostListService
@@ -70,7 +75,7 @@ export default function PostListItem({
     return service.sortMedia(post.media);
   }, [post.media]);
 
-  const reactionsToShow = service.getGroupedReactions(currentPost, user?.id);
+  const reactionsToShow = service.getGroupedReactions(currentPost, user?.id ? Number(user.id) : undefined);
   const totalReactions = reactionsToShow.reduce((acc, r) => acc + r.count, 0);
   const comments = currentPost.comments || [];
 
@@ -100,24 +105,37 @@ export default function PostListItem({
     await service.submitComment(post.id, onCommentSubmit);
   };
 
+  const handleRepostWithContext = async (tag: string, note: string) => {
+    try {
+      const response = await repostPost(post.id, tag, note);
+      
+      // Update store with new repost count and potentially the new repost data
+      const currentPost = posts.find(p => p.id === post.id);
+      if (currentPost) {
+        updatePostInStore({
+          ...currentPost,
+          reposts_count: response.reposts_count,
+          is_reposted: response.reposted,
+          reposts: response.reposted 
+            ? (response.repost ? [response.repost, ...(currentPost.reposts || [])] : currentPost.reposts)
+            : (currentPost.reposts || []).filter((r: any) => r.user?.id !== user?.id && r.user_id !== user?.id)
+        });
+      }
+      
+      Alert.alert("Success", response.message);
+    } catch (error) {
+      console.error("Repost failed:", error);
+      Alert.alert("Error", "Failed to repost");
+    }
+  };
 
-  return (
-    <Pressable 
-      style={styles.container}
-      onLongPress={service.handleMenuPress}
-      delayLongPress={300}
-    >
+  const onRepostPress = () => {
+    setTagSelectorVisible(true);
+  };
 
-      {/* Show repost header if this is a repost */}
-      {(post.reposts?.length > 0 && (post.reposts[0].user.name !== user?.name)) && (
-        <View style={styles.repostHeader}>
-          <Feather name="repeat" size={16} color="#666" />
-          <Text style={styles.repostText}>
-            {post.reposts[0].user.name} reposted
-          </Text>
-        </View>
-      )}
 
+  const renderMainContent = () => (
+    <>
       <View style={styles.head}>
         {/* Post header */}
         <View style={styles.header}>
@@ -197,7 +215,7 @@ export default function PostListItem({
             </TouchableOpacity>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {sortedMedia.map((media, index) => (
+              {sortedMedia.map((media: any, index: number) => (
                 <TouchableOpacity
                   key={`${media.id}-${index}`}
                   onPress={() => service.openMediaViewer(index)}
@@ -222,42 +240,51 @@ export default function PostListItem({
           )}
         </View>
       )}
+    </>
+  );
 
-      <MediaViewer
-        visible={service.mediaViewerVisible}
-        mediaItems={sortedMedia}
-        startIndex={service.mediaViewerIndex}
-        onClose={service.handleCloseViewer}
-        post={currentPost}
-        getApiBaseImage={getApiBaseImage}
-        onNavigateNext={() => service.handleNavigateNextPost(posts, post.id)}
-        onNavigatePrev={() => service.handleNavigatePrevPost(posts, post.id)}
-        // Action button handlers
-        onReact={(emoji) => {
-          service.setCurrentReactingItem({ postId: post.id });
-          service.handleReact(emoji, post.id);
-        }}
-        onDeleteReaction={() => service.deletePostReaction(post.id)}
-        onRepost={() => onRepost(post.id)}
-        onShare={() => openModal('share', { post: currentPost })}
-        onBookmark={() => onBookmark(post.id)}
-        onCommentPress={() => service.setShowComments(!service.showComments)}
-        onDoubleTap={handleDoubleTap}
-        // Reaction state
-        currentReactingItem={service.currentReactingItem}
-        setCurrentReactingItem={service.setCurrentReactingItem}
-        setIsEmojiPickerOpen={service.setIsEmojiPickerOpen}
-        // Comment functions
-        onCommentSubmit={async (content, parentId) => {
-          return onCommentSubmit(post.id, content, parentId);
-        }}
-        getGroupedReactions={service.getGroupedReactions}
-        // For comment reactions
-        handleReactComment={service.handleReactComment}
-        deleteCommentReaction={(emoji) => {
-          if (!service.currentReactingComment?.commentId) return;
-          service.deleteCommentReaction(service.currentReactingComment.commentId, emoji);
-        }}
+  return (
+    <Pressable 
+      style={styles.container}
+      onLongPress={service.handleMenuPress}
+      delayLongPress={300}
+    >
+
+      {/* Show Grouped Reposts if multiple people shared it */}
+      {currentPost.reposts && currentPost.reposts.length > 1 && (
+        <CuratorCircle 
+          reposters={currentPost.reposts.map((r: any) => ({
+            ...r.user,
+            context_tag: r.context_tag,
+            personal_note: r.personal_note,
+            created_at: r.created_at
+          }))} 
+          postId={currentPost.id}
+          postContent={currentPost.caption}
+        />
+      )}
+
+      {/* If it's a single repost - wrap in CuratorFrame */}
+      {currentPost.reposts && currentPost.reposts.length === 1 ? (
+        <CuratorFrame 
+          reposter={{
+            ...currentPost.reposts[0].user,
+            context_tag: currentPost.reposts[0].context_tag,
+            personal_note: currentPost.reposts[0].personal_note,
+            created_at: currentPost.reposts[0].created_at,
+          }}
+          onContextPress={() => setTagSelectorVisible(true)}
+        >
+          {renderMainContent()}
+        </CuratorFrame>
+      ) : (
+        renderMainContent()
+      )}
+
+      <ContextTagSelector
+        visible={tagSelectorVisible}
+        onClose={() => setTagSelectorVisible(false)}
+        onConfirm={handleRepostWithContext}
       />
 
       {/* Action buttons */}
@@ -265,7 +292,7 @@ export default function PostListItem({
         post={currentPost}
         onReact={(emoji) => service.handleReact(emoji, post.id)}
         onDeleteReaction={() => service.deletePostReaction(post.id)}
-        onRepost={() => onRepost(post.id)}
+        onRepost={onRepostPress}
         onShare={() => openModal('share', { post: currentPost })}
         onBookmark={() => onBookmark(post.id)}
         onCommentPress={() => service.setShowComments(!service.showComments)}
@@ -310,7 +337,6 @@ export default function PostListItem({
             >
               {comments.length > 0 ? (
                 <RenderComments
-                  comments={comments}
                   user={user}
                   service={service}
                   postId={post.id}
@@ -373,7 +399,6 @@ export default function PostListItem({
           }
         }}
         emojiSize={28}
-        containerStyle={styles.emojiPicker}
       />
 
       <PostMenu
