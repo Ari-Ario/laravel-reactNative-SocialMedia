@@ -32,6 +32,7 @@ import PollComponent from './PollComponent';
 import PollVotersModal from './PollVotersModal';
 import GenericMenu, { MenuItem } from '../GenericMenu';
 import { calculateAnchor, AnchorPosition } from '@/utils/layout';
+import { GlobalStyles } from '@/styles/GlobalStyles';
 
 const { width, height } = Dimensions.get('window');
 
@@ -832,7 +833,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
                 onRequestClose={() => setShowEditPoll(false)}
             >
                 <View style={styles.modalOverlay}>
-                    <View style={styles.editModalContainer}>
+                    <View style={[styles.editModalContainer, GlobalStyles.popupContainer]}>
                         <PollComponent
                             spaceId={spaceId}
                             currentUserId={currentUserId}
@@ -858,7 +859,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
                     <Animated.View
                         entering={SlideInDown.springify().damping(15)}
                         exiting={SlideOutDown}
-                        style={styles.modalContent}
+                        style={[styles.modalContent, GlobalStyles.popupContainer]}
                     >
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Share Poll Results</Text>
@@ -910,7 +911,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
                     <Animated.View
                         entering={SlideInDown.springify().damping(15)}
                         exiting={SlideOutDown}
-                        style={styles.modalContent}
+                        style={[styles.modalContent, GlobalStyles.popupContainer]}
                     >
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Forward Poll</Text>

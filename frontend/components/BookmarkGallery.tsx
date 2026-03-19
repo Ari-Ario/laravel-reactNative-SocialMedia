@@ -22,17 +22,18 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { MotiView } from 'moti';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GlobalStyles } from '@/styles/GlobalStyles';
 import { createShadow } from '@/utils/styles';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
 import AuthContext from '@/context/AuthContext';
 
-const { width, height } = Dimensions.get('window');
-const CARD_WIDTH = Math.min(width * 0.85, 400);
-const CARD_HEIGHT = Math.min(height * 0.6, 500);
-
 // For web, use buttons instead of swipe gestures
 const isWeb = Platform.OS === 'web';
+
+const { width, height } = Dimensions.get('window');
+const CARD_WIDTH = isWeb ? Math.min(width * 0.85, 1000) : width * 0.98;
+const CARD_HEIGHT = Math.min(height * 0.6, 500);
 
 interface Bookmark {
     id: number;
@@ -59,14 +60,15 @@ interface BookmarkGalleryProps {
     initialBookmark?: Bookmark | null;
     onBookmarkAdded?: (bookmark: Bookmark) => void;
     onBookmarkRemoved?: (postId: number) => void;
+    isSettings?: boolean;
 }
 
 const COLLECTIONS = [
-    { id: 'all', name: 'All Saves', icon: 'apps', color: '#0084ff', gradient: ['#0084ff', '#00c6ff'] },
-    { id: 'read', name: 'Read Later', icon: 'bookmark-outline', color: '#FF6B6B', gradient: ['#FF6B6B', '#FF8E8E'] },
-    { id: 'inspire', name: 'Inspiration', icon: 'bulb-outline', color: '#FFD93D', gradient: ['#FFD93D', '#FFB347'] },
-    { id: 'share', name: 'To Share', icon: 'share-social-outline', color: '#4ECDC4', gradient: ['#4ECDC4', '#45B7D1'] },
-    { id: 'personal', name: 'Personal', icon: 'person-outline', color: '#845EC2', gradient: ['#845EC2', '#B39CD0'] },
+    { id: 'all', name: 'All Saves', icon: 'apps', color: '#0d0d0d', gradient: ['#0d0d0d', '#1a1a1a'] },
+    { id: 'read', name: 'Read Later', icon: 'bookmark-outline', color: '#660000', gradient: ['#660000', '#800000'] },
+    { id: 'inspire', name: 'Inspiration', icon: 'bulb-outline', color: '#7b3f00', gradient: ['#7b3f00', '#8B4513'] },
+    { id: 'share', name: 'To Share', icon: 'share-social-outline', color: '#004d00', gradient: ['#004d00', '#006400'] },
+    { id: 'personal', name: 'Personal', icon: 'person-outline', color: '#310062', gradient: ['#310062', '#4b0082'] },
 ];
 
 // Web-friendly action buttons
@@ -106,10 +108,11 @@ export const BookmarkGallery = ({
     onClose,
     initialBookmark,
     onBookmarkAdded,
-    onBookmarkRemoved
+    onBookmarkRemoved,
+    isSettings
 }: BookmarkGalleryProps) => {
     const insets = useSafeAreaInsets();
-    const { user } = React.useContext(AuthContext);
+    const { user } = React.useContext<any>(AuthContext);
     const { bookmarks, addBookmark, removeBookmark, updateBookmarkNote, moveToCollection } = useBookmarkStore();
 
     const [selectedCollection, setSelectedCollection] = useState('all');
@@ -143,18 +146,19 @@ export const BookmarkGallery = ({
     const getBackgroundGradient = () => {
         const collection = COLLECTIONS.find(c => c.id === selectedCollection);
         if (collection && selectedCollection !== 'all') {
-            return collection.gradient;
+            return collection.gradient as [string, string, ...string[]];
         }
 
         const hour = new Date().getHours();
-        if (hour < 6) return ['#0f0c29', '#302b63', '#24243e'];
-        if (hour < 12) return ['#2980b9', '#6dd5fa', '#ffffff'];
-        if (hour < 18) return ['#f7971e', '#ffd200'];
-        return ['#2c3e50', '#3498db'];
+        if (hour < 6) return ['#0f0c29', '#302b63', '#24243e'] as [string, string, ...string[]];
+        if (hour < 12) return ['#2980b9', '#6dd5fa', '#ffffff'] as [string, string, ...string[]];
+        if (hour < 18) return ['#f7971e', '#ffd200'] as [string, string, ...string[]];
+        return ['#2c3e50', '#3498db'] as [string, string, ...string[]];
     };
 
     // Filter bookmarks
     const filteredBookmarks = bookmarks.filter(bookmark => {
+        if (!bookmark || !bookmark.post) return false;
         if (selectedCollection !== 'all' && bookmark.collection !== selectedCollection) return false;
         if (searchQuery) {
             const searchLower = searchQuery.toLowerCase();
@@ -169,6 +173,7 @@ export const BookmarkGallery = ({
 
     // Group by date for timeline view
     const groupedByDate = filteredBookmarks.reduce((groups, bookmark) => {
+        if (!bookmark || !bookmark.created_at) return groups;
         const date = new Date(bookmark.created_at).toLocaleDateString();
         if (!groups[date]) groups[date] = [];
         groups[date].push(bookmark);
@@ -199,6 +204,13 @@ export const BookmarkGallery = ({
                     },
                 ]
             );
+        }
+    };
+
+    const handleClose = () => {
+        onClose();
+        if (isSettings) {
+            router.back();
         }
     };
 
@@ -240,16 +252,16 @@ export const BookmarkGallery = ({
             data={Object.entries(groupedByDate)}
             keyExtractor={([date]) => date}
             showsVerticalScrollIndicator={false}
-            renderItem={({ item: [date, items] }) => (
+            renderItem={({ item: [date, items] }: any) => (
                 <View style={styles.timelineSection}>
                     <View style={styles.timelineHeader}>
                         <View style={styles.timelineDot} />
                         <Text style={styles.timelineDate}>{date}</Text>
                     </View>
 
-                    {items.map((bookmark, index) => (
+                    {items.map((bookmark: Bookmark, index: number) => (
                         <MotiView
-                            key={bookmark.id}
+                            key={`timeline-${bookmark.id}-${index}`}
                             from={{ opacity: 0, translateX: -20 }}
                             animate={{ opacity: 1, translateX: 0 }}
                             transition={{ delay: index * 50 }}
@@ -291,8 +303,25 @@ export const BookmarkGallery = ({
 
                                         {bookmark.note && (
                                             <View style={styles.timelineNote}>
-                                                <Ionicons name="chatbubble" size={12} color="#0084ff" />
+                                                <Ionicons name="chatbubble" size={12} color="#fff" />
                                                 <Text style={styles.timelineNoteText}>{bookmark.note}</Text>
+                                            </View>
+                                        )}
+
+                                        {!isWeb && (
+                                            <View style={styles.mobileActionButtons}>
+                                                <TouchableOpacity
+                                                    style={styles.mobileActionButton}
+                                                    onPress={() => handleAddNote(bookmark)}
+                                                >
+                                                    <Ionicons name="pencil" size={18} color="#fff" />
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={[styles.mobileActionButton, styles.mobileActionDelete]}
+                                                    onPress={() => handleRemoveBookmark(bookmark.post_id)}
+                                                >
+                                                    <Ionicons name="trash-outline" size={18} color="#fff" />
+                                                </TouchableOpacity>
                                             </View>
                                         )}
                                     </View>
@@ -312,24 +341,13 @@ export const BookmarkGallery = ({
                                     )}
                                 </TouchableOpacity>
 
-                                {/* Actions */}
-                                {isWeb ? (
+                                {/* Web Actions */}
+                                {isWeb && (
                                     <WebActionButtons
                                         onAddNote={() => handleAddNote(bookmark)}
                                         onRemove={() => handleRemoveBookmark(bookmark.post_id)}
                                         onNavigate={() => navigateToPost(bookmark.post_id)}
                                     />
-                                ) : (
-                                    <SwipeableRow onDelete={() => handleRemoveBookmark(bookmark.post_id)}>
-                                        <View style={styles.timelineActions}>
-                                            <TouchableOpacity
-                                                style={styles.timelineAction}
-                                                onPress={() => handleAddNote(bookmark)}
-                                            >
-                                                <Ionicons name="pencil" size={18} color="#666" />
-                                            </TouchableOpacity>
-                                        </View>
-                                    </SwipeableRow>
                                 )}
                             </LinearGradient>
                         </MotiView>
@@ -426,7 +444,7 @@ export const BookmarkGallery = ({
         >
             <StatusBar barStyle="light-content" />
 
-            <View style={styles.container}>
+            <View style={GlobalStyles.popupContainer}>
                 {/* Animated Background */}
                 <LinearGradient
                     colors={getBackgroundGradient()}
@@ -437,7 +455,7 @@ export const BookmarkGallery = ({
 
                 {/* Header */}
                 <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-                    <TouchableOpacity onPress={onClose} style={styles.headerButton}>
+                    <TouchableOpacity onPress={handleClose} style={styles.headerButton}>
                         <Ionicons name="close" size={24} color="#fff" />
                     </TouchableOpacity>
 
@@ -590,9 +608,9 @@ export const BookmarkGallery = ({
                             <Text style={[styles.noteModalSubtitle, { marginBottom: 10 }]}>
                                 Select Collection
                             </Text>
-                            <ScrollView 
-                                horizontal 
-                                showsHorizontalScrollIndicator={false} 
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
                                 style={{ marginBottom: 20 }}
                             >
                                 {COLLECTIONS.map((col) => (
@@ -633,9 +651,6 @@ export const BookmarkGallery = ({
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -711,7 +726,11 @@ const styles = StyleSheet.create({
         flex: 1,
         color: '#fff',
         fontSize: 14,
-        outlineStyle: 'none',
+        ...Platform.select({
+            web: {
+                outlineStyle: 'none',
+            } as any,
+        }),
     },
     viewToggle: {
         flexDirection: 'row',
@@ -733,7 +752,7 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-        paddingHorizontal: 20,
+        paddingHorizontal: isWeb ? 20 : 0,
     },
     // Timeline Styles
     timelineSection: {
@@ -743,6 +762,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 15,
+        paddingHorizontal: isWeb ? 0 : 20,
     },
     timelineDot: {
         width: 8,
@@ -758,42 +778,46 @@ const styles = StyleSheet.create({
         opacity: 0.8,
     },
     timelineCard: {
-        marginBottom: 10,
-        borderRadius: 16,
+        width: isWeb ? CARD_WIDTH : width,
+        marginHorizontal: 'auto',
+        borderRadius: isWeb ? 24 : 0,
+        marginBottom: 16,
         overflow: 'hidden',
         ...createShadow({
             width: 0,
-            height: 2,
+            height: 4,
             opacity: 0.2,
-            radius: 8,
-            elevation: 4,
+            radius: 12,
+            elevation: 8,
         }),
     },
     timelineGradient: {
-        padding: 12,
+        flex: 1,
     },
     timelineContent: {
         flexDirection: 'row',
-        gap: 12,
+        padding: 16,
+        gap: 16,
     },
     timelineThumb: {
-        width: 60,
-        height: 60,
-        borderRadius: 8,
+        width: 100,
+        height: 100,
+        borderRadius: 16,
     },
     timelineInfo: {
         flex: 1,
+        justifyContent: 'center',
     },
     timelineRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 4,
-        gap: 6,
+        marginBottom: 8,
+        gap: 8,
     },
     timelineAvatar: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
+        width: 18,
+        height: 18,
+        borderRadius: 9,
     },
     timelineName: {
         color: '#fff',
@@ -808,16 +832,34 @@ const styles = StyleSheet.create({
     timelineNote: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
-        backgroundColor: 'rgba(0,132,255,0.1)',
+        backgroundColor: 'rgba(255,255,255,0.1)',
         paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 12,
-        alignSelf: 'flex-start',
+        paddingVertical: 4,
+        borderRadius: 8,
+        marginTop: 6,
+        gap: 6,
     },
     timelineNoteText: {
-        color: '#0084ff',
-        fontSize: 11,
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: '500',
+    },
+    mobileActionButtons: {
+        flexDirection: 'row',
+        marginTop: 10,
+        gap: 12,
+        justifyContent: 'flex-end',
+    },
+    mobileActionButton: {
+        width: 36,
+        height: 36,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        borderRadius: 18,
+    },
+    mobileActionDelete: {
+        backgroundColor: 'rgba(255,59,48,0.4)',
     },
     collectionBadge: {
         position: 'absolute',
@@ -999,6 +1041,11 @@ const styles = StyleSheet.create({
         borderRadius: 30,
         padding: 24,
         width: Math.min(width - 40, 400),
+        ...Platform.select({
+            web: {
+                width: 620,
+            },
+        }),
     },
     noteModalTitle: {
         fontSize: 24,

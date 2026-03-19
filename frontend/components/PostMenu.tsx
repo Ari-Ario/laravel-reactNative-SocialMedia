@@ -1,6 +1,7 @@
-// components/PostMenu.tsx
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Alert, NativeSyntheticEvent, NativeTouchEvent } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { createShadow } from '@/utils/styles';
+import { GlobalStyles } from '@/styles/GlobalStyles';
 
 interface PostMenuProps {
     visible: boolean;
@@ -24,26 +25,31 @@ export default function PostMenu({
     return (
         <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
             <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
-                <View style={[styles.menuContainer, { 
+                {Platform.OS === 'web' && <View style={[StyleSheet.absoluteFill, styles.webBackdrop]} />}
+                <View style={[
+                  styles.menuContainer, 
+                  GlobalStyles.popupContainer,
+                  { 
                     position: 'absolute',
-                    top: anchorPosition.top + 20, // Offset below the button
-                    left: anchorPosition.left - 180, // Align to the right
-                }]}>
+                    top: anchorPosition.top + 20,
+                    left: Math.max(20, anchorPosition.left - 180),
+                  }
+                ]}>
                     {isOwner && (
                         <>
                             <TouchableOpacity 
                                 style={styles.menuItem} 
-                                onPress={onDelete}
+                                onPress={() => { onClose(); onDelete(); }}
                             >
-                                <Ionicons name="trash-outline" size={20} color="red" />
-                                <Text style={[styles.menuText, { color: 'red' }]}>Delete</Text>
+                                <Ionicons name="trash-outline" size={20} color="#FF453A" />
+                                <Text style={[styles.menuText, { color: '#FF453A' }]}>Delete</Text>
                             </TouchableOpacity>
                             
                             <TouchableOpacity 
                                 style={styles.menuItem} 
-                                onPress={onEdit}
+                                onPress={() => { onClose(); onEdit(); }}
                             >
-                                <Ionicons name="create-outline" size={20} color="black" />
+                                <Ionicons name="create-outline" size={20} color="#3A7AFE" />
                                 <Text style={styles.menuText}>Edit</Text>
                             </TouchableOpacity>
                         </>
@@ -51,9 +57,9 @@ export default function PostMenu({
                     
                     <TouchableOpacity 
                         style={styles.menuItem} 
-                        onPress={onReport}
+                        onPress={() => { onClose(); onReport(); }}
                     >
-                        <Ionicons name="flag-outline" size={20} color="black" />
+                        <Ionicons name="flag-outline" size={20} color="#EBEBF5" />
                         <Text style={styles.menuText}>Report</Text>
                     </TouchableOpacity>
                 </View>
@@ -65,15 +71,24 @@ export default function PostMenu({
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.38)',
     },
+    webBackdrop: {
+        backgroundColor: 'rgba(0,0,0,0.42)',
+        backdropFilter: 'blur(6px)',
+    } as any,
     menuContainer: {
-        backgroundColor: 'white',
-        borderRadius: 10,
+        backgroundColor: '#1C1C1E',
+        borderRadius: 18,
         width: 200,
         paddingVertical: 8,
+        ...createShadow({
+            width: 0,
+            height: 8,
+            opacity: 0.36,
+            radius: 24,
+            elevation: 20,
+        }),
     },
     menuItem: {
         flexDirection: 'row',
@@ -83,6 +98,8 @@ const styles = StyleSheet.create({
     },
     menuText: {
         marginLeft: 12,
-        fontSize: 16,
+        fontSize: 15,
+        fontWeight: '500',
+        color: '#EBEBF5',
     },
 });

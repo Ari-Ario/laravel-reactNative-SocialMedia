@@ -17,7 +17,8 @@ import {
   FlatList,
   Keyboard
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GlobalStyles } from '@/styles/GlobalStyles';
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -87,6 +88,7 @@ interface AddStoryProps {
 }
 
 const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated }) => {
+  const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
   const [micPermission, requestMicPermission] = useMicrophonePermissions();
   const [cameraMode, setCameraMode] = useState<'picture' | 'video' | 'text'>('picture');
@@ -703,7 +705,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
       onRequestClose={handleClose}
     >
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <View style={styles.container}>
+        <View style={[styles.container, GlobalStyles.popupContainer, { backgroundColor: '#000' }]}>
           <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
           {showTrimmer && media && (
@@ -736,7 +738,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                   mode={cameraMode === 'video' || isRecording ? 'video' : 'picture'}
                 >
                   <SafeAreaView style={styles.cameraOverlay}>
-                    <View style={styles.topControls}>
+                    <View style={[styles.topControls, { marginTop: insets.top }]}>
                       <TouchableOpacity onPress={handleClose} style={styles.iconButton}>
                         <Ionicons name="close" size={30} color="white" />
                       </TouchableOpacity>
@@ -755,7 +757,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                       </View>
                     </View>
 
-                    <View style={styles.bottomWrapper}>
+                    <View style={[styles.bottomWrapper, { marginBottom: insets.bottom }]}>
                       <View style={styles.bottomControls}>
                         <TouchableOpacity
                           style={styles.galleryButton}
@@ -1429,7 +1431,6 @@ const styles = StyleSheet.create({
   },
   editorClose: {
     position: 'absolute',
-    top: 50,
     right: 20,
     padding: 10,
     zIndex: 10,
@@ -1517,7 +1518,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingBottom: 15,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.1)',
   },

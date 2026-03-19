@@ -26,6 +26,7 @@ import getApiBaseImage from '@/services/getApiBaseImage';
 import { loadUser } from '@/services/AuthService';
 import { router } from 'expo-router';
 import { BookmarkGallery } from '@/components/BookmarkGallery';
+import { GlobalStyles } from '@/styles/GlobalStyles';
 
 const Page = () => {
   const { user, setUser } = useContext(AuthContext);
@@ -75,8 +76,8 @@ const Page = () => {
   };
 
   const renderListItem = ({ item }: any) => (
-    <TouchableOpacity 
-      style={styles.item} 
+    <TouchableOpacity
+      style={styles.item}
       onPress={() => {
         if (item.name === 'Bookmarks') {
           setBookmarkGalleryVisible(true);
@@ -243,7 +244,7 @@ const Page = () => {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={GlobalStyles.popupContainer}>
 
       {/* Profile Photo Section */}
       <View style={styles.profileSection}>
@@ -317,6 +318,7 @@ const Page = () => {
         transparent={false}
         animationType="slide"
         onRequestClose={() => setEditNameVisible(false)}
+        style={GlobalStyles.popupContainer}
       >
         <View style={{ flex: 1, backgroundColor: 'white' }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderColor: '#ccc' }}>
@@ -408,6 +410,7 @@ const Page = () => {
       <BookmarkGallery
         visible={bookmarkGalleryVisible}
         onClose={() => setBookmarkGalleryVisible(false)}
+        isSettings={true}
       />
     </View>
   );

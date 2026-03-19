@@ -23,11 +23,13 @@ import Animated, {
     Easing,
     interpolate,
     Extrapolate,
+    SharedValue,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import Avatar from '@/components/Image/Avatar';
 import { useRouter } from 'expo-router';
 import { safeHaptics } from '@/utils/haptics';
+import { GlobalStyles } from '@/styles/GlobalStyles';
 import AddStory from '@/components/AddStory';
 import CreatePost from '@/components/CreatePost';
 import { createShadow } from '@/utils/styles';
@@ -45,7 +47,7 @@ interface PollVotersModalProps {
 }
 
 // BarItem component remains the same...
-const BarItem: React.FC<{ option: any; color: string; maxVotes: number; progress: Animated.SharedValue<number>; totalVotes: number }> = ({ option, color, maxVotes, progress, totalVotes }) => {
+const BarItem: React.FC<{ option: any; color: string; maxVotes: number; progress: SharedValue<number>; totalVotes: number }> = ({ option, color, maxVotes, progress, totalVotes }) => {
     const percentage = totalVotes > 0 ? (option.voteCount / totalVotes) * 100 : 0;
     const animatedBarStyle = useAnimatedStyle(() => ({
         width: `${interpolate(progress.value, [0, 1], [0, (option.voteCount / maxVotes) * 100], Extrapolate.CLAMP)}%`,
@@ -151,7 +153,7 @@ const PollVotersModal: React.FC<PollVotersModalProps> = ({
                                     </View>
                                     {option.voters.length > 0 && (
                                         <Text style={styles.voterPreview}>
-                                            {option.voters.slice(0, 2).map(v => v.name).join(', ')}
+                                            {option.voters.slice(0, 2).map((v: any) => v.name).join(', ')}
                                             {option.voters.length > 2 ? ` +${option.voters.length - 2}` : ''}
                                         </Text>
                                     )}
@@ -257,7 +259,7 @@ const PollVotersModal: React.FC<PollVotersModalProps> = ({
         <>
             <Modal visible={visible} animationType="none" transparent onRequestClose={onClose}>
                 <View style={styles.modalOverlay}>
-                    <Animated.View entering={SlideInDown.springify().damping(15)} exiting={Platform.OS === 'web' ? undefined : SlideOutDown} style={styles.modalContent}>
+                    <Animated.View entering={SlideInDown.springify().damping(15)} exiting={Platform.OS === 'web' ? undefined : SlideOutDown} style={[styles.modalContent, GlobalStyles.popupContainer]}>
                         <LinearGradient colors={['#007AFF', '#005BB5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.headerGradient}>
                             <Text style={styles.title}>Poll Results</Text>
                             <View style={styles.headerActions}>
@@ -288,7 +290,6 @@ const PollVotersModal: React.FC<PollVotersModalProps> = ({
                 visible={showStoryModal}
                 onClose={() => setShowStoryModal(false)}
                 onStoryCreated={() => safeHaptics.success()}
-                initialCaption={getResultsText()} // New prop
             />
 
             {/* Create Post Modal - already supports initialParams */}
@@ -394,7 +395,7 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         marginBottom: 16,
         padding: 16,
-        ...createShadow(0, 2, 8, 0.08),
+        ...createShadow({ width: 0, height: 2, radius: 8, opacity: 0.08 }),
     },
     optionHeader: {
         flexDirection: 'row',
@@ -484,7 +485,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         margin: 20,
         borderRadius: 16,
-        ...createShadow(0, 2, 8, 0.08),
+        ...createShadow({ width: 0, height: 2, radius: 8, opacity: 0.08 }),
     },
     chartTitle: {
         fontSize: 18,
@@ -585,7 +586,7 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         borderRadius: 16,
         paddingTop: 16,
-        ...createShadow(0, 2, 8, 0.08),
+        ...createShadow({ width: 0, height: 2, radius: 8, opacity: 0.08 }),
     },
     legendItem: {
         flexDirection: 'row',

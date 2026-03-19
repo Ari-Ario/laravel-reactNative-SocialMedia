@@ -1,5 +1,6 @@
-// components/ReportPost.tsx
 import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GlobalStyles } from '@/styles/GlobalStyles';
 import { reportPost } from '@/services/PostService';
 
 interface ReportPostProps {
@@ -26,6 +27,7 @@ export default function ReportPost({
     onClose,
     onReportSubmitted
 }: ReportPostProps) {
+    const insets = useSafeAreaInsets();
     const handleReport = async (reason: string) => {
         try {
             await reportPost(postId, reason);
@@ -44,7 +46,7 @@ export default function ReportPost({
             onRequestClose={onClose}
         >
             <View style={styles.overlay}>
-                <View style={styles.container}>
+                <View style={[styles.container, GlobalStyles.popupContainer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
                     <Text style={styles.title}>Why are you reporting this post?</Text>
 
                     <ScrollView style={styles.reasonsContainer}>
@@ -82,7 +84,7 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
         padding: 20,
-        maxHeight: '80%',
+        maxHeight: '90%',
     },
     title: {
         fontSize: 18,

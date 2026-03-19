@@ -25,6 +25,8 @@ import LocationPreview from './ChatScreen/LocationPreview';
 import { useSavedLocationsStore } from '@/stores/savedLocationsStore';
 import { useModal } from '@/context/ModalContext';
 import * as Clipboard from 'expo-clipboard';
+import { GlobalStyles } from '@/styles/GlobalStyles';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
 const LIBRARIES: any = ['places'];
@@ -77,6 +79,7 @@ const LocationModal: React.FC<LocationModalProps> = ({
   onSaveLocation,
   isSaved = false,
 }) => {
+  const insets = useSafeAreaInsets();
   const { openModal } = useModal();
   const { toggleFavorite, isFavorite } = useSavedLocationsStore();
 
@@ -346,10 +349,13 @@ const LocationModal: React.FC<LocationModalProps> = ({
         />
         <Animated.View
           style={[
+            GlobalStyles.popupContainer,
             styles.container,
             {
               transform: [{ scale: scaleAnim }],
               opacity: opacityAnim,
+              paddingTop: insets.top,
+              backgroundColor: '#1c1c1e', // Ensure contrast
             },
           ]}
         >

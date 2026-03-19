@@ -12,7 +12,10 @@ import {
     Alert,
     KeyboardAvoidingView,
     Platform,
+    Dimensions,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GlobalStyles } from '@/styles/GlobalStyles';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
@@ -37,6 +40,7 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
     contacts,
     onSpaceCreated,
 }) => {
+    const insets = useSafeAreaInsets();
     const [step, setStep] = useState<Step>('CONTACTS');
 
     // Contacts Step State
@@ -341,7 +345,7 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
             onRequestClose={onClose}
         >
             <KeyboardAvoidingView
-                style={styles.container}
+                style={[GlobalStyles.popupContainer, { paddingTop: insets.top, backgroundColor: '#F2F2F7' }]}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             >
                 <View style={styles.header}>
@@ -490,11 +494,6 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#F2F2F7',
-        top: 40
-    },
     header: {
         flexDirection: 'row',
         alignItems: 'center',

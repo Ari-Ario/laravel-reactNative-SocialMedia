@@ -16,8 +16,9 @@ import {
   StatusBar,
   FlatList
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
+import { GlobalStyles } from '@/styles/GlobalStyles';
 import PlatformCameraView from '@/components/PlatformCameraView';
 import * as ImagePicker from 'expo-image-picker';
 import { createPost, updatePost } from '@/services/PostService';
@@ -60,6 +61,7 @@ interface CreatePostProps {
 }
 
 export default function CreatePost({ visible, onClose, onPostCreated, initialParams }: CreatePostProps) {
+  const insets = useSafeAreaInsets();
   const params = initialParams || useLocalSearchParams();
   const isEditing = !!(params.postId && params.postId !== 'null');
 
@@ -702,7 +704,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
       {cameraVisible ? (
         renderCameraView()
       ) : (
-        <View style={styles.container}>
+        <View style={[GlobalStyles.popupContainer, { paddingTop: insets.top }]}>
             <View style={styles.header}>
               <TouchableOpacity onPress={handleClose}>
                 <Ionicons name="close" size={24} color="black" />
@@ -884,13 +886,6 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    maxWidth: 500,
-    width: "100%",
-    alignSelf: 'center',
-    top: 60,
-  },
   cameraContainer: {
     flex: 1,
     zIndex: 9999,

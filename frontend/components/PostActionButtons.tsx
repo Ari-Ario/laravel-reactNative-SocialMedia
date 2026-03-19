@@ -31,6 +31,7 @@ interface PostActionButtonsProps {
     count: number;
     user_ids: number[];
   }>;
+  isBookmarked?: boolean;
   compact?: boolean;
 }
 
@@ -46,6 +47,7 @@ export const PostActionButtons = ({
   setCurrentReactingItem,
   setIsEmojiPickerOpen,
   getGroupedReactions,
+  isBookmarked,
   compact,
 }: PostActionButtonsProps) => {
   const { user } = React.useContext(AuthContext);
@@ -153,7 +155,11 @@ export const PostActionButtons = ({
           style={[styles.actionButton, { marginLeft: 'auto', marginRight: 0 }]}
           onPress={onBookmark}
         >
-          <Feather name="bookmark" size={24} />
+          <Ionicons 
+            name={isBookmarked ? "bookmark" : "bookmark-outline"} 
+            size={24} 
+            color={isBookmarked ? "#10b981" : "#000"} 
+          />
         </TouchableOpacity>
       )}
     </View>

@@ -24,12 +24,15 @@ export const getBookmarks = async (): Promise<Bookmark[]> => {
     return response.data;
 };
 
-export const addBookmark = async (postId: number, collection?: string, note?: string | null): Promise<Bookmark> => {
+export const addBookmark = async (postId: number, collection?: string, note?: string | null): Promise<{ bookmark: Bookmark | null, bookmarked: boolean }> => {
     const response = await axios.post(`/posts/${postId}/bookmark`, {
         collection,
         note
     });
-    return response.data.bookmark;
+    return {
+        bookmark: response.data.bookmark || null,
+        bookmarked: response.data.bookmarked
+    };
 };
 
 export const removeBookmark = async (postId: number): Promise<void> => {

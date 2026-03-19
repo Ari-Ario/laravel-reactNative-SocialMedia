@@ -17,7 +17,8 @@ import {
   StatusBar,
   ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GlobalStyles } from '@/styles/GlobalStyles';
 import { MotiView, AnimatePresence } from 'moti';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -135,6 +136,7 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
   onClose,
   onUploadComplete,
 }, ref) => {
+  const insets = useSafeAreaInsets();
   // Navigation State
   const [viewState, setViewState] = useState<'preview' | 'grid'>('preview');
   const [cameraVisible, setCameraVisible] = useState(false);
@@ -634,8 +636,8 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
         style={{ flex: 1 }}
       >
         {viewState === 'grid' && (
-          <View style={styles.previewContainer}>
-            <View style={styles.previewHeader}>
+          <View style={[styles.previewContainer, GlobalStyles.popupContainer, { backgroundColor: '#000' }]}>
+            <View style={[styles.previewHeader, { paddingTop: insets.top || 16 }]}>
               <TouchableOpacity onPress={resetAndClose} disabled={uploading} style={styles.backBtn}>
                 <Ionicons name="close" size={28} color="#fff" />
               </TouchableOpacity>
@@ -687,7 +689,7 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
               </View>
             </ScrollView>
 
-            <View style={styles.captionBar}>
+            <View style={[styles.captionBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
               {uploading ? (
                 <View style={styles.uploadingState}>
                   <ActivityIndicator size="small" color="#fff" />
@@ -714,7 +716,7 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
         )}
 
         {viewState === 'preview' && selectedAssets[focusedIndex] && (
-          <View style={styles.previewContainer}>
+          <View style={[styles.previewContainer, GlobalStyles.popupContainer, { backgroundColor: '#000' }]}>
             {/* Main Media Viewer - Takes full screen */}
             <View style={styles.mediaViewerFull}>
               {selectedAssets[focusedIndex].type === 'image' ? (
@@ -738,7 +740,7 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
             </View>
 
             {/* Immersive Header Overlay */}
-            <View style={styles.previewHeaderOverlay}>
+            <View style={[styles.previewHeaderOverlay, { paddingTop: insets.top || 16 }]}>
               <TouchableOpacity
                 onPress={() => selectedAssets.length > 1 ? setViewState('grid') : resetAndClose()}
                 disabled={uploading}
@@ -761,7 +763,7 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
             </View>
 
             {/* Immersive Caption & Send Bar Overlay */}
-            <View style={styles.captionBarOverlay}>
+            <View style={[styles.captionBarOverlay, { paddingBottom: Math.max(insets.bottom, 16) }]}>
               {uploading ? (
                 <View style={styles.uploadingState}>
                   <ActivityIndicator size="small" color="#fff" />
@@ -864,7 +866,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
   previewHeader: {
-    paddingTop: 50, // Safe area approx
     paddingHorizontal: 16,
     paddingBottom: 16,
     flexDirection: 'row',
@@ -940,7 +941,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
   captionInput: {
@@ -994,7 +994,6 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    paddingTop: 50,
     paddingHorizontal: 16,
     paddingBottom: 20,
     flexDirection: 'row',
@@ -1012,7 +1011,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
     backgroundColor: 'rgba(0,0,0,0.4)',
     zIndex: 100,
   },

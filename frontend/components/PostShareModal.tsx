@@ -23,6 +23,8 @@ import Avatar from '@/components/Image/Avatar';
 import * as Haptics from 'expo-haptics';
 import { createShadow } from '@/utils/styles';
 import { BlurView } from 'expo-blur';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GlobalStyles } from '@/styles/GlobalStyles';
 import { useToastStore } from '@/stores/toastStore';
 import AuthContext from '@/context/AuthContext';
 import { useContext } from 'react';
@@ -45,6 +47,7 @@ interface PostShareModalProps {
 }
 
 export default function PostShareModal({ visible, onClose, post, story, location, initialRecipient }: PostShareModalProps) {
+  const insets = useSafeAreaInsets();
   const { user: currentUser } = useContext(AuthContext);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState<string | null>(null); // spaceId if sending
@@ -389,7 +392,7 @@ export default function PostShareModal({ visible, onClose, post, story, location
           onPress={onClose} 
         />
         
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, GlobalStyles.popupContainer]}>
           <View style={styles.handle} />
           
           <View style={styles.header}>
@@ -435,7 +438,7 @@ export default function PostShareModal({ visible, onClose, post, story, location
             }
           />
 
-          <View style={styles.footer}>
+          <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
             <TouchableOpacity 
               style={styles.externalButton} 
               onPress={handleExternalShare}
@@ -469,18 +472,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    height: '70%',
     width: '100%',
     maxWidth: 600,
     alignSelf: 'center',
-    paddingBottom: 20,
-    ...createShadow({
+    ...(createShadow({
       width: 0,
       height: -3,
       opacity: 0.1,
       radius: 10,
       elevation: 24,
-    }),
+    }) as any),
   },
   handle: {
     width: 40,

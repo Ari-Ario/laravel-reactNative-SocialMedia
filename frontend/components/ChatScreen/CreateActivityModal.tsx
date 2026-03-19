@@ -13,7 +13,9 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-// import DateTimePicker from '@react-native-community/datetimepicker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GlobalStyles } from '@/styles/GlobalStyles';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from 'date-fns';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import { createShadow } from '@/utils/styles';
@@ -45,6 +47,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
   onActivityCreated,
   defaultDate,
 }) => {
+  const insets = useSafeAreaInsets();
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -198,7 +201,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
     >
       <LinearGradient
         colors={['#f8fafc', '#f1f5f9']}
-        style={styles.container}
+        style={[GlobalStyles.popupContainer, { paddingTop: insets.top || 20, backgroundColor: '#f8fafc' }]}
       >
         {/* Header */}
         <Animated.View style={[styles.header, animatedHeaderStyle]}>
@@ -313,7 +316,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
                   value={scheduledStart}
                   mode="date"
                   display="spinner"
-                  onChange={(_, date) => {
+                  onChange={(_: any, date?: Date) => {
                     setShowDatePicker(false);
                     if (date) setScheduledStart(date);
                   }}
@@ -324,7 +327,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
                   value={scheduledStart}
                   mode="time"
                   display="spinner"
-                  onChange={(_, date) => {
+                  onChange={(_: any, date?: Date) => {
                     setShowTimePicker(false);
                     if (date) setScheduledStart(date);
                   }}
@@ -545,7 +548,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 48,
     paddingBottom: 16,
   },
   progressContainer: {

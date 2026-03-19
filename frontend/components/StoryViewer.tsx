@@ -1,4 +1,6 @@
 import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions, Animated, ActivityIndicator, TextInput, ScrollView, Platform, Keyboard, Modal, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GlobalStyles } from '@/styles/GlobalStyles';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState, useMemo, useContext } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -59,6 +61,7 @@ interface StoryViewerProps {
 }
 
 const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }: StoryViewerProps) => {
+  const insets = useSafeAreaInsets();
   const { storyGroups, setStoriesForUser } = useStoryStore();
   const stories = useMemo(() => {
     const group = storyGroups.find(g => g.user.id === userId);
@@ -479,7 +482,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <GestureDetector gesture={panGesture}>
-        <View style={styles.container}>
+        <View style={[styles.container, GlobalStyles.popupContainer, { backgroundColor: '#000' }]}>
           <BlurView intensity={100} style={StyleSheet.absoluteFill} />
 
           {/* Delete Status Message */}
@@ -499,7 +502,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
           </AnimatePresence>
 
           {/* Progress bars for all stories */}
-          <View style={styles.progressBarsContainer}>
+          <View style={[styles.progressBarsContainer, { paddingTop: Math.max(insets.top, 15) }]}>
             {stories.map((story, index) => (
               <View key={story.id} style={styles.progressBarBackground}>
                 {index === currentStoryIndex ? (
@@ -532,7 +535,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
             colors={['rgba(0,0,0,0.5)', 'transparent']}
             style={styles.headerGradient}
           >
-            <View style={styles.header}>
+            <View style={[styles.header, { paddingTop: Math.max(insets.top, 15) + 10 }]}>
               <View style={styles.userInfo}>
                 <Image
                   source={{ uri: `${getApiBaseImage()}/storage/${currentStory.user.profile_photo}` }}
@@ -699,7 +702,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
             colors={['transparent', 'rgba(0,0,0,0.5)']}
             style={styles.footerGradient}
           >
-            <View style={styles.footer}>
+            <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
               {Number(currentStory.user.id) === Number(user?.id) ? (
                 <View style={styles.ownerFooterActions}>
                   <TouchableOpacity
@@ -772,6 +775,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
               <AnimatedComponent.View
                 style={[
                   styles.reactionsPanel,
+                  { paddingBottom: Math.max(insets.bottom, 20) + 10 },
                   animatedReactionPanelStyle
                 ]}
               >
@@ -876,7 +880,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 15,
-    paddingTop: Platform.OS === 'ios' ? 50 : 30,
   },
   userInfo: {
     flexDirection: 'row',
@@ -923,7 +926,6 @@ const styles = StyleSheet.create({
   progressBarsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 4,
-    paddingTop: Platform.OS === 'ios' ? 50 : 30,
     gap: 4,
     position: 'absolute',
     top: 0,
@@ -993,7 +995,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 15,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
     gap: 12,
   },
   ownerFooterActions: {
@@ -1090,7 +1091,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
   },
   reactionsHeader: {
     flexDirection: 'row',

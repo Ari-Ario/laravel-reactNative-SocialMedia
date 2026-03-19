@@ -72,7 +72,8 @@ export default function PostListItem({
   const [newBookmark, setNewBookmark] = useState<Bookmark | null>(null);
   const currentPost = posts.find(p => p.id === post.id) || post;
 
-  const { addBookmark } = useBookmarkStore();
+  const { addBookmark, bookmarks } = useBookmarkStore();
+  const isBookmarked = bookmarks.some(b => b && b.post_id === post.id);
 
   // Use the PostListService
   const service = usePostListService(user);
@@ -154,10 +155,14 @@ export default function PostListItem({
 
   const handleBookmark = async () => {
     try {
-      const bookmark = await addBookmark(post.id);
-      setNewBookmark(bookmark);
-      setBookmarkGalleryVisible(true);
-      showToast('Post bookmarked!', 'success');
+      const result = await addBookmark(post.id);
+      if (result.bookmarked && result.bookmark) {
+        setNewBookmark(result.bookmark);
+        setBookmarkGalleryVisible(true);
+        showToast('Post bookmarked!', 'success');
+      } else {
+        showToast('Bookmark removed', 'info');
+      }
     } catch (error) {
       console.error("Bookmark failed:", error);
       showToast("Failed to bookmark post", 'error');
@@ -326,6 +331,7 @@ export default function PostListItem({
         onRepost={onRepostPress}
         onShare={() => openModal('share', { post: currentPost })}
         onBookmark={handleBookmark}
+        isBookmarked={isBookmarked}
         onCommentPress={() => service.setShowComments(!service.showComments)}
         currentReactingItem={service.currentReactingItem}
         setCurrentReactingItem={service.setCurrentReactingItem}

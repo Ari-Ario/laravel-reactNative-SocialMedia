@@ -10,6 +10,8 @@ import {
   TouchableOpacity,
   Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GlobalStyles } from '@/styles/GlobalStyles';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { GestureHandlerRootView, Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -180,6 +182,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   deleteCommentReaction,
   onDoubleTap,
 }) => {
+  const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [showFullCaption, setShowFullCaption] = useState(false);
   const translateX = useSharedValue(-width * startIndex);
@@ -317,7 +320,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
         statusBarTranslucent
         onRequestClose={handleClose}
       >
-        <Animated.View style={[StyleSheet.absoluteFill, bgStyle]}>
+        <Animated.View style={[StyleSheet.absoluteFill, bgStyle, GlobalStyles.popupContainer, { backgroundColor: '#000' }]}>
           <GestureDetector gesture={panGesture}>
             <Animated.View style={[styles.modalContainer, containerStyle]}>
               {mediaItems.map((media, index) => (
@@ -352,7 +355,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
           {/* Media counter */}
           {mediaItems.length > 1 && (
-            <Text style={styles.counterText}>
+            <Text style={[styles.counterText, { top: Math.max(insets.top, 20) + 10 }]}>
               {currentIndex + 1} / {mediaItems.length}
             </Text>
           )}
@@ -378,7 +381,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
           )}
 
           {/* Close button (now on the left) */}
-          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+          <TouchableOpacity style={[styles.closeButton, { top: Math.max(insets.top, 20) }]} onPress={handleClose}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
 
@@ -406,7 +409,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
           {/* Download button */}
           <TouchableOpacity
-            style={styles.downloadButton}
+            style={[styles.downloadButton, { top: Math.max(insets.top, 20) }]}
             onPress={async () => {
               try {
                 const media = mediaItems[currentIndex];
@@ -496,7 +499,6 @@ const styles = StyleSheet.create({
   },
   counterText: {
     position: 'absolute',
-    top: 50,
     alignSelf: 'center',
     color: 'white',
     fontSize: 16,
@@ -507,7 +509,6 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: 'absolute',
-    top: 40,
     left: 20,
     backgroundColor: 'rgba(0,0,0,0.5)',
     width: 40,
@@ -524,7 +525,6 @@ const styles = StyleSheet.create({
   },
   downloadButton: {
     position: 'absolute',
-    top: 40,
     right: 20,
     padding: 8,
     borderRadius: 20,
@@ -551,7 +551,6 @@ const styles = StyleSheet.create({
   },
   bottomActions: {
     padding: 16,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
 });
