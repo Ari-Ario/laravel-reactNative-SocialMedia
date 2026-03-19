@@ -247,8 +247,15 @@ class SpaceController extends Controller
 
             DB::commit();
 
-            // Broadcast event
-            // event(new SpaceCreated($space, auth()->user()));
+            // Broadcast event - ONLY for general and channel spaces (Phase 71)
+            if (in_array($space->space_type, ['general', 'channel'])) {
+                try {
+                    // Logic to notify followers goes here (e.g., event(new SpaceCreated($space, auth()->user())))
+                    broadcast(new SpaceCreated($space, $user))->toOthers();
+                } catch (\Exception $e) {
+                    Log::warning('Broadcast failed for space creation: ' . $e->getMessage());
+                }
+            }
 
             return response()->json([
                 'space' => $this->formatSpaceData($space, $user),
@@ -451,6 +458,7 @@ class SpaceController extends Controller
             SpaceParticipation::where('space_id', $space->id)->update(['role' => 'owner']);
         }
 
+        $isNew = false;
         if (!$space) {
             $targetUser = User::find($targetUserId);
             if (!$targetUser) {
@@ -458,6 +466,7 @@ class SpaceController extends Controller
             }
 
             $spaceName = "Direct Message";
+            $isNew = true;
             
             DB::beginTransaction();
             try {
@@ -478,7 +487,18 @@ class SpaceController extends Controller
                     'has_ai_assistant' => false,
                 ]);
 
-                // Add both users as owners for direct spaces
+                // Check if target user needs permission (Private & Not Following)
+                $isTargetPrivate = $targetUser->is_private ?? false;
+                
+                // Does the target user follow the current user?
+                $isFollowedByTarget = DB::table('followers')
+                    ->where('follower_id', $targetUserId)
+                    ->where('following_id', $user->id)
+                    ->exists();
+                
+                $needsPermission = $isTargetPrivate && !$isFollowedByTarget;
+
+                // Add both users for direct spaces
                 SpaceParticipation::create([
                     'space_id' => $space->id,
                     'user_id' => $user->id,
@@ -488,7 +508,7 @@ class SpaceController extends Controller
                 SpaceParticipation::create([
                     'space_id' => $space->id,
                     'user_id' => $targetUserId,
-                    'role' => 'owner',
+                    'role' => $needsPermission ? 'pending' : 'owner',
                 ]);
 
                 DB::commit();
@@ -498,8 +518,20 @@ class SpaceController extends Controller
             }
         }
 
+        $participation = SpaceParticipation::where('space_id', $space->id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        $freshSpace = $space->fresh(['creator', 'participations.user']);
+        if (!$freshSpace) {
+            Log::error('❌ Failed to refresh space data for direct chat', ['space_id' => $space->id]);
+            return response()->json(['message' => 'Failed to retrieve space data'], 500);
+        }
+
         return response()->json([
-            'space' => $this->formatSpaceData($space, $user)
+            'space' => $this->formatSpaceData($freshSpace, $user),
+            'participation' => $participation,
+            'is_new' => $isNew
         ]);
     }
 
@@ -644,23 +676,51 @@ public function updateContentState(Request $request, $id)
             ->first();
             
         if ($existing) {
-            return response()->json([
-                'participation' => $existing,
-                'message' => 'Already joined'
+            if ($existing->role === 'pending') {
+                $role = 'participant';
+                $canWrite = $space->space_type !== 'channel';
+                
+                $settings = is_string($space->settings) ? json_decode($space->settings, true) : $space->settings;
+                $isDirectChat = in_array($space->space_type, ['direct', 'chat']) && ($settings['is_direct'] ?? false);
+                
+                if ($isDirectChat || $space->space_type === 'direct') {
+                    $role = 'owner';
+                    $canWrite = true;
+                }
+
+                $existing->update([
+                    'role' => $role,
+                    'permissions' => ['read' => true, 'write' => $canWrite],
+                    'last_active_at' => now(),
+                ]);
+                $participation = $existing;
+            } else {
+                return response()->json([
+                    'participation' => $existing,
+                    'message' => 'Already joined'
+                ]);
+            }
+        } else {
+            // ✅ Permisions Fix (WhatsApp/Telegram Style)
+            // 3. Selective Join role
+            $role = 'participant'; 
+            $canWrite = $space->space_type !== 'channel'; // Channel write is admin-only, General is open
+
+            $participation = $space->participations()->create([
+                'user_id' => auth()->id(),
+                'role' => $role,
+                'permissions' => ['read' => true, 'write' => $canWrite],
+                'last_active_at' => now(),
             ]);
         }
-        
-        // ✅ Permisions Fix (WhatsApp/Telegram Style)
-        // 3. Selective Join role
-        $role = 'participant'; 
-        $canWrite = $space->space_type !== 'channel'; // Channel write is admin-only, General is open
 
-        $participation = $space->participations()->create([
-            'user_id' => auth()->id(),
-            'role' => $role,
-            'permissions' => ['read' => true, 'write' => $canWrite],
-            'last_active_at' => now(),
-        ]);
+        // ✅ Clear any SpaceInvitation notification for this space to avoid duplication
+        /** @var \App\Models\User $authUser */
+        $authUser = auth()->user();
+        $authUser->unreadNotifications()
+            ->where('type', 'App\Notifications\SpaceInvitationNotification')
+            ->where('data->space_id', $id)
+            ->update(['read_at' => now()]);
         
         // Broadcast participant joined
         /** @var \App\Models\User $authUser */
@@ -769,6 +829,12 @@ public function updateContentState(Request $request, $id)
                 
             if (!$existing) {
                 $invited[] = $userId;
+                
+                // Pre-populate participation as 'pending' so they can bypass 403 on protected spaces
+                $space->participations()->create([
+                    'user_id' => $userId,
+                    'role' => 'pending',
+                ]);
                 
                 $user = User::find($userId);
                 if ($user && $inviter instanceof \App\Models\User) {
@@ -1351,6 +1417,12 @@ public function endCall(Request $request, $id)
         $role = $participation->role;
         $isChannel = $space->space_type === 'channel';
         $isAdmin = in_array($role, ['owner', 'moderator', 'admin']);
+
+        if ($role === 'pending') {
+            return response()->json([
+                'message' => '🚫 You must join the space to send messages'
+            ], 403);
+        }
 
         // Channel: Only admins can write
         if ($isChannel && !$isAdmin) {

@@ -158,7 +158,7 @@ export const useCollaborationStore = create<CollaborationState>()(
         // Subscribe to each space channel
         const collaborationService = CollaborationService.getInstance();
         spaceIds.forEach(spaceId => {
-          collaborationService.subscribeToSpace(spaceId, {
+          collaborationService.subscribeToSpace(spaceId, 'collaborationStore', {
             onSpaceUpdate: handleSpaceUpdate,
             onParticipantJoined: handleParticipantJoined,
             onParticipantLeft: handleParticipantLeft,
@@ -362,11 +362,24 @@ export const useCollaborationStore = create<CollaborationState>()(
             if (deletedId) {
                 console.log(`🗑️ Removing space ${deletedId} from store due to deletion event`);
                 get().removeSpace(deletedId);
+
+                // ✅ NEW: Clean up notifications for this space
+                try {
+                  const notificationStore = require('@/stores/notificationStore').useNotificationStore;
+                  if (notificationStore.getState().removeSpaceNotifications) {
+                    notificationStore.getState().removeSpaceNotifications(deletedId);
+                  }
+                } catch (e) {
+                  console.warn('Could not clean up notifications for deleted space:', e);
+                }
                 
                 // If this was the active space, clear it
-                if (get().activeSpace?.id === deletedId) {
+                if (get().activeSpace?.id?.toString() === deletedId) {
                     get().setActiveSpace(null);
                     Alert.alert('Space Deleted', 'This space has been deleted by the owner.');
+                    
+                    // Unsubscribe to stop receiving further events for this channel
+                    PusherService.unsubscribeFromChannel(`presence-space.${deletedId}`);
                 }
             }
             break;
@@ -471,9 +484,17 @@ export const useCollaborationStore = create<CollaborationState>()(
 
       setActiveSpace: (space) => set({ activeSpace: space }),
 
-      addSpace: (space) => set((state) => ({
-        spaces: [space, ...state.spaces]
-      })),
+      addSpace: (space) => set((state) => {
+        const exists = state.spaces.some(s => String(s.id) === String(space.id));
+        if (exists) {
+          return {
+            spaces: state.spaces.map(s => String(s.id) === String(space.id) ? { ...s, ...space } : s)
+          };
+        }
+        return {
+          spaces: [space, ...state.spaces]
+        };
+      }),
 
 
       setSpaceActivities: (spaceId, activities, total) => set((state) => {

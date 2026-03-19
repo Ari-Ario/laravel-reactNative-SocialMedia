@@ -171,6 +171,8 @@ interface NotificationStore {
   removeNotification: (notificationId: string) => void;
   markSpaceNotificationsAsRead: (spaceId: string) => void;
   clearAll: () => void;
+  removeSpaceNotifications: (spaceId: string) => void;
+
 
   // Real-time
   initializeRealtime: (token: string, userId: number) => void;
@@ -538,6 +540,34 @@ export const useNotificationStore = create<NotificationStore>()(
         });
       },
 
+
+      removeSpaceNotifications: (spaceId: string) => {
+        set((state) => {
+          const newNotifications = state.notifications.filter(notif => notif.spaceId !== spaceId);
+          const newFollowerNotifications = state.followerNotifications.filter(notif => notif.spaceId !== spaceId);
+
+          // Recalculate all counts
+          const newUnreadCount = newNotifications.filter(n => !n.isRead && !isCallNotification(n.type) && !isMessageNotification(n.type) && !isSpaceNotification(n.type) && !isActivityNotification(n.type) && !isChatbotTrainingNotification(n.type)).length;
+          const newUnreadCallCount = newNotifications.filter(n => !n.isRead && isCallNotification(n.type)).length;
+          const newUnreadMessageCount = newNotifications.filter(n => !n.isRead && isMessageNotification(n.type)).length;
+          const newUnreadSpaceCount = newNotifications.filter(n => !n.isRead && isSpaceNotification(n.type)).length;
+          const newUnreadActivityCount = newNotifications.filter(n => !n.isRead && isActivityNotification(n.type)).length;
+          const newUnreadChatbotTrainingCount = newNotifications.filter(n => !n.isRead && isChatbotTrainingNotification(n.type)).length;
+          const newUnreadFollowerCount = newFollowerNotifications.filter(n => !n.isRead).length;
+
+          return {
+            notifications: newNotifications,
+            followerNotifications: newFollowerNotifications,
+            unreadCount: newUnreadCount,
+            unreadCallCount: newUnreadCallCount,
+            unreadMessageCount: newUnreadMessageCount,
+            unreadSpaceCount: newUnreadSpaceCount,
+            unreadActivityCount: newUnreadActivityCount,
+            unreadChatbotTrainingCount: newUnreadChatbotTrainingCount,
+            unreadFollowerCount: newUnreadFollowerCount,
+          };
+        });
+      },
 
       removeNotification: (notificationId) => {
         set((state) => {

@@ -14,7 +14,8 @@ import {
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import { MotiView } from 'moti';
+import { MotiView, AnimatePresence } from 'moti';
+import EmojiPicker from 'rn-emoji-keyboard';
 import { createShadow } from '@/utils/styles';
 
 const { width } = Dimensions.get('window');
@@ -41,25 +42,37 @@ interface ContextTagSelectorProps {
 }
 
 export const ContextTagSelector = ({ visible, onClose, onConfirm }: ContextTagSelectorProps) => {
-  const [selectedTag, setSelectedTag] = useState(CONTEXT_TAGS[0]);
+  const [selectedEmoji, setSelectedEmoji] = useState<string | null>(null);
+  const [tagLabel, setTagLabel] = useState('');
   const [note, setNote] = useState('');
-  const [step, setStep] = useState<'tag' | 'note'>('tag');
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
 
-  const handleTagSelect = (tag: typeof CONTEXT_TAGS[0]) => {
-    setSelectedTag(tag);
-    setStep('note');
+  const handleEmojiSelect = (emoji: any) => {
+    setSelectedEmoji(emoji.emoji);
+    setIsEmojiPickerOpen(false);
   };
 
   const handleConfirm = () => {
-    onConfirm(`${selectedTag.emoji} ${selectedTag.fullLabel}`, note);
-    setNote('');
-    setStep('tag');
+    let finalTag = '';
+    if (selectedEmoji) {
+      finalTag = `${selectedEmoji} ${tagLabel || 'Thought'}`;
+    } else if (tagLabel) {
+      finalTag = tagLabel;
+    }
+
+    onConfirm(finalTag, note);
+    resetState();
     onClose();
   };
 
-  const handleClose = () => {
-    setStep('tag');
+  const resetState = () => {
+    setSelectedEmoji(null);
+    setTagLabel('');
     setNote('');
+  };
+
+  const handleClose = () => {
+    resetState();
     onClose();
   };
 
@@ -88,177 +101,98 @@ export const ContextTagSelector = ({ visible, onClose, onConfirm }: ContextTagSe
 
             {/* Header */}
             <View style={styles.header}>
-              <View>
-                <Text style={styles.title}>
-                  {step === 'tag' ? 'Add Context' : 'Add a Note'}
-                </Text>
-                <Text style={styles.subtitle}>
-                  {step === 'tag'
-                    ? 'Pick how you feel about this'
-                    : 'Why are you sharing this?'}
-                </Text>
-              </View>
               <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
                 <Ionicons name="close" size={24} color="#fff" />
               </TouchableOpacity>
             </View>
 
-            {step === 'tag' ? (
-              <>
-                {/* Quick Tags Grid */}
-                <ScrollView
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={styles.tagGrid}
-                >
-                  <View style={styles.tagRow}>
-                    {CONTEXT_TAGS.slice(0, 4).map((tag, index) => (
-                      <MotiView
-                        key={tag.label}
-                        from={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: index * 50 }}
-                        style={[styles.tagItem, { backgroundColor: tag.color + '20' }]}
-                      >
-                        <TouchableOpacity
-                          style={styles.tagTouchable}
-                          onPress={() => handleTagSelect(tag)}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.tagEmoji}>{tag.emoji}</Text>
-                          <Text style={[styles.tagLabel, { color: tag.color }]}>
-                            {tag.label}
-                          </Text>
-                        </TouchableOpacity>
-                      </MotiView>
-                    ))}
-                  </View>
-
-                  <View style={styles.tagRow}>
-                    {CONTEXT_TAGS.slice(4, 8).map((tag, index) => (
-                      <MotiView
-                        key={tag.label}
-                        from={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: (index + 4) * 50 }}
-                        style={[styles.tagItem, { backgroundColor: tag.color + '20' }]}
-                      >
-                        <TouchableOpacity
-                          style={styles.tagTouchable}
-                          onPress={() => handleTagSelect(tag)}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.tagEmoji}>{tag.emoji}</Text>
-                          <Text style={[styles.tagLabel, { color: tag.color }]}>
-                            {tag.label}
-                          </Text>
-                        </TouchableOpacity>
-                      </MotiView>
-                    ))}
-                  </View>
-
-                  <View style={styles.tagRow}>
-                    {CONTEXT_TAGS.slice(8).map((tag, index) => (
-                      <MotiView
-                        key={tag.label}
-                        from={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: (index + 8) * 50 }}
-                        style={[styles.tagItem, { backgroundColor: tag.color + '20' }]}
-                      >
-                        <TouchableOpacity
-                          style={styles.tagTouchable}
-                          onPress={() => handleTagSelect(tag)}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.tagEmoji}>{tag.emoji}</Text>
-                          <Text style={[styles.tagLabel, { color: tag.color }]}>
-                            {tag.label}
-                          </Text>
-                        </TouchableOpacity>
-                      </MotiView>
-                    ))}
-                  </View>
-                </ScrollView>
-
-                {/* Quick Select Hint */}
-                <View style={styles.hintContainer}>
-                  <Ionicons name="chevron-down" size={16} color="#666" />
-                  <Text style={styles.hintText}>More options below</Text>
-                </View>
-              </>
-            ) : (
-              <>
-                {/* Selected Tag Badge */}
-                <MotiView
-                  from={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  style={[styles.selectedTagBadge, { backgroundColor: selectedTag.color + '20' }]}
-                >
-                  <Text style={styles.selectedTagEmoji}>{selectedTag.emoji}</Text>
-                  <Text style={[styles.selectedTagText, { color: selectedTag.color }]}>
-                    {selectedTag.fullLabel}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => setStep('tag')}
-                    style={styles.changeTagButton}
+            <ScrollView showsVerticalScrollIndicator={false} style={styles.mainContent}>
+              {/* Custom Tag Section */}
+              <View style={styles.section}>
+                <View style={styles.tagInputRow}>
+                  <TouchableOpacity 
+                    style={[styles.emojiButton, selectedEmoji ? { backgroundColor: 'rgba(255,255,255,0.1)' } : null]}
+                    onPress={() => setIsEmojiPickerOpen(true)}
                   >
-                    <Text style={styles.changeTagText}>Change</Text>
+                    <Text style={styles.emojiDisplay}>
+                      {selectedEmoji || '😀'}
+                    </Text>
+                    <View style={styles.emojiEditBadge}>
+                      <Ionicons name="pencil" size={10} color="#fff" />
+                    </View>
                   </TouchableOpacity>
-                </MotiView>
+                  
+                  <View style={styles.tagLabelContainer}>
+                    <TextInput
+                      style={styles.labelInput}
+                      placeholder="Context Tag..."
+                      placeholderTextColor="#666"
+                      value={tagLabel}
+                      onChangeText={setTagLabel}
+                      maxLength={20}
+                    />
+                  </View>
+                </View>
+              </View>
 
-                {/* Note Input */}
+              <View style={styles.separator} />
+
+              {/* Personal Note Section */}
+              <View style={styles.section}>
                 <View style={styles.inputContainer}>
                   <TextInput
                     style={styles.input}
-                    placeholder="Add a personal note... (optional)"
+                    placeholder="Write a personal note..."
                     placeholderTextColor="#666"
                     multiline
                     value={note}
                     onChangeText={setNote}
                     maxLength={150}
-                    autoFocus
                   />
                   <Text style={styles.charCount}>
                     {note.length}/150
                   </Text>
                 </View>
-
-                {/* Suggested Quick Notes */}
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.suggestionsContainer}
-                >
-                  {['🔥 So good!', '💯 Must see', '🎯 Exactly!', '🤣 Hilarious'].map((suggestion, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      style={styles.suggestionChip}
-                      onPress={() => setNote(suggestion)}
-                    >
-                      <Text style={styles.suggestionText}>{suggestion}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </>
-            )}
+              </View>
+            </ScrollView>
 
             {/* Action Button */}
-            {step === 'note' && (
-              <MotiView
-                from={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                style={styles.actionContainer}
+            <View style={styles.actionContainer}>
+              <TouchableOpacity
+                style={styles.confirmButton}
+                onPress={handleConfirm}
+                activeOpacity={0.8}
               >
-                <TouchableOpacity
-                  style={[styles.confirmButton, { backgroundColor: selectedTag.color }]}
-                  onPress={handleConfirm}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.confirmText}>Repost with Context</Text>
-                  <Ionicons name="arrow-forward" size={20} color="#fff" />
-                </TouchableOpacity>
-              </MotiView>
-            )}
+                <Text style={styles.confirmText}>Repost Now</Text>
+                <Ionicons name="repeat" size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            <EmojiPicker
+              open={isEmojiPickerOpen}
+              onClose={() => setIsEmojiPickerOpen(false)}
+              onEmojiSelected={handleEmojiSelect}
+              emojiSize={28}
+              theme={{
+                backdrop: '#000000',
+                knob: '#766dfc',
+                container: '#282828',
+                header: '#ffffff',
+                skinTonesContainer: '#252427',
+                category: {
+                  icon: '#766dfc',
+                  iconActive: '#ffffff',
+                  container: '#252427',
+                  containerActive: '#766dfc',
+                },
+                search: {
+                  background: '#353535',
+                  text: '#ffffff',
+                  placeholder: '#888888',
+                  icon: '#888888',
+                },
+              }}
+            />
           </MotiView>
         </KeyboardAvoidingView>
       </BlurView>
@@ -317,78 +251,100 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: 4,
   },
-  tagGrid: {
-    paddingBottom: 20,
+  mainContent: {
+    maxHeight: 400,
   },
-  tagRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  section: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#aaa',
     marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
-  tagItem: {
-    flex: 1,
-    marginHorizontal: 4,
-    borderRadius: 16,
-    overflow: 'hidden',
+  tagInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    padding: 12,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
   },
-  tagTouchable: {
-    paddingVertical: 14,
-    alignItems: 'center',
+  emojiButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255,255,255,0.05)',
     justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
   },
-  tagEmoji: {
-    fontSize: 24,
-    marginBottom: 4,
+  emojiDisplay: {
+    fontSize: 30,
   },
-  tagLabel: {
+  emojiEditBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#766dfc',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#222',
+  },
+  tagLabelContainer: {
+    flex: 1,
+  },
+  labelInput: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+    padding: 4,
+  },
+  labelHint: {
+    fontSize: 11,
+    color: '#766dfc',
+    marginTop: 2,
+  },
+  presetsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  presetItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    gap: 6,
+  },
+  presetEmoji: {
+    fontSize: 14,
+  },
+  presetLabel: {
     fontSize: 12,
     fontWeight: '600',
   },
-  hintContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  hintText: {
-    fontSize: 11,
-    color: '#666',
-    marginLeft: 4,
-  },
-  selectedTagBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 30,
-    marginBottom: 20,
-    alignSelf: 'flex-start',
-  },
-  selectedTagEmoji: {
-    fontSize: 20,
-    marginRight: 8,
-  },
-  selectedTagText: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginRight: 12,
-  },
-  changeTagButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+  separator: {
+    height: 1,
     backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  changeTagText: {
-    fontSize: 11,
-    color: '#fff',
+    marginVertical: 20,
   },
   inputContainer: {
     position: 'relative',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   input: {
     backgroundColor: 'rgba(255,255,255,0.05)',
@@ -397,7 +353,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     color: '#fff',
     fontSize: 15,
-    minHeight: 120,
+    minHeight: 100,
     textAlignVertical: 'top',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
@@ -411,7 +367,6 @@ const styles = StyleSheet.create({
   },
   suggestionsContainer: {
     flexDirection: 'row',
-    marginBottom: 24,
   },
   suggestionChip: {
     backgroundColor: 'rgba(255,255,255,0.05)',
@@ -427,12 +382,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   actionContainer: {
-    marginTop: 8,
+    marginTop: 10,
   },
   confirmButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#766dfc',
     borderRadius: 30,
     paddingVertical: 16,
     gap: 8,

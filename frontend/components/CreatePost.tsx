@@ -25,6 +25,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { deletePostMedia, fetchPosts } from '@/services/PostService';
 import { usePostStore } from '@/stores/postStore';
+import { useToastStore } from '@/stores/toastStore';
 import { MediaCompressor } from '@/utils/mediaCompressor';
 import VideoTrimmer from './Shared/VideoTrimmer';
 import { Post } from '@/services/PostListService';
@@ -82,7 +83,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
   const timerRef = useRef<any>(null);
   const longPressTimeout = useRef<any>(null);
 
-  const [deleteStatus, setDeleteStatus] = useState<{ message: string, visible: boolean }>({ message: '', visible: false });
+  const { showToast } = useToastStore();
   const [trimmerVisible, setTrimmerVisible] = useState(false);
   const [videoToTrimIndex, setVideoToTrimIndex] = useState<number | null>(null);
   const [longVideosDetected, setLongVideosDetected] = useState<boolean>(false);
@@ -459,10 +460,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
         await deletePostMedia(Number(params.postId), item.id);
 
         // Show success message
-        setDeleteStatus({ visible: true, message: 'Media deleted successfully' });
-
-        // Hide after 3 seconds
-        setTimeout(() => setDeleteStatus({ visible: false, message: '' }), 3000);
+        showToast('Media deleted successfully', 'success');
 
         // Remove from local state
         const newMedia = [...media];
@@ -705,12 +703,6 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
         renderCameraView()
       ) : (
         <View style={styles.container}>
-            {/* Status message */}
-            {deleteStatus.visible && (
-              <View style={styles.deleteStatus}>
-                <Text style={styles.deleteStatusText}>{deleteStatus.message}</Text>
-              </View>
-            )}
             <View style={styles.header}>
               <TouchableOpacity onPress={handleClose}>
                 <Ionicons name="close" size={24} color="black" />

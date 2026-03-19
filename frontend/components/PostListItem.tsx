@@ -38,6 +38,7 @@ import { CuratorFrame } from './CuratorFrame';
 import { CuratorCircle } from './CuratorCircle';
 import { ContextTagSelector } from './ContextTagSelector';
 import { repostPost } from '@/services/PostService';
+import { useToastStore } from '@/stores/toastStore';
 
 
 interface PostListItemProps {
@@ -63,6 +64,7 @@ export default function PostListItem({
   const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
   const { openModal } = useModal();
   const { posts, updatePost: updatePostInStore, expandedPostId, toggleExpandedPostId } = usePostStore();
+  const { showToast } = useToastStore();
   const [tagSelectorVisible, setTagSelectorVisible] = useState(false);
   const currentPost = posts.find(p => p.id === post.id) || post;
 
@@ -105,32 +107,43 @@ export default function PostListItem({
     await service.submitComment(post.id, onCommentSubmit);
   };
 
-  const handleRepostWithContext = async (tag: string, note: string) => {
+  const handleRepostWithContext = async (tag?: string, note?: string) => {
     try {
       const response = await repostPost(post.id, tag, note);
       
       // Update store with new repost count and potentially the new repost data
       const currentPost = posts.find(p => p.id === post.id);
       if (currentPost) {
+        const isCurrentlyReposted = response.reposted;
+        const currentUserId = user?.id ? Number(user.id) : null;
+
         updatePostInStore({
           ...currentPost,
           reposts_count: response.reposts_count,
-          is_reposted: response.reposted,
-          reposts: response.reposted 
+          is_reposted: isCurrentlyReposted,
+          reposts: isCurrentlyReposted
             ? (response.repost ? [response.repost, ...(currentPost.reposts || [])] : currentPost.reposts)
-            : (currentPost.reposts || []).filter((r: any) => r.user?.id !== user?.id && r.user_id !== user?.id)
+            : (currentPost.reposts || []).filter((r: any) => {
+                const reposterId = r.user?.id || r.user_id;
+                return Number(reposterId) !== Number(currentUserId);
+              })
         });
       }
       
-      Alert.alert("Success", response.message);
+      showToast(response.message, 'success');
     } catch (error) {
       console.error("Repost failed:", error);
-      Alert.alert("Error", "Failed to repost");
+      showToast("Failed to process request", 'error');
     }
   };
 
   const onRepostPress = () => {
-    setTagSelectorVisible(true);
+    if (currentPost.is_reposted) {
+      // If already reposted, clicking undoes it
+      handleRepostWithContext();
+    } else {
+      setTagSelectorVisible(true);
+    }
   };
 
 
@@ -273,7 +286,6 @@ export default function PostListItem({
             personal_note: currentPost.reposts[0].personal_note,
             created_at: currentPost.reposts[0].created_at,
           }}
-          onContextPress={() => setTagSelectorVisible(true)}
         >
           {renderMainContent()}
         </CuratorFrame>

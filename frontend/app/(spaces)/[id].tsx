@@ -16,6 +16,7 @@ import {
   useWindowDimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,7 +27,8 @@ import GenericMenu from '@/components/GenericMenu';
 import { calculateAnchor, AnchorPosition } from '@/utils/layout';
 import { AICollaborationAssistant } from '@/components/AI/AICollaborationAssistant';
 import * as Haptics from 'expo-haptics';
-import { getToken } from '@/services/TokenService';
+import { getToken, setToken } from '@/services/TokenService';
+import { GuestJoinView } from '@/components/ChatScreen/GuestJoinView';
 import CalendarView from '@/components/ChatScreen/CalendarView';
 import CreateActivityModal from '@/components/ChatScreen/CreateActivityModal';
 import CalendarPrompt from '@/components/ChatScreen/CalendarPrompt';
@@ -150,6 +152,13 @@ const SpaceDetailScreen = () => {
   const [isPinned, setIsPinned] = useState(false);
   const [isArchived, setIsArchived] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
+
+  // ✅ Strict "Locked" UI Logic
+  const myParticipation = space?.my_participation || space?.participation;
+  const isPending = myParticipation?.role === 'pending';
+  const isLocked = (space?.space_type === 'protected') && 
+                   (isPending || !myParticipation);
 
   // ✅ Real-time space management listener
   useEffect(() => {
@@ -184,7 +193,10 @@ const SpaceDetailScreen = () => {
   // ✅ Manage real-time subscription - reactive to participation changes
   useEffect(() => {
     if (id && user && id !== 'Login' && id !== 'undefined' && id !== '[id]') {
-      subscribeToSpace();
+      const isPending = space?.my_participation?.role === 'pending';
+      if (!isPending) {
+        subscribeToSpace();
+      }
     }
 
     return () => {
@@ -192,8 +204,8 @@ const SpaceDetailScreen = () => {
         unsubscribeFromSpace();
       }
     };
-  }, [id, user, !!space?.my_participation]);
-  // Note: !!space?.my_participation ensures we re-subscribe once the user joins
+  }, [id, user, !!space?.my_participation, space?.my_participation?.role]);
+  // Note: !!space?.my_participation && role !== 'pending' ensures we re-subscribe once the user joins
   // presence-space channels require authorization which fails if not joined.
 
   // Eagerly load polls when space loads (so banner + header badge show correctly)
@@ -202,7 +214,7 @@ const SpaceDetailScreen = () => {
     if (space?.id) {
       loadPolls();
     }
-  }, [space?.id, !!space?.my_participation]);
+  }, [space?.id, !!space?.my_participation, space?.my_participation?.role]);
 
   useEffect(() => {
     if (activeTab === 'polls' && space?.id) {
@@ -228,6 +240,14 @@ const SpaceDetailScreen = () => {
     }
   }, [space?.id, space?.space_type, participants.length, params.justCreated]);
 
+  // ✅ AUTO-JOIN if routed from "Accept" notification
+  useEffect(() => {
+    if (params.justInvited === 'true' && space && !myParticipation && !isJoining) {
+      console.log('🚀 Auto-joining space as requested from notification');
+      handleJoin();
+    }
+  }, [params.justInvited, !!space, !!myParticipation]);
+
   // ✅ CRITICAL FIX: Re-activate tab when navigated from a notification (e.g., params.tab changes)
   useEffect(() => {
     if (!params.tab) return;
@@ -237,11 +257,18 @@ const SpaceDetailScreen = () => {
     }
   }, [params.tab]);
 
+
   const loadSpaceDetails = async () => {
     console.log('Loading space details for ID:', id);
     setLoading(true);
     try {
-      const spaceData = await collaborationService.fetchSpaceDetails(id as string);
+      let spaceData;
+      if (user) {
+        spaceData = await collaborationService.fetchSpaceDetails(id as string);
+      } else {
+        spaceData = await collaborationService.fetchGuestSpaceInfo(id as string);
+      }
+
       console.log('Space data loaded:', {
         id: spaceData.id,
         title: spaceData.title,
@@ -253,11 +280,13 @@ const SpaceDetailScreen = () => {
       setParticipants(spaceData.participants || []);
       setMagicEvents(spaceData.magic_events || []);
 
-      // Initialize management states
-      const perms = spaceData.my_permissions || {};
-      setIsMuted(perms.is_muted || false);
-      setIsPinned(perms.is_pinned || false);
-      setIsArchived(perms.is_archived || false);
+      // Initialize management states (for logged in users)
+      if (user) {
+        const perms = spaceData.my_permissions || {};
+        setIsMuted(perms.is_muted || false);
+        setIsPinned(perms.is_pinned || false);
+        setIsArchived(perms.is_archived || false);
+      }
 
       // ✅ FIX: Default to chat always, unless tab or call param explicitly passed
       if (!hasInitialTabSet) {
@@ -318,10 +347,17 @@ const SpaceDetailScreen = () => {
 
   const subscribeToSpace = async () => {
     try {
-      await collaborationService.subscribeToSpace(id as string, {
-        onSpaceUpdate: (updatedSpace) => {
-          console.log('Space updated:', updatedSpace.title);
-          setSpace(updatedSpace);
+      await collaborationService.subscribeToSpace(id as string, 'space-root', {
+        onSpaceUpdate: (updatedData) => {
+          // updatedData is the payload containing { space: {...}, changes: {...} }
+          console.log('🔄 Space updated via Pusher:', updatedData?.space?.title || id);
+          if (updatedData?.space) {
+            setSpace((prev: any) => {
+              if (!prev) return updatedData.space;
+              // Only merge the 'space' object from the payload
+              return { ...prev, ...updatedData.space };
+            });
+          }
         },
         onParticipantJoined: (participant) => {
           setParticipants(prev => {
@@ -589,7 +625,7 @@ const SpaceDetailScreen = () => {
         onMuteStateChanged: (data) => {
           console.log('Mute state changed:', data);
         },
-        onVideoStateChanged: (data) => {
+        onvideoStateChanged: (data) => {
           console.log('Video state changed:', data);
         },
       });
@@ -602,7 +638,7 @@ const SpaceDetailScreen = () => {
 
   const unsubscribeFromSpace = () => {
     try {
-      collaborationService.unsubscribeFromSpace(id as string);
+      collaborationService.unsubscribeFromSpace(id as string, 'space-root');
       console.log('Unsubscribed from space');
     } catch (error) {
       console.error('Error unsubscribing from space:', error);
@@ -758,6 +794,67 @@ const SpaceDetailScreen = () => {
     } catch (error) {
       console.error('Error starting call:', error);
       Alert.alert('Error', 'Failed to start call');
+    }
+  };
+
+  const handleGuestJoin = async (guestName: string) => {
+    try {
+      const { user: guestUser, token, space: joinedSpace } = await collaborationService.joinSpaceAsGuest(id as string, guestName);
+      
+      // Save token so subsequent calls work
+      await setToken(token);
+      
+      // Update local state
+      setSpace(joinedSpace);
+      setParticipants(joinedSpace.participants || []);
+      
+      // Haptics
+      if (Platform.OS !== 'web') {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+
+      // Re-subscribe with the new token identity
+      subscribeToSpace();
+    } catch (error) {
+      console.error('Guest join failed:', error);
+      simpleAlert('Error', 'Failed to join as guest');
+    }
+  };
+
+  const handleJoin = async () => {
+    if (!id || isJoining) return;
+    
+    setIsJoining(true);
+    try {
+      const { participation, space: joinedSpace } = await collaborationService.joinSpace(id as string);
+      
+      // ✅ Update global store immediately
+      useCollaborationStore.getState().addSpace(joinedSpace);
+
+      setSpace((prev: any) => ({
+        ...prev,
+        ...joinedSpace,
+        my_participation: participation,
+        my_permissions: participation.permissions,
+        my_role: participation.role,
+      }));
+      
+      setParticipants(joinedSpace.participants || []);
+
+      // ✅ Clear all local notifications related to this space (binding Join & Accept)
+      useNotificationStore.getState().removeSpaceNotifications(id as string);
+
+      if (Platform.OS !== 'web') {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      
+      // Force re-subscription to pick up new permissions
+      subscribeToSpace();
+    } catch (error) {
+      console.error('Error joining space:', error);
+      simpleAlert('Error', 'Failed to join space. Please try again.');
+    } finally {
+      setIsJoining(false);
     }
   };
 
@@ -1036,6 +1133,16 @@ const SpaceDetailScreen = () => {
     ? ((otherParticipant.profile_photo_url || otherParticipant.profile_photo) as string)
     : (space?.image_url || space?.creator?.profile_photo || null);
 
+  if (!user && space) {
+    return (
+      <GuestJoinView 
+        space={space} 
+        onJoin={handleGuestJoin} 
+        onLogin={() => router.replace('/LoginScreen')}
+      />
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -1081,24 +1188,27 @@ const SpaceDetailScreen = () => {
 
         <View style={styles.headerActions}>
           <TouchableOpacity
-            style={styles.headerButton}
+            style={[styles.headerButton, isLocked && { opacity: 0.5 }]}
             onPress={() => setShowInviteModal(true)}
+            disabled={isLocked}
           >
             <Ionicons name="person-add" size={22} color="#007AFF" />
           </TouchableOpacity>
 
           <TouchableOpacity
             ref={callButtonRef}
-            style={styles.headerButton}
-            onPress={measureCallButton}
+            style={[styles.headerButton, isLocked && { opacity: 0.3 }]}
+            onPress={() => !isLocked && measureCallButton()}
+            disabled={isLocked}
           >
-            <Ionicons name="videocam" size={22} color="#007AFF" />
+            <Ionicons name="videocam" size={22} color={isLocked ? "#999" : "#007AFF"} />
           </TouchableOpacity>
 
           <TouchableOpacity
             ref={spaceButtonRef}
-            style={styles.headerButton}
+            style={[styles.headerButton, isLocked && { opacity: 0.5 }]}
             onPress={measureSpaceButton}
+            disabled={isLocked}
           >
             <Ionicons name="ellipsis-vertical" size={22} color="#007AFF" />
           </TouchableOpacity>
@@ -1212,6 +1322,39 @@ const SpaceDetailScreen = () => {
       {/* Main Content Area */}
       <View style={styles.contentArea}>
         {renderContent()}
+
+        {/* ✅ Phase 70: Strict Protected Space Access UI */}
+        {isLocked && (
+          <View style={StyleSheet.absoluteFill}>
+            <BlurView intensity={Platform.OS === 'ios' ? 80 : 100} tint="light" style={StyleSheet.absoluteFill}>
+              <View style={styles.lockedContainer}>
+                <View style={styles.lockedCard}>
+                  <View style={styles.lockedIconBg}>
+                    <Ionicons name="lock-closed" size={40} color="#007AFF" />
+                  </View>
+                  <Text style={styles.lockedTitle}>Private Space</Text>
+                  <Text style={styles.lockedDescription}>
+                    This is a protected space. You must join to see the conversation and participate.
+                  </Text>
+                  <TouchableOpacity 
+                    style={styles.joinSpaceButton}
+                    onPress={handleJoin}
+                    disabled={isJoining}
+                  >
+                    {isJoining ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <>
+                        <Ionicons name="enter-outline" size={20} color="#fff" />
+                        <Text style={styles.joinSpaceButtonText}>Join Space</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </BlurView>
+          </View>
+        )}
 
         {/* Deleting Overlay */}
         {isDeleting && (
@@ -2337,6 +2480,66 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
+  },
+  // Phase 70: Locked UI Styles
+  lockedContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  lockedCard: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 32,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 340,
+    ...createShadow({
+      width: 0,
+      height: 10,
+      opacity: 0.1,
+      radius: 20,
+      elevation: 10,
+    }),
+  },
+  lockedIconBg: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#007AFF10',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  lockedTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 12,
+  },
+  lockedDescription: {
+    fontSize: 15,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 32,
+  },
+  joinSpaceButton: {
+    backgroundColor: '#007AFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 28,
+    gap: 10,
+    width: '100%',
+  },
+  joinSpaceButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
 

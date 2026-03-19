@@ -854,6 +854,7 @@ class PusherService {
     onSpacePinned?: (data: any) => void;
     onSpaceArchived?: (data: any) => void;
     onSpaceUnread?: (data: any) => void;
+    onSpaceDeleted?: (data: any) => void;
   }): boolean {
     if (!this.pusher || !this.isInitialized) {
       console.warn('⚠️ Pusher not initialized. Skipping space subscription.');
@@ -941,6 +942,10 @@ class PusherService {
 
     if (callbacks.onMessageReplied) {
       channel.bind('message.replied', callbacks.onMessageReplied);
+    }
+
+    if (callbacks.onSpaceDeleted) {
+      channel.bind('space.deleted', callbacks.onSpaceDeleted);
     }
 
     if (callbacks.onPollCreated) {

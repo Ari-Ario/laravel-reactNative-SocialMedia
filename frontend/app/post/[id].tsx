@@ -37,8 +37,8 @@ import { MediaViewer } from '@/components/MediaViewer';
 const VideoCarouselItem = ({ uri, index, service, styles }: { uri: string, index: number, service: any, styles: any }) => {
   const player = useVideoPlayer(uri);
   return (
-    <TouchableOpacity 
-      activeOpacity={0.9} 
+    <TouchableOpacity
+      activeOpacity={0.9}
       style={styles.carouselItem}
       onPress={() => service.openMediaViewer(index)}
     >
@@ -59,8 +59,8 @@ const VideoCarouselItem = ({ uri, index, service, styles }: { uri: string, index
 
 const ImageCarouselItem = ({ uri, index, service, styles }: { uri: string, index: number, service: any, styles: any }) => {
   return (
-    <TouchableOpacity 
-      activeOpacity={0.9} 
+    <TouchableOpacity
+      activeOpacity={0.9}
       style={styles.carouselItem}
       onPress={() => service.openMediaViewer(index)}
     >
@@ -155,8 +155,8 @@ const PostDetailScreen = () => {
   const handleCommentLayout = (commentId: string, y: number) => {
     if (highlightCommentId === commentId) {
       commentsSectionRef.current?.measure((_x, _y, _width, _height, _pageX, pageY) => {
-         // Y is relative to the start of RenderComments
-         scrollViewRef.current?.scrollTo({ y: pageY + y - 80, animated: true });
+        // Y is relative to the start of RenderComments
+        scrollViewRef.current?.scrollTo({ y: pageY + y - 80, animated: true });
       });
     }
   };
@@ -383,7 +383,7 @@ const PostDetailScreen = () => {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Post</Text>
           <View style={styles.headerSpacer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={handleSharePost}
               style={styles.headerIcon}
             >
@@ -459,20 +459,20 @@ const PostDetailScreen = () => {
                       }}
                       keyExtractor={(item, index) => `${item.id}-${index}`}
                       renderItem={({ item, index }) => {
-                        const mediaUrl = (item.file_path || item.url).startsWith('http') 
-                          ? (item.file_path || item.url) 
+                        const mediaUrl = (item.file_path || item.url).startsWith('http')
+                          ? (item.file_path || item.url)
                           : `${getApiBaseImage()}/storage/${item.file_path}`;
-                          
+
                         if (item.type === 'video') {
                           return (
                             <View style={{ width: containerWidth }}>
-                              <VideoCarouselItem uri={mediaUrl} index={index} service={{...service, openMediaViewer: handleOpenMediaViewer}} styles={styles} />
+                              <VideoCarouselItem uri={mediaUrl} index={index} service={{ ...service, openMediaViewer: handleOpenMediaViewer }} styles={styles} />
                             </View>
                           );
                         }
                         return (
                           <View style={{ width: containerWidth }}>
-                            <ImageCarouselItem uri={mediaUrl} index={index} service={{...service, openMediaViewer: handleOpenMediaViewer}} styles={styles} />
+                            <ImageCarouselItem uri={mediaUrl} index={index} service={{ ...service, openMediaViewer: handleOpenMediaViewer }} styles={styles} />
                           </View>
                         );
                       }}
@@ -601,7 +601,7 @@ const PostDetailScreen = () => {
               />
             </TouchableOpacity>
 
-            <Animated.View 
+            <Animated.View
               ref={commentsSectionRef}
               style={[styles.highlightContainer, { backgroundColor: interpolatedBackgroundColor }]}
             >
@@ -670,53 +670,53 @@ const PostDetailScreen = () => {
           setMenuVisible(false);
           if (post) service.handleDelete(post.id);
         }}
-          onEdit={() => {
-            setMenuVisible(false);
-            if (post) service.handleEdit(post as any);
-          }}
+        onEdit={() => {
+          setMenuVisible(false);
+          if (post) service.handleEdit(post as any);
+        }}
         onReport={() => {
           setMenuVisible(false);
           service.handleReport();
         }}
-          isOwner={post ? service.isOwner(post.user.id) : false}
-          anchorPosition={menuPosition}
-        />
+        isOwner={post ? service.isOwner(post.user.id) : false}
+        anchorPosition={menuPosition}
+      />
 
-        {post && (
-          <MediaViewer
-            visible={mediaViewerVisible}
-            mediaItems={post.media as any}
-            startIndex={mediaViewerIndex}
-            onClose={() => setMediaViewerVisible(false)}
-            post={post as any}
-            getApiBaseImage={getApiBaseImage}
-            onNavigateNext={() => {}} 
-            onNavigatePrev={() => {}} 
-            onReact={handleReact}
-            onDeleteReaction={handleDeletePostReaction}
-            onRepost={() => {}} 
-            onShare={handleSharePost}
-            onBookmark={handleBookmarkPost}
-            onCommentPress={() => {
-              setMediaViewerVisible(false);
-              setShowComments(true);
-              setTimeout(() => {
-                commentsSectionRef.current?.measure((x, y, width, height, pageX, pageY) => {
-                  scrollViewRef.current?.scrollTo({ y: pageY - 100, animated: true });
-                });
-              }, 300);
-            }}
-            onDoubleTap={() => handleReact('❤️')}
-            currentReactingItem={currentReactingItem}
-            setCurrentReactingItem={setCurrentReactingItem}
-            setIsEmojiPickerOpen={setIsEmojiPickerOpen}
-            // @ts-ignore
-            onCommentSubmit={async (content) => commentOnPost(post.id, content)}
-            getGroupedReactions={(p) => service.getGroupedReactions(p as any)}
-            handleReactComment={(emoji) => {}} 
-            deleteCommentReaction={(emoji) => {}} 
-          />
-        )}
+      {post && (
+        <MediaViewer
+          visible={mediaViewerVisible}
+          mediaItems={post.media as any}
+          startIndex={mediaViewerIndex}
+          onClose={() => setMediaViewerVisible(false)}
+          post={post as any}
+          getApiBaseImage={getApiBaseImage}
+          onNavigateNext={() => { }}
+          onNavigatePrev={() => { }}
+          onReact={handleReact}
+          onDeleteReaction={handleDeletePostReaction}
+          onRepost={() => { }}
+          onShare={handleSharePost}
+          onBookmark={handleBookmarkPost}
+          onCommentPress={() => {
+            setMediaViewerVisible(false);
+            setShowComments(true);
+            setTimeout(() => {
+              commentsSectionRef.current?.measure((x, y, width, height, pageX, pageY) => {
+                scrollViewRef.current?.scrollTo({ y: pageY - 100, animated: true });
+              });
+            }, 300);
+          }}
+          onDoubleTap={() => handleReact('❤️')}
+          currentReactingItem={currentReactingItem}
+          setCurrentReactingItem={setCurrentReactingItem}
+          setIsEmojiPickerOpen={setIsEmojiPickerOpen}
+          // @ts-ignore
+          onCommentSubmit={async (content) => commentOnPost(post.id, content)}
+          getGroupedReactions={(p) => service.getGroupedReactions(p as any)}
+          handleReactComment={(emoji) => { }}
+          deleteCommentReaction={(emoji) => { }}
+        />
+      )}
 
       {/* Emoji Picker */}
       <EmojiPicker

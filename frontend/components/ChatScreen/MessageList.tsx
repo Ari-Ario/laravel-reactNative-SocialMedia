@@ -61,6 +61,7 @@ interface MessageListProps {
   /** ISO timestamp of user's last read position in this space */
   lastReadAt?: string | null;
   onStartCall?: (type: 'audio' | 'video') => void;
+  isPending?: boolean;
 }
 const MessageList: React.FC<MessageListProps> = ({
   spaceId,
@@ -75,6 +76,7 @@ const MessageList: React.FC<MessageListProps> = ({
   highlightMessageId,
   lastReadAt,
   onStartCall,
+  isPending = false,
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
@@ -320,18 +322,18 @@ const MessageList: React.FC<MessageListProps> = ({
   useEffect(() => {
     loadMessages();
 
-    // ✅ FIX: Subscribe to real-time messages
-    if (spaceId) {
+    // ✅ FIX: Subscribe to real-time messages only if user is fully joined
+    if (spaceId && !isPending) {
       subscribeToMessages();
     }
 
     return () => {
-      // Cleanup subscription
+      // Cleanup subscription only for this consumer
       if (spaceId) {
-        collaborationService.unsubscribeFromSpace(spaceId);
+        collaborationService.unsubscribeFromSpace(spaceId, 'message-list');
       }
     };
-  }, [spaceId, conversationId]);
+  }, [spaceId, conversationId, isPending]);
 
   // Synchronize static embedded poll Data in messages with live Space API Polls, and PURGE ghost polls
   useEffect(() => {
@@ -520,7 +522,7 @@ const MessageList: React.FC<MessageListProps> = ({
   const subscribeToMessages = () => {
     if (!spaceId) return;
 
-    return collaborationService.subscribeToSpace(spaceId, {
+    return collaborationService.subscribeToSpace(spaceId, 'message-list', {
       onMessage: (data: any) => {
         console.log('📨 New message received:', data);
 

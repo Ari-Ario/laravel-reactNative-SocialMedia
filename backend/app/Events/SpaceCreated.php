@@ -31,9 +31,9 @@ class SpaceCreated implements ShouldBroadcast
     {
         $channels = [];
         
-        // Send to each follower's private channel
+        // Send to each follower's private channel (Phase 71: Use PrivateChannel)
         foreach ($this->followerIds as $followerId) {
-            $channels[] = new Channel('user.' . $followerId);
+            $channels[] = new PrivateChannel('user.' . $followerId);
         }
         
         return $channels;

@@ -126,6 +126,9 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                 my_role: participation.role,
             }));
             
+            // ✅ Clear all local notifications related to this space (binding Join & Accept)
+            useNotificationStore.getState().removeSpaceNotifications(spaceId);
+
             if (Platform.OS !== 'web') {
                 await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             }
@@ -223,22 +226,30 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                 )}
 
                 {/* ─── Message List ─── */}
-                <MessageList
-                    spaceId={spaceId}
-                    currentUserId={currentUserId}
-                    polls={polls}
-                    participants={participants}
-                    onReply={(msg) => setReplyingTo(msg)}
-                    highlightMessageId={highlightMessageId}
-                    lastReadAt={
-                      space?.my_participation?.last_read_at ??
-                      space?.my_permissions?.last_read_at ??
-                      space?.my_participation?.last_active_at ??
-                      null
-                    }
-                    onPollPress={() => { }} // No-op now that polls are inline
-                    onStartCall={onStartCall}
-                />
+                {(() => {
+                    const myParticipation = space?.my_participation || space?.participation;
+                    const isPending = myParticipation?.role === 'pending';
+                    
+                    return (
+                        <MessageList
+                            spaceId={spaceId}
+                            currentUserId={currentUserId}
+                            polls={polls}
+                            participants={participants}
+                            onReply={(msg) => setReplyingTo(msg)}
+                            highlightMessageId={highlightMessageId}
+                            lastReadAt={
+                                space?.my_participation?.last_read_at ??
+                                space?.my_permissions?.last_read_at ??
+                                space?.my_participation?.last_active_at ??
+                                null
+                            }
+                            onPollPress={() => { }} // No-op now that polls are inline
+                            onStartCall={onStartCall}
+                            isPending={isPending}
+                        />
+                    );
+                })()}
 
                 {/* ─── Reply Preview ─── */}
                 {replyingTo && (
@@ -265,12 +276,17 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                 {(() => {
                     const myParticipation = space?.my_participation || space?.participation;
                     const isParticipant = !!myParticipation;
+                    const isPending = myParticipation?.role === 'pending';
                     const isChannel = space?.space_type === 'channel';
                     const isGeneral = space?.space_type === 'general';
+                    const isDirect = space?.space_type === 'direct' || space?.space_type === 'chat';
                     const isAdmin = ['owner', 'moderator', 'admin'].includes(myParticipation?.role || currentUserRole || '');
 
-                    // Case 1: Not joined a public space (General or Channel)
-                    if (!myParticipation && (isChannel || isGeneral)) {
+                    // Case 1: Not joined a public space or Pending participation
+                    if ((!myParticipation && (isChannel || isGeneral)) || isPending) {
+                        const btnText = isDirect ? "Accept Message Request" : isChannel ? "Join Channel" : "Join Space";
+                        const hintText = isDirect ? "Accept this request to start chatting." : isChannel ? "Join to receive updates and participate." : "You must join to send messages.";
+                        
                         return (
                             <View style={styles.joinBarContainer}>
                                 <TouchableOpacity 
@@ -284,13 +300,13 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                                         <>
                                             <Ionicons name={isChannel ? "add-circle" : "enter"} size={20} color="#fff" />
                                             <Text style={styles.joinButtonText}>
-                                                {isChannel ? "Join Channel" : "Join Space"}
+                                                {btnText}
                                             </Text>
                                         </>
                                     )}
                                 </TouchableOpacity>
                                 <Text style={styles.joinHint}>
-                                    {isChannel ? "Join to receive updates and participate." : "This is a public space. You must join to send messages."}
+                                    {hintText}
                                 </Text>
                             </View>
                         );

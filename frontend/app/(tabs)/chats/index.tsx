@@ -529,6 +529,10 @@ const ChatPage = () => {
       // Update the store with the fetched spaces
       useCollaborationStore.getState().setSpaces(userSpaces);
 
+      // ✅ FIX: Phase 71 - Subscribe to all spaces to ensure real-time deletions in the list view
+      const spaceIds = userSpaces.map((s: any) => s.id.toString());
+      useCollaborationStore.getState().subscribeToAllSpaces(spaceIds);
+
       // Store automatically sorts and updates
       console.log('🌐 Fetched spaces from store:', userSpaces.length);
       // Cache the raw spaces from store

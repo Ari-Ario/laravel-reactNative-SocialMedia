@@ -24,6 +24,7 @@ use App\Http\Controllers\UserSearchController;
 use App\Http\Controllers\PollController;
 use App\Http\Controllers\WhiteboardController;
 use App\Http\Controllers\ApiAuthController;
+use App\Http\Controllers\GuestAccessController;
 use Illuminate\Support\Facades\Broadcast;
 
 use App\Models\User;
@@ -276,3 +277,6 @@ Route::post('/forgot-password', [ApiAuthController::class , 'forgotPassword']);
 Route::post('/verify-reset-code', [ApiAuthController::class , 'verifyResetCode']);
 Route::post('/reset-password', [ApiAuthController::class , 'resetPassword']);
 Route::post('/update-preferences', [ApiAuthController::class , 'updatePreferences'])->middleware('auth:sanctum');
+// Guest Access Routes (Teams-style)
+Route::get('/spaces/{id}/guest-info', [GuestAccessController::class, 'getSpaceInfo']);
+Route::post('/spaces/{id}/guest-join', [GuestAccessController::class, 'joinAsGuest']);

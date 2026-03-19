@@ -1,10 +1,14 @@
-// components/CuratorCircle.tsx
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Modal, FlatList, Dimensions } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { MotiView } from 'moti';
+import { useRouter } from 'expo-router';
+import AuthContext from '@/context/AuthContext';
+import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import getApiBaseImage from '@/services/getApiBaseImage';
+import { useCollaborationStore } from '@/stores/collaborationStore';
+import { useToastStore } from '@/stores/toastStore';
 import { createShadow } from '@/utils/styles';
 
 const { width } = Dimensions.get('window');
@@ -25,10 +29,48 @@ interface CuratorCircleProps {
 }
 
 export const CuratorCircle = ({ reposters, postId, postContent }: CuratorCircleProps) => {
+  const router = useRouter();
+  const { user: currentUser } = useContext(AuthContext);
+  const { showToast } = useToastStore();
   const [showGallery, setShowGallery] = useState(false);
   const [selectedReposter, setSelectedReposter] = useState<Reposter | null>(null);
 
   if (!reposters || reposters.length === 0) return null;
+
+  const handleMessage = async (reposter: Reposter) => {
+    if (!currentUser) return;
+    
+    // Check privacy
+    const userToMessage = (reposter as any); 
+    if (userToMessage.is_private && !userToMessage.is_following) {
+      showToast("This profile is private", "error");
+      return;
+    }
+
+    try {
+      const collaborationService = CollaborationService.getInstance();
+      const directSpace = await collaborationService.getOrCreateDirectSpace(reposter.id);
+      const spaceId = directSpace?.space?.id || directSpace?.id;
+
+      if (spaceId) {
+        // Refresh spaces to ensure it shows up in chat list
+        useCollaborationStore.getState().fetchUserSpaces(Number(currentUser.id));
+        
+        setSelectedReposter(null);
+        setShowGallery(false);
+        router.push(`/(tabs)/chat/${spaceId}`);
+      }
+    } catch (error) {
+      console.error("Failed to start conversation:", error);
+      showToast("Could not start conversation", "error");
+    }
+  };
+
+  const handleVisitProfile = (reposterId: number) => {
+    setSelectedReposter(null);
+    setShowGallery(false);
+    router.push(`/(profile)/${reposterId}`);
+  };
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -182,14 +224,20 @@ export const CuratorCircle = ({ reposters, postId, postContent }: CuratorCircleP
               )}
 
               <View style={styles.modalActions}>
-                <TouchableOpacity style={styles.modalAction}>
+                <TouchableOpacity 
+                  style={styles.modalAction}
+                  onPress={() => handleMessage(selectedReposter)}
+                >
                   <Ionicons name="chatbubble-outline" size={20} color="#fff" />
                   <Text style={styles.modalActionText}>Message</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.modalAction}>
-                  <Ionicons name="repeat-outline" size={20} color="#fff" />
-                  <Text style={styles.modalActionText}>View Repost</Text>
+                <TouchableOpacity 
+                  style={styles.modalAction}
+                  onPress={() => handleVisitProfile(selectedReposter.id)}
+                >
+                  <Ionicons name="person-outline" size={20} color="#fff" />
+                  <Text style={styles.modalActionText}>Profile</Text>
                 </TouchableOpacity>
               </View>
             </>
@@ -237,7 +285,7 @@ export const CuratorCircle = ({ reposters, postId, postContent }: CuratorCircleP
             const rotation = (index - 2) * 3; // Creates slight rotation for depth
             return (
               <MotiView
-                key={reposter.id}
+                key={`${reposter.id}-${index}`}
                 from={{ opacity: 0, translateY: 10, rotate: `${rotation}deg` }}
                 animate={{ opacity: 1, translateY: 0, rotate: '0deg' }}
                 transition={{ delay: index * 50, type: 'spring' }}
@@ -306,7 +354,7 @@ export const CuratorCircle = ({ reposters, postId, postContent }: CuratorCircleP
 
           <FlatList
             data={reposters}
-            keyExtractor={(item) => item.id.toString()}
+            keyExtractor={(item, index) => `${item.id}-${index}`}
             renderItem={({ item, index }) => <ReposterCard reposter={item} index={index} />}
             contentContainerStyle={styles.galleryList}
             showsVerticalScrollIndicator={false}
@@ -332,11 +380,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 6,
     backgroundColor: 'rgba(0, 132, 255, 0.03)',
     borderRadius: 16,
     marginHorizontal: 12,
-    marginBottom: 12,
+    marginTop: 8,
+    marginBottom: 4,
     borderWidth: 1,
     borderColor: 'rgba(0, 132, 255, 0.1)',
     overflow: 'hidden',

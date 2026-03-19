@@ -76,9 +76,8 @@ class SpaceService
             // 8. Handle linked conversation
             $linkedConversationId = $space->linked_conversation_id;
 
-            // Broadcast deletion before removing the space record (so we can still include space data in the event if needed)
+            // Broadcast deletion (Phase 71: Only send SpaceDeleted)
             try {
-                broadcast(new SpaceUpdated($space, $authUserId, ['update_type' => 'deleted']));
                 broadcast(new SpaceDeleted($id, $authUserId, $participantIds));
             } catch (\Exception $e) {
                 Log::warning('Broadcast failed during space service deletion: ' . $e->getMessage());

@@ -16,13 +16,14 @@ import { getToken } from '@/services/TokenService';
 import LoginScreen from './LoginScreen';
 import RegisterScreen from './RegisterScreen';
 import VerificationScreen from './VerificationScreen';
-import { usePathname } from 'expo-router';
+import { usePathname, useLocalSearchParams } from 'expo-router';
 import { ProfileViewProvider } from '@/context/ProfileViewContext';
 import { GlobalModals } from '@/components/GlobalModals';
 import { ModalProvider } from '@/context/ModalContext';
 import ModalManager from '@/components/ModalManager';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { Toast } from '@/components/Shared/Toast';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -42,6 +43,7 @@ export default function RootLayout() {
   } | null>(null);
   const [isReady, setIsReady] = useState(false);
   const router = useRouter();
+  const params = useLocalSearchParams();
 
   useEffect(() => {
     let isMounted = true;
@@ -123,7 +125,11 @@ export default function RootLayout() {
       pathname?.startsWith(route)
     );
 
+    const isGuestAccess = pathname?.startsWith('/spaces/') && (params.guest === 'true' || params.inviteCode);
+
     if (!user) {
+      if (isGuestAccess) return; // Allow unauthenticated guest access
+
       // If user not logged in, only allow LoginScreen and root
       if (pathname === '/' || !pathname?.startsWith('/LoginScreen')) {
         router.replace('/LoginScreen');
@@ -143,7 +149,7 @@ export default function RootLayout() {
     }
 
     // User is logged in
-    if (user.email_verified_at) {
+    if (user && user.email_verified_at) {
       // ✅ STRICT REDIRECT ON RELOAD: If this is the initial mount (reload/restart),
       // and we are NOT on a tab or root, force redirect to tabs home.
       // This solves the web refresh issue where subscriptions break.
@@ -263,6 +269,7 @@ export default function RootLayout() {
               {/* Modals render above Stack */}
               <GlobalModals />
               <ModalManager />
+              <Toast />
             </ProfileViewProvider>
           </ModalProvider>
         </AuthContext.Provider>

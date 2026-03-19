@@ -23,7 +23,7 @@ interface CuratorFrameProps {
 }
 
 export const CuratorFrame = ({ reposter, children, onContextPress }: CuratorFrameProps) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
 
   const avatarUri = reposter.profile_photo
@@ -108,18 +108,6 @@ export const CuratorFrame = ({ reposter, children, onContextPress }: CuratorFram
             )}
           </View>
         </View>
-
-        {/* Context Button with Pulse Animation */}
-        <TouchableOpacity
-          style={[styles.contextButton, { backgroundColor: tagColor + '10' }]}
-          onPress={(e) => {
-            e.stopPropagation();
-            onContextPress?.();
-          }}
-        >
-          <Ionicons name="information-circle" size={20} color={tagColor} />
-          <Text style={[styles.contextButtonText, { color: tagColor }]}>Why?</Text>
-        </TouchableOpacity>
       </TouchableOpacity>
 
       {/* Original Post Container */}
@@ -305,9 +293,11 @@ const styles = StyleSheet.create({
   },
   personalNote: {
     fontSize: 14,
-    color: '#333',
+    color: '#4b5563', // gray-600
     lineHeight: 20,
     marginBottom: 12,
+    fontStyle: 'italic',
+    fontWeight: '400',
   },
   noteFooter: {
     flexDirection: 'row',

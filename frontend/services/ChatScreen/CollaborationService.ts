@@ -453,6 +453,44 @@ class CollaborationService {
     }
   }
 
+  async fetchGuestSpaceInfo(spaceId: string): Promise<CollaborationSpace> {
+    try {
+      const response = await axios.get(`${this.baseURL}/spaces/${spaceId}/guest-info`);
+      const apiSpace = response.data.space;
+      return {
+        id: apiSpace.id,
+        title: apiSpace.title,
+        description: apiSpace.description,
+        image_url: apiSpace.image_url,
+        space_type: apiSpace.space_type,
+        creator_id: apiSpace.creator?.id || 0,
+        creator: apiSpace.creator,
+        settings: {},
+        content_state: { messages: [] },
+        activity_metrics: {},
+        evolution_level: 1,
+        unlocked_features: [],
+        is_live: false,
+        has_ai_assistant: false,
+        ai_capabilities: [],
+        participants_count: 0,
+      };
+    } catch (error) {
+      console.error('Error fetching guest space info:', error);
+      throw error;
+    }
+  }
+
+  async joinSpaceAsGuest(spaceId: string, name: string): Promise<{ user: any, token: string, space: CollaborationSpace, participation: SpaceParticipation }> {
+    try {
+      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/guest-join`, { name });
+      return response.data;
+    } catch (error) {
+      console.error('Error joining as guest:', error);
+      throw error;
+    }
+  }
+
   async inviteToSpace(spaceId: string, userIds: number[], role?: string, message?: string): Promise<void> {
     try {
       const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/invite`, {
@@ -656,9 +694,10 @@ class CollaborationService {
       throw new Error(error.response?.data?.message || 'Failed to delete poll');
     }
   }
-  // 🎮 REAL-TIME COLLABORATION - USING EXISTING PUSHER CONNECTION
+  // Map to store callbacks by space ID and then by consumer ID (e.g. 'root' or 'message-list')
+  private spaceCallbacks: Map<string, Map<string, { [key: string]: Function }>> = new Map();
 
-  async subscribeToSpace(spaceId: string, callbacks: {
+  async subscribeToSpace(spaceId: string, consumerId: string, callbacks: {
     onSpaceUpdate?: (data: any) => void;
     onParticipantJoined?: (data: any) => void;
     onParticipantLeft?: (data: any) => void;
@@ -689,11 +728,15 @@ class CollaborationService {
     onSpaceRead?: (data: any) => void;
     onSpaceDeleted?: (data: any) => void;
   }) {
+    if (!callbacks) {
+      console.warn(`📡 subscribeToSpace called without callbacks in space ${spaceId}`);
+      return;
+    }
     try {
       const initialized = await this.ensurePusherInitialized();
       if (!initialized) {
         console.warn('📡 Pusher not ready for space subscription - retrying in 2s');
-        setTimeout(() => this.subscribeToSpace(spaceId, callbacks), 2000);
+        setTimeout(() => this.subscribeToSpace(spaceId, consumerId, callbacks), 2000);
         return;
       }
 
@@ -703,77 +746,114 @@ class CollaborationService {
       const channelName = `presence-space.${spaceId}`;
       let channel = this.spaceSubscriptions.get(spaceId);
 
-      if (channel) {
-        // Already subscribed. In Phase 61, we didn't have multi-callback support.
-        console.log(`🔌 Channel: Already subscribed to ${spaceId}`);
-        return;
+      if (!channel) {
+        console.log(`🔌 Channel: Subscribing to: ${channelName}`);
+        channel = pusher.subscribe(channelName);
+        this.spaceSubscriptions.set(spaceId, channel);
+      } else {
+        console.log(`🔌 Channel: Already subscribed to ${spaceId}. Binding callbacks for ${consumerId}`);
       }
 
-      console.log(`🔌 Channel: Subscribing to: ${channelName}`);
-      channel = pusher.subscribe(channelName);
-      this.spaceSubscriptions.set(spaceId, channel);
+      // Initialize callbacks map for this space
+      if (!this.spaceCallbacks.has(spaceId)) {
+        this.spaceCallbacks.set(spaceId, new Map());
+      }
 
-      // Simple direct binding
-      channel.bind('message.sent', (data: any) => callbacks.onMessage?.(data));
-      channel.bind('call.started', (data: any) => callbacks.onCallStarted?.(data));
-      channel.bind('call.ended', (data: any) => callbacks.onCallEnded?.(data));
-      channel.bind('magic.triggered', (data: any) => {
-        callbacks.onMagicEvent?.(data);
-        callbacks.onMagicTriggered?.(data);
-      });
-      channel.bind('space.updated', (data: any) => callbacks.onSpaceUpdate?.(data));
-      channel.bind('space.read', (data: any) => callbacks.onSpaceRead?.(data));
-      channel.bind('space.deleted', (data: any) => callbacks.onSpaceDeleted?.(data));
+      // If consumer already has callbacks, unbind them to prevent duplicates
+      const existingCallbacks = this.spaceCallbacks.get(spaceId)!.get(consumerId);
+      if (existingCallbacks && channel) {
+        Object.keys(existingCallbacks).forEach(eventName => {
+          channel!.unbind(eventName, existingCallbacks[eventName]);
+        });
+      }
 
-      channel.bind('participant.joined', (data: any) => {
-        const normalized = { ...data, user_id: data.user?.id || data.user_id };
-        callbacks.onParticipantJoined?.(normalized);
-        callbacks.onParticipantUpdate?.(normalized);
-      });
-
-      channel.bind('participant.left', (data: any) => {
-        const normalized = { ...data, user_id: data.user?.id || data.user_id };
-        callbacks.onParticipantLeft?.(normalized);
-        callbacks.onParticipantUpdate?.(normalized);
-      });
-
-      channel.bind('message.reacted', (data: any) => callbacks.onMessageReacted?.(data));
-      channel.bind('message.deleted', (data: any) => callbacks.onMessageDeleted?.(data));
-      channel.bind('message.pinned', (data: any) => callbacks.onMessagePinned?.(data));
-      channel.bind('message.replied', (data: any) => callbacks.onMessageReplied?.(data));
-
-      channel.bind('content.updated', (data: any) => callbacks.onContentUpdate?.(data.content_state || data));
-      channel.bind('poll.created', (data: any) => callbacks.onPollCreated?.(data.poll || data));
-      channel.bind('poll.updated', (data: any) => callbacks.onPollUpdated?.(data.poll || data));
-      channel.bind('poll.deleted', (data: any) => callbacks.onPollDeleted?.(data.poll_id));
-
-      // ✅ ADD: Graceful handling for subscription errors (e.g. 403 when user is not a participant)
-      channel.bind('pusher:subscription_error', (err: any) => {
-        if (err?.status === 403) {
-          console.warn(`📡 Channel authorization denied for space: ${spaceId}. User might not be a participant yet. Clearing stale channel object.`);
-          this.spaceSubscriptions.delete(spaceId);
-        } else {
-          console.error(`❌ Channel: Subscription failed for: ${spaceId}:`, err);
+      // Create handler mappings
+      const handlers: { [key: string]: Function } = {
+        'message.sent': (data: any) => callbacks.onMessage?.(data),
+        'call.started': (data: any) => callbacks.onCallStarted?.(data),
+        'call.ended': (data: any) => callbacks.onCallEnded?.(data),
+        'magic.triggered': (data: any) => {
+          callbacks.onMagicEvent?.(data);
+          callbacks.onMagicTriggered?.(data);
+        },
+        'space.updated': (data: any) => callbacks.onSpaceUpdate?.(data),
+        'space.read': (data: any) => callbacks.onSpaceRead?.(data),
+        'space.deleted': (data: any) => callbacks.onSpaceDeleted?.(data),
+        'participant.joined': (data: any) => {
+          const normalized = { ...data, user_id: data.user?.id || data.user_id };
+          callbacks.onParticipantJoined?.(normalized);
+          callbacks.onParticipantUpdate?.(normalized);
+        },
+        'participant.left': (data: any) => {
+          const normalized = { ...data, user_id: data.user?.id || data.user_id };
+          callbacks.onParticipantLeft?.(normalized);
+          callbacks.onParticipantUpdate?.(normalized);
+        },
+        'message.reacted': (data: any) => callbacks.onMessageReacted?.(data),
+        'message.deleted': (data: any) => callbacks.onMessageDeleted?.(data),
+        'message.pinned': (data: any) => callbacks.onMessagePinned?.(data),
+        'message.replied': (data: any) => callbacks.onMessageReplied?.(data),
+        'content.updated': (data: any) => callbacks.onContentUpdate?.(data.content_state || data),
+        'poll.created': (data: any) => callbacks.onPollCreated?.(data.poll || data),
+        'poll.updated': (data: any) => callbacks.onPollUpdated?.(data.poll || data),
+        'poll.deleted': (data: any) => callbacks.onPollDeleted?.(data.poll_id),
+        'pusher:subscription_error': (err: any) => {
+          if (err?.status === 403) {
+            console.warn(`📡 Channel authorization denied for space: ${spaceId}. User might not be a participant yet. Clearing stale channel object.`);
+            this.spaceSubscriptions.delete(spaceId);
+          } else {
+            console.error(`❌ Channel: Subscription failed for: ${spaceId}:`, err);
+          }
         }
+      };
+
+      // Bind all handlers to the channel
+      Object.keys(handlers).forEach(eventName => {
+        channel!.bind(eventName, handlers[eventName]);
       });
+
+      // Save handlers so they can be explicitly unbound later
+      this.spaceCallbacks.get(spaceId)!.set(consumerId, handlers);
 
     } catch (error) {
       console.error('❌ Error in subscribeToSpace:', error);
     }
   }
 
-  async unsubscribeFromSpace(spaceId: string) {
+  async unsubscribeFromSpace(spaceId: string, consumerId?: string) {
     try {
       const pusher = this.getPusherInstance();
       if (!pusher) return;
 
       const channel = this.spaceSubscriptions.get(spaceId);
-      if (channel) {
-        const channelName = `presence-space.${spaceId}`;
+      if (!channel) return;
+
+      if (consumerId) {
+        // Unbind specific consumer
+        const consumerHandlers = this.spaceCallbacks.get(spaceId)?.get(consumerId);
+        if (consumerHandlers) {
+          Object.keys(consumerHandlers).forEach(eventName => {
+            channel.unbind(eventName, consumerHandlers[eventName]);
+          });
+          this.spaceCallbacks.get(spaceId)!.delete(consumerId);
+          console.log(`📡 Unbound callbacks for consumer ${consumerId} in space ${spaceId}`);
+        }
+        
+        // Fully unsubscribe IF there are no more listeners
+        if (this.spaceCallbacks.get(spaceId)?.size === 0) {
+          channel.unbind_all();
+          pusher.unsubscribe(`presence-space.${spaceId}`);
+          this.spaceSubscriptions.delete(spaceId);
+          this.spaceCallbacks.delete(spaceId);
+          console.log(`📡 Fully unsubscribed from space ${spaceId} (no more listeners)`);
+        }
+      } else {
+        // Force unsubscribe completely (legacy fallback)
         channel.unbind_all();
-        pusher.unsubscribe(channelName);
+        pusher.unsubscribe(`presence-space.${spaceId}`);
         this.spaceSubscriptions.delete(spaceId);
-        console.log(`📡 Unsubscribed from space ${spaceId}`);
+        this.spaceCallbacks.delete(spaceId);
+        console.log(`📡 Fully unsubscribed from space ${spaceId} (forced)`);
       }
     } catch (error) {
       console.error('Error unsubscribing from space:', error);
