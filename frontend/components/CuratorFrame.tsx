@@ -19,10 +19,9 @@ interface CuratorFrameProps {
     created_at?: string;
   };
   children: React.ReactNode;
-  onContextPress?: () => void;
 }
 
-export const CuratorFrame = ({ reposter, children, onContextPress }: CuratorFrameProps) => {
+export const CuratorFrame = ({ reposter, children }: CuratorFrameProps) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -255,19 +254,8 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
   },
-  contextButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 4,
-  },
-  contextButtonText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
   originalPostContainer: {
+
     paddingTop: 8,
   },
   expandableSection: {

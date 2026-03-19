@@ -800,7 +800,17 @@ class PostController extends Controller
         ]);
     }
 
-    public function bookmark(Post $post)
+    public function getBookmarks()
+    {
+        $bookmarks = Bookmark::where('user_id', Auth::id())
+            ->with(['post.user', 'post.media'])
+            ->latest()
+            ->get();
+
+        return response()->json($bookmarks);
+    }
+
+    public function bookmark(Request $request, Post $post)
     {
         $existingBookmark = Bookmark::where('user_id', Auth::id())
             ->where('post_id', $post->id)
@@ -811,12 +821,32 @@ class PostController extends Controller
             return response()->json(['message' => 'Bookmark removed', 'bookmarked' => false]);
         }
 
-        Bookmark::create([
+        $bookmark = Bookmark::create([
             'user_id' => Auth::id(),
-            'post_id' => $post->id
+            'post_id' => $post->id,
+            'collection' => $request->collection ?? 'all',
+            'note' => $request->note
         ]);
 
-        return response()->json(['message' => 'Post bookmarked', 'bookmarked' => true]);
+        return response()->json([
+            'message' => 'Post bookmarked',
+            'bookmarked' => true,
+            'bookmark' => $bookmark->load('post.user', 'post.media')
+        ]);
+    }
+
+    public function updateBookmark(Request $request, $id)
+    {
+        $bookmark = Bookmark::where('user_id', Auth::id())
+            ->where('id', $id)
+            ->firstOrFail();
+
+        $bookmark->update($request->only(['collection', 'note']));
+
+        return response()->json([
+            'message' => 'Bookmark updated',
+            'bookmark' => $bookmark->load('post.user', 'post.media')
+        ]);
     }
 
 

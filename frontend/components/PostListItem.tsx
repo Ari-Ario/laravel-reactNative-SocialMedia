@@ -39,6 +39,9 @@ import { CuratorCircle } from './CuratorCircle';
 import { ContextTagSelector } from './ContextTagSelector';
 import { repostPost } from '@/services/PostService';
 import { useToastStore } from '@/stores/toastStore';
+import { useBookmarkStore } from '@/stores/bookmarkStore';
+import { BookmarkGallery } from './BookmarkGallery';
+import { Bookmark } from '@/services/BookmarkService';
 
 
 interface PostListItemProps {
@@ -58,7 +61,6 @@ export default function PostListItem({
   onCommentSubmit,
   onRepost,
   onShare,
-  onBookmark,
 }: PostListItemProps) {
   const { user } = useContext(AuthContext);
   const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
@@ -66,7 +68,11 @@ export default function PostListItem({
   const { posts, updatePost: updatePostInStore, expandedPostId, toggleExpandedPostId } = usePostStore();
   const { showToast } = useToastStore();
   const [tagSelectorVisible, setTagSelectorVisible] = useState(false);
+  const [bookmarkGalleryVisible, setBookmarkGalleryVisible] = useState(false);
+  const [newBookmark, setNewBookmark] = useState<Bookmark | null>(null);
   const currentPost = posts.find(p => p.id === post.id) || post;
+
+  const { addBookmark } = useBookmarkStore();
 
   // Use the PostListService
   const service = usePostListService(user);
@@ -143,6 +149,18 @@ export default function PostListItem({
       handleRepostWithContext();
     } else {
       setTagSelectorVisible(true);
+    }
+  };
+
+  const handleBookmark = async () => {
+    try {
+      const bookmark = await addBookmark(post.id);
+      setNewBookmark(bookmark);
+      setBookmarkGalleryVisible(true);
+      showToast('Post bookmarked!', 'success');
+    } catch (error) {
+      console.error("Bookmark failed:", error);
+      showToast("Failed to bookmark post", 'error');
     }
   };
 
@@ -274,6 +292,7 @@ export default function PostListItem({
           }))} 
           postId={currentPost.id}
           postContent={currentPost.caption}
+          post={currentPost}
         />
       )}
 
@@ -306,7 +325,7 @@ export default function PostListItem({
         onDeleteReaction={() => service.deletePostReaction(post.id)}
         onRepost={onRepostPress}
         onShare={() => openModal('share', { post: currentPost })}
-        onBookmark={() => onBookmark(post.id)}
+        onBookmark={handleBookmark}
         onCommentPress={() => service.setShowComments(!service.showComments)}
         currentReactingItem={service.currentReactingItem}
         setCurrentReactingItem={service.setCurrentReactingItem}
@@ -428,6 +447,12 @@ export default function PostListItem({
         postId={post.id}
         onClose={() => service.setReportVisible(false)}
         onReportSubmitted={service.handleReportSubmitted}
+      />
+
+      <BookmarkGallery
+        visible={bookmarkGalleryVisible}
+        onClose={() => setBookmarkGalleryVisible(false)}
+        initialBookmark={newBookmark}
       />
     </Pressable>
   );

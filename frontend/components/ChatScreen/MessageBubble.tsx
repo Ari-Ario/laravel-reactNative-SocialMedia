@@ -829,6 +829,21 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         {renderMediaCollection()}
 
         <BlurView intensity={30} tint="light" style={styles.sharedPostFooter}>
+           {metadata.curator_context || metadata.curator_note ? (
+             <View style={styles.curatorPerspective}>
+               <View style={styles.curatorHeader}>
+                 <Ionicons name="sparkles" size={12} color="#766dfc" />
+                 <Text style={styles.curatorLabel}>CURATOR PERSPECTIVE</Text>
+               </View>
+               {metadata.curator_context && (
+                 <Text style={styles.curatorTag}>{metadata.curator_context}</Text>
+               )}
+               {metadata.curator_note && (
+                 <Text style={styles.curatorNote}>"{metadata.curator_note}"</Text>
+               )}
+               <View style={styles.curatorDivider} />
+             </View>
+           ) : null}
            <Text style={styles.sharedPostCaption} numberOfLines={2}>
               <Text style={styles.sharedPostCreatorLabel}>{creatorName} </Text>
               {caption}
@@ -1382,6 +1397,38 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#8E8E93',
     fontWeight: '500',
+  },
+  curatorPerspective: {
+    marginBottom: 10,
+  },
+  curatorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  curatorLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#766dfc',
+    letterSpacing: 0.5,
+  },
+  curatorTag: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1C1C1E',
+    marginBottom: 2,
+  },
+  curatorNote: {
+    fontSize: 13,
+    color: '#3A3A3C',
+    fontStyle: 'italic',
+    lineHeight: 18,
+  },
+  curatorDivider: {
+    height: 1,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    marginTop: 8,
   },
   /* ── Reply Header Styles ── */
   replyHeaderContainer: {

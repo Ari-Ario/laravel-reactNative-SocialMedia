@@ -93,7 +93,9 @@ Route::group(["middleware" => ["auth:sanctum"]], function () {
 
         Route::post('/posts/{post}/repost', [PostController::class , 'repost']);
         Route::post('/posts/{post}/share', [PostController::class , 'share']);
+        Route::get('/bookmarks', [PostController::class , 'getBookmarks']);
         Route::post('/posts/{post}/bookmark', [PostController::class , 'bookmark']);
+        Route::put('/bookmarks/{id}', [PostController::class , 'updateBookmark']);
         Route::delete('/posts/{post}/media/{media}', [PostController::class , 'deleteMedia']);
         // Single Post fetch
         Route::get('/posts/{id}', [PostController::class , 'showPost']);

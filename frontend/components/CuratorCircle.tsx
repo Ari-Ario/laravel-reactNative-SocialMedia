@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, Modal, FlatList, Dimensions } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Modal, FlatList, Dimensions, ActivityIndicator } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { MotiView } from 'moti';
@@ -9,6 +9,8 @@ import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { useCollaborationStore } from '@/stores/collaborationStore';
 import { useToastStore } from '@/stores/toastStore';
+import { useProfileView } from '@/context/ProfileViewContext';
+import { useModal } from '@/context/ModalContext';
 import { createShadow } from '@/utils/styles';
 
 const { width } = Dimensions.get('window');
@@ -26,50 +28,42 @@ interface CuratorCircleProps {
   reposters: Reposter[];
   postId: number;
   postContent?: string;
+  post?: any;
 }
 
-export const CuratorCircle = ({ reposters, postId, postContent }: CuratorCircleProps) => {
+export const CuratorCircle = ({ reposters, postId, postContent, post }: CuratorCircleProps) => {
   const router = useRouter();
   const { user: currentUser } = useContext(AuthContext);
   const { showToast } = useToastStore();
+  const { openModal } = useModal();
+  const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
   const [showGallery, setShowGallery] = useState(false);
-  const [selectedReposter, setSelectedReposter] = useState<Reposter | null>(null);
+  const [sendingTo, setSendingTo] = useState<number | null>(null);
 
   if (!reposters || reposters.length === 0) return null;
 
+  const handleOpenProfile = (reposterId: number) => {
+    setShowGallery(false);
+    setProfileViewUserId(reposterId.toString());
+    setProfilePreviewVisible(true);
+  };
+
   const handleMessage = async (reposter: Reposter) => {
     if (!currentUser) return;
-    
+
     // Check privacy
-    const userToMessage = (reposter as any); 
+    const userToMessage = reposter as any;
     if (userToMessage.is_private && !userToMessage.is_following) {
       showToast("This profile is private", "error");
       return;
     }
 
-    try {
-      const collaborationService = CollaborationService.getInstance();
-      const directSpace = await collaborationService.getOrCreateDirectSpace(reposter.id);
-      const spaceId = directSpace?.space?.id || directSpace?.id;
-
-      if (spaceId) {
-        // Refresh spaces to ensure it shows up in chat list
-        useCollaborationStore.getState().fetchUserSpaces(Number(currentUser.id));
-        
-        setSelectedReposter(null);
-        setShowGallery(false);
-        router.push(`/(tabs)/chat/${spaceId}`);
-      }
-    } catch (error) {
-      console.error("Failed to start conversation:", error);
-      showToast("Could not start conversation", "error");
-    }
-  };
-
-  const handleVisitProfile = (reposterId: number) => {
-    setSelectedReposter(null);
+    // Instead of creating space immediately, open the share modal pre-filled with this recipient
     setShowGallery(false);
-    router.push(`/(profile)/${reposterId}`);
+    openModal('share', { 
+      post, 
+      initialRecipient: reposter 
+    });
   };
 
   const getInitials = (name: string) => {
@@ -92,18 +86,9 @@ export const CuratorCircle = ({ reposters, postId, postContent }: CuratorCircleP
   const getTagColor = (tag?: string) => {
     if (!tag) return '#666';
     const tagMap: Record<string, string> = {
-      '🔥': '#FF6B6B',
-      '💡': '#4ECDC4',
-      '🎯': '#45B7D1',
-      '📚': '#96CEB4',
-      '🎨': '#FFEAA7',
-      '🤔': '#D4A5A5',
-      '⚡': '#FF6CCB',
-      '💎': '#845EC2',
-      '❤️': '#FF4040',
-      '🎉': '#FFD93D',
-      '🎬': '#6C5CE7',
-      '🎵': '#A8E6CF',
+      '🔥': '#FF6B6B', '💡': '#4ECDC4', '🎯': '#45B7D1', '📚': '#96CEB4',
+      '🎨': '#FFEAA7', '🤔': '#D4A5A5', '⚡': '#FF6CCB', '💎': '#845EC2',
+      '❤️': '#FF4040', '🎉': '#FFD93D', '🎬': '#6C5CE7', '🎵': '#A8E6CF',
     };
     const emoji = tag?.split(' ')[0];
     return tagMap[emoji || ''] || '#666';
@@ -118,7 +103,7 @@ export const CuratorCircle = ({ reposters, postId, postContent }: CuratorCircleP
     >
       <TouchableOpacity
         activeOpacity={0.7}
-        onPress={() => setSelectedReposter(reposter)}
+        onPress={() => handleOpenProfile(reposter.id)}
         style={styles.cardTouchable}
       >
         <View style={styles.cardHeader}>
@@ -141,6 +126,22 @@ export const CuratorCircle = ({ reposters, postId, postContent }: CuratorCircleP
               {reposter.context_tag || '📌 Shared'}
             </Text>
           </View>
+
+          {/* Message button */}
+          <TouchableOpacity
+            style={styles.messageButton}
+            onPress={(e) => {
+              e.stopPropagation();
+              handleMessage(reposter);
+            }}
+            disabled={sendingTo === reposter.id}
+          >
+            {sendingTo === reposter.id ? (
+              <ActivityIndicator size="small" color="#0084ff" />
+            ) : (
+              <Ionicons name="chatbubble-outline" size={20} color="#0084ff" />
+            )}
+          </TouchableOpacity>
         </View>
 
         {reposter.personal_note && (
@@ -157,96 +158,6 @@ export const CuratorCircle = ({ reposters, postId, postContent }: CuratorCircleP
     </MotiView>
   );
 
-  const DetailModal = () => (
-    <Modal
-      visible={!!selectedReposter}
-      transparent
-      animationType="fade"
-      onRequestClose={() => setSelectedReposter(null)}
-    >
-      <BlurView intensity={90} tint="dark" style={styles.modalOverlay}>
-        <TouchableOpacity
-          style={styles.modalCloseArea}
-          activeOpacity={1}
-          onPress={() => setSelectedReposter(null)}
-        />
-
-        <MotiView
-          from={{ opacity: 0, translateY: 50 }}
-          animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: 'spring', damping: 15 }}
-          style={styles.modalContent}
-        >
-          {selectedReposter && (
-            <>
-              <TouchableOpacity
-                style={styles.modalCloseButton}
-                onPress={() => setSelectedReposter(null)}
-              >
-                <Ionicons name="close" size={24} color="#fff" />
-              </TouchableOpacity>
-
-              <View style={styles.modalHeader}>
-                {selectedReposter.profile_photo ? (
-                  <Image
-                    source={{ uri: `${getApiBaseImage()}/storage/${selectedReposter.profile_photo}` }}
-                    style={styles.modalAvatar}
-                  />
-                ) : (
-                  <View style={[styles.modalAvatar, styles.modalAvatarPlaceholder]}>
-                    <Text style={styles.modalAvatarInitials}>
-                      {getInitials(selectedReposter.name)}
-                    </Text>
-                  </View>
-                )}
-
-                <View style={styles.modalNameSection}>
-                  <Text style={styles.modalName}>{selectedReposter.name}</Text>
-                  <Text style={styles.modalTime}>{formatDate(selectedReposter.created_at)}</Text>
-                </View>
-              </View>
-
-              {selectedReposter.context_tag && (
-                <View style={[styles.modalTag, { backgroundColor: getTagColor(selectedReposter.context_tag) + '20' }]}>
-                  <Text style={[styles.modalTagText, { color: getTagColor(selectedReposter.context_tag) }]}>
-                    {selectedReposter.context_tag}
-                  </Text>
-                </View>
-              )}
-
-              {selectedReposter.personal_note ? (
-                <View style={styles.modalNote}>
-                  <Text style={styles.modalNoteLabel}>Why they shared:</Text>
-                  <Text style={styles.modalNoteText}>"{selectedReposter.personal_note}"</Text>
-                </View>
-              ) : (
-                <Text style={styles.modalNoNote}>No additional context provided</Text>
-              )}
-
-              <View style={styles.modalActions}>
-                <TouchableOpacity 
-                  style={styles.modalAction}
-                  onPress={() => handleMessage(selectedReposter)}
-                >
-                  <Ionicons name="chatbubble-outline" size={20} color="#fff" />
-                  <Text style={styles.modalActionText}>Message</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={styles.modalAction}
-                  onPress={() => handleVisitProfile(selectedReposter.id)}
-                >
-                  <Ionicons name="person-outline" size={20} color="#fff" />
-                  <Text style={styles.modalActionText}>Profile</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
-        </MotiView>
-      </BlurView>
-    </Modal>
-  );
-
   return (
     <>
       <TouchableOpacity
@@ -259,22 +170,13 @@ export const CuratorCircle = ({ reposters, postId, postContent }: CuratorCircleP
           <MotiView 
             from={{ scale: 0.5, opacity: 0.5 }}
             animate={{ scale: 2, opacity: 0 }}
-            transition={{
-              loop: true,
-              duration: 2000,
-              type: 'timing',
-            }}
+            transition={{ loop: true, duration: 2000, type: 'timing' }}
             style={styles.ripple} 
           />
           <MotiView 
             from={{ scale: 0.5, opacity: 0.5 }}
             animate={{ scale: 2, opacity: 0 }}
-            transition={{
-              loop: true,
-              duration: 2000,
-              delay: 1000,
-              type: 'timing',
-            }}
+            transition={{ loop: true, duration: 2000, delay: 1000, type: 'timing' }}
             style={styles.ripple} 
           />
         </View>
@@ -282,7 +184,7 @@ export const CuratorCircle = ({ reposters, postId, postContent }: CuratorCircleP
         {/* Stacked Avatars */}
         <View style={styles.avatarStack}>
           {reposters.slice(0, 4).map((reposter, index) => {
-            const rotation = (index - 2) * 3; // Creates slight rotation for depth
+            const rotation = (index - 2) * 3;
             return (
               <MotiView
                 key={`${reposter.id}-${index}`}
@@ -320,7 +222,7 @@ export const CuratorCircle = ({ reposters, postId, postContent }: CuratorCircleP
           )}
         </View>
 
-        {/* Context Text with Glowing Effect */}
+        {/* Context Text */}
         <View style={styles.textContainer}>
           <Text style={styles.circleText} numberOfLines={1}>
             <Text style={styles.boldText}>{reposters[0].name}</Text>
@@ -337,7 +239,7 @@ export const CuratorCircle = ({ reposters, postId, postContent }: CuratorCircleP
         </View>
       </TouchableOpacity>
 
-      {/* Gallery Modal */}
+      {/* Gallery Modal - scrollable list of reposters */}
       <Modal
         visible={showGallery}
         transparent
@@ -354,8 +256,8 @@ export const CuratorCircle = ({ reposters, postId, postContent }: CuratorCircleP
 
           <FlatList
             data={reposters}
-            keyExtractor={(item, index) => `${item.id}-${index}`}
-            renderItem={({ item, index }) => <ReposterCard reposter={item} index={index} />}
+            keyExtractor={(item: Reposter, index: number) => `${item.id}-${index}`}
+            renderItem={({ item, index }: { item: Reposter; index: number }) => <ReposterCard reposter={item} index={index} />}
             contentContainerStyle={styles.galleryList}
             showsVerticalScrollIndicator={false}
           />
@@ -369,8 +271,6 @@ export const CuratorCircle = ({ reposters, postId, postContent }: CuratorCircleP
           )}
         </BlurView>
       </Modal>
-
-      <DetailModal />
     </>
   );
 };
@@ -393,17 +293,13 @@ const styles = StyleSheet.create({
   },
   rippleContainer: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    top: 0, left: 0, right: 0, bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
   },
   ripple: {
     position: 'absolute',
-    width: 100,
-    height: 100,
+    width: 100, height: 100,
     borderRadius: 50,
     backgroundColor: 'rgba(0, 132, 255, 0.1)',
   },
@@ -416,18 +312,10 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 2,
     borderColor: '#fff',
-    ...createShadow({
-      width: 0,
-      height: 2,
-      opacity: 0.2,
-      radius: 4,
-      elevation: 3,
-    }),
+    ...createShadow({ width: 0, height: 2, opacity: 0.2, radius: 4, elevation: 3 }),
   },
   stackAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 36, height: 36, borderRadius: 18,
   },
   avatarPlaceholderSmall: {
     backgroundColor: '#f0f0f0',
@@ -435,46 +323,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarInitialsSmall: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#666',
+    fontSize: 12, fontWeight: '600', color: '#666',
   },
   moreBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 36, height: 36, borderRadius: 18,
     backgroundColor: '#0084ff',
     justifyContent: 'center',
     alignItems: 'center',
   },
   moreText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#fff',
+    fontSize: 12, fontWeight: '700', color: '#fff',
   },
-  textContainer: {
-    flex: 1,
-  },
-  circleText: {
-    fontSize: 13,
-    color: '#444',
-  },
-  boldText: {
-    fontWeight: '700',
-    color: '#1a1a1a',
-  },
-  circleSubtext: {
-    fontSize: 11,
-    color: '#666',
-    marginTop: 2,
-  },
-  chevronContainer: {
-    marginLeft: 8,
-  },
-  galleryOverlay: {
-    flex: 1,
-    paddingTop: 50,
-  },
+  textContainer: { flex: 1 },
+  circleText: { fontSize: 13, color: '#444' },
+  boldText: { fontWeight: '700', color: '#1a1a1a' },
+  circleSubtext: { fontSize: 11, color: '#666', marginTop: 2 },
+  chevronContainer: { marginLeft: 8 },
+  galleryOverlay: { flex: 1, paddingTop: 50 },
   galleryHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -483,9 +348,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   galleryTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#fff',
+    fontSize: 24, fontWeight: '700', color: '#fff',
   },
   galleryList: {
     paddingHorizontal: 16,
@@ -495,27 +358,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.95)',
     borderRadius: 16,
     marginBottom: 12,
-    ...createShadow({
-      width: 0,
-      height: 4,
-      opacity: 0.2,
-      radius: 8,
-      elevation: 5,
-    }),
+    ...createShadow({ width: 0, height: 4, opacity: 0.2, radius: 8, elevation: 5 }),
   },
-  cardTouchable: {
-    padding: 16,
-  },
+  cardTouchable: { padding: 16 },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
   },
   cardAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    marginRight: 12,
+    width: 44, height: 44, borderRadius: 22, marginRight: 12,
   },
   avatarPlaceholder: {
     backgroundColor: '#f0f0f0',
@@ -523,191 +375,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarInitials: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#666',
+    fontSize: 16, fontWeight: '600', color: '#666',
   },
-  cardInfo: {
-    flex: 1,
-  },
-  cardName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1a1a1a',
-  },
-  cardTime: {
-    fontSize: 11,
-    color: '#666',
-    marginTop: 2,
-  },
+  cardInfo: { flex: 1 },
+  cardName: { fontSize: 15, fontWeight: '700', color: '#1a1a1a' },
+  cardTime: { fontSize: 11, color: '#666', marginTop: 2 },
   tagPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, marginRight: 8,
   },
-  tagText: {
-    fontSize: 11,
-    fontWeight: '600',
+  tagText: { fontSize: 11, fontWeight: '600' },
+  messageButton: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(0, 132, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   noteContainer: {
     backgroundColor: '#f5f5f5',
-    borderRadius: 12,
-    padding: 12,
-    position: 'relative',
+    borderRadius: 12, padding: 12, position: 'relative',
   },
-  quoteMark: {
-    position: 'absolute',
-    top: 4,
-    left: 8,
-  },
-  quoteText: {
-    fontSize: 24,
-    color: '#999',
-    fontWeight: '700',
-  },
-  noteText: {
-    fontSize: 13,
-    color: '#333',
-    marginLeft: 12,
-    lineHeight: 18,
-  },
+  quoteMark: { position: 'absolute', top: 4, left: 8 },
+  quoteText: { fontSize: 24, color: '#999', fontWeight: '700' },
+  noteText: { fontSize: 13, color: '#333', marginLeft: 12, lineHeight: 18 },
   previewBar: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    bottom: 0, left: 0, right: 0,
     backgroundColor: 'rgba(0,0,0,0.8)',
     padding: 16,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.1)',
   },
-  previewText: {
-    color: '#fff',
-    fontSize: 13,
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalCloseArea: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  modalContent: {
-    backgroundColor: 'rgba(30,30,40,0.95)',
-    borderRadius: 24,
-    padding: 24,
-    width: width - 40,
-    maxWidth: 400,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    ...createShadow({
-      width: 0,
-      height: 10,
-      opacity: 0.3,
-      radius: 20,
-      elevation: 10,
-    }),
-  },
-  modalCloseButton: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    zIndex: 1,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  modalAvatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    marginRight: 16,
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  modalAvatarPlaceholder: {
-    backgroundColor: '#444',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalAvatarInitials: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  modalNameSection: {
-    flex: 1,
-  },
-  modalName: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  modalTime: {
-    fontSize: 12,
-    color: '#aaa',
-  },
-  modalTag: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginBottom: 16,
-  },
-  modalTagText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  modalNote: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-  },
-  modalNoteLabel: {
-    fontSize: 12,
-    color: '#aaa',
-    marginBottom: 6,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  modalNoteText: {
-    fontSize: 16,
-    color: '#fff',
-    lineHeight: 22,
-    fontStyle: 'italic',
-  },
-  modalNoNote: {
-    fontSize: 14,
-    color: '#aaa',
-    fontStyle: 'italic',
-    textAlign: 'center',
-    marginVertical: 20,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.1)',
-    paddingTop: 20,
-  },
-  modalAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  modalActionText: {
-    fontSize: 14,
-    color: '#fff',
-    fontWeight: '500',
-  },
+  previewText: { color: '#fff', fontSize: 13 },
 });

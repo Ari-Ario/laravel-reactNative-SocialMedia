@@ -25,6 +25,7 @@ import PlatformCameraView from '@/components/PlatformCameraView';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { loadUser } from '@/services/AuthService';
 import { router } from 'expo-router';
+import { BookmarkGallery } from '@/components/BookmarkGallery';
 
 const Page = () => {
   const { user, setUser } = useContext(AuthContext);
@@ -32,6 +33,7 @@ const Page = () => {
   const [editNameVisible, setEditNameVisible] = useState(false);
   const [newName, setNewName] = useState(user?.name || '');
   const [saving, setSaving] = useState(false);
+  const [bookmarkGalleryVisible, setBookmarkGalleryVisible] = useState(false);
 
 
 
@@ -40,6 +42,7 @@ const Page = () => {
   const cameraRef = useRef<any>(null);
 
   const devices = [
+    { name: 'Bookmarks', icon: 'bookmark', backgroundColor: '#33A5D1' },
     { name: 'Broadcast Lists', icon: 'megaphone', backgroundColor: '#25D366' },
     { name: 'Starred Messages', icon: 'star', backgroundColor: '#FFD700' },
     { name: 'Linked Devices', icon: 'laptop-outline', backgroundColor: '#25D366' },
@@ -72,11 +75,18 @@ const Page = () => {
   };
 
   const renderListItem = ({ item }: any) => (
-    <View style={styles.item}>
+    <TouchableOpacity 
+      style={styles.item} 
+      onPress={() => {
+        if (item.name === 'Bookmarks') {
+          setBookmarkGalleryVisible(true);
+        }
+      }}
+    >
       <BoxedIcon name={item.icon} backgroundColor={item.backgroundColor} />
       <Text style={styles.itemText}>{item.name}</Text>
       <Ionicons name="chevron-forward" size={20} color={'grey'} />
-    </View>
+    </TouchableOpacity>
   );
 
   const handleChoosePhoto = async () => {
@@ -394,6 +404,11 @@ const Page = () => {
           <Text style={styles.logout}>Log Out</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <BookmarkGallery
+        visible={bookmarkGalleryVisible}
+        onClose={() => setBookmarkGalleryVisible(false)}
+      />
     </View>
   );
 };

@@ -20,20 +20,7 @@ import { createShadow } from '@/utils/styles';
 
 const { width } = Dimensions.get('window');
 
-const CONTEXT_TAGS = [
-  { emoji: "🔥", label: "Hot", fullLabel: "Hot Take", color: "#FF6B6B" },
-  { emoji: "💡", label: "Idea", fullLabel: "Mind Blown", color: "#4ECDC4" },
-  { emoji: "🎯", label: "Truth", fullLabel: "On Point", color: "#45B7D1" },
-  { emoji: "📚", label: "Read", fullLabel: "Must Read", color: "#96CEB4" },
-  { emoji: "🎨", label: "Art", fullLabel: "Creative Inspo", color: "#FFEAA7" },
-  { emoji: "🤔", label: "Deep", fullLabel: "Deep Thought", color: "#D4A5A5" },
-  { emoji: "⚡", label: "Urgent", fullLabel: "Urgent", color: "#FF6CCB" },
-  { emoji: "💎", label: "Gem", fullLabel: "Hidden Gem", color: "#845EC2" },
-  { emoji: "❤️", label: "Love", fullLabel: "Absolutely Love", color: "#FF4040" },
-  { emoji: "🎉", label: "Win", fullLabel: "Big Win", color: "#FFD93D" },
-  { emoji: "🎬", label: "Watch", fullLabel: "Must Watch", color: "#6C5CE7" },
-  { emoji: "🎵", label: "Vibe", fullLabel: "Perfect Vibe", color: "#A8E6CF" },
-];
+
 
 interface ContextTagSelectorProps {
   visible: boolean;
@@ -244,10 +231,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginBottom: 4,
   },
-  subtitle: {
-    fontSize: 13,
-    color: '#aaa',
-  },
+
   closeButton: {
     padding: 4,
   },
@@ -257,14 +241,7 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 20,
   },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#aaa',
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
+
   tagInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -309,34 +286,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     padding: 4,
   },
-  labelHint: {
-    fontSize: 11,
-    color: '#766dfc',
-    marginTop: 2,
-  },
-  presetsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
-  },
-  presetItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: 1,
-    gap: 6,
-  },
-  presetEmoji: {
-    fontSize: 14,
-  },
-  presetLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
+
   separator: {
     height: 1,
     backgroundColor: 'rgba(255,255,255,0.1)',
@@ -365,22 +315,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#666',
   },
-  suggestionsContainer: {
-    flexDirection: 'row',
-  },
-  suggestionChip: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 25,
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  suggestionText: {
-    color: '#fff',
-    fontSize: 13,
-  },
+
   actionContainer: {
     marginTop: 10,
   },

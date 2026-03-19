@@ -23,6 +23,9 @@ import Avatar from '@/components/Image/Avatar';
 import * as Haptics from 'expo-haptics';
 import { createShadow } from '@/utils/styles';
 import { BlurView } from 'expo-blur';
+import { useToastStore } from '@/stores/toastStore';
+import AuthContext from '@/context/AuthContext';
+import { useContext } from 'react';
 
 interface PostShareModalProps {
   visible: boolean;
@@ -30,9 +33,19 @@ interface PostShareModalProps {
   post?: any;
   story?: any;
   location?: any;
+  initialRecipient?: {
+    id: number;
+    name: string;
+    profile_photo: string | null;
+    is_private?: boolean;
+    is_following?: boolean;
+    context_tag?: string;
+    personal_note?: string;
+  };
 }
 
-export default function PostShareModal({ visible, onClose, post, story, location }: PostShareModalProps) {
+export default function PostShareModal({ visible, onClose, post, story, location, initialRecipient }: PostShareModalProps) {
+  const { user: currentUser } = useContext(AuthContext);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState<string | null>(null); // spaceId if sending
   const [additionalMessage, setAdditionalMessage] = useState('');
@@ -54,8 +67,78 @@ export default function PostShareModal({ visible, onClose, post, story, location
     });
   }, [spaces, searchQuery]);
 
+  // Merge spaces with initialRecipient suggestion
+  const displaySpaces = useMemo(() => {
+    let result: any[] = [...filteredSpaces];
+    
+    if (initialRecipient && !searchQuery) {
+      // Check if space already exists for this recipient
+      const existingSpace = spaces.find(s => 
+        (s.space_type === 'direct' || s.space_type === 'chat') && 
+        s.other_participant?.id === initialRecipient.id
+      );
+
+      if (existingSpace) {
+        // Move to top
+        result = [existingSpace, ...result.filter(s => s.id !== existingSpace.id)];
+      } else {
+        // Add a virtual space representative for this recipient
+        const virtualSpace = {
+          id: `virtual-${initialRecipient.id}`,
+          title: initialRecipient.name,
+          space_type: 'direct',
+          other_participant: {
+             id: initialRecipient.id,
+             name: initialRecipient.name,
+             profile_photo: initialRecipient.profile_photo,
+             is_private: initialRecipient.is_private,
+             is_following: initialRecipient.is_following
+          },
+          is_virtual: true
+        } as any;
+        result = [virtualSpace, ...result];
+      }
+    }
+    return result;
+  }, [filteredSpaces, initialRecipient, spaces, searchQuery]);
+
   const handleSendInternal = useCallback(async (spaceId: string) => {
     if (loading) return;
+    
+    let targetSpaceId = spaceId;
+
+    // Handle virtual space creation
+    if (targetSpaceId.startsWith('virtual-')) {
+      const realUserId = Number(targetSpaceId.replace('virtual-', ''));
+      setLoading(spaceId);
+
+      // Final privacy check before creating space
+      if (initialRecipient && initialRecipient.is_private && !initialRecipient.is_following) {
+         useToastStore.getState().showToast("This profile is private", "error");
+         setLoading(null);
+         return;
+      }
+
+      try {
+        const collaborationService = CollaborationService.getInstance();
+        const directSpace = await collaborationService.getOrCreateDirectSpace(realUserId);
+        const newSpaceId = directSpace?.space?.id || directSpace?.id;
+        
+        if (!newSpaceId) throw new Error("Could not create space");
+        
+        targetSpaceId = newSpaceId.toString();
+        // Refresh store to include new space
+        if (currentUser) {
+           useCollaborationStore.getState().fetchUserSpaces(Number(currentUser.id));
+        }
+      } catch (err) {
+        console.error("Space creation failed", err);
+        useToastStore.getState().showToast("Failed to start conversation", "error");
+        setLoading(null);
+        return;
+      }
+    }
+
     setLoading(spaceId);
 
     try {
@@ -110,12 +193,14 @@ export default function PostShareModal({ visible, onClose, post, story, location
           caption: isLocation ? undefined : (isStory ? story.caption : post.caption),
           is_internal_share: true,
           post_url: shareUrl,
-          appended_message: additionalMessage.trim() || undefined
+          appended_message: additionalMessage.trim() || undefined,
+          curator_context: initialRecipient?.context_tag,
+          curator_note: initialRecipient?.personal_note,
         };
       }
 
       // 1. Send the bundled share message
-      await collaborationService.sendMessage(spaceId, {
+      await collaborationService.sendMessage(targetSpaceId, {
         content,
         type: type as any,
         metadata
@@ -126,7 +211,7 @@ export default function PostShareModal({ visible, onClose, post, story, location
       }
       
       // Track that we've shared to this space in this session
-      setSharedSpaces(prev => new Set(prev).add(spaceId));
+      setSharedSpaces(prev => new Set(prev).add(spaceId).add(targetSpaceId));
       // Modal stays open for more shares
     } catch (error) {
       console.error('Error sharing to space:', error);
@@ -136,7 +221,7 @@ export default function PostShareModal({ visible, onClose, post, story, location
     } finally {
       setLoading(null);
     }
-  }, [post, story, location, loading, additionalMessage]);
+  }, [post, story, location, loading, additionalMessage, initialRecipient]);
 
   const handleExternalShare = async () => {
     try {
@@ -339,7 +424,7 @@ export default function PostShareModal({ visible, onClose, post, story, location
           </View>
 
           <FlatList
-            data={filteredSpaces}
+            data={displaySpaces}
             renderItem={renderItem}
             keyExtractor={item => item.id.toString()}
             contentContainerStyle={styles.listContent}

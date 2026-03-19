@@ -15,6 +15,7 @@ import { useCollaborationStore } from '@/stores/collaborationStore';
 import { logout } from '@/services/AuthService';
 import { getToken } from '@/services/TokenService';
 import { NotificationToast } from '@/components/Notifications/NotificationToast';
+import { Toast } from '@/components/Shared/Toast';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -157,6 +158,8 @@ export default function TabLayout() {
             onHide={handleHideToast}
             visible={!!currentToast}
           />
+
+          <Toast />
 
           <Tabs
             screenOptions={{
