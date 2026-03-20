@@ -24,8 +24,9 @@ import * as ImagePicker from 'expo-image-picker';
 import PlatformCameraView from '@/components/PlatformCameraView';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { loadUser } from '@/services/AuthService';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { BookmarkGallery } from '@/components/BookmarkGallery';
+import ModerationComplianceModal from '@/components/ModerationComplianceModal';
 import { GlobalStyles } from '@/styles/GlobalStyles';
 
 const Page = () => {
@@ -35,6 +36,15 @@ const Page = () => {
   const [newName, setNewName] = useState(user?.name || '');
   const [saving, setSaving] = useState(false);
   const [bookmarkGalleryVisible, setBookmarkGalleryVisible] = useState(false);
+  const [adminPanelVisible, setAdminPanelVisible] = useState(false);
+  const [complianceVisible, setComplianceVisible] = useState(false);
+  const params = useLocalSearchParams();
+
+  useEffect(() => {
+    if (params.openAdminPanel === 'true') {
+      router.push('/moderation');
+    }
+  }, [params.openAdminPanel]);
 
 
 
@@ -81,6 +91,10 @@ const Page = () => {
       onPress={() => {
         if (item.name === 'Bookmarks') {
           setBookmarkGalleryVisible(true);
+        } else if (item.name === 'Admin Panel') {
+          router.push('/moderation');
+        } else if (item.name === 'AI Safety Status') {
+          setComplianceVisible(true);
         }
       }}
     >
@@ -401,6 +415,30 @@ const Page = () => {
             renderItem={renderListItem}
           />
         </View>
+        <View style={styles.block}>
+          <FlatList
+            data={[
+              { name: 'Bookmarks', icon: 'bookmark', backgroundColor: '#FFD700' },
+              { name: 'AI Safety Status', icon: 'shield-checkmark', backgroundColor: '#4CAF50' }
+            ]}
+            keyExtractor={(item) => item.name}
+            scrollEnabled={false}
+            renderItem={renderListItem}
+          />
+        </View>
+
+        {user?.is_admin && (
+          <View style={styles.block}>
+            <FlatList
+              data={[
+                { name: 'Admin Panel', icon: 'shield-half', backgroundColor: '#F44336' }
+              ]}
+              keyExtractor={(item) => item.name}
+              scrollEnabled={false}
+              renderItem={renderListItem}
+            />
+          </View>
+        )}
 
         <TouchableOpacity onPress={handleLogout}>
           <Text style={styles.logout}>Log Out</Text>
@@ -411,6 +449,12 @@ const Page = () => {
         visible={bookmarkGalleryVisible}
         onClose={() => setBookmarkGalleryVisible(false)}
         isSettings={true}
+      />
+
+
+      <ModerationComplianceModal
+        visible={complianceVisible}
+        onClose={() => setComplianceVisible(false)}
       />
     </View>
   );
@@ -558,7 +602,7 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     minWidth: 350,
-    width: 500,
+    width: '100%',
     ...(Platform.OS === 'ios' && {
       minWidth: '100%',
       width: 'auto'

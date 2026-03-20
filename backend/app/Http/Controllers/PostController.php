@@ -11,6 +11,8 @@ use App\Models\Bookmark;
 use App\Models\Media;
 use App\Models\Follower;
 use App\Models\User;
+use App\Models\ModerationCheck;
+use App\Services\ModerationEngine;
 
 use Pusher\Pusher;
 use Illuminate\Http\Request;
@@ -231,6 +233,10 @@ class PostController extends Controller
             }
         }
         
+        // 1. AI Moderation Check (Shadow Check)
+        $moderationEngine = app(ModerationEngine::class);
+        $moderationEngine->analyzeContent($post->caption ?? '', 'post', $post->id);
+        
         // Load the post with relationships before broadcasting
         $post->load('user', 'media');
         
@@ -424,6 +430,10 @@ class PostController extends Controller
 
         // Reload the post with fresh relationships
         $updatedPost = $post->fresh()->load('user', 'media');
+
+        // AI Moderation Check on update
+        $moderationEngine = app(ModerationEngine::class);
+        $moderationEngine->analyzeContent($post->caption ?? '', 'post', $post->id);
 
         // Broadcast update event only if there were actual changes
         if (!empty($updatedFields)) {

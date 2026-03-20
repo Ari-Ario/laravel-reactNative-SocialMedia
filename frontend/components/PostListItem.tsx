@@ -202,6 +202,12 @@ export default function PostListItem({
                     <Text style={styles.locationName} numberOfLines={1}>{postLocation.name}</Text>
                   </TouchableOpacity>
                 )}
+                {currentPost.moderation_check?.fact_score > 0.8 && (
+                  <View style={styles.verifiedBadge}>
+                    <Ionicons name="flask" size={10} color="#4CAF50" />
+                    <Text style={styles.verifiedText}>Scientific Context</Text>
+                  </View>
+                )}
               </View>
               <View style={styles.menuContainer}>
                 {post.caption && (
@@ -748,6 +754,21 @@ const styles = StyleSheet.create({
     marginLeft: 5,
     fontSize: 12,
     color: '#666',
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(76, 175, 80, 0.08)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    gap: 4,
+  },
+  verifiedText: {
+    fontSize: 10,
+    color: '#4CAF50',
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
   },
 });
 

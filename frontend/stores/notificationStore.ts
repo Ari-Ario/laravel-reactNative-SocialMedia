@@ -54,6 +54,7 @@ export const NOTIFICATION_TYPES = {
   MAGIC_EVENT: 'magic_event',
   SCREEN_SHARE: 'screen_share',
   ACTIVITY_CREATED: 'activity_created',
+  VIOLATION_REPORTED: 'violation_reported',
 };
 
 // Icon mapping for different notification types
@@ -81,6 +82,7 @@ export const getNotificationIcon = (type: string): string => {
     case NOTIFICATION_TYPES.POST_DELETED: return 'trash-outline';
     case NOTIFICATION_TYPES.NEW_FOLLOWER: return 'person-add-outline';
     case NOTIFICATION_TYPES.CHATBOT_TRAINING: return 'school-outline';
+    case NOTIFICATION_TYPES.VIOLATION_REPORTED: return 'shield-alert-outline';
     default: return 'notifications-outline';
   }
 };
@@ -110,6 +112,7 @@ export const getNotificationColor = (type: string): string => {
     case NOTIFICATION_TYPES.POST_DELETED: return '#FF3B30';
     case NOTIFICATION_TYPES.NEW_FOLLOWER: return '#5856D6';
     case NOTIFICATION_TYPES.CHATBOT_TRAINING: return '#FF2D55';
+    case NOTIFICATION_TYPES.VIOLATION_REPORTED: return '#F44336';
     default: return '#8E8E93';
   }
 };
@@ -664,22 +667,7 @@ export const useNotificationStore = create<NotificationStore>()(
                });
             }
           });
-          // ✅ NEW: Subscribe to private user channel for your custom events
-          PusherService.subscribeToPrivateUser(userId, (notificationData) => {
-            console.log('🔔 PRIVATE CHANNEL EVENT → ADDING TO STORE:', notificationData);
-            get().addNotification(notificationData);
- 
-            // ✅ Bridge to CollaborationStore if it's a space event
-            if (notificationData.spaceId || notificationData.space_id) {
-               require('@/stores/collaborationStore').useCollaborationStore.getState().handleSpaceEvent({
-                 type: notificationData.type || 'new_message',
-                 data: {
-                   ...notificationData,
-                   space_id: (notificationData.space_id || notificationData.spaceId)?.toString()
-                 }
-               });
-            }
-          });
+
           get().fetchMissedNotifications(token, userId);
 
           set({ isConnected: true, currentUserId: userId });
@@ -799,6 +787,19 @@ export const useNotificationStore = create<NotificationStore>()(
                   postId: notifData.postId || reactionData.post_id,
                   userId: reactor.id || reactionData.user_id,
                   avatar: reactor.profile_photo,
+                  data: notifData,
+                };
+              }
+
+              // 5. VIOLATIONS (Admin only)
+              else if (type === 'violation_reported' || type.includes('ViolationReported')) {
+                formattedNotification = {
+                  ...formattedNotification,
+                  type: 'violation_reported',
+                  title: notification.title || '🚨 Violation Alert',
+                  message: notification.message || 'New high-severity violation detected',
+                  severity: notifData.severity,
+                  reportId: notifData.reportId,
                   data: notifData,
                 };
               }

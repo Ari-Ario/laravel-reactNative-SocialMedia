@@ -13,7 +13,7 @@ export interface FeelingData {
 
 export interface Sticker {
   id: string;
-  type: 'text';
+  type: 'text' | 'background';
   text: string;
   x: number;
   y: number;
@@ -25,6 +25,7 @@ export interface Sticker {
   isDragging?: boolean;
   location?: LocationData;
   feeling?: FeelingData;
+  colors?: string[];
 }
 
 export interface GradientPreset {

@@ -30,6 +30,7 @@ import { BlurView } from 'expo-blur';
 import { MotiView, AnimatePresence } from 'moti';
 import EmojiPicker from 'rn-emoji-keyboard';
 import { createStory } from '@/services/StoryService';
+import { useToastStore } from '@/stores/toastStore';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
@@ -88,6 +89,7 @@ interface AddStoryProps {
 }
 
 const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated }) => {
+  const { showToast } = useToastStore();
   const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
   const [micPermission, requestMicPermission] = useMicrophonePermissions();
@@ -257,7 +259,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
         setMedia({ uri: manipulatedImage.uri, type: 'photo' });
       } catch (e) {
         console.error('Photo error:', e);
-        Alert.alert('Error', 'Failed to take photo');
+        showToast('Failed to take photo', 'error');
       }
     }
   };
@@ -297,7 +299,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
         
         if (!isUserAborted) {
           console.error('Recording error:', e);
-          Alert.alert('Error', 'Failed to record video');
+          showToast('Failed to record video', 'error');
         }
       }
     }
@@ -351,7 +353,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
       }
     } catch (error) {
       console.error('Gallery pick error:', error);
-      Alert.alert('Error', 'Failed to pick from gallery');
+      showToast('Failed to pick from gallery', 'error');
     }
   };
 
@@ -521,16 +523,16 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Please allow gallery access to save media.');
+        showToast('Please allow gallery access to save media.', 'info');
         return;
       }
 
       await MediaLibrary.saveToLibraryAsync(media.uri);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Success', 'Media saved to gallery!');
+      showToast('Media saved to gallery!', 'success');
     } catch (error) {
       console.error('Error saving media:', error);
-      Alert.alert('Error', 'Failed to save media.');
+      showToast('Failed to save media.', 'error');
     }
   };
 
@@ -654,9 +656,9 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
       console.error('Error creating story:', error);
       if (error.response?.data) {
         console.error('Validation errors:', error.response.data.errors);
-        Alert.alert('Upload Error', error.response.data.message || 'Validation failed');
+        showToast(error.response.data.message || 'Validation failed', 'error');
       } else {
-        Alert.alert('Error', 'Failed to share story. Please check your connection.');
+        showToast('Failed to share story. Please check your connection.', 'error');
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
@@ -928,7 +930,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
               {/* RENDER STICKERS - Move to top of hierarchy for best touch interception */}
               <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
                 <AnimatePresence>
-                  {stickers.filter(s => s.type !== 'background').map((sticker) => (
+                  {stickers.filter(s => (s.type as string) !== 'background').map((sticker) => (
                     <MotiView
                       key={sticker.id}
                       from={{ opacity: 0, scale: 0.5 }}

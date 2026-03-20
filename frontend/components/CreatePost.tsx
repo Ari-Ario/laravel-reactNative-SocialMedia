@@ -27,6 +27,7 @@ import getApiBaseImage from '@/services/getApiBaseImage';
 import { deletePostMedia, fetchPosts } from '@/services/PostService';
 import { usePostStore } from '@/stores/postStore';
 import { useToastStore } from '@/stores/toastStore';
+import { useModeration } from '@/hooks/useModeration';
 import { MediaCompressor } from '@/utils/mediaCompressor';
 import VideoTrimmer from './Shared/VideoTrimmer';
 import { Post } from '@/services/PostListService';
@@ -91,6 +92,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
   const [longVideosDetected, setLongVideosDetected] = useState<boolean>(false);
 
   const postStore = usePostStore();
+  const { analysis, isChecking, factScore, maliciousScore, isSafe } = useModeration(caption, 'post');
   const isInitialized = useRef(false);
 
   // Initialize with edit data if available
@@ -737,6 +739,47 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
             onChangeText={setCaption}
           />
 
+          {/* AI Shield Feedback */}
+          {caption.length > 5 && (
+            <View style={styles.aiShieldContainer}>
+              <View style={styles.aiShieldHeader}>
+                <Ionicons 
+                  name={isSafe ? "shield-checkmark-outline" : "alert-circle-outline"} 
+                  size={16} 
+                  color={isSafe ? "#4CAF50" : "#F44336"} 
+                />
+                <Text style={[styles.aiShieldTitle, { color: isSafe ? "#4CAF50" : "#F44336" }]}>
+                  AI Shield: {isChecking ? 'Analyzing...' : isSafe ? 'Safe Content' : 'Potential Violation'}
+                </Text>
+              </View>
+              
+              <View style={styles.aiMetricsRow}>
+                <View style={styles.aiMetric}>
+                  <Text style={styles.aiMetricLabel}>Scientific / Factual</Text>
+                  <Text style={[styles.aiMetricValue, { color: factScore > 0.8 ? "#4CAF50" : "#666" }]}>
+                    {(factScore * 100).toFixed(0)}%
+                  </Text>
+                </View>
+                <View style={styles.aiMetric}>
+                  <Text style={styles.aiMetricLabel}>Morality Score</Text>
+                  <Text style={[styles.aiMetricValue, { color: (analysis?.scores.morality ?? 0) > 0.8 ? "#4CAF50" : "#666" }]}>
+                    {((analysis?.scores.morality ?? 0) * 100).toFixed(0)}%
+                  </Text>
+                </View>
+              </View>
+
+              {analysis?.flags && analysis.flags.length > 0 && (
+                <View style={styles.aiFlagsRow}>
+                  {analysis.flags.map(flag => (
+                    <View key={flag} style={styles.aiFlagBadge}>
+                      <Text style={styles.aiFlagText}>{flag.replace('_', ' ')}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
+
           {/* Location Picker */}
           <View style={styles.locationContainer}>
             {location ? (
@@ -1298,5 +1341,56 @@ const styles = StyleSheet.create({
     height: 44,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  aiShieldContainer: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#E1E8ED',
+  },
+  aiShieldHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  aiShieldTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginLeft: 6,
+  },
+  aiMetricsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  aiMetric: {
+    flex: 1,
+  },
+  aiMetricLabel: {
+    fontSize: 10,
+    color: '#657786',
+  },
+  aiMetricValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  aiFlagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  aiFlagBadge: {
+    backgroundColor: '#E1F5FE',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  aiFlagText: {
+    fontSize: 10,
+    color: '#0288D1',
+    fontWeight: '600',
+    textTransform: 'uppercase',
   },
 });

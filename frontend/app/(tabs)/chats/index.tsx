@@ -134,17 +134,17 @@ const ChatPage = () => {
 
   const { user } = useContext(AuthContext);
   const { posts } = usePostStore();
-  
+
   // ✅ Unified Space Store
-  const { 
-    spaces: storeSpaces, 
-    spaceUnreadCounts, 
+  const {
+    spaces: storeSpaces,
+    spaceUnreadCounts,
     fetchUserSpaces: fetchUserSpacesFromStore,
-    customTabs, 
-    createCustomTab, 
-    deleteCustomTab, 
-    renameCustomTab, 
-    setSpacesInTab 
+    customTabs,
+    createCustomTab,
+    deleteCustomTab,
+    renameCustomTab,
+    setSpacesInTab
   } = useCollaborationStore();
 
   const [contacts, setContacts] = useState<Chat[]>([]);

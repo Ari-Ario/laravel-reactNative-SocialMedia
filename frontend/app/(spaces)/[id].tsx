@@ -36,22 +36,23 @@ import ImmersiveCallView from '@/components/ChatScreen/ImmersiveCallView';
 import MediaUploader from '@/services/ChatScreen/MediaUploader';
 import MessageList from '@/components/ChatScreen/MessageList';
 import { useNotificationStore } from '@/stores/notificationStore';
+import { useToastStore } from '@/stores/toastStore';
 import { useCollaborationStore } from '@/stores/collaborationStore';
 import Avatar from '@/components/Image/Avatar';
 import Animated, { FadeIn, FadeOut, SlideOutDown } from 'react-native-reanimated';
 import EnhancedInviteModal from '@/components/ChatScreen/EnhancedInviteModal';
 import PollViewer from '@/components/ChatScreen/PollViewer';
 import PollComponent from '@/components/ChatScreen/PollComponent';
-
-// Import the InviteRecipient type
 import { InviteRecipient } from '@/components/ChatScreen/EnhancedInviteModal';
 import SpaceChatTab from '@/components/ChatScreen/SpaceChatTab';
 import SpaceExportModal from '@/components/ChatScreen/SpaceExportModal';
 import SpaceSettingsModal from '@/components/ChatScreen/SpaceSettingsModal';
 import { createShadow } from '@/utils/styles';
 import WhiteboardCanvas from '@/components/ChatScreen/WhiteboardCanvas';
+import ReportPost from '@/components/ReportPost';
 
 const SpaceDetailScreen = () => {
+  const { showToast } = useToastStore();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useContext(AuthContext);
   const [space, setSpace] = useState<any>(null);
@@ -65,6 +66,7 @@ const SpaceDetailScreen = () => {
   const params = useLocalSearchParams();
   const [showMediaUploader, setShowMediaUploader] = useState(false);
   const [showAIAssistant, setShowAIAssistant] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   // Dropdown menu states
   const [showCallMenu, setShowCallMenu] = useState(false);
@@ -817,7 +819,7 @@ const SpaceDetailScreen = () => {
       subscribeToSpace();
     } catch (error) {
       console.error('Guest join failed:', error);
-      simpleAlert('Error', 'Failed to join as guest');
+      showToast('Failed to join as guest', 'error');
     }
   };
 
@@ -852,7 +854,7 @@ const SpaceDetailScreen = () => {
       subscribeToSpace();
     } catch (error) {
       console.error('Error joining space:', error);
-      simpleAlert('Error', 'Failed to join space. Please try again.');
+      showToast('Failed to join space. Please try again.', 'error');
     } finally {
       setIsJoining(false);
     }
@@ -876,14 +878,10 @@ const SpaceDetailScreen = () => {
         console.log('Would link spaces:', spaceIds);
       }
 
-      Alert.alert(
-        'Success',
-        `Invited ${userIds.length} user(s) to the space${spaceIds.length > 0 ? ` and linked ${spaceIds.length} space(s)` : ''}`,
-        [{ text: 'OK' }]
-      );
+      showToast(`Invited ${userIds.length} user(s) to the space${spaceIds.length > 0 ? ` and linked ${spaceIds.length} space(s)` : ''}`, 'success');
     } catch (error) {
       console.error('Error inviting users:', error);
-      Alert.alert('Error', 'Failed to send some invites. Please try again.');
+      showToast('Failed to send some invites. Please try again.', 'error');
       throw error;
     }
   };
@@ -894,7 +892,7 @@ const SpaceDetailScreen = () => {
       setMagicEvents(prev => prev.map(event =>
         event.id === eventId ? { ...event, has_been_discovered: true } : event
       ));
-      Alert.alert('Magic Discovered!', 'You found a hidden surprise!');
+      showToast('Magic Discovered! You found a hidden surprise!', 'success');
     } catch (error) {
       console.error('Error discovering magic:', error);
     }
@@ -979,14 +977,7 @@ const SpaceDetailScreen = () => {
               }}
               onError={(error) => {
                 console.error('Whiteboard error:', error);
-                Alert.alert(
-                  'Whiteboard Error',
-                  'Something went wrong. Please try again.',
-                  [
-                    { text: 'Retry', onPress: () => { } },
-                    { text: 'Cancel', style: 'cancel' },
-                  ]
-                );
+                showToast('Whiteboard something went wrong. Please try again.', 'error');
               }}
             />
           </View>
@@ -1302,6 +1293,14 @@ const SpaceDetailScreen = () => {
             destructive: true,
             onPress: handleDeleteSpace,
           }] : []),
+          {
+            icon: 'flag-outline' as const,
+            label: 'Report Space',
+            onPress: () => {
+              setShowSpaceMenu(false);
+              setShowReportModal(true);
+            },
+          },
         ]}
       />
 
@@ -1711,6 +1710,19 @@ const SpaceDetailScreen = () => {
         space={space}
         participants={participants}
         polls={polls}
+      />
+
+      {/* Report Modal */}
+      <ReportPost
+        visible={showReportModal}
+        spaceId={id as string}
+        type="space"
+        onClose={() => setShowReportModal(false)}
+        onReportSubmitted={(reportId) => {
+          console.log('Report submitted for space:', reportId);
+          useToastStore.getState().showToast('Report Received: Our AI is analyzing this space.', 'success');
+          setShowReportModal(false);
+        }}
       />
     </SafeAreaView>
   );

@@ -1,9 +1,11 @@
 // components/RenderComments.tsx
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, FlatList } from 'react-native';
+import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, FlatList, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { usePostStore } from '@/stores/postStore';
+import ReportPost from './ReportPost';
+import { useToastStore } from '@/stores/toastStore';
 
 interface RenderCommentsProps {
   user: any;
@@ -35,6 +37,9 @@ const RenderComments = ({
   const { posts } = usePostStore();
   const currentPost = posts.find(p => p.id === postId);
   const comments = currentPost?.comments || [];
+
+  const [showReportModal, setShowReportModal] = React.useState(false);
+  const [reportingCommentId, setReportingCommentId] = React.useState<number | null>(null);
 
   const getGroupedReactionsComments = (comment: any) => {
     const defaultEmojis = ['🤍'];
@@ -93,6 +98,17 @@ const RenderComments = ({
             <Text style={styles.commentUsername}>{item.user.name}</Text>
           </TouchableOpacity>
           <Text style={styles.commentContent}>{item.content}</Text>
+          {!isMyComment && (
+            <TouchableOpacity 
+              style={styles.headerReportButton} 
+              onPress={() => {
+                setReportingCommentId(item.id);
+                setShowReportModal(true);
+              }}
+            >
+              <Ionicons name="flag-outline" size={14} color="#999" />
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.commentButtons}>
@@ -199,6 +215,18 @@ const RenderComments = ({
       keyExtractor={(comment) => comment.id.toString()}
       scrollEnabled={false}
       extraData={comments} // This ensures re-render when comments change
+      ListFooterComponent={
+        <ReportPost
+          visible={showReportModal}
+          targetId={reportingCommentId || 0}
+          type="comment"
+          onClose={() => setShowReportModal(false)}
+          onReportSubmitted={(reportId) => {
+            useToastStore.getState().showToast('Report Submitted: Our AI is reviewing this comment.', 'success');
+            setShowReportModal(false);
+          }}
+        />
+      }
     />
   );
 };
@@ -233,6 +261,11 @@ const styles = StyleSheet.create({
   commentContent: {
     fontSize: 14,
     marginLeft: 40,
+    flex: 1,
+  },
+  headerReportButton: {
+    padding: 5,
+    marginLeft: 5,
   },
   commentButtons: {
     flexDirection: 'row',

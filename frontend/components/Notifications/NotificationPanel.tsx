@@ -237,6 +237,13 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         return;
       }
 
+      // ============= VIOLATION NOTIFICATIONS =============
+      if (item.type === NOTIFICATION_TYPES.VIOLATION_REPORTED) {
+        router.push('/moderation');
+        onClose();
+        return;
+      }
+
       // ============= POST-RELATED NOTIFICATIONS =============
       if (item.type === 'post_deleted') {
         onClose();

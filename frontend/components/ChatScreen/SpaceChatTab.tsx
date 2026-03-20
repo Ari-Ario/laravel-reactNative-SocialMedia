@@ -10,7 +10,6 @@ import {
     ScrollView,
     Animated,
     Platform,
-    Alert,
     ActivityIndicator,
 } from 'react-native';
 import AnimatedRN, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
@@ -24,6 +23,7 @@ import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import { useCollaborationStore } from '@/stores/collaborationStore';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { createShadow } from '@/utils/styles';
+import { useToastStore } from '@/stores/toastStore';
 
 interface SpaceChatTabProps {
     spaceId: string;
@@ -54,6 +54,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
     highlightMessageId,
     onStartCall,
 }) => {
+    const { showToast } = useToastStore();
     const [content, setContent] = useState<string>('');
     const [showMediaUploader, setShowMediaUploader] = useState(false);
     const [showAttachmentPicker, setShowAttachmentPicker] = useState(false);
@@ -135,7 +136,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
             // No alert needed for success if participation is instant
         } catch (error) {
             console.error('Error joining space:', error);
-            Alert.alert('Error', 'Failed to join space.');
+            showToast('Failed to join space.', 'error');
         } finally {
             setIsJoining(false);
         }
@@ -166,7 +167,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
             }));
         } catch (error) {
             console.error('Error sharing location:', error);
-            Alert.alert('Error', 'Failed to share location.');
+            showToast('Failed to share location.', 'error');
         }
     };
 
@@ -195,7 +196,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
             }));
         } catch (error) {
             console.error('Error sharing live location:', error);
-            Alert.alert('Error', 'Failed to share live location.');
+            showToast('Failed to share live location.', 'error');
         }
     };
 
@@ -354,7 +355,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
 
                             <TouchableOpacity
                                 style={[styles.sendButton, !content.trim() && { backgroundColor: '#FF9500' }]}
-                                onPress={content.trim() ? handleSendMessage : () => Alert.alert('Coming Soon', 'Voice recording features are coming soon!')}
+                                onPress={content.trim() ? handleSendMessage : () => showToast('Coming Soon: Voice recording features are coming soon!', 'info')}
                                 activeOpacity={0.8}
                             >
                                 <Ionicons name={content.trim() ? "send" : "mic"} size={content.trim() ? 18 : 22} color="#fff" />
@@ -383,7 +384,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                     } else if (action === 'location') {
                         setShowLocationPicker(true);
                     } else {
-                        Alert.alert('Coming Soon', `${action} features are coming soon!`);
+                        showToast(`Coming Soon: ${action} features are coming soon!`, 'info');
                     }
                 }}
             />

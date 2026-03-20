@@ -11,14 +11,24 @@ import { usePostStore } from '@/stores/postStore';
 import AuthContext from '@/context/AuthContext';
 import { usePostListService } from '@/services/PostListService';
 import { commentOnPost } from '@/services/PostService';
+import { useToastStore } from '@/stores/toastStore';
+import ReportPost from './ReportPost';
 
-const ProfilePreview = ({ userId, visible, onClose }) => {
+interface ProfilePreviewProps {
+  userId: string;
+  visible: boolean;
+  onClose: () => void;
+}
+
+const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
   const { openModal } = useModal();
   const { profilePreviewVisible, setProfilePreviewVisible } = useProfileView();
+  const { showToast } = useToastStore();
   const { user } = useContext(AuthContext);
   const service = usePostListService(user);
-  const [profile, setProfile] = useState(null);
+  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const { posts, setPosts } = usePostStore();
@@ -59,7 +69,7 @@ const ProfilePreview = ({ userId, visible, onClose }) => {
     } catch (error) {
       console.error('Error fetching profile:', error);
       // Optionally show error to user
-      Alert.alert('Error', 'Failed to load profile');
+      showToast('Failed to load profile', 'error');
     } finally {
       setLoading(false);
     }
@@ -76,19 +86,20 @@ const ProfilePreview = ({ userId, visible, onClose }) => {
       // console.log(updatedData);
 
       setIsFollowing(!isFollowing); // Toggle the follow state
-      setProfile(prev => ({
-        ...prev,
-        followers_count: isFollowing
-          ? prev.followers_count - 1
-          : prev.followers_count + 1,
-      }));
+      setProfile((prev: any) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          followers_count: isFollowing
+            ? (prev.followers_count || 0) - 1
+            : (prev.followers_count || 0) + 1,
+        };
+      });
 
-      // Optional: Show success feedback
-      // Toast.show(isFollowing ? 'Unfollowed successfully' : 'Followed successfully');
+      showToast(isFollowing ? 'Unfollowed successfully' : 'Followed successfully', 'success');
     } catch (error) {
       console.error('Error following user:', error);
-      // Optionally show error to user
-      Alert.alert('Error', 'Failed to update follow status');
+      showToast('Failed to update follow status', 'error');
     } finally {
       setFollowLoading(false);
     }
@@ -118,12 +129,18 @@ const ProfilePreview = ({ userId, visible, onClose }) => {
     <Modal onDismiss={onClose}
       visible={profilePreviewVisible}
       onRequestClose={() => setProfilePreviewVisible(false)}
-      contentContainerStyle={styles.modal}
     >
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-          <Ionicons name="close" size={24} color="black" />
-        </TouchableOpacity>
+        <View style={styles.topHeader}>
+          {user?.id !== String(userId) && (
+            <TouchableOpacity style={styles.reportButton} onPress={() => setShowReportModal(true)}>
+              <Ionicons name="flag-outline" size={22} color="#FF3B30" />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+            <Ionicons name="close" size={24} color="black" />
+          </TouchableOpacity>
+        </View>
 
         {loading ? (
           <ActivityIndicator size="large" style={styles.loader} />
@@ -194,6 +211,17 @@ const ProfilePreview = ({ userId, visible, onClose }) => {
           </>
         )}
       </SafeAreaView>
+
+      <ReportPost
+        visible={showReportModal}
+        userId={Number(userId)}
+        type="user"
+        onClose={() => setShowReportModal(false)}
+        onReportSubmitted={(reportId) => {
+          showToast('Report submitted for AI review.', 'success');
+          setShowReportModal(false);
+        }}
+      />
     </Modal>
   );
 };
@@ -214,8 +242,16 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   closeButton: {
-    alignSelf: 'flex-end',
+    padding: 4,
+  },
+  topHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 10,
+  },
+  reportButton: {
+    padding: 4,
   },
   loader: {
     flex: 1,

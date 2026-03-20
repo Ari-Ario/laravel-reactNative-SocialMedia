@@ -59,7 +59,7 @@ export default function TabLayout() {
           // Initialize both stores explicitly once
           initializeRealtime(token);
           initNotifications(token, Number(user.id));
-          
+
           // Pre-fetch spaces to ensure the Chats tab badge exists offline instantly
           useCollaborationStore.getState().fetchUserSpaces(Number(user.id));
 

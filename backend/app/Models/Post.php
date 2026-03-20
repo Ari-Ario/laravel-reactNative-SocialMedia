@@ -19,7 +19,7 @@ class Post extends Model
     protected $casts = [
         'location' => 'array',
     ];
-    protected $with = ['user', 'media', 'reactions', 'comments'];
+    protected $with = ['user', 'media', 'reactions', 'comments', 'moderationCheck'];
 
     public function user()
     {
@@ -70,5 +70,10 @@ class Post extends Model
     public function isBookmarkedByUser()
     {
         return $this->bookmarks()->where('user_id', auth()->id())->exists();
+    }
+
+    public function moderationCheck()
+    {
+        return $this->morphOne(ModerationCheck::class, 'target');
     }
 }

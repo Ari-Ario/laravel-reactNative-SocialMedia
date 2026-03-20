@@ -460,7 +460,7 @@ const HomePage = () => {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 10 }}>
               <View style={styles.storyItem}>
                 <View style={{ position: 'relative' }}>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     activeOpacity={0.8}
                     onPress={() => {
                       if (myStoryGroup) {
@@ -471,14 +471,14 @@ const HomePage = () => {
                     }}
                   >
                     <View style={[
-                      styles.storyBorder, 
+                      styles.storyBorder,
                       !myStoryGroup && { borderColor: 'transparent' },
                       myStoryGroup?.all_viewed && styles.viewedStoryBorder
                     ]}>
                       <Avatar user={user} size={60} style={styles.storyImage} />
                     </View>
                   </TouchableOpacity>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.addStoryIcon}
                     onPress={() => setAddStoryVisible(true)}
                     activeOpacity={0.7}
@@ -490,9 +490,9 @@ const HomePage = () => {
               </View>
 
               {otherStoryGroups.map(group => (
-                <TouchableOpacity 
-                  key={group.user.id} 
-                  style={styles.storyItem} 
+                <TouchableOpacity
+                  key={group.user.id}
+                  style={styles.storyItem}
                   onPress={() => router.push({ pathname: '/story/[id]', params: { id: group.latest_story.id } })}
                 >
                   <View style={[styles.storyBorder, group.all_viewed && styles.viewedStoryBorder]}>

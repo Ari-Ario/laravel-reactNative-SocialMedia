@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import PusherService from '@/services/PusherService';
 
-interface Reaction {
+export interface Reaction {
   id: number;
   emoji: string;
   user_id: number;
@@ -19,7 +19,7 @@ interface CommentReaction {
   updated_at?: string;
 }
 
-interface Comment {
+export interface Comment {
   reactions: any;
   id: number;
   content: string;
@@ -40,8 +40,21 @@ interface Comment {
   }>;
 }
 
-interface Post {
+export interface Post {
   id: number;
+  caption?: string;
+  user?: {
+    id: number | string;
+    name: string;
+    profile_photo: string | null;
+  };
+  media?: Array<{
+    id: number;
+    file_path: string;
+    type: string;
+  }>;
+  comments_count?: number;
+  created_at?: string;
   [key: string]: any;
   reactions?: Reaction[];
   comments?: Comment[];

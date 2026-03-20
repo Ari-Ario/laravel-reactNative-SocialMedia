@@ -145,6 +145,6 @@ class User extends Authenticatable
      */
     public function receivesBroadcastNotificationsOn()
     {
-        return new \Illuminate\Broadcasting\Channel('user.' . $this->id);
+        return 'user.' . $this->id;
     }
 }

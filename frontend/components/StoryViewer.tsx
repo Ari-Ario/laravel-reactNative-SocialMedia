@@ -31,6 +31,8 @@ import { useModal } from '@/context/ModalContext';
 import AuthContext from '@/context/AuthContext';
 import { useStoryStore } from '@/stores/storyStore';
 import { useCollaborationStore } from '@/stores/collaborationStore';
+import ReportPost from './ReportPost';
+import { useToastStore } from '@/stores/toastStore';
 
 const { width, height } = Dimensions.get('window');
 const STORY_DURATION = 10000; // 10 seconds
@@ -61,6 +63,7 @@ interface StoryViewerProps {
 }
 
 const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }: StoryViewerProps) => {
+  const { showToast } = useToastStore();
   const insets = useSafeAreaInsets();
   const { storyGroups, setStoriesForUser } = useStoryStore();
   const stories = useMemo(() => {
@@ -89,6 +92,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
   const [showInfo, setShowInfo] = useState(false);
   const [deleteStatus, setDeleteStatus] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
   const [isTyping, setIsTyping] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   const progressAnim = useRef(new Animated.Value(0)).current;
   const videoRef = useRef<any>(null);
@@ -341,6 +345,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
       }
     } catch (error) {
       console.error('Error sending reply/share:', error);
+      showToast('Failed to send reply. Please try again.', 'error');
       safeHaptics.error();
     } finally {
       setIsSendingReply(false);
@@ -366,7 +371,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
         safeHaptics.success();
 
         // Show success message
-        setDeleteStatus({ message: 'Story deleted successfully', visible: true });
+        showToast('Story deleted successfully', 'success');
         safeHaptics.success();
 
         // Note: We don't need to manually update state here anymore because Pusher 
@@ -374,9 +379,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
         // But if we want it to be instant for the owner, we can call it:
         // useStoryStore.getState().handleStoryDeleted({ storyId, userId: user!.id });
         
-        // Navigate to next story or close if last
         setTimeout(() => {
-          setDeleteStatus({ message: '', visible: false });
           if (stories.length > 1) {
             if (currentStoryIndex < stories.length - 1) {
               handleNext();
@@ -389,11 +392,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
         }, 1500);
       } catch (error) {
         console.error('❌ Failed to delete story:', error);
-        if (Platform.OS === 'web') {
-          alert('Could not delete story. Please try again.');
-        } else {
-          Alert.alert('Error', 'Could not delete story. Please try again.');
-        }
+        showToast('Could not delete story. Please try again.', 'error');
       } finally {
         setIsSendingReply(false);
       }
@@ -562,6 +561,11 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                 ) : (
                   <TouchableOpacity onPress={() => setShowInfo(true)} style={styles.headerButton}>
                     <Ionicons name="information-circle-outline" size={24} color="white" />
+                  </TouchableOpacity>
+                )}
+                {Number(currentStory.user.id) !== Number(user?.id) && (
+                  <TouchableOpacity onPress={() => setShowReportModal(true)} style={styles.headerButton}>
+                    <Ionicons name="flag-outline" size={22} color="white" />
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity onPress={onClose} style={styles.headerButton}>
@@ -855,6 +859,16 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
             visible={showShareModal}
             onClose={() => setShowShareModal(false)}
             story={currentStory}
+          />
+          <ReportPost
+            visible={showReportModal}
+            targetId={currentStory.id}
+            type="story"
+            onClose={() => setShowReportModal(false)}
+            onReportSubmitted={(reportId) => {
+              useToastStore.getState().showToast('Report Submitted: Our AI is reviewing this story.', 'success');
+              setShowReportModal(false);
+            }}
           />
         </View>
       </GestureDetector>

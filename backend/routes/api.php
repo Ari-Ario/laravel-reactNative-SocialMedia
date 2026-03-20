@@ -25,6 +25,9 @@ use App\Http\Controllers\PollController;
 use App\Http\Controllers\WhiteboardController;
 use App\Http\Controllers\ApiAuthController;
 use App\Http\Controllers\GuestAccessController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ModerationController;
+use App\Http\Controllers\ModerationAdminController;
 use Illuminate\Support\Facades\Broadcast;
 
 use App\Models\User;
@@ -280,5 +283,23 @@ Route::post('/verify-reset-code', [ApiAuthController::class , 'verifyResetCode']
 Route::post('/reset-password', [ApiAuthController::class , 'resetPassword']);
 Route::post('/update-preferences', [ApiAuthController::class , 'updatePreferences'])->middleware('auth:sanctum');
 // Guest Access Routes (Teams-style)
-Route::get('/spaces/{id}/guest-info', [GuestAccessController::class, 'getSpaceInfo']);
-Route::post('/spaces/{id}/guest-join', [GuestAccessController::class, 'joinAsGuest']);
+Route::get('/spaces/{id}/guest-info', [GuestAccessController::class , 'getSpaceInfo']);
+Route::post('/spaces/{id}/guest-join', [GuestAccessController::class , 'joinAsGuest']);
+
+// Pure AI Moderation & Reporting
+Route::middleware('auth:sanctum')->group(function () {
+    // Reports
+    Route::post('/reports', [ReportController::class , 'store']);
+    Route::get('/report-categories', [ReportController::class , 'getCategories']);
+    Route::get('/reports/{reportId}/status', [ReportController::class , 'status']);
+    
+    // Real-time AI Moderation
+    Route::post('/moderation/check', [ModerationController::class , 'quickCheck']);
+    Route::get('/moderation/compliance', [ModerationController::class , 'myCompliance']);
+
+    // Admin Moderation Dashboard
+    Route::group(['prefix' => 'admin/moderation'], function () {
+        Route::get('/reports', [ModerationAdminController::class, 'index']);
+        Route::post('/reports/{reportId}/resolve', [ModerationAdminController::class, 'resolve']);
+    });
+});

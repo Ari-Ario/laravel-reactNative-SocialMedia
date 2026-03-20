@@ -177,8 +177,8 @@ class PusherService {
     }
 
     try {
-      const channelName = `user.${userId}`;
-      console.log(`🔌 Pusher: Subscribing to user channel: ${channelName}`);
+      const channelName = `private-user.${userId}`;
+      console.log(`🔌 Pusher: Subscribing to private user channel: ${channelName}`);
 
       if (this.channels.has(channelName)) {
         console.log(`ℹ️ Already subscribed to user notifications: ${channelName}`);
@@ -410,9 +410,30 @@ class PusherService {
         onNotification(notification);
       });
 
-      // Handle Laravel's generic BroadcastNotificationCreated events
+      // Handle Violation Reported (Specific Event)
+      channel.bind('violation.reported', (data: any) => {
+        console.log('🚨 Violation Report Received (Real-time):', data);
+        
+        const innerData = data.data || data;
+        const notification = {
+          id: data.id || Date.now().toString(),
+          type: 'violation_reported',
+          title: innerData.title || '🚨 AI Violation Alert',
+          message: innerData.message || 'New policy violation detected',
+          data: innerData,
+          severity: innerData.severity,
+          reportId: innerData.reportId,
+          createdAt: new Date(),
+          isRead: false,
+        };
+
+        console.log('🚨 SENDING VIOLATION TO STORE:', notification.severity);
+        onNotification(notification);
+      });
+
       // Handle Laravel's generic BroadcastNotificationCreated events
       channel.bind('Illuminate\\Notifications\\Events\\BroadcastNotificationCreated', (data: any) => {
+
         console.log('📨 Laravel notification received:', data);
 
         // Extract inner data which contains the actual message

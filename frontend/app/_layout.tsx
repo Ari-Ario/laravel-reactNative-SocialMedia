@@ -118,6 +118,7 @@ export default function RootLayout() {
       '/settings',
       '/chatbot',
       '/chatbotTraining',
+      '/moderation',
     ];
 
     // Check if current path starts with any allowed route
@@ -261,6 +262,10 @@ export default function RootLayout() {
 
                   <Stack.Screen
                     name="chatbotTraining"
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen
+                    name="moderation/index"
                     options={{ headerShown: false }}
                   />
                 </Stack>
