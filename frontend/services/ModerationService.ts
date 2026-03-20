@@ -87,3 +87,40 @@ export const resolveReport = async (reportId: string, data: { action: 'dismiss' 
         throw error;
     }
 };
+/**
+ * Admin: Assign a report to current user
+ */
+export const assignReport = async (reportId: string) => {
+    try {
+        const token = await getToken();
+        const response = await axios.post(`${getApiBase()}/admin/moderation/reports/${reportId}/assign`, {}, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            withCredentials: true
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error assigning report:', error);
+        throw error;
+    }
+};
+
+/**
+ * Admin: Get reports assigned to current user
+ */
+export const getMyAssignedReports = async () => {
+    try {
+        const token = await getToken();
+        const response = await axios.get(`${getApiBase()}/admin/moderation/reports/assigned`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            withCredentials: true
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching assigned reports:', error);
+        throw error;
+    }
+};

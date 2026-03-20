@@ -300,6 +300,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Admin Moderation Dashboard
     Route::group(['prefix' => 'admin/moderation'], function () {
         Route::get('/reports', [ModerationAdminController::class, 'index']);
+        Route::post('/reports/{reportId}/assign', [ModerationAdminController::class, 'assign']);
+        Route::get('/reports/assigned', [ModerationAdminController::class, 'myAssigned']);
         Route::post('/reports/{reportId}/resolve', [ModerationAdminController::class, 'resolve']);
     });
 });

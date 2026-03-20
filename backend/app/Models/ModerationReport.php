@@ -18,6 +18,7 @@ class ModerationReport extends Model
         'severity',
         'status',
         'check_id',
+        'assigned_to_id',
         'reporting_bias_score',
         'action_taken',
         'metadata',
@@ -34,6 +35,11 @@ class ModerationReport extends Model
     public function reporter()
     {
         return $this->belongsTo(User::class, 'reporter_id');
+    }
+
+    public function assignedTo()
+    {
+        return $this->belongsTo(User::class, 'assigned_to_id');
     }
 
     public function check()

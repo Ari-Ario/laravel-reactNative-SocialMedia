@@ -21,7 +21,7 @@ class ModerationAdminController extends Controller
             return response()->json(['error' => 'Unauthorized. Admin access required.'], 403);
         }
 
-        $query = ModerationReport::with(['reporter', 'check'])
+        $query = ModerationReport::with(['reporter', 'check', 'assignedTo'])
             ->orderBy('created_at', 'desc');
 
         // Optional filtering
@@ -35,7 +35,102 @@ class ModerationAdminController extends Controller
             $query->where('severity', $request->severity);
         }
 
-        return response()->json($query->paginate(20));
+        if ($request->has('type')) {
+            $query->where('target_type', $request->type);
+        }
+
+        $reports = $query->paginate(20);
+
+        // Attach target data for each report
+        $reports->getCollection()->transform(function ($report) {
+            $report->target_data = $this->fetchTargetData($report);
+            return $report;
+        });
+
+        return response()->json($reports);
+    }
+
+    /**
+     * Assign a report to the current admin.
+     */
+    public function assign($reportId)
+    {
+        if (!auth()->user()->is_admin) {
+            return response()->json(['error' => 'Unauthorized.'], 403);
+        }
+
+        $report = ModerationReport::where('report_id', $reportId)->firstOrFail();
+
+        if ($report->assigned_to_id && $report->assigned_to_id !== auth()->id()) {
+            return response()->json(['error' => 'Report already assigned to another moderator.'], 409);
+        }
+
+        $report->update([
+            'assigned_to_id' => auth()->id(),
+            'status' => 'reviewing'
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Report assigned successfully',
+            'report' => $report->load('assignedTo')
+        ]);
+    }
+
+    /**
+     * Get reports assigned to the current admin.
+     */
+    public function myAssigned()
+    {
+        if (!auth()->user()->is_admin) {
+            return response()->json(['error' => 'Unauthorized.'], 403);
+        }
+
+        $reports = ModerationReport::with(['reporter', 'check', 'assignedTo'])
+            ->where('assigned_to_id', auth()->id())
+            ->whereIn('status', ['pending', 'reviewing'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $reports->transform(function ($report) {
+            $report->target_data = $this->fetchTargetData($report);
+            return $report;
+        });
+
+        return response()->json(['data' => $reports]);
+    }
+
+    /**
+     * Helper to fetch detailed data for the reported target.
+     */
+    private function fetchTargetData($report)
+    {
+        try {
+            $modelClass = 'App\\Models\\' . ucfirst($report->target_type);
+            if ($report->target_type === 'comment') $modelClass = 'App\\Models\\Comment';
+            if ($report->target_type === 'space') $modelClass = 'App\\Models\\CollaborationSpace';
+            if ($report->target_type === 'profile') $modelClass = 'App\\Models\\User';
+
+            $targetId = $report->target_id;
+            
+            // Handle UUIDs if stored in metadata
+            if (isset($report->metadata['actual_target_id'])) {
+                $targetId = $report->metadata['actual_target_id'];
+            }
+
+            $query = $modelClass::where('id', $targetId);
+
+            // Eager load common relationships
+            if ($report->target_type === 'post') $query->with(['user', 'media']);
+            if ($report->target_type === 'comment') $query->with(['user', 'post']);
+            if ($report->target_type === 'story') $query->with(['user', 'media']);
+            if ($report->target_type === 'space') $query->with(['creator']);
+
+            return $query->first();
+        } catch (\Exception $e) {
+            Log::error("Error fetching target data: " . $e->getMessage());
+            return null;
+        }
     }
 
     /**
