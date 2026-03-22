@@ -37,6 +37,10 @@ export const useModeration = (initialText: string = '', context: string = 'gener
     );
 
     useEffect(() => {
+        setText(initialText);
+    }, [initialText]);
+
+    useEffect(() => {
         performModeration(text);
     }, [text, performModeration]);
 
@@ -48,6 +52,7 @@ export const useModeration = (initialText: string = '', context: string = 'gener
         error,
         isSafe: analysis?.is_safe ?? true, // Assume safe if no analysis yet
         maliciousScore: analysis?.scores.malicious ?? 0,
-        factScore: analysis?.scores.fact ?? 1,
+        moralityScore: analysis?.scores.morality ?? 0,
+        factScore: analysis?.scores.fact ?? 0.5,
     };
 };

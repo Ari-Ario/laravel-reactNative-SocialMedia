@@ -3,6 +3,9 @@ import { View, StyleSheet, TouchableOpacity, Text, ScrollView } from 'react-nati
 import { Ionicons, Feather } from '@expo/vector-icons';
 import React from 'react';
 import AuthContext from '@/context/AuthContext';
+import { useReportedContentStore } from '@/stores/reportedContentStore';
+import { deleteReportByTarget } from '@/services/ReportService';
+import { useToastStore } from '@/stores/toastStore';
 
 interface PostActionButtonsProps {
   post: {
@@ -151,16 +154,40 @@ export const PostActionButtons = ({
 
       {/* Bookmark button */}
       {!compact && (
-        <TouchableOpacity
-          style={[styles.actionButton, { marginLeft: 'auto', marginRight: 0 }]}
-          onPress={onBookmark}
-        >
-          <Ionicons 
-            name={isBookmarked ? "bookmark" : "bookmark-outline"} 
-            size={24} 
-            color={isBookmarked ? "#10b981" : "#000"} 
-          />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 'auto', gap: 12 }}>
+          {useReportedContentStore.getState().isReported('post', post.id) && (
+            <TouchableOpacity
+              onPress={async () => {
+                try {
+                  const { removeReportedItem } = useReportedContentStore.getState();
+                  await deleteReportByTarget('post', post.id);
+                  removeReportedItem('post', post.id);
+                  useToastStore.getState().showToast('Report removed successfully', 'success');
+                } catch (error) {
+                  console.error('Failed to delete report:', error);
+                  useToastStore.getState().showToast('Failed to remove report', 'error');
+                }
+              }}
+            >
+              <Ionicons
+                name="flag"
+                size={22}
+                color="#ff4444"
+              />
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={[styles.actionButton, { marginRight: 0 }]}
+            onPress={onBookmark}
+          >
+            <Ionicons 
+              name={isBookmarked ? "bookmark" : "bookmark-outline"} 
+              size={24} 
+              color={isBookmarked ? "#10b981" : "#000"} 
+            />
+          </TouchableOpacity>
+        </View>
       )}
     </View>
   );

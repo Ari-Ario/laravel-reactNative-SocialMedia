@@ -24,11 +24,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // Protect API routes except login/register/verification
         $middleware->group('api', [
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            \App\Http\Middleware\CheckUserRestriction::class,
         ]);
         
         $middleware->group('api.verified', [
             \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+            \App\Http\Middleware\CheckUserRestriction::class,
         ]);
         
         $middleware->web(append: [

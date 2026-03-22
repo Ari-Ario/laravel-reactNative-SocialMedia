@@ -17,10 +17,11 @@ interface StoryGroup {
     viewed: boolean;
   }>;
   all_viewed: boolean;
+  latest_story: any;
 }
 
 export default function StoryScreen() {
-  const { id, standalone } = useLocalSearchParams();
+  const { id, standalone, returnTo } = useLocalSearchParams();
   const router = useRouter();
   const { storyGroups, fetchStories: fetchStoriesFromStore, initializeRealtime } = useStoryStore();
   const [currentGroupIndex, setCurrentGroupIndex] = useState(0);
@@ -87,7 +88,11 @@ export default function StoryScreen() {
   }, [id, standalone, storyGroups.length]);
 
   const handleClose = () => {
-    router.back();
+    if (returnTo) {
+      router.replace(returnTo as any);
+    } else {
+      router.back();
+    }
   };
 
   const handleNextUser = async (currentIndex?: number) => {

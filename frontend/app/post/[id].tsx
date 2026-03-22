@@ -33,6 +33,10 @@ import { usePostListService } from '@/services/PostListService';
 import { createShadow } from '@/utils/styles';
 import PostMenu from '@/components/PostMenu';
 import { MediaViewer } from '@/components/MediaViewer';
+import ReportPost from '@/components/ReportPost';
+import { useReportedContentStore } from '@/stores/reportedContentStore';
+import { deleteReportByTarget } from '@/services/ReportService';
+import { useToastStore } from '@/stores/toastStore';
 
 const VideoCarouselItem = ({ uri, index, service, styles }: { uri: string, index: number, service: any, styles: any }) => {
   const player = useVideoPlayer(uri);
@@ -74,7 +78,7 @@ const ImageCarouselItem = ({ uri, index, service, styles }: { uri: string, index
 };
 
 const PostDetailScreen = () => {
-  const { id, highlightCommentId } = useLocalSearchParams();
+  const { id, highlightCommentId, returnTo } = useLocalSearchParams();
   const { posts, addPost, updatePost } = usePostStore();
   const { user } = useContext(AuthContext);
   const post = posts.find(p => p.id.toString() === id);
@@ -86,6 +90,7 @@ const PostDetailScreen = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [highlightedCommentId, setHighlightedCommentId] = useState<string | null>(null);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [currentReactingItem, setCurrentReactingItem] = useState<{ postId: number; commentId?: number } | null>(null);
   const [currentReactingComment, setCurrentReactingComment] = useState<{ postId: number; commentId: number } | null>(null);
   const [showComments, setShowComments] = useState(false);
@@ -99,6 +104,8 @@ const PostDetailScreen = () => {
   const scrollViewRef = useRef<ScrollView>(null);
   const commentsSectionRef = useRef<View>(null);
   const highlightAnimation = useRef(new Animated.Value(0)).current;
+  const { isReported, addReportedItem, removeReportedItem } = useReportedContentStore();
+  const { showToast } = useToastStore();
 
   const postId = parseInt(id as string);
 
@@ -308,6 +315,22 @@ const PostDetailScreen = () => {
     }
   };
 
+  const handleToggleReport = async () => {
+    const isReported = useReportedContentStore.getState().isReported('post', Number(postId));
+    if (isReported) {
+      try {
+        await deleteReportByTarget('post', Number(postId));
+        useReportedContentStore.getState().removeReportedItem('post', Number(postId));
+        useToastStore.getState().showToast('Report removed successfully', 'success');
+      } catch (error) {
+        console.error('Failed to remove report:', error);
+        useToastStore.getState().showToast('Failed to remove report', 'error');
+      }
+    } else {
+      setShowReportModal(true);
+    }
+  };
+
   // Get grouped reactions for post
   const getGroupedReactions = () => {
     if (!post?.reactions) return [];
@@ -350,7 +373,16 @@ const PostDetailScreen = () => {
       <View style={styles.errorContainer}>
         <Ionicons name="alert-circle-outline" size={48} color="#999" />
         <Text style={styles.errorText}>Post not found</Text>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => {
+            if (returnTo) {
+              router.replace(returnTo as any);
+            } else {
+              router.back();
+            }
+          }}
+        >
           <Text style={styles.backButtonText}>Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -376,13 +408,27 @@ const PostDetailScreen = () => {
         <BlurView intensity={80} tint="light" style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => router.back()}
+            onPress={() => {
+              if (returnTo) {
+                router.replace(returnTo as any);
+              } else {
+                router.back();
+              }
+            }}
           >
             <Ionicons name="chevron-back" size={24} color="#000" />
             <Text style={styles.backButtonText}>Back</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Post</Text>
           <View style={styles.headerSpacer}>
+            {post && isReported('post', post.id) && (
+              <TouchableOpacity
+                onPress={() => handleToggleReport()}
+                style={styles.headerIcon}
+              >
+                <Ionicons name="flag" size={22} color="#ff3040" />
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               onPress={handleSharePost}
               style={styles.headerIcon}
@@ -402,17 +448,19 @@ const PostDetailScreen = () => {
           <View style={styles.postHeader}>
             <TouchableOpacity
               style={styles.userInfo}
-              onPress={() => handleProfilePress(post.user.id.toString())}
+              onPress={() => post.user && handleProfilePress(post.user.id.toString())}
             >
-              <Image
-                source={{
-                  uri: `${getApiBaseImage()}/storage/${post.user.profile_photo}`,
-                  cache: 'force-cache'
-                }}
-                style={styles.userAvatar}
-                defaultSource={require('@/assets/images/favicon.png')}
-              />
-              <Text style={styles.userName}>{post.user.name}</Text>
+              {post.user?.profile_photo && (
+                <Image
+                  source={{
+                    uri: `${getApiBaseImage()}/storage/${post.user.profile_photo}`,
+                    cache: 'force-cache'
+                  }}
+                  style={styles.userAvatar}
+                  defaultSource={require('@/assets/images/favicon.png')}
+                />
+              )}
+              <Text style={styles.userName}>{post.user?.name}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.moreButton} onPress={handleOpenMenu}>
               <Ionicons name="ellipsis-horizontal" size={20} color="#000" />
@@ -422,7 +470,7 @@ const PostDetailScreen = () => {
           {/* Post Content */}
           <View style={styles.postContent}>
             <Text style={styles.contentText}>
-              <Text style={styles.userName}>{post.user.name} </Text>
+              <Text style={styles.userName}>{post.user?.name} </Text>
               {post.caption || post.content}
             </Text>
             {post.caption && post.content && post.caption !== post.content && (
@@ -458,9 +506,9 @@ const PostDetailScreen = () => {
                         setActiveMediaIndex(index);
                       }}
                       keyExtractor={(item, index) => `${item.id}-${index}`}
-                      renderItem={({ item, index }) => {
-                        const mediaUrl = (item.file_path || item.url).startsWith('http')
-                          ? (item.file_path || item.url)
+                      renderItem={({ item, index }: { item: any, index: number }) => {
+                        const mediaUrl = (item.file_path || item.url || '').startsWith('http')
+                          ? (item.file_path || item.url || '')
                           : `${getApiBaseImage()}/storage/${item.file_path}`;
 
                         if (item.type === 'video') {
@@ -527,7 +575,7 @@ const PostDetailScreen = () => {
                 }}
               >
                 <Ionicons name="chatbubble-outline" size={26} color="#000" />
-                {post.comments_count > 0 && (
+                {(post.comments_count ?? 0) > 0 && (
                   <View style={styles.commentCountBadge}>
                     <Text style={styles.commentCountText}>{post.comments_count}</Text>
                   </View>
@@ -592,7 +640,7 @@ const PostDetailScreen = () => {
               onPress={() => setShowComments(!showComments)}
             >
               <Text style={styles.commentsTitle}>
-                Comments • {post.comments_count || 0}
+                Comments • {post.comments_count ?? 0}
               </Text>
               <Ionicons
                 name={showComments ? "chevron-up" : "chevron-down"}
@@ -676,9 +724,9 @@ const PostDetailScreen = () => {
         }}
         onReport={() => {
           setMenuVisible(false);
-          service.handleReport();
+          handleToggleReport();
         }}
-        isOwner={post ? service.isOwner(post.user.id) : false}
+        isOwner={post && post.user ? service.isOwner(post.user.id) : false}
         anchorPosition={menuPosition}
       />
 
@@ -710,7 +758,6 @@ const PostDetailScreen = () => {
           currentReactingItem={currentReactingItem}
           setCurrentReactingItem={setCurrentReactingItem}
           setIsEmojiPickerOpen={setIsEmojiPickerOpen}
-          // @ts-ignore
           onCommentSubmit={async (content) => commentOnPost(post.id, content)}
           getGroupedReactions={(p) => service.getGroupedReactions(p as any)}
           handleReactComment={(emoji) => { }}
@@ -733,6 +780,16 @@ const PostDetailScreen = () => {
           setCurrentReactingComment(null);
         }}
         emojiSize={28}
+      />
+
+      <ReportPost
+        visible={showReportModal}
+        postId={Number(id)}
+        type="post"
+        onClose={() => setShowReportModal(false)}
+        onReportSubmitted={(reportId) => {
+          setShowReportModal(false);
+        }}
       />
     </KeyboardAvoidingView>
   );

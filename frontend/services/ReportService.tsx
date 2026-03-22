@@ -4,7 +4,7 @@ import getApiBase from './getApiBase';
 import { getToken } from './TokenService';
 
 export interface ReportData {
-    type: 'post' | 'user' | 'comment' | 'space' | 'story';
+    type: 'post' | 'user' | 'comment' | 'space' | 'story' | 'profile';
     targetId: number | string;
     categoryId: string;
     subcategoryId: string;
@@ -53,6 +53,55 @@ export const checkReportStatus = async (reportId: string) => {
         return response.data;
     } catch (error) {
         console.error('Error checking report status:', error);
+        throw error;
+    }
+};
+
+export const getMyReportedContent = async () => {
+    try {
+        const token = await getToken();
+        const response = await axios.get(`${getApiBase()}/reports/my-reported-content`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            withCredentials: true
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching reported content:', error);
+        throw error;
+    }
+};
+export const deleteReportByTarget = async (type: string, targetId: string | number) => {
+    try {
+        const token = await getToken();
+        const response = await axios.post(`${getApiBase()}/reports/delete-by-target`, { type, targetId }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            withCredentials: true
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error deleting report:', error);
+        throw error;
+    }
+};
+
+export const getReportByTarget = async (type: string, targetId: string | number) => {
+    try {
+        const token = await getToken();
+        const response = await axios.get(`${getApiBase()}/reports/get-by-target`, {
+            params: { type, targetId },
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            withCredentials: true
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching report by target:', error);
         throw error;
     }
 };

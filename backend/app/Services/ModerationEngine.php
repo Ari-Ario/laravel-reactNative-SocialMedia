@@ -103,13 +103,31 @@ class ModerationEngine
 
         // Misinformation Patterns
         $this->misinformationPatterns = [
-            '/\b(?:fake\s+news|hoax|conspiracy|cover\s+up|they\s+hide)\b/i',
-            '/\b(?:vaccine\s+causes|covid\s+hoax|5g\s+causes|microchip)\b/i',
-            '/\b(?:flat\s+earth|hollow\s+earth|moon\s+landing\s+hoax)\b/i',
-            '/\b(?:chemtrail|geoengineering|weather\s+modification)\b/i',
-            '/\b(?:new\s+world\s+order|illuminati|deep\s+state)\b/i',
-            '/\b(?:election\s+fraud|stolen\s+election|voter\s+fraud)\b/i',
-            '/\b(?:climate\s+change\s+hoax|global\s+warming\s+fake)\b/i',
+            '/fake\s+news/i',
+            '/hoax/i',
+            '/conspiracy/i',
+            '/vaccine\s+causes/i',
+            '/covid\s+hoax/i',
+            '/5g\s+causes/i',
+            '/microchip/i',
+            '/flat\s+earth/i',
+            '/hollow\s+earth/i',
+            '/moon\s+landing\s+hoax/i',
+            '/birds\s+are\s+drones/i',
+            '/chemtrail/i',
+            '/geoengineering/i',
+            '/weather\s+modification/i',
+            '/new\s+world\s+order/i',
+            '/illuminati/i',
+            '/deep\s+state/i',
+            '/election\s+fraud/i',
+            '/stolen\s+election/i',
+            '/voter\s+fraud/i',
+            '/climate\s+change\s+hoax/i',
+            '/global\s+warming\s+fake/i',
+            '/government\s+surveillance/i',
+            '/spy\s+birds/i',
+            '/government\s+drones/i',
         ];
 
         // Manipulated Media Indicators
@@ -164,17 +182,19 @@ class ModerationEngine
         
         // Criminal Activity Patterns
         $this->criminalityPatterns = [
-            '/\b(?:illegal|crime|theft|robbery|stealing|burglary|fraud|scam|ponzi|embezzle)\b/i',
-            '/\b(?:drug|narcotic|marijuana|weed|cocaine|heroin|meth|dealer|trafficking)\b/i',
-            '/\b(?:terrorism|terrorist|extremism|radical|jihad|insurrection|bomb\s+making|weapon\s+sales)\b/i',
-            '/\b(?:money\s+laundering|identity\s+theft|hacking|phishing|ransomware|malware)\b/i',
+            '/\b(?:illegal|crime|theft|robbery|stealing|burglary|fraud|scam|ponzi|embezzle|money\s+laundering)\b/i',
+            '/\b(?:drugs?|narcotics?|marijuana|weed|cocaine|heroin|meth|dealers?|trafficking|substance\s+abuse|cannabis|pot|cbd|thc|pills?|mdma|extacy|lsd)\b/i',
+            '/\b(?:terrorism|terrorist|extremism|radical|jihad|insurrection|bomb\s+making|weapon\s+sales|firearms?|ammunition|glock|pistol|rifle|guns?)\b/i',
+            '/\b(?:identity\s+theft|hacking|phishing|ransomware|malware|cybercrime|hacked)\b/i',
+            '/\b(?:human\s+trafficking|smuggling|organized\s+crime|cartel|gang\s+activity)\b/i',
         ];
 
-        // Sexual Content Patterns
+        // Sexual Content & Nudity Patterns
         $this->sexualContentPatterns = [
-            '/\b(?:sex|sexual|porn|pornography|nsfw|xxx|naked|nudity|nude|erotic|adult\s+content)\b/i',
-            '/\b(?:blowjob|handjob|orgasm|ejaculation|cum|pussy|dick|penis|vagina|clitoris)\b/i',
-            '/\b(?:strip|stripper|prostitute|escort|camshow|onlyfans|pedophilia|molest)\b/i',
+            "/\b(?:sex|sexual|porn|pornography|nsfw|xxx|naked|nudity|nude|erotic|adult\s+content|uncensored)\b/i",
+            "/\b(?:blowjob|handjob|orgasm|ejaculation|cum|pussy|dick|penis|vagina|clitoris|anal|masturbate)\b/i",
+            "/\b(?:strip|stripper|prostitute|escort|camshow|onlyfans|pedophilia|molest|incest|non-consensual)\b/i",
+            "/\b(?:sexual\s+solicitation|escort\s+service|sex\s+work|sugar\s+baby|hookup)\b/i",
         ];
 
         // Educational Context Indicators
@@ -280,10 +300,10 @@ class ModerationEngine
     {
         $lowerText = strtolower($text);
 
-        // Initialize scores (Start much more strict)
+        // Initialize scores (More balanced start)
         $maliciousScore = 0.0;
-        $factScore = 0.4; // More skeptical
-        $moralityScore = 0.6; // Start lower
+        $factScore = 0.7; // Higher starting point for facts
+        $moralityScore = 0.8; // Higher starting point for morality
         $flags = [];
         $detectedPatterns = [];
 
@@ -381,12 +401,15 @@ class ModerationEngine
         $sexualScore = $this->detectSexualContent($lowerText);
         if ($sexualScore > 0) {
             $maliciousScore = max($maliciousScore, $sexualScore + 0.1);
+            if (preg_match('/(naked|nudity|nude|strip|stripper)/i', $lowerText)) {
+                $flags[] = 'nudity';
+            }
             $flags[] = 'sexual_content';
             $detectedPatterns[] = 'sexual_content_detected';
         }
 
-        // 13. Malicious Narrative / Bullying (Specific targeted subcategories)
-        if (preg_match('/(attack|target|victim|harassment|bully|shame|stupid|idiot|trash|garbage|clown|rat|dog)/i', $lowerText) && $maliciousScore > 0.3) {
+        // 13. Malicious Narrative / Bullying (Specific targeted subcategories) - Use word boundaries to avoid scientific false positives
+        if (preg_match('/\b(attack|target|victim|harassment|bully|shame|stupid|idiot|trash|garbage|clown|rat|dog)\b/i', $lowerText) && $maliciousScore > 0.3) {
             $maliciousScore = max($maliciousScore, 0.8);
             $flags[] = 'bullying';
             $flags[] = 'malicious_narrative';
@@ -395,6 +418,12 @@ class ModerationEngine
         // Normalize scores
         $maliciousScore = min(1.0, max(0.0, $maliciousScore));
         $moralityScore = min(1.0, max(0.0, $moralityScore));
+
+        // Inconsistency Fix: If malicious intent is extremely high, factual integrity should drop
+        if ($maliciousScore > 0.8) {
+            $factScore = max(0, $factScore - ($maliciousScore - 0.5));
+        }
+        
         $factScore = min(1.0, max(0.0, $factScore));
 
         return [
@@ -485,12 +514,12 @@ class ModerationEngine
         $score = 0.0;
         foreach ($this->misinformationPatterns as $pattern) {
             if (preg_match($pattern, $text)) {
-                $score += 0.45;
+                $score += 0.5; // Increased reduction
                 if ($score >= 0.9) break;
             }
         }
 
-        return min(0.9, $score);
+        return min(1.0, $score);
     }
 
     /**
@@ -809,7 +838,7 @@ class ModerationEngine
             'target_type' => $check->target_type,
             'target_id' => $check->target_id,
             'category' => $category,
-            'subcategory' => $analysis['flags'][0] ?? 'ai_auto_flag',
+            'subcategory' => $this->selectSpecificSubcategory($analysis['flags']),
             'description' => $this->generateReportDescription($check, $analysis),
             'severity' => $severity,
             'status' => 'pending',
@@ -847,17 +876,8 @@ class ModerationEngine
      */
     private function determineReportCategory(array $flags): string
     {
-        if (array_intersect(['hate_speech', 'bullying', 'targeted_insult', 'malicious_narrative'], $flags)) {
-            return 'ethical_violation';
-        }
         if (array_intersect(['violence', 'privacy', 'impersonation'], $flags)) {
             return 'safety';
-        }
-        if (array_intersect(['misinformation', 'scientific_accuracy', 'manipulated_media'], $flags)) {
-            return 'information_integrity';
-        }
-        if (array_intersect(['bot_activity', 'coordinated_attack'], $flags)) {
-            return 'malicious_behavior';
         }
         if (in_array('criminality', $flags)) {
             return 'criminality';
@@ -865,8 +885,53 @@ class ModerationEngine
         if (in_array('sexual_content', $flags)) {
             return 'sexual_content';
         }
+        if (array_intersect(['hate_speech', 'bullying', 'targeted_insult', 'malicious_narrative'], $flags)) {
+            return 'ethical_violation';
+        }
+        if (array_intersect(['misinformation', 'scientific_accuracy', 'manipulated_media'], $flags)) {
+            return 'information_integrity';
+        }
+        if (array_intersect(['bot_activity', 'coordinated_attack'], $flags)) {
+            return 'malicious_behavior';
+        }
 
         return 'information_integrity';
+    }
+
+    /**
+     * Select a specific subcategory that aligns with the frontend (ReportPost.tsx)
+     */
+    private function selectSpecificSubcategory(array $flags): string
+    {
+        if (empty($flags)) return 'ai_auto_flag';
+
+        // Sexual Content
+        if (in_array('nudity', $flags)) return 'nudity';
+        if (in_array('sexual_content', $flags)) {
+            return 'sexual_acts'; 
+        }
+
+        // Criminality
+        if (in_array('criminality', $flags)) {
+            return 'illegal_acts';
+        }
+
+        // Safety
+        if (in_array('violence', $flags)) return 'violence';
+        if (in_array('privacy', $flags)) return 'privacy';
+        if (in_array('impersonation', $flags)) return 'impersonation';
+
+        // Ethical
+        if (in_array('hate_speech', $flags)) return 'hate_speech';
+        if (in_array('bullying', $flags)) return 'bullying';
+        if (in_array('targeted_insult', $flags)) return 'targeted_insult';
+
+        // Information Integrity
+        if (in_array('misinformation', $flags)) return 'misinformation';
+        if (in_array('scientific_accuracy', $flags)) return 'scientific_accuracy';
+        if (in_array('manipulated_media', $flags)) return 'manipulated_media';
+
+        return $flags[0];
     }
 
     /**

@@ -25,7 +25,7 @@ import { fetchProfile } from '@/services/UserService';
 interface NotificationPanelProps {
   visible: boolean;
   onClose: () => void;
-  initialType?: 'all' | 'calls' | 'messages' | 'spaces' | 'activities' | 'regular';
+  initialType?: 'all' | 'calls' | 'messages' | 'spaces' | 'activities' | 'regular' | 'admin';
   anchorPosition?: { top: number; left?: number; right?: number; arrowOffset?: number };
 }
 
@@ -48,7 +48,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
   const { addPost } = usePostStore();
 
-  const [activeFilter, setActiveFilter] = useState<'all' | 'calls' | 'messages' | 'spaces' | 'activities' | 'regular'>(initialType);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'calls' | 'messages' | 'spaces' | 'activities' | 'regular' | 'admin'>(initialType);
 
   useEffect(() => {
     if (initialType) {
@@ -69,6 +69,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         return getActivities();
       case 'regular':
         return getRegularNotifications();
+      case 'admin':
+        return getRegularNotifications().filter(n => n.type === NOTIFICATION_TYPES.MODERATION_ACTION);
       case 'all':
       default:
         const allNotifications = [
@@ -240,6 +242,13 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
       // ============= VIOLATION NOTIFICATIONS =============
       if (item.type === NOTIFICATION_TYPES.VIOLATION_REPORTED) {
         router.push('/moderation');
+        onClose();
+        return;
+      }
+
+      // ============= MODERATION ACTIONS (Admin Channel) =============
+      if (item.type === NOTIFICATION_TYPES.MODERATION_ACTION) {
+        router.push('/moderation/admin-channel');
         onClose();
         return;
       }
@@ -478,6 +487,16 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         {getRegularNotifications().filter(n => !n.isRead).length > 0 && (
           <View style={[styles.filterBadge, { backgroundColor: '#FF9500' }]}>
             <Text style={styles.filterBadgeText}>{getRegularNotifications().filter(n => !n.isRead).length}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+
+      <TouchableOpacity style={[styles.filterTab, activeFilter === 'admin' && styles.activeFilterTab]} onPress={() => setActiveFilter('admin')}>
+        <Ionicons name="shield-checkmark" size={16} color={activeFilter === 'admin' ? '#FF3B30' : '#666'} />
+        <Text style={[styles.filterTabText, activeFilter === 'admin' && styles.activeFilterText]}>Administration</Text>
+        {useNotificationStore.getState().unreadModerationCount > 0 && (
+          <View style={[styles.filterBadge, { backgroundColor: '#FF3B30' }]}>
+            <Text style={styles.filterBadgeText}>{useNotificationStore.getState().unreadModerationCount}</Text>
           </View>
         )}
       </TouchableOpacity>

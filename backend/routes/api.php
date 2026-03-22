@@ -290,11 +290,15 @@ Route::post('/spaces/{id}/guest-join', [GuestAccessController::class , 'joinAsGu
 Route::middleware('auth:sanctum')->group(function () {
     // Reports
     Route::post('/reports', [ReportController::class , 'store']);
+    Route::get('/reports/get-by-target', [ReportController::class, 'getByTarget']);
+    Route::get('/reports/my-reported-content', [ReportController::class, 'myReportedContent']);
+    Route::post('/reports/delete-by-target', [ReportController::class, 'deleteByTarget']);
     Route::get('/report-categories', [ReportController::class , 'getCategories']);
     Route::get('/reports/{reportId}/status', [ReportController::class , 'status']);
     
     // Real-time AI Moderation
     Route::post('/moderation/check', [ModerationController::class , 'quickCheck']);
+    Route::post('/moderation/quick-check', [ModerationController::class , 'quickCheck']); // Alias for frontend compatibility
     Route::get('/moderation/compliance', [ModerationController::class , 'myCompliance']);
 
     // Admin Moderation Dashboard

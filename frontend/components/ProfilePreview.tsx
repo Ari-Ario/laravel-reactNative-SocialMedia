@@ -11,8 +11,10 @@ import { usePostStore } from '@/stores/postStore';
 import AuthContext from '@/context/AuthContext';
 import { usePostListService } from '@/services/PostListService';
 import { commentOnPost } from '@/services/PostService';
-import { useToastStore } from '@/stores/toastStore';
 import ReportPost from './ReportPost';
+import { useToastStore } from '@/stores/toastStore';
+import { useReportedContentStore } from '@/stores/reportedContentStore';
+import { deleteReportByTarget } from '@/services/ReportService';
 
 interface ProfilePreviewProps {
   userId: string;
@@ -133,8 +135,26 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <View style={styles.topHeader}>
           {user?.id !== String(userId) && (
-            <TouchableOpacity style={styles.reportButton} onPress={() => setShowReportModal(true)}>
-              <Ionicons name="flag-outline" size={22} color="#FF3B30" />
+            <TouchableOpacity style={styles.reportButton} onPress={async () => {
+              const profileId = String(userId);
+              const reported = useReportedContentStore.getState().isReported('profile', profileId);
+              if (reported) {
+                try {
+                  await deleteReportByTarget('profile', profileId);
+                  useReportedContentStore.getState().removeReportedItem('profile', profileId);
+                  showToast('Report removed', 'success');
+                } catch (error) {
+                  showToast('Failed to remove report', 'error');
+                }
+              } else {
+                setShowReportModal(true);
+              }
+            }}>
+              <Ionicons 
+                name={useReportedContentStore.getState().isReported('profile', userId) ? "flag" : "flag-outline"} 
+                size={22} 
+                color={useReportedContentStore.getState().isReported('profile', userId) ? "#ff4444" : "#FF3B30"} 
+              />
             </TouchableOpacity>
           )}
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
@@ -215,7 +235,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
       <ReportPost
         visible={showReportModal}
         userId={Number(userId)}
-        type="user"
+        type="profile"
         onClose={() => setShowReportModal(false)}
         onReportSubmitted={(reportId) => {
           showToast('Report submitted for AI review.', 'success');

@@ -20,6 +20,7 @@ import { router } from 'expo-router';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import AuthContext from '@/context/AuthContext';
 import { useCollaborationStore } from '@/stores/collaborationStore';
+import { useReportedContentStore } from '@/stores/reportedContentStore';
 
 type SpacesPanelProps = {
     visible: boolean;
@@ -87,6 +88,9 @@ const SpacesPanel = ({ visible, onClose, anchorPosition }: SpacesPanelProps) => 
                                 color="#5856D6"
                             />
                             <Text style={styles.spaceTitle}>{item.title}</Text>
+                            {useReportedContentStore.getState().isReported('space', item.spaceId || item.data?.space_id || item.data?.space?.id) && (
+                                <Ionicons name="flag" size={14} color="#ff4444" style={{ marginLeft: 4 }} />
+                            )}
                         </View>
                         <Text style={styles.spaceTime}>
                             {formatTimeAgo(item.createdAt)}

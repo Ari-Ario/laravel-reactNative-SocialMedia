@@ -55,6 +55,7 @@ export const NOTIFICATION_TYPES = {
   SCREEN_SHARE: 'screen_share',
   ACTIVITY_CREATED: 'activity_created',
   VIOLATION_REPORTED: 'violation_reported',
+  MODERATION_ACTION: 'moderation_action', // ✅ NEW
 };
 
 // Icon mapping for different notification types
@@ -83,6 +84,7 @@ export const getNotificationIcon = (type: string): string => {
     case NOTIFICATION_TYPES.NEW_FOLLOWER: return 'person-add-outline';
     case NOTIFICATION_TYPES.CHATBOT_TRAINING: return 'school-outline';
     case NOTIFICATION_TYPES.VIOLATION_REPORTED: return 'shield-alert-outline';
+    case NOTIFICATION_TYPES.MODERATION_ACTION: return 'notifications-outline';
     default: return 'notifications-outline';
   }
 };
@@ -113,6 +115,7 @@ export const getNotificationColor = (type: string): string => {
     case NOTIFICATION_TYPES.NEW_FOLLOWER: return '#5856D6';
     case NOTIFICATION_TYPES.CHATBOT_TRAINING: return '#FF2D55';
     case NOTIFICATION_TYPES.VIOLATION_REPORTED: return '#F44336';
+    case NOTIFICATION_TYPES.MODERATION_ACTION: return '#FF3B30';
     default: return '#8E8E93';
   }
 };
@@ -154,6 +157,7 @@ interface NotificationStore {
   unreadSpaceCount: number;
   unreadActivityCount: number;
   unreadChatbotTrainingCount: number;
+  unreadModerationCount: number; // ✅ NEW
 
   isRealtimeReady: boolean;
 
@@ -175,6 +179,7 @@ interface NotificationStore {
   markSpaceNotificationsAsRead: (spaceId: string) => void;
   clearAll: () => void;
   removeSpaceNotifications: (spaceId: string) => void;
+  markModerationAsRead: () => void; // ✅ NEW
 
 
   // Real-time
@@ -265,6 +270,7 @@ export const useNotificationStore = create<NotificationStore>()(
       unreadSpaceCount: 0,
       unreadActivityCount: 0,
       unreadChatbotTrainingCount: 0,
+      unreadModerationCount: 0, // ✅ NEW
       isRealtimeReady: false,
 
       setNotificationPanelVisible: (visible) => set({ isNotificationPanelVisible: visible }),
@@ -368,6 +374,7 @@ export const useNotificationStore = create<NotificationStore>()(
               unreadSpaceCount: newNotifications.filter(n => !n.isRead && isSpaceNotification(n.type)).length,
               unreadActivityCount: newNotifications.filter(n => !n.isRead && isActivityNotification(n.type)).length,
               unreadChatbotTrainingCount: newNotifications.filter(n => !n.isRead && isChatbotTrainingNotification(n.type)).length,
+              unreadModerationCount: newNotifications.filter(n => !n.isRead && n.type === NOTIFICATION_TYPES.MODERATION_ACTION).length,
             };
           }
         });
@@ -458,6 +465,7 @@ export const useNotificationStore = create<NotificationStore>()(
             const newUnreadSpaceCount = updatedNotifications.filter(n => !n.isRead && isSpaceNotification(n.type)).length;
             const newUnreadActivityCount = updatedNotifications.filter(n => !n.isRead && isActivityNotification(n.type)).length;
             const newUnreadChatbotTrainingCount = updatedNotifications.filter(n => !n.isRead && isChatbotTrainingNotification(n.type)).length;
+            const newUnreadModerationCount = updatedNotifications.filter(n => !n.isRead && n.type === NOTIFICATION_TYPES.MODERATION_ACTION).length;
 
             return {
               notifications: updatedNotifications,
@@ -467,6 +475,7 @@ export const useNotificationStore = create<NotificationStore>()(
               unreadSpaceCount: newUnreadSpaceCount,
               unreadActivityCount: newUnreadActivityCount,
               unreadChatbotTrainingCount: newUnreadChatbotTrainingCount,
+              unreadModerationCount: newUnreadModerationCount,
               followerNotifications: state.followerNotifications,
               unreadFollowerCount: state.unreadFollowerCount
             };
@@ -513,6 +522,19 @@ export const useNotificationStore = create<NotificationStore>()(
             notifications: updatedNotifications,
             unreadCount: newUnreadCount,
             unreadChatbotTrainingCount: 0,
+          };
+        });
+      },
+
+      markModerationAsRead: () => {
+        set((state) => {
+          const updatedNotifications = state.notifications.map(notif =>
+            notif.type === NOTIFICATION_TYPES.MODERATION_ACTION ? { ...notif, isRead: true } : notif
+          );
+
+          return {
+            notifications: updatedNotifications,
+            unreadModerationCount: 0,
           };
         });
       },
@@ -602,6 +624,7 @@ export const useNotificationStore = create<NotificationStore>()(
             const newUnreadSpaceCount = newNotifications.filter(n => !n.isRead && isSpaceNotification(n.type)).length;
             const newUnreadActivityCount = newNotifications.filter(n => !n.isRead && isActivityNotification(n.type)).length;
             const newUnreadChatbotTrainingCount = newNotifications.filter(n => !n.isRead && isChatbotTrainingNotification(n.type)).length;
+            const newUnreadModerationCount = newNotifications.filter(n => !n.isRead && n.type === NOTIFICATION_TYPES.MODERATION_ACTION).length;
 
             return {
               notifications: newNotifications,
@@ -611,6 +634,7 @@ export const useNotificationStore = create<NotificationStore>()(
               unreadSpaceCount: newUnreadSpaceCount,
               unreadActivityCount: newUnreadActivityCount,
               unreadChatbotTrainingCount: newUnreadChatbotTrainingCount,
+              unreadModerationCount: newUnreadModerationCount,
               followerNotifications: state.followerNotifications,
               unreadFollowerCount: state.unreadFollowerCount
             };
@@ -681,7 +705,7 @@ export const useNotificationStore = create<NotificationStore>()(
         const { currentUserId } = get();
         if (currentUserId) {
           PusherService.unsubscribeFromUserNotifications(currentUserId);
-          PusherService.unsubscribeFromChannel(`private-user.${currentUserId}`);
+          // PusherService.unsubscribeFromChannel(`private-user.${currentUserId}`); // This was private
           get().setLastActiveTime(new Date().toISOString(), currentUserId);
         }
         PusherService.disconnect();
@@ -774,7 +798,18 @@ export const useNotificationStore = create<NotificationStore>()(
                 };
               }
 
-              // 4. REACTIONS
+              // 5. MODERATION ACTIONS
+              else if (type === 'moderation_action' || type === NOTIFICATION_TYPES.MODERATION_ACTION || type.includes('ModerationAction')) {
+                formattedNotification = {
+                  ...formattedNotification,
+                  type: NOTIFICATION_TYPES.MODERATION_ACTION,
+                  title: 'Administration',
+                  message: notifData.message || notification.message || 'A moderation action has been taken.',
+                  data: notifData,
+                };
+              }
+
+              // 5. REACTIONS
               else if (type === 'reaction' || type === 'App\\Events\\NewReaction' || type === 'NewReaction') {
                 const reactionData = notifData.reaction || notifData;
                 const reactor = reactionData.user || {};

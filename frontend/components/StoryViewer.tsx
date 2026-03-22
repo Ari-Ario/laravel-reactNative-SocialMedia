@@ -8,6 +8,7 @@ import { markStoryAsViewed, fetchUserStories, deleteStory } from '@/services/Sto
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import PusherService from '@/services/PusherService';
 import getApiBaseImage from '@/services/getApiBaseImage';
+import { deleteReportByTarget } from '@/services/ReportService';
 import { PostVideoPlayer } from './PostVideoPlayer';
 import PostShareModal from './PostShareModal';
 import { BlurView } from 'expo-blur';
@@ -33,6 +34,7 @@ import { useStoryStore } from '@/stores/storyStore';
 import { useCollaborationStore } from '@/stores/collaborationStore';
 import ReportPost from './ReportPost';
 import { useToastStore } from '@/stores/toastStore';
+import { useReportedContentStore } from '@/stores/reportedContentStore';
 
 const { width, height } = Dimensions.get('window');
 const STORY_DURATION = 10000; // 10 seconds
@@ -564,8 +566,25 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                   </TouchableOpacity>
                 )}
                 {Number(currentStory.user.id) !== Number(user?.id) && (
-                  <TouchableOpacity onPress={() => setShowReportModal(true)} style={styles.headerButton}>
-                    <Ionicons name="flag-outline" size={22} color="white" />
+                  <TouchableOpacity onPress={async () => {
+                    const reported = useReportedContentStore.getState().isReported('story', currentStory.id);
+                    if (reported) {
+                      try {
+                        await deleteReportByTarget('story', currentStory.id);
+                        useReportedContentStore.getState().removeReportedItem('story', currentStory.id);
+                        showToast('Report removed', 'success');
+                      } catch (error) {
+                        showToast('Failed to remove report', 'error');
+                      }
+                    } else {
+                      setShowReportModal(true);
+                    }
+                  }} style={styles.headerButton}>
+                    <Ionicons 
+                      name={useReportedContentStore.getState().isReported('story', currentStory.id) ? "flag" : "flag-outline"} 
+                      size={22} 
+                      color={useReportedContentStore.getState().isReported('story', currentStory.id) ? "#ff4444" : "white"} 
+                    />
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity onPress={onClose} style={styles.headerButton}>

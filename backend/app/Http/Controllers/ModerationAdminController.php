@@ -44,6 +44,12 @@ class ModerationAdminController extends Controller
         // Attach target data for each report
         $reports->getCollection()->transform(function ($report) {
             $report->target_data = $this->fetchTargetData($report);
+            if ($report->check) {
+                $report->ai_score = [
+                    'confidence' => $report->check->malicious_intent_score * 100,
+                    'flags' => $report->check->ai_flags ?? []
+                ];
+            }
             return $report;
         });
 
@@ -94,6 +100,12 @@ class ModerationAdminController extends Controller
 
         $reports->transform(function ($report) {
             $report->target_data = $this->fetchTargetData($report);
+            if ($report->check) {
+                $report->ai_score = [
+                    'confidence' => $report->check->malicious_intent_score * 100,
+                    'flags' => $report->check->ai_flags ?? []
+                ];
+            }
             return $report;
         });
 
@@ -118,13 +130,25 @@ class ModerationAdminController extends Controller
                 $targetId = $report->metadata['actual_target_id'];
             }
 
-            $query = $modelClass::where('id', $targetId);
+            $query = (new $modelClass)->where('id', $targetId);
 
-            // Eager load common relationships
-            if ($report->target_type === 'post') $query->with(['user', 'media']);
-            if ($report->target_type === 'comment') $query->with(['user', 'post']);
-            if ($report->target_type === 'story') $query->with(['user', 'media']);
-            if ($report->target_type === 'space') $query->with(['creator']);
+            // Eager load common relationships for PREMIUM display
+            if ($report->target_type === 'post') {
+                $query->with(['user', 'media', 'comments.user'])
+                      ->withCount(['reactions', 'comments']);
+            }
+            if ($report->target_type === 'comment') {
+                $query->with(['user', 'post.user', 'post.media']);
+            }
+            if ($report->target_type === 'story') {
+                $query->with(['user']);
+            }
+            if ($report->target_type === 'space') {
+                $query->with(['creator', 'participants']);
+            }
+            if ($report->target_type === 'profile') {
+                $query->withCount(['followers', 'following', 'posts']);
+            }
 
             return $query->first();
         } catch (\Exception $e) {
@@ -184,7 +208,13 @@ class ModerationAdminController extends Controller
                         'moderator_id' => auth()->id(),
                     ]);
                     
-                    Log::info("Admin Resolve: UserRestriction created with ID: {$restriction->id}");
+                    // Send real-time and DB notification to the target user
+                    $targetUser = \App\Models\User::find($targetUserId);
+                    if ($targetUser) {
+                        $targetUser->notify(new \App\Notifications\ModerationAction($restriction, $report));
+                    }
+                    
+                    Log::info("Admin Resolve: UserRestriction created with ID: {$restriction->id} and notification sent.");
 
                     // Update user compliance track
                     $track = UserComplianceTrack::firstOrCreate(['user_id' => $targetUserId]);

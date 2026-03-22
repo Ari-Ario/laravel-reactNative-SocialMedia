@@ -22,6 +22,7 @@ import { reportPost, getReportCategories } from '@/services/ReportService';
 import { useToastStore } from '@/stores/toastStore';
 import { createShadow } from '@/utils/styles';
 import AuthContext from '@/context/AuthContext';
+import { useReportedContentStore } from '@/stores/reportedContentStore';
 
 // Professional, education-focused reporting categories
 const REPORT_CATEGORIES = {
@@ -303,7 +304,7 @@ interface ReportPostProps {
     userId?: number;
     spaceId?: string;
     targetId?: number | string;
-    type?: 'post' | 'user' | 'comment' | 'space' | 'story';
+    type?: 'post' | 'user' | 'comment' | 'space' | 'story' | 'profile';
     onClose: () => void;
     onReportSubmitted: (reportId: string) => void;
 }
@@ -330,9 +331,55 @@ export default function ReportPost({
     const [isAnonymous, setIsAnonymous] = useState(false);
     const [isUrgent, setIsUrgent] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [fetchingExisting, setFetchingExisting] = useState(false);
     const [aiSignature, setAiSignature] = useState<any>(null);
+    const [isUpdate, setIsUpdate] = useState(false);
+    const [reportId, setReportId] = useState<string | null>(null);
 
-    const categories = REPORT_CATEGORIES[type] || REPORT_CATEGORIES.post;
+    const categories = REPORT_CATEGORIES[type === 'profile' ? 'user' : type] || REPORT_CATEGORIES.post;
+
+    React.useEffect(() => {
+        if (visible && (targetId || spaceId || postId || userId)) {
+            fetchExistingReport();
+        } else if (!visible) {
+            // Reset state when modal closes
+            setStep('category');
+            setSelectedCategory(null);
+            setSelectedSubcategory('');
+            setDescription('');
+            setIsUpdate(false);
+            setReportId(null);
+        }
+    }, [visible, targetId, spaceId, postId, userId, type]);
+
+    const fetchExistingReport = async () => {
+        const id = targetId || spaceId || postId || userId;
+        if (!id) return;
+
+        setFetchingExisting(true);
+        try {
+            const { getReportByTarget } = require('@/services/ReportService');
+            const existingReport = await getReportByTarget(type, id.toString());
+            
+            if (existingReport) {
+                // Pre-fill categories
+                const category = categories.find(c => c.id === existingReport.category);
+                if (category) {
+                    setSelectedCategory(category);
+                    setSelectedSubcategory(existingReport.subcategory);
+                    setDescription(existingReport.description || '');
+                    setIsUrgent(existingReport.severity === 'critical' || existingReport.severity === 'high');
+                    setIsUpdate(true);
+                    setReportId(existingReport.report_id);
+                    setStep('details'); // Jump to details if already reported
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching existing report:', error);
+        } finally {
+            setFetchingExisting(false);
+        }
+    };
 
     const handleSelectCategory = (category: any) => {
         setSelectedCategory(category);
@@ -365,6 +412,9 @@ export default function ReportPost({
             };
 
             const response = await reportPost(reportData);
+            
+            // ✅ Optimistically update the reported content store
+            useReportedContentStore.getState().addReportedItem(type, (targetId || spaceId || postId || userId || '').toString());
 
             setAiSignature(response.ai_analysis);
             
@@ -392,11 +442,15 @@ export default function ReportPost({
     };
 
     const renderCategoryStep = () => (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+        <ScrollView 
+            showsVerticalScrollIndicator={false} 
+            contentContainerStyle={{ paddingBottom: 40 }}
+            keyboardShouldPersistTaps="handled"
+        >
             <View style={styles.header}>
                 <BlurView intensity={20} tint="light" style={styles.iconCircle}>
                     <MaterialIcons
-                        name={type === 'user' ? 'person' : type === 'comment' ? 'comment' : 'article'}
+                        name={type === 'user' || type === 'profile' ? 'person' : type === 'comment' ? 'comment' : 'article'}
                         size={32}
                         color="#fff"
                     />
@@ -428,8 +482,18 @@ export default function ReportPost({
     );
 
     const renderDetailsStep = () => (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-            <TouchableOpacity style={styles.backButton} onPress={() => setStep('category')}>
+        <ScrollView 
+            showsVerticalScrollIndicator={false} 
+            contentContainerStyle={{ paddingBottom: 40 }}
+            keyboardShouldPersistTaps="handled"
+        >
+            <TouchableOpacity 
+                style={styles.backButton} 
+                onPress={() => {
+                    setStep('category');
+                    setIsUpdate(false); // Reset update status if they go back to categories
+                }}
+            >
                 <Ionicons name="arrow-back" size={20} color="#fff" />
                 <Text style={styles.backText}>Back to Categories</Text>
             </TouchableOpacity>
@@ -490,8 +554,8 @@ export default function ReportPost({
                 onPress={handleSubmitReport}
                 disabled={!selectedSubcategory || loading}
             >
-                <Text style={styles.submitButtonText}>Generate AI Report</Text>
-                <Ionicons name="shield-checkmark" size={20} color="#fff" />
+                <Text style={styles.submitButtonText}>{isUpdate ? 'Update AI Report' : 'Generate AI Report'}</Text>
+                <Ionicons name={isUpdate ? "refresh" : "shield-checkmark"} size={20} color="#fff" />
             </TouchableOpacity>
         </ScrollView>
     );
@@ -554,8 +618,9 @@ export default function ReportPost({
         >
             <BlurView intensity={60} tint="dark" style={styles.overlay}>
                 <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                     style={styles.keyboardView}
+                    enabled
                 >
                     <View style={[
                         styles.container, 

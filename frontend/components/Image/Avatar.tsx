@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import getApiBaseImage from '@/services/getApiBaseImage';
 
 interface AvatarProps {
@@ -56,6 +57,13 @@ const Avatar: React.FC<AvatarProps> = ({
     : '?';
 
   const renderAvatar = () => {
+    if (source === 'system_admin_shield') {
+      return (
+        <View style={[styles.initialsContainer, { width: size, height: size, borderRadius: size / 2, backgroundColor: '#FF3B30', borderColor: '#FF3B30' }]}>
+          <Ionicons name="shield-checkmark" size={size * 0.6} color="white" />
+        </View>
+      );
+    }
     if (source && !imgError) {
       return (
         <Image

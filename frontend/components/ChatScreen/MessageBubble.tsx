@@ -642,6 +642,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             />
 
             <View style={styles.messageFooter}>
+              {message.user?.id === 0 && (
+                <Ionicons name="shield-checkmark" size={12} color={isCurrentUser ? "#fff" : "#FF3B30"} style={{ marginRight: 4 }} />
+              )}
               <Text style={styles.timestamp}>
                 {formatTime(message.created_at)}
               </Text>

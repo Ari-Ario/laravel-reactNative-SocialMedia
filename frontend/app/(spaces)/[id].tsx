@@ -23,6 +23,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import AuthContext from '@/context/AuthContext';
 import CollaborationService, { CollaborativeActivity } from '@/services/ChatScreen/CollaborationService';
+import { deleteReportByTarget } from '@/services/ReportService';
 import GenericMenu from '@/components/GenericMenu';
 import { calculateAnchor, AnchorPosition } from '@/utils/layout';
 import { AICollaborationAssistant } from '@/components/AI/AICollaborationAssistant';
@@ -38,6 +39,7 @@ import MessageList from '@/components/ChatScreen/MessageList';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { useToastStore } from '@/stores/toastStore';
 import { useCollaborationStore } from '@/stores/collaborationStore';
+import { useReportedContentStore } from '@/stores/reportedContentStore';
 import Avatar from '@/components/Image/Avatar';
 import Animated, { FadeIn, FadeOut, SlideOutDown } from 'react-native-reanimated';
 import EnhancedInviteModal from '@/components/ChatScreen/EnhancedInviteModal';
@@ -50,6 +52,7 @@ import SpaceSettingsModal from '@/components/ChatScreen/SpaceSettingsModal';
 import { createShadow } from '@/utils/styles';
 import WhiteboardCanvas from '@/components/ChatScreen/WhiteboardCanvas';
 import ReportPost from '@/components/ReportPost';
+import Colors from '@/constants/Colors';
 
 const SpaceDetailScreen = () => {
   const { showToast } = useToastStore();
@@ -67,6 +70,7 @@ const SpaceDetailScreen = () => {
   const [showMediaUploader, setShowMediaUploader] = useState(false);
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const { unreadModerationCount } = useNotificationStore();
 
   // Dropdown menu states
   const [showCallMenu, setShowCallMenu] = useState(false);
@@ -1138,7 +1142,16 @@ const SpaceDetailScreen = () => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity 
+          onPress={() => {
+            if (params.returnTo) {
+              router.replace(params.returnTo as any);
+            } else {
+              router.back();
+            }
+          }} 
+          style={styles.backButton}
+        >
           <Ionicons name="arrow-back" size={24} color="#007AFF" />
         </TouchableOpacity>
 
@@ -1160,9 +1173,12 @@ const SpaceDetailScreen = () => {
           )}
           <View style={styles.headerTextContainer}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={styles.title} numberOfLines={1}>
+               <Text style={styles.title} numberOfLines={1}>
                 {displayTitle}
               </Text>
+              {useReportedContentStore.getState().isReported('space', id as string) && (
+                <Ionicons name="flag" size={14} color="#ff4444" style={{ marginLeft: 4 }} />
+              )}
               {isPinned && <Ionicons name="pin" size={12} color="#007AFF" style={{ marginLeft: 4 }} />}
               {isMuted && <Ionicons name="volume-mute" size={12} color="#666" style={{ marginLeft: 4 }} />}
             </View>
@@ -1295,10 +1311,22 @@ const SpaceDetailScreen = () => {
           }] : []),
           {
             icon: 'flag-outline' as const,
-            label: 'Report Space',
-            onPress: () => {
+            label: useReportedContentStore.getState().isReported('space', id as string) ? 'Un-report Space' : 'Report Space',
+            color: useReportedContentStore.getState().isReported('space', id as string) ? '#ff4444' : undefined,
+            onPress: async () => {
               setShowSpaceMenu(false);
-              setShowReportModal(true);
+              const reported = useReportedContentStore.getState().isReported('space', id as string);
+              if (reported) {
+                try {
+                  await deleteReportByTarget('space', id as string);
+                  useReportedContentStore.getState().removeReportedItem('space', id as string);
+                  showToast('Report removed', 'success');
+                } catch (error) {
+                  showToast('Failed to remove report', 'error');
+                }
+              } else {
+                setShowReportModal(true);
+              }
             },
           },
         ]}

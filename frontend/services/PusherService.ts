@@ -431,6 +431,23 @@ class PusherService {
         onNotification(notification);
       });
 
+      // Handle Moderation Action (Real-time)
+      channel.bind('moderation_action', (data: any) => {
+        console.log('⚒️ Moderation Action Received (Real-time):', data);
+        
+        const notification = {
+          id: data.id || Date.now().toString(),
+          type: 'moderation_action',
+          title: 'Administration',
+          message: data.message || 'A moderation action has been taken.',
+          data: data,
+          createdAt: new Date(),
+          isRead: false,
+        };
+
+        onNotification(notification);
+      });
+
       // Handle Laravel's generic BroadcastNotificationCreated events
       channel.bind('Illuminate\\Notifications\\Events\\BroadcastNotificationCreated', (data: any) => {
 
@@ -449,6 +466,7 @@ class PusherService {
         if (notifType.includes('MessageReacted')) notifType = 'message_reaction';
         if (notifType.includes('MessageReplied')) notifType = 'message_reply';
         if (notifType.includes('MessageSent')) notifType = 'new_message';
+        if (notifType.includes('ModerationAction')) notifType = 'moderation_action';
 
         // Map generic Laravel notification to our store format
         const notification: any = {
@@ -1130,19 +1148,29 @@ class PusherService {
     this.unsubscribeFromChannel('stories.global');
   }
 
-  unsubscribeFromChannel(channelName: string): void {
-    const channel = this.channels.get(channelName);
-    if (channel && this.pusher) {
-      try {
-        const connectionState = this.pusher.connection.state;
-        if (connectionState !== 'disconnected' && connectionState !== 'unavailable' && connectionState !== 'failed') {
-          this.pusher.unsubscribe(channelName);
+  // ✅ ADDED: Generic subscribe method for custom notification types
+  subscribe(channelName: string): any {
+    if (!this.pusher || !this.isInitialized) {
+      console.warn('⚠️ Pusher not ready for subscription:', channelName);
+      // Return a dummy object if not ready yet, or we could queue it
+      return {
+        bind: (event: string, callback: Function) => {
+          this.pendingSubscriptions.push(() => {
+            const channel = this.pusher?.subscribe(channelName);
+            channel?.bind(event, callback);
+          });
         }
-        this.channels.delete(channelName);
-        console.log(`✅ Unsubscribed from channel: ${channelName}`);
-      } catch (error) {
-        console.error(`❌ Error unsubscribing from ${channelName}:`, error);
-      }
+      };
+    }
+    return this.pusher.subscribe(channelName);
+  }
+
+  // ✅ Keep existing unsubscribe methods...
+  private unsubscribeFromChannel(channelName: string): void {
+    if (this.pusher && this.channels.has(channelName)) {
+      this.pusher.unsubscribe(channelName);
+      this.channels.delete(channelName);
+      console.log(`🔌 Pusher: Unsubscribed from ${channelName}`);
     }
   }
 

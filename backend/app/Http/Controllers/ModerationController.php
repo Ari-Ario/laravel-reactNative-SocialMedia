@@ -30,15 +30,17 @@ class ModerationController extends Controller
             $request->context ?? 'input_field'
         );
 
+        $severityScore = $analysis->ai_flags['severity_score'] ?? 0;
+        
         return response()->json([
-            'is_safe' => $analysis->recommended_action === 'none',
+            'is_safe' => $analysis->recommended_action === 'none' || ($analysis->recommended_action === 'flag_for_review' && $severityScore < 0.4),
             'recommended_action' => $analysis->recommended_action,
             'scores' => [
                 'fact' => $analysis->fact_score,
                 'morality' => $analysis->morality_score,
                 'malicious' => $analysis->malicious_intent_score
             ],
-            'flags' => $analysis->ai_flags
+            'flags' => $analysis->ai_flags['flags'] ?? $analysis->ai_flags
         ]);
     }
 

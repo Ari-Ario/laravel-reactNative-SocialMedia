@@ -29,8 +29,11 @@ import { BookmarkGallery } from '@/components/BookmarkGallery';
 import ModerationComplianceModal from '@/components/ModerationComplianceModal';
 import { GlobalStyles } from '@/styles/GlobalStyles';
 
+import { useNotificationStore } from '@/stores/notificationStore';
+
 const Page = () => {
   const { user, setUser } = useContext(AuthContext);
+  const { unreadModerationCount } = useNotificationStore();
   const [showPhotoOptions, setShowPhotoOptions] = useState(false);
   const [editNameVisible, setEditNameVisible] = useState(false);
   const [newName, setNewName] = useState(user?.name || '');
@@ -63,7 +66,7 @@ const Page = () => {
     { name: 'Account', icon: 'key', backgroundColor: '#075E54' },
     { name: 'Privacy', icon: 'lock-closed', backgroundColor: '#33A5D1' },
     { name: 'Chats', icon: 'logo-whatsapp', backgroundColor: '#25D366' },
-    { name: 'Notifications', icon: 'notifications', backgroundColor: '#FF3B30' },
+    { name: 'Admin Notifications', icon: 'notifications', backgroundColor: '#FF3B30', route: '/moderation/admin-channel' },
     { name: 'Storage and Data', icon: 'repeat', backgroundColor: '#25D366' },
   ];
 
@@ -95,11 +98,18 @@ const Page = () => {
           router.push('/moderation');
         } else if (item.name === 'AI Safety Status') {
           setComplianceVisible(true);
+        } else if (item.route) {
+          router.push(item.route);
         }
       }}
     >
       <BoxedIcon name={item.icon} backgroundColor={item.backgroundColor} />
       <Text style={styles.itemText}>{item.name}</Text>
+      {item.name === 'Admin Notifications' && unreadModerationCount > 0 && (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{unreadModerationCount}</Text>
+        </View>
+      )}
       <Ionicons name="chevron-forward" size={20} color={'grey'} />
     </TouchableOpacity>
   );
@@ -384,7 +394,6 @@ const Page = () => {
           </View>
         </View>
       </Modal>
-
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.scrollContainer}>
         <View style={styles.block}>
           <FlatList
@@ -635,6 +644,21 @@ const styles = StyleSheet.create({
     fontSize: 24,
     textAlign: 'center',
     paddingVertical: 14,
+  },
+  badge: {
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    marginRight: 8,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });
 

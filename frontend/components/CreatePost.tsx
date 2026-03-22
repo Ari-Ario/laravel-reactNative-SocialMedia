@@ -92,7 +92,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
   const [longVideosDetected, setLongVideosDetected] = useState<boolean>(false);
 
   const postStore = usePostStore();
-  const { analysis, isChecking, factScore, maliciousScore, isSafe } = useModeration(caption, 'post');
+  const { analysis, isChecking, factScore, maliciousScore, moralityScore, isSafe } = useModeration(caption, 'post');
   const isInitialized = useRef(false);
 
   // Initialize with edit data if available
@@ -762,8 +762,8 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
                 </View>
                 <View style={styles.aiMetric}>
                   <Text style={styles.aiMetricLabel}>Morality Score</Text>
-                  <Text style={[styles.aiMetricValue, { color: (analysis?.scores.morality ?? 0) > 0.8 ? "#4CAF50" : "#666" }]}>
-                    {((analysis?.scores.morality ?? 0) * 100).toFixed(0)}%
+                  <Text style={[styles.aiMetricValue, { color: moralityScore > 0.8 ? "#4CAF50" : "#666" }]}>
+                    {(moralityScore * 100).toFixed(0)}%
                   </Text>
                 </View>
               </View>

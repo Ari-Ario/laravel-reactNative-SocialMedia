@@ -6,6 +6,8 @@ import getApiBaseImage from '@/services/getApiBaseImage';
 import { usePostStore } from '@/stores/postStore';
 import ReportPost from './ReportPost';
 import { useToastStore } from '@/stores/toastStore';
+import { useReportedContentStore } from '@/stores/reportedContentStore';
+import { deleteReportByTarget } from '@/services/ReportService';
 
 interface RenderCommentsProps {
   user: any;
@@ -101,12 +103,28 @@ const RenderComments = ({
           {!isMyComment && (
             <TouchableOpacity 
               style={styles.headerReportButton} 
-              onPress={() => {
-                setReportingCommentId(item.id);
-                setShowReportModal(true);
+              onPress={async () => {
+                const isAlreadyReported = useReportedContentStore.getState().isReported('comment', item.id);
+                if (isAlreadyReported) {
+                  try {
+                    await deleteReportByTarget('comment', item.id);
+                    useReportedContentStore.getState().removeReportedItem('comment', item.id);
+                    useToastStore.getState().showToast('Report removed successfully', 'success');
+                  } catch (error) {
+                    console.error('Failed to delete report:', error);
+                    useToastStore.getState().showToast('Failed to remove report', 'error');
+                  }
+                } else {
+                  setReportingCommentId(item.id);
+                  setShowReportModal(true);
+                }
               }}
             >
-              <Ionicons name="flag-outline" size={14} color="#999" />
+              <Ionicons 
+                name={useReportedContentStore.getState().isReported('comment', item.id) ? "flag" : "flag-outline"} 
+                size={14} 
+                color={useReportedContentStore.getState().isReported('comment', item.id) ? "#ff4444" : "#999"} 
+              />
             </TouchableOpacity>
           )}
         </View>

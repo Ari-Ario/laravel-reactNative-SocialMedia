@@ -30,7 +30,7 @@ class ReportController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'type' => 'required|in:post,user,comment,space,story',
+            'type' => 'required|in:post,profile,comment,space,story',
             'targetId' => 'required',
             'categoryId' => 'required|string',
             'subcategoryId' => 'required|string',
@@ -62,7 +62,6 @@ class ReportController extends Controller
                 false // Disable auto-report since we are creating one manually below
             );
 
-
             // 3. Detect Reporting Bias (Harassment detection)
             $biasAnalysis = $this->moderationEngine->evaluateReportingBias(
                 auth()->id(),
@@ -70,14 +69,23 @@ class ReportController extends Controller
                 $request->type
             );
 
-            // 4. Determine Severity & Create Report
+            // 4. Determine Severity & Create/Update Report
             $severity = $this->calculateSeverity($check, $request->isUrgent);
             
+            // Check for existing report by this user on this target
+            $report = ModerationReport::where('reporter_id', auth()->id())
+                ->where('target_type', $request->type)
+                ->where(function ($query) use ($request) {
+                    if (is_numeric($request->targetId)) {
+                        $query->where('target_id', $request->targetId);
+                    } else {
+                        $query->where('target_id', 0)
+                              ->where('metadata->actual_target_id', $request->targetId);
+                    }
+                })
+                ->first();
+
             $reportData = [
-                'report_id' => 'REP-' . strtoupper(Str::random(4)) . '-' . rand(1000, 9999),
-                'reporter_id' => $request->isAnonymous ? null : auth()->id(),
-                'target_type' => $request->type,
-                'target_id' => is_numeric($request->targetId) ? $request->targetId : 0, // Fallback for UUIDs
                 'category' => $request->categoryId,
                 'subcategory' => $request->subcategoryId,
                 'description' => $request->description,
@@ -92,13 +100,24 @@ class ReportController extends Controller
                 ])
             ];
 
-            // If targetId is a UUID, store it in metadata since the column is BigInt
-            if (!is_numeric($request->targetId)) {
-                $reportData['metadata']['actual_target_id'] = $request->targetId;
+            if ($report) {
+                $report->update($reportData);
+                $message = 'Report updated successfully.';
+            } else {
+                $reportData['report_id'] = 'REP-' . strtoupper(Str::random(4)) . '-' . rand(1000, 9999);
+                $reportData['reporter_id'] = $request->isAnonymous ? null : auth()->id();
+                $reportData['target_type'] = $request->type;
+                $reportData['target_id'] = is_numeric($request->targetId) ? (int)$request->targetId : 0;
+                
+                if (!is_numeric($request->targetId)) {
+                    $reportData['metadata']['actual_target_id'] = $request->targetId;
+                }
+                
+                $report = ModerationReport::create($reportData);
+                $message = $report->status === 'dismissed' 
+                    ? 'Report flagged for potential bias and suppressed.' 
+                    : 'Report submitted successfully for AI review.';
             }
-
-            $report = ModerationReport::create($reportData);
-
 
             // 5. Automated Protected Action
             if ($report->status !== 'dismissed' && $severity === 'critical') {
@@ -125,9 +144,7 @@ class ReportController extends Controller
                     'malicious_intent_score' => $check->malicious_intent_score,
                     'is_flagged' => $check->recommended_action !== 'none'
                 ],
-                'message' => $report->status === 'dismissed' 
-                    ? 'Report flagged for potential bias and suppressed.' 
-                    : 'Report submitted successfully for AI review.'
+                'message' => $message
             ]);
 
         } catch (\Exception $e) {
@@ -135,6 +152,35 @@ class ReportController extends Controller
             Log::error('Moderation Engine Error: ' . $e->getMessage());
             return response()->json(['error' => 'Failed to process moderation request: ' . $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Get a report for a specific target by the authenticated user.
+     */
+    public function getByTarget(Request $request)
+    {
+        $request->validate([
+            'type' => 'required|in:post,user,comment,space,story',
+            'targetId' => 'required'
+        ]);
+
+        $report = ModerationReport::where('reporter_id', auth()->id())
+            ->where('target_type', $request->type)
+            ->where(function ($query) use ($request) {
+                if (is_numeric($request->targetId)) {
+                    $query->where('target_id', $request->targetId);
+                } else {
+                    $query->where('target_id', 0)
+                          ->where('metadata->actual_target_id', $request->targetId);
+                }
+            })
+            ->first();
+
+        if (!$report) {
+            return response()->json(null);
+        }
+
+        return response()->json($report);
     }
 
     private function getTargetContent($type, $id)
@@ -147,7 +193,7 @@ class ReportController extends Controller
                 $target = Post::find($id);
                 $text = $target ? ($target->caption ?? '') : '';
                 break;
-            case 'user':
+            case 'profile':
                 $target = User::find($id);
                 $text = $target ? ($target->bio ?? $target->name ?? '') : '';
                 break;
@@ -182,7 +228,7 @@ class ReportController extends Controller
         
         // Find the user to restrict (the author of the content)
         $userIdToRestrict = null;
-        if ($report->target_type === 'user') {
+        if ($report->target_type === 'profile') {
             $userIdToRestrict = $report->target_id;
         } else {
             $targetContent = $this->getTargetContent($report->target_type, $report->target_id);
@@ -208,5 +254,46 @@ class ReportController extends Controller
     {
         $report = ModerationReport::where('report_id', $reportId)->firstOrFail();
         return response()->json($report);
+    }
+
+    public function myReportedContent()
+    {
+        $reports = ModerationReport::where('reporter_id', auth()->id())
+            ->select('target_type', 'target_id')
+            ->distinct()
+            ->get();
+
+        return response()->json($reports);
+    }
+
+    /**
+     * Delete a report by its target (for toggle functionality).
+     */
+    public function deleteByTarget(Request $request)
+    {
+        $request->validate([
+            'type' => 'required|in:post,profile,comment,space,story',
+            'targetId' => 'required'
+        ]);
+
+        $report = ModerationReport::where('reporter_id', auth()->id())
+            ->where('target_type', $request->type)
+            ->where(function ($query) use ($request) {
+                if (is_numeric($request->targetId)) {
+                    $query->where('target_id', $request->targetId);
+                } else {
+                    $query->where('target_id', 0)
+                          ->where('metadata->actual_target_id', $request->targetId);
+                }
+            })
+            ->first();
+
+        if (!$report) {
+            return response()->json(['error' => 'Report not found'], 404);
+        }
+
+        $report->delete();
+
+        return response()->json(['success' => true, 'message' => 'Report removed successfully.']);
     }
 }

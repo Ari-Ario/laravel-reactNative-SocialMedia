@@ -10,8 +10,9 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import LoginScreen from '../LoginScreen';
 import { usePostStore } from '@/stores/postStore';
-import { useNotificationStore } from '@/stores/notificationStore';
+import { useNotificationStore, NOTIFICATION_TYPES } from '@/stores/notificationStore';
 import { useCollaborationStore } from '@/stores/collaborationStore';
+import { useReportedContentStore } from '@/stores/reportedContentStore';
 import { logout } from '@/services/AuthService';
 import { getToken } from '@/services/TokenService';
 import { NotificationToast } from '@/components/Notifications/NotificationToast';
@@ -27,7 +28,9 @@ export default function TabLayout() {
     setNotificationPanelVisible,
     isNotificationPanelVisible,
     setInitializationTime,
-    setIsRealtimeReady: setGlobalRealtimeReady
+    setIsRealtimeReady: setGlobalRealtimeReady,
+    unreadCallCount,
+    unreadModerationCount
   } = useNotificationStore();
   const totalUnreadSpaces = useCollaborationStore(state => state.totalUnreadSpaces);
 
@@ -60,8 +63,12 @@ export default function TabLayout() {
           initializeRealtime(token);
           initNotifications(token, Number(user.id));
 
-          // Pre-fetch spaces to ensure the Chats tab badge exists offline instantly
-          useCollaborationStore.getState().fetchUserSpaces(Number(user.id));
+    // Pre-fetch spaces to ensure the Chats tab badge exists offline instantly
+    useCollaborationStore.getState().fetchUserSpaces(Number(user.id));
+    
+    // Pre-fetch reported content for red flags
+    useReportedContentStore.getState().fetchReportedContent();
+
 
           if (typeof setInitializationTime === 'function') {
             setInitializationTime(new Date());
@@ -205,6 +212,7 @@ export default function TabLayout() {
               options={{
                 title: 'Settings',
                 tabBarIcon: ({ color }) => <FontAwesome size={28} name="gear" color={color} />,
+                tabBarBadge: (unreadCallCount || 0) + (unreadModerationCount || 0) > 0 ? (unreadCallCount || 0) + (unreadModerationCount || 0) : undefined,
               }}
             />
 
