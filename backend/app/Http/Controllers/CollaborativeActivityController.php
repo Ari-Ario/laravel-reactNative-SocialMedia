@@ -8,6 +8,7 @@ use App\Models\CollaborationSpace;
 use App\Models\CollaborativeActivity;
 use App\Models\SpaceParticipation;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class CollaborativeActivityController extends Controller
 {
@@ -102,8 +103,7 @@ class CollaborativeActivityController extends Controller
             ]);
 
             // Broadcast activity created event
-            // You would typically use broadcasting here
-            // broadcast(new CollaborativeActivityCreated($activity, $space))->toOthers();
+            broadcast(new \App\Events\CollaborativeActivityCreated($activity))->toOthers();
 
             DB::commit();
 
@@ -124,6 +124,187 @@ class CollaborativeActivityController extends Controller
                 'error' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
+    }
+
+    /**
+     * Update an existing collaborative activity
+     */
+    public function update(Request $request, $activityId)
+    {
+        $validator = Validator::make($request->all(), [
+            'activity_type' => 'nullable|string|max:255',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'scheduled_start' => 'nullable|date',
+            'scheduled_end' => 'nullable|date|after:scheduled_start',
+            'is_recurring' => 'boolean',
+            'recurrence_pattern' => 'nullable|string|in:daily,weekly,monthly',
+            'duration_minutes' => 'nullable|integer|min:5|max:480',
+            'max_participants' => 'nullable|integer|min:1',
+            'status' => 'nullable|string|in:proposed,scheduled,active,completed,cancelled,archived',
+            'metadata' => 'nullable|array',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'errors' => $validator->errors(),
+                'message' => 'Validation failed'
+            ], 422);
+        }
+
+        $activity = CollaborativeActivity::find($activityId);
+        if (!$activity) {
+            return response()->json([
+                'message' => 'Activity not found'
+            ], 404);
+        }
+
+        // Check if user is creator or space owner
+        $space = CollaborationSpace::find($activity->space_id);
+        if ($activity->created_by !== auth()->id() && $space->creator_id !== auth()->id()) {
+            return response()->json([
+                'message' => 'You are not authorized to update this activity'
+            ], 403);
+        }
+
+        DB::beginTransaction();
+        try {
+            $updateData = [
+                'title' => $request->title,
+                'description' => $request->description,
+                'is_recurring' => $request->is_recurring ?? $activity->is_recurring,
+                'recurrence_pattern' => $request->recurrence_pattern ?? $activity->recurrence_pattern,
+                'duration_minutes' => $request->duration_minutes ?? $activity->duration_minutes,
+                'max_participants' => $request->max_participants ?? $activity->max_participants,
+                'metadata' => $request->metadata ?? $activity->metadata,
+            ];
+
+            if ($request->has('activity_type')) {
+                $updateData['activity_type'] = $request->activity_type;
+            }
+
+            if ($request->has('scheduled_start')) {
+                $updateData['scheduled_start'] = $request->scheduled_start ? now()->parse($request->scheduled_start) : null;
+                $updateData['status'] = $updateData['scheduled_start'] ? 'scheduled' : 'proposed';
+            }
+
+            if ($request->has('scheduled_end')) {
+                $updateData['scheduled_end'] = $request->scheduled_end ? now()->parse($request->scheduled_end) : null;
+            }
+
+            if ($request->has('status')) {
+                $updateData['status'] = $request->status;
+            }
+
+            $activity->update($updateData);
+
+            // Update space metrics if status changed or title changed and it's active
+            if ($activity->status === 'active' || ($request->has('status') && $request->status === 'active')) {
+                $space->update(['current_focus' => $activity->title]);
+            }
+
+            // Broadcast activity updated event
+            broadcast(new \App\Events\CollaborativeActivityUpdated($activity))->toOthers();
+
+            DB::commit();
+
+            return response()->json([
+                'activity' => $activity->load('participants', 'creator'),
+                'message' => 'Collaborative activity updated successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error updating collaborative activity: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'message' => 'Failed to update collaborative activity',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+    /**
+     * Get activities (global or space-specific)
+     */
+    public function index(Request $request)
+    {
+        $spaceId = $request->query('space_id');
+        $userId = auth()->id();
+
+        $query = CollaborativeActivity::with(['creator', 'participants']);
+
+        if ($spaceId) {
+            $space = CollaborationSpace::find($spaceId);
+            if (!$space) {
+                return response()->json(['message' => 'Space not found'], 404);
+            }
+
+            // Check participation
+            if (!$space->isParticipant($userId)) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+
+            $query->where('space_id', $spaceId);
+        } else {
+            // Global fetch: find spaces where user is participant
+            $spaceIds = SpaceParticipation::where('user_id', $userId)
+                ->pluck('space_id');
+            
+            // Also include spaces owned by user
+            $ownedSpaceIds = CollaborationSpace::where('creator_id', $userId)
+                ->pluck('id');
+            
+            $allSpaceIds = $spaceIds->concat($ownedSpaceIds)->unique();
+            
+            $query->whereIn('space_id', $allSpaceIds);
+        }
+
+        // Filters
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        } else {
+            // Default: don't show archived unless requested
+            $query->where('status', '!=', 'archived');
+        }
+
+        if ($request->has('type')) {
+            $query->where('activity_type', $request->type);
+        }
+
+        // Date range filtering
+        if ($request->has('start_date')) {
+            $query->where('scheduled_start', '>=', now()->parse($request->start_date));
+        }
+        if ($request->has('end_date')) {
+            $query->where('scheduled_start', '<=', now()->parse($request->end_date));
+        }
+
+        // Sort by scheduled_start if it exists, otherwise created_at
+        $activities = $query->orderBy(DB::raw('COALESCE(scheduled_start, created_at)'), 'desc')
+            ->paginate($request->query('per_page', 20));
+
+        // Calculate upcoming count (scheduled and not started/ended)
+        $upcomingQuery = CollaborativeActivity::where('status', 'scheduled')
+            ->where('scheduled_start', '>', now());
+
+        if ($spaceId) {
+            $upcomingQuery->where('space_id', $spaceId);
+        } else {
+            $upcomingQuery->whereIn('space_id', $allSpaceIds);
+        }
+
+        $upcomingCount = $upcomingQuery->count();
+
+        return response()->json([
+            'activities' => $activities->items(),
+            'total' => $activities->total(),
+            'current_page' => $activities->currentPage(),
+            'last_page' => $activities->lastPage(),
+            'upcoming_count' => $upcomingCount,
+        ]);
     }
 
     /**
@@ -248,6 +429,9 @@ class CollaborativeActivityController extends Controller
                 $space->update(['activity_metrics' => $activityMetrics]);
             }
 
+            // Broadcast activity updated event
+            broadcast(new \App\Events\CollaborativeActivityUpdated($activity))->toOthers();
+
             DB::commit();
 
             return response()->json([
@@ -314,6 +498,9 @@ class CollaborativeActivityController extends Controller
                     $activity->participants()->sync($request->participant_ids);
                     break;
             }
+
+            // Broadcast activity updated event
+            broadcast(new \App\Events\CollaborativeActivityUpdated($activity))->toOthers();
 
             return response()->json([
                 'activity' => $activity->load('participants'),
@@ -391,5 +578,53 @@ class CollaborativeActivityController extends Controller
             'space_id' => $spaceId,
             'generated_at' => now()->toISOString(),
         ]);
+    }
+    /**
+     * Remove the specified collaborative activity from storage.
+     */
+    public function destroy($activityId)
+    {
+        $activity = \App\Models\CollaborativeActivity::find($activityId);
+        if (!$activity) {
+            return response()->json(['message' => 'Activity not found'], 404);
+        }
+
+        // Check authorization (creator or space owner)
+        $space = \App\Models\CollaborationSpace::find($activity->space_id);
+        if ($activity->created_by !== auth()->id() && $space->creator_id !== auth()->id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $participantIds = $activity->participants()->pluck('user_id')->toArray();
+        $spaceId = $activity->space_id;
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            // Update metrics if it was completed
+            if ($activity->status === 'completed') {
+                $activityMetrics = $space->activity_metrics ?? [];
+                $activityMetrics['completed_activities'] = max(0, ($activityMetrics['completed_activities'] ?? 0) - 1);
+                $space->update(['activity_metrics' => $activityMetrics]);
+            }
+
+            // Clear focus if this was the active activity
+            if ($activity->status === 'active' || $space->current_focus === $activity->title) {
+                $space->update(['current_focus' => null]);
+            }
+
+            $activity->delete();
+
+            // Broadcast activity deleted event
+            broadcast(new \App\Events\CollaborativeActivityDeleted($activityId, $spaceId, $participantIds))->toOthers();
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            return response()->json(['message' => 'Activity deleted successfully']);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            \Log::error('Error deleting activity: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to delete activity'], 500);
+        }
     }
 }

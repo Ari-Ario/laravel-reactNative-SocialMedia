@@ -85,6 +85,13 @@ class PollController extends Controller
             return response()->json(['message' => 'Not authorized'], 403);
         }
 
+        // ✅ Permissions Fix: Check write access
+        if (!($participation->permissions['write'] ?? true)) {
+            return response()->json([
+                'message' => '🚫 You do not have permission to create polls in this space'
+            ], 403);
+        }
+
         DB::beginTransaction();
 
         try {
@@ -232,7 +239,8 @@ class PollController extends Controller
                         $existingOption->update([
                             'text' => $optionData['text'],
                         ]);
-                    } else {
+                    }
+                    else {
                         // Create new option
                         PollOption::create([
                             'id' => Str::uuid(),
@@ -250,7 +258,7 @@ class PollController extends Controller
                 $poll->load(['creator', 'options']);
 
                 \Log::info('Poll updated successfully: ' . $poll->id);
-                
+
                 // Broadcast the updated poll to original space
                 broadcast(new PollUpdated($poll, $spaceId, $user->id))->toOthers();
 
@@ -262,13 +270,14 @@ class PollController extends Controller
 
                 if (count($forwardedSpaceIds) > 0) {
                     $responseData['forwarded_polls_deleted'] = $forwardedSpaceIds;
-                    $responseData['warning'] = 'This poll was forwarded to ' . count($forwardedSpaceIds) . 
+                    $responseData['warning'] = 'This poll was forwarded to ' . count($forwardedSpaceIds) .
                         ' other space(s). Those copies have been deleted. You can share the updated poll again.';
                 }
 
                 return response()->json($responseData, 200);
 
-            } catch (\Exception $e) {
+            }
+            catch (\Exception $e) {
                 DB::rollBack();
                 \Log::error('Error updating poll transaction: ' . $e->getMessage(), [
                     'trace' => $e->getTraceAsString(),
@@ -277,9 +286,11 @@ class PollController extends Controller
                 throw $e;
             }
 
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        }
+        catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json(['message' => 'Poll not found'], 404);
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             \Log::error('Error updating poll: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
                 'request' => $request->all()
@@ -719,7 +730,7 @@ class PollController extends Controller
                 // Delete all forwarded copies first (they will be deleted from ALL spaces)
                 $forwardedCount = 0;
                 $deletedSpaces = [];
-                
+
                 if ($forwardedPolls->count() > 0) {
                     foreach ($forwardedPolls as $forwardedPoll) {
                         // Broadcast deletion event to each space before deleting
@@ -747,7 +758,7 @@ class PollController extends Controller
                 $poll->delete();
                 // Add the original deleted space to our list for message cleanup
                 $deletedSpaces[] = $spaceId;
-                
+
                 // Collect all deleted poll IDs (parent + all children)
                 $deletedPollIds = [$pollId];
                 if ($forwardedPolls->count() > 0) {
@@ -756,7 +767,7 @@ class PollController extends Controller
                 if (isset($childPolls) && $childPolls->count() > 0) {
                     $deletedPollIds = array_merge($deletedPollIds, $childPolls->pluck('id')->toArray());
                 }
-                
+
                 // Delete associated Chat Messages from Space content_state
                 foreach (array_unique($deletedSpaces) as $sId) {
                     $spaceToUpdate = \App\Models\CollaborationSpace::find($sId);
@@ -764,12 +775,12 @@ class PollController extends Controller
                         $contentState = $spaceToUpdate->content_state;
                         if (isset($contentState['messages'])) {
                             $messages = $contentState['messages'];
-                            $filteredMessages = array_filter($messages, function($msg) use ($deletedPollIds) {
+                            $filteredMessages = array_filter($messages, function ($msg) use ($deletedPollIds) {
                                 $isPoll = ($msg['type'] ?? '') === 'poll' || (!empty($msg['metadata']['isPoll']));
                                 $msgPollId = $msg['metadata']['pollId'] ?? null;
                                 return !($isPoll && in_array($msgPollId, $deletedPollIds));
                             });
-                            
+
                             if (count($filteredMessages) !== count($messages)) {
                                 $contentState['messages'] = array_values($filteredMessages);
                                 $spaceToUpdate->update(['content_state' => $contentState]);
@@ -793,14 +804,17 @@ class PollController extends Controller
 
                 return response()->json($responseData);
 
-            } catch (\Exception $e) {
+            }
+            catch (\Exception $e) {
                 DB::rollBack();
                 throw $e;
             }
 
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        }
+        catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json(['message' => 'Poll not found'], 404);
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             \Log::error('Error deleting poll: ' . $e->getMessage());
             return response()->json(['message' => 'Error deleting poll'], 500);
         }

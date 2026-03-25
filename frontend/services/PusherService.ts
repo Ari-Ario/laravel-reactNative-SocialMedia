@@ -19,8 +19,12 @@ class PusherService {
     }
     try {
       // Prevent multiple initializations
-      if (this.isInitialized && this.pusher) {
-        console.log('ℹ️ Pusher already initialized, reusing connection');
+      if (this.pusher) {
+        if (this.isInitialized) {
+          console.log('ℹ️ Pusher already initialized and connected, reusing connection');
+        } else {
+          console.log('ℹ️ Pusher initialization already in progress, waiting for connection...');
+        }
         return true;
       }
 
@@ -67,7 +71,7 @@ class PusherService {
                 const authUrl = apiUrl.includes('/api')
                   ? `${apiUrl.split('/api')[0]}/broadcasting/auth` // Standard Laravel: /broadcasting/auth
                   : `${apiUrl}/broadcasting/auth`; // Fallback: /broadcasting/auth on current path
-                
+
                 // If the app uses a custom API prefix for auth:
                 const apiAuthUrl = apiUrl.endsWith('/api') ? `${apiUrl}/broadcasting/auth` : null;
 
@@ -135,7 +139,7 @@ class PusherService {
 
         this.pusher?.connection.bind('error', (err: any) => {
           console.error('❌ Pusher connection error:', err);
-          
+
           // Code 4200 means "Please reconnect immediately"
           const errorCode = err?.error?.data?.code || err?.data?.code;
           if (errorCode === 4200 || errorCode === 4201) {
@@ -413,7 +417,7 @@ class PusherService {
       // Handle Violation Reported (Specific Event)
       channel.bind('violation.reported', (data: any) => {
         console.log('🚨 Violation Report Received (Real-time):', data);
-        
+
         const innerData = data.data || data;
         const notification = {
           id: data.id || Date.now().toString(),
@@ -434,7 +438,7 @@ class PusherService {
       // Handle Moderation Action (Real-time)
       channel.bind('moderation_action', (data: any) => {
         console.log('⚒️ Moderation Action Received (Real-time):', data);
-        
+
         const notification = {
           id: data.id || Date.now().toString(),
           type: 'moderation_action',
@@ -460,8 +464,8 @@ class PusherService {
         // Normalize type names
         const upperNotifType = notifType.toUpperCase();
         if (upperNotifType.includes('SPACEINVITATION') || upperNotifType.includes('SPACE_INVITATION')) {
-           console.log('🚫 Skipping redundant SpaceInvitation broadcast (robust check), handled by dedicated event');
-           return;
+          console.log('🚫 Skipping redundant SpaceInvitation broadcast (robust check), handled by dedicated event');
+          return;
         }
         if (notifType.includes('MessageReacted')) notifType = 'message_reaction';
         if (notifType.includes('MessageReplied')) notifType = 'message_reply';
@@ -499,7 +503,7 @@ class PusherService {
 
 
       // Call started
-      channel.bind('call-started', (data: any) => {
+      channel.bind('call.started', (data: any) => {
         console.log('📞 Call started notification:', data);
         const notification = {
           type: 'call_started',
@@ -519,7 +523,7 @@ class PusherService {
       // ✅ ADDED: space.message (used by SpaceMessageSent event)
       channel.bind('space.message', (data: any) => {
         console.log('💬 New message notification (space.message):', data);
-        
+
         const msgObj = data.message || {};
         const userName = msgObj.user_name || 'Someone';
         const content = msgObj.content || 'New message';
@@ -697,7 +701,35 @@ class PusherService {
           createdAt: new Date()
         };
         console.log('📅 SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification); // ✅ ADD THIS LINE
+        onNotification(notification);
+      });
+
+      channel.bind('activity.updated', (data: any) => {
+        console.log('📅 Activity updated notification:', data);
+        const notification = {
+          type: 'activity_updated',
+          title: 'Activity Updated',
+          message: `Activity "${data.activity?.title}" was updated`,
+          data: data,
+          spaceId: data.space_id,
+          activityId: data.activity?.id,
+          createdAt: new Date()
+        };
+        onNotification(notification);
+      });
+
+      channel.bind('activity.deleted', (data: any) => {
+        console.log('📅 Activity deleted notification:', data);
+        const notification = {
+          type: 'activity_deleted',
+          title: 'Activity Deleted',
+          message: 'An activity was removed',
+          data: data,
+          spaceId: data.space_id,
+          activityId: data.activity_id,
+          createdAt: new Date()
+        };
+        onNotification(notification);
       });
 
       channel.bind('space.created', (data: any) => {
@@ -894,10 +926,19 @@ class PusherService {
     onSpaceArchived?: (data: any) => void;
     onSpaceUnread?: (data: any) => void;
     onSpaceDeleted?: (data: any) => void;
+
+    // Activity Events
+    onActivityCreated?: (data: any) => void;
+    onActivityUpdated?: (data: any) => void;
+    onActivityDeleted?: (data: any) => void;
+    onWebRTCSignal?: (data: any) => void;
+    onMuteStateChanged?: (data: any) => void;
+    onvideoStateChanged?: (data: any) => void;
   }): boolean {
     if (!this.pusher || !this.isInitialized) {
-      console.warn('⚠️ Pusher not initialized. Skipping space subscription.');
-      return false;
+      console.log('⏳ Pusher not initialized. Queuing space subscription.');
+      this.pendingSubscriptions.push(() => this.subscribeToSpace(spaceId, callbacks));
+      return true;
     }
 
     // Guard: ignore invalid or reserved IDs that may be passed due to routing mishaps
@@ -907,14 +948,15 @@ class PusherService {
     }
 
     const channelName = `presence-space.${spaceId}`;
+    let channel = this.channels.get(channelName);
 
-    if (this.channels.has(channelName)) {
-      console.log(`ℹ️ Already subscribed to space: ${channelName}`);
-      return true;
+    if (channel) {
+      console.log(`ℹ️ Already subscribed to space: ${channelName}, applying additional bindings`);
+    } else {
+      console.log(`🔌 Subscribing to space channel: ${channelName}`);
+      channel = this.pusher.subscribe(channelName);
+      this.channels.set(channelName, channel);
     }
-
-    console.log(`🔌 Subscribing to space channel: ${channelName}`);
-    const channel = this.pusher.subscribe(channelName);
 
     // Bind all space events
     if (callbacks.onSpaceUpdate) {
@@ -941,6 +983,10 @@ class PusherService {
       channel.bind('call.ended', callbacks.onCallEnded);
     }
 
+    if (callbacks.onWebRTCSignal) {
+      channel.bind('webrtc.signal', callbacks.onWebRTCSignal);
+    }
+
     if (callbacks.onMagicEvent) {
       channel.bind('magic.triggered', callbacks.onMagicEvent);
     }
@@ -951,6 +997,14 @@ class PusherService {
 
     if (callbacks.onScreenShareEnded) {
       channel.bind('screen_share.ended', callbacks.onScreenShareEnded);
+    }
+
+    if (callbacks.onMuteStateChanged) {
+      channel.bind('mute.state.changed', callbacks.onMuteStateChanged);
+    }
+
+    if (callbacks.onvideoStateChanged) {
+      channel.bind('video.state.changed', callbacks.onvideoStateChanged);
     }
 
     // Space Management Events
@@ -985,6 +1039,17 @@ class PusherService {
 
     if (callbacks.onSpaceDeleted) {
       channel.bind('space.deleted', callbacks.onSpaceDeleted);
+    }
+
+    // Activity bindings
+    if (callbacks.onActivityCreated) {
+      channel.bind('activity.created', callbacks.onActivityCreated);
+    }
+    if (callbacks.onActivityUpdated) {
+      channel.bind('activity.updated', callbacks.onActivityUpdated);
+    }
+    if (callbacks.onActivityDeleted) {
+      channel.bind('activity.deleted', callbacks.onActivityDeleted);
     }
 
     if (callbacks.onPollCreated) {
@@ -1166,7 +1231,7 @@ class PusherService {
   }
 
   // ✅ Keep existing unsubscribe methods...
-  private unsubscribeFromChannel(channelName: string): void {
+  public unsubscribeFromChannel(channelName: string): void {
     if (this.pusher && this.channels.has(channelName)) {
       this.pusher.unsubscribe(channelName);
       this.channels.delete(channelName);
@@ -1206,6 +1271,9 @@ class PusherService {
 
   // Get connection status
   isReady(): boolean {
+    // ✅ RELAXED: On web, pusher instance is enough because it queues commands.
+    // On native, we still prefer to wait for initialized state for stability.
+    if (Platform.OS === 'web') return this.pusher !== null;
     return this.isInitialized && this.pusher !== null;
   }
 

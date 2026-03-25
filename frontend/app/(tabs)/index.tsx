@@ -281,11 +281,8 @@ const HomePage = () => {
   };
 
   useEffect(() => {
-    if (!user) {
-      router.replace('/LoginScreen');
-    } else if (!user.email_verified_at) {
-      router.replace('/VerificationScreen');
-    }
+    // Auth routing is strictly handled by _layout.tsx now. 
+    // This prevents deep links from being hijacked by background tab mounts.
   }, [user]);
 
   if ((loading && !refreshing) || !user) {

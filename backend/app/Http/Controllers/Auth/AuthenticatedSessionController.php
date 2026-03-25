@@ -72,7 +72,7 @@ class AuthenticatedSessionController extends Controller
                 'is_admin' => $request->user()->is_admin,
                 'ai_admin' => $request->user()->ai_admin,
                 'email_verified_at' => $request->user()->email_verified_at,
-                // 'created_at' => $request->user()->created_at->toDateTimeString()
+                'is_guest' => $request->user()->is_guest,
             ]
         ]);
     }

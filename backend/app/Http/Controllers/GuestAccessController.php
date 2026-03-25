@@ -12,14 +12,16 @@ use Illuminate\Support\Facades\Auth;
 
 class GuestAccessController extends Controller
 {
-    /**
-     * Get basic space information for unauthenticated guest views.
-     */
     public function getSpaceInfo(string $id)
     {
-        $space = CollaborationSpace::with('creator:id,name,profile_photo')
-            ->where('id', $id)
-            ->firstOrFail();
+        try {
+            $space = CollaborationSpace::with('creator:id,name,profile_photo')
+                ->where('id', $id)
+                ->firstOrFail();
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('GuestAccess Error: ' . $e->getMessage(), ['id' => $id]);
+            return response()->json(['error' => 'Space not found or unavailable'], 404);
+        }
 
         // Check if the space is Joinable by guests (General spaces)
         // Protected spaces might only show title/description
@@ -55,6 +57,7 @@ class GuestAccessController extends Controller
             'password' => Hash::make(Str::random(32)),
             'bio' => 'Temporary guest participant',
         ]);
+        $user->markEmailAsVerified();
 
         // 2. Add to space as participant
         $participation = SpaceParticipation::create([

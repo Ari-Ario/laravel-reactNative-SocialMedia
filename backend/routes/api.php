@@ -148,6 +148,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('/{id}/accept-invitation', [SpaceController::class , 'acceptInvitation']);
             Route::post('/{id}/start-call', [SpaceController::class , 'startCall']);
             Route::post('/{id}/end-call', [SpaceController::class , 'endCall']);
+            Route::post('/{id}/call/join', [SpaceController::class , 'joinCall']);
             Route::post('/{id}/share-screen', [SpaceController::class , 'shareScreen']);
             Route::post('/{id}/magic', [SpaceController::class , 'triggerMagic']);
             Route::get('/{id}/participants', [SpaceController::class , 'getParticipants']);
@@ -265,11 +266,14 @@ Route::middleware('auth:sanctum')->prefix('synchronicity')->group(function () {
 
 // Collaborative Activities Routes
 Route::middleware('auth:sanctum')->prefix('collaborative-activities')->group(function () {
+    Route::get('/', [CollaborativeActivityController::class , 'index']);
     Route::post('/', [CollaborativeActivityController::class , 'store']);
+    Route::put('/{activityId}', [CollaborativeActivityController::class , 'update']);
     Route::get('/space/{spaceId}', [CollaborativeActivityController::class , 'getSpaceActivities']);
     Route::post('/{activityId}/status', [CollaborativeActivityController::class , 'updateStatus']);
     Route::post('/{activityId}/participants', [CollaborativeActivityController::class , 'updateParticipants']);
     Route::get('/space/{spaceId}/statistics', [CollaborativeActivityController::class , 'getSpaceStatistics']);
+    Route::delete('/{activityId}', [CollaborativeActivityController::class , 'destroy']);
 });
 
 

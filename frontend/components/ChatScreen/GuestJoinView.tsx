@@ -18,9 +18,10 @@ interface GuestJoinViewProps {
     space: any;
     onJoin: (name: string) => Promise<void>;
     onLogin: () => void;
+    activityId?: string;
 }
 
-export const GuestJoinView: React.FC<GuestJoinViewProps> = ({ space, onJoin, onLogin }) => {
+export const GuestJoinView: React.FC<GuestJoinViewProps> = ({ space, onJoin, onLogin, activityId }) => {
     const [name, setName] = useState('');
     const [isJoining, setIsJoining] = useState(false);
 
@@ -51,7 +52,10 @@ export const GuestJoinView: React.FC<GuestJoinViewProps> = ({ space, onJoin, onL
 
                     <Text style={styles.title}>Join as Guest</Text>
                     <Text style={styles.subtitle}>
-                        You've been invited to join <Text style={styles.spaceName}>{space?.title || 'this space'}</Text>. 
+                        {activityId 
+                            ? `You've been invited to join a session in `
+                            : `You've been invited to join `}
+                        <Text style={styles.spaceName}>{space?.title || 'this space'}</Text>. 
                         Enter your name to participate.
                     </Text>
 

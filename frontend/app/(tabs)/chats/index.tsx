@@ -12,7 +12,7 @@ import NotificationService from '@/services/ChatScreen/NotificationServiceChat';
 import SearchService, { SearchResult } from '@/services/ChatScreen/SearchServiceChat';
 import PusherService from '@/services/PusherService';
 
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import AuthContext from "@/context/AuthContext";
 import { usePostStore } from '@/stores/postStore';
 import EnhancedChatRow from '@/components/ChatScreen/EnhancedChatRow';
@@ -147,6 +147,8 @@ const ChatPage = () => {
     setSpacesInTab
   } = useCollaborationStore();
 
+  const { activity } = useLocalSearchParams();
+
   const [contacts, setContacts] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -163,9 +165,17 @@ const ChatPage = () => {
   const slideAnim = useRef(new Animated.Value(-50)).current;
   const searchInputRef = useRef<TextInput>(null);
 
-  const [activitiesCount, setActivitiesCount] = useState(0);
-  const [activities, setActivities] = useState<CollaborativeActivity[]>([]);
+  const globalUpcomingCount = useCollaborationStore(state => state.globalUpcomingCount);
+  const globalActivities = useCollaborationStore(state => state.globalActivities);
   const [showActivities, setShowActivities] = useState(false);
+
+  // Handle initial activity parameter (e.g. from global activity notification)
+  useEffect(() => {
+    if (activity && !showActivities) {
+      console.log('📍 Auto-opening activities modal for activity:', activity);
+      setShowActivities(true);
+    }
+  }, [activity]);
 
   // New Unified Space Creation Flow State
   const [showSpaceCreationModal, setShowSpaceCreationModal] = useState(false);
@@ -330,52 +340,10 @@ const ChatPage = () => {
 
   const fetchActivitiesCount = async () => {
     if (!user?.id) return;
-
-    // ✅ Use the store to prevent duplicate fetches
-    const {
-      hasSpaceActivities,
-      setSpaceActivities,
-      totalActivitiesCount
-    } = useCollaborationStore.getState();
-
     try {
-      // Fetch spaces first
-      const result = await collaborationService.fetchUserSpaces(Number(user.id));
-      const userSpaces = result.spaces;
-
-      let totalActivities = 0;
-      let allActivities: CollaborativeActivity[] = [];
-      const spacesToFetch: CollaborationSpace[] = [];
-
-      // Check which spaces need fresh data
-      for (const space of userSpaces) {
-        if (!hasSpaceActivities(space.id)) {
-          spacesToFetch.push(space);
-        }
-      }
-
-      // Only fetch spaces that need updating
-      if (spacesToFetch.length > 0) {
-        console.log(`📊 Fetching activities for ${spacesToFetch.length} spaces (cached: ${userSpaces.length - spacesToFetch.length})`);
-
-        for (const space of spacesToFetch) {
-          try {
-            const result = await collaborationService.getSpaceActivities(space.id);
-            setSpaceActivities(space.id, result.activities, result.total);
-            totalActivities += result.activities.length;
-            allActivities = [...allActivities, ...result.activities];
-          } catch (error) {
-            console.log(`No activities for space ${space.id}`);
-          }
-        }
-      }
-
-      // Get final total from store
-      const finalTotal = useCollaborationStore.getState().totalActivitiesCount;
-      setActivitiesCount(finalTotal);
-
+      await useCollaborationStore.getState().fetchGlobalActivities();
     } catch (error) {
-      console.error('Error fetching activities count:', error);
+      console.error('Error fetching global activities:', error);
     }
   };
   // Debounced search
@@ -1091,10 +1059,10 @@ const ChatPage = () => {
         >
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Ionicons name="people" size={20} color="#007AFF" />
-            {activitiesCount > 0 && (
+            {globalUpcomingCount > 0 && (
               <View style={styles.badgeContainer}>
                 <Text style={styles.badgeText}>
-                  {activitiesCount > 99 ? '99+' : activitiesCount}
+                  {globalUpcomingCount > 99 ? '99+' : globalUpcomingCount}
                 </Text>
               </View>
             )}
@@ -1133,13 +1101,11 @@ const ChatPage = () => {
         onRequestClose={() => setShowActivities(false)}
       >
         <CollaborativeActivities
-          spaces={spaces.map(s => s.spaceData).filter(Boolean)}
-          activities={activities}
-          activitiesCount={activitiesCount}
           onClose={() => setShowActivities(false)}
+          initialActivityId={activity as string}
           onActivitySelect={(activity) => {
             // Navigate to the space containing this activity
-            const space = spaces.find(s => s.spaceData?.id === activity.space_id);
+            const space = storeSpaces.find(s => s.id === activity.space_id);
             if (space) {
               router.push(`/(spaces)/${activity.space_id}?activity=${activity.id}`);
             } else {

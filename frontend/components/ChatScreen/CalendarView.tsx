@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// components/CalendarView.tsx
+import React, { useState, useEffect, useMemo, useCallback, useRef, useContext } from 'react';
 import {
   View,
   Text,
@@ -7,167 +8,694 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
-  Platform
+  Platform,
+  Dimensions,
+  Animated,
+  RefreshControl,
+  Modal,
+  Share,
+  Linking,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
-import { format, parseISO, addDays } from 'date-fns';
+import { format, parseISO, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, isTomorrow, addHours, differenceInMinutes, getHours, getMinutes, setHours, setMinutes } from 'date-fns';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import AnimatedComponent, { FadeInDown, FadeInUp, SlideInRight } from 'react-native-reanimated';
 import * as CalendarService from 'expo-calendar';
 import CollaborationService, { CollaborativeActivity } from '@/services/ChatScreen/CollaborationService';
 import { createShadow } from '@/utils/styles';
+import { useCollaborationStore } from '@/stores/collaborationStore';
+import * as Haptics from 'expo-haptics';
+import { safeHaptics } from '@/utils/haptics';
+import CreateActivityModal from './CreateActivityModal';
+import AuthContext from '@/context/AuthContext';
+import { useToastStore } from '@/stores/toastStore';
+
+const { width, height } = Dimensions.get('window');
+const HOUR_HEIGHT = 80;
 
 interface CalendarViewProps {
   spaceId: string;
-  space?: any;
+  initialActivityId?: string;
   onActivityCreated?: () => void;
   onCreateActivity?: () => void;
 }
 
 const CalendarView: React.FC<CalendarViewProps> = ({
   spaceId,
-  space,
+  initialActivityId,
   onActivityCreated,
   onCreateActivity,
 }) => {
-  const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [calendarEvents, setCalendarEvents] = useState<{ [key: string]: any }>({});
-  const [activities, setActivities] = useState<CollaborativeActivity[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { user } = useContext(AuthContext);
+  const { showToast } = useToastStore();
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('week');
+  const [selectedActivity, setSelectedActivity] = useState<CollaborativeActivity | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const weekScrollRef = useRef<ScrollView>(null);
+  const dayScrollRef = useRef<ScrollView>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [activityToEdit, setActivityToEdit] = useState<CollaborativeActivity | null>(null);
+  const [preselectedTime, setPreselectedTime] = useState<Date | undefined>(undefined);
 
-  const collaborationService = CollaborationService.getInstance();
+  const spaceActivitiesData = useCollaborationStore(state => state.spaceActivities[spaceId]);
+  const spaceActivities = spaceActivitiesData || [];
+  const currentSpace = useCollaborationStore(state => state.spaces.find(s => s.id === spaceId));
+  const loading = useCollaborationStore(state => state.isLoading);
 
   useEffect(() => {
-    loadSpaceActivities();
+    useCollaborationStore.getState().fetchSpaceActivities(spaceId);
   }, [spaceId]);
 
-  const loadSpaceActivities = async () => {
-    setLoading(true);
-    try {
-      const result = await collaborationService.getSpaceActivities(spaceId);
-      setActivities(result.activities);
-
-      // Format for calendar
-      const markedDates: { [key: string]: any } = {};
-      result.activities.forEach(activity => {
-        if (activity.scheduled_start) {
-          const date = format(new Date(activity.scheduled_start), 'yyyy-MM-dd');
-          if (!markedDates[date]) {
-            markedDates[date] = {
-              marked: true,
-              dots: [{ color: getStatusColor(activity.status) }],
-              activities: []
-            };
-          }
-          markedDates[date].activities.push(activity);
-        }
-      });
-      setCalendarEvents(markedDates);
-    } catch (error) {
-      console.error('Error loading activities:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDayPress = (day: any) => {
-    setSelectedDate(day.dateString);
-  };
-
-  const handleAddToDeviceCalendar = async (activity: CollaborativeActivity) => {
-    try {
-      const { status } = await CalendarService.requestCalendarPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission required', 'Please grant calendar access to add events');
-        return;
+  // Handle initial activity selection from routing/notifications
+  useEffect(() => {
+    if (initialActivityId && spaceActivities.length > 0) {
+      const activity = spaceActivities.find(a => String(a.id) === String(initialActivityId));
+      if (activity && activity.scheduled_start) {
+        console.log('📍 Auto-selecting activity from route:', initialActivityId);
+        setSelectedDate(parseISO(activity.scheduled_start));
+        setSelectedActivity(activity);
+        setViewMode('day'); // Focus on the day view
+        
+        // Haptic feedback to confirm the landing
+        safeHaptics.success();
       }
-
-      const calendars = await CalendarService.getCalendarsAsync();
-      const defaultCalendar = calendars.find(c => c.isPrimary) || calendars[0];
-
-      const eventId = await CalendarService.createEventAsync(defaultCalendar.id, {
-        title: activity.title,
-        startDate: new Date(activity.scheduled_start),
-        endDate: new Date(activity.scheduled_end || addDays(new Date(activity.scheduled_start), 1)),
-        location: `Space: ${space?.title}`,
-        notes: `${activity.description}\n\nJoin: yourapp://spaces/${spaceId}?activity=${activity.id}`,
-        alarms: [{ relativeOffset: -15 }], // 15 minutes before
-        url: `yourapp://spaces/${spaceId}?activity=${activity.id}`,
-      });
-
-      Alert.alert('Success', 'Added to your calendar!');
-    } catch (error) {
-      console.error('Error adding to calendar:', error);
-      Alert.alert('Error', 'Could not add to calendar');
     }
-  };
-
-  const handleActivityPress = (activity: CollaborativeActivity) => {
-    Alert.alert(
-      activity.title,
-      `${activity.description || 'No description'}\n\nStatus: ${activity.status}\nStart: ${format(new Date(activity.scheduled_start), 'PPpp')}`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Add to Calendar', onPress: () => handleAddToDeviceCalendar(activity) },
-        { text: 'View Details', onPress: () => { } },
-      ]
-    );
-  };
+  }, [initialActivityId, spaceActivities.length]);
 
   const getStatusColor = (status: string): string => {
     const colors: Record<string, string> = {
-      scheduled: '#007AFF',
+      scheduled: '#4B53BC',
       active: '#4CAF50',
-      completed: '#9C27B0',
+      completed: '#757575',
       cancelled: '#F44336',
-      proposed: '#FF9800',
+      proposed: '#FFA726',
     };
     return colors[status] || '#666';
   };
 
-  const renderCalendarItem = (activity: CollaborativeActivity) => (
-    <TouchableOpacity
-      key={activity.id}
-      style={[styles.calendarEvent, { borderLeftColor: getStatusColor(activity.status) }]}
-      onPress={() => handleActivityPress(activity)}
-      onLongPress={() => handleAddToDeviceCalendar(activity)}
-    >
-      <View style={styles.calendarEventTime}>
-        <Text style={styles.calendarEventTimeText}>
-          {format(new Date(activity.scheduled_start), 'HH:mm')}
-        </Text>
-        <Text style={styles.calendarEventDuration}>
-          {activity.duration_minutes}m
-        </Text>
-      </View>
-      <View style={styles.calendarEventContent}>
-        <Text style={styles.calendarEventTitle}>{activity.title}</Text>
-        <Text style={styles.calendarEventDescription} numberOfLines={1}>
-          {activity.description}
-        </Text>
-        <View style={styles.calendarEventParticipants}>
-          <Ionicons name="people" size={12} color="#666" />
-          <Text style={styles.calendarEventParticipantsText}>
-            {activity.confirmed_participants || 0} going
-          </Text>
-        </View>
-      </View>
-      <TouchableOpacity
-        style={styles.calendarEventAction}
-        onPress={() => handleAddToDeviceCalendar(activity)}
+  const getActivityIcon = (type: string): keyof typeof Ionicons.glyphMap => {
+    const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
+      brainstorm: 'bulb',
+      discussion: 'chatbubbles',
+      workshop: 'people',
+      meeting: 'videocam',
+      'problem-solving': 'construct',
+      planning: 'calendar',
+      review: 'checkmark-circle',
+      retrospective: 'refresh-circle',
+      social: 'wine',
+    };
+    return icons[type] || 'cube';
+  };
+
+  // Get activities for a specific date
+  const getActivitiesForDate = useCallback((date: Date) => {
+    return spaceActivities.filter(activity => {
+      if (!activity.scheduled_start) return false;
+      const activityDate = parseISO(activity.scheduled_start);
+      return isSameDay(activityDate, date);
+    }).sort((a, b) => {
+      const aTime = a.scheduled_start ? new Date(a.scheduled_start).getTime() : 0;
+      const bTime = b.scheduled_start ? new Date(b.scheduled_start).getTime() : 0;
+      return aTime - bTime;
+    });
+  }, [spaceActivities]);
+
+  const handleTimeSlotPress = (date: Date) => {
+    setPreselectedTime(date);
+    setShowCreateModal(true);
+    safeHaptics.impact();
+  };
+
+  // Get position for activity in timeline
+  const getActivityPosition = useCallback((activity: CollaborativeActivity) => {
+    if (!activity.scheduled_start) return { top: 0, height: 0 };
+    const startTime = parseISO(activity.scheduled_start);
+    const endTime = addHours(startTime, (activity.duration_minutes || 60) / 60);
+
+    const startHour = getHours(startTime);
+    const startMinute = getMinutes(startTime);
+    const endHour = getHours(endTime);
+    const endMinute = getMinutes(endTime);
+
+    const startOffset = startHour * HOUR_HEIGHT + (startMinute / 60) * HOUR_HEIGHT;
+    const duration = (endHour - startHour) * HOUR_HEIGHT + (endMinute - startMinute) / 60 * HOUR_HEIGHT;
+
+    return { top: startOffset, height: Math.max(duration, HOUR_HEIGHT / 2) };
+  }, []);
+
+  // Get hours for timeline
+  const getHoursRange = useCallback(() => {
+    const hours = [];
+    for (let i = 0; i < 24; i++) {
+      hours.push(setHours(setMinutes(new Date(), 0), i));
+    }
+    return hours;
+  }, []);
+
+  // Get week days
+  const getWeekDays = useCallback(() => {
+    const start = startOfWeek(selectedDate, { weekStartsOn: 1 });
+    const end = endOfWeek(selectedDate, { weekStartsOn: 1 });
+    return eachDayOfInterval({ start, end }).map(day => ({
+      date: day,
+      activities: getActivitiesForDate(day),
+    }));
+  }, [selectedDate, getActivitiesForDate]);
+
+  // Generate marked dates for calendar
+  const markedDates = useMemo(() => {
+    const marks: { [key: string]: any } = {};
+    spaceActivities.forEach(activity => {
+      if (activity.scheduled_start) {
+        const date = format(parseISO(activity.scheduled_start), 'yyyy-MM-dd');
+        if (!marks[date]) {
+          marks[date] = {
+            marked: true,
+            dots: [{ color: getStatusColor(activity.status) }],
+            activities: [activity],
+          };
+        } else {
+          marks[date].dots.push({ color: getStatusColor(activity.status) });
+          marks[date].activities.push(activity);
+        }
+      }
+    });
+    return marks;
+  }, [spaceActivities]);
+
+  const handleDayPress = (day: any) => {
+    setSelectedDate(parseISO(day.dateString));
+    setViewMode('day');
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  const handleAddToDeviceCalendar = async (activity: CollaborativeActivity) => {
+    const success = await CollaborationService.getInstance().exportToExternalCalendar(activity);
+    if (success && Platform.OS !== 'web') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  };
+
+  const handleExportICS = async (activity: CollaborativeActivity) => {
+    const success = await CollaborationService.getInstance().exportToICS(activity, currentSpace?.title);
+    if (success && Platform.OS !== 'web') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  };
+
+  const handleActivityPress = (activity: CollaborativeActivity) => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    setSelectedActivity(activity);
+  };
+
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    const newDate = addDays(selectedDate, direction === 'next' ? 7 : -7);
+    setSelectedDate(newDate);
+    if (weekScrollRef.current) {
+      weekScrollRef.current.scrollTo({ x: 0, animated: true });
+    }
+  };
+
+  const navigateDay = (direction: 'prev' | 'next') => {
+    const newDate = addDays(selectedDate, direction === 'next' ? 1 : -1);
+    setSelectedDate(newDate);
+    if (dayScrollRef.current) {
+      dayScrollRef.current.scrollTo({ y: 0, animated: true });
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await useCollaborationStore.getState().fetchSpaceActivities(spaceId);
+    setRefreshing(false);
+  };
+
+  // Week View Component
+  const WeekView = () => {
+    const weekDays = getWeekDays();
+    const hours = getHoursRange();
+
+    return (
+      <ScrollView
+        ref={weekScrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.weekContainer}
+        contentContainerStyle={styles.weekContent}
       >
-        <Ionicons name="calendar-outline" size={18} color="#007AFF" />
-      </TouchableOpacity>
-    </TouchableOpacity>
+        {/* Time Column */}
+        <View style={styles.timeColumn}>
+          <View style={styles.timeHeader} />
+          {hours.map((hour, index) => (
+            <View key={index} style={styles.timeSlot}>
+              <Text style={styles.timeText}>
+                {format(hour, 'h a')}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Days Columns */}
+        {weekDays.map((day, dayIndex) => {
+          const isSelected = isSameDay(day.date, selectedDate);
+
+          return (
+            <TouchableOpacity
+              key={dayIndex}
+              style={[
+                styles.dayColumn,
+                isSelected && styles.dayColumnSelected,
+              ]}
+              activeOpacity={0.9}
+              onPress={() => setSelectedDate(day.date)}
+            >
+              {/* Day Header */}
+              <View style={[styles.dayHeader, isSelected && styles.dayHeaderSelected]}>
+                <Text style={[styles.dayName, isSelected && styles.dayNameSelected]}>
+                  {format(day.date, 'EEE')}
+                </Text>
+                <Text style={[styles.dayNumber, isSelected && styles.dayNumberSelected]}>
+                  {format(day.date, 'd')}
+                </Text>
+                {isToday(day.date) && (
+                  <View style={styles.todayBadge}>
+                    <Text style={styles.todayBadgeText}>Today</Text>
+                  </View>
+                )}
+                <Text style={styles.activityCount}>
+                  {day.activities.length} {day.activities.length === 1 ? 'session' : 'sessions'}
+                </Text>
+              </View>
+
+              {/* Activities Grid */}
+              <ScrollView
+                style={styles.dayGrid}
+                showsVerticalScrollIndicator={false}
+              >
+                {hours.map((hour, hourIndex) => {
+                  const hourActivities = day.activities.filter(activity => {
+                    if (!activity.scheduled_start) return false;
+                    const activityHour = getHours(parseISO(activity.scheduled_start));
+                    return activityHour === hourIndex;
+                  });
+
+                  return (
+                    <TouchableOpacity 
+                      key={hourIndex} 
+                      style={styles.hourSlot}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        const date = new Date(day.date);
+                        date.setHours(hourIndex, 0, 0, 0);
+                        handleTimeSlotPress(date);
+                      }}
+                    >
+                      {hourActivities.map(activity => {
+                        const position = getActivityPosition(activity);
+                        return (
+                          <AnimatedComponent.View
+                            key={activity.id}
+                            entering={FadeInDown.delay(dayIndex * 50)}
+                            style={[
+                              styles.weekActivityCard,
+                              {
+                                top: position.top % HOUR_HEIGHT,
+                                height: position.height,
+                                borderLeftColor: getStatusColor(activity.status),
+                              }
+                            ]}
+                          >
+                            <TouchableOpacity
+                              style={styles.weekActivityTouchable}
+                              onPress={() => handleActivityPress(activity)}
+                            >
+                              <View style={styles.weekActivityHeader}>
+                                <Ionicons
+                                  name={getActivityIcon(activity.activity_type)}
+                                  size={10}
+                                  color={getStatusColor(activity.status)}
+                                />
+                                <Text style={styles.weekActivityTitle} numberOfLines={1}>
+                                  {activity.title}
+                                </Text>
+                              </View>
+                              <Text style={styles.weekActivityTime}>
+                                {format(parseISO(activity.scheduled_start!), 'h:mm a')}
+                              </Text>
+                            </TouchableOpacity>
+                          </AnimatedComponent.View>
+                        );
+                      })}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    );
+  };
+
+  // Day View Component
+  const DayView = () => {
+    const activities = getActivitiesForDate(selectedDate);
+    const hours = getHoursRange();
+
+    return (
+      <ScrollView
+        ref={dayScrollRef}
+        style={styles.dayContainer}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#4B53BC" />
+        }
+      >
+        {/* Current Time Indicator */}
+        {isToday(selectedDate) && (
+          <View
+            style={[
+              styles.currentTimeLine,
+              { top: (new Date().getHours() * HOUR_HEIGHT) + (new Date().getMinutes() / 60 * HOUR_HEIGHT) }
+            ]}
+          >
+            <View style={styles.currentTimeDot} />
+            <View style={styles.currentTimeBar} />
+          </View>
+        )}
+
+        {hours.map((hour, index) => {
+          const hourActivities = activities.filter(activity => {
+            if (!activity.scheduled_start) return false;
+            const activityHour = getHours(parseISO(activity.scheduled_start));
+            return activityHour === index;
+          });
+
+          return (
+            <View key={index} style={styles.dayHourSlot}>
+              <View style={styles.dayHourLabel}>
+                <Text style={styles.dayHourText}>
+                  {format(hour, 'h a')}
+                </Text>
+              </View>
+
+              <TouchableOpacity 
+                style={styles.dayHourContent}
+                activeOpacity={0.7}
+                onPress={() => handleTimeSlotPress(hour)}
+              >
+                {hourActivities.map(activity => (
+                  <AnimatedComponent.View
+                    key={activity.id}
+                    entering={SlideInRight.delay(index * 30)}
+                    style={[
+                      styles.dayActivityCard,
+                      { borderLeftColor: getStatusColor(activity.status) }
+                    ]}
+                  >
+                    <TouchableOpacity
+                      style={styles.dayActivityTouchable}
+                      onPress={() => handleActivityPress(activity)}
+                    >
+                      <View style={styles.dayActivityHeader}>
+                        <View style={styles.dayActivityBadge}>
+                          <Ionicons
+                            name={getActivityIcon(activity.activity_type)}
+                            size={14}
+                            color={getStatusColor(activity.status)}
+                          />
+                          <Text style={[
+                            styles.dayActivityType,
+                            { color: getStatusColor(activity.status) }
+                          ]}>
+                            {activity.activity_type}
+                          </Text>
+                        </View>
+                        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(activity.status) + '20' }]}>
+                          <View style={[styles.statusDot, { backgroundColor: getStatusColor(activity.status) }]} />
+                          <Text style={[styles.statusText, { color: getStatusColor(activity.status) }]}>
+                            {activity.status}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <Text style={styles.dayActivityTitle}>{activity.title}</Text>
+
+                      {activity.description && (
+                        <Text style={styles.dayActivityDescription} numberOfLines={2}>
+                          {activity.description}
+                        </Text>
+                      )}
+
+                      <View style={styles.dayActivityMeta}>
+                        <View style={styles.dayActivityDuration}>
+                          <Ionicons name="timer-outline" size={14} color="#666" />
+                          <Text style={styles.dayActivityMetaText}>
+                            {activity.duration_minutes || 60} min
+                          </Text>
+                        </View>
+                        <View style={styles.dayActivityParticipants}>
+                          <Ionicons name="people-outline" size={14} color="#666" />
+                          <Text style={styles.dayActivityMetaText}>
+                            {activity.confirmed_participants || 0} participants
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.dayActivityActions}>
+                        <TouchableOpacity
+                          style={styles.dayAction}
+                          onPress={() => handleAddToDeviceCalendar(activity)}
+                        >
+                          <Ionicons name="calendar-outline" size={16} color="#4B53BC" />
+                          <Text style={[styles.dayActionText, { color: '#4B53BC' }]}>Add</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.dayAction}
+                          onPress={() => handleExportICS(activity)}
+                        >
+                          <Ionicons name="download-outline" size={16} color="#666" />
+                          <Text style={styles.dayActionText}>Export</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.dayAction, styles.dayActionJoin]}
+                          onPress={() => {
+                            // Join session logic
+                          }}
+                        >
+                          <LinearGradient
+                            colors={['#4B53BC', '#3A4299']}
+                            style={styles.joinButtonGradient}
+                          >
+                            <Ionicons name="enter-outline" size={14} color="#fff" />
+                            <Text style={styles.joinButtonText}>Join</Text>
+                          </LinearGradient>
+                        </TouchableOpacity>
+                      </View>
+                    </TouchableOpacity>
+                  </AnimatedComponent.View>
+                ))}
+              </TouchableOpacity>
+            </View>
+          );
+        })}
+      </ScrollView>
+    );
+  };
+
+  // Month View Component
+  const MonthView = () => (
+    <ScrollView style={styles.monthContainer}>
+      <Calendar
+        current={format(selectedDate, 'yyyy-MM-dd')}
+        onDayPress={handleDayPress}
+        markedDates={{
+          ...markedDates,
+          [format(selectedDate, 'yyyy-MM-dd')]: {
+            ...markedDates[format(selectedDate, 'yyyy-MM-dd')],
+            selected: true,
+            selectedColor: '#4B53BC'
+          }
+        }}
+        theme={{
+          backgroundColor: '#fff',
+          calendarBackground: '#fff',
+          textSectionTitleColor: '#666',
+          selectedDayBackgroundColor: '#4B53BC',
+          selectedDayTextColor: '#fff',
+          todayTextColor: '#4B53BC',
+          dayTextColor: '#333',
+          textDisabledColor: '#ddd',
+          dotColor: '#4B53BC',
+          arrowColor: '#4B53BC',
+          monthTextColor: '#333',
+          textMonthFontWeight: '600',
+          textDayFontSize: 16,
+          textDayHeaderFontSize: 13,
+        }}
+        renderArrow={(direction: string) => (
+          <Ionicons
+            name={direction === 'left' ? 'chevron-back' : 'chevron-forward'}
+            size={24}
+            color="#4B53BC"
+          />
+        )}
+        markingType={'multi-dot'}
+      />
+    </ScrollView>
   );
 
-  const todaysActivities = activities
-    .filter(a => a.scheduled_start && format(new Date(a.scheduled_start), 'yyyy-MM-dd') === selectedDate)
-    .sort((a, b) => new Date(a.scheduled_start).getTime() - new Date(b.scheduled_start).getTime());
+  // Activity Detail Modal
+  const ActivityDetailModal = () => (
+    <Modal
+      visible={!!selectedActivity}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setSelectedActivity(null)}
+    >
+      <BlurView intensity={90} tint="dark" style={styles.modalOverlay}>
+        <AnimatedComponent.View
+          entering={FadeInUp.springify().damping(15)}
+          style={styles.modalContainer}
+        >
+          {selectedActivity && (
+            <>
+              <View style={styles.modalHeader}>
+                <View style={styles.modalHeaderLeft}>
+                  <View style={[styles.modalStatusBadge, { backgroundColor: getStatusColor(selectedActivity.status) + '20' }]}>
+                    <View style={[styles.modalStatusDot, { backgroundColor: getStatusColor(selectedActivity.status) }]} />
+                    <Text style={[styles.modalStatusText, { color: getStatusColor(selectedActivity.status) }]}>
+                      {selectedActivity.status.toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity onPress={() => setSelectedActivity(null)}>
+                  <Ionicons name="close" size={24} color="#fff" />
+                </TouchableOpacity>
+              </View>
 
-  if (loading) {
+              <View style={styles.modalTitleRow}>
+                <Text style={styles.modalTitle} numberOfLines={2}>{selectedActivity.title}</Text>
+                {(String(selectedActivity.created_by || selectedActivity.creator?.id) === String(user?.id) || 
+                  String(currentSpace?.creator_id) === String(user?.id)) && (
+                  <TouchableOpacity
+                    style={styles.editButton}
+                    onPress={() => {
+                      setActivityToEdit(selectedActivity);
+                      setIsEditing(true);
+                      setShowCreateModal(true);
+                      setSelectedActivity(null);
+                    }}
+                  >
+                    <Ionicons name="create-outline" size={20} color="#fff" />
+                    <Text style={styles.editButtonText}>Edit</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+
+                <View style={styles.modalSection}>
+                  <View style={styles.modalTimeRow}>
+                    <Ionicons name="time-outline" size={20} color="#4B53BC" />
+                    <View>
+                      <Text style={styles.modalTimeText}>
+                        {selectedActivity.scheduled_start
+                          ? format(parseISO(selectedActivity.scheduled_start), 'EEEE, MMMM d, yyyy')
+                          : 'Not scheduled'}
+                      </Text>
+                      <Text style={styles.modalTimeDetail}>
+                        {selectedActivity.scheduled_start
+                          ? `${format(parseISO(selectedActivity.scheduled_start), 'h:mm a')} - ${format(addHours(parseISO(selectedActivity.scheduled_start), (selectedActivity.duration_minutes || 60) / 60), 'h:mm a')}`
+                          : ''}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.modalDurationRow}>
+                    <Ionicons name="timer-outline" size={20} color="#4B53BC" />
+                    <Text style={styles.modalDurationText}>
+                      Duration: {selectedActivity.duration_minutes || 60} minutes
+                    </Text>
+                  </View>
+                </View>
+
+                {selectedActivity.description && (
+                  <View style={styles.modalSection}>
+                    <Text style={styles.modalSectionTitle}>Description</Text>
+                    <Text style={styles.modalDescription}>{selectedActivity.description}</Text>
+                  </View>
+                )}
+
+                <View style={styles.modalSection}>
+                  <Text style={styles.modalSectionTitle}>Participants</Text>
+                  <View style={styles.modalParticipantsRow}>
+                    <Ionicons name="people" size={18} color="#4B53BC" />
+                    <Text style={styles.modalParticipantsText}>
+                      {selectedActivity.confirmed_participants || 0} confirmed
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={styles.modalAction}
+                    onPress={() => handleAddToDeviceCalendar(selectedActivity)}
+                  >
+                    <LinearGradient
+                      colors={['#4B53BC', '#3A4299']}
+                      style={styles.modalActionGradient}
+                    >
+                      <Ionicons name="calendar" size={20} color="#fff" />
+                      <Text style={styles.modalActionText}>Add to Calendar</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.modalAction, styles.modalActionExport]}
+                    onPress={() => handleExportICS(selectedActivity)}
+                  >
+                    <Ionicons name="download" size={20} color="#666" />
+                    <Text style={styles.modalActionExportText}>Export ICS</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.modalAction, styles.modalActionExport]}
+                    onPress={() => {
+                        const frontendHost = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
+                        const deepLink = `${frontendHost}/${selectedActivity.space_id}?activity=${selectedActivity.id}`;
+                        require('expo-clipboard').setStringAsync(deepLink);
+                        useToastStore.getState().showToast('Session link copied to clipboard!', 'success');
+                        if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    }}
+                  >
+                    <Ionicons name="link" size={20} color="#666" />
+                    <Text style={styles.modalActionExportText}>Copy Link</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </>
+          )}
+        </AnimatedComponent.View>
+      </BlurView>
+    </Modal>
+  );
+
+  if (loading && spaceActivities.length === 0) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color="#4B53BC" />
         <Text style={styles.loadingText}>Loading calendar...</Text>
       </View>
     );
@@ -175,60 +703,116 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
   return (
     <View style={styles.container}>
-      <Calendar
-        current={selectedDate}
-        onDayPress={handleDayPress}
-        markedDates={{
-          ...calendarEvents,
-          [selectedDate]: {
-            ...calendarEvents[selectedDate],
-            selected: true,
-            selectedColor: '#007AFF'
-          }
-        }}
-        theme={{
-          selectedDayBackgroundColor: '#007AFF',
-          todayTextColor: '#007AFF',
-          arrowColor: '#007AFF',
-          monthTextColor: '#333',
-          textMonthFontWeight: '600',
-          textDayFontSize: 14,
-          textMonthFontSize: 16,
-        }}
-      />
+      {/* Header with View Toggle */}
+      <View style={styles.header}>
+        <View style={styles.viewToggle}>
+          {[
+            { id: 'day', label: 'Day', icon: 'today' },
+            { id: 'week', label: 'Week', icon: 'calendar' },
+            { id: 'month', label: 'Month', icon: 'calendar-outline' },
+          ].map((mode) => (
+            <TouchableOpacity
+              key={mode.id}
+              style={[
+                styles.viewToggleButton,
+                viewMode === mode.id && styles.viewToggleButtonActive
+              ]}
+              onPress={() => setViewMode(mode.id as any)}
+            >
+              <Ionicons
+                name={mode.icon as any}
+                size={16}
+                color={viewMode === mode.id ? '#4B53BC' : '#666'}
+              />
+              <Text style={[
+                styles.viewToggleText,
+                viewMode === mode.id && styles.viewToggleTextActive
+              ]}>
+                {mode.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-      <View style={styles.calendarHeader}>
-        <Text style={styles.calendarTitle}>
-          {format(parseISO(selectedDate), 'EEEE, MMMM d')}
-        </Text>
         <TouchableOpacity
-          style={styles.addEventButton}
+          style={styles.createButton}
           onPress={onCreateActivity}
         >
-          <Ionicons name="add" size={20} color="#fff" />
-          <Text style={styles.addEventButtonText}>Schedule</Text>
+          <LinearGradient
+            colors={['#4B53BC', '#3A4299']}
+            style={styles.createButtonGradient}
+          >
+            <Ionicons name="add" size={18} color="#fff" />
+            <Text style={styles.createButtonText}>Schedule</Text>
+          </LinearGradient>
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.calendarEventsList}>
-        {todaysActivities.length > 0 ? (
-          todaysActivities.map(renderCalendarItem)
-        ) : (
-          <View style={styles.emptyCalendarDay}>
-            <Ionicons name="calendar-outline" size={48} color="#ccc" />
-            <Text style={styles.emptyCalendarText}>No sessions scheduled</Text>
-            <Text style={styles.emptyCalendarSubtext}>
-              Schedule your first collaboration session
+      {/* Navigation Bar */}
+      {(viewMode === 'week' || viewMode === 'day') && (
+        <View style={styles.navBar}>
+          <TouchableOpacity
+            style={styles.navButton}
+            onPress={() => viewMode === 'week' ? navigateWeek('prev') : navigateDay('prev')}
+          >
+            <Ionicons name="chevron-back" size={20} color="#4B53BC" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navDate}
+            onPress={() => setSelectedDate(new Date())}
+          >
+            <Text style={styles.navDateText}>
+              {viewMode === 'week'
+                ? `${format(startOfWeek(selectedDate, { weekStartsOn: 1 }), 'MMM d')} - ${format(endOfWeek(selectedDate, { weekStartsOn: 1 }), 'MMM d, yyyy')}`
+                : format(selectedDate, 'MMMM d, yyyy')
+              }
             </Text>
-            <TouchableOpacity
-              style={styles.scheduleFirstButton}
-              onPress={onCreateActivity}
-            >
-              <Text style={styles.scheduleFirstButtonText}>Schedule Session</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </ScrollView>
+            {viewMode === 'day' && (
+              <View style={styles.activityCountBadge}>
+                <Text style={styles.activityCountBadgeText}>
+                  {getActivitiesForDate(selectedDate).length}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navButton}
+            onPress={() => viewMode === 'week' ? navigateWeek('next') : navigateDay('next')}
+          >
+            <Ionicons name="chevron-forward" size={20} color="#4B53BC" />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Main Content */}
+      <View style={styles.content}>
+        {viewMode === 'day' && <DayView />}
+        {viewMode === 'week' && <WeekView />}
+        {viewMode === 'month' && <MonthView />}
+      </View>
+
+      {/* Activity Detail Modal */}
+      <ActivityDetailModal />
+
+      <CreateActivityModal
+        visible={showCreateModal}
+        spaceId={spaceId}
+        initialTime={preselectedTime}
+        isEditing={isEditing}
+        activityToEdit={activityToEdit || undefined}
+        onClose={() => {
+          setShowCreateModal(false);
+          setPreselectedTime(undefined);
+          setIsEditing(false);
+          setActivityToEdit(null);
+        }}
+        onActivityCreated={() => {
+          if (onActivityCreated) onActivityCreated();
+          // Local store is updated inside CreateActivityModal
+        }}
+      />
     </View>
   );
 };
@@ -238,6 +822,105 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  viewToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 10,
+    padding: 4,
+  },
+  viewToggleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+  },
+  viewToggleButtonActive: {
+    backgroundColor: '#fff',
+    ...createShadow({
+      width: 0,
+      height: 2,
+      opacity: 0.1,
+      radius: 4,
+      elevation: 2,
+    }),
+  },
+  viewToggleText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#666',
+  },
+  viewToggleTextActive: {
+    color: '#4B53BC',
+  },
+  createButton: {
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  createButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 6,
+  },
+  createButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  navBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  navButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+  },
+  navDate: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  navDateText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
+  activityCountBadge: {
+    backgroundColor: '#4B53BC',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  activityCountBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  content: {
+    flex: 1,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -245,129 +928,469 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 12,
-    fontSize: 16,
+    fontSize: 14,
     color: '#666',
   },
-  calendarHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  calendarTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
-  addEventButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    gap: 6,
-  },
-  addEventButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  calendarEventsList: {
+  // Week View Styles
+  weekContainer: {
     flex: 1,
-    paddingTop: 8,
   },
-  calendarEvent: {
+  weekContent: {
+    flexDirection: 'row',
+  },
+  timeColumn: {
+    width: 50,
+    backgroundColor: '#F8F9FA',
+    borderRightWidth: 1,
+    borderRightColor: '#F0F0F0',
+  },
+  timeHeader: {
+    height: 80,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  timeSlot: {
+    height: HOUR_HEIGHT,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  timeText: {
+    fontSize: 10,
+    color: '#666',
+    marginTop: -8,
+  },
+  dayColumn: {
+    width: (width - 50) / 7,
+    backgroundColor: '#fff',
+    borderRightWidth: 1,
+    borderRightColor: '#F0F0F0',
+  },
+  dayColumnSelected: {
+    backgroundColor: '#F8F9FA',
+  },
+  dayHeader: {
+    height: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+    backgroundColor: '#fff',
+    paddingVertical: 8,
+  },
+  dayHeaderSelected: {
+    backgroundColor: '#EBF0FF',
+  },
+  dayName: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#666',
+    textTransform: 'uppercase',
+  },
+  dayNameSelected: {
+    color: '#4B53BC',
+    fontWeight: '700',
+  },
+  dayNumber: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginTop: 2,
+  },
+  dayNumberSelected: {
+    color: '#4B53BC',
+  },
+  todayBadge: {
+    marginTop: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    backgroundColor: '#4B53BC',
+    borderRadius: 8,
+  },
+  todayBadgeText: {
+    fontSize: 8,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  activityCount: {
+    fontSize: 9,
+    color: '#666',
+    marginTop: 4,
+  },
+  dayGrid: {
+    height: 24 * HOUR_HEIGHT,
+  },
+  hourSlot: {
+    height: HOUR_HEIGHT,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+    position: 'relative',
+  },
+  weekActivityCard: {
+    position: 'absolute',
+    left: 2,
+    right: 2,
+    backgroundColor: '#fff',
+    borderRadius: 6,
+    padding: 6,
+    borderLeftWidth: 3,
+    ...createShadow({
+      width: 0,
+      height: 1,
+      opacity: 0.1,
+      radius: 2,
+      elevation: 1,
+    }),
+  },
+  weekActivityTouchable: {
+    flex: 1,
+  },
+  weekActivityHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    marginHorizontal: 16,
-    marginVertical: 8,
+    gap: 4,
+    marginBottom: 2,
+  },
+  weekActivityTitle: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    flex: 1,
+  },
+  weekActivityTime: {
+    fontSize: 8,
+    color: '#666',
+  },
+  // Day View Styles
+  dayContainer: {
+    flex: 1,
+  },
+  currentTimeLine: {
+    position: 'absolute',
+    left: 50,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  currentTimeDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#FF3B30',
+    marginLeft: -5,
+  },
+  currentTimeBar: {
+    flex: 1,
+    height: 2,
+    backgroundColor: '#FF3B30',
+  },
+  dayHourSlot: {
+    flexDirection: 'row',
+    minHeight: HOUR_HEIGHT,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  dayHourLabel: {
+    width: 50,
+    paddingTop: 8,
+    alignItems: 'center',
+    borderRightWidth: 1,
+    borderRightColor: '#F0F0F0',
+    backgroundColor: '#F8F9FA',
+  },
+  dayHourText: {
+    fontSize: 11,
+    color: '#666',
+  },
+  dayHourContent: {
+    flex: 1,
+    padding: 8,
+  },
+  dayActivityCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
+    marginBottom: 8,
     borderLeftWidth: 4,
-    borderLeftColor: '#007AFF',
     ...createShadow({
       width: 0,
       height: 2,
-      opacity: 0.25,
-      radius: 3.84,
-      elevation: 5,
+      opacity: 0.05,
+      radius: 4,
+      elevation: 2,
     }),
   },
-  calendarEventTime: {
+  dayActivityTouchable: {
+    padding: 12,
+  },
+  dayActivityHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 12,
-    minWidth: 60,
-  },
-  calendarEventTimeText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#333',
-  },
-  calendarEventDuration: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-  },
-  calendarEventContent: {
-    flex: 1,
-  },
-  calendarEventTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
-  calendarEventDescription: {
-    fontSize: 14,
-    color: '#666',
+    justifyContent: 'space-between',
     marginBottom: 8,
   },
-  calendarEventParticipants: {
+  dayActivityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  dayActivityType: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'capitalize',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    gap: 4,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  dayActivityTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 4,
+  },
+  dayActivityDescription: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 8,
+    lineHeight: 18,
+  },
+  dayActivityMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  dayActivityDuration: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  dayActivityParticipants: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  dayActivityMetaText: {
+    fontSize: 11,
+    color: '#666',
+  },
+  dayActivityActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dayAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+    gap: 4,
+  },
+  dayActionJoin: {
+    padding: 0,
+    backgroundColor: 'transparent',
+  },
+  joinButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 4,
+  },
+  joinButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  dayActionText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  // Month View Styles
+  monthContainer: {
+    flex: 1,
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContainer: {
+    backgroundColor: '#1A1A2E',
+    borderRadius: 24,
+    width: Math.min(width - 40, 500),
+    maxHeight: height * 0.8,
+    ...createShadow({
+      width: 0,
+      height: 10,
+      opacity: 0.3,
+      radius: 20,
+      elevation: 10,
+    }),
+  },
+  modalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 25,
+    paddingBottom: 10,
+    gap: 12,
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  editButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+  },
+  modalHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  calendarEventParticipantsText: {
+  modalStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    gap: 6,
+  },
+  modalStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  modalStatusText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  modalContent: {
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 20,
+  },
+  modalSection: {
+    marginBottom: 20,
+  },
+  modalSectionTitle: {
     fontSize: 12,
-    color: '#666',
-    marginLeft: 4,
+    fontWeight: '600',
+    color: '#4B53BC',
+    marginBottom: 8,
+    textTransform: 'uppercase',
   },
-  calendarEventAction: {
-    padding: 8,
+  modalTimeRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
   },
-  emptyCalendarDay: {
+  modalTimeText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#fff',
+  },
+  modalTimeDetail: {
+    fontSize: 12,
+    color: '#aaa',
+    marginTop: 2,
+  },
+  modalDurationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  modalDurationText: {
+    fontSize: 14,
+    color: '#fff',
+  },
+  modalDescription: {
+    fontSize: 14,
+    color: '#ddd',
+    lineHeight: 20,
+  },
+  modalParticipantsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  modalParticipantsText: {
+    fontSize: 14,
+    color: '#fff',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+  },
+  modalAction: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  modalActionExport: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 12,
+    flexDirection: 'row',
+    gap: 6,
+  },
+  modalActionGradient: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 48,
-    paddingHorizontal: 32,
-  },
-  emptyCalendarText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginTop: 16,
-    marginBottom: 4,
-  },
-  emptyCalendarSubtext: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  scheduleFirstButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 12,
+    gap: 8,
   },
-  scheduleFirstButtonText: {
+  modalActionText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '600',
+  },
+  modalActionExportText: {
+    color: '#fff',
+    fontSize: 13,
   },
 });
 

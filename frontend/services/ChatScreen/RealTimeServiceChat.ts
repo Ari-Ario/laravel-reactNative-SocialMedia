@@ -73,7 +73,7 @@ class RealTimeService {
     channel.bind('space.updated', (data: any) => {
       console.log('🌐 RealTimeService (Public): Space updated:', data);
       const updateType = data.changes?.update_type || data.update_type || 'general';
-      
+
       // We notify subscribers as 'user' updates so index.tsx can handle them uniformly
       // index.tsx will filter if it's relevant to the current user's list
       this.subscriptions.forEach((callbacks, key) => {
@@ -164,7 +164,7 @@ class RealTimeService {
     channel.bind('space.updated', (data: any) => {
       console.log('🔄 RealTimeService: Space updated:', data);
       const updateType = data.changes?.update_type || data.update_type || 'general';
-      
+
       if (updateType === 'invitation') {
         this.notifySubscribers('user', userId, 'invitation', data);
       } else {
@@ -185,7 +185,7 @@ class RealTimeService {
     });
 
     // Bind to call events
-    channel.bind('call-started', (data: any) => {
+    channel.bind('call.started', (data: any) => {
       console.log('📞 RealTimeService: Call started:', data);
       this.notifySubscribers('user', userId, 'call', data);
     });

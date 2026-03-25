@@ -24,7 +24,7 @@ import { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import AuthContext from '@/context/AuthContext';
 import CollaborationService, { CollaborativeActivity } from '@/services/ChatScreen/CollaborationService';
 import { deleteReportByTarget } from '@/services/ReportService';
-import GenericMenu from '@/components/GenericMenu';
+import GenericMenu, { MenuItem } from '@/components/GenericMenu';
 import { calculateAnchor, AnchorPosition } from '@/utils/layout';
 import { AICollaborationAssistant } from '@/components/AI/AICollaborationAssistant';
 import * as Haptics from 'expo-haptics';
@@ -32,6 +32,7 @@ import { getToken, setToken } from '@/services/TokenService';
 import { GuestJoinView } from '@/components/ChatScreen/GuestJoinView';
 import CalendarView from '@/components/ChatScreen/CalendarView';
 import CreateActivityModal from '@/components/ChatScreen/CreateActivityModal';
+import CollaborativeActivities from '@/components/ChatScreen/CollaborativeActivities';
 import CalendarPrompt from '@/components/ChatScreen/CalendarPrompt';
 import ImmersiveCallView from '@/components/ChatScreen/ImmersiveCallView';
 import MediaUploader from '@/services/ChatScreen/MediaUploader';
@@ -57,7 +58,7 @@ import Colors from '@/constants/Colors';
 const SpaceDetailScreen = () => {
   const { showToast } = useToastStore();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user } = useContext(AuthContext);
+  const { user, setUser, logout } = useContext(AuthContext);
   const [space, setSpace] = useState<any>(null);
   const [participants, setParticipants] = useState<any[]>([]);
   const [magicEvents, setMagicEvents] = useState<any[]>([]);
@@ -85,7 +86,7 @@ const SpaceDetailScreen = () => {
   const collaborationService = CollaborationService.getInstance();
   const windowHeight = Dimensions.get('window').height;
   const { width: windowWidth } = useWindowDimensions();
-  
+
   // ✅ Web-compatible alert/confirm helpers
   const simpleAlert = (title: string, message: string) => {
     if (Platform.OS === 'web') {
@@ -116,18 +117,24 @@ const SpaceDetailScreen = () => {
 
     if (status === 404 || status === 403 || isModelNotFound) {
       console.log(`🛡️ Security/Stale fallback triggered (${status}) from ${context} for space ${id}`);
-      
+
+      // If there is no user, this is a guest trying to view a protected/unavailable space. Let GuestJoinView handle the UI state.
+      if (!user) {
+         console.log('Skipping security fallback for guest user, allowing GuestJoinView to render');
+         return false; 
+      }
+
       // Remove from collaboration store instantly
       const store = useCollaborationStore.getState();
       store.removeSpace(id as string);
-      
+
       if (store.activeSpace?.id === id) {
         store.setActiveSpace(null);
       }
 
       const title = status === 404 || isModelNotFound ? 'Space Deleted' : 'Access Denied';
-      const msg = status === 404 || isModelNotFound 
-        ? 'This space no longer exists and has been removed from your list.' 
+      const msg = status === 404 || isModelNotFound
+        ? 'This space no longer exists and has been removed from your list.'
         : 'You are no longer a participant in this space.';
 
       Alert.alert(title, msg, [
@@ -148,6 +155,7 @@ const SpaceDetailScreen = () => {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState<any>(null);
   const [showRoleModal, setShowRoleModal] = useState(false);
+  const [showActivitiesModal, setShowActivitiesModal] = useState(false);
 
   // poll states
   const [showPollCreator, setShowPollCreator] = useState(false);
@@ -161,10 +169,18 @@ const SpaceDetailScreen = () => {
   const [isJoining, setIsJoining] = useState(false);
 
   // ✅ Strict "Locked" UI Logic
+  const spaceUpcomingCounts = useCollaborationStore(state => state.spaceUpcomingCounts);
   const myParticipation = space?.my_participation || space?.participation;
   const isPending = myParticipation?.role === 'pending';
-  const isLocked = (space?.space_type === 'protected') && 
-                   (isPending || !myParticipation);
+  const isLocked = (space?.space_type === 'protected') &&
+    (isPending || !myParticipation);
+
+  const myPermissions = space?.my_permissions || myParticipation?.permissions || {};
+  const canInvite = myPermissions?.can_invite !== false;
+  const canStartCalls = myPermissions?.can_start_calls !== false;
+  const canEditSpace = myPermissions?.can_edit_space === true || myParticipation?.role === 'owner';
+  const canRemove = myPermissions?.can_remove === true || myParticipation?.role === 'owner';
+  const canChangeRoles = myPermissions?.can_change_roles === true || myParticipation?.role === 'owner';
 
   // ✅ Real-time space management listener
   useEffect(() => {
@@ -191,7 +207,7 @@ const SpaceDetailScreen = () => {
 
   // ✅ Load initial details
   useEffect(() => {
-    if (id && user && id !== 'Login' && id !== 'undefined' && id !== '[id]') {
+    if (id && id !== 'Login' && id !== 'undefined' && id !== '[id]') {
       loadSpaceDetails();
     }
   }, [id, user]);
@@ -263,6 +279,23 @@ const SpaceDetailScreen = () => {
     }
   }, [params.tab]);
 
+  // ✅ Auto-open activities modal if activity param is present (Deep-linking)
+  useEffect(() => {
+    // Phase 85: Don't auto-open if we are explicitly joining a meeting via tab=meeting
+    if (params.activity && !showActivitiesModal && params.tab !== 'meeting') {
+      console.log('📍 Auto-opening activities modal from route:', params.activity);
+      setShowActivitiesModal(true);
+    }
+  }, [params.activity, params.tab]);
+
+  // ✅ Auto-start meeting if joining from a session
+  useEffect(() => {
+    if (params.tab === 'meeting' && params.activity && space && !space.is_live && !loading) {
+      console.log('🎞️ Auto-starting meeting for session:', params.activity);
+      handleStartCall('video');
+    }
+  }, [params.tab, params.activity, !!space, space?.is_live, loading]);
+
 
   const loadSpaceDetails = async () => {
     console.log('Loading space details for ID:', id);
@@ -292,6 +325,11 @@ const SpaceDetailScreen = () => {
         setIsMuted(perms.is_muted || false);
         setIsPinned(perms.is_pinned || false);
         setIsArchived(perms.is_archived || false);
+
+        // Fetch activities for this space to ensure badges and popups are fresh
+        useCollaborationStore.getState().fetchSpaceActivities(id as string).catch(err =>
+          console.error('Error fetching space activities in [id].tsx:', err)
+        );
       }
 
       // ✅ FIX: Default to chat always, unless tab or call param explicitly passed
@@ -315,13 +353,18 @@ const SpaceDetailScreen = () => {
           }, 1500);
         }
       }
+
+      // Fetch space-specific activities for badge
+      useCollaborationStore.getState().fetchSpaceActivities(id as string);
     } catch (error: any) {
-      console.error('Error loading space:', error);
-      
+      console.error('Error loading space:', error, JSON.stringify(error?.response?.data || {}));
+
       // ✅ Phase 57: Centralized security/stale fallback
       if (handleSpaceSecurityFallback(error, 'loadSpaceDetails')) return;
 
-      Alert.alert('Error', 'Failed to load space details');
+      if (user) {
+         Alert.alert('Error', 'Failed to load space details');
+      }
     } finally {
       setLoading(false);
     }
@@ -378,7 +421,7 @@ const SpaceDetailScreen = () => {
           console.log(`👤 Removing participant ${pId} from space ${id}`);
           if (pId) {
             setParticipants(prev => prev.filter(p => String(p.user_id) !== String(pId)));
-            
+
             // Redirect if I am the one who left (from another device/tab)
             if (String(pId) === String(user?.id)) {
               router.replace('/(tabs)/chats');
@@ -756,7 +799,7 @@ const SpaceDetailScreen = () => {
 
   const handleDeleteSpace = async () => {
     const warningMessage = 'The space will be deleted forever for all participants with all messages and belongings. Proceed?';
-    
+
     confirmAction(
       'Delete Space Forever',
       warningMessage,
@@ -795,6 +838,7 @@ const SpaceDetailScreen = () => {
 
       setActiveTab('meeting');
       setShowCallMenu(false);
+      setShowActivitiesModal(false); // Phase 85: Ensure Activities modal is cleared when call starts
 
       Alert.alert('Call Started', `Starting ${type} call...`);
     } catch (error) {
@@ -806,14 +850,25 @@ const SpaceDetailScreen = () => {
   const handleGuestJoin = async (guestName: string) => {
     try {
       const { user: guestUser, token, space: joinedSpace } = await collaborationService.joinSpaceAsGuest(id as string, guestName);
-      
+
       // Save token so subsequent calls work
       await setToken(token);
-      
+
+      // Update global auth state with the temporary guest user
+      setUser(guestUser);
+
+      // Initialize real-time connection for guest
+      try {
+        const PusherService = require('@/services/PusherService').default;
+        PusherService.initialize(token);
+      } catch (e) {
+        console.log("Pusher init failed for guest", e);
+      }
+
       // Update local state
       setSpace(joinedSpace);
       setParticipants(joinedSpace.participants || []);
-      
+
       // Haptics
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -829,11 +884,11 @@ const SpaceDetailScreen = () => {
 
   const handleJoin = async () => {
     if (!id || isJoining) return;
-    
+
     setIsJoining(true);
     try {
       const { participation, space: joinedSpace } = await collaborationService.joinSpace(id as string);
-      
+
       // ✅ Update global store immediately
       useCollaborationStore.getState().addSpace(joinedSpace);
 
@@ -844,7 +899,7 @@ const SpaceDetailScreen = () => {
         my_permissions: participation.permissions,
         my_role: participation.role,
       }));
-      
+
       setParticipants(joinedSpace.participants || []);
 
       // ✅ Clear all local notifications related to this space (binding Join & Accept)
@@ -853,7 +908,7 @@ const SpaceDetailScreen = () => {
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-      
+
       // Force re-subscription to pick up new permissions
       subscribeToSpace();
     } catch (error) {
@@ -1057,7 +1112,7 @@ const SpaceDetailScreen = () => {
         return (
           <CalendarView
             spaceId={id}
-            space={space}
+            initialActivityId={params.activity as string}
             onActivityCreated={loadSpaceDetails}
             onCreateActivity={() => setShowCreateActivity(true)}
           />
@@ -1104,13 +1159,7 @@ const SpaceDetailScreen = () => {
     }
   };
 
-  if (!user) {
-    return (
-      <View style={styles.container}>
-        <Text>Please login first</Text>
-      </View>
-    );
-  }
+
   const isDirectChat = space?.settings?.is_direct || space?.space_type === 'direct' || space?.space_type === 'chat' && !!space?.other_participant;
   const otherParticipant = space?.other_participant || (isDirectChat
     ? participants.find(p => String(p.user?.id || p.user_id) !== String(user?.id))?.user
@@ -1130,10 +1179,11 @@ const SpaceDetailScreen = () => {
 
   if (!user && space) {
     return (
-      <GuestJoinView 
-        space={space} 
-        onJoin={handleGuestJoin} 
+      <GuestJoinView
+        space={space}
+        onJoin={handleGuestJoin}
         onLogin={() => router.replace('/LoginScreen')}
+        activityId={params.activity as string}
       />
     );
   }
@@ -1142,15 +1192,16 @@ const SpaceDetailScreen = () => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
+          disabled={!!user?.is_guest}
           onPress={() => {
             if (params.returnTo) {
               router.replace(params.returnTo as any);
             } else {
               router.back();
             }
-          }} 
-          style={styles.backButton}
+          }}
+          style={[styles.backButton, user?.is_guest && { opacity: 0 }]}
         >
           <Ionicons name="arrow-back" size={24} color="#007AFF" />
         </TouchableOpacity>
@@ -1173,7 +1224,7 @@ const SpaceDetailScreen = () => {
           )}
           <View style={styles.headerTextContainer}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-               <Text style={styles.title} numberOfLines={1}>
+              <Text style={styles.title} numberOfLines={1}>
                 {displayTitle}
               </Text>
               {useReportedContentStore.getState().isReported('space', id as string) && (
@@ -1194,33 +1245,88 @@ const SpaceDetailScreen = () => {
         </TouchableOpacity>
 
         <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={[styles.headerButton, isLocked && { opacity: 0.5 }]}
-            onPress={() => setShowInviteModal(true)}
-            disabled={isLocked}
-          >
-            <Ionicons name="person-add" size={22} color="#007AFF" />
-          </TouchableOpacity>
+          {/* Priority 1: Add People (only for non-direct spaces, and if allowed) */}
+          {!isDirectChat && space?.space_type !== 'channel' && (canInvite || myParticipation?.role === 'owner') && (
+            <TouchableOpacity
+              style={[styles.headerButton, isLocked && { opacity: 0.5 }]}
+              onPress={() => setShowInviteModal(true)}
+              disabled={isLocked}
+            >
+              <Ionicons name="person-add-outline" size={24} color="#007AFF" />
+            </TouchableOpacity>
+          )}
 
-          <TouchableOpacity
-            ref={callButtonRef}
-            style={[styles.headerButton, isLocked && { opacity: 0.3 }]}
-            onPress={() => !isLocked && measureCallButton()}
-            disabled={isLocked}
-          >
-            <Ionicons name="videocam" size={22} color={isLocked ? "#999" : "#007AFF"} />
-          </TouchableOpacity>
+          {/* Priority 2: Call (if allowed, hide for channels unless admin) */}
+          {canStartCalls && (space?.space_type !== 'channel' || canEditSpace) && (
+            <TouchableOpacity
+              ref={callButtonRef}
+              style={[styles.headerButton, isLocked && { opacity: 0.3 }]}
+              onPress={() => !isLocked && measureCallButton()}
+              disabled={isLocked}
+            >
+              <Ionicons
+                name={isDirectChat ? "call-outline" : "videocam-outline"}
+                size={24}
+                color={isLocked ? "#999" : "#007AFF"}
+              />
+            </TouchableOpacity>
+          )}
 
+          {/* Activities Popup with Badge (Hidden when 0) */}
+          {((spaceUpcomingCounts[id as string] || 0) > 0) && (
+            <TouchableOpacity
+              style={[styles.headerButton, isLocked && { opacity: 0.5 }]}
+              onPress={() => setShowActivitiesModal(true)}
+              disabled={isLocked}
+            >
+              <Ionicons name="calendar-outline" size={24} color={isLocked ? "#999" : "#007AFF"} />
+              <View style={styles.activitiesBadge}>
+                <Text style={styles.badgeText}>{spaceUpcomingCounts[id as string]}</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+
+          {/* Priority 3: Generic Menu (Always Last) */}
           <TouchableOpacity
             ref={spaceButtonRef}
             style={[styles.headerButton, isLocked && { opacity: 0.5 }]}
             onPress={measureSpaceButton}
             disabled={isLocked}
           >
-            <Ionicons name="ellipsis-vertical" size={22} color="#007AFF" />
+            <Ionicons name="ellipsis-vertical" size={24} color="#007AFF" />
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Active Tab Return Banner */}
+      {activeTab !== 'chat' && (
+        <TouchableOpacity 
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: '#F8F9FA',
+            paddingVertical: 10,
+            paddingHorizontal: 16,
+            borderBottomWidth: 1,
+            borderColor: '#EFEFEF',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.05,
+            shadowRadius: 2,
+            elevation: 2,
+            zIndex: 10
+          }}
+          activeOpacity={0.8}
+          onPress={() => setActiveTab('chat')}
+        >
+          <Ionicons name="return-up-back" size={18} color="#444" />
+          <Text style={{ marginLeft: 8, fontSize: 13, fontWeight: '600', color: '#444' }}>
+            Back to Conversation
+          </Text>
+          <View style={{ flex: 1 }} />
+          <Ionicons name="chatbubbles-outline" size={18} color="#999" />
+        </TouchableOpacity>
+      )}
 
       {/* Archived Banner */}
       {isArchived && (
@@ -1256,26 +1362,26 @@ const SpaceDetailScreen = () => {
         onClose={() => setShowSpaceMenu(false)}
         anchorPosition={spaceMenuPosition}
         items={[
-          {
+          ...(canEditSpace ? [{
             icon: 'settings-outline',
             label: 'Space Settings',
             onPress: handleOpenSettings,
-          },
+          } as MenuItem] : []),
           {
             icon: 'people-outline',
             label: 'View Participants',
             onPress: () => setShowParticipantsModal(true),
-          },
-          {
+          } as MenuItem,
+          ...(canEditSpace ? [{
             icon: 'shield-outline',
             label: 'Manage Admins',
             onPress: () => setShowAdminsModal(true),
-          },
-          {
+          } as MenuItem] : []),
+          ...(myPermissions.write !== false ? [{
             icon: 'bar-chart-outline',
             label: 'Create Poll',
             onPress: () => setShowPollCreator(true),
-          },
+          } as MenuItem] : []),
           {
             icon: 'easel-outline',
             label: 'Whiteboard',
@@ -1283,34 +1389,35 @@ const SpaceDetailScreen = () => {
               setActiveTab('whiteboard');
               setShowSpaceMenu(false);
             },
-          },
+          } as MenuItem,
           {
             icon: 'calendar-outline',
             label: 'Calendar',
+            badge: spaceUpcomingCounts[id as string] || 0,
             onPress: () => {
-              setActiveTab('calendar');
+              setShowActivitiesModal(true);
               setShowSpaceMenu(false);
             },
-          },
+          } as MenuItem,
           {
-            icon: 'download-outline' as const,
+            icon: 'download-outline',
             label: 'Export Content',
             onPress: handleExportContentClick,
-          },
-          ...(space?.my_role !== 'owner' ? [{
-            icon: 'exit-outline' as const,
+          } as MenuItem,
+          ...(myParticipation?.role !== 'owner' ? [{
+            icon: 'exit-outline',
             label: 'Leave Space',
             destructive: true,
             onPress: handleLeaveSpace,
-          }] : []),
-          ...(space?.my_role === 'owner' ? [{
-            icon: 'trash-outline' as const,
+          } as MenuItem] : []),
+          ...(myParticipation?.role === 'owner' ? [{
+            icon: 'trash-outline',
             label: 'Delete Space',
             destructive: true,
             onPress: handleDeleteSpace,
-          }] : []),
+          } as MenuItem] : []),
           {
-            icon: 'flag-outline' as const,
+            icon: 'flag-outline',
             label: useReportedContentStore.getState().isReported('space', id as string) ? 'Un-report Space' : 'Report Space',
             color: useReportedContentStore.getState().isReported('space', id as string) ? '#ff4444' : undefined,
             onPress: async () => {
@@ -1328,7 +1435,7 @@ const SpaceDetailScreen = () => {
                 setShowReportModal(true);
               }
             },
-          },
+          } as MenuItem,
         ]}
       />
 
@@ -1363,7 +1470,7 @@ const SpaceDetailScreen = () => {
                   <Text style={styles.lockedDescription}>
                     This is a protected space. You must join to see the conversation and participate.
                   </Text>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.joinSpaceButton}
                     onPress={handleJoin}
                     disabled={isJoining}
@@ -1491,7 +1598,7 @@ const SpaceDetailScreen = () => {
                   key={participant.user_id}
                   style={styles.participantItem}
                   onPress={() => {
-                    if (space?.my_role === 'owner' || space?.my_role === 'moderator') {
+                    if (canChangeRoles || canRemove) {
                       setSelectedParticipant(participant);
                       setShowRoleModal(true);
                     }
@@ -1525,7 +1632,7 @@ const SpaceDetailScreen = () => {
                       )}
                     </View>
                   </View>
-                  {(space?.my_role === 'owner' || space?.my_role === 'moderator') &&
+                  {(canChangeRoles || canRemove) &&
                     participant.user_id !== user?.id && (
                       <Ionicons name="chevron-forward" size={20} color="#999" />
                     )}
@@ -1568,12 +1675,12 @@ const SpaceDetailScreen = () => {
                   key={`admin - ${participant.user_id} `}
                   style={styles.participantItem}
                   onPress={() => {
-                    if (space?.my_role === 'owner') {
+                    if (canChangeRoles || canRemove) {
                       setSelectedParticipant(participant);
                       setShowRoleModal(true);
                     }
                   }}
-                  disabled={participant.user_id === user?.id || space?.my_role !== 'owner'}
+                  disabled={participant.user_id === user?.id || (!canChangeRoles && !canRemove)}
                 >
                   <Avatar
                     source={participant.user?.profile_photo}
@@ -1597,7 +1704,7 @@ const SpaceDetailScreen = () => {
                       </View>
                     </View>
                   </View>
-                  {space?.my_role === 'owner' && participant.user_id !== user?.id && (
+                  {(canChangeRoles || canRemove) && participant.user_id !== user?.id && (
                     <Ionicons name="chevron-forward" size={20} color="#999" />
                   )}
                 </TouchableOpacity>
@@ -1703,7 +1810,7 @@ const SpaceDetailScreen = () => {
         onClose={() => setShowCalendarPrompt(false)}
         onScheduleNow={() => {
           setShowCalendarPrompt(false);
-          setActiveTab('calendar');
+          setShowActivitiesModal(true);
           setTimeout(() => {
             setShowCreateActivity(true);
           }, 300);
@@ -1713,13 +1820,32 @@ const SpaceDetailScreen = () => {
         participantCount={participants.length}
       />
 
-      {/* Create Activity Modal */}
       <CreateActivityModal
         spaceId={id as string}
         visible={showCreateActivity}
         onClose={() => setShowCreateActivity(false)}
         onActivityCreated={loadSpaceDetails}
       />
+
+      {/* Collaborative Activities Modal - Popup for Sessions */}
+      <Modal
+        visible={showActivitiesModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowActivitiesModal(false)}
+      >
+        <CollaborativeActivities
+          spaceId={id as string} // Filter by current space
+          initialActivityId={params.activity as string}
+          onClose={() => setShowActivitiesModal(false)}
+          onActivitySelect={(activity) => {
+            // Since we are already in the space, we can just close or update state
+            setShowActivitiesModal(false);
+            // Optionally switch to calendar tab if not already there, 
+            // though the modal should handle the details.
+          }}
+        />
+      </Modal>
 
       <MediaUploader
         spaceId={id as string}
@@ -1842,6 +1968,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 3,
     borderWidth: 1.5,
     borderColor: '#fff',
+  },
+  activitiesBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#007AFF', // Blue for activities
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: '#fff',
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '700',
   },
   pollsBadgeText: {
     color: '#fff',

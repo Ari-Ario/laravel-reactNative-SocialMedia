@@ -20,8 +20,17 @@ class CollaborativeActivity extends Model
         'description',
         'match_type',
         'match_score',
-        'suggested_duration',
+        'scheduled_start',
+        'scheduled_end',
+        'is_recurring',
+        'recurrence_pattern',
+        'recurrence_interval',
+        'recurrence_end',
+        'timezone',
+        'duration_minutes',
         'actual_duration',
+        'max_participants',
+        'confirmed_participants',
         'status',
         'metadata',
         'outcomes',
@@ -34,12 +43,16 @@ class CollaborativeActivity extends Model
 
     protected $casts = [
         'match_score' => 'decimal:2',
+        'is_recurring' => 'boolean',
         'metadata' => 'array',
         'outcomes' => 'array',
         'proposed_at' => 'datetime',
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
         'cancelled_at' => 'datetime',
+        'scheduled_start' => 'datetime',
+        'scheduled_end' => 'datetime',
+        'recurrence_end' => 'datetime',
     ];
 
     /**

@@ -10,6 +10,7 @@ export interface MenuItem {
     onPress: () => void;
     color?: string;
     destructive?: boolean;
+    badge?: number;
 }
 
 interface GenericMenuProps {
@@ -52,22 +53,28 @@ export default function GenericMenu({
                         <TouchableOpacity
                             key={index}
                             style={styles.menuItem}
-                            onPress={() => {
-                                onClose();
-                                item.onPress();
-                            }}
-                        >
-                            <Ionicons
-                                name={item.icon}
-                                size={20}
-                                color={item.destructive ? '#FF453A' : (item.color || '#3A7AFE')}
-                            />
-                            <Text style={[
-                                styles.menuText,
-                                { color: item.destructive ? '#FF453A' : (item.color || '#EBEBF5') }
-                            ]}>
-                                {item.label}
-                            </Text>
+                            onPress={item.onPress}
+                            >
+                            <View style={styles.itemContent}>
+                                <Ionicons
+                                    name={item.icon}
+                                    size={20}
+                                    color={item.destructive ? '#FF453A' : (item.color || '#3A7AFE')}
+                                />
+                                <Text style={[
+                                    styles.menuText,
+                                    { color: item.destructive ? '#FF453A' : (item.color || '#EBEBF5') }
+                                ]}>
+                                    {item.label}
+                                </Text>
+                            </View>
+                            {item.badge !== undefined && item.badge > 0 && (
+                                <View style={styles.badgeContainer}>
+                                    <Text style={styles.badgeText}>
+                                        {item.badge > 99 ? '99+' : item.badge}
+                                    </Text>
+                                </View>
+                            )}
                         </TouchableOpacity>
                     ))}
                 </View>
@@ -121,13 +128,32 @@ const styles = StyleSheet.create({
     menuItem: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
         paddingHorizontal: 16,
         paddingVertical: 12,
+    },
+    itemContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     menuText: {
         marginLeft: 12,
         fontSize: 15,
         fontWeight: '500',
         color: '#EBEBF5',
+    },
+    badgeContainer: {
+        backgroundColor: '#FF3B30',
+        borderRadius: 10,
+        minWidth: 20,
+        height: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 6,
+    },
+    badgeText: {
+        color: '#FFFFFF',
+        fontSize: 11,
+        fontWeight: '700',
     },
 });

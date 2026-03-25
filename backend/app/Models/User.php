@@ -52,6 +52,8 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+    protected $appends = ['is_guest'];
+
     /**
      * Get the attributes that should be cast.
      *
@@ -63,7 +65,13 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'custom_tabs' => 'array',
+            'is_guest' => 'boolean',
         ];
+    }
+
+    public function getIsGuestAttribute(): bool
+    {
+        return str_starts_with($this->username, 'guest_');
     }
 
     // Added this method to control what user data gets returned
@@ -73,7 +81,9 @@ class User extends Authenticatable
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
+            'email_verified_at' => $this->email_verified_at,
             'profile_photo' => $this->profile_photo,
+            'is_guest' => $this->is_guest,
             // Add other safe-to-expose fields
         ];
     }
@@ -146,5 +156,23 @@ class User extends Authenticatable
     public function receivesBroadcastNotificationsOn()
     {
         return 'user.' . $this->id;
+    }
+
+    /**
+     * Spaces the user is participating in.
+     */
+    public function participations()
+    {
+        return $this->hasMany(SpaceParticipation::class);
+    }
+
+    /**
+     * Collaboration spaces the user is part of.
+     */
+    public function spaces()
+    {
+        return $this->belongsToMany(CollaborationSpace::class, 'space_participations', 'user_id', 'space_id')
+            ->withPivot('role', 'permissions', 'last_read_at', 'muted_until')
+            ->withTimestamps();
     }
 }

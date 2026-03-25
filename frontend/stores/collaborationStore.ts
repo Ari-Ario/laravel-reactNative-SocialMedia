@@ -17,9 +17,13 @@ interface CollaborationState {
   spaceUnreadCounts: Record<string, number>;
   totalUnreadSpaces: number;
 
-  spaceActivities: Record<string, CollaborativeActivity[]>; // Add this
-  activitiesLastFetched: Record<string, number>; // Add this
-  totalActivitiesCount: number; // Add this
+  spaceActivities: Record<string, CollaborativeActivity[]>;
+  spaceUpcomingCounts: Record<string, number>; // ✅ NEW: Tracks badge counts per space
+  activitiesLastFetched: Record<string, number>;
+  totalActivitiesCount: number;
+  
+  globalActivities: CollaborativeActivity[]; // ✅ NEW: Global session manager data
+  globalUpcomingCount: number; // ✅ NEW: Badge count for "Activities" button
 
   subscribedSpaceIds: string[];
 
@@ -27,6 +31,7 @@ interface CollaborationState {
   customTabs: CustomTab[];
 
   processedEventIds: string[];
+  isLoading: boolean;
 
   // Actions
   setSpaces: (spaces: CollaborationSpace[]) => void;
@@ -71,6 +76,13 @@ interface CollaborationState {
   setSpacesInTab: (tabId: string, spaceIds: string[]) => void;
   renameCustomTab: (tabId: string, newName: string) => void;
   fetchUserSpaces: (userId: number) => Promise<CollaborationSpace[]>;
+  fetchGlobalActivities: (params?: any) => Promise<void>; // ✅ NEW
+  fetchSpaceActivities: (spaceId: string, page?: number, limit?: number) => Promise<void>; // ✅ NEW
+  
+  addActivity: (activity: CollaborativeActivity) => void;
+  updateActivity: (activity: CollaborativeActivity) => void;
+  deleteActivity: (activityId: string, spaceId: string) => void;
+  
   reset: () => void;
 }
 
@@ -91,11 +103,15 @@ export const useCollaborationStore = create<CollaborationState>()(
       totalUnreadSpaces: 0,
 
       spaceActivities: {},
+      spaceUpcomingCounts: {},
       activitiesLastFetched: {},
       totalActivitiesCount: 0,
+      globalActivities: [],
+      globalUpcomingCount: 0,
       subscribedSpaceIds: [],
       customTabs: [],
       processedEventIds: [],
+      isLoading: false,
 
 
       subscribeToAllSpaces: (spaceIds) => {
@@ -356,6 +372,27 @@ export const useCollaborationStore = create<CollaborationState>()(
             }
             break;
 
+          case 'activity.created':
+          case 'activity_created':
+            if (data.activity) {
+              get().addActivity(data.activity);
+            }
+            break;
+
+          case 'activity.updated':
+          case 'activity_updated':
+            if (data.activity) {
+              get().updateActivity(data.activity);
+            }
+            break;
+
+          case 'activity.deleted':
+          case 'activity_deleted':
+            if (data.space_id && data.activity_id) {
+              get().deleteActivity(data.activity_id, data.space_id.toString());
+            }
+            break;
+            
           case 'space-deleted':
           case 'space.deleted':
             const deletedId = (data.space_id || data.id || data.spaceId)?.toString();
@@ -744,7 +781,6 @@ export const useCollaborationStore = create<CollaborationState>()(
           t.id === tabId ? { ...t, spaceIds: [...new Set([...t.spaceIds, spaceId])] } : t
         );
         
-        // Background sync
         CollaborationService.getInstance().updateUserPreferences({ custom_tabs: newTabs });
         
         return { customTabs: newTabs };
@@ -782,6 +818,128 @@ export const useCollaborationStore = create<CollaborationState>()(
         
         return { customTabs: newTabs };
       }),
+
+      fetchGlobalActivities: async (params = {}) => {
+        set({ isLoading: true });
+        try {
+          const result = await CollaborationService.getInstance().getGlobalActivities(params);
+          set({
+            globalActivities: result.activities,
+            globalUpcomingCount: result.upcoming_count,
+            totalActivitiesCount: result.total
+          });
+        } catch (error) {
+          console.error('Error fetching global activities:', error);
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      fetchSpaceActivities: async (spaceId, page = 1, limit = 20) => {
+        set({ isLoading: true });
+        try {
+          const result = await CollaborationService.getInstance().getSpaceActivities(spaceId, page, limit);
+          set((state) => ({
+            spaceActivities: {
+              ...state.spaceActivities,
+              [spaceId]: result.activities
+            },
+            spaceUpcomingCounts: {
+              ...state.spaceUpcomingCounts,
+              [spaceId]: result.upcoming_count
+            },
+            activitiesLastFetched: {
+              ...state.activitiesLastFetched,
+              [spaceId]: Date.now()
+            }
+          }));
+        } catch (error) {
+          console.error('Error fetching space activities:', error);
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      addActivity: (activity) => set((state) => {
+        const spaceId = activity.space_id;
+        const currentSpaceActivities = state.spaceActivities[spaceId] || [];
+        
+        // Prevent duplicate - safe comparison
+        if (currentSpaceActivities.some(a => String(a.id) === String(activity.id))) return state;
+
+        const isUpcoming = !!(activity.status === 'scheduled' && 
+                            activity.scheduled_start && 
+                            new Date(activity.scheduled_start) > new Date());
+
+        return {
+          spaceActivities: {
+            ...state.spaceActivities,
+            [spaceId]: [activity, ...currentSpaceActivities]
+          },
+          globalActivities: [activity, ...state.globalActivities],
+          globalUpcomingCount: isUpcoming ? state.globalUpcomingCount + 1 : state.globalUpcomingCount,
+          spaceUpcomingCounts: {
+            ...state.spaceUpcomingCounts,
+            [spaceId]: isUpcoming ? (state.spaceUpcomingCounts[spaceId] || 0) + 1 : (state.spaceUpcomingCounts[spaceId] || 0)
+          }
+        };
+      }),
+
+      updateActivity: (activity) => set((state) => {
+        const spaceId = activity.space_id;
+        const currentSpaceActivities = state.spaceActivities[spaceId] || [];
+        
+        const oldActivity = currentSpaceActivities.find(a => String(a.id) === String(activity.id)) || 
+                            state.globalActivities.find(a => String(a.id) === String(activity.id));
+
+        const wasUpcoming = !!(oldActivity && 
+                             oldActivity.status === 'scheduled' && 
+                             oldActivity.scheduled_start && 
+                             new Date(oldActivity.scheduled_start) > new Date());
+                             
+        const isUpcoming = !!(activity.status === 'scheduled' && 
+                            activity.scheduled_start && 
+                            new Date(activity.scheduled_start) > new Date());
+
+        const diff = (isUpcoming ? 1 : 0) - (wasUpcoming ? 1 : 0);
+
+        return {
+          spaceActivities: {
+            ...state.spaceActivities,
+            [spaceId]: currentSpaceActivities.map(a => String(a.id) === String(activity.id) ? activity : a)
+          },
+          globalActivities: state.globalActivities.map(a => String(a.id) === String(activity.id) ? activity : a),
+          globalUpcomingCount: state.globalUpcomingCount + diff,
+          spaceUpcomingCounts: {
+            ...state.spaceUpcomingCounts,
+            [spaceId]: (state.spaceUpcomingCounts[spaceId] || 0) + diff
+          }
+        };
+      }),
+
+      deleteActivity: (activityId, spaceId) => set((state) => {
+        const currentSpaceActivities = state.spaceActivities[spaceId] || [];
+        const activityToDelete = currentSpaceActivities.find(a => String(a.id) === String(activityId)) || 
+                                 state.globalActivities.find(a => String(a.id) === String(activityId));
+        
+        const wasUpcoming = !!(activityToDelete && 
+                             activityToDelete.status === 'scheduled' && 
+                             activityToDelete.scheduled_start && 
+                             new Date(activityToDelete.scheduled_start) > new Date());
+
+        return {
+          spaceActivities: {
+            ...state.spaceActivities,
+            [spaceId]: currentSpaceActivities.filter(a => String(a.id) !== String(activityId))
+          },
+          globalActivities: state.globalActivities.filter(a => String(a.id) !== String(activityId)),
+          globalUpcomingCount: wasUpcoming ? Math.max(0, state.globalUpcomingCount - 1) : state.globalUpcomingCount,
+          spaceUpcomingCounts: {
+            ...state.spaceUpcomingCounts,
+            [spaceId]: wasUpcoming ? Math.max(0, (state.spaceUpcomingCounts[spaceId] || 0) - 1) : (state.spaceUpcomingCounts[spaceId] || 0)
+          }
+        };
+      }),
       
       fetchUserSpaces: async (userId) => {
         try {
@@ -818,6 +976,7 @@ export const useCollaborationStore = create<CollaborationState>()(
           spaceUnreadCounts: {},
           totalUnreadSpaces: 0,
           spaceActivities: {},
+          spaceUpcomingCounts: {},
           activitiesLastFetched: {},
           totalActivitiesCount: 0,
           subscribedSpaceIds: [],

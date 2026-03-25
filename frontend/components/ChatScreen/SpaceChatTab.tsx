@@ -282,6 +282,8 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                     const isGeneral = space?.space_type === 'general';
                     const isDirect = space?.space_type === 'direct' || space?.space_type === 'chat';
                     const isAdmin = ['owner', 'moderator', 'admin'].includes(myParticipation?.role || currentUserRole || '');
+                    const permissions = space?.my_permissions || myParticipation?.permissions || {};
+                    const canWrite = permissions.write !== false;
 
                     // Case 1: Not joined a public space or Pending participation
                     if ((!myParticipation && (isChannel || isGeneral)) || isPending) {
@@ -313,12 +315,13 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                         );
                     }
 
-                    // Case 3: Joined a Channel but not an Admin
-                    if (isChannel && !isAdmin) {
+                    // Case 2: Joined but no write permission (Muted/Channel non-admin)
+                    if (!canWrite || (isChannel && !isAdmin)) {
+                        const readonlyText = isChannel ? "Only admins can post messages in this channel" : "You do not have permission to send messages in this space";
                         return (
                             <View style={styles.adminOnlyBar}>
                                 <Ionicons name="lock-closed" size={16} color="#8E8E93" />
-                                <Text style={styles.adminOnlyText}>Only admins can post messages in this channel</Text>
+                                <Text style={styles.adminOnlyText}>{readonlyText}</Text>
                             </View>
                         );
                     }

@@ -30,7 +30,8 @@ class WebRTCSignal implements ShouldBroadcast
         $signalType,
         $signalData,
         $callId
-    ) {
+        )
+    {
         $this->space = $space;
         $this->fromUser = $fromUser;
         $this->toUserId = $toUserId;
@@ -41,10 +42,7 @@ class WebRTCSignal implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        return [
-            new PresenceChannel('presence-space.' . $this->space->id),
-            new PrivateChannel('user.' . $this->toUserId),
-        ];
+        return new PresenceChannel('space.' . $this->space->id);
     }
 
     public function broadcastAs()
@@ -54,15 +52,21 @@ class WebRTCSignal implements ShouldBroadcast
 
     public function broadcastWith()
     {
-        return [
+        $payload = array_merge($this->signalData, [
             'from_user_id' => $this->fromUser->id,
             'from_user_name' => $this->fromUser->name,
+            'target_user_id' => $this->toUserId,
             'type' => $this->signalType,
-            'offer' => $this->signalData['offer'] ?? null,
-            'answer' => $this->signalData['answer'] ?? null,
-            'candidate' => $this->signalData['candidate'] ?? null,
             'call_id' => $this->callId,
             'timestamp' => now()->toISOString(),
-        ];
+        ]);
+
+        \Illuminate\Support\Facades\Log::debug("📡 Broadcasting WebRTCSignal: {$this->signalType} to Space {$this->space->id}", [
+            'target' => $this->toUserId,
+            'from' => $this->fromUser->id,
+            'type' => $this->signalType
+        ]);
+
+        return $payload;
     }
 }

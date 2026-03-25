@@ -1,8 +1,9 @@
 // services/SearchServiceChat.ts
-import Fuse from 'fuse.js';
+import Fuse, { IFuseOptions } from 'fuse.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getToken } from '@/services/TokenService';
 import getApiBase from '@/services/getApiBase';
+import axios from '@/services/axios';
 
 export interface SearchResult {
   id: string;
@@ -17,7 +18,7 @@ export interface SearchResult {
 
 class SearchService {
   private static instance: SearchService;
-  private fuseOptions: Fuse.IFuseOptions<any> = {
+  private fuseOptions: IFuseOptions<any> = {
     keys: [
       { name: 'name', weight: 0.5 },
       { name: 'title', weight: 0.5 },
@@ -33,7 +34,7 @@ class SearchService {
     minMatchCharLength: 2,
   };
 
-  private constructor() {}
+  private constructor() { }
 
   static getInstance(): SearchService {
     if (!SearchService.instance) {
@@ -76,47 +77,22 @@ class SearchService {
     });
 
     try {
-      const response = await fetch(`${API_BASE}/search`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-          query,
-          user_id: userId,
-          types: ['spaces', 'chats', 'contacts'],
-          limit: 20,
-        }),
+      const response = await axios.post('/search', {
+        query,
+        user_id: userId,
+        types: ['spaces', 'chats', 'contacts'],
+        limit: 20,
       });
 
       console.log('Search response status:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Search failed:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorText
-        });
-        
-        // If it's a 401, token might be invalid
-        if (response.status === 401) {
-          throw new Error('Authentication required');
-        }
-        
-        throw new Error(`Search failed: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
+      const data = response.data;
       console.log('Search results:', data);
-      
+
       return data.results || [];
 
     } catch (error) {
       console.error('Search API error:', error);
-      
+
       // Fallback to local search
       console.log('Falling back to local search...');
       return this.fallbackLocalSearch(query, userId);
@@ -131,13 +107,13 @@ class SearchService {
       const cachedContacts = await this.getCachedContacts(userId);
 
       const allItems = [
-        ...(cachedSpaces || []).map(item => ({ ...item, type: 'space' })),
-        ...(cachedChats || []).map(item => ({ ...item, type: 'chat' })),
-        ...(cachedContacts || []).map(item => ({ ...item, type: 'contact' })),
+        ...(cachedSpaces || []).map((item: any) => ({ ...item, type: 'space' })),
+        ...(cachedChats || []).map((item: any) => ({ ...item, type: 'chat' })),
+        ...(cachedContacts || []).map((item: any) => ({ ...item, type: 'contact' })),
       ];
 
       console.log('Local search items:', allItems.length);
-      
+
       return this.localSearch(query, allItems);
     } catch (error) {
       console.error('Local search error:', error);
@@ -187,7 +163,7 @@ class SearchService {
         AsyncStorage.setItem(`search_cache_chats_${userId}`, JSON.stringify(chats)),
         AsyncStorage.setItem(`search_cache_contacts_${userId}`, JSON.stringify(contacts)),
       ]);
-      
+
       console.log('Search data cached successfully');
     } catch (error) {
       console.error('Cache search data error:', error);
@@ -197,8 +173,8 @@ class SearchService {
   async clearSearchCache(userId?: string) {
     try {
       const keys = await AsyncStorage.getAllKeys();
-      const cacheKeys = keys.filter(k => 
-        k.startsWith('search_cache') && 
+      const cacheKeys = keys.filter(k =>
+        k.startsWith('search_cache') &&
         (!userId || k.includes(userId))
       );
       await AsyncStorage.multiRemove(cacheKeys);

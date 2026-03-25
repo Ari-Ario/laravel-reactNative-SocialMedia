@@ -12,11 +12,11 @@ import AuthContext from '@/context/AuthContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { ActivityIndicator, View, Text, Platform } from 'react-native';
 import { loadUser } from '@/services/AuthService';
-import { getToken } from '@/services/TokenService';
+import { getToken, setToken } from '@/services/TokenService';
 import LoginScreen from './LoginScreen';
 import RegisterScreen from './RegisterScreen';
 import VerificationScreen from './VerificationScreen';
-import { usePathname, useLocalSearchParams } from 'expo-router';
+import { usePathname, useLocalSearchParams, useSegments } from 'expo-router';
 import { ProfileViewProvider } from '@/context/ProfileViewContext';
 import { GlobalModals } from '@/components/GlobalModals';
 import { ModalProvider } from '@/context/ModalContext';
@@ -40,10 +40,12 @@ export default function RootLayout() {
     email_verified_at?: string | null;
     is_admin?: boolean;
     ai_admin?: boolean;
+    is_guest?: boolean;
   } | null>(null);
   const [isReady, setIsReady] = useState(false);
   const router = useRouter();
   const params = useLocalSearchParams();
+  const segments = useSegments();
 
   useEffect(() => {
     let isMounted = true;
@@ -62,6 +64,13 @@ export default function RootLayout() {
               id: userData.id.toString(),
               profile_photo: userData.profile_photo || null,
             });
+            
+            // Guarantee that guests re-subscribe to WebSockets if they refresh the Space directly,
+            // since they completely bypass the NotificationStore bootloader in /(tabs) layout!
+            if (userData.is_guest) {
+                const PusherService = require('@/services/PusherService').default;
+                PusherService.initialize(token);
+            }
           }
         }
         // else {
@@ -85,6 +94,7 @@ export default function RootLayout() {
 
   const logout = async () => {
     try {
+      await setToken(null);
       setUser(null);
       router.replace('/LoginScreen');
     } catch (error) {
@@ -126,13 +136,13 @@ export default function RootLayout() {
       pathname?.startsWith(route)
     );
 
-    const isGuestAccess = pathname?.startsWith('/spaces/') && (params.guest === 'true' || params.inviteCode);
+    const isGuestAccess = pathname?.startsWith('/spaces/') || pathname?.startsWith('/(spaces)/') || segments.includes('(spaces)');
 
     if (!user) {
       if (isGuestAccess) return; // Allow unauthenticated guest access
 
       // If user not logged in, only allow LoginScreen and root
-      if (pathname === '/' || !pathname?.startsWith('/LoginScreen')) {
+      if (pathname === '/' || (!pathname?.startsWith('/LoginScreen') && !pathname?.startsWith('/RegisterScreen') && !pathname?.startsWith('/ForgotPasswordScreen') && !pathname?.startsWith('/VerificationScreen') && !pathname?.startsWith('/ResetPasswordScreen'))) {
         router.replace('/LoginScreen');
       } else if (pathname?.startsWith('/RegisterScreen') && pathname !== '/RegisterScreen') {
         router.replace('/RegisterScreen');
@@ -150,30 +160,47 @@ export default function RootLayout() {
     }
 
     // User is logged in
-    if (user && user.email_verified_at) {
-      // ✅ STRICT REDIRECT ON RELOAD: If this is the initial mount (reload/restart),
-      // and we are NOT on a tab or root, force redirect to tabs home.
-      // This solves the web refresh issue where subscriptions break.
-      if (isInitialLoad.current) {
+    if (user) {
+      // 🛡️ Guest Access Guard (Prevent guests from going anywhere but explicitly allowed spaces)
+      if (user.is_guest) {
+        // Enforce strictness: if the guest navigates to root `/` or any restricted area explicitly, destroy session!
+        const forbiddenPrefixes = ['/(tabs)', '/LoginScreen', '/RegisterScreen', '/VerificationScreen', '/ForgotPasswordScreen'];
+        
+        if (pathname === '/' || forbiddenPrefixes.some(prefix => pathname?.startsWith(prefix))) {
+          console.log("🛡️ Guest attempted to navigate to a forbidden route. Destroying ephemeral session.");
+          logout();
+          return;
+        }
+        
         isInitialLoad.current = false;
-        if (!pathname?.startsWith('/(tabs)') && pathname !== '/(tabs)' && pathname !== '/') {
-          console.log("🔄 Initial load/reload detected outside tabs, redirecting to home:", pathname);
+        return; // Halt any further redirect logic for guests!
+      }
+
+      if (user.email_verified_at) {
+        // ✅ STRICT REDIRECT ON RELOAD: If this is the initial mount (reload/restart),
+        // and we are NOT on a tab or root, force redirect to tabs home.
+        // This solves the web refresh issue where subscriptions break.
+        if (isInitialLoad.current) {
+          isInitialLoad.current = false;
+          if (!pathname?.startsWith('/(tabs)') && pathname !== '/(tabs)' && pathname !== '/') {
+            console.log("🔄 Initial load/reload detected outside tabs, redirecting to home:", pathname);
+            router.replace('/(tabs)');
+            return;
+          }
+        }
+
+        // If fully verified, redirect away from root, login, register, and verification screens
+        const authScreens = ['/', '/LoginScreen', '/RegisterScreen', '/VerificationScreen'];
+        if (authScreens.includes(pathname || '') && pathname !== '/(tabs)') {
           router.replace('/(tabs)');
           return;
         }
-      }
-
-      // If fully verified, redirect away from root, login, register, and verification screens
-      const authScreens = ['/', '/LoginScreen', '/RegisterScreen', '/VerificationScreen'];
-      if (authScreens.includes(pathname || '') && pathname !== '/(tabs)') {
-        router.replace('/(tabs)');
-        return;
-      }
-    } else {
-      // If email NOT verified, only allow VerificationScreen
-      if (pathname !== '/VerificationScreen') {
-        router.replace('/VerificationScreen');
-        return;
+      } else {
+        // If email NOT verified, only allow VerificationScreen
+        if (pathname !== '/VerificationScreen') {
+          router.replace('/VerificationScreen');
+          return;
+        }
       }
     }
 

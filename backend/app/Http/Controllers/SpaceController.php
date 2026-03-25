@@ -727,8 +727,8 @@ public function updateContentState(Request $request, $id)
         $authUser = auth()->user();
         broadcast(new ParticipantJoined($space, $authUser))->toOthers();
         
-        // Broadcast participation update globally
-        broadcast(new SpaceUpdated($space, $authUser->id, ['update_type' => 'participation']))->toOthers();
+        // ✅ DELETED: Redundant SpaceUpdated broadcast that likely caused double-re-renders/reloads
+        // broadcast(new SpaceUpdated($space, $authUser->id, ['update_type' => 'participation']))->toOthers();
         
         // WhatsApp-style system message
         $this->sendSystemMessage($space, $authUser->name . " joined the space");
@@ -941,13 +941,13 @@ public function startCall(Request $request, $id)
     }
 
     // Check for existing active call
-    $existingCall = Call::where('conversation_id', $space->linked_conversation_id) // ✅ FIX: Use Call model
-        ->where('status', 'active')
+    $existingCall = Call::where('conversation_id', $space->linked_conversation_id)
+        ->whereIn('status', ['ringing', 'ongoing']) // ✅ Align with model
         ->first();
 
     if ($existingCall) {
         return response()->json([
-            'call' => $existingCall->load('initiator'),
+            'call' => $existingCall->load(['initiator', 'users']), // ✅ Load users from pivot
             'space' => $space->fresh(['participations.user']),
             'message' => 'Joining existing call'
         ]);
@@ -957,16 +957,19 @@ public function startCall(Request $request, $id)
     $callId = Str::uuid()->toString();
     $participantIds = $space->participations()->pluck('user_id')->toArray();
     
-    $call = Call::create([ // ✅ FIX: Use Call model
+    $call = Call::create([
         'id' => $callId,
         'conversation_id' => $space->linked_conversation_id,
         'initiator_id' => auth()->id(),
         'type' => $request->call_type,
-        'status' => 'active',
+        'status' => 'ongoing', // ✅ Align with model
         'participants' => $participantIds,
         'started_at' => now(),
         'is_web_compatible' => true,
     ]);
+
+    // ✅ NEW: Populate pivot table for all participants
+    $call->users()->sync($participantIds);
 
     $space->update([
         'is_live' => true,
@@ -989,18 +992,18 @@ public function startCall(Request $request, $id)
     }
     
     // Create persistent call log message
-    $this->sendSystemMessage($space, $authUser->name . " started a " . $request->call_type . " call", [
+    $this->sendSystemMessage($space, ($authUser?->name ?? 'User') . " started a " . $request->call_type . " call", [
         'call_log' => [
             'id' => $call->id,
             'type' => $request->call_type,
-            'status' => 'active',
-            'initiator_id' => $authUser->id,
-            'initiator_name' => $authUser->name
+            'status' => 'ongoing',
+            'initiator_id' => $authUser?->id,
+            'initiator_name' => $authUser?->name
         ]
     ]);
 
     return response()->json([
-        'call' => $call->load('initiator'),
+        'call' => $call->load(['initiator', 'users']), // ✅ Load users from pivot
         'space' => $space->fresh(['participations.user']),
         'message' => 'Call started successfully'
     ]);
@@ -1009,16 +1012,17 @@ public function startCall(Request $request, $id)
 /**
  * Handle WebRTC signaling
  */
-public function callSignal(Request $request, $id)
-{
-    $request->validate([
-        'type' => 'required|in:offer,answer,ice-candidate',
-        'target_user_id' => 'required|exists:users,id',
-        'call_id' => 'required|string',
-        'offer' => 'sometimes|array',
-        'answer' => 'sometimes|array',
-        'candidate' => 'sometimes|array',
-    ]);
+    public function callSignal(Request $request, $id)
+    {
+        $request->validate([
+            'type' => 'required|in:offer,answer,ice-candidate,call-active',
+            'target_user_id' => 'required|integer',
+            'call_id' => 'required|string',
+            'offer' => 'sometimes|array',
+            'answer' => 'sometimes|array',
+            'candidate' => 'sometimes|array',
+            'user_id' => 'sometimes|integer',
+        ]);
     
     $space = CollaborationSpace::findOrFail($id);
     /** @var \App\Models\User $user */
@@ -1027,6 +1031,13 @@ public function callSignal(Request $request, $id)
     
     // Broadcast signal to target user
     if ($user instanceof \App\Models\User) {
+        Log::info("📡 WebRTC Signal: {$request->type} from User {$user->id} to User {$request->target_user_id} in Space {$id}", [
+            'call_id' => $request->call_id,
+            'has_offer' => isset($request->offer),
+            'has_answer' => isset($request->answer),
+            'has_candidate' => isset($request->candidate)
+        ]);
+        
         broadcast(new WebRTCSignal(
             $space,
             $user,
@@ -1139,6 +1150,57 @@ public function callScreenShare(Request $request, $id)
     /**
      * End a call in space
      */
+/**
+ * Join an ongoing call
+ */
+public function joinCall(Request $request, $id)
+{
+    try {
+        $space = CollaborationSpace::findOrFail($id);
+        
+        // Find latest ongoing call
+        $call = Call::where('conversation_id', $space->linked_conversation_id)
+            ->where('status', 'ongoing')
+            ->latest()
+            ->first();
+            
+        if (!$call) {
+            return response()->json(['message' => 'No ongoing call found'], 404);
+        }
+        
+        $userId = auth()->id();
+        
+        // Add to pivot table if not already there
+        if (!$call->users()->where('user_id', $userId)->exists()) {
+            $call->users()->attach($userId);
+        }
+        
+        // Update participants JSON column
+        $participants = $call->participants ?? [];
+        if (is_array($participants) && !in_array($userId, $participants)) {
+            $participants[] = $userId;
+            $call->update(['participants' => $participants]);
+        }
+
+        // Update space live_participants
+        $spaceParticipants = $space->live_participants ?? [];
+        if (is_array($spaceParticipants) && !in_array($userId, $spaceParticipants)) {
+            $spaceParticipants[] = $userId;
+            $space->update(['live_participants' => $spaceParticipants]);
+        }
+        
+        return response()->json([
+            'success' => true,
+            'call' => $call->load(['initiator', 'users']),
+            'message' => 'Joined call successfully'
+        ]);
+        
+    } catch (\Exception $e) {
+        \Log::error("Call join error: " . $e->getMessage());
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+}
+
 public function endCall(Request $request, $id)
 {
     $request->validate([
@@ -1147,67 +1209,76 @@ public function endCall(Request $request, $id)
     
     try {
         $space = CollaborationSpace::findOrFail($id);
-        
-        // Find the call - it might be a UUID string, not auto-increment ID
         $call = Call::where('id', $request->call_id)->first();
         
         if (!$call) {
-            return response()->json([
-                'message' => 'Call not found'
-            ], 404);
+            return response()->json(['message' => 'Call not found'], 404);
         }
         
-        // Update call status
-        $call->update([
-            'status' => 'ended',
-            'ended_at' => now(),
-            'duration_seconds' => $call->started_at ? now()->diffInSeconds($call->started_at) : 0,
-        ]);
+        $userId = auth()->id();
+        $user = auth()->user();
+
+        // 1. Remove from pivot table
+        $call->users()->detach($userId);
         
-        // Update space
-        $space->update([
-            'is_live' => false,
-            'current_focus' => null,
-            'live_participants' => [],
-        ]);
-        
-        // Broadcast call ended
-        broadcast(new CallEnded($space, $call))->toOthers();
-        
-        // Create persistent call log message for end of call
-        $duration = $call->duration_seconds;
-        $minutes = floor($duration / 60);
-        $seconds = $duration % 60;
-        $durationStr = $minutes > 0 ? "{$minutes}m {$seconds}s" : "{$seconds}s";
-        
-        $this->sendSystemMessage($space, "Call ended (" . $durationStr . ")", [
-            'call_log' => [
-                'id' => $call->id,
-                'type' => $call->type,
+        // 2. Update participants JSON column (for historical/legacy compatibility)
+        $participants = $call->participants ?? [];
+        if (is_array($participants)) {
+            $participants = array_values(array_filter($participants, fn($p) => $p != $userId));
+            $call->update(['participants' => $participants]);
+        }
+
+        // 3. Update space live_participants JSON
+        $spaceParticipants = $space->live_participants ?? [];
+        if (is_array($spaceParticipants)) {
+            $spaceParticipants = array_values(array_filter($spaceParticipants, fn($p) => $p != $userId));
+            $space->update(['live_participants' => $spaceParticipants]);
+        }
+
+        $remainingCount = $call->users()->count();
+        $isDirect = $space->type === 'direct';
+
+        // 4. Determine if the session should close entirely
+        if ($remainingCount === 0 || $isDirect) {
+            $call->update([
                 'status' => 'ended',
-                'initiator_id' => $call->initiator_id,
-                'duration' => $duration,
-                'duration_formatted' => $durationStr
-            ]
-        ]);
+                'ended_at' => now(),
+                'duration_seconds' => $call->started_at ? now()->diffInSeconds($call->started_at) : 0,
+            ]);
+            
+            $space->update([
+                'is_live' => false,
+                'current_focus' => null,
+                'live_participants' => [],
+            ]);
+            
+            broadcast(new CallEnded($space, $call))->toOthers();
+            
+            // System message for entire call end
+            $duration = $call->duration_seconds;
+            $durationStr = floor($duration / 60) . "m " . ($duration % 60) . "s";
+            $this->sendSystemMessage($space, "Call ended (" . $durationStr . ")", [
+                'call_log' => [
+                    'id' => $call->id,
+                    'type' => $call->type,
+                    'status' => 'ended'
+                ]
+            ]);
+        } else {
+            // Just broadcast that this participant left
+            if ($user instanceof \App\Models\User) {
+                broadcast(new ParticipantLeft($space, $user))->toOthers();
+            }
+        }
         
         return response()->json([
             'success' => true,
-            'message' => 'Call ended successfully',
-            'duration' => $call->duration_seconds,
+            'remaining_participants' => $remainingCount
         ]);
         
     } catch (\Exception $e) {
-        Log::error('Error ending call:', [
-            'space_id' => $id,
-            'call_id' => $request->call_id,
-            'error' => $e->getMessage()
-        ]);
-        
-        return response()->json([
-            'message' => 'Failed to end call',
-            'error' => $e->getMessage()
-        ], 500);
+        \Log::error("Call end error: " . $e->getMessage());
+        return response()->json(['error' => $e->getMessage()], 500);
     }
 }
     
@@ -1412,11 +1483,12 @@ public function endCall(Request $request, $id)
             ], 403);
         }
 
-        // ✅ Permisions Fix (WhatsApp/Telegram Style)
-        // 2. Write access control
+        // ✅ Permissions Fix (WhatsApp/Telegram Style)
+        // 2. Write access control (Granular + Role-based)
         $role = $participation->role;
         $isChannel = $space->space_type === 'channel';
         $isAdmin = in_array($role, ['owner', 'moderator', 'admin']);
+        $canWrite = $participation->permissions['write'] ?? true;
 
         if ($role === 'pending') {
             return response()->json([
@@ -1428,6 +1500,13 @@ public function endCall(Request $request, $id)
         if ($isChannel && !$isAdmin) {
             return response()->json([
                 'message' => '🚫 Only admins can send messages in this channel'
+            ], 403);
+        }
+
+        // Granular check for all space types
+        if (!$canWrite) {
+            return response()->json([
+                'message' => '🚫 You do not have permission to send messages in this space'
             ], 403);
         }
 
@@ -1905,6 +1984,23 @@ public function endCall(Request $request, $id)
         
         $space = CollaborationSpace::findOrFail($id);
         
+        // ✅ Permissions Fix: Check if participant and has can_trigger_magic
+        $participation = $space->participations()
+            ->where('user_id', auth()->id())
+            ->first();
+
+        if (!$participation) {
+            return response()->json([
+                'message' => '🚫 Only participants can trigger magic events'
+            ], 403);
+        }
+
+        if (!($participation->permissions['can_trigger_magic'] ?? false)) {
+            return response()->json([
+                'message' => '🚫 You do not have permission to trigger magic events'
+            ], 403);
+        }
+
         // Check emergence triggers
         $shouldTrigger = $this->checkEmergenceTriggers($space, $request->event_type);
         
@@ -2379,13 +2475,14 @@ public function endCall(Request $request, $id)
             }
         }
 
-        // Search chats (from messages with other users)
+        // Search chats (Users I have a direct space with)
         if (in_array('chats', $types)) {
             try {
-                $chats = User::whereHas('conversations.messages', function($q) use ($userId) {
-                        $q->whereHas('conversation.users', function($q) use ($userId) {
-                            $q->where('users.id', $userId);
-                        });
+                $chats = User::whereHas('spaces', function($q) use ($userId) {
+                        $q->where('space_type', 'direct')
+                          ->whereHas('participations', function($q) use ($userId) {
+                              $q->where('user_id', $userId);
+                          });
                     })
                     ->where('id', '!=', $userId)
                     ->where(function($q) use ($query) {
@@ -2535,6 +2632,8 @@ public function endCall(Request $request, $id)
     {
         $permissions = [
             'owner' => [
+                'read' => true,
+                'write' => true,
                 'can_edit_space' => true,
                 'can_invite' => true,
                 'can_remove' => true,
@@ -2546,6 +2645,8 @@ public function endCall(Request $request, $id)
                 'can_delete_space' => true,
             ],
             'moderator' => [
+                'read' => true,
+                'write' => true,
                 'can_edit_space' => false,
                 'can_invite' => true,
                 'can_remove' => true,
@@ -2557,6 +2658,8 @@ public function endCall(Request $request, $id)
                 'can_delete_space' => false,
             ],
             'participant' => [
+                'read' => true,
+                'write' => true, // Default to true, adjusted in join() for channels if needed
                 'can_edit_space' => false,
                 'can_invite' => false,
                 'can_remove' => false,
@@ -3071,13 +3174,15 @@ public function endCall(Request $request, $id)
             'my_role' => $participation ? $participation->role : null,
             'image_url' => $space->image_url,
             'is_online_in_space' => $participation ? ($participation->presence_data['is_online'] ?? false) : false,
-            'my_permissions' => $participation ? $participation->permissions : [
-                'is_muted' => false,
-                'is_pinned' => false,
-                'is_archived' => false,
-                'is_unread' => false,
-                'is_favorite' => false,
-            ],
+            'my_permissions' => $participation 
+                ? array_merge($this->getDefaultParticipantPermissions($space), (array)($participation->permissions ?? []))
+                : [
+                    'is_muted' => false,
+                    'is_pinned' => false,
+                    'is_archived' => false,
+                    'is_unread' => false,
+                    'is_favorite' => false,
+                ],
             'unread_count' => $participation ? $this->calculateUnreadCount($space, $participation) : 0,
             'other_participant' => $otherParticipant,
             'settings' => $settings,

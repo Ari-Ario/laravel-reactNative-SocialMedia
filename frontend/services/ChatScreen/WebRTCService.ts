@@ -1,8 +1,30 @@
 import { Platform } from 'react-native';
-import { getToken } from '../TokenService';
-import getApiBase from '../getApiBase';
 import PusherService from '@/services/PusherService';
+import CollaborationService from './CollaborationService';
 import * as Haptics from 'expo-haptics';
+
+let RTC_PeerConnection: any;
+let RTC_SessionDescription: any;
+let RTC_IceCandidate: any;
+let media_Devices: any;
+
+if (Platform.OS !== 'web') {
+  try {
+    const webrtc = require('react-native-webrtc');
+    RTC_PeerConnection = webrtc.RTCPeerConnection;
+    RTC_SessionDescription = webrtc.RTCSessionDescription;
+    RTC_IceCandidate = webrtc.RTCIceCandidate;
+    media_Devices = webrtc.mediaDevices;
+    console.log('📞 WebRTC Native bindings loaded successfully');
+  } catch (e) {
+    console.error('📞 Failed to load react-native-webrtc:', e);
+  }
+} else {
+  RTC_PeerConnection = window.RTCPeerConnection || (window as any).webkitRTCPeerConnection || (window as any).mozRTCPeerConnection;
+  RTC_SessionDescription = window.RTCSessionDescription;
+  RTC_IceCandidate = window.RTCIceCandidate;
+  media_Devices = navigator.mediaDevices;
+}
 
 export interface PeerConnection {
   peerId: string;
@@ -21,7 +43,10 @@ class WebRTCService {
   private userId: number | null = null;
   private callId: string | null = null;
   private pusherService = PusherService;
-  
+  private isSubscribed = false;
+  private isInitiator = false;
+  private signalingTimeout: any = null;
+
   // Callbacks
   private onRemoteStreamCallback: ((userId: string, stream: MediaStream) => void) | null = null;
   private onCallEndedCallback: (() => void) | null = null;
@@ -31,6 +56,7 @@ class WebRTCService {
   private onScreenShareEndedCallback: ((userId: string) => void) | null = null;
   private onMuteStateChangedCallback: ((userId: string, isMuted: boolean) => void) | null = null;
   private onVideoStateChangedCallback: ((userId: string, hasVideo: boolean) => void) | null = null;
+  private knownParticipants = new Set<number>();
 
   private iceServers = {
     iceServers: [
@@ -43,7 +69,7 @@ class WebRTCService {
     iceCandidatePoolSize: 10,
   };
 
-  private constructor() {}
+  private constructor() { }
 
   static getInstance(): WebRTCService {
     if (!WebRTCService.instance) {
@@ -58,14 +84,7 @@ class WebRTCService {
   }
 
   async getLocalStream(videoEnabled: boolean = true, audioEnabled: boolean = true): Promise<MediaStream | null> {
-    // ✅ FIX: WebRTC is only available on web platform
-    if (Platform.OS !== 'web') {
-      console.log('📞 WebRTC not available on native, using native call UI instead');
-      return null;
-    }
-
     if (this.localStream) {
-      // Update tracks if needed
       this.localStream.getVideoTracks().forEach(track => {
         track.enabled = videoEnabled;
       });
@@ -76,18 +95,57 @@ class WebRTCService {
     }
 
     try {
-      this.localStream = await navigator.mediaDevices.getUserMedia({
-        video: videoEnabled ? {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: 'user',
-        } : false,
-        audio: audioEnabled,
-      });
+      console.log('📞 Acquiring MediaStream for Platform:', Platform.OS);
+
+      if (Platform.OS !== 'web') {
+        const sourceInfos: any = await media_Devices.enumerateDevices();
+        let videoSourceId;
+        for (let i = 0; i < sourceInfos.length; i++) {
+          const sourceInfo = sourceInfos[i];
+          if (sourceInfo.kind === "videoinput" && sourceInfo.facing === "front") {
+            videoSourceId = sourceInfo.deviceId;
+          }
+        }
+
+        try {
+          this.localStream = await media_Devices.getUserMedia({
+            video: videoEnabled ? {
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+              facingMode: 'user',
+              ...(videoSourceId ? { optional: [{ sourceId: videoSourceId }] } : {})
+            } : false,
+            audio: audioEnabled,
+          });
+        } catch (videoError) {
+          console.warn('⚠️ Video acquisition failed, falling back to audio only:', videoError);
+          this.localStream = await media_Devices.getUserMedia({
+            video: false,
+            audio: audioEnabled,
+          });
+        }
+      } else {
+        try {
+          this.localStream = await media_Devices.getUserMedia({
+            video: videoEnabled ? {
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+              facingMode: 'user',
+            } : false,
+            audio: audioEnabled,
+          });
+        } catch (videoError) {
+          console.warn('⚠️ Web video acquisition failed, falling back to audio only:', videoError);
+          this.localStream = await media_Devices.getUserMedia({
+            video: false,
+            audio: audioEnabled,
+          });
+        }
+      }
 
       return this.localStream;
     } catch (error) {
-      console.error('Error getting local stream:', error);
+      console.error('CRITICAL: Media acquisition failed entirely:', error);
       throw error;
     }
   }
@@ -99,7 +157,7 @@ class WebRTCService {
     }
 
     try {
-      this.screenStream = await navigator.mediaDevices.getDisplayMedia({
+      this.screenStream = await (media_Devices as any).getDisplayMedia({
         video: true,
         audio: true,
       });
@@ -113,10 +171,10 @@ class WebRTCService {
   async joinCall(spaceId: string, callId: string, isInitiator: boolean = false) {
     this.spaceId = spaceId;
     this.callId = callId;
-    
+    this.isInitiator = isInitiator;
+
     console.log(`📞 Joining call ${callId} in space ${spaceId}, isInitiator: ${isInitiator}, platform: ${Platform.OS}`);
-    
-    // ✅ FIX: Only get local stream on web platform
+
     if (Platform.OS === 'web') {
       try {
         await this.getLocalStream(true, true);
@@ -124,118 +182,150 @@ class WebRTCService {
         console.error('Failed to get local stream:', error);
       }
     }
-    
-    // Set up signaling listeners
+
     this.setupSignalingListeners();
-    
-    // If not initiator, we wait for offers
+
     if (!isInitiator) {
       console.log('📞 Not initiator, waiting for WebRTC offers...');
     }
   }
 
+  private pendingCandidates: Map<string, any[]> = new Map();
+
   private setupSignalingListeners() {
     if (!this.spaceId || !this.pusherService.isReady()) {
       console.warn('📞 Cannot setup signaling listeners: Pusher not ready or no spaceId');
+      if (this.signalingTimeout) clearTimeout(this.signalingTimeout);
+      this.signalingTimeout = setTimeout(() => this.setupSignalingListeners(), 2000);
       return;
     }
 
-    const pusher = (this.pusherService as any).pusher;
-    if (!pusher) return;
+    if (this.signalingTimeout) {
+      clearTimeout(this.signalingTimeout);
+      this.signalingTimeout = null;
+    }
 
-    const channelName = `presence-space.${this.spaceId}`;
-    console.log(`📞 Setting up WebRTC signaling listeners on channel: ${channelName}`);
-    
-    const channel = pusher.channel(channelName);
-    
-    if (!channel) {
-      console.warn(`📞 Channel ${channelName} not found, will retry...`);
-      setTimeout(() => this.setupSignalingListeners(), 1000);
+    if (this.isSubscribed) {
+      console.log(`ℹ️ WebRTC signaling already subscribed for space: ${this.spaceId}`);
       return;
     }
 
-    // Bind to WebRTC signal events
-    channel.bind('webrtc.signal', async (data: any) => {
-      console.log('📞 WebRTC signal received:', data.type, 'from:', data.from_user_id);
-      
-      if (data.from_user_id === this.userId) {
-        return; // Ignore our own signals
-      }
+    console.log(`🔌 Subscribing to WebRTC signaling for space: ${this.spaceId}`);
 
-      // ✅ FIX: Only handle WebRTC on web platform
-      if (Platform.OS !== 'web') {
-        console.log('📞 Ignoring WebRTC signal on native platform');
-        return;
-      }
+    CollaborationService.getInstance().subscribeToSpace(this.spaceId, 'webrtc-service', {
+      onWebRTCSignal: async (data: any) => {
+        const fromId = data.from_user_id;
+        const type = data.type;
 
-      switch (data.type) {
-        case 'offer':
-          await this.handleOffer(data);
-          break;
-        case 'answer':
-          await this.handleAnswer(data);
-          break;
-        case 'ice-candidate':
-          await this.handleIceCandidate(data);
-          break;
+        console.log(`📞 WebRTC signal: ${type} from ${fromId} (target: ${data.target_user_id})`);
+
+        if (fromId === this.userId) return;
+
+        // Check if signal is for us (or broadcast)
+        if (data.target_user_id && data.target_user_id !== this.userId) {
+          return;
+        }
+
+        switch (type) {
+          case 'offer':
+            await this.handleOffer(data);
+            break;
+          case 'answer':
+            await this.handleAnswer(data);
+            break;
+          case 'ice-candidate':
+            await this.handleIceCandidate(data);
+            break;
+          case 'call-active':
+            const joinedId = parseInt(data.user_id?.toString() || fromId?.toString() || '0', 10);
+            console.log(`👤 Participant joined call: ${joinedId}`);
+            this.handleNewParticipant(joinedId);
+            break;
+        }
+      },
+      onCallEnded: () => {
+        console.log('📞 Call ended notification received');
+        if (this.onCallEndedCallback) this.onCallEndedCallback();
+      },
+      onMuteStateChanged: (data: any) => {
+        if (this.onMuteStateChangedCallback && data.user_id !== this.userId) {
+          this.onMuteStateChangedCallback(data.user_id.toString(), data.is_muted);
+        }
+      },
+      onvideoStateChanged: (data: any) => {
+        if (this.onVideoStateChangedCallback && data.user_id !== this.userId) {
+          this.onVideoStateChangedCallback(data.user_id.toString(), data.has_video);
+        }
+      },
+      onParticipantLeft: (data: any) => {
+        const leftUserId = parseInt(data.user_id?.toString() || '0', 10);
+        console.log('👤 Participant left call:', leftUserId);
+        this.handleParticipantLeft(leftUserId);
       }
     });
 
-    // Bind to call events
-    channel.bind('call.ended', (data: any) => {
-      console.log('📞 Call ended event received:', data);
-      if (this.onCallEndedCallback) {
-        this.onCallEndedCallback();
-      }
-    });
-
-    channel.bind('mute.state.changed', (data: any) => {
-      if (this.onMuteStateChangedCallback && data.user_id !== this.userId) {
-        this.onMuteStateChangedCallback(data.user_id.toString(), data.is_muted);
-      }
-    });
-
-    channel.bind('video.state.changed', (data: any) => {
-      if (this.onVideoStateChangedCallback && data.user_id !== this.userId) {
-        this.onVideoStateChangedCallback(data.user_id.toString(), data.has_video);
-      }
-    });
-
+    this.isSubscribed = true;
     console.log('📞 WebRTC signaling listeners setup complete');
   }
 
-  async createOffer(targetUserId: number) {
-    // ✅ FIX: Only create offers on web platform
-    if (Platform.OS !== 'web') {
-      console.log('📞 WebRTC offers only available on web');
-      return;
+  public handleNewParticipant(joinedUserId: number) {
+    if (!joinedUserId || joinedUserId === this.userId) return;
+
+    // Reliability: Handshake tie-breaker. Higher User ID offers to Lower User ID.
+    // This allows every participant to connect to every other participant in a mesh.
+    if (this.userId! > joinedUserId) {
+      console.log(`📞 P2P Mesh: High ID (${this.userId}) offering to Low ID (${joinedUserId})`);
+      // Small delay to ensure both are ready
+      setTimeout(() => this.createOffer(joinedUserId), 1000);
+    } else {
+      console.log(`📞 P2P Mesh: Low ID (${this.userId}) waiting for offer from High ID (${joinedUserId})`);
     }
 
+    if (!this.knownParticipants.has(joinedUserId)) {
+      this.knownParticipants.add(joinedUserId);
+      if (this.onParticipantJoinedCallback) {
+        this.onParticipantJoinedCallback(joinedUserId.toString());
+      }
+    }
+  }
+
+  public syncParticipants(participantIds: string[]) {
+    participantIds.forEach(id => {
+      const pid = parseInt(id, 10);
+      if (pid && pid !== this.userId) {
+        this.handleNewParticipant(pid);
+      }
+    });
+  }
+
+  async notifyCallActive() {
+    if (!this.spaceId) return;
+    console.log('📞 Broadcasting call active signal...');
+    await this.sendSignal(0, 'call-active', { user_id: this.userId });
+  }
+
+  async createOffer(targetUserId: number) {
     if (!this.spaceId || !this.localStream || !this.callId) {
-      console.error('Cannot create offer: missing required data');
+      console.warn('Cannot create offer: missing stream or call metadata');
       return;
     }
 
     try {
       console.log(`📞 Creating WebRTC offer for user ${targetUserId}`);
-      
+
       const peerConnection = this.createPeerConnection(targetUserId.toString());
-      
-      // Add local stream tracks to peer connection
+
+      // Add all tracks from local stream
       this.localStream.getTracks().forEach(track => {
         peerConnection.addTrack(track, this.localStream!);
       });
 
-      // Create offer
       const offer = await peerConnection.createOffer({
         offerToReceiveAudio: true,
         offerToReceiveVideo: true,
       });
-      
-      await peerConnection.setLocalDescription(offer);
-      console.log('📞 Offer created, sending to backend...');
 
-      // Send offer via API
+      await peerConnection.setLocalDescription(offer);
       await this.sendSignal(targetUserId, 'offer', { offer });
 
     } catch (error) {
@@ -244,115 +334,156 @@ class WebRTCService {
   }
 
   private async handleOffer(data: any) {
-    if (Platform.OS !== 'web') return;
-
     if (!this.spaceId || !this.localStream || !this.callId) {
-      console.error('Cannot handle offer: missing required data');
+      console.warn('Cannot handle offer: missing stream or call metadata');
       return;
     }
 
+    const fromId = data.from_user_id.toString();
     try {
-      console.log(`📞 Handling WebRTC offer from user ${data.from_user_id}`);
-      
-      const peerConnection = this.createPeerConnection(data.from_user_id.toString());
-      
-      // Add local stream tracks
+      console.log(`📞 Handling WebRTC offer from user ${fromId}`);
+
+      const peerConnection = this.createPeerConnection(fromId);
+
+      // Add local tracks to response
       this.localStream.getTracks().forEach(track => {
         peerConnection.addTrack(track, this.localStream!);
       });
 
-      // Set remote description
-      await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
-      
-      // Create answer
+      // ✅ Normalize remote SDP to avoid parsing errors
+      const normalizedSDP = this.normalizeSDP(data.offer.sdp);
+      const offerDescription = new RTC_SessionDescription({
+        type: data.offer.type,
+        sdp: normalizedSDP
+      });
+
+      await peerConnection.setRemoteDescription(offerDescription);
+
       const answer = await peerConnection.createAnswer();
       await peerConnection.setLocalDescription(answer);
-      
-      console.log('📞 Answer created, sending to backend...');
-      
-      // Send answer via API
-      await this.sendSignal(data.from_user_id, 'answer', { answer });
+
+      await this.sendSignal(parseInt(fromId), 'answer', { answer });
+
+      // Process any queued candidates that arrived before the offer
+      this.processQueuedCandidates(fromId);
 
     } catch (error) {
-      console.error('Error handling offer:', error);
+      console.error(`Error handling offer from ${fromId}:`, error);
     }
   }
 
   private async handleAnswer(data: any) {
-    if (Platform.OS !== 'web') return;
-
+    const fromId = data.from_user_id.toString();
     try {
-      console.log(`📞 Handling WebRTC answer from user ${data.from_user_id}`);
-      
-      const peerConnection = this.peerConnections.get(data.from_user_id.toString());
+      console.log(`📞 Handling WebRTC answer from user ${fromId}`);
+
+      const peerConnection = this.peerConnections.get(fromId);
       if (peerConnection) {
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-        console.log('📞 Remote description set successfully');
+        // ✅ Normalize remote SDP
+        const normalizedSDP = this.normalizeSDP(data.answer.sdp);
+        const answerDescription = new RTC_SessionDescription({
+          type: data.answer.type,
+          sdp: normalizedSDP
+        });
+
+        await peerConnection.setRemoteDescription(answerDescription);
+
+        // Process any queued candidates
+        this.processQueuedCandidates(fromId);
       }
     } catch (error) {
-      console.error('Error handling answer:', error);
+      console.error(`Error handling answer from ${fromId}:`, error);
     }
   }
 
   private async handleIceCandidate(data: any) {
-    if (Platform.OS !== 'web') return;
-
+    const fromId = data.from_user_id.toString();
     try {
-      console.log(`📞 Handling ICE candidate from user ${data.from_user_id}`);
-      
-      const peerConnection = this.peerConnections.get(data.from_user_id.toString());
-      if (peerConnection && data.candidate) {
-        await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-        console.log('📞 ICE candidate added successfully');
+      const peerConnection = this.peerConnections.get(fromId);
+      // ✅ Use pre-defined RTC_IceCandidate
+      const candidate = new RTC_IceCandidate(data.candidate);
+
+      if (peerConnection && peerConnection.remoteDescription && peerConnection.remoteDescription.type) {
+        await peerConnection.addIceCandidate(candidate);
+      } else {
+        // Offer/Answer not yet processed, queue the candidate
+        console.log(`📞 Queuing ICE candidate from ${fromId} (Remote description not ready)`);
+        if (!this.pendingCandidates.has(fromId)) {
+          this.pendingCandidates.set(fromId, []);
+        }
+        this.pendingCandidates.get(fromId)!.push(candidate);
       }
     } catch (error) {
-      console.error('Error handling ICE candidate:', error);
+      console.error(`Error handling ICE candidate from ${fromId}:`, error);
+    }
+  }
+
+  private processQueuedCandidates(peerId: string) {
+    const candidates = this.pendingCandidates.get(peerId);
+    if (candidates && this.peerConnections.has(peerId)) {
+      const pc = this.peerConnections.get(peerId)!;
+      console.log(`📞 Processing ${candidates.length} queued ICE candidates for ${peerId}`);
+      candidates.forEach(async (candidate) => {
+        try {
+          await pc.addIceCandidate(candidate);
+        } catch (e) {
+          console.error('Error adding queued candidate:', e);
+        }
+      });
+      this.pendingCandidates.delete(peerId);
     }
   }
 
   private createPeerConnection(peerId: string): RTCPeerConnection {
-    if (Platform.OS !== 'web') {
-      throw new Error('WebRTC only available on web');
-    }
-
     if (this.peerConnections.has(peerId)) {
       return this.peerConnections.get(peerId)!;
     }
 
     console.log(`📞 Creating new peer connection for ${peerId}`);
-    
-    const peerConnection = new RTCPeerConnection(this.iceServers);
+
+    const pcConfig = {
+      ...this.iceServers,
+      sdpSemantics: 'unified-plan',
+    };
+
+    const peerConnection = new RTC_PeerConnection(pcConfig);
     this.peerConnections.set(peerId, peerConnection);
 
-    // Handle ICE candidates
-    peerConnection.onicecandidate = (event) => {
+    peerConnection.onicecandidate = (event: any) => {
       if (event.candidate && this.spaceId && this.callId) {
-        console.log('📞 ICE candidate generated, sending to peer...');
         this.sendSignal(parseInt(peerId), 'ice-candidate', {
           candidate: event.candidate,
         });
       }
     };
 
-    // Handle incoming streams
-    peerConnection.ontrack = (event) => {
-      console.log(`📞 Received remote stream from ${peerId}`);
-      if (this.onRemoteStreamCallback) {
-        this.onRemoteStreamCallback(peerId, event.streams[0]);
+    peerConnection.ontrack = (event: any) => {
+      const stream = event.streams && event.streams[0];
+      console.log(`📞 [ontrack] Received remote stream from ${peerId}. Tracks:`, stream?.getTracks().map((t: any) => `${t.kind}:${t.enabled}`));
+      if (this.onRemoteStreamCallback && stream) {
+        this.onRemoteStreamCallback(peerId, stream);
       }
     };
 
-    // Handle connection state changes
+    // ✅ Add onaddstream for better legacy/native compatibility
+    (peerConnection as any).onaddstream = (event: any) => {
+      const stream = event.stream;
+      console.log(`📞 [onaddstream] Received remote stream from ${peerId}. Tracks:`, stream?.getTracks().map((t: any) => `${t.kind}:${t.enabled}`));
+      if (this.onRemoteStreamCallback && stream) {
+        this.onRemoteStreamCallback(peerId, stream);
+      }
+    };
+
     peerConnection.onconnectionstatechange = () => {
       console.log(`📞 Connection state with ${peerId}:`, peerConnection.connectionState);
-      
+
       if (peerConnection.connectionState === 'connected') {
         this.triggerHapticSuccess();
       }
-      
-      if (peerConnection.connectionState === 'disconnected' || 
-          peerConnection.connectionState === 'failed' ||
-          peerConnection.connectionState === 'closed') {
+
+      if (peerConnection.connectionState === 'disconnected' ||
+        peerConnection.connectionState === 'failed' ||
+        peerConnection.connectionState === 'closed') {
         this.handleParticipantLeft(parseInt(peerId));
       }
     };
@@ -365,15 +496,12 @@ class WebRTCService {
   }
 
   private async sendSignal(targetUserId: number, type: string, data: any) {
-    if (!this.spaceId || !this.callId) {
-      console.error('Cannot send signal: missing spaceId or callId');
+    if (!this.spaceId || this.spaceId === 'null' || !this.callId || this.callId === 'null') {
+      console.error('Cannot send signal: missing or invalid spaceId/callId', { spaceId: this.spaceId, callId: this.callId });
       return;
     }
 
     try {
-      const token = await getToken();
-      const API_BASE = getApiBase();
-      
       const payload = {
         type,
         target_user_id: targetUserId,
@@ -383,18 +511,7 @@ class WebRTCService {
 
       console.log(`📞 Sending ${type} signal to user ${targetUserId}`);
 
-      const response = await fetch(`${API_BASE}/spaces/${this.spaceId}/call/signal`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to send signal: ${response.status}`);
-      }
+      await CollaborationService.getInstance().sendWebRTCSignal(this.spaceId, payload);
 
       console.log(`📞 ${type} signal sent successfully`);
 
@@ -406,12 +523,12 @@ class WebRTCService {
   private handleParticipantLeft(userId: number) {
     const peerId = userId.toString();
     const connection = this.peerConnections.get(peerId);
-    
+
     if (connection) {
       connection.close();
       this.peerConnections.delete(peerId);
     }
-    
+
     if (this.onParticipantLeftCallback) {
       this.onParticipantLeftCallback(peerId);
     }
@@ -423,23 +540,13 @@ class WebRTCService {
         track.enabled = !isMuted;
       });
     }
-    
-    // Broadcast mute state
-    if (this.spaceId && this.callId) {
-      const token = await getToken();
-      const API_BASE = getApiBase();
-      
-      await fetch(`${API_BASE}/spaces/${this.spaceId}/call/mute`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          is_muted: isMuted,
-          call_id: this.callId,
-        }),
-      });
+
+    if (this.spaceId && this.spaceId !== 'null' && this.callId && this.callId !== 'null') {
+      try {
+        await CollaborationService.getInstance().toggleCallMute(this.spaceId, this.callId, isMuted);
+      } catch (error) {
+        console.error('Error toggling mute:', error);
+      }
     }
   }
 
@@ -449,23 +556,13 @@ class WebRTCService {
         track.enabled = hasVideo;
       });
     }
-    
-    // Broadcast video state
-    if (this.spaceId && this.callId) {
-      const token = await getToken();
-      const API_BASE = getApiBase();
-      
-      await fetch(`${API_BASE}/spaces/${this.spaceId}/call/video`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          has_video: hasVideo,
-          call_id: this.callId,
-        }),
-      });
+
+    if (this.spaceId && this.spaceId !== 'null' && this.callId && this.callId !== 'null') {
+      try {
+        await CollaborationService.getInstance().toggleCallVideo(this.spaceId, this.callId, hasVideo);
+      } catch (error) {
+        console.error('Error toggling video:', error);
+      }
     }
   }
 
@@ -477,37 +574,24 @@ class WebRTCService {
     try {
       const screenStream = await this.getScreenStream();
       if (!screenStream) return;
-      
+
       const videoTrack = screenStream.getVideoTracks()[0];
-      
+
       this.peerConnections.forEach((connection) => {
-        const sender = connection.getSenders().find((s: any) => s.track?.kind === 'video');
+        const sender = (connection as any).getSenders().find((s: any) => s.track?.kind === 'video');
         if (sender) {
           sender.replaceTrack(videoTrack);
         }
       });
-      
-      if (this.spaceId && this.callId) {
-        const token = await getToken();
-        const API_BASE = getApiBase();
-        
-        await fetch(`${API_BASE}/spaces/${this.spaceId}/call/screen-share`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            is_sharing: true,
-            call_id: this.callId,
-          }),
-        });
+
+      if (this.spaceId && this.spaceId !== 'null' && this.callId && this.callId !== 'null') {
+        await CollaborationService.getInstance().toggleCallScreenShare(this.spaceId, this.callId, true);
       }
-      
+
       videoTrack.onended = () => {
         this.stopScreenShare();
       };
-      
+
     } catch (error) {
       console.error('Error starting screen share:', error);
       throw error;
@@ -518,63 +602,73 @@ class WebRTCService {
     if (Platform.OS !== 'web' || !this.localStream) return;
 
     const videoTrack = this.localStream.getVideoTracks()[0];
-    
+
     this.peerConnections.forEach((connection) => {
-      const sender = connection.getSenders().find((s: any) => s.track?.kind === 'video');
+      const sender = (connection as any).getSenders().find((s: any) => s.track?.kind === 'video');
       if (sender) {
         sender.replaceTrack(videoTrack);
       }
     });
-    
-    if (this.spaceId && this.callId) {
-      const token = await getToken();
-      const API_BASE = getApiBase();
-      
-      await fetch(`${API_BASE}/spaces/${this.spaceId}/call/screen-share`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          is_sharing: false,
-          call_id: this.callId,
-        }),
-      });
-    }
-    
-    if (this.screenStream) {
-      this.screenStream.getTracks().forEach(track => track.stop());
-      this.screenStream = null;
+
+    if (this.spaceId && this.spaceId !== 'null' && this.callId && this.callId !== 'null') {
+      try {
+        await CollaborationService.getInstance().toggleCallScreenShare(this.spaceId, this.callId, false);
+      } catch (error) {
+        console.error('Error stopping screen share:', error);
+      }
     }
   }
 
+  async cleanup() {
+    await this.endCall();
+  }
+
   async endCall() {
-    // Close all peer connections
+    // ✅ Proactively notify backend that this user is leaving
+    if (this.spaceId && this.callId && this.spaceId !== 'null' && this.callId !== 'null') {
+      try {
+        await CollaborationService.getInstance().endCall(this.spaceId, this.callId);
+      } catch (error) {
+        console.error('Error notifying backend of call end:', error);
+      }
+    }
+
     this.peerConnections.forEach((connection) => {
       if (connection.close) {
         connection.close();
       }
     });
     this.peerConnections.clear();
-    
-    // Stop local stream
+
     if (this.localStream) {
       this.localStream.getTracks().forEach(track => track.stop());
       this.localStream = null;
     }
-    
-    // Stop screen share
+
     if (this.screenStream) {
       this.screenStream.getTracks().forEach(track => track.stop());
       this.screenStream = null;
     }
-    
+
+    if (this.spaceId) {
+      CollaborationService.getInstance().unsubscribeFromSpace(this.spaceId, 'webrtc-service');
+      this.isSubscribed = false;
+    }
+
     this.spaceId = null;
     this.callId = null;
+    this.knownParticipants.clear();
   }
 
-  // ✅ FIX: Platform-safe haptics
+  private normalizeSDP(sdp: string): string {
+    if (!sdp) return '';
+    // Standardize to CRLF and remove redundant empty lines
+    return sdp.split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+      .join('\r\n') + '\r\n';
+  }
+
   private async triggerHapticSuccess() {
     if (Platform.OS !== 'web') {
       try {
@@ -585,7 +679,6 @@ class WebRTCService {
     }
   }
 
-  // Callback setters
   onRemoteStream(callback: (userId: string, stream: MediaStream) => void) {
     this.onRemoteStreamCallback = callback;
   }
@@ -618,9 +711,6 @@ class WebRTCService {
     this.onVideoStateChangedCallback = callback;
   }
 
-  cleanup() {
-    this.endCall();
-  }
 }
 
 export default WebRTCService;

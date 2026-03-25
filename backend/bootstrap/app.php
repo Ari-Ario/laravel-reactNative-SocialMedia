@@ -25,12 +25,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->group('api', [
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\CheckUserRestriction::class,
+            \App\Http\Middleware\RestrictGuests::class,
         ]);
         
         $middleware->group('api.verified', [
             \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
             \App\Http\Middleware\CheckUserRestriction::class,
+            \App\Http\Middleware\RestrictGuests::class,
         ]);
         
         $middleware->web(append: [

@@ -152,7 +152,7 @@ const EnhancedInviteModal: React.FC<EnhancedInviteModalProps> = ({
 
             try {
                 const token = await getToken();
-                const response = await axios.post(`${API_BASE}/search/users`, {
+                const response = await axios.post('/search/users', {
                     query: query,
                     limit: 10,
                 }, {
@@ -212,7 +212,7 @@ const EnhancedInviteModal: React.FC<EnhancedInviteModalProps> = ({
             try {
                 // For user IDs, emails, and phones, check if user exists
                 if (recipient.type !== 'space') {
-                    const response = await axios.post(`${API_BASE}/users/lookup`, {
+                    const response = await axios.post('/users/lookup', {
                         identifier: recipient.identifier,
                         type: recipient.type,
                     }, {
@@ -228,7 +228,7 @@ const EnhancedInviteModal: React.FC<EnhancedInviteModalProps> = ({
                     }
                 } else {
                     // For space invites, check if space exists
-                    const response = await axios.get(`${API_BASE}/spaces/${recipient.identifier}`, {
+                    const response = await axios.get(`/spaces/${recipient.identifier}`, {
                         headers: { Authorization: `Bearer ${token}` },
                     });
 

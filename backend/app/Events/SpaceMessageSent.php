@@ -63,7 +63,10 @@ class SpaceMessageSent implements ShouldBroadcast
                 'creator_id' => \App\Models\CollaborationSpace::where('id', $this->spaceId)->value('creator_id'),
                 'title' => \App\Models\CollaborationSpace::where('id', $this->spaceId)->value('title'),
                 'space_type' => \App\Models\CollaborationSpace::where('id', $this->spaceId)->value('space_type'),
-                'participations' => \App\Models\SpaceParticipation::where('space_id', $this->spaceId)->with('user:id,name,username,profile_photo')->get(),
+                // drastically reduce payload size to avoid Pusher 10KB crash limits on heavily populated active spaces!
+                'participations' => \App\Models\CollaborationSpace::where('id', $this->spaceId)->value('space_type') === 'direct' 
+                    ? \App\Models\SpaceParticipation::where('space_id', $this->spaceId)->with('user:id,name,username,profile_photo')->get() 
+                    : [],
             ],
             'timestamp' => now()->toISOString(),
         ];

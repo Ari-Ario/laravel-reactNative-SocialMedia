@@ -157,9 +157,11 @@ export default function PostListItem({
     try {
       const result = await addBookmark(post.id);
       if (result.bookmarked && result.bookmark) {
-        setNewBookmark(result.bookmark);
-        setBookmarkGalleryVisible(true);
         showToast('Post bookmarked!', 'success');
+        router.push({
+          pathname: '/settings/bookmarks',
+          params: { initialPostId: post.id, returnTo: '/' }
+        });
       } else {
         showToast('Bookmark removed', 'info');
       }
@@ -461,11 +463,6 @@ export default function PostListItem({
         onReportSubmitted={service.handleReportSubmitted}
       />
 
-      <BookmarkGallery
-        visible={bookmarkGalleryVisible}
-        onClose={() => setBookmarkGalleryVisible(false)}
-        initialBookmark={newBookmark}
-      />
     </Pressable>
   );
 }

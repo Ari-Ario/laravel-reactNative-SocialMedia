@@ -29,6 +29,11 @@ class SpaceCreated implements ShouldBroadcast
 
     public function broadcastOn()
     {
+        // ✅ Phase 71: Restrict Creation Notifications to 'general' and 'channel' spaces for followers
+        if (!in_array($this->space->space_type, ['general', 'channel'])) {
+            return [];
+        }
+
         $channels = [];
         
         // Send to each follower's private channel (Phase 71: Use PrivateChannel)

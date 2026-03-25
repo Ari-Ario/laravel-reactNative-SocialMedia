@@ -17,8 +17,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlobalStyles } from '@/styles/GlobalStyles';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from 'date-fns';
-import CollaborationService from '@/services/ChatScreen/CollaborationService';
+import CollaborationService, { CollaborativeActivity } from '@/services/ChatScreen/CollaborationService';
 import { createShadow } from '@/utils/styles';
+import { useToastStore } from '@/stores/toastStore';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -33,11 +34,14 @@ import Animated, {
 import { safeHaptics } from '@/utils/haptics';
 
 interface CreateActivityModalProps {
-  spaceId: string;
+  spaceId?: string;
   visible: boolean;
   onClose: () => void;
   onActivityCreated: () => void;
   defaultDate?: string;
+  initialTime?: Date;
+  activityToEdit?: CollaborativeActivity | null;
+  isEditing?: boolean;
 }
 
 const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
@@ -46,7 +50,11 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
   onClose,
   onActivityCreated,
   defaultDate,
+  initialTime,
+  activityToEdit,
+  isEditing,
 }) => {
+  const { showToast } = useToastStore();
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState('');
@@ -64,6 +72,10 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [maxParticipants, setMaxParticipants] = useState<number | undefined>();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Space selection
+  const { spaces, globalActivities } = require('@/stores/collaborationStore').useCollaborationStore();
+  const [selectedSpaceId, setSelectedSpaceId] = useState<string>(spaceId || '');
 
   const collaborationService = CollaborationService.getInstance();
 
@@ -74,12 +86,45 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
   useEffect(() => {
     if (visible) {
       progress.value = withTiming(1, { duration: 500 });
+      
+      // Initialize form with provided values
+      if (initialTime) {
+        setScheduledStart(new Date(initialTime));
+      } else if (defaultDate) {
+        const d = new Date(defaultDate);
+        d.setHours(10, 0, 0, 0);
+        setScheduledStart(d);
+      } else {
+        const now = new Date();
+        now.setHours(now.getHours() + 1, 0, 0, 0); // Next hour by default
+        setScheduledStart(now);
+      }
+      
+      if (spaceId) {
+        setSelectedSpaceId(spaceId);
+      }
+
+      // Initialize with activity data if editing
+      if (isEditing && activityToEdit) {
+        setTitle(activityToEdit.title);
+        setDescription(activityToEdit.description || '');
+        if (activityToEdit.scheduled_start) {
+          setScheduledStart(new Date(activityToEdit.scheduled_start));
+        }
+        setDuration(activityToEdit.duration_minutes || 60);
+        setIsRecurring(!!activityToEdit.is_recurring);
+        setRecurrencePattern(activityToEdit.recurrence_pattern as any || 'weekly');
+        setMaxParticipants(activityToEdit.max_participants);
+        setSelectedSpaceId(activityToEdit.space_id);
+      }
+      
+      // Reset flow for fresh open
+      setStep(1);
     } else {
       progress.value = 0;
-      setStep(1);
       setIsSubmitting(false);
     }
-  }, [visible]);
+  }, [visible, initialTime, spaceId, defaultDate, isEditing, activityToEdit]);
 
   const activityTypes = [
     { id: 'meeting', name: 'Team Meeting', icon: 'people', color: '#6366f1' },
@@ -99,12 +144,18 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
   ];
 
   const handleNext = () => {
-    if (step === 1 && !title.trim()) {
-      Alert.alert('Error', 'Please enter a title for your session');
-      return;
+    if (step === 1) {
+      if (!title.trim()) {
+        showToast('Please enter a title for your session', 'error');
+        return;
+      }
+      if (!selectedSpaceId && !spaceId) {
+        showToast('Please select a space for this activity', 'error');
+        return;
+      }
     }
     if (step === 2 && !scheduledStart) {
-      Alert.alert('Error', 'Please select a date and time');
+      showToast('Please select a date and time', 'error');
       return;
     }
     if (step < 3) {
@@ -114,20 +165,52 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
         scale.value = withSpring(1);
       });
     } else {
-      handleCreateActivity();
+      if (isEditing) {
+        handleUpdateActivity();
+      } else {
+        handleCreateActivity();
+      }
     }
   };
 
-  const handleCreateActivity = async () => {
+  const checkConflicts = (start: Date, duration_mins: number): string | null => {
+    const newStart = start.getTime();
+    const newEnd = newStart + duration_mins * 60 * 1000;
+
+    for (const activity of globalActivities) {
+      // Skip the one we are editing
+      if (isEditing && activityToEdit && activity.id === activityToEdit.id) continue;
+      
+      // Only check scheduled/active sessions
+      if (activity.status === 'cancelled' || activity.status === 'completed') continue;
+
+      const existingStart = new Date(activity.scheduled_start).getTime();
+      const existingEnd = existingStart + (activity.duration_minutes || 60) * 60 * 1000;
+
+      // Overlap logic: (StartA < EndB) && (EndA > StartB)
+      if (newStart < existingEnd && newEnd > existingStart) {
+        return activity.title;
+      }
+    }
+    return null;
+  };
+
+  const handleUpdateActivity = async () => {
+    if (!activityToEdit) return;
+
     try {
       setIsSubmitting(true);
       safeHaptics.success();
 
-      // Simulate a short delay for better UX
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Check for conflicts
+      const conflictTitle = checkConflicts(scheduledStart, duration);
+      if (conflictTitle) {
+        showToast(`Time conflict with session: "${conflictTitle}". Please adjust the time.`, 'error');
+        setIsSubmitting(false);
+        return;
+      }
 
-      const activityData = {
-        space_id: spaceId,
+      const activityData: any = {
         title,
         description,
         activity_type: activityType,
@@ -138,12 +221,75 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
         max_participants: maxParticipants,
       };
 
-      await collaborationService.createCollaborativeActivity(activityData);
+      const updatedActivity = await collaborationService.updateCollaborativeActivity(
+        Number(activityToEdit.id),
+        activityData
+      );
+
+      if (updatedActivity) {
+        const { useCollaborationStore } = require('@/stores/collaborationStore');
+        useCollaborationStore.getState().updateActivity(updatedActivity);
+        showToast('Session updated successfully!', 'success');
+      }
+
+      onActivityCreated();
+      onClose();
+    } catch (error) {
+      console.error('Error updating activity:', error);
+      showToast('Failed to update activity. Please try again.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCreateActivity = async () => {
+    try {
+      setIsSubmitting(true);
+      safeHaptics.success();
+
+      // Check for conflicts
+      const conflictTitle = checkConflicts(scheduledStart, duration);
+      if (conflictTitle) {
+        showToast(`Time conflict with session: "${conflictTitle}". Please adjust the time.`, 'error');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Simulate a short delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      const activityData: any = {
+        space_id: (selectedSpaceId || spaceId) as string,
+        title,
+        description,
+        activity_type: activityType,
+        scheduled_start: scheduledStart.toISOString(),
+        duration_minutes: duration,
+        is_recurring: isRecurring,
+        recurrence_pattern: isRecurring ? recurrencePattern : null,
+        max_participants: maxParticipants,
+      };
+
+      if (!activityData.space_id) {
+        showToast('Please select a space for this activity', 'error');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const newActivity = await collaborationService.createCollaborativeActivity(activityData);
+      
+      // ✅ NEW: Add to local store immediately for instant UI refresh
+      if (newActivity) {
+        const { useCollaborationStore } = require('@/stores/collaborationStore');
+        useCollaborationStore.getState().addActivity(newActivity);
+        showToast('Session scheduled successfully!', 'success');
+      }
+
       onActivityCreated();
       onClose();
     } catch (error) {
       console.error('Error creating activity:', error);
-      Alert.alert('Error', 'Failed to create activity. Please try again.');
+      showToast('Failed to create activity. Please try again.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -224,8 +370,10 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
         >
           {step === 1 && (
             <Animated.View entering={FadeIn.duration(300)}>
-              <Text style={styles.heroTitle}>Create Session</Text>
-              <Text style={styles.heroSubtitle}>Let’s set up your collaborative activity</Text>
+              <Text style={styles.heroTitle}>{isEditing ? 'Edit Session' : 'Create Session'}</Text>
+              <Text style={styles.heroSubtitle}>
+                {isEditing ? 'Update the details of your activity' : 'Let’s set up your collaborative activity'}
+              </Text>
 
               <View style={styles.card}>
                 <TextInput
@@ -277,6 +425,29 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
                     >
                       {type.name}
                     </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <Text style={styles.sectionLabel}>Target Space</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
+                {spaces.map((s: any) => (
+                  <TouchableOpacity
+                    key={s.id}
+                    activeOpacity={0.7}
+                    style={[
+                      styles.spaceChip,
+                      selectedSpaceId === s.id && styles.spaceChipSelected,
+                    ]}
+                    onPress={() => {
+                      setSelectedSpaceId(s.id);
+                      safeHaptics.impact();
+                    }}
+                  >
+                    <View style={styles.spaceAvatarPlaceholder}>
+                        <Text style={styles.spaceAvatarText}>{s.title?.charAt(0) || 'S'}</Text>
+                    </View>
+                    <Text style={styles.spaceChipName} numberOfLines={1}>{s.title}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -523,7 +694,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
                 ) : (
                   <>
                     <Text style={styles.buttonText}>
-                      {step === 3 ? 'Schedule Session' : 'Continue'}
+                      {step === 3 ? (isEditing ? 'Update Session' : 'Schedule Session') : 'Continue'}
                     </Text>
                     <Ionicons name="arrow-forward" size={20} color="#fff" />
                   </>
@@ -852,6 +1023,42 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     color: '#ffffff',
+  },
+  spaceChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    marginHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    ...SHADOW,
+  },
+  spaceChipSelected: {
+    borderColor: '#6366f1',
+    backgroundColor: '#f5f3ff',
+  },
+  spaceAvatarPlaceholder: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#e2e8f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  spaceAvatarText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748b',
+  },
+  spaceChipName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#475569',
+    maxWidth: 100,
   },
 });
 

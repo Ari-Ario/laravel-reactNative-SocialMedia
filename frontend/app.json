@@ -93,7 +93,8 @@
       ],
       "expo-secure-store",
       "expo-asset",
-      "expo-image"
+      "expo-image",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

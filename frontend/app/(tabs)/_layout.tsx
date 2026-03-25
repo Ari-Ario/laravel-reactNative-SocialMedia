@@ -63,11 +63,11 @@ export default function TabLayout() {
           initializeRealtime(token);
           initNotifications(token, Number(user.id));
 
-    // Pre-fetch spaces to ensure the Chats tab badge exists offline instantly
-    useCollaborationStore.getState().fetchUserSpaces(Number(user.id));
-    
-    // Pre-fetch reported content for red flags
-    useReportedContentStore.getState().fetchReportedContent();
+          // Pre-fetch spaces to ensure the Chats tab badge exists offline instantly
+          useCollaborationStore.getState().fetchUserSpaces(Number(user.id));
+
+          // Pre-fetch reported content for red flags
+          useReportedContentStore.getState().fetchReportedContent();
 
 
           if (typeof setInitializationTime === 'function') {
@@ -194,10 +194,10 @@ export default function TabLayout() {
               }}
             />
             <Tabs.Screen
-              name="calls"
+              name="market"
               options={{
-                title: 'Calls',
-                tabBarIcon: ({ color }) => <FontAwesome size={28} name="phone" color={color} />,
+                title: 'Market',
+                tabBarIcon: ({ color }) => <FontAwesome size={28} name="shopping-basket" color={color} />,
               }}
             />
             <Tabs.Screen

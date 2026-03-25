@@ -1,10 +1,11 @@
 import axios from "@/services/axios";
-import { Platform, Alert } from 'react-native';
+import { Platform, Alert, Share } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import getApiBase from '@/services/getApiBase';
 import type PusherConstructor from 'pusher-js';
 import { getToken } from "@/services/TokenService";
 import PusherService from "@/services/PusherService";
+import * as Calendar from 'expo-calendar';
 
 export interface WhiteboardElement {
   id: string;
@@ -112,8 +113,6 @@ export interface AIInteraction {
 }
 
 export interface CollaborativeActivity {
-  scheduled_start: any;
-  duration_minutes: number;
   id: number;
   space_id: string;
   created_by: number;
@@ -122,9 +121,17 @@ export interface CollaborativeActivity {
   description?: string;
   match_type?: string;
   match_score?: number;
-  suggested_duration?: number;
-  actual_duration?: number;
-  status: 'proposed' | 'active' | 'completed' | 'cancelled' | 'archived';
+  scheduled_start?: string;
+  scheduled_end?: string;
+  is_recurring?: boolean;
+  recurrence_pattern?: string;
+  recurrence_interval?: number;
+  recurrence_end?: string;
+  timezone?: string;
+  duration_minutes?: number;
+  max_participants?: number;
+  confirmed_participants?: number;
+  status: 'proposed' | 'active' | 'completed' | 'cancelled' | 'archived' | 'scheduled';
   metadata?: any;
   outcomes?: any;
   notes?: string;
@@ -138,6 +145,7 @@ export interface CollaborativeActivity {
     profile_photo?: string;
   };
   participants?: any[];
+  participant_ids?: number[];
 }
 
 class CollaborationService {
@@ -710,6 +718,8 @@ class CollaborationService {
     onWebRTCOffer?: (data: any) => void;
     onWebRTCAnswer?: (data: any) => void;
     onWebRTCIceCandidate?: (data: any) => void;
+    onWebRTCSignal?: (data: any) => void;
+    onWebRTCJoin?: (data: any) => void;
     onCallStarted?: (data: any) => void;
     onCallEnded?: (data: any) => void;
     onScreenShareStarted?: (data: any) => void;
@@ -770,6 +780,8 @@ class CollaborationService {
       // Create handler mappings
       const handlers: { [key: string]: Function } = {
         'message.sent': (data: any) => callbacks.onMessage?.(data),
+        'webrtc.signal': (data: any) => callbacks.onWebRTCSignal?.(data),
+        'call.participant.active': (data: any) => callbacks.onWebRTCJoin?.(data),
         'call.started': (data: any) => callbacks.onCallStarted?.(data),
         'call.ended': (data: any) => callbacks.onCallEnded?.(data),
         'magic.triggered': (data: any) => {
@@ -797,6 +809,12 @@ class CollaborationService {
         'poll.created': (data: any) => callbacks.onPollCreated?.(data.poll || data),
         'poll.updated': (data: any) => callbacks.onPollUpdated?.(data.poll || data),
         'poll.deleted': (data: any) => callbacks.onPollDeleted?.(data.poll_id),
+        'mute.state.changed': (data: any) => callbacks.onMuteStateChanged?.(data),
+        'video.state.changed': (data: any) => callbacks.onvideoStateChanged?.(data),
+        'screen.share.toggled': (data: any) => {
+          callbacks.onScreenShareStarted?.(data.user_id);
+          callbacks.onScreenShareToggled?.(data);
+        },
         'pusher:subscription_error': (err: any) => {
           if (err?.status === 403) {
             console.warn(`📡 Channel authorization denied for space: ${spaceId}. User might not be a participant yet. Clearing stale channel object.`);
@@ -838,7 +856,7 @@ class CollaborationService {
           this.spaceCallbacks.get(spaceId)!.delete(consumerId);
           console.log(`📡 Unbound callbacks for consumer ${consumerId} in space ${spaceId}`);
         }
-        
+
         // Fully unsubscribe IF there are no more listeners
         if (this.spaceCallbacks.get(spaceId)?.size === 0) {
           channel.unbind_all();
@@ -988,14 +1006,6 @@ class CollaborationService {
         headers: await this.getHeaders(),
       });
 
-      try {
-        if (Platform.OS !== 'web') {
-          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
-      } catch (hapticsError) {
-        console.warn('Haptics feedback failed:', hapticsError);
-      }
-
       return response.data;
     } catch (error) {
       console.error('Error starting call:', error);
@@ -1003,17 +1013,67 @@ class CollaborationService {
     }
   }
 
-  async sendWebRTCSignal(spaceId: string, signalData: any): Promise<void> {
+  async joinWebRTCCall(spaceId: string): Promise<any> {
     try {
-      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/call/signal`, signalData, {
+      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/call/join`, {}, {
         headers: await this.getHeaders(),
       });
+      return response.data;
+    } catch (error) {
+      console.error('Error joining WebRTC call:', error);
+      throw error;
+    }
+  }
 
-      if (response.status !== 200) {
-        throw new Error('Failed to send WebRTC signal');
-      }
+  async sendWebRTCSignal(spaceId: string, signalData: any): Promise<void> {
+    try {
+      await axios.post(`${this.baseURL}/spaces/${spaceId}/call/signal`, signalData, {
+        headers: await this.getHeaders(),
+      });
     } catch (error) {
       console.error('Error sending WebRTC signal:', error);
+      throw error;
+    }
+  }
+
+  async toggleCallMute(spaceId: string, callId: string, isMuted: boolean): Promise<void> {
+    try {
+      await axios.post(`${this.baseURL}/spaces/${spaceId}/call/mute`, {
+        call_id: callId,
+        is_muted: isMuted,
+      }, {
+        headers: await this.getHeaders(),
+      });
+    } catch (error) {
+      console.error('Error toggling call mute:', error);
+      throw error;
+    }
+  }
+
+  async toggleCallVideo(spaceId: string, callId: string, hasVideo: boolean): Promise<void> {
+    try {
+      await axios.post(`${this.baseURL}/spaces/${spaceId}/call/video`, {
+        call_id: callId,
+        has_video: hasVideo,
+      }, {
+        headers: await this.getHeaders(),
+      });
+    } catch (error) {
+      console.error('Error toggling call video:', error);
+      throw error;
+    }
+  }
+
+  async toggleCallScreenShare(spaceId: string, callId: string, isSharing: boolean): Promise<void> {
+    try {
+      await axios.post(`${this.baseURL}/spaces/${spaceId}/call/screen-share`, {
+        call_id: callId,
+        is_sharing: isSharing,
+      }, {
+        headers: await this.getHeaders(),
+      });
+    } catch (error) {
+      console.error('Error toggling call screen share:', error);
       throw error;
     }
   }
@@ -1389,21 +1449,64 @@ class CollaborationService {
   }
 
   // 🎯 COLLABORATIVE ACTIVITIES
+  async getGlobalActivities(params: { status?: string, type?: string, per_page?: number, page?: number } = {}): Promise<{ activities: CollaborativeActivity[], upcoming_count: number, total: number }> {
+    try {
+      const response = await axios.get(`${this.baseURL}/collaborative-activities`, {
+        headers: await this.getHeaders(),
+        params
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching global activities:', error);
+      throw error;
+    }
+  }
+
+  async getSpaceActivities(spaceId: string, page = 1, limit = 20): Promise<{
+    activities: CollaborativeActivity[];
+    upcoming_count: number;
+    total: number;
+    current_page: number;
+    last_page: number;
+  }> {
+    try {
+      const response = await axios.get(`${this.baseURL}/collaborative-activities`, {
+        headers: await this.getHeaders(),
+        params: { space_id: spaceId, page, per_page: limit }
+      });
+
+      return {
+        activities: response.data.activities,
+        upcoming_count: response.data.upcoming_count,
+        total: response.data.total,
+        current_page: response.data.current_page,
+        last_page: response.data.last_page
+      };
+    } catch (error: any) {
+      console.log('Silently handled Space Activities fetch error (likely due to guest privilege restrictions):', error?.message);
+      return { activities: [], upcoming_count: 0, total: 0, current_page: 1, last_page: 1 };
+    }
+  }
+
   async createCollaborativeActivity(activityData: {
     space_id: string;
     activity_type: string;
     title: string;
     description?: string;
-    match_type?: string;
-    match_score?: number;
-    suggested_duration?: number;
+    scheduled_start?: string;
+    scheduled_end?: string;
+    is_recurring?: boolean;
+    recurrence_pattern?: string;
+    recurrence_interval?: number;
+    timezone?: string;
+    duration_minutes?: number;
+    max_participants?: number;
     participant_ids?: number[];
     metadata?: any;
   }): Promise<CollaborativeActivity> {
     try {
       const response = await axios.post(`${this.baseURL}/collaborative-activities`, activityData, {
         headers: await this.getHeaders(),
-
       });
 
       await this.triggerHapticSuccess();
@@ -1415,30 +1518,23 @@ class CollaborationService {
     }
   }
 
-  async getSpaceActivities(spaceId: string, page = 1, limit = 20): Promise<{
-    activities: CollaborativeActivity[];
-    total: number;
-    current_page: number;
-  }> {
+  async updateCollaborativeActivity(activityId: number, activityData: any): Promise<CollaborativeActivity> {
     try {
-      const response = await axios.get(`${this.baseURL}/collaborative-activities/space/${spaceId}`, {
+      const response = await axios.put(`${this.baseURL}/collaborative-activities/${activityId}`, activityData, {
         headers: await this.getHeaders(),
-        params: { page, limit }
       });
 
-      return {
-        activities: response.data.activities.data || response.data.activities,
-        total: response.data.total || response.data.activities.total || 0,
-        current_page: response.data.current_page || page,
-      };
+      await this.triggerHapticSuccess();
+
+      return response.data.activity;
     } catch (error) {
-      console.error('Error fetching space activities:', error);
+      console.error('Error updating collaborative activity:', error);
       throw error;
     }
   }
 
   async updateActivityStatus(activityId: number, data: {
-    status: 'proposed' | 'active' | 'completed' | 'cancelled' | 'archived';
+    status: 'proposed' | 'active' | 'completed' | 'cancelled' | 'archived' | 'scheduled';
     notes?: string;
     actual_duration?: number;
     outcomes?: any;
@@ -1457,6 +1553,24 @@ class CollaborationService {
     }
   }
 
+  async updateActivityParticipants(activityId: number, data: {
+    participant_ids: number[];
+    action: 'add' | 'remove' | 'set';
+  }): Promise<CollaborativeActivity> {
+    try {
+      const response = await axios.post(`${this.baseURL}/collaborative-activities/${activityId}/participants`, data, {
+        headers: await this.getHeaders(),
+      });
+
+      await this.triggerHapticLight();
+
+      return response.data.activity;
+    } catch (error) {
+      console.error('Error updating activity participants:', error);
+      throw error;
+    }
+  }
+
   async getSpaceActivityStatistics(spaceId: string): Promise<any> {
     try {
       const response = await axios.get(`${this.baseURL}/collaborative-activities/space/${spaceId}/statistics`, {
@@ -1467,6 +1581,110 @@ class CollaborationService {
     } catch (error) {
       console.error('Error fetching activity statistics:', error);
       throw error;
+    }
+  }
+
+  async exportToExternalCalendar(activity: CollaborativeActivity): Promise<boolean> {
+    const frontendHost = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
+    const deepLink = `${frontendHost}/${activity.space_id}?activity=${activity.id}`;
+
+    if (Platform.OS === 'web') {
+      const start = activity.scheduled_start ? new Date(activity.scheduled_start) : new Date();
+      const end = activity.scheduled_end ? new Date(activity.scheduled_end) : new Date(start.getTime() + 60 * 60 * 1000);
+
+      const title = encodeURIComponent(activity.title);
+      const description = encodeURIComponent(`${activity.description || ''}\n\nJoin Session: ${deepLink}`);
+      const location = encodeURIComponent(deepLink);
+
+      const googleUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${description}&location=${location}&dates=${start.toISOString().replace(/-|:|\.\d\d\d/g, "")}/${end.toISOString().replace(/-|:|\.\d\d\d/g, "")}`;
+
+      window.open(googleUrl, '_blank');
+      return true;
+    }
+
+    try {
+      const { status } = await Calendar.requestCalendarPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission denied', 'Please enable calendar access in settings to export activities.');
+        return false;
+      }
+
+      const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+      const defaultCalendar = calendars.find(cal => cal.isPrimary) || calendars[0];
+
+      if (!defaultCalendar) {
+        Alert.alert('No calendar found', 'Could not find a default calendar on your device.');
+        return false;
+      }
+
+      const startDate = activity.scheduled_start ? new Date(activity.scheduled_start) : new Date();
+      const endDate = activity.scheduled_end ? new Date(activity.scheduled_end) : new Date(startDate.getTime() + (activity.duration_minutes || 60) * 60 * 1000);
+
+      await Calendar.createEventAsync(defaultCalendar.id, {
+        title: activity.title,
+        startDate,
+        endDate,
+        notes: `${activity.description || ''}\n\nJoin Session: ${deepLink}`,
+        location: deepLink,
+        timeZone: activity.timezone || 'UTC',
+      });
+
+      await this.triggerHapticSuccess();
+      Alert.alert('Success', 'Activity added to your calendar.');
+      return true;
+    } catch (error) {
+      console.error('Error exporting to calendar:', error);
+      Alert.alert('Error', 'Failed to add activity to calendar.');
+      return false;
+    }
+  }
+
+  async exportToICS(activity: CollaborativeActivity, spaceTitle?: string): Promise<boolean> {
+    const frontendHost = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
+    const deepLink = `${frontendHost}/${activity.space_id}?activity=${activity.id}`;
+
+    try {
+      const startTime = activity.scheduled_start ? new Date(activity.scheduled_start) : new Date();
+      const endTime = activity.scheduled_end ? new Date(activity.scheduled_end) : new Date(startTime.getTime() + (activity.duration_minutes || 60) * 60 * 1000);
+
+      const icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//YourApp//Space Calendar//EN
+BEGIN:VEVENT
+UID:${activity.id}@space${activity.space_id}
+DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z
+DTSTART:${startTime.toISOString().replace(/[-:]/g, '').split('.')[0]}Z
+DTEND:${endTime.toISOString().replace(/[-:]/g, '').split('.')[0]}Z
+SUMMARY:${activity.title}
+DESCRIPTION:${activity.description || ''}\\n\\nJoin Session: ${deepLink}
+LOCATION:Space: ${spaceTitle || 'Collaboration Space'}\\nDeep Link: ${deepLink}
+STATUS:CONFIRMED
+END:VEVENT
+END:VCALENDAR`;
+
+      if (Platform.OS === 'web') {
+        const blob = new Blob([icsContent], { type: 'text/calendar' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${activity.title.replace(/[^a-z0-9]/gi, '_')}.ics`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else {
+        await Share.share({
+          title: 'Export Session',
+          message: icsContent,
+        });
+      }
+
+      await this.triggerHapticSuccess();
+      return true;
+    } catch (error) {
+      console.error('Error exporting ICS:', error);
+      Alert.alert('Export Error', 'Failed to export calendar file');
+      return false;
     }
   }
 

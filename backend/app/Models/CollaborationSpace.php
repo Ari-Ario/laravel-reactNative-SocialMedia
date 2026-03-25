@@ -112,4 +112,15 @@ class CollaborationSpace extends Model
             $q->where('user_id', $userId);
         });
     }
+
+    /**
+     * Check if a user is a participant in the space
+     */
+    public function isParticipant($userId): bool
+    {
+        if ($this->creator_id === $userId) {
+            return true;
+        }
+        return $this->participations()->where('user_id', $userId)->exists();
+    }
 }

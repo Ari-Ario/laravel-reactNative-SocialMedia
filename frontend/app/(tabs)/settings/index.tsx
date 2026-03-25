@@ -1,665 +1,348 @@
-import { useState, useRef, useEffect } from 'react';
+// app/(tabs)/settings/index.tsx
+import { useState, useRef, useEffect, useContext, useMemo } from 'react';
 import {
   View,
   ScrollView,
   Text,
   TextInput,
-  FlatList,
   TouchableOpacity,
   StyleSheet,
   Image,
-  Modal,
   Alert,
   Platform,
-  Button
+  Dimensions,
+  ActivityIndicator,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import BoxedIcon from '@/components/BoxedIcon';
-import Colors from '@/constants/Colors';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MotiView, AnimatePresence } from 'moti';
 import AuthContext from "@/context/AuthContext";
-import { logout } from "@/services/AuthService";
-import { useContext } from "react";
-import { uploadProfilePhoto, deleteProfilePhoto, requestCameraPermission, updateUserName } from '@/services/SettingService';
+import { logout, loadUser } from "@/services/AuthService";
+import { uploadProfilePhoto, updateUserName } from '@/services/SettingService';
 import * as ImagePicker from 'expo-image-picker';
-import PlatformCameraView from '@/components/PlatformCameraView';
 import getApiBaseImage from '@/services/getApiBaseImage';
-import { loadUser } from '@/services/AuthService';
-import { router, useLocalSearchParams } from 'expo-router';
-import { BookmarkGallery } from '@/components/BookmarkGallery';
-import ModerationComplianceModal from '@/components/ModerationComplianceModal';
+import { router } from 'expo-router';
 import { GlobalStyles } from '@/styles/GlobalStyles';
-
 import { useNotificationStore } from '@/stores/notificationStore';
+import { useBookmarkStore } from '@/stores/bookmarkStore';
+
+const { width } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
+
+const SettingsItem = ({ name, icon, color, onPress, badge }: any) => (
+  <TouchableOpacity style={styles.item} onPress={onPress} activeOpacity={0.7}>
+    <View style={[styles.iconContainer, { backgroundColor: color + '40' }]}>
+      <Ionicons name={icon} size={22} color={color} />
+    </View>
+    <Text style={styles.itemText}>{name}</Text>
+    {!!badge && badge > 0 && (
+      <View style={styles.badge}>
+        <Text style={styles.badgeText}>{badge > 99 ? '99+' : badge}</Text>
+      </View>
+    )}
+    <Ionicons name="chevron-forward" size={20} color="rgba(0,0,0,0.3)" />
+  </TouchableOpacity>
+);
 
 const Page = () => {
   const { user, setUser } = useContext(AuthContext);
   const { unreadModerationCount } = useNotificationStore();
-  const [showPhotoOptions, setShowPhotoOptions] = useState(false);
-  const [editNameVisible, setEditNameVisible] = useState(false);
+  const { bookmarks } = useBookmarkStore();
+  
+  const [activeTab, setActiveTab] = useState<'settings' | 'stats'>('settings');
+  const [editNameMode, setEditNameMode] = useState(false);
   const [newName, setNewName] = useState(user?.name || '');
   const [saving, setSaving] = useState(false);
-  const [bookmarkGalleryVisible, setBookmarkGalleryVisible] = useState(false);
-  const [adminPanelVisible, setAdminPanelVisible] = useState(false);
-  const [complianceVisible, setComplianceVisible] = useState(false);
-  const params = useLocalSearchParams();
+  const nameInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    if (params.openAdminPanel === 'true') {
-      router.push('/moderation');
+    if (editNameMode) {
+      setTimeout(() => nameInputRef.current?.focus(), 100);
     }
-  }, [params.openAdminPanel]);
+  }, [editNameMode]);
 
-
-
-  // Camera states
-  const [cameraVisible, setCameraVisible] = useState(false);
-  const cameraRef = useRef<any>(null);
-
-  const devices = [
-    { name: 'Bookmarks', icon: 'bookmark', backgroundColor: '#33A5D1' },
-    { name: 'Broadcast Lists', icon: 'megaphone', backgroundColor: '#25D366' },
-    { name: 'Starred Messages', icon: 'star', backgroundColor: '#FFD700' },
-    { name: 'Linked Devices', icon: 'laptop-outline', backgroundColor: '#25D366' },
-  ];
-
-  const items = [
-    { name: 'Account', icon: 'key', backgroundColor: '#075E54' },
-    { name: 'Privacy', icon: 'lock-closed', backgroundColor: '#33A5D1' },
-    { name: 'Chats', icon: 'logo-whatsapp', backgroundColor: '#25D366' },
-    { name: 'Admin Notifications', icon: 'notifications', backgroundColor: '#FF3B30', route: '/moderation/admin-channel' },
-    { name: 'Storage and Data', icon: 'repeat', backgroundColor: '#25D366' },
-  ];
-
-  const support = [
-    { name: 'Help', icon: 'information', backgroundColor: '#075E54' },
-    { name: 'Tell a Friend', icon: 'heart', backgroundColor: '#FF3B30' },
-  ];
-
-  const handleLogout = async () => {
+  const handleNameUpdate = async () => {
+    if (newName === user?.name || !newName.trim()) {
+      setEditNameMode(false);
+      return;
+    }
+    setSaving(true);
     try {
-      await logout();
-      setUser(null);
-      if (!user || (user === null)) {
-        router.replace('/LoginScreen');
-      }
-    } catch (error) {
-      console.error("Logout failed:", error);
-      setUser(null);
+      await updateUserName(newName.trim());
+      const updated = await loadUser();
+      setUser(updated);
+      setEditNameMode(false);
+    } catch (e) {
+      Alert.alert('Error', 'Could not update name');
+    } finally {
+      setSaving(false);
     }
   };
 
-  const renderListItem = ({ item }: any) => (
-    <TouchableOpacity
-      style={styles.item}
-      onPress={() => {
-        if (item.name === 'Bookmarks') {
-          setBookmarkGalleryVisible(true);
-        } else if (item.name === 'Admin Panel') {
-          router.push('/moderation');
-        } else if (item.name === 'AI Safety Status') {
-          setComplianceVisible(true);
-        } else if (item.route) {
-          router.push(item.route);
-        }
-      }}
-    >
-      <BoxedIcon name={item.icon} backgroundColor={item.backgroundColor} />
-      <Text style={styles.itemText}>{item.name}</Text>
-      {item.name === 'Admin Notifications' && unreadModerationCount > 0 && (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{unreadModerationCount}</Text>
-        </View>
-      )}
-      <Ionicons name="chevron-forward" size={20} color={'grey'} />
-    </TouchableOpacity>
-  );
+  const handleLogout = async () => {
+    const confirmLogout = async () => {
+      try {
+        await logout();
+        setUser(null);
+        router.replace('/LoginScreen');
+      } catch (error) {
+        setUser(null);
+        router.replace('/LoginScreen');
+      }
+    };
 
-  const handleChoosePhoto = async () => {
-    setShowPhotoOptions(false);
-
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('Permission required', 'We need access to your photos');
-      return;
+    if (isWeb) {
+      if (window.confirm("Are you sure you want to log out?")) confirmLogout();
+    } else {
+      Alert.alert('Logout', 'Are you sure?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Logout', style: 'destructive', onPress: confirmLogout }
+      ]);
     }
+  };
 
+  const handlePhotoAction = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 1,
+      quality: 0.8,
     });
 
-    if (!result.canceled && result.assets.length > 0) {
+    if (!result.canceled && result.assets[0].uri) {
       try {
+        setSaving(true);
         await uploadProfilePhoto(result.assets[0].uri);
-        const refreshedUser = await loadUser();
-        setUser(refreshedUser);
-      } catch (error) {
-        console.error('Profile upload error:', error);
-        Alert.alert('Upload Failed', 'Please try again.');
-      }
-    }
-  };
-
-  const handleTakePhoto = async () => {
-    setShowPhotoOptions(false);
-
-    // Check if we're on web or mobile
-    if (Platform.OS === 'web') {
-      // On web: Use custom camera UI with CameraView
-      setCameraVisible(true);
-      return;
-    }
-
-    // On mobile: use ImagePicker.launchCameraAsync
-    const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('Permission required', 'We need access to your camera to take a photo.');
-      return;
-    }
-
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
-    });
-
-    if (!result.canceled && result.assets.length > 0) {
-      try {
-        console.log(result.assets[0].uri)
-        await uploadProfilePhoto(result.assets[0].uri);
-        const refreshedUser = await loadUser();
-        setUser(refreshedUser);
-      } catch (error) {
-        console.error('Camera photo upload error:', error);
-        Alert.alert('Upload Failed', 'Could not upload the taken photo.');
-      }
-    }
-  };
-
-  // Web camera capture via PlatformCameraView ref
-  const handleWebCameraCapture = async (uri: string) => {
-    setCameraVisible(false);
-    try {
-      await uploadProfilePhoto(uri);
-      const refreshedUser = await loadUser();
-      setUser(refreshedUser);
-    } catch (error) {
-      console.error('Error uploading photo:', error);
-      Alert.alert('Error', 'Failed to upload photo. Please try again.');
-    }
-  };
-
-  const handleDeletePhoto = async () => {
-    setShowPhotoOptions(false);
-
-    const confirmDelete = Platform.OS === 'web'
-      ? window.confirm("Are you sure you want to delete your profile photo?")
-      : await new Promise((resolve) => {
-        Alert.alert(
-          'Delete Photo',
-          'Are you sure you want to delete your profile photo?',
-          [
-            { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-            { text: 'Delete', style: 'destructive', onPress: () => resolve(true) },
-          ]
-        );
-      });
-
-    if (!confirmDelete) return;
-
-    try {
-      await deleteProfilePhoto();
-
-      if (Platform.OS === 'web') {
-        alert('Profile photo deleted successfully');
-      } else {
-        Alert.alert('Success', 'Profile photo deleted successfully');
-      }
-
-      const refreshedUser = await loadUser();
-      if (refreshedUser && refreshedUser.id) {
-        setTimeout(() => {
-          setUser(refreshedUser);
-        }, 100);
-      }
-
-    } catch (error: any) {
-      console.error('Failed to delete profile photo:', error);
-      const errorMessage = error.message || 'An error occurred. Please try again.';
-
-      if (Platform.OS === 'web') {
-        alert(errorMessage);
-      } else {
-        Alert.alert('Error', errorMessage);
+        const updated = await loadUser();
+        setUser(updated);
+      } catch (e) {
+        Alert.alert('Error', 'Photo upload failed');
+      } finally {
+        setSaving(false);
       }
     }
   };
 
   const renderProfilePhoto = () => {
     if (user?.profile_photo) {
-      return (
-        <Image
-          source={{ uri: `${getApiBaseImage()}/storage/${user.profile_photo}` }}
-          style={styles.profilePhoto}
-        />
-      );
-    } else {
-      const initials = `${user?.name?.charAt(0) || ''}${(user as any)?.last_name?.charAt(0) || ''}`;
-      return (
-        <View style={[styles.profilePhoto, styles.initialsContainer]}>
-          <Text style={styles.initials}>{initials}</Text>
-        </View>
-      );
+      return <Image source={{ uri: `${getApiBaseImage()}/storage/${user.profile_photo}` }} style={styles.profilePhoto} />;
     }
+    return (
+      <LinearGradient colors={['#667eea', '#764ba2']} style={styles.profilePhoto}>
+        <Text style={styles.initials}>{user?.name?.charAt(0).toUpperCase()}</Text>
+      </LinearGradient>
+    );
   };
 
-  // Camera rendered via PlatformCameraView
-  const renderWebCamera = () => (
-    <PlatformCameraView
-      style={{ width: '100%', height: '100%' } as any}
-      facing="front"
-      showControls
-      onCapture={handleWebCameraCapture}
-      cameraRef={cameraRef}
-    />
-  );
+  const settingsSections = useMemo(() => {
+    const sections = [
+      {
+        title: 'Personal',
+        items: [
+          { name: 'Account', icon: 'key-outline', color: '#075E54', onPress: () => Alert.alert('Coming Soon', 'Account settings are under development.') },
+          { name: 'Privacy Settings', icon: 'lock-closed-outline', color: '#2196F3', onPress: () => Alert.alert('Coming Soon', 'Privacy settings are under development.') },
+          { name: 'Administration', icon: 'shield-half-outline', color: '#FF3B30', badge: unreadModerationCount, onPress: () => router.push('/moderation/admin-channel') },
+        ]
+      },
+      {
+        title: 'Content',
+        items: [
+          { name: 'Bookmarks', icon: 'bookmark-outline', color: '#FFD700', badge: bookmarks?.length, onPress: () => router.push('/settings/bookmarks') },
+          { name: 'AI Safety Status', icon: 'shield-checkmark-outline', color: '#4CAF50', onPress: () => router.push('/settings/ai-safety') },
+          { name: 'Storage and Data', icon: 'cloud-outline', color: '#25D366', onPress: () => Alert.alert('Coming Soon', 'Storage settings are under development.') },
+        ]
+      },
+      {
+        title: 'Connect',
+        items: [
+          { name: 'Broadcast Lists', icon: 'megaphone-outline', color: '#25D366', onPress: () => Alert.alert('Coming Soon', 'Broadcast lists are under development.') },
+          { name: 'Linked Devices', icon: 'laptop-outline', color: '#25D366', onPress: () => Alert.alert('Coming Soon', 'Linked devices are under development.') },
+          { name: 'Starred Messages', icon: 'star-outline', color: '#FFD700', onPress: () => Alert.alert('Coming Soon', 'Starred messages are under development.') },
+        ]
+      },
+      {
+        title: 'Support',
+        items: [
+          { name: 'Help Center', icon: 'information-circle-outline', color: '#075E54', onPress: () => Alert.alert('Coming Soon', 'Help Center is under development.') },
+          { name: 'Tell a Friend', icon: 'heart-outline', color: '#FF3B30', onPress: () => Alert.alert('Share', 'Share this app with your friends!') },
+        ]
+      }
+    ];
+
+    if (user?.ai_admin) {
+      sections[1].items.splice(2, 0, { 
+        name: 'Chatbot Training', 
+        icon: 'chatbubbles-outline', 
+        color: '#0084ff', 
+        onPress: () => router.push({ pathname: '/chatbotTraining', params: { from: 'settings' } }) 
+      });
+    }
+
+    if (user?.is_admin) {
+      sections.push({
+        title: 'Admin',
+        items: [
+          { name: 'Moderation Panel', icon: 'hammer-outline', color: '#F44336', onPress: () => router.push('/moderation') },
+        ]
+      });
+    }
+
+    return sections;
+  }, [user, unreadModerationCount, bookmarks?.length]);
 
   return (
-    <View style={GlobalStyles.popupContainer}>
-
-      {/* Profile Photo Section */}
-      <View style={styles.profileSection}>
-        <TouchableOpacity onPress={() => setShowPhotoOptions(true)}>
-          <View style={styles.photoContainer}>
-            {renderProfilePhoto()}
-            <View style={styles.cameraIconContainer}>
-              <Ionicons name="camera" size={20} color="white" />
-            </View>
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => {
-          setNewName(user?.name || '');
-          setEditNameVisible(true);
-        }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 10, }}>
-            <Text style={styles.userName}>{user?.name}</Text>
-            <Ionicons name="create-outline" size={20} color="black" style={{ paddingLeft: 10, }} />
-          </View>
+    <View style={styles.mainContainer}>
+      <StatusBar barStyle="dark-content" />
+      
+      <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 60 : 40 }]}>
+        <Text style={styles.headerTitle}>Settings & Stats</Text>
+        <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
+          <Ionicons name="close" size={24} color="#1a1a1a" />
         </TouchableOpacity>
       </View>
 
-      {/* Photo Options Modal */}
-      <Modal
-        visible={showPhotoOptions}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowPhotoOptions(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowPhotoOptions(false)}
-        >
-          <View style={styles.photoOptions}>
-            <TouchableOpacity
-              style={styles.optionButton}
-              onPress={handleChoosePhoto}
-            >
-              <Text style={styles.optionText}>Upload from device</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.optionButton}
-              onPress={handleTakePhoto}
-            >
-              <Text style={styles.optionText}>Take a photo</Text>
-            </TouchableOpacity>
-            {user?.profile_photo && (
-              <TouchableOpacity
-                style={[styles.optionButton, styles.deleteOption]}
-                onPress={handleDeletePhoto}
-              >
-                <Text style={styles.optionText}>Delete photo</Text>
+      <View style={styles.tabBar}>
+        <TouchableOpacity style={[styles.tab, activeTab === 'settings' && styles.activeTab]} onPress={() => setActiveTab('settings')}>
+          <Text style={[styles.tabText, activeTab === 'settings' && styles.activeTabText]}>Profile & Security</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.tab, activeTab === 'stats' && styles.activeTab]} onPress={() => setActiveTab('stats')}>
+          <Text style={[styles.tabText, activeTab === 'stats' && styles.activeTabText]}>Insights</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.profileCard}>
+          <TouchableOpacity onPress={handlePhotoAction} disabled={saving}>
+            <View style={styles.photoWrapper}>
+              {renderProfilePhoto()}
+              <View style={styles.cameraBadge}>
+                <Ionicons name="camera" size={14} color="#fff" />
+              </View>
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.nameSection}>
+            {editNameMode ? (
+              <View style={styles.nameInputWrapper}>
+                <TextInput
+                  ref={nameInputRef}
+                  style={styles.nameInput}
+                  value={newName}
+                  onChangeText={setNewName}
+                  onBlur={handleNameUpdate}
+                  onSubmitEditing={handleNameUpdate}
+                  placeholderTextColor="rgba(0,0,0,0.3)"
+                  returnKeyType="done"
+                />
+                {saving && <ActivityIndicator size="small" color="#0084ff" />}
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.nameRow} onPress={() => setEditNameMode(true)}>
+                <Text style={styles.userName}>{user?.name}</Text>
+                <Ionicons name="pencil-outline" size={16} color="#0084ff" />
               </TouchableOpacity>
             )}
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* Web Camera Modal - ONLY on web */}
-      {Platform.OS === 'web' && cameraVisible && (
-        <View style={[StyleSheet.absoluteFill, styles.webCameraContainer]}>
-          {renderWebCamera()}
-        </View>
-      )}
-
-      {/* Change Name Modal */}
-      <Modal
-        visible={editNameVisible}
-        transparent={false}
-        animationType="slide"
-        onRequestClose={() => setEditNameVisible(false)}
-        style={GlobalStyles.popupContainer}
-      >
-        <View style={{ flex: 1, backgroundColor: 'white' }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderColor: '#ccc' }}>
-            <TouchableOpacity onPress={() => setEditNameVisible(false)}>
-              <Text style={{ color: '#1DA1F2', fontSize: 16 }}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={{ fontWeight: 'bold', fontSize: 18 }}>Name</Text>
-            <TouchableOpacity
-              onPress={async () => {
-                setSaving(true);
-                try {
-                  const response = await updateUserName(newName);
-                  const updated = await loadUser();
-                  setUser(updated);
-                  setEditNameVisible(false);
-                } catch (e) {
-                  console.error(e);
-                  Alert.alert('Failed', 'Could not update name');
-                } finally {
-                  setSaving(false);
-                }
-              }}
-              disabled={newName === user?.name || saving}
-            >
-              <Text style={{
-                color: newName === user?.name || saving ? '#ccc' : '#1DA1F2',
-                fontWeight: 'bold',
-                fontSize: 16
-              }}>
-                Save
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={{ padding: 16 }}>
-            <TextInput
-              value={newName}
-              onChangeText={setNewName}
-              style={{
-                fontSize: 18,
-                borderColor: '#ccc',
-                borderWidth: 1,
-                padding: 12,
-                borderRadius: 8,
-              }}
-              placeholder="Enter your name"
-              autoFocus
-            />
+            <Text style={styles.userRole}>{user?.is_admin ? 'Elite Admin' : 'Premium Member'}</Text>
           </View>
         </View>
-      </Modal>
-      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.block}>
-          <FlatList
-            data={devices}
-            keyExtractor={(item) => item.name}
-            scrollEnabled={false}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
-            renderItem={renderListItem}
-          />
-        </View>
 
-        <View style={styles.block}>
-          <FlatList
-            data={items}
-            keyExtractor={(item) => item.name}
-            scrollEnabled={false}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
-            renderItem={renderListItem}
-          />
-        </View>
+        <AnimatePresence>
+          {activeTab === 'settings' ? (
+            <MotiView from={{ opacity: 0, translateY: 10 }} animate={{ opacity: 1, translateY: 0 }} key="settings">
+              {settingsSections.map((section) => (
+                <View key={section.title} style={styles.section}>
+                  <Text style={styles.sectionTitle}>{section.title}</Text>
+                  {section.items.map((item) => (
+                    <SettingsItem 
+                      key={item.name}
+                      name={item.name}
+                      icon={item.icon}
+                      color={item.color}
+                      badge={item.badge}
+                      onPress={item.onPress}
+                    />
+                  ))}
+                </View>
+              ))}
 
-        <View style={styles.block}>
-          <FlatList
-            data={support}
-            keyExtractor={(item) => item.name}
-            scrollEnabled={false}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
-            renderItem={renderListItem}
-          />
-        </View>
-        <View style={styles.block}>
-          <FlatList
-            data={[
-              { name: 'Bookmarks', icon: 'bookmark', backgroundColor: '#FFD700' },
-              { name: 'AI Safety Status', icon: 'shield-checkmark', backgroundColor: '#4CAF50' }
-            ]}
-            keyExtractor={(item) => item.name}
-            scrollEnabled={false}
-            renderItem={renderListItem}
-          />
-        </View>
-
-        {user?.is_admin && (
-          <View style={styles.block}>
-            <FlatList
-              data={[
-                { name: 'Admin Panel', icon: 'shield-half', backgroundColor: '#F44336' }
-              ]}
-              keyExtractor={(item) => item.name}
-              scrollEnabled={false}
-              renderItem={renderListItem}
-            />
-          </View>
-        )}
-
-        <TouchableOpacity onPress={handleLogout}>
-          <Text style={styles.logout}>Log Out</Text>
-        </TouchableOpacity>
+              <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+                <LinearGradient colors={['#F44336', '#D32F2F']} style={styles.logoutGradient}>
+                  <Text style={styles.logoutText}>Log Out Account</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </MotiView>
+          ) : (
+            <MotiView from={{ opacity: 0, translateY: 10 }} animate={{ opacity: 1, translateY: 0 }} key="stats">
+              <View style={styles.statsGrid}>
+                <View style={styles.statCard}>
+                  <Text style={styles.statValue}>{bookmarks?.length || 0}</Text>
+                  <Text style={styles.statLabel}>Total Saves</Text>
+                </View>
+                <View style={styles.statCard}>
+                  <Text style={styles.statValue}>0</Text>
+                  <Text style={styles.statLabel}>App Influence</Text>
+                </View>
+              </View>
+              
+              <View style={styles.aiInsightsCard}>
+                <Text style={styles.insightTitle}>AI Engagement Trends</Text>
+                <Text style={styles.insightText}>Your activity suggests a high interest in creative communities. Your content interactions are 100% compliant.</Text>
+                <View style={styles.trendBar}>
+                  <LinearGradient colors={['#0084ff', '#00c6ff']} style={[styles.trendFill, { width: '85%' }]} />
+                </View>
+                <Text style={styles.trendLabel}>Account Health: Excellent</Text>
+              </View>
+            </MotiView>
+          )}
+        </AnimatePresence>
       </ScrollView>
-
-      <BookmarkGallery
-        visible={bookmarkGalleryVisible}
-        onClose={() => setBookmarkGalleryVisible(false)}
-        isSettings={true}
-      />
-
-
-      <ModerationComplianceModal
-        visible={complianceVisible}
-        onClose={() => setComplianceVisible(false)}
-      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%'
-  },
-  profileSection: {
-    alignItems: 'center',
-    paddingVertical: 10,
-    backgroundColor: 'transparent',
-  },
-  photoContainer: {
-    position: 'relative',
-    marginBottom: 10,
-  },
-  profilePhoto: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#e1e1e1',
-  },
-  initialsContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  initials: {
-    fontSize: 40,
-    fontWeight: 'bold',
-    color: '#555',
-  },
-  cameraIconContainer: {
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#25D366',
-    borderRadius: 20,
-    padding: 5,
-  },
-  userName: {
-    fontSize: 22,
-    fontWeight: 'bold',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  photoOptions: {
-    backgroundColor: 'white',
-    borderRadius: 10,
-    width: '80%',
-    overflow: 'hidden',
-  },
-  optionButton: {
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  optionText: {
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  deleteOption: {
-    borderBottomWidth: 0,
-  },
-  webCameraContainer: {
-    zIndex: 9999,
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'black',
-  },
-  permissionContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  permissionText: {
-    color: 'white',
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  permissionButton: {
-    backgroundColor: '#25D366',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  permissionButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  closeCameraButton: {
-    backgroundColor: '#FF3B30',
-    padding: 12,
-    borderRadius: 8,
-  },
-  closeCameraText: {
-    color: 'white',
-    fontSize: 16,
-  },
-  cameraControls: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 20,
-    alignItems: 'flex-end',
-  },
-  cameraButton: {
-    alignSelf: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 20,
-    padding: 8,
-  },
-  captureButton: {
-    alignSelf: 'center',
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    borderWidth: 3,
-    borderColor: 'white',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-    backgroundColor: 'transparent',
-  },
-  captureInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'white',
-  },
-  scrollContainer: {
-    minWidth: 350,
-    width: '100%',
-    ...(Platform.OS === 'ios' && {
-      minWidth: '100%',
-      width: 'auto'
-    }),
-  },
-  block: {
-    backgroundColor: '#fff',
-    marginBottom: 30,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    width: '100%',
-  },
-  separator: {
-    height: 1,
-    backgroundColor: '#e0e0e0',
-    marginVertical: 8,
-  },
-  item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  itemText: {
-    fontSize: 17,
-    flex: 1,
-    marginLeft: 12,
-  },
-  logout: {
-    color: 'red',
-    fontSize: 24,
-    textAlign: 'center',
-    paddingVertical: 14,
-  },
-  badge: {
-    backgroundColor: '#FF3B30',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    marginRight: 8,
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
+  mainContainer: { flex: 1, backgroundColor: '#fff' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 20 },
+  headerTitle: { fontSize: 22, fontWeight: '800', color: '#1a1a1a', letterSpacing: -0.5 },
+  closeButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.05)', justifyContent: 'center', alignItems: 'center' },
+  tabBar: { flexDirection: 'row', marginHorizontal: 20, marginBottom: 20, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 12, padding: 4 },
+  tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 10 },
+  activeTab: { backgroundColor: '#0084ff' },
+  tabText: { color: 'rgba(0,0,0,0.4)', fontWeight: '600', fontSize: 13 },
+  activeTabText: { color: '#fff' },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
+  profileCard: { backgroundColor: 'rgba(0,0,0,0.02)', borderRadius: 24, padding: 24, alignItems: 'center', marginBottom: 24 },
+  photoWrapper: { position: 'relative', marginBottom: 16 },
+  profilePhoto: { width: 100, height: 100, borderRadius: 50, borderWidth: 2, borderColor: '#0084ff', justifyContent: 'center', alignItems: 'center' },
+  initials: { fontSize: 36, fontWeight: 'bold', color: '#fff' },
+  cameraBadge: { position: 'absolute', bottom: -4, right: -4, backgroundColor: '#0084ff', width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#fff' },
+  nameSection: { alignItems: 'center' },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  userName: { fontSize: 24, fontWeight: '700', color: '#1a1a1a' },
+  userRole: { fontSize: 14, color: 'rgba(0,0,0,0.6)', marginTop: 4 },
+  nameInputWrapper: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#0084ff', width: width * 0.6 },
+  nameInput: { color: '#1a1a1a', fontSize: 24, fontWeight: '700', textAlign: 'center', flex: 1, padding: 0 },
+  section: { marginBottom: 24 },
+  sectionTitle: { fontSize: 13, fontWeight: '700', color: 'rgba(0,0,0,0.6)', textTransform: 'uppercase', marginBottom: 16, letterSpacing: 1 },
+  item: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.03)', padding: 16, borderRadius: 16, marginBottom: 12 },
+  iconContainer: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  itemText: { flex: 1, color: '#1a1a1a', fontSize: 16, fontWeight: '500' },
+  badge: { backgroundColor: '#F44336', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2, marginRight: 8 },
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+  logoutBtn: { marginTop: 8 },
+  logoutGradient: { borderRadius: 16, paddingVertical: 18, alignItems: 'center' },
+  logoutText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  statsGrid: { flexDirection: 'row', gap: 12, marginBottom: 20 },
+  statCard: { flex: 1, backgroundColor: 'rgba(0,0,0,0.03)', borderRadius: 20, padding: 20, alignItems: 'center' },
+  statValue: { fontSize: 24, fontWeight: '800', color: '#1a1a1a' },
+  statLabel: { fontSize: 12, color: 'rgba(0,0,0,0.4)', marginTop: 4 },
+  aiInsightsCard: { backgroundColor: 'rgba(0,132,255,0.05)', borderLeftWidth: 4, borderLeftColor: '#0084ff', borderRadius: 16, padding: 20 },
+  insightTitle: { fontSize: 16, fontWeight: '700', color: '#0084ff', marginBottom: 8 },
+  insightText: { fontSize: 14, color: 'rgba(0,0,0,0.6)', lineHeight: 20, marginBottom: 16 },
+  trendBar: { height: 6, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 3, marginBottom: 8 },
+  trendFill: { height: '100%', borderRadius: 3 },
+  trendLabel: { fontSize: 12, color: '#4CAF50', fontWeight: 'bold' },
 });
 
 export default Page;
