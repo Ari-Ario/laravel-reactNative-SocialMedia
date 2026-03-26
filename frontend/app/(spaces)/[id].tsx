@@ -17,11 +17,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import AuthContext from '@/context/AuthContext';
+import { useCall } from '@/context/CallContext';
 import CollaborationService, { CollaborativeActivity } from '@/services/ChatScreen/CollaborationService';
 import { deleteReportByTarget } from '@/services/ReportService';
 import GenericMenu, { MenuItem } from '@/components/GenericMenu';
@@ -34,7 +36,6 @@ import CalendarView from '@/components/ChatScreen/CalendarView';
 import CreateActivityModal from '@/components/ChatScreen/CreateActivityModal';
 import CollaborativeActivities from '@/components/ChatScreen/CollaborativeActivities';
 import CalendarPrompt from '@/components/ChatScreen/CalendarPrompt';
-import ImmersiveCallView from '@/components/ChatScreen/ImmersiveCallView';
 import MediaUploader from '@/services/ChatScreen/MediaUploader';
 import MessageList from '@/components/ChatScreen/MessageList';
 import { useNotificationStore } from '@/stores/notificationStore';
@@ -59,6 +60,7 @@ const SpaceDetailScreen = () => {
   const { showToast } = useToastStore();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user, setUser, logout } = useContext(AuthContext);
+  const { activeCall, startCall, endCall, maximizeCall } = useCall();
   const [space, setSpace] = useState<any>(null);
   const [participants, setParticipants] = useState<any[]>([]);
   const [magicEvents, setMagicEvents] = useState<any[]>([]);
@@ -182,122 +184,14 @@ const SpaceDetailScreen = () => {
   const canRemove = myPermissions?.can_remove === true || myParticipation?.role === 'owner';
   const canChangeRoles = myPermissions?.can_change_roles === true || myParticipation?.role === 'owner';
 
-  // ✅ Real-time space management listener
-  useEffect(() => {
-    // We listen to the notification store for system events we added in PusherService
-    const unsubscribe = useNotificationStore.subscribe((state) => {
-      const lastNotif = state.notifications[0];
-      if (!lastNotif || lastNotif.spaceId !== id) return;
 
-      switch (lastNotif.type) {
-        case 'space_muted':
-          setIsMuted(lastNotif.data.is_muted);
-          break;
-        case 'space_pinned':
-          setIsPinned(lastNotif.data.is_pinned);
-          break;
-        case 'space_archived':
-          setIsArchived(lastNotif.data.is_archived);
-          break;
-      }
-    });
 
-    return () => unsubscribe();
-  }, [id]);
-
-  // ✅ Load initial details
-  useEffect(() => {
-    if (id && id !== 'Login' && id !== 'undefined' && id !== '[id]') {
-      loadSpaceDetails();
+  const loadSpaceDetails = async (force: boolean = false) => {
+    if (!force && space && space.id === id) {
+      console.log('♻️ Space details already loaded, skipping re-fetch:', id);
+      setLoading(false);
+      return;
     }
-  }, [id, user]);
-
-  // ✅ Manage real-time subscription - reactive to participation changes
-  useEffect(() => {
-    if (id && user && id !== 'Login' && id !== 'undefined' && id !== '[id]') {
-      const isPending = space?.my_participation?.role === 'pending';
-      if (!isPending) {
-        subscribeToSpace();
-      }
-    }
-
-    return () => {
-      if (id !== 'Login' && id !== 'undefined') {
-        unsubscribeFromSpace();
-      }
-    };
-  }, [id, user, !!space?.my_participation, space?.my_participation?.role]);
-  // Note: !!space?.my_participation && role !== 'pending' ensures we re-subscribe once the user joins
-  // presence-space channels require authorization which fails if not joined.
-
-  // Eagerly load polls when space loads (so banner + header badge show correctly)
-  // Also re-load when switching to polls tab
-  useEffect(() => {
-    if (space?.id) {
-      loadPolls();
-    }
-  }, [space?.id, !!space?.my_participation, space?.my_participation?.role]);
-
-  useEffect(() => {
-    if (activeTab === 'polls' && space?.id) {
-      loadPolls();
-    }
-  }, [activeTab]);
-
-  useEffect(() => {
-    if (space?.id) {
-      if (params.justCreated === 'true') {
-        const groupSpaces = ['meeting', 'brainstorm', 'workshop', 'document', 'whiteboard'];
-
-        if (groupSpaces.includes(space.space_type)) {
-          if (participants.length > 2 || space.space_type !== 'voice_channel') {
-            const timer = setTimeout(() => {
-              setShowCalendarPrompt(true);
-            }, 1500);
-
-            return () => clearTimeout(timer);
-          }
-        }
-      }
-    }
-  }, [space?.id, space?.space_type, participants.length, params.justCreated]);
-
-  // ✅ AUTO-JOIN if routed from "Accept" notification
-  useEffect(() => {
-    if (params.justInvited === 'true' && space && !myParticipation && !isJoining) {
-      console.log('🚀 Auto-joining space as requested from notification');
-      handleJoin();
-    }
-  }, [params.justInvited, !!space, !!myParticipation]);
-
-  // ✅ CRITICAL FIX: Re-activate tab when navigated from a notification (e.g., params.tab changes)
-  useEffect(() => {
-    if (!params.tab) return;
-    const validTabs = ['chat', 'whiteboard', 'meeting', 'document', 'brainstorm', 'calendar', 'files', 'ai', 'polls'];
-    if (validTabs.includes(params.tab as string) && activeTab !== params.tab) {
-      setActiveTab(params.tab as any);
-    }
-  }, [params.tab]);
-
-  // ✅ Auto-open activities modal if activity param is present (Deep-linking)
-  useEffect(() => {
-    // Phase 85: Don't auto-open if we are explicitly joining a meeting via tab=meeting
-    if (params.activity && !showActivitiesModal && params.tab !== 'meeting') {
-      console.log('📍 Auto-opening activities modal from route:', params.activity);
-      setShowActivitiesModal(true);
-    }
-  }, [params.activity, params.tab]);
-
-  // ✅ Auto-start meeting if joining from a session
-  useEffect(() => {
-    if (params.tab === 'meeting' && params.activity && space && !space.is_live && !loading) {
-      console.log('🎞️ Auto-starting meeting for session:', params.activity);
-      handleStartCall('video');
-    }
-  }, [params.tab, params.activity, !!space, space?.is_live, loading]);
-
-
-  const loadSpaceDetails = async () => {
     console.log('Loading space details for ID:', id);
     setLoading(true);
     try {
@@ -422,10 +316,10 @@ const SpaceDetailScreen = () => {
           if (pId) {
             setParticipants(prev => prev.filter(p => String(p.user_id) !== String(pId)));
 
-            // Redirect if I am the one who left (from another device/tab)
-            if (String(pId) === String(user?.id)) {
-              router.replace('/(tabs)/chats');
-            }
+            // ✅ Redundant redirect removed.
+            // Authority for space access resides in loadSpaceDetails and handleSpaceSecurityFallback (403/404 handling).
+            // Misfiring here causes "Access Denied" errors when simply leaving a WebRTC call.
+            console.log(`👤 Participant ${pId} left space ${id}`);
           }
         },
         onSpaceDeleted: () => {
@@ -826,27 +720,29 @@ const SpaceDetailScreen = () => {
     setShowExportModal(true);
   };
 
-  const handleStartCall = async (type: 'audio' | 'video') => {
+  const handleStartCall = async (type: 'video' | 'audio') => {
     try {
-      const call = await collaborationService.startCall(id as string, type);
-
-      setSpace((prev: any) => ({
-        ...prev,
-        is_live: true,
-        current_focus: 'call',
-      }));
-
-      setActiveTab('meeting');
+      console.log(`📞 Starting ${type} call via global context`);
+      // Start call via API first to get the call ID
+      const response = await collaborationService.startCall(id as string, type);
+      const call = response.call || response;
+      
+      startCall({
+        spaceId: id as string,
+        spaceType: 'group',
+        type,
+        callId: call.id
+      });
+      
+      // ✅ Close the call menu dropdown
       setShowCallMenu(false);
-      setShowActivitiesModal(false); // Phase 85: Ensure Activities modal is cleared when call starts
-
-      Alert.alert('Call Started', `Starting ${type} call...`);
+      setActiveTab('meeting');
+      router.setParams({ tab: 'meeting', type });
     } catch (error) {
       console.error('Error starting call:', error);
       Alert.alert('Error', 'Failed to start call');
     }
   };
-
   const handleGuestJoin = async (guestName: string) => {
     try {
       const { user: guestUser, token, space: joinedSpace } = await collaborationService.joinSpaceAsGuest(id as string, guestName);
@@ -979,14 +875,122 @@ const SpaceDetailScreen = () => {
     const icons: Record<string, string> = {
       chat: 'chatbubble',
       whiteboard: 'easel',
-      meeting: 'videocam',
-      document: 'document-text',
-      brainstorm: 'bulb',
-      story: 'book',
-      voice_channel: 'mic',
+        voice_channel: 'mic',
     };
     return icons[type] || 'cube';
   };
+
+  // ✅ Re-ordered Effects (after handlers)
+  // ✅ Real-time space management listener
+  useEffect(() => {
+    // We listen to the notification store for system events we added in PusherService
+    const unsubscribe = useNotificationStore.subscribe((state) => {
+      const lastNotif = state.notifications[0];
+      if (!lastNotif || lastNotif.spaceId !== id) return;
+
+      switch (lastNotif.type) {
+        case 'space_muted':
+          setIsMuted(lastNotif.data.is_muted);
+          break;
+        case 'space_pinned':
+          setIsPinned(lastNotif.data.is_pinned);
+          break;
+        case 'space_archived':
+          setIsArchived(lastNotif.data.is_archived);
+          break;
+      }
+    });
+
+    return () => unsubscribe();
+  }, [id]);
+
+  // ✅ Load initial details
+  useEffect(() => {
+    if (id && id !== 'Login' && id !== 'undefined' && id !== '[id]') {
+      loadSpaceDetails();
+    }
+  }, [id, user]);
+
+  // ✅ Manage real-time subscription - reactive to participation changes
+  useEffect(() => {
+    if (id && user && id !== 'Login' && id !== 'undefined' && id !== '[id]') {
+      const isPending = space?.my_participation?.role === 'pending';
+      if (!isPending) {
+        subscribeToSpace();
+      }
+    }
+
+    return () => {
+      if (id !== 'Login' && id !== 'undefined') {
+        unsubscribeFromSpace();
+      }
+    };
+  }, [id, user, !!space?.my_participation, space?.my_participation?.role]);
+
+  // Eagerly load polls when space loads
+  useEffect(() => {
+    if (space?.id) {
+      loadPolls();
+    }
+  }, [space?.id, !!space?.my_participation, space?.my_participation?.role]);
+
+  useEffect(() => {
+    if (activeTab === 'polls' && space?.id) {
+      loadPolls();
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (space?.id && params.justCreated === 'true') {
+      const groupSpaces = ['meeting', 'brainstorm', 'workshop', 'document', 'whiteboard'];
+      if (groupSpaces.includes(space.space_type)) {
+        if (participants.length > 2 || space.space_type !== 'voice_channel') {
+          const timer = setTimeout(() => setShowCalendarPrompt(true), 1500);
+          return () => clearTimeout(timer);
+        }
+      }
+    }
+  }, [space?.id, space?.space_type, participants.length, params.justCreated]);
+
+  // ✅ AUTO-JOIN if routed from "Accept" notification
+  useEffect(() => {
+    if (params.justInvited === 'true' && space && !myParticipation && !isJoining) {
+      console.log('🚀 Auto-joining space as requested from notification');
+      handleJoin();
+    }
+  }, [params.justInvited, !!space, !!myParticipation]);
+
+  // ✅ Re-activate tab from params
+  useEffect(() => {
+    if (!params.tab) return;
+    const validTabs = ['chat', 'whiteboard', 'meeting', 'document', 'brainstorm', 'calendar', 'files', 'ai', 'polls'];
+    if (validTabs.includes(params.tab as string) && activeTab !== params.tab) {
+      setActiveTab(params.tab as any);
+    }
+  }, [params.tab]);
+
+  // ✅ Auto-open activities modal if activity param is present
+  useEffect(() => {
+    if (params.activity && !showActivitiesModal && params.tab !== 'meeting') {
+      setShowActivitiesModal(true);
+    }
+  }, [params.activity, params.tab]);
+
+  // ✅ Auto-start meeting if joining from a session
+  useEffect(() => {
+    if (params.tab === 'meeting' && params.activity && space && !space.is_live && !loading) {
+      handleStartCall('video');
+    }
+  }, [params.tab, params.activity, !!space, space?.is_live, loading]);
+
+  // ✅ Phase 57: Auto-redirect from meeting tab to chat if call ends
+  useEffect(() => {
+    if (!activeCall && activeTab === 'meeting') {
+      console.log('📞 Call ended, redirecting from meeting to chat');
+      setActiveTab('chat');
+      router.setParams({ tab: 'chat', type: undefined, call: undefined });
+    }
+  }, [activeCall, activeTab, id]);
 
   const renderContent = () => {
     if (loading) {
@@ -1077,8 +1081,22 @@ const SpaceDetailScreen = () => {
         );
 
       case 'meeting':
-        if (space?.is_live && space?.current_focus === 'call') {
-          return <ImmersiveCallView spaceId={id as string} />;
+        if (activeCall && activeCall.spaceId === id) {
+          // Render chat background during active call in meeting tab
+          return (
+            <SpaceChatTab
+              spaceId={id as string}
+              currentUserId={Number(user?.id) || 0}
+              space={space}
+              setSpace={setSpace}
+              setShowPollCreator={setShowPollCreator}
+              polls={polls}
+              currentUserRole={space?.my_role}
+              onNavigateToAllPolls={() => setActiveTab('polls')}
+              highlightMessageId={params.highlightMessageId as string}
+              onStartCall={handleStartCall}
+            />
+          );
         }
 
         return (
@@ -1113,7 +1131,7 @@ const SpaceDetailScreen = () => {
           <CalendarView
             spaceId={id}
             initialActivityId={params.activity as string}
-            onActivityCreated={loadSpaceDetails}
+            onActivityCreated={() => loadSpaceDetails(true)}
             onCreateActivity={() => setShowCreateActivity(true)}
           />
         );
@@ -1824,7 +1842,7 @@ const SpaceDetailScreen = () => {
         spaceId={id as string}
         visible={showCreateActivity}
         onClose={() => setShowCreateActivity(false)}
-        onActivityCreated={loadSpaceDetails}
+        onActivityCreated={() => loadSpaceDetails(true)}
       />
 
       {/* Collaborative Activities Modal - Popup for Sessions */}
@@ -1857,7 +1875,6 @@ const SpaceDetailScreen = () => {
         }}
       />
 
-      {/* Export Modal */}
       <SpaceExportModal
         visible={showExportModal}
         onClose={() => setShowExportModal(false)}
@@ -2725,6 +2742,30 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
+  },
+  activeCallPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+    backgroundColor: '#f8f9ff',
+    borderRadius: 16,
+    width: '100%',
+  },
+  iconGradient: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    ...createShadow({
+      width: 0,
+      height: 4,
+      opacity: 0.2,
+      radius: 5,
+      elevation: 6,
+    }),
   },
 });
 

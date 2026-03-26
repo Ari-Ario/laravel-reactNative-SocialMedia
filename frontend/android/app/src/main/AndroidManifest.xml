@@ -20,6 +20,7 @@
   <uses-permission android:name="android.permission.VIBRATE"/>
   <uses-permission android:name="android.permission.WRITE_CALENDAR"/>
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" tools:replace="android:maxSdkVersion"/>
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
   <queries>
     <intent>
       <action android:name="android.intent.action.VIEW"/>
@@ -55,6 +56,12 @@
         <data android:scheme="exp+graf"/>
       </intent-filter>
     </activity>
+    <service android:name="org.webrtc.ScreenCaptureIntentService" android:foregroundServiceType="mediaProjection" android:exported="false" />
+    <activity
+        android:name="org.webrtc.ScreenCaptureIntent"
+        android:theme="@android:style/Theme.Translucent.NoTitleBar"
+        android:excludeFromRecents="true"
+        android:exported="false" />
     <uses-library android:name="org.apache.http.legacy" android:required="false"/>
   </application>
 </manifest>

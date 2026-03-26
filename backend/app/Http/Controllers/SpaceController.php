@@ -968,13 +968,13 @@ public function startCall(Request $request, $id)
         'is_web_compatible' => true,
     ]);
 
-    // ✅ NEW: Populate pivot table for all participants
-    $call->users()->sync($participantIds);
+    // ✅ Corrected: Only sync the initiator. Others join via joinCall()
+    $call->users()->sync([auth()->id()]);
 
     $space->update([
         'is_live' => true,
         'current_focus' => 'call',
-        'live_participants' => $participantIds
+        'live_participants' => [auth()->id()]
     ]);
 
     // Notify all participants
@@ -1015,7 +1015,8 @@ public function startCall(Request $request, $id)
     public function callSignal(Request $request, $id)
     {
         $request->validate([
-            'type' => 'required|in:offer,answer,ice-candidate,call-active',
+            'type' => 'required|in:offer,answer,ice-candidate,call-active,hand-raised,hand-lowered',
+
             'target_user_id' => 'required|integer',
             'call_id' => 'required|string',
             'offer' => 'sometimes|array',
@@ -1189,6 +1190,12 @@ public function joinCall(Request $request, $id)
             $space->update(['live_participants' => $spaceParticipants]);
         }
         
+        // Broadcast join signal on signaling channel
+        $authUser = auth()->user();
+        if ($authUser instanceof \App\Models\User) {
+            broadcast(new \App\Events\WebRTCSignal($space, $authUser, 0, 'call-active', ['user_id' => $userId], $call->id))->toOthers();
+        }
+
         return response()->json([
             'success' => true,
             'call' => $call->load(['initiator', 'users']),

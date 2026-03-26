@@ -56,6 +56,8 @@ class WebRTCService {
   private onScreenShareEndedCallback: ((userId: string) => void) | null = null;
   private onMuteStateChangedCallback: ((userId: string, isMuted: boolean) => void) | null = null;
   private onVideoStateChangedCallback: ((userId: string, hasVideo: boolean) => void) | null = null;
+  private onHandRaisedCallback: ((userId: string, isRaised: boolean) => void) | null = null;
+
   private knownParticipants = new Set<number>();
 
   private iceServers = {
@@ -151,16 +153,19 @@ class WebRTCService {
   }
 
   async getScreenStream(): Promise<MediaStream | null> {
-    if (Platform.OS !== 'web') {
-      console.log('📞 Screen sharing not available on native');
-      return null;
-    }
-
     try {
-      this.screenStream = await (media_Devices as any).getDisplayMedia({
-        video: true,
-        audio: true,
-      });
+      if (Platform.OS === 'web') {
+        this.screenStream = await (media_Devices as any).getDisplayMedia({
+          video: true,
+          audio: true,
+        });
+      } else {
+        // Native react-native-webrtc screen share
+        // Note: For iOS, this often requires a Broadcast Extension
+        this.screenStream = await media_Devices.getDisplayMedia({
+          video: true
+        });
+      }
       return this.screenStream;
     } catch (error) {
       console.error('Error getting screen stream:', error);
@@ -221,8 +226,8 @@ class WebRTCService {
 
         if (fromId === this.userId) return;
 
-        // Check if signal is for us (or broadcast)
-        if (data.target_user_id && data.target_user_id !== this.userId) {
+        // Check if signal is for us (or broadcast target 0)
+        if (data.target_user_id && data.target_user_id !== 0 && data.target_user_id !== this.userId) {
           return;
         }
 
@@ -241,8 +246,15 @@ class WebRTCService {
             console.log(`👤 Participant joined call: ${joinedId}`);
             this.handleNewParticipant(joinedId);
             break;
+          case 'hand-raised':
+            if (this.onHandRaisedCallback) this.onHandRaisedCallback(fromId.toString(), true);
+            break;
+          case 'hand-lowered':
+            if (this.onHandRaisedCallback) this.onHandRaisedCallback(fromId.toString(), false);
+            break;
         }
       },
+
       onCallEnded: () => {
         console.log('📞 Call ended notification received');
         if (this.onCallEndedCallback) this.onCallEndedCallback();
@@ -316,8 +328,14 @@ class WebRTCService {
       const peerConnection = this.createPeerConnection(targetUserId.toString());
 
       // Add all tracks from local stream
+      const senders = peerConnection.getSenders();
       this.localStream.getTracks().forEach(track => {
-        peerConnection.addTrack(track, this.localStream!);
+        const alreadyAdded = senders.some((s: any) => s.track === track);
+        if (!alreadyAdded) {
+          peerConnection.addTrack(track, this.localStream!);
+        } else {
+          console.log(`ℹ️ Track ${track.kind} already added to peer ${targetUserId}`);
+        }
       });
 
       const offer = await peerConnection.createOffer({
@@ -346,8 +364,14 @@ class WebRTCService {
       const peerConnection = this.createPeerConnection(fromId);
 
       // Add local tracks to response
+      const senders = peerConnection.getSenders();
       this.localStream.getTracks().forEach(track => {
-        peerConnection.addTrack(track, this.localStream!);
+        const alreadyAdded = senders.some((s: any) => s.track === track);
+        if (!alreadyAdded) {
+          peerConnection.addTrack(track, this.localStream!);
+        } else {
+          console.log(`ℹ️ Track ${track.kind} already added to peer ${fromId}`);
+        }
       });
 
       // ✅ Normalize remote SDP to avoid parsing errors
@@ -356,6 +380,12 @@ class WebRTCService {
         type: data.offer.type,
         sdp: normalizedSDP
       });
+
+      // ✅ Check signaling state before applying remote offer
+      if (peerConnection.signalingState !== 'stable' && peerConnection.signalingState !== 'have-local-offer') {
+          console.warn(`⚠️ Signaling state is ${peerConnection.signalingState}, cannot handle offer from ${fromId}.`);
+          return;
+      }
 
       await peerConnection.setRemoteDescription(offerDescription);
 
@@ -386,7 +416,11 @@ class WebRTCService {
           sdp: normalizedSDP
         });
 
-        await peerConnection.setRemoteDescription(answerDescription);
+        if (peerConnection.signalingState === 'have-local-offer' || peerConnection.signalingState === 'have-remote-offer') {
+          await peerConnection.setRemoteDescription(answerDescription);
+        } else {
+          console.warn(`⚠️ Ignoring answer from ${fromId}: signalingState is ${peerConnection.signalingState}`);
+        }
 
         // Process any queued candidates
         this.processQueuedCandidates(fromId);
@@ -535,7 +569,7 @@ class WebRTCService {
   }
 
   async toggleMute(isMuted: boolean) {
-    if (Platform.OS === 'web' && this.localStream) {
+    if (this.localStream) {
       this.localStream.getAudioTracks().forEach(track => {
         track.enabled = !isMuted;
       });
@@ -551,7 +585,7 @@ class WebRTCService {
   }
 
   async toggleVideo(hasVideo: boolean) {
-    if (Platform.OS === 'web' && this.localStream) {
+    if (this.localStream) {
       this.localStream.getVideoTracks().forEach(track => {
         track.enabled = hasVideo;
       });
@@ -567,49 +601,111 @@ class WebRTCService {
   }
 
   async startScreenShare(): Promise<void> {
-    if (Platform.OS !== 'web') {
-      throw new Error('Screen sharing only available on web');
-    }
-
     try {
-      const screenStream = await this.getScreenStream();
-      if (!screenStream) return;
-
+      console.log('📞 Starting screen share on platform:', Platform.OS);
+      
+      let screenStream: MediaStream | null = null;
+      
+      if (Platform.OS === 'web') {
+        screenStream = await (media_Devices as any).getDisplayMedia({
+          video: true,
+          audio: true,
+        });
+      } else {
+        // Native: react-native-webrtc supports screen capture
+        try {
+          screenStream = await media_Devices.getDisplayMedia({
+            video: true,
+            audio: true,
+          });
+        } catch (nativeError) {
+          console.warn('Native getDisplayMedia failed, trying alternative:', nativeError);
+          // Fallback for Android - use getDisplayMedia with constraints
+          screenStream = await media_Devices.getDisplayMedia({
+            video: {
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+              frameRate: { ideal: 30 },
+            },
+            audio: true,
+          });
+        }
+      }
+      
+      if (!screenStream) {
+        throw new Error('Failed to get screen stream');
+      }
+      
+      this.screenStream = screenStream;
       const videoTrack = screenStream.getVideoTracks()[0];
-
+      
+      if (!videoTrack) {
+        throw new Error('No video track in screen stream');
+      }
+      
+      // Replace video track for all peer connections
       this.peerConnections.forEach((connection) => {
         const sender = (connection as any).getSenders().find((s: any) => s.track?.kind === 'video');
         if (sender) {
-          sender.replaceTrack(videoTrack);
+          sender.replaceTrack(videoTrack).catch((e: any) => console.error('Error replacing track:', e));
         }
       });
-
+      
+      // Notify backend about screen share
       if (this.spaceId && this.spaceId !== 'null' && this.callId && this.callId !== 'null') {
         await CollaborationService.getInstance().toggleCallScreenShare(this.spaceId, this.callId, true);
       }
-
+      
+      // Handle track end event (user stops sharing via system UI)
       videoTrack.onended = () => {
+        console.log('📞 Screen share track ended');
         this.stopScreenShare();
       };
-
+      
+      console.log('📞 Screen share started successfully');
+      
     } catch (error) {
       console.error('Error starting screen share:', error);
+      
+      // Provide user-friendly error messages
+      if (Platform.OS === 'android') {
+        const { Alert } = require('react-native');
+        Alert.alert(
+          'Screen Share',
+          'To share your screen on Android, you need to grant screen recording permission.\n\nTap "Start Now" when prompted.',
+          [{ text: 'OK' }]
+        );
+      } else if (Platform.OS === 'ios') {
+        const { Alert } = require('react-native');
+        Alert.alert(
+          'Screen Share',
+          'Screen sharing on iOS requires a broadcast extension. This feature is coming soon.',
+          [{ text: 'OK' }]
+        );
+      }
+      
       throw error;
     }
   }
 
   async stopScreenShare(): Promise<void> {
-    if (Platform.OS !== 'web' || !this.localStream) return;
-
-    const videoTrack = this.localStream.getVideoTracks()[0];
-
-    this.peerConnections.forEach((connection) => {
-      const sender = (connection as any).getSenders().find((s: any) => s.track?.kind === 'video');
-      if (sender) {
-        sender.replaceTrack(videoTrack);
+    console.log('📞 Stopping screen share');
+    
+    // Restore original video track
+    if (this.localStream) {
+      const videoTrack = this.localStream.getVideoTracks()[0];
+      
+      if (videoTrack) {
+        this.peerConnections.forEach((connection) => {
+          const sender = (connection as any).getSenders().find((s: any) => s.track?.kind === 'video');
+          if (sender) {
+            sender.replaceTrack(videoTrack).catch((e: any) => console.error('Error restoring track:', e));
+          }
+        });
       }
-    });
-
+    }
+    
+    // Notify backend
     if (this.spaceId && this.spaceId !== 'null' && this.callId && this.callId !== 'null') {
       try {
         await CollaborationService.getInstance().toggleCallScreenShare(this.spaceId, this.callId, false);
@@ -617,9 +713,26 @@ class WebRTCService {
         console.error('Error stopping screen share:', error);
       }
     }
+    
+    // Stop and clean up screen stream
+    if (this.screenStream) {
+      this.screenStream.getTracks().forEach(track => {
+        track.stop();
+      });
+      this.screenStream = null;
+    }
+    
+    console.log('📞 Screen share stopped');
+  }
+  
+  async toggleHandRaise(isRaised: boolean) {
+    if (this.spaceId && this.callId) {
+      await this.sendSignal(0, isRaised ? 'hand-raised' : 'hand-lowered', { user_id: this.userId });
+    }
   }
 
   async cleanup() {
+
     await this.endCall();
   }
 
@@ -711,6 +824,11 @@ class WebRTCService {
     this.onVideoStateChangedCallback = callback;
   }
 
+  onHandRaised(callback: (userId: string, isRaised: boolean) => void) {
+    this.onHandRaisedCallback = callback;
+  }
+
 }
+
 
 export default WebRTCService;

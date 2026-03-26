@@ -12,6 +12,7 @@ import {
   Animated,
   StatusBar,
   VirtualizedList,
+  PanResponder,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
@@ -35,6 +36,7 @@ import WebRTCService from '@/services/ChatScreen/WebRTCService';
 import { useSpaceStore } from '@/stores/spaceStore';
 import Avatar from '@/components/Image/Avatar';
 import AuthContext from '@/context/AuthContext';
+import { useCall } from '@/context/CallContext';
 import { createShadow } from '@/utils/styles';
 
 let RTCView: any;
@@ -78,11 +80,15 @@ interface Participant {
   isSpeaking?: boolean;
   volumeLevel?: number;
   joinedAt: number; // Timestamp for pruning
+  handRaised?: boolean;
 }
+
 
 interface ImmersiveCallViewProps {
   spaceId: string;
   spaceType?: 'direct' | 'group' | 'protected' | 'channel';
+  isMinimized?: boolean;
+  onToggleMinimize?: () => void;
 }
 
 // Memoized video component for performance
@@ -95,8 +101,12 @@ const VideoTile = React.memo(({
   stream,
   videoRefs,
   name,
-  avatar
+  avatar,
+  isHandRaised
 }: any) => {
+
+
+
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
@@ -108,10 +118,14 @@ const VideoTile = React.memo(({
 
   return (
     <View style={styles.videoTile}>
-      {isWeb && stream ? (
+      {isWeb && stream && hasVideo ? (
         <video
           ref={(el) => {
             videoElementRef.current = el;
+            if (el && stream) {
+              el.srcObject = stream;
+              if (isLocal) el.muted = true;
+            }
             if (el && videoRefs) videoRefs.current.set(participant.id, el);
           }}
           autoPlay
@@ -119,7 +133,7 @@ const VideoTile = React.memo(({
           muted={isLocal}
           style={styles.videoElement}
         />
-      ) : stream && !isWeb && RTCView ? (
+      ) : stream && !isWeb && RTCView && hasVideo ? (
         <RTCView
           key={stream.id || 'remote-stream'}
           streamURL={stream.toURL()}
@@ -141,7 +155,13 @@ const VideoTile = React.memo(({
           {isLocal && <Text style={styles.youBadge}>(You)</Text>}
         </View>
         <View style={styles.tileStatus}>
+          {isHandRaised && (
+            <View style={styles.handBadge}>
+              <Ionicons name="hand-left" size={14} color="#FFCC00" />
+            </View>
+          )}
           {isMuted && <Ionicons name="mic-off" size={12} color="#FF6B6B" />}
+
           {!hasVideo && !isWeb && <Ionicons name="videocam-off" size={12} color="#fff" />}
           {isSpeaking && (
             <View style={styles.speakingDot}>
@@ -154,10 +174,19 @@ const VideoTile = React.memo(({
   );
 });
 
-const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({ spaceId, spaceType = 'group' }) => {
+const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({ 
+  spaceId, 
+  spaceType = 'group',
+  isMinimized = false,
+  onToggleMinimize,
+}) => {
+  const { endCall: globalEndCall } = useCall();
   const router = useRouter();
   const params = useLocalSearchParams();
   const initialCallType = (params.type as string) || 'video';
+  // ─── Callee joining: joining=1 means we're answering, not starting
+  const isJoiningExisting = params.joining === '1';
+  const existingCallId    = (params.call as string) || null;
   const collaborationService = CollaborationService.getInstance();
   const webRTCService = WebRTCService.getInstance();
   const { currentSpace } = useSpaceStore();
@@ -165,6 +194,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({ spaceId, spaceTyp
 
   // State with useMemo for derived values
   const [participants, setParticipants] = useState<Participant[]>([]);
+  const [waitingParticipants, setWaitingParticipants] = useState<Participant[]>([]);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [hasVideo, setHasVideo] = useState(initialCallType === 'video');
@@ -176,9 +206,13 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({ spaceId, spaceTyp
   const [callStatus, setCallStatus] = useState<'connecting' | 'connected' | 'ended' | 'waiting'>('waiting');
   const [showControls, setShowControls] = useState(true);
   const [selectedView, setSelectedView] = useState<'grid' | 'speaker'>('grid');
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showParticipantsModal, setShowParticipantsModal] = useState(false);
+  const [handRaised, setHandRaised] = useState(false);
 
   // Animations - optimized with useRef
   const controlsOpacity = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
   const spinValue = useSharedValue(0);
   const pulseValue = useSharedValue(1);
 
@@ -285,6 +319,17 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({ spaceId, spaceTyp
     if (activeSpeaker) setActiveSpeaker(null);
   }, [webRTCService, activeSpeaker]);
 
+  const handleCallEnded = useCallback(() => {
+    console.log('📞 Call ended (handleCallEnded)');
+    Animated.timing(fadeAnim, { toValue: 0, duration: 500, useNativeDriver: true }).start(() => {
+      setCallStatus('ended');
+      cleanup();
+      // ✔️ Clear global activeCall so RootCallOverlay unmounts
+      globalEndCall();
+      router.setParams({ tab: 'chat', type: undefined, call: undefined });
+    });
+  }, [cleanup, router, spaceId, fadeAnim, globalEndCall]);
+
   const setupCallbacks = useCallback(() => {
     webRTCService.onRemoteStream((userId: string, stream: MediaStream) => {
       console.log(`📡 UI: Received remote stream for user ${userId}`);
@@ -363,18 +408,72 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({ spaceId, spaceTyp
         }];
       });
     });
-  }, [currentSpace]);
 
-  const initializeCall = useCallback(async (forceStart = false) => {
+    webRTCService.onCallEnded(() => {
+      handleCallEnded();
+    });
+
+    webRTCService.onHandRaised((userId: string, isRaised: boolean) => {
+      setParticipants(prev => prev.map(p =>
+        p.id === userId ? { ...p, handRaised: isRaised } : p
+      ));
+    });
+  }, [currentSpace, handleCallEnded]);
+
+
+  const initializeCall = useCallback(async () => {
     try {
-      // If direct space OR force start OR already live, try to join/start the call
-      if (spaceType === 'direct' || forceStart || currentSpace?.is_live) {
-        setCallStatus('connecting');
+      setCallStatus('connecting');
+      const currentUserId = parseInt(user?.id?.toString() || '0', 10);
+
+      let callData: any;
+
+      if (isJoiningExisting && existingCallId) {
+        // ─── CALLEE PATH: join an existing call (do NOT call startCall again) ───
+        console.log('📞 [ImmersiveCallView] Joining existing call:', existingCallId);
+        const joinResponse = await collaborationService.joinWebRTCCall(spaceId);
+        const activeUsers = joinResponse.call?.users || [];
+
+        callData = { id: existingCallId, initiator_id: null };
+        setCallId(existingCallId);
+        setIsInitiator(false); // Callee is never the initiator
+
+        const participantList = activeUsers
+          .filter((u: any) => u.id !== currentUserId)
+          .map((u: any) => ({
+            id: u.id.toString(),
+            user_id: u.id,
+            name: u.name || 'Participant',
+            avatar: u.profile_photo,
+            role: 'participant',
+            isMuted: false,
+            hasVideo: false,
+            isSharingScreen: false,
+            joinedAt: Date.now()
+          }));
+        setParticipants(participantList);
+
+        await webRTCService.initialize(currentUserId);
+        await webRTCService.joinCall(spaceId, existingCallId, false);
+
+        const stream = await webRTCService.getLocalStream(hasVideo, true);
+        setLocalStream(stream);
+        setCallStatus('connected');
+
+        durationInterval.current = setInterval(() => {
+          setCallDuration(prev => prev + 1);
+        }, 1000);
+
+        setupCallbacks();
+        webRTCService.syncParticipants(activeUsers.map((u: any) => u.id.toString()));
+        await webRTCService.notifyCallActive();
+
+      } else {
+        // ─── CALLER PATH: start a new call (original logic) ───
         const response = await collaborationService.startCall(spaceId, (initialCallType as any) || 'video');
-        const callData = response.call || response;
+        callData = response.call || response;
         if (!callData?.id) throw new Error('Failed to get call information');
 
-        const currentUserId = parseInt(user?.id?.toString() || '0', 10);
         if (callData) {
           setCallId(callData.id);
           const initiatorId = callData.initiator_id || callData.initiator?.id;
@@ -383,11 +482,9 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({ spaceId, spaceTyp
           console.log(`📞 Call Initiator ID: ${initiatorId}, Current User ID: ${currentUserId}, isInitiator: ${currentIsInitiator}`);
           setIsInitiator(currentIsInitiator);
 
-          // ✅ NEW: Join the call via API to track active state and get active users
           const joinResponse = await collaborationService.joinWebRTCCall(spaceId);
           const activeUsers = joinResponse.call?.users || [];
 
-          // ✅ Populate participants list with ACTIVE users from the backend
           const participantList = activeUsers
             .filter((u: any) => u.id !== currentUserId)
             .map((u: any) => ({
@@ -400,82 +497,84 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({ spaceId, spaceTyp
               hasVideo: false,
               isSharingScreen: false,
               joinedAt: Date.now()
-            }));
+          }));
           setParticipants(participantList);
 
           await webRTCService.initialize(currentUserId);
           await webRTCService.joinCall(spaceId, callData.id, currentIsInitiator);
 
-          // ✅ Proactively sync handshakes with existing participants
-          webRTCService.syncParticipants(activeUsers.map((u: any) => u.id.toString()));
+          const stream = await webRTCService.getLocalStream(hasVideo, true);
+          setLocalStream(stream);
+          setCallStatus('connected');
 
+          durationInterval.current = setInterval(() => {
+            setCallDuration(prev => prev + 1);
+          }, 1000);
+
+          setupCallbacks();
+          webRTCService.syncParticipants(activeUsers.map((u: any) => u.id.toString()));
           await webRTCService.notifyCallActive();
         }
-
-        const stream = await webRTCService.getLocalStream(hasVideo, true);
-        setLocalStream(stream);
-        setCallStatus('connected');
-
-        durationInterval.current = setInterval(() => {
-          setCallDuration(prev => prev + 1);
-        }, 1000);
-
-        setupCallbacks();
-      } else {
-        setCallStatus('waiting');
-        setParticipants([]);
       }
     } catch (error) {
       console.error('Error initializing call:', error);
       Alert.alert('Error', 'Failed to start call. Please try again.');
       router.back();
     }
-  }, [spaceId, spaceType, initialCallType, user, hasVideo, currentSpace, isInitiator, setupCallbacks, webRTCService, collaborationService, router]);
+  }, [spaceId, spaceType, initialCallType, isJoiningExisting, existingCallId, user, hasVideo, currentSpace, isInitiator, setupCallbacks, webRTCService, collaborationService, router]);
 
+  // Only initialize once on mount or spaceId change
   useEffect(() => {
     initializeCall();
-    return () => cleanup();
-  }, [spaceId, initializeCall, cleanup]);
+    // No longer cleaning up immediately to keep discovery active
+  }, [spaceId]);
 
+  // Lobby & Presence Subscription
   useEffect(() => {
-    if (callStatus === 'waiting') {
-      // Use the official service subscription to ensure correct presence-channel binding
+    if (callStatus === 'waiting' || callStatus === 'connecting' || callStatus === 'connected') {
+      console.log(`🔌 Subscribing to lobby presence for discovery: ${spaceId} (status: ${callStatus})`);
+      
       collaborationService.subscribeToSpace(spaceId, 'immersive-call-lobby', {
         onCallStarted: (data: any) => {
           console.log('📡 Call started event received in lobby:', data);
           if (data.call?.id) {
             setCallId(data.call.id);
-            initializeCall(true); // Re-run initialization to join the now-active call
+            initializeCall();
           }
         },
         onCallEnded: () => {
+          console.log('📞 [Lobby] call.ended received — closing ImmersiveCallView');
           setCallStatus('ended');
           cleanup();
+          // ✔️ Clear global activeCall so RootCallOverlay unmounts
+          globalEndCall();
         },
         onParticipantUpdate: (data: any) => {
-          // Refresh participant previews if they join/leave while in waiting room
-          if (currentSpace?.participants) {
-            const participantList = currentSpace.participants.map((p: any) => ({
+          if (data.participants) {
+            const participantList = data.participants.map((p: any) => ({
               id: p.user_id?.toString() || p.id?.toString(),
               user_id: p.user_id || p.id,
-              name: p.user?.name || p.name || 'Participant',
+              name: p.user?.name || p.name || `User ${p.id}`,
               avatar: p.user?.profile_photo || p.profile_photo,
-              role: p.role || 'participant',
+              stream: null,
               isMuted: false,
               hasVideo: false,
               isSharingScreen: false,
               joinedAt: Date.now()
             }));
-            setParticipants(participantList);
+            
+            // We'll filter in the render or a separate effect to keep this subscription stable
+            setWaitingParticipants(participantList);
           }
         }
       });
-
-      return () => {
-        collaborationService.unsubscribeFromSpace(spaceId, 'immersive-call-lobby');
-      };
     }
-  }, [callStatus, spaceId, initializeCall, currentSpace, collaborationService, cleanup]);
+
+    return () => {
+      console.log(`📡 Cleaning up lobby subscription for ${spaceId}`);
+      collaborationService.unsubscribeFromSpace(spaceId, 'immersive-call-lobby');
+    };
+  }, [spaceId, initializeCall, cleanup]); // Removed unstable dependencies like participants/callStatus
 
   // ✅ Ghost Participant Pruning
   // Periodically check for participants who were pre-populated but never connected
@@ -483,7 +582,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({ spaceId, spaceTyp
     if (callStatus !== 'connected') return;
 
     const PRUNING_INTERVAL = 5000;
-    const STALE_TIMEOUT = 15000;
+    const STALE_TIMEOUT = 30000; // Increased to 30s for stability
 
     const interval = setInterval(() => {
       const now = Date.now();
@@ -534,22 +633,22 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({ spaceId, spaceTyp
   }, [hasVideo]);
 
   const toggleScreenShare = useCallback(async () => {
-    if (Platform.OS !== 'web') {
-      Alert.alert('Screen Sharing', 'Only available on web');
-      return;
-    }
     try {
       if (!isSharingScreen) {
         await webRTCService.startScreenShare();
         setIsSharingScreen(true);
+        if (Platform.OS !== 'web') {
+          try { await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch { }
+        }
       } else {
         await webRTCService.stopScreenShare();
         setIsSharingScreen(false);
       }
     } catch (error) {
       console.error('Screen share error:', error);
+      // NOTE: Error alerts are handled internally by webRTCService for cross-platform consistency
     }
-  }, [isSharingScreen]);
+  }, [isSharingScreen, webRTCService]);
 
   const flipCamera = useCallback(async () => {
     if (isWeb) {
@@ -571,8 +670,19 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({ spaceId, spaceTyp
     if (callId && spaceType === 'direct') {
       await collaborationService.endCall(spaceId, callId);
     }
-    router.replace({ pathname: '/(spaces)/[id]', params: { id: spaceId } });
-  }, [callId, spaceId, spaceType, cleanup]);
+    // ✅ Signal to global context that the call has ended to unmount RootCallOverlay
+    globalEndCall();
+  }, [callId, spaceId, spaceType, cleanup, globalEndCall]);
+
+  const toggleHandRaise = useCallback(async () => {
+    const newState = !handRaised;
+    setHandRaised(newState);
+    await webRTCService.toggleHandRaise(newState);
+    if (Platform.OS !== 'web') {
+      try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch { }
+    }
+  }, [handRaised]);
+
 
   // Optimized renderer for participants
   const renderParticipantTile = useCallback((item: Participant, index: number) => {
@@ -595,64 +705,167 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({ spaceId, spaceTyp
         ]}
       >
         <VideoTile
-          participant={item}
-          isLocal={isLocal}
-          isSpeaking={isSpeaking}
-          isMuted={item.isMuted}
-          hasVideo={item.hasVideo}
-          stream={item.stream}
-          videoRefs={videoRefs}
-          name={item.name}
-          avatar={item.avatar}
-        />
+        participant={item}
+        isLocal={isLocal}
+        isSpeaking={isSpeaking}
+        isHandRaised={isLocal ? handRaised : item.handRaised}
+        isMuted={item.isMuted}
+        hasVideo={item.hasVideo}
+        stream={item.stream}
+        videoRefs={videoRefs}
+        name={item.name}
+        avatar={item.avatar}
+      />
       </View>
     );
-  }, [gridConfig, activeSpeaker]);
+  }, [gridConfig, activeSpeaker, handRaised]);
+
 
   const waitingRoom = useMemo(() => (
     <View style={styles.waitingContainer}>
-      <ReAnimated.View style={[styles.waitingIcon, pulseAnimation]}>
-        <LinearGradient colors={['#667eea', '#764ba2']} style={styles.iconGradient}>
-          <Ionicons name="videocam" size={48} color="#fff" />
-        </LinearGradient>
-      </ReAnimated.View>
-      <Text style={styles.waitingTitle}>Ready to Connect</Text>
+    <View style={styles.waitingIcon}>
+      <Ionicons name="videocam" size={48} color="#999" />
+    </View>
+      <Text style={styles.waitingTitle}>Connecting...</Text>
       <Text style={styles.waitingText}>
-        {spaceType === 'direct' ? 'Connecting...' : 'No active call. Start one!'}
+        Please wait while we set up your secure connection
       </Text>
-      {spaceType !== 'direct' && (
-        <TouchableOpacity style={styles.startCallButton} onPress={() => initializeCall(true)}>
-          <LinearGradient colors={['#4CAF50', '#45a049']} style={styles.startCallGradient}>
-            <Ionicons name="call" size={20} color="#fff" />
-            <Text style={styles.startCallText}>Start Call</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      )}
       <View style={styles.participantsPreview}>
-        <Text style={styles.previewTitle}>In this space ({participants.length})</Text>
+        <Text style={styles.previewTitle}>In this space ({waitingParticipants?.filter(p => !participants.some(active => active.id === p.id)).length || 0})</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {participants.slice(0, 10).map((p, i) => (
-            <View key={p.id} style={styles.previewParticipant}>
-              <Avatar source={p.avatar} size={50} name={p.name} />
-              <Text style={styles.previewName} numberOfLines={1}>{p.name}</Text>
-            </View>
-          ))}
-          {participants.length > 10 && (
+          {waitingParticipants
+            ?.filter(p => !participants.some(active => active.id === p.id))
+            .slice(0, 10).map((p) => (
+              <View key={p.id} style={styles.previewParticipant}>
+                <Avatar source={p.avatar} size={50} name={p.name} />
+                <Text style={styles.previewName} numberOfLines={1}>{p.name}</Text>
+              </View>
+            ))}
+          {(waitingParticipants?.filter(p => !participants.some(active => active.id === p.id)).length || 0) > 10 && (
             <View style={styles.previewMore}>
-              <Text style={styles.previewMoreText}>+{participants.length - 10}</Text>
+              <Text style={styles.previewMoreText}>+{(waitingParticipants?.filter(p => !participants.some(active => active.id === p.id)).length || 0) - 10}</Text>
             </View>
           )}
         </ScrollView>
       </View>
     </View>
-  ), [callStatus, spaceType, participants, pulseAnimation, initializeCall]);
+  ), [callStatus, spaceType, participants, pulseAnimation, initializeCall, waitingParticipants]);
+
+  const renderMinimizedUI = () => {
+    const mainParticipant = activeSpeaker ? participants.find(p => p.id === activeSpeaker) || allParticipants[0] : allParticipants[0];
+
+    return (
+      <View style={styles.minimizedContent}>
+        <VideoTile
+          participant={mainParticipant}
+          isLocal={mainParticipant.id === 'local'}
+          isSpeaking={activeSpeaker === mainParticipant.id}
+          isMuted={mainParticipant.isMuted}
+          hasVideo={mainParticipant.hasVideo}
+          stream={mainParticipant.stream}
+          videoRefs={videoRefs}
+          name={mainParticipant.name}
+          avatar={mainParticipant.avatar}
+        />
+        <View style={styles.minimizedOverlay}>
+          <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.minimizedGradient}>
+            <View style={styles.minimizedHeader}>
+              <Ionicons name="expand" size={16} color="#fff" />
+              <Text style={styles.minimizedCount}>+{participants.length}</Text>
+            </View>
+          </LinearGradient>
+        </View>
+      </View>
+    );
+  };
+
+  const renderParticipantsModal = () => (
+    <View style={styles.modalOverlay}>
+      <BlurView intensity={100} tint="dark" style={styles.modalContainer}>
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>Participants ({allParticipants.length})</Text>
+          <TouchableOpacity onPress={() => setShowParticipantsModal(false)}>
+            <Ionicons name="close" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
+        <ScrollView style={styles.modalContent}>
+          {allParticipants.map(participant => (
+            <View key={participant.id} style={styles.participantRow}>
+              <View style={styles.participantInfo}>
+                <Avatar source={participant.avatar} size={40} name={participant.name} />
+                <View style={styles.participantText}>
+                  <Text style={styles.participantName}>
+                    {participant.name} {participant.id === 'local' ? '(You)' : ''}
+                  </Text>
+                  <Text style={styles.participantRole}>{participant.role}</Text>
+                </View>
+              </View>
+              <View style={styles.participantActions}>
+                <Ionicons 
+                  name={participant.isMuted ? "mic-off" : "mic"} 
+                  size={20} 
+                  color={participant.isMuted ? "#FF6B6B" : "#4CD964"} 
+                  style={styles.actionIcon}
+                />
+                <Ionicons 
+                  name={participant.hasVideo ? "videocam" : "videocam-off"} 
+                  size={20} 
+                  color={participant.hasVideo ? "#4CD964" : "#999"} 
+                />
+              </View>
+            </View>
+          ))}
+        </ScrollView>
+        <TouchableOpacity 
+          style={styles.inviteButton}
+          onPress={() => Alert.alert('Invite', 'Invitation feature coming soon')}
+        >
+          <Text style={styles.inviteButtonText}>Invite People</Text>
+        </TouchableOpacity>
+      </BlurView>
+    </View>
+  );
+
+  const renderMoreMenu = () => (
+    <TouchableOpacity 
+      style={styles.moreMenuOverlay} 
+      activeOpacity={1} 
+      onPress={() => setShowMoreMenu(false)}
+    >
+      <BlurView intensity={100} tint="dark" style={styles.moreMenuContainer}>
+        <View style={styles.moreMenuHeader}>
+          <View style={styles.dragHandle} />
+        </View>
+        <ScrollView horizontal={false} showsVerticalScrollIndicator={false}>
+          {[
+            { icon: "share-social", label: "Share Screen", onPress: toggleScreenShare, color: isSharingScreen ? "#007AFF" : "#fff" },
+            { icon: "hand-left", label: handRaised ? "Lower Hand" : "Raise Hand", onPress: toggleHandRaise, color: handRaised ? "#FFCC00" : "#fff" },
+            ...(!isWeb ? [{ icon: "camera-reverse", label: "Flip Camera", onPress: flipCamera, color: "#fff" }] : []),
+          ].map((item, idx) => (
+
+            <TouchableOpacity key={idx} style={styles.moreMenuItem} onPress={() => { item.onPress(); setShowMoreMenu(false); }}>
+              <View style={styles.moreMenuIconBox}>
+                <Ionicons name={item.icon as any} size={22} color={item.color} />
+              </View>
+              <Text style={[styles.moreMenuLabel, { color: item.color }]}>{item.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </BlurView>
+    </TouchableOpacity>
+  );
+
+  if (isMinimized) return renderMinimizedUI();
 
   return (
-    <SafeAreaView style={styles.container} onTouchStart={handleUserInteraction}>
+    <Animated.View style={[styles.container, { opacity: fadeAnim }]} onTouchStart={handleUserInteraction}>
       <StatusBar barStyle="light-content" />
 
       <Animated.View style={[styles.header, { opacity: controlsOpacity }]}>
-        <TouchableOpacity onPress={endCall} style={styles.backButton}>
+        <TouchableOpacity 
+          onPress={() => onToggleMinimize ? onToggleMinimize() : router.back()} 
+          style={styles.backButton}
+        >
           <BlurView intensity={80} style={styles.blurButton}>
             <Ionicons name="chevron-down" size={24} color="#fff" />
           </BlurView>
@@ -671,87 +884,127 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({ spaceId, spaceTyp
           </View>
         </View>
 
-        <TouchableOpacity style={styles.moreButton}>
-          <BlurView intensity={80} style={styles.blurButton}>
-            <Ionicons name="ellipsis-vertical" size={20} color="#fff" />
-          </BlurView>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity 
+            style={styles.headerIconButton}
+            onPress={() => setSelectedView(prev => prev === 'grid' ? 'speaker' : 'grid')}
+          >
+            <BlurView intensity={80} style={styles.blurButtonSmall}>
+              <Ionicons name={selectedView === 'grid' ? "person" : "grid"} size={18} color="#fff" />
+            </BlurView>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.headerIconButton}
+            onPress={() => setShowParticipantsModal(true)}
+          >
+            <BlurView intensity={80} style={styles.blurButtonSmall}>
+              <Ionicons name="people" size={18} color="#fff" />
+              {participants.length > 0 && (
+                <View style={styles.participantBadge}>
+                  <Text style={styles.participantBadgeText}>{participants.length + 1}</Text>
+                </View>
+              )}
+            </BlurView>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.moreButton} onPress={() => setShowMoreMenu(true)}>
+            <BlurView intensity={80} style={styles.blurButton}>
+              <Ionicons name="ellipsis-vertical" size={20} color="#fff" />
+            </BlurView>
+          </TouchableOpacity>
+        </View>
       </Animated.View>
 
       <View style={styles.content}>
-        {callStatus === 'waiting' ? waitingRoom : (
-          <ScrollView
-            contentContainerStyle={[
-              styles.gridContainer,
-              {
-                flexDirection: 'row',
-                flexWrap: 'wrap',
-                flex: 1,
-                alignContent: 'stretch'
-              }
-            ]}
-            showsVerticalScrollIndicator={false}
-          >
-            {allParticipants.map((p, index) => renderParticipantTile(p, index))}
-          </ScrollView>
-        )}
+        {callStatus === 'ended' ? null : (callStatus === 'waiting' ? waitingRoom : (
+          selectedView === 'grid' ? (
+            <ScrollView
+              contentContainerStyle={styles.gridContainer}
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.gridInner}>
+                {allParticipants.map((p, index) => renderParticipantTile(p, index))}
+              </View>
+            </ScrollView>
+          ) : (
+            <View style={styles.speakerView}>
+              <View style={styles.largeSpeakerContainer}>
+                {renderParticipantTile(
+                  allParticipants.find(p => p.id === activeSpeaker) || 
+                  allParticipants.find(p => p.id !== 'local') || 
+                  allParticipants[0], 
+                  0
+                )}
+              </View>
+              <View style={styles.smallParticipantsContainer}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {allParticipants
+                    .filter(p => p.id !== (activeSpeaker || allParticipants.find(p => p.id !== 'local')?.id || allParticipants[0].id))
+                    .map((p, index) => (
+                      <View key={p.id} style={styles.smallParticipantTile}>
+                        <VideoTile
+                          participant={p}
+                          isLocal={p.id === 'local'}
+                          isSpeaking={activeSpeaker === p.id}
+                          isMuted={p.isMuted}
+                          hasVideo={p.hasVideo}
+                          stream={p.stream}
+                          videoRefs={videoRefs}
+                          name={p.name}
+                          avatar={p.avatar}
+                        />
+                      </View>
+                    ))}
+                </ScrollView>
+              </View>
+            </View>
+          )
+        ))}
       </View>
 
       <Animated.View style={[styles.controlsContainer, { opacity: controlsOpacity }]}>
         <BlurView intensity={90} tint="dark" style={styles.controlsBlur}>
-          <View style={styles.viewSelector}>
-            <TouchableOpacity
-              style={[styles.viewButton, selectedView === 'grid' && styles.viewButtonActive]}
-              onPress={() => setSelectedView('grid')}
-            >
-              <Ionicons name="grid" size={18} color={selectedView === 'grid' ? '#fff' : '#999'} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.viewButton, selectedView === 'speaker' && styles.viewButtonActive]}
-              onPress={() => setSelectedView('speaker')}
-            >
-              <Ionicons name="person" size={18} color={selectedView === 'speaker' ? '#fff' : '#999'} />
-            </TouchableOpacity>
-          </View>
-
           <View style={styles.controlsRow}>
-            {[
-              { icon: isMuted ? "mic-off" : "mic", active: isMuted, onPress: toggleMute, label: isMuted ? 'Unmute' : 'Mute' },
-              { icon: hasVideo ? "videocam" : "videocam-off", active: !hasVideo, onPress: toggleVideo, label: hasVideo ? 'Video' : 'Off' },
-              { icon: isSharingScreen ? "close-circle" : "share-social", active: isSharingScreen, onPress: toggleScreenShare, label: isSharingScreen ? 'Stop' : 'Share' },
-            ].map((btn, idx) => (
-              <TouchableOpacity key={idx} style={[styles.controlButton, btn.active && styles.controlButtonActive]} onPress={btn.onPress}>
-                <LinearGradient colors={btn.active ? ['#FF6B6B', '#FF5252'] : ['#333', '#2a2a2a']} style={styles.controlGradient}>
-                  <Ionicons name={btn.icon as any} size={22} color="#fff" />
-                </LinearGradient>
-                <Text style={styles.controlLabel}>{btn.label}</Text>
-              </TouchableOpacity>
-            ))}
+            <TouchableOpacity 
+              style={[styles.controlButton, isMuted && styles.controlButtonActive]} 
+              onPress={toggleMute}
+            >
+              <LinearGradient 
+                colors={isMuted ? ['#FF6B6B', '#FF5252'] : ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']} 
+                style={styles.controlGradient}
+              >
+                <Ionicons name={isMuted ? "mic-off" : "mic"} size={24} color="#fff" />
+              </LinearGradient>
+              <Text style={styles.controlLabel}>{isMuted ? 'Unmute' : 'Mute'}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.controlButton, !hasVideo && styles.controlButtonActive]} 
+              onPress={toggleVideo}
+            >
+              <LinearGradient 
+                colors={!hasVideo ? ['#FF6B6B', '#FF5252'] : ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']} 
+                style={styles.controlGradient}
+              >
+                <Ionicons name={hasVideo ? "videocam" : "videocam-off"} size={24} color="#fff" />
+              </LinearGradient>
+              <Text style={styles.controlLabel}>{hasVideo ? 'Video' : 'Off'}</Text>
+            </TouchableOpacity>
 
             <TouchableOpacity style={[styles.controlButton, styles.endCallButton]} onPress={endCall}>
-              <LinearGradient colors={['#FF6B6B', '#FF5252']} style={styles.controlGradient}>
-                <Ionicons name="call" size={22} color="#fff" />
+              <LinearGradient colors={['#FF3B30', '#D0021B']} style={styles.controlGradientLarge}>
+                <Ionicons name="call" size={28} color="#fff" />
               </LinearGradient>
               <Text style={[styles.controlLabel, styles.endCallLabel]}>Leave</Text>
             </TouchableOpacity>
           </View>
-
-          <View style={styles.additionalControls}>
-            {[
-              ...(!isWeb ? [{ icon: "camera-reverse", label: "Flip", onPress: flipCamera }] : []),
-              { icon: "chatbubble", label: "Chat", onPress: () => Alert.alert('Chat', 'Coming soon') },
-              { icon: "hand-left", label: "Raise", onPress: () => Alert.alert('Raise Hand', 'Hand raised!') },
-              { icon: "people", label: "Invite", onPress: () => Alert.alert('Invite', 'Share link to invite') },
-            ].map((btn, idx) => (
-              <TouchableOpacity key={idx} style={styles.additionalButton} onPress={btn.onPress}>
-                <Ionicons name={btn.icon as any} size={18} color="#fff" />
-                <Text style={styles.additionalText}>{btn.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
         </BlurView>
       </Animated.View>
-    </SafeAreaView>
+
+      {showParticipantsModal && renderParticipantsModal()}
+      {showMoreMenu && renderMoreMenu()}
+    </Animated.View>
   );
 };
 
@@ -827,8 +1080,17 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   previewMoreText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  gridContainer: { padding: 8 },
-  gridItem: { margin: 4, borderRadius: 16, overflow: 'hidden', backgroundColor: '#1a1a1a' },
+  gridContainer: { 
+    flex: 1, 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    backgroundColor: '#000' 
+  },
+  gridItem: { 
+    backgroundColor: '#1a1a1a',
+    overflow: 'hidden'
+  },
+
   videoTile: { flex: 1, position: 'relative', backgroundColor: '#2a2a2a' },
   videoElement: { width: '100%', height: '100%', objectFit: 'cover' },
   avatarTile: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -848,21 +1110,261 @@ const styles = StyleSheet.create({
   tileStatus: { flexDirection: 'row', gap: 6 },
   speakingDot: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#4CAF50', justifyContent: 'center', alignItems: 'center' },
   speakingPulse: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' },
+  handBadge: {
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 12,
+    padding: 4,
+    marginRight: 4,
+    borderWidth: 1,
+    borderColor: '#FFCC00',
+  },
+
+  gridInner: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    width: '100%', 
+    height: '100%' 
+  },
+  speakerView: { flex: 1 },
+  largeSpeakerContainer: { flex: 0.7, marginBottom: 8 },
+  smallParticipantsContainer: { height: 120, paddingVertical: 8 },
+  smallParticipantTile: { width: 140, height: 100, marginRight: 8, borderRadius: 12, overflow: 'hidden' },
+  controlButtonActive: { backgroundColor: 'rgba(255,255,255,0.2)' },
   controlsContainer: { position: 'absolute', bottom: 0, left: 0, right: 0 },
+
   controlsBlur: { paddingVertical: 16, paddingHorizontal: 20, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
   viewSelector: { flexDirection: 'row', justifyContent: 'center', marginBottom: 16, gap: 8 },
   viewButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
   viewButtonActive: { backgroundColor: '#007AFF' },
-  controlsRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 16 },
-  controlButton: { alignItems: 'center' },
-  controlGradient: { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', ...createShadow({ width: 0, height: 2, opacity: 0.3, radius: 4, elevation: 3 }) },
-  controlButtonActive: { opacity: 0.9 },
-  controlLabel: { color: '#fff', fontSize: 11, marginTop: 6 },
-  endCallButton: { marginLeft: 8 },
-  endCallLabel: { color: '#FF6B6B' },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerIconButton: {
+    marginRight: 8,
+  },
+  blurButtonSmall: {
+    padding: 8,
+    borderRadius: 20,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  participantBadge: {
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    marginLeft: 4,
+  },
+  participantBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  controlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  controlButton: {
+    alignItems: 'center',
+    marginHorizontal: 15,
+  },
+  controlGradient: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...createShadow({ height: 4, radius: 10, opacity: 0.4 }),
+  },
+  controlGradientLarge: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...createShadow({ height: 6, radius: 15, opacity: 0.5 }),
+  },
+  controlLabel: {
+    color: '#fff',
+    fontSize: 12,
+    marginTop: 8,
+    fontWeight: '500',
+  },
+  endCallButton: {
+    marginLeft: 25,
+  },
+  endCallLabel: {
+    color: '#FF3B30',
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+    zIndex: 1000,
+  },
+  modalContainer: {
+    height: '70%',
+    width: '100%',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    overflow: 'hidden',
+    padding: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+  },
+  modalTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  modalContent: {
+    flex: 1,
+  },
+  participantRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  participantInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  participantText: {
+    marginLeft: 12,
+  },
+  participantName: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  participantRole: {
+    color: '#999',
+    fontSize: 12,
+    marginTop: 2,
+    textTransform: 'capitalize',
+  },
+  participantActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionIcon: {
+    marginRight: 15,
+  },
+  inviteButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 12,
+    paddingVertical: 15,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  inviteButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  moreMenuOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'flex-end',
+    zIndex: 1001,
+  },
+  moreMenuContainer: {
+    width: '100%',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    overflow: 'hidden',
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+  moreMenuHeader: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  dragHandle: {
+    width: 40,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  moreMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  moreMenuIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  moreMenuLabel: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
+  },
   additionalControls: { flexDirection: 'row', justifyContent: 'space-around', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', paddingTop: 16 },
   additionalButton: { alignItems: 'center', paddingVertical: 8 },
   additionalText: { color: '#fff', fontSize: 10, marginTop: 4 },
+  // Minimized PiP Styles
+  minimizedContainer: {
+    position: 'absolute',
+    width: 150,
+    height: 220,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#000',
+    zIndex: 9999,
+    ...createShadow({
+      width: 0,
+      height: 4,
+      opacity: 0.5,
+      radius: 8,
+      elevation: 10,
+    }),
+  },
+  minimizedTouch: {
+    flex: 1,
+  },
+  minimizedOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+  },
+  minimizedGradient: {
+    height: '40%',
+    padding: 8,
+    justifyContent: 'flex-end',
+  },
+  minimizedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  minimizedCount: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  minimizedContent: {
+    flex: 1,
+  },
 });
 
 export default ImmersiveCallView;

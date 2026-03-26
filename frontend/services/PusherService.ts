@@ -504,11 +504,12 @@ class PusherService {
 
       // Call started
       channel.bind('call.started', (data: any) => {
-        console.log('📞 Call started notification:', data);
+        console.log('📞 [PusherService] call.started RAW payload:', JSON.stringify(data));
+
         const notification = {
           type: 'call_started',
           title: 'Incoming Call',
-          message: `${data.user?.name || 'Someone'} started a ${data.call?.type || 'video'} call in "${data.space?.title}"`,
+          message: `${data.user?.name || 'Someone'} started a ${data.call?.type || 'video'} call in "${data.space?.title || data.space_id}"`,
           data: data,
           spaceId: data.space_id,
           callId: data.call?.id,
@@ -517,7 +518,41 @@ class PusherService {
           createdAt: new Date()
         };
         console.log('📞 SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification); // ✅ ADD THIS LINE
+        onNotification(notification);
+
+        // ─── Incoming Call UI ─────────────────────────────────────────────
+        // This event fires on the PRIVATE user channel (private-user.{userId}),
+        // so it is already scoped to this specific user only.
+        // We emit to IncomingCallModal for ALL calls where the caller is someone else.
+        // The bridge hook (useIncomingCallBridge) filters out own calls and active calls.
+        const callerId: number = data.user?.id || data.caller_id || 0;
+        const spaceId: string  = data.space_id || data.space?.id || '';
+        const callId: string   = data.call?.id  || data.call_id  || '';
+        const callType         = (data.call?.type || data.call_type || 'video') as 'audio' | 'video';
+        const spaceType: string = data.space?.space_type || data.space_type || 'direct';
+
+        console.log('📞 [PusherService] Parsed call data:', { callerId, spaceId, callId, callType, spaceType });
+
+        if (callerId && spaceId) {
+          try {
+            const CollaborationService = require('@/services/ChatScreen/CollaborationService').default;
+            const cs = CollaborationService.getInstance();
+            console.log('📞 [PusherService] Calling emitIncomingCall...');
+            cs.emitIncomingCall({
+              callId,
+              spaceId,
+              callerId,
+              callerName:   data.user?.name || data.caller_name || 'Unknown',
+              callerAvatar: data.user?.profile_photo || undefined,
+              callType,
+              spaceType,
+            });
+          } catch (e) {
+            console.warn('📞 [PusherService] Could not emit incoming call event:', e);
+          }
+        } else {
+          console.warn('📞 [PusherService] Missing callerId or spaceId — not emitting incoming call', { callerId, spaceId });
+        }
       });
 
       // ✅ ADDED: space.message (used by SpaceMessageSent event)

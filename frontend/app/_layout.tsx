@@ -24,8 +24,18 @@ import ModalManager from '@/components/ModalManager';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Toast } from '@/components/Shared/Toast';
+import { CallProvider } from '@/context/CallContext';
+import { RootCallOverlay } from '@/components/ChatScreen/RootCallOverlay';
+import { IncomingCallModal } from '@/components/ChatScreen/IncomingCallModal';
+import { useIncomingCallBridge } from '@/hooks/useIncomingCallBridge';
 
 SplashScreen.preventAutoHideAsync();
+
+/** Null-rendering child that activates incoming-call listening inside CallProvider */
+function IncomingCallBridge() {
+  useIncomingCallBridge();
+  return null;
+}
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -136,7 +146,7 @@ export default function RootLayout() {
       pathname?.startsWith(route)
     );
 
-    const isGuestAccess = pathname?.startsWith('/spaces/') || pathname?.startsWith('/(spaces)/') || segments.includes('(spaces)');
+    const isGuestAccess = pathname?.startsWith('/spaces/') || pathname?.startsWith('/(spaces)/') || (segments as string[]).includes('(spaces)');
 
     if (!user) {
       if (isGuestAccess) return; // Allow unauthenticated guest access
@@ -251,59 +261,65 @@ export default function RootLayout() {
     >
       <SafeAreaProvider>
         <AuthContext.Provider value={{ user, setUser, logout }}>
-          <ModalProvider>
-            <ProfileViewProvider>
-              {/* Stack must be the last child to properly handle gestures */}
-              <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
-                <Stack screenOptions={{
-                  headerShown: false,
-                  animation: 'none',
-                  gestureEnabled: true
-                }}>
-                  {/* Define ALL screens statically - no conditional rendering */}
-                  <Stack.Screen
-                    name="LoginScreen"
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen
-                    name="RegisterScreen"
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen
-                    name="ForgotPasswordScreen"
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen
-                    name="ResetPasswordScreen"
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen
-                    name="VerificationScreen"
-                    options={{ headerShown: false }}
-                  />
+          <CallProvider>
+            {/* Bridge: wires CollaborationService → CallContext for incoming calls */}
+            <IncomingCallBridge />
+            <ModalProvider>
+              <ProfileViewProvider>
+                {/* Stack must be the last child to properly handle gestures */}
+                <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
+                  <Stack screenOptions={{
+                    headerShown: false,
+                    animation: 'none',
+                    gestureEnabled: true
+                  }}>
+                    {/* Define ALL screens statically - no conditional rendering */}
+                    <Stack.Screen
+                      name="LoginScreen"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="RegisterScreen"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="ForgotPasswordScreen"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="ResetPasswordScreen"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="VerificationScreen"
+                      options={{ headerShown: false }}
+                    />
 
-                  <Stack.Screen
-                    name="(tabs)"
-                    options={{ headerShown: false }}
-                  />
+                    <Stack.Screen
+                      name="(tabs)"
+                      options={{ headerShown: false }}
+                    />
 
-                  <Stack.Screen
-                    name="chatbotTraining"
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen
-                    name="moderation/index"
-                    options={{ headerShown: false }}
-                  />
-                </Stack>
-              </SafeAreaView>
+                    <Stack.Screen
+                      name="chatbotTraining"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="moderation/index"
+                      options={{ headerShown: false }}
+                    />
+                  </Stack>
+                </SafeAreaView>
 
-              {/* Modals render above Stack */}
-              <GlobalModals />
-              <ModalManager />
-              <Toast />
-            </ProfileViewProvider>
-          </ModalProvider>
+                {/* Modals render above Stack */}
+                <GlobalModals />
+                <ModalManager />
+                <RootCallOverlay />
+                <IncomingCallModal />
+                <Toast />
+              </ProfileViewProvider>
+            </ModalProvider>
+          </CallProvider>
         </AuthContext.Provider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

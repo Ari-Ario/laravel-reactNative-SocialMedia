@@ -1091,6 +1091,45 @@ class CollaborationService {
     }
   }
 
+  // ─── Incoming Call: Reject API ──────────────────────────────────────────────
+  async rejectCall(spaceId: string, callId: string): Promise<void> {
+    try {
+      await axios.post(`${this.baseURL}/spaces/${spaceId}/call/${callId}/reject`, {}, {
+        headers: await this.getHeaders(),
+      });
+      console.log('📞 Call rejected via API');
+    } catch (error) {
+      // Rejection is best-effort; swallow errors so UI isn't blocked
+      console.warn('📞 Could not notify backend of call rejection (non-fatal):', error);
+    }
+  }
+
+  // ─── Incoming Call: Client-side observer pattern ────────────────────────────
+  private incomingCallListeners: Array<(data: any) => void> = [];
+
+  /**
+   * Register a callback to be notified when a `call.started` event arrives on
+   * the user's private Pusher channel and concerns a direct space call meant
+   * for this user.  Called by PusherService after it receives `call.started`.
+   */
+  onIncomingCall(callback: (data: any) => void): void {
+    if (!this.incomingCallListeners.includes(callback)) {
+      this.incomingCallListeners.push(callback);
+    }
+  }
+
+  offIncomingCall(callback: (data: any) => void): void {
+    this.incomingCallListeners = this.incomingCallListeners.filter(cb => cb !== callback);
+  }
+
+  /** Called internally (by PusherService notification handler) */
+  emitIncomingCall(data: any): void {
+    console.log('📞 Emitting incoming call to', this.incomingCallListeners.length, 'listener(s)');
+    this.incomingCallListeners.forEach(cb => {
+      try { cb(data); } catch (e) { console.error('incomingCall listener error:', e); }
+    });
+  }
+
   async toggleScreenShare(spaceId: string, isSharing: boolean): Promise<void> {
     try {
       await axios.put(`${this.baseURL}/spaces/${spaceId}/screen-share`, {
