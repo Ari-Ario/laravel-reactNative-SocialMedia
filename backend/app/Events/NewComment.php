@@ -4,6 +4,7 @@ namespace App\Events;
 
 use App\Models\User;
 use Illuminate\Broadcasting\Channel;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -49,7 +50,7 @@ class NewComment extends LaravelNotification implements ShouldBroadcast
         ];
 
         if ($this->postOwnerId != auth()->id()) {
-            $channels[] = new Channel('user.' . $this->postOwnerId);
+            $channels[] = new PrivateChannel('user.' . $this->postOwnerId);
         }
 
         return $channels;

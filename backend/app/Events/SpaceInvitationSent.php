@@ -6,6 +6,7 @@ namespace App\Events;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PresenceChannel;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
@@ -33,8 +34,8 @@ class SpaceInvitationSent implements ShouldBroadcast
     public function broadcastOn()
     {
         $channel = 'user.' . $this->invitedUserId;
-        \Log::info("📡 Broadcasting SpaceInvitationSent on PUBLIC channel: " . $channel);
-        return new \Illuminate\Broadcasting\Channel($channel);
+        \Log::info("📡 Broadcasting SpaceInvitationSent on PRIVATE channel: " . $channel);
+        return new PrivateChannel($channel);
     }
 
     public function broadcastAs()

@@ -56,8 +56,8 @@ class ReportController extends Controller
 
             // 2. Perform AI Content Analysis (Fact-Check & Morality)
             $check = $this->moderationEngine->analyzeContent(
-                $content['text'], 
-                $request->type, 
+                $content['text'],
+                $request->type,
                 $request->targetId,
                 false // Disable auto-report since we are creating one manually below
             );
@@ -71,7 +71,7 @@ class ReportController extends Controller
 
             // 4. Determine Severity & Create/Update Report
             $severity = $this->calculateSeverity($check, $request->isUrgent);
-            
+
             // Check for existing report by this user on this target
             $report = ModerationReport::where('reporter_id', auth()->id())
                 ->where('target_type', $request->type)
@@ -80,7 +80,7 @@ class ReportController extends Controller
                         $query->where('target_id', $request->targetId);
                     } else {
                         $query->where('target_id', 0)
-                              ->where('metadata->actual_target_id', $request->targetId);
+                            ->where('metadata->actual_target_id', $request->targetId);
                     }
                 })
                 ->first();
@@ -107,15 +107,15 @@ class ReportController extends Controller
                 $reportData['report_id'] = 'REP-' . strtoupper(Str::random(4)) . '-' . rand(1000, 9999);
                 $reportData['reporter_id'] = $request->isAnonymous ? null : auth()->id();
                 $reportData['target_type'] = $request->type;
-                $reportData['target_id'] = is_numeric($request->targetId) ? (int)$request->targetId : 0;
-                
+                $reportData['target_id'] = is_numeric($request->targetId) ? (int) $request->targetId : 0;
+
                 if (!is_numeric($request->targetId)) {
                     $reportData['metadata']['actual_target_id'] = $request->targetId;
                 }
-                
+
                 $report = ModerationReport::create($reportData);
-                $message = $report->status === 'dismissed' 
-                    ? 'Report flagged for potential bias and suppressed.' 
+                $message = $report->status === 'dismissed'
+                    ? 'Report flagged for potential bias and suppressed.'
                     : 'Report submitted successfully for AI review.';
             }
 
@@ -171,7 +171,7 @@ class ReportController extends Controller
                     $query->where('target_id', $request->targetId);
                 } else {
                     $query->where('target_id', 0)
-                          ->where('metadata->actual_target_id', $request->targetId);
+                        ->where('metadata->actual_target_id', $request->targetId);
                 }
             })
             ->first();
@@ -197,6 +197,10 @@ class ReportController extends Controller
                 $target = User::find($id);
                 $text = $target ? ($target->bio ?? $target->name ?? '') : '';
                 break;
+            case 'user':
+                $target = User::find($id);
+                $text = $target ? ($target->user ?? $target->name ?? '') : '';
+                break;
             case 'comment':
                 $target = Comment::find($id);
                 $text = $target ? ($target->content ?? '') : '';
@@ -216,16 +220,19 @@ class ReportController extends Controller
 
     private function calculateSeverity($check, $isUrgent)
     {
-        if ($check->malicious_intent_score > 0.9) return 'critical';
-        if ($check->malicious_intent_score > 0.6 || $isUrgent) return 'high';
-        if ($check->fact_score < 0.4) return 'medium';
+        if ($check->malicious_intent_score > 0.9)
+            return 'critical';
+        if ($check->malicious_intent_score > 0.6 || $isUrgent)
+            return 'high';
+        if ($check->fact_score < 0.4)
+            return 'medium';
         return 'low';
     }
 
     private function autoEscalate($report, $check)
     {
         $report->update(['status' => 'reviewing']);
-        
+
         // Find the user to restrict (the author of the content)
         $userIdToRestrict = null;
         if ($report->target_type === 'profile') {
@@ -283,7 +290,7 @@ class ReportController extends Controller
                     $query->where('target_id', $request->targetId);
                 } else {
                     $query->where('target_id', 0)
-                          ->where('metadata->actual_target_id', $request->targetId);
+                        ->where('metadata->actual_target_id', $request->targetId);
                 }
             })
             ->first();

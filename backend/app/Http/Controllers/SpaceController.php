@@ -2377,7 +2377,7 @@ public function endCall(Request $request, $id)
         
         try {
             $request->validate([
-                'query' => 'required|string|min:2|max:100',
+                'query' => 'required|string|min:1|max:100',
                 'types' => 'sometimes|array',
                 'types.*' => 'in:spaces,chats,contacts,messages,posts',
                 'limit' => 'sometimes|integer|min:1|max:100',

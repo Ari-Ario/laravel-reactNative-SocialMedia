@@ -4,6 +4,7 @@ namespace App\Events;
 
 use App\Models\User;
 use Illuminate\Broadcasting\Channel;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -35,7 +36,7 @@ class ChatbotTrainingNeeded implements ShouldBroadcast
         $adminUsers = User::where('ai_admin', 1)->get();
         
         foreach ($adminUsers as $admin) {
-            $channels[] = new Channel('user.' . $admin->id);
+            $channels[] = new PrivateChannel('user.' . $admin->id);
         }
         
         return $channels;

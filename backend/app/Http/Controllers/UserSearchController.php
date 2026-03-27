@@ -11,7 +11,7 @@ class UserSearchController extends Controller
     public function search(Request $request)
     {
         $request->validate([
-            'query' => 'required|string|min:2',
+            'query' => 'required|string|min:1',
             'limit' => 'sometimes|integer|min:1|max:50',
         ]);
 

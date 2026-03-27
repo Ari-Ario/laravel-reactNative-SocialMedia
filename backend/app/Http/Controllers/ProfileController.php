@@ -28,7 +28,7 @@ class ProfileController extends Controller
         ]);
 
         $user = Auth::user();
-        
+
         // Delete old photo if exists
         if ($user->profile_photo) {
             Storage::disk('public')->delete($user->profile_photo);
@@ -36,7 +36,8 @@ class ProfileController extends Controller
 
         // Store new photo
         $path = $request->file('profile_photo')->store(
-            'profile-photos/' . $user->id, 'public'
+            'profile-photos/' . $user->id,
+            'public'
         );
 
         // Update user record
@@ -53,7 +54,7 @@ class ProfileController extends Controller
     public function deletePhoto()
     {
         $user = Auth::user();
-        
+
         if ($user->profile_photo) {
             Storage::disk('public')->delete($user->profile_photo);
             $user->profile_photo = null;
@@ -114,9 +115,11 @@ class ProfileController extends Controller
                     'comments',
                     'reposts'
                 ])
-                ->withExists(['reposts as is_reposted' => function($query) use ($authUserId) {
-                    $query->where('user_id', $authUserId);
-                }])
+                ->withExists([
+                    'reposts as is_reposted' => function ($query) use ($authUserId) {
+                        $query->where('user_id', $authUserId);
+                    }
+                ])
                 ->latest()
                 ->paginate(10);
 
@@ -143,8 +146,20 @@ class ProfileController extends Controller
                     'name' => $user->name,
                     'last_name' => $user->last_name,
                     'username' => $user->username,
+                    'email' => $user->email,
                     'bio' => $user->bio,
+                    'birthday' => $user->birthday,
+                    'gender' => $user->gender,
                     'profile_photo' => $user->profile_photo,
+                    'cover_photo' => $user->cover_photo,
+                    'job_title' => $user->job_title,
+                    'company' => $user->company,
+                    'education' => $user->education,
+                    'website' => $user->website,
+                    'location' => $user->location,
+                    'phone' => $user->phone,
+                    'social_links' => $user->social_links,
+                    'is_private' => $user->is_private,
                     'posts_count' => $user->posts_count,
                     'followers_count' => $user->followers_count,
                     'following_count' => $user->following_count,
@@ -152,12 +167,18 @@ class ProfileController extends Controller
                         'follower_id' => $authUserId,
                         'following_id' => $userId
                     ])->exists(),
+                    'created_at' => $user->created_at,
+                    'media' => \App\Models\Media::where('user_id', $userId)
+                        ->where('type', 'image')
+                        ->latest()
+                        ->take(12)
+                        ->get(['id', 'file_path', 'type']),
                 ],
                 'posts' => $posts
             ]);
 
         } catch (\Exception $e) {
-            Log::error('PostController@show error: '.$e->getMessage());
+            Log::error('PostController@show error: ' . $e->getMessage());
             return response()->json(['error' => 'Server error'], 500);
         }
     }
@@ -210,55 +231,57 @@ class ProfileController extends Controller
         }
     }
 
-/**
- * Get users who follow the authenticated user
- * These are people who have this user in their 'following' list
- */
-public function followers(Request $request) {
-    $user = $request->user();
-    
-    // Using the CORRECT relationship from your User model
-    $followers = $user->followers()
-        ->get()
-        ->map(function ($follower) {
-            return [
-                'id' => $follower->id,
-                'name' => $follower->name,
-                'email' => $follower->email,
-                'username' => $follower->username,
-                'profile_photo' => $follower->profile_photo,
-                'is_online' => $follower->is_online ?? false,
-                'created_at' => $follower->pivot->created_at, // Get timestamp from pivot table
-            ];
-        });
-    
-    return response()->json($followers);
-}
+    /**
+     * Get users who follow the authenticated user
+     * These are people who have this user in their 'following' list
+     */
+    public function followers(Request $request)
+    {
+        $user = $request->user();
 
-/**
- * Get users that the authenticated user follows
- * These are people this user has in their 'following' list
- */
-public function following(Request $request) {
-    $user = $request->user();
-    
-    // Using the CORRECT relationship from your User model
-    $following = $user->following()
-        ->get()
-        ->map(function ($followed) {
-            return [
-                'id' => $followed->id,
-                'name' => $followed->name,
-                'email' => $followed->email,
-                'username' => $followed->username,
-                'profile_photo' => $followed->profile_photo,
-                'is_online' => $followed->is_online ?? false,
-                'created_at' => $followed->pivot->created_at, // Get timestamp from pivot table
-            ];
-        });
-    
-    return response()->json($following);
-}
+        // Using the CORRECT relationship from your User model
+        $followers = $user->followers()
+            ->get()
+            ->map(function ($follower) {
+                return [
+                    'id' => $follower->id,
+                    'name' => $follower->name,
+                    'email' => $follower->email,
+                    'username' => $follower->username,
+                    'profile_photo' => $follower->profile_photo,
+                    'is_online' => $follower->is_online ?? false,
+                    'created_at' => $follower->pivot->created_at, // Get timestamp from pivot table
+                ];
+            });
+
+        return response()->json($followers);
+    }
+
+    /**
+     * Get users that the authenticated user follows
+     * These are people this user has in their 'following' list
+     */
+    public function following(Request $request)
+    {
+        $user = $request->user();
+
+        // Using the CORRECT relationship from your User model
+        $following = $user->following()
+            ->get()
+            ->map(function ($followed) {
+                return [
+                    'id' => $followed->id,
+                    'name' => $followed->name,
+                    'email' => $followed->email,
+                    'username' => $followed->username,
+                    'profile_photo' => $followed->profile_photo,
+                    'is_online' => $followed->is_online ?? false,
+                    'created_at' => $followed->pivot->created_at, // Get timestamp from pivot table
+                ];
+            });
+
+        return response()->json($following);
+    }
 
     /**
      * Block a user
@@ -272,12 +295,12 @@ public function following(Request $request) {
             }
 
             $currentUser->blockedUsers()->syncWithoutDetaching([$userId]);
-            
+
             // Optional: Unfollow them automatically when blocking
             $currentUser->following()->detach($userId);
             $userToBlock = User::find($userId);
             if ($userToBlock) {
-                 $userToBlock->following()->detach($currentUser->id);
+                $userToBlock->following()->detach($currentUser->id);
             }
 
             // Find and delete direct space between both users real-time

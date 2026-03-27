@@ -3,6 +3,7 @@
 namespace App\Events;
 
 use Illuminate\Broadcasting\Channel;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -50,7 +51,7 @@ class NewReaction extends LaravelNotification implements ShouldBroadcast
         ];
 
         if ($this->postOwnerId != auth()->id()) {
-            $channels[] = new Channel('user.' . $this->postOwnerId); // For notifications to post owner
+            $channels[] = new PrivateChannel('user.' . $this->postOwnerId); // For notifications to post owner
         }
         return $channels;
     }

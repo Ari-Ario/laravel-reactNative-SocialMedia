@@ -3,6 +3,7 @@
 namespace App\Events;
 
 use Illuminate\Broadcasting\Channel;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -34,7 +35,7 @@ class CommentReaction implements ShouldBroadcast
         // ✅ FIX: Always broadcast to posts.global for real-time updates
         // Only send notifications if it's not the comment owner reacting
         if ($this->commentOwnerId != auth()->id()) {
-            $channels[] = new Channel('user.' . $this->commentOwnerId); // For notifications
+            $channels[] = new PrivateChannel('user.' . $this->commentOwnerId); // For notifications
         }
         
         return $channels;  

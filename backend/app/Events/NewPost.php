@@ -3,6 +3,7 @@
 namespace App\Events;
 
 use Illuminate\Broadcasting\Channel;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -45,7 +46,7 @@ class NewPost extends LaravelNotification implements ShouldBroadcast
 
         // Broadcast to all followers
         foreach ($this->followerIds as $followerId) {
-            $channels[] = new Channel('user.' . $followerId);
+            $channels[] = new PrivateChannel('user.' . $followerId);
         }
 
         return $channels;

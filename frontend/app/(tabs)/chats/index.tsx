@@ -16,6 +16,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import AuthContext from "@/context/AuthContext";
 import { usePostStore } from '@/stores/postStore';
 import EnhancedChatRow from '@/components/ChatScreen/EnhancedChatRow';
+import { useProfileView } from "@/context/ProfileViewContext";
 import { Ionicons } from '@expo/vector-icons';
 import CollaborationService, { CollaborationSpace, CollaborativeActivity } from '@/services/ChatScreen/CollaborationService';
 import * as Haptics from 'expo-haptics';
@@ -160,6 +161,7 @@ const ChatPage = () => {
   const collaborationService = CollaborationService.getInstance();
   const synchronicityEngine = SynchronicityEngine.getInstance();
   const { currentSpace } = useSpaceStore();
+  const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-50)).current;
@@ -874,6 +876,15 @@ const ChatPage = () => {
     };
 
     const handlePress = async () => {
+      // For global search results representing a person/contact, open profile preview
+      if (item.isSearchResult && (item.searchType === 'contact' || item.searchType === 'chat')) {
+        if (item.user_id) {
+          setProfileViewUserId(item.user_id);
+          setProfilePreviewVisible(true);
+          return;
+        }
+      }
+
       if (item.searchType === 'space') {
         router.push(`/(spaces)/${item.id}`);
       } else if (item.searchType === 'chat') {

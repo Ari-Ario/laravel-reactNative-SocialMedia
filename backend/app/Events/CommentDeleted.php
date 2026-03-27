@@ -3,6 +3,7 @@
 namespace App\Events;
 
 use Illuminate\Broadcasting\Channel;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -30,7 +31,7 @@ class CommentDeleted implements ShouldBroadcast
         ];
 
         if ($this->postOwnerId && $this->postOwnerId != auth()->id()) {
-            $channels[] = new Channel('user.' . $this->postOwnerId); // For post owner notifications
+            $channels[] = new PrivateChannel('user.' . $this->postOwnerId); // For post owner notifications
         }
 
         return $channels;

@@ -4,6 +4,7 @@ namespace App\Events;
 
 use App\Models\User;
 use Illuminate\Broadcasting\Channel;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -59,7 +60,7 @@ class PostDeleted extends LaravelNotification implements ShouldBroadcast
 
         // Broadcast to followers for notifications
         foreach ($this->followerIds as $followerId) {
-            $channels[] = new Channel('user.' . $followerId);
+            $channels[] = new PrivateChannel('user.' . $followerId);
         }
 
         return $channels;
