@@ -4,6 +4,16 @@ const { getDefaultConfig } = require('expo/metro-config');
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
-// Metro will handle platform-specific files automatically (.web.ts, .native.ts, etc.)
+// Add support for import.meta
+config.transformer = {
+  ...config.transformer,
+  minifierConfig: {
+    compress: {
+      drop_console: false,
+      // Keep import.meta
+      keep_infinity: true,
+    },
+  },
+};
 
 module.exports = config;
