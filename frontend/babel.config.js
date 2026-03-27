@@ -1,20 +1,17 @@
 module.exports = function (api) {
-  api.cache(true);
-  return {
-    presets: [
-      ['babel-preset-expo', {
-        jsxImportSource: 'react',
-      }]
-    ],
-    plugins: [
-      // Transform import.meta first
-      'babel-plugin-transform-import-meta',
-      // Reanimated must be last
-      'react-native-reanimated/plugin',
-    ],
-    assumptions: {
-      // Helps with import.meta transformation
-      setPublicClassFields: true,
-    },
-  };
+    api.cache(true);
+    return {
+        presets: ['babel-preset-expo'],
+        plugins: [
+            'babel-plugin-transform-import-meta',
+            'react-native-reanimated/plugin', // Required for Reanimated
+        ],
+        overrides: [
+            {
+                test: /\.(js|mjs|ts|tsx)$/,
+                include: /[\\/]node_modules[\\/]/,
+                plugins: ['babel-plugin-transform-import-meta'],
+            },
+        ],
+    };
 };
