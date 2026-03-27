@@ -52,7 +52,14 @@ return new class extends Migration
 
             $table->index(['conversation_id', 'created_at']);
         });
-
+        
+        // Add foreign key constraint to conversations table now that messages exists
+        Schema::table('conversations', function (Blueprint $table) {
+            $table->foreign('last_message_id')
+                  ->references('id')
+                  ->on('messages')
+                  ->nullOnDelete();
+        });
     }
 
     /**

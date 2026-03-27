@@ -50,6 +50,10 @@ return new class extends Migration
             $table->unsignedInteger('following_count')->default(0);
             $table->unsignedInteger('post_count')->default(0);
             
+            $table->json('custom_tabs')->nullable();
+            $table->string('theme_preference')->nullable()->default('light');
+            $table->string('locale')->nullable()->default('en');
+
             $table->rememberToken();
             $table->timestamps();
             $table->softDeletes(); // For account deletion

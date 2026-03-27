@@ -20,6 +20,7 @@ return new class extends Migration {
             $table->json('contribution_map')->nullable();
             $table->json('focus_areas')->nullable();
             $table->timestamp('last_active_at')->useCurrent();
+            $table->timestamp('last_read_at')->nullable();
             $table->json('cursor_state')->nullable();
             $table->json('audio_video_state')->nullable();
             $table->string('current_activity')->nullable();

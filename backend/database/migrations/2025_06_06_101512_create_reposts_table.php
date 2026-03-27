@@ -18,6 +18,22 @@ return new class extends Migration
             $table->timestamps();
             
             $table->unique(['user_id', 'post_id']);
+
+            $table->string('context_tag', 50)->nullable();
+            $table->text('personal_note')->nullable();
+            $table->unsignedBigInteger('collection_id')->nullable()->index();
+            $table->enum('visibility', ['public', 'followers', 'private'])->default('public');
+        });
+
+        Schema::create('repost_collections', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->string('name', 100);
+            $table->text('description')->nullable();
+            $table->string('cover_image')->nullable();
+            $table->timestamps();
+
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
         });
     }
 

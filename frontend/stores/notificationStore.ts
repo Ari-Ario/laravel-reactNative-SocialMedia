@@ -203,7 +203,7 @@ interface NotificationStore {
 
 // Helper to check if notification is follower type (existing)
 const isFollowerNotification = (type: string): boolean => {
-  return ['new_follower', 'user_unfollowed', 'new-follower', 'user-unfollowed', 'follow'].includes(type);
+  return ['new_follower', 'user_unfollowed', 'new-follower', 'user-unfollowed', 'follow', 'follower', 'Follower'].includes(type);
 };
 
 
@@ -314,6 +314,10 @@ export const useNotificationStore = create<NotificationStore>()(
           isRead: false,
           createdAt: notificationData.createdAt || new Date()
         };
+
+        // ✅ Update last seen time to the receipt of this notification 
+        // to minimize missed notification gaps on reconnect
+        get().setLastActiveTime(newNotification.createdAt.toISOString());
 
         const isFollower = isFollowerNotification(newNotification.type);
         const isCall = isCallNotification(newNotification.type);
@@ -692,7 +696,10 @@ export const useNotificationStore = create<NotificationStore>()(
             }
           });
 
-          get().fetchMissedNotifications(token, userId);
+          // ✅ Re-fetch missed notifications on initial connection and any subsequent re-connection
+          PusherService.onConnected(() => {
+            get().fetchMissedNotifications(token, userId);
+          });
 
           set({ isConnected: true, currentUserId: userId });
           console.log('✅ NOTIFICATION REAL-TIME INITIALIZED SUCCESSFULLY');

@@ -51,6 +51,8 @@ return new class extends Migration
             
             // AI Cross-reference
             $table->foreignUuid('check_id')->nullable()->constrained('moderation_checks')->onDelete('set null');
+            $table->unsignedBigInteger('assigned_to_id')->nullable();
+            $table->foreign('assigned_to_id')->references('id')->on('users')->onDelete('set null');
             $table->decimal('reporting_bias_score', 5, 4)->default(0.0000); // AI's suspicion of false reporting
             
             $table->string('action_taken')->nullable();

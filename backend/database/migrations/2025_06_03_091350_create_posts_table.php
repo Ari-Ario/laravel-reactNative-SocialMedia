@@ -29,6 +29,8 @@ return new class extends Migration
             $table->json('empathy_overlays')->nullable();
             $table->json('growth_metrics')->nullable();
 
+            $table->json('location')->nullable();
+
             $table->timestamps();
         });
     }

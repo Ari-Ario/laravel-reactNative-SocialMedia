@@ -38,10 +38,19 @@ return new class extends Migration {
             $table->json('ai_learning_data')->nullable(); // What the AI has learned from this space
 
             $table->softDeletes();
+            $table->string('image_path')->nullable();
             $table->timestamps();
             $table->index(['space_type', 'is_live']);
             $table->index(['creator_id', 'updated_at']);
             $table->index('updated_at');
+        });
+
+        // Add foreign key constraint to conversations table now that spaces exists
+        Schema::table('conversations', function (Blueprint $table) {
+            $table->foreign('linked_project_id')
+                  ->references('id')
+                  ->on('collaboration_spaces')
+                  ->nullOnDelete();
         });
     }
 

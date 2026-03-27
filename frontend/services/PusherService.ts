@@ -11,6 +11,7 @@ class PusherService {
   private connectionAttempts = 0;
   private maxConnectionAttempts = 3;
   private pendingSubscriptions: Array<() => void> = []; // ✅ Queue for early subscriptions
+  private onConnectedCallbacks: Array<() => void> = []; // ✅ Callbacks for reconnection/initial connection
 
   initialize(token: string): boolean {
     // Guard: skip during SSR (Node.js has no window)
@@ -135,6 +136,12 @@ class PusherService {
             this.pendingSubscriptions.forEach(sub => sub());
             this.pendingSubscriptions = [];
           }
+
+          // ✅ Notify connection listeners (for re-syncing missed events)
+          if (this.onConnectedCallbacks.length > 0) {
+            console.log(`📡 Notifying ${this.onConnectedCallbacks.length} connection listeners...`);
+            this.onConnectedCallbacks.forEach(cb => cb());
+          }
         });
 
         this.pusher?.connection.bind('error', (err: any) => {
@@ -166,6 +173,19 @@ class PusherService {
       console.error('❌ Pusher initialization failed:', error);
       this.isInitialized = false;
       return false;
+    }
+  }
+
+  /**
+   * Registers a callback to be executed when Pusher successfully connects or reconnects.
+   * This is useful for re-fetching data that might have been missed during a disconnection.
+   * @param callback The function to call on connection.
+   */
+  onConnected(callback: () => void): void {
+    this.onConnectedCallbacks.push(callback);
+    // If already connected, execute immediately
+    if (this.isInitialized) {
+      callback();
     }
   }
 
@@ -257,8 +277,8 @@ class PusherService {
           title: data.title || 'New Follower',
           message: data.message || `${data.followerName || data.follower?.name || 'Someone'} started following you`,
           data: data,
-          userId: data.followerId,
-          avatar: data.profile_photo || null,
+          userId: data.followerId || data.follower_id || data.follower?.id || data.user_id || data.userId,
+          avatar: data.profile_photo || data.follower?.profile_photo || data.avatar || null,
           createdAt: new Date()
         };
 
@@ -471,6 +491,7 @@ class PusherService {
         if (notifType.includes('MessageReplied')) notifType = 'message_reply';
         if (notifType.includes('MessageSent')) notifType = 'new_message';
         if (notifType.includes('ModerationAction')) notifType = 'moderation_action';
+        if (upperNotifType.includes('FOLLOW')) notifType = 'new_follower';
 
         // Map generic Laravel notification to our store format
         const notification: any = {
@@ -479,11 +500,11 @@ class PusherService {
           title: innerData.title || (notifType === 'space_invitation' ? 'Space Invitation' : 'New Notification'),
           message: innerData.message,
           data: innerData,
-          userId: innerData.userId || innerData.user_id || innerData.inviter_id || innerData.followerId,
+          userId: innerData.userId || innerData.user_id || innerData.inviter_id || innerData.followerId || innerData.follower_id || innerData.follower?.id,
           postId: innerData.postId || innerData.post_id,
           spaceId: innerData.spaceId || innerData.space_id,
           messageId: innerData.messageId || innerData.message_id || innerData.message?.id,
-          avatar: innerData.avatar || innerData.profile_photo || innerData.inviter_avatar || innerData.user?.profile_photo,
+          avatar: innerData.avatar || innerData.profile_photo || innerData.inviter_avatar || innerData.user?.profile_photo || innerData.follower?.profile_photo,
           createdAt: new Date(data.created_at || Date.now()),
           isRead: false,
         };

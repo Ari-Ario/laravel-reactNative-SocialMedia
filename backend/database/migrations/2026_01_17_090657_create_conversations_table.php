@@ -18,14 +18,14 @@ return new class extends Migration
             $table->string('avatar')->nullable();
             $table->text('description')->nullable();
             $table->json('settings')->nullable();
-            // $table->foreignId('last_message_id')->nullable()->constrained('messages')->nullOnDelete();
+            $table->uuid('last_message_id')->nullable();
             $table->timestamp('last_message_at')->nullable();
             $table->boolean('is_archived')->default(false);
             $table->boolean('is_encrypted')->default(true);
             $table->json('mood_history')->nullable();
             
             // From enhanced collaboration features:
-            // $table->foreignUuid('linked_project_id')->nullable()->constrained('collaboration_spaces'); // Now links to spaces
+            $table->uuid('linked_project_id')->nullable(); // Now links to spaces
             $table->boolean('has_meeting_mode')->default(false);
             $table->json('meeting_notes')->nullable();
             $table->json('decision_log')->nullable();

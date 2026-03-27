@@ -1,6 +1,7 @@
 // stores/postStore.tsx
 import { create } from 'zustand';
 import PusherService from '@/services/PusherService';
+import { useNotificationStore } from '@/stores/notificationStore';
 
 export interface Reaction {
   id: number;
@@ -133,15 +134,15 @@ interface PostStore {
   unsubscribeFromAllPosts: () => void;
   disconnectRealtime: () => void;
 
-  // Real-time event handlers with duplicate prevention
-  handleNewComment: (data: { comment: any; postId: number }) => void;
-  handleNewReaction: (data: { reaction: any; postId: number }) => void;
-  handleCommentDeleted: (data: { commentId: number; postId: number }) => void;
-  handleReactionDeleted: (data: { reactionId: number; postId: number }) => void;
-  handleCommentReaction: (data: { reaction: any; postId: number; commentId: number }) => void;
-  handleNewPost: (data: { post: any }) => void;
-  handlePostUpdated: (data: { post?: any; postId: number; changes?: any; timestamp?: string }) => void;
-  handlePostDeleted: (data: { postId: number }) => void;
+  // Real-time event handlers with flexible data
+  handleNewComment: (data: any) => void;
+  handleNewReaction: (data: any) => void;
+  handleCommentDeleted: (data: any) => void;
+  handleReactionDeleted: (data: any) => void;
+  handleCommentReaction: (data: any) => void;
+  handleNewPost: (data: any) => void;
+  handlePostUpdated: (data: any) => void;
+  handlePostDeleted: (data: any) => void;
 
   // Duplicate prevention helpers
   markCommentAsPending: (commentId: number) => void;
@@ -728,6 +729,23 @@ export const usePostStore = create<PostStore>((set, get) => ({
         }
 
         console.log('✅ Adding new comment via real-time:', data.comment.id);
+        
+        // ✅ Add notification if this post belongs to current user
+        const currentUserId = useNotificationStore.getState().currentUserId;
+        if (data.postOwnerId && Number(data.postOwnerId) === currentUserId) {
+            console.log('🔔 Triggering notification for comment on owned post');
+            useNotificationStore.getState().addNotification({
+                type: 'comment',
+                title: data.title || 'New Comment',
+                message: data.message || `${data.comment?.user?.name || 'Someone'} commented: "${data.comment?.content?.substring(0, 30)}..."`,
+                data: data,
+                userId: data.comment?.user_id || data.user_id,
+                postId: data.postId || postId,
+                avatar: data.comment?.user?.profile_photo || data.user_avatar,
+                createdAt: new Date()
+            });
+        }
+
         return {
           ...post,
           comments: [...existingComments, data.comment],
@@ -754,6 +772,24 @@ export const usePostStore = create<PostStore>((set, get) => ({
         if (reactionAlreadyExists) {
           console.log('🔄 Reaction already exists, skipping duplicate:', data.reaction.id);
           return post;
+        }
+
+        console.log('✅ Adding new reaction via real-time:', data.reaction.id);
+
+        // ✅ Add notification if this post belongs to current user
+        const currentUserId = useNotificationStore.getState().currentUserId;
+        if (data.postOwnerId && Number(data.postOwnerId) === currentUserId) {
+            console.log('🔔 Triggering notification for reaction on owned post');
+            useNotificationStore.getState().addNotification({
+                type: 'reaction',
+                title: data.title || 'New Reaction',
+                message: data.message || `${data.reaction.user?.name || 'Someone'} reacted with ${data.reaction.emoji} on your post`,
+                data: data,
+                userId: data.reaction.user_id || data.user_id,
+                postId: data.postId || postId,
+                avatar: data.reaction.user?.profile_photo || data.user_avatar,
+                createdAt: new Date()
+            });
         }
 
         return {

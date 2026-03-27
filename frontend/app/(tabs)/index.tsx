@@ -158,12 +158,19 @@ const HomePage = () => {
   useEffect(() => {
     if (isRealtimeReady && isTokenReady) {
       initStoryRealtime();
+      
+      // ✅ Ensure user notifications are also initialized from index.tsx
+      if (user?.id) {
+        getToken().then(token => {
+          if (token) useNotificationStore.getState().initializeRealtime(token, Number(user.id));
+        });
+      }
     }
   }, [isRealtimeReady, isTokenReady]);
 
   // Subscribe to posts
   useEffect(() => {
-    if (isRealtimeReady && isTokenReady && posts.length > 0) {
+    if (isRealtimeReady && isTokenReady) {
       const postIds = posts.map(post => post.id);
       usePostStore.getState().subscribeToPosts(postIds);
     }

@@ -26,6 +26,10 @@ return new class extends Migration {
             $table->json('interactive_elements')->nullable();
             $table->json('viewer_reactions_summary')->nullable();
 
+            $table->json('location')->nullable();
+            $table->json('stickers')->nullable();
+            $table->enum('type', ['photo', 'video'])->default('photo');
+
             $table->timestamps();
         });
     }

@@ -17,6 +17,9 @@ return new class extends Migration
             $table->foreignId('post_id')->constrained()->onDelete('cascade');
             $table->timestamps();
             
+            $table->string('collection')->nullable();
+            $table->text('note')->nullable();
+
             $table->unique(['user_id', 'post_id']);
         });
     }
