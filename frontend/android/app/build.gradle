@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.anonymous.graf'
+    namespace 'com.anonymous.zmzir'
     defaultConfig {
-        applicationId 'com.anonymous.graf'
+        applicationId 'com.anonymous.zmzir'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

@@ -20,7 +20,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.anonymous.zmzir",
+      "package": "com.zmzir.app",
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyDVsZaS67NSKA-13blSRq7X0vvfhdlKX2Y"
