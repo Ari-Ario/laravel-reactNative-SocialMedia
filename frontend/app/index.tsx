@@ -52,7 +52,7 @@ const WelcomeScreen = () => {
     <View style={styles.container}>
       {/* <WelcomeAlphabet style={styles.welcome} /> */}
       {/* <Image source={{ uri: welcome_image }} style={styles.welcome} /> */}
-      <Text style={styles.headline}>Welcome to Grafo</Text>
+      <Text style={styles.headline}>Welcome to zmzir</Text>
       <Text style={styles.description}>
         Read our{' '}
         <Text style={styles.link} onPress={openLink}>

@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "graf",
-    "slug": "graf",
+    "name": "zmzir",
+    "slug": "zmzir",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.graf",
+      "bundleIdentifier": "com.anonymous.zmzir",
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to make video calls.",
         "NSMicrophoneUsageDescription": "This app uses the microphone to make audio calls."
@@ -20,7 +20,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.anonymous.graf",
+      "package": "com.anonymous.zmzir",
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyDVsZaS67NSKA-13blSRq7X0vvfhdlKX2Y"
