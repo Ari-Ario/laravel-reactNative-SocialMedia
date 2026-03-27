@@ -43,5 +43,5 @@ jobs:
           SOURCE: "frontend/dist/"
           REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
           REMOTE_USER: forge
-          TARGET: "/home/forge/zmzir.com/backend/public/app/"
+          TARGET: "/home/forge/zmzir.com/public/app/"
           EXCLUDE: "/node_modules/"
