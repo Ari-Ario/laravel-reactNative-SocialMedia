@@ -4,26 +4,28 @@ module.exports = function (api) {
         presets: [
             ['babel-preset-expo', {
                 jsxRuntime: 'automatic',
+                unstable_transformProfile: 'hermes-stable',
             }]
         ],
         plugins: [
-            // Transform import.meta with proper configuration
+            // Must come BEFORE reanimated
             ['babel-plugin-transform-import-meta', {
                 module: 'ES6',
             }],
-            // Reanimated plugin must be last
             'react-native-reanimated/plugin',
         ],
-        // Add this to handle import.meta in node_modules
+        // Apply to ALL files, including node_modules
         overrides: [
             {
-                test: /node_modules[\\/]pusher-js/,
+                test: /\.(js|jsx|ts|tsx|mjs)$/,
                 plugins: ['babel-plugin-transform-import-meta'],
             },
             {
-                test: /node_modules[\\/]@pusher/,
+                test: /node_modules[\\/](pusher-js|@pusher|react-native-webrtc|framer-motion)/,
                 plugins: ['babel-plugin-transform-import-meta'],
+                sourceType: 'unambiguous',
             },
         ],
+        sourceType: 'unambiguous',
     };
 };
