@@ -1,47 +1,13 @@
-name: Monorepo Deploy (Frontend)
+name: Deploy to Forge
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - 'frontend/**'
-      - '.github/workflows/**'
-  workflow_dispatch:
+    branches: [main, master]
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: './frontend/package-lock.json'
-
-      - name: Install Dependencies
-        working-directory: ./frontend
-        run: npm ci
-
-      - name: Build Expo Web App
-        working-directory: ./frontend
-        env:
-          EXPO_PUBLIC_API_URL: https://zmzir.com/api
-          EXPO_PUBLIC_PUSHER_APP_KEY: ${{ secrets.EXPO_PUBLIC_PUSHER_APP_KEY || '3748956503c5864b9c40' }}
-          EXPO_PUBLIC_PUSHER_APP_CLUSTER: ${{ secrets.EXPO_PUBLIC_PUSHER_APP_CLUSTER || 'eu' }}
-        run: npx expo export --platform web
-
-      - name: Deploy to Server via SSH (Targeting backend/public/app)
-        uses: easingthemes/ssh-deploy@main
-        with:
-          SSH_PRIVATE_KEY: ${{ secrets.FORGE_SSH_KEY }}
-          ARGS: "-rlgoDzvc -i --delete"
-          SOURCE: "frontend/dist/"
-          REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
-          REMOTE_USER: forge
-          TARGET: "/home/forge/zmzir.com/public/app/"
-          EXCLUDE: "/node_modules/"
+      - name: Trigger Forge Deployment
+        run: |
+          curl -X GET "${{ secrets.FORGE_DEPLOYMENT_TRIGGER_URL }}"
