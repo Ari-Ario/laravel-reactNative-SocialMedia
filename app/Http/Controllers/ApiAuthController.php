@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Support\Facades\Log;
+use App\Mail\VerificationCode;
+use App\Mail\PasswordResetMail;
 
 class ApiAuthController extends Controller
 {
@@ -66,10 +68,7 @@ class ApiAuthController extends Controller
         Cache::put('email_verify_' . $user->id, $verificationCode, 900);
 
         // Send code via email
-        Mail::raw("Your verification code is: $verificationCode\n\nThis code will expire in 15 minutes.", function ($message) use ($user) {
-            $message->to($user->email)
-                ->subject('Verify Your Email Address');
-        });
+        Mail::to($user->email)->queue(new VerificationCode($user, $verificationCode));
 
         $token = $user->createToken($request->device_name)->plainTextToken;
 
@@ -158,10 +157,7 @@ class ApiAuthController extends Controller
         Cache::put('email_verify_' . $user->id, $verificationCode, 900);
 
         // Send new code
-        Mail::raw("Your new verification code is: $verificationCode\n\nThis code will expire in 15 minutes.", function ($message) use ($user) {
-            $message->to($user->email)
-                ->subject('New Verification Code');
-        });
+        Mail::to($user->email)->queue(new VerificationCode($user, $verificationCode));
 
         return response()->json([
             'message' => 'New verification code sent!',
@@ -191,10 +187,7 @@ class ApiAuthController extends Controller
         ], 900);
 
         // Send code via email
-        Mail::raw("Your password reset code is: $resetCode\n\nThis code will expire in 15 minutes.", function ($message) use ($user) {
-            $message->to($user->email)
-                ->subject('Password Reset Code');
-        });
+        Mail::to($user->email)->queue(new PasswordResetMail($user, $resetCode));
 
         return response()->json([
             'message' => 'Reset code sent to your email.',
