@@ -151,20 +151,22 @@ export default function RootLayout() {
     if (!user) {
       if (isGuestAccess) return; // Allow unauthenticated guest access
 
-      // If user not logged in, only allow LoginScreen and root
-      if (pathname === '/' || (!pathname?.startsWith('/LoginScreen') && !pathname?.startsWith('/RegisterScreen') && !pathname?.startsWith('/ForgotPasswordScreen') && !pathname?.startsWith('/VerificationScreen') && !pathname?.startsWith('/ResetPasswordScreen'))) {
+      // ALLOWED PUBLIC ROUTES: /, Login, Register, ForgotPassword, ResetPassword, Verification
+      const publicRoutes = [
+        '/',
+        '/LoginScreen',
+        '/RegisterScreen',
+        '/ForgotPasswordScreen',
+        '/ResetPasswordScreen',
+        '/VerificationScreen',
+      ];
+
+      // If the current path is NOT a public route, send to Login
+      const isPublicRoute = publicRoutes.some(route => pathname === route || pathname?.startsWith(route + '/'));
+
+      if (!isPublicRoute) {
+        console.log("🛡️ Unauthorized access attempt to restricted route:", pathname, "Redirecting to /LoginScreen");
         router.replace('/LoginScreen');
-      } else if (pathname?.startsWith('/RegisterScreen') && pathname !== '/RegisterScreen') {
-        router.replace('/RegisterScreen');
-      } else if (pathname?.startsWith('/ForgotPasswordScreen') && pathname !== '/ForgotPasswordScreen') {
-        router.replace('/ForgotPasswordScreen');
-      } else if (pathname?.startsWith('/VerificationScreen') && pathname !== '/VerificationScreen') {
-        router.replace('/VerificationScreen');
-      } else if (!pathname || (pathname === '/ResetPasswordScreen' && pathname !== '/ResetPasswordScreen')) {
-        // This logic was a bit weird in original, let's simplify
-        router.replace('/ResetPasswordScreen');
-      } else if (pathname !== '/' && !pathname?.startsWith('/LoginScreen') && !pathname?.startsWith('/RegisterScreen') && !pathname?.startsWith('/ForgotPasswordScreen') && !pathname?.startsWith('/VerificationScreen')) {
-        router.replace('/');
       }
       return;
     }

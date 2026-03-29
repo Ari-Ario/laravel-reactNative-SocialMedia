@@ -74,6 +74,15 @@ const SpaceDetailScreen = () => {
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const { unreadModerationCount } = useNotificationStore();
+  
+  // 🛡️ Route Isolation Guard: If the dynamic ID matches a known system route,
+  // it means we've hit a collision (likely from a misspelled link). 
+  // We return null to allow the top-level Router to find the correct static route or handle the cleanup.
+  const isSystemRoute = ['Login', 'LoginScreen', 'RegisterScreen', 'VerificationScreen', 'ForgotPasswordScreen', 'ResetPasswordScreen', 'index'].includes(id || '');
+  if (isSystemRoute) {
+    console.log(`🛡️ Collision detected in (spaces)/[id]: Refusing to load space for system word: "${id}"`);
+    return null;
+  }
 
   // Dropdown menu states
   const [showCallMenu, setShowCallMenu] = useState(false);

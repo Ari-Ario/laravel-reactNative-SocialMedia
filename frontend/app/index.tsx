@@ -21,17 +21,18 @@ const WelcomeScreen = () => {
    useEffect(() => {
      async function prepare() {
        try {
-         // 1. Check if token exists first (fast check)
          const token = await getToken();
          
-         // 2. Only try to load user if token exists
          if (token) {
            const userData = await loadUser();
-           console.log("User in Rootlayout", userData);
-           setUser(userData);
+           if (userData) {
+             console.log("👋 Authenticated user detected on Welcome Screen, redirecting to home...");
+             router.replace('/(tabs)');
+             return;
+           }
          }
        } catch (error) {
-         console.log("Auth check error:", error);
+         console.log("Auth check error on index:", error);
        } finally {
          setIsReady(true);
        }

@@ -156,7 +156,7 @@ const RegisterUser: React.FC = () => {
 
                 <View style={styles.loginLink}>
                     <Text>Already have an account? </Text>
-                    <Link href="/Login" asChild>
+                    <Link href="/LoginScreen" asChild>
                         <TouchableOpacity>
                             <Text style={styles.linkText}>Login</Text>
                         </TouchableOpacity>

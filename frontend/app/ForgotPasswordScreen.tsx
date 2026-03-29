@@ -60,7 +60,7 @@ export default function ForgotPasswordScreen() {
                 disabled={loading}
             />
             
-            <Link href="/Login" style={styles.link}>
+            <Link href="/LoginScreen" style={styles.link}>
                 Back to Login
             </Link>
         </View>
