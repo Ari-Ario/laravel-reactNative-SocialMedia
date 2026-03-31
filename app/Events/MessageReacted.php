@@ -33,10 +33,10 @@ class MessageReacted implements ShouldBroadcast
     public function broadcastOn()
     {
         if ($this->spaceId) {
-            return new PresenceChannel('space.' . $this->spaceId);
+            return new PresenceChannel('space-' . $this->spaceId);
         }
         else if (isset($this->message->conversation_id)) {
-            return new PresenceChannel('chat.' . $this->message->conversation_id);
+            return new PresenceChannel('chat-' . $this->message->conversation_id);
         }
 
         return [];
@@ -44,7 +44,7 @@ class MessageReacted implements ShouldBroadcast
 
     public function broadcastAs()
     {
-        return 'message.reacted';
+        return 'message-reacted';
     }
 
     public function broadcastWith()

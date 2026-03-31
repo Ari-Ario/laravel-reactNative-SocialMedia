@@ -701,7 +701,7 @@ export const usePostStore = create<PostStore>((set, get) => ({
 
   unsubscribeFromAllPosts: () => {
     console.log('🔄 Unsubscribing from all posts');
-    PusherService.unsubscribeFromChannel('posts.global');
+    PusherService.unsubscribeFromChannel('posts-global');
   },
 
   unsubscribeFromPost: (postId: number) => {

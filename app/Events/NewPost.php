@@ -42,11 +42,11 @@ class NewPost extends LaravelNotification implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        $channels = [new Channel('posts.global')];
+        $channels = [new Channel('posts-global')];
 
         // Broadcast to all followers
         foreach ($this->followerIds as $followerId) {
-            $channels[] = new PrivateChannel('user.' . $followerId);
+            $channels[] = new PrivateChannel('user-' . $followerId);
         }
 
         return $channels;

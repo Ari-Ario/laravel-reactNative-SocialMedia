@@ -27,13 +27,13 @@ class CallEnded implements ShouldBroadcast
     public function broadcastOn()
     {
         return [
-            new PresenceChannel('space.' . $this->space->id),
+            new PresenceChannel('space-' . $this->space->id),
         ];
     }
 
     public function broadcastAs()
     {
-        return 'call.ended';
+        return 'call-ended';
     }
 
     public function broadcastWith()

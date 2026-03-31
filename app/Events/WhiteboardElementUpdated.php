@@ -25,7 +25,7 @@ class WhiteboardElementUpdated implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        return new PresenceChannel('presence-space.' . $this->space->id);
+        return new PresenceChannel('presence-space-' . $this->space->id);
     }
 
     public function broadcastAs()

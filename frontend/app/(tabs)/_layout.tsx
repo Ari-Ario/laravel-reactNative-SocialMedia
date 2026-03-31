@@ -37,7 +37,10 @@ export default function TabLayout() {
   const realtimeInitialized = useRef(false);
   const [isRealtimeReady, setIsRealtimeReady] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentToast, setCurrentToast] = useState<any>(null);
+
+  // Global toast state
+  const currentToast = useNotificationStore(state => state.currentToastNotification);
+  const setCurrentToast = useNotificationStore(state => state.setCurrentToastNotification);
 
   // Real-time initialization effect
   useEffect(() => {
@@ -114,7 +117,7 @@ export default function TabLayout() {
     };
   }, [user?.id]);
 
-  // NEW: Handle notification toasts
+  // NEW: Handle notification toasts (empty placeholder just in case passed from props)
   const handleShowToast = (notification: any) => {
     setCurrentToast(notification);
   };

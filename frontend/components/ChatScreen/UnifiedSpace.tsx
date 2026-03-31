@@ -47,7 +47,7 @@ export const UnifiedSpace: React.FC<UnifiedSpaceProps> = ({ spaceId, initialType
     loadSpace(spaceId);
 
     // 2. Setup real-time subscriptions
-    const spaceChannel = pusher.subscribe(`presence-space.${spaceId}`);
+    const spaceChannel = pusher.subscribe(`presence-space-${spaceId}`);
 
     // Handle ANY participant update
     spaceChannel.bind('participant-updated', (data: any) => {

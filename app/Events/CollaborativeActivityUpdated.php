@@ -35,12 +35,12 @@ class CollaborativeActivityUpdated implements ShouldBroadcast
     public function broadcastOn()
     {
         $channels = [
-            new PresenceChannel('space.' . $this->spaceId),
+            new PresenceChannel('space-' . $this->spaceId),
         ];
 
         // Also broadcast to each participant's private channel to update global counts
         foreach ($this->activity->participants as $participant) {
-            $channels[] = new PrivateChannel('user.' . $participant->id);
+            $channels[] = new PrivateChannel('user-' . $participant->id);
         }
 
         return $channels;
@@ -51,7 +51,7 @@ class CollaborativeActivityUpdated implements ShouldBroadcast
      */
     public function broadcastAs()
     {
-        return 'activity.updated';
+        return 'activity-updated';
     }
 
     /**

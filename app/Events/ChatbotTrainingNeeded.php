@@ -36,7 +36,7 @@ class ChatbotTrainingNeeded implements ShouldBroadcast
         $adminUsers = User::where('ai_admin', 1)->get();
         
         foreach ($adminUsers as $admin) {
-            $channels[] = new PrivateChannel('user.' . $admin->id);
+            $channels[] = new PrivateChannel('user-' . $admin->id);
         }
         
         return $channels;

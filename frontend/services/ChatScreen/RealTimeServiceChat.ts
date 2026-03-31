@@ -70,7 +70,7 @@ class RealTimeService {
     const channel = pusher.subscribe(channelName);
     this.channels.set(channelName, channel);
 
-    channel.bind('space.updated', (data: any) => {
+    channel.bind('space-updated', (data: any) => {
       console.log('🌐 RealTimeService (Public): Space updated:', data);
       const updateType = data.changes?.update_type || data.update_type || 'general';
 
@@ -83,7 +83,7 @@ class RealTimeService {
       });
     });
 
-    channel.bind('space.deleted', (data: any) => {
+    channel.bind('space-deleted', (data: any) => {
       console.log('🌐 RealTimeService (Public): Space deleted:', data);
       this.subscriptions.forEach((callbacks, key) => {
         if (key.startsWith('user-')) {
@@ -107,7 +107,7 @@ class RealTimeService {
       return;
     }
 
-    const channelName = `user.${userId}`; // ✅ FIX: Use 'user.' not 'private-user.'
+    const channelName = `user.${userId}`; // ✅ FIX: Use 'user.' not 'private-user-'
 
     if (this.channels.has(channelName)) {
       console.log(`ℹ️ RealTimeService: Already subscribed to ${channelName}`);
@@ -125,43 +125,43 @@ class RealTimeService {
       console.error(`❌ RealTimeService: Subscription error for ${channelName}:`, error);
     });
 
-    channel.bind('user.activity', (data: any) => {
+    channel.bind('user-activity', (data: any) => {
       console.log('👤 RealTimeService: User activity:', data);
       this.notifySubscribers('user', userId, 'activity', data);
     });
 
     // Bind space management events
-    channel.bind('space.muted', (data: any) => {
+    channel.bind('space-muted', (data: any) => {
       console.log('🔇 RealTimeService: Space muted:', data);
       this.notifySubscribers('user', userId, 'space_update', { ...data, update_type: 'muted' });
     });
 
-    channel.bind('space.pinned', (data: any) => {
+    channel.bind('space-pinned', (data: any) => {
       console.log('📌 RealTimeService: Space pinned:', data);
       this.notifySubscribers('user', userId, 'space_update', { ...data, update_type: 'pinned' });
     });
 
-    channel.bind('space.archived', (data: any) => {
+    channel.bind('space-archived', (data: any) => {
       console.log('📦 RealTimeService: Space archived:', data);
       this.notifySubscribers('user', userId, 'space_update', { ...data, update_type: 'archived' });
     });
 
-    channel.bind('space.unread', (data: any) => {
+    channel.bind('space-unread', (data: any) => {
       console.log('🔴 RealTimeService: Space unread:', data);
       this.notifySubscribers('user', userId, 'space_update', { ...data, update_type: 'unread' });
     });
 
-    channel.bind('space.favorited', (data: any) => {
+    channel.bind('space-favorited', (data: any) => {
       console.log('❤️ RealTimeService: Space favorited:', data);
       this.notifySubscribers('user', userId, 'space_update', { ...data, update_type: 'favorited' });
     });
 
-    channel.bind('space.message', (data: any) => {
+    channel.bind('space-message', (data: any) => {
       console.log('💬 RealTimeService: New space message:', data);
       this.notifySubscribers('user', userId, 'space_update', { ...data, update_type: 'message' });
     });
 
-    channel.bind('space.updated', (data: any) => {
+    channel.bind('space-updated', (data: any) => {
       console.log('🔄 RealTimeService: Space updated:', data);
       const updateType = data.changes?.update_type || data.update_type || 'general';
 
@@ -173,19 +173,19 @@ class RealTimeService {
     });
 
     // Also bind to space invitations
-    channel.bind('space.invitation', (data: any) => {
+    channel.bind('space-invitation', (data: any) => {
       console.log('📨 RealTimeService: Space invitation received:', data);
       this.notifySubscribers('user', userId, 'invitation', data);
     });
 
     // Handle when current user is removed or leaves a space
-    channel.bind('user.left_space', (data: any) => {
+    channel.bind('user-left_space', (data: any) => {
       console.log('🚶 RealTimeService: Left space:', data);
       this.notifySubscribers('user', userId, 'space_update', { ...data, update_type: 'left' });
     });
 
     // Bind to call events
-    channel.bind('call.started', (data: any) => {
+    channel.bind('call-started', (data: any) => {
       console.log('📞 RealTimeService: Call started:', data);
       this.notifySubscribers('user', userId, 'call', data);
     });
@@ -203,7 +203,7 @@ class RealTimeService {
       return;
     }
 
-    const channelName = `presence-space.${spaceId}`;
+    const channelName = `presence-space-${spaceId}`;
 
     if (this.channels.has(channelName)) {
       console.log(`ℹ️ RealTimeService: Already subscribed to ${channelName}`);
@@ -223,25 +223,25 @@ class RealTimeService {
 
     // Bind events
     if (callbacks.onSpaceUpdate) {
-      channel.bind('space.updated', callbacks.onSpaceUpdate);
+      channel.bind('space-updated', callbacks.onSpaceUpdate);
       channel.bind('space-updated', callbacks.onSpaceUpdate); // Also listen to hyphenated version
       this.addSubscription('space', spaceId, 'updated', callbacks.onSpaceUpdate);
     }
 
     if (callbacks.onParticipantUpdate) {
-      channel.bind('participant.joined', callbacks.onParticipantUpdate);
-      channel.bind('participant.left', callbacks.onParticipantUpdate);
-      channel.bind('participant.updated', callbacks.onParticipantUpdate);
+      channel.bind('participant-joined', callbacks.onParticipantUpdate);
+      channel.bind('participant-left', callbacks.onParticipantUpdate);
+      channel.bind('participant-updated', callbacks.onParticipantUpdate);
     }
 
     if (callbacks.onMessage) {
-      channel.bind('message.sent', callbacks.onMessage);
-      channel.bind('message.updated', callbacks.onMessage);
-      channel.bind('message.deleted', callbacks.onMessage);
+      channel.bind('message-sent', callbacks.onMessage);
+      channel.bind('message-updated', callbacks.onMessage);
+      channel.bind('message-deleted', callbacks.onMessage);
     }
 
     if (callbacks.onMagicEvent) {
-      channel.bind('magic.triggered', callbacks.onMagicEvent);
+      channel.bind('magic-triggered', callbacks.onMagicEvent);
     }
   }
 
@@ -249,7 +249,7 @@ class RealTimeService {
     const pusher = this.getPusherInstance();
     if (!pusher) return;
 
-    const channelName = `presence-space.${spaceId}`;
+    const channelName = `presence-space-${spaceId}`;
     const channel = this.channels.get(channelName);
 
     if (channel) {

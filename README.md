@@ -5,3 +5,19 @@ Chatbot-training must be done by employees, although it learnes from media gradu
 ## Go to frontend to setup React-Native
 
 ## Go to backend to setup laravel
+
+
+## important commands:
+php artisan optimize:clear  #most important
+
+php artisan config:clear    # Konfiguration (.env & config/*.php)
+php artisan route:clear     # Routen
+php artisan view:clear      # Blade-Templates
+php artisan cache:clear     # App-Daten-Cache
+php artisan event:clear     # Event-Listener
+
+or deepclean:
+php artisan optimize:clear && php artisan event:clear && composer dump-autoload
+
+
+php artisan reverb:start --debug

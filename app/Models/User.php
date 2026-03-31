@@ -155,7 +155,7 @@ class User extends Authenticatable
      */
     public function receivesBroadcastNotificationsOn()
     {
-        return 'user.' . $this->id;
+        return 'user-' . $this->id;
     }
 
     /**

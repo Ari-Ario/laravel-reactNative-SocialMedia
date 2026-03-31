@@ -35,7 +35,7 @@ class ScreenShareToggled implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new PresenceChannel('space.' . $this->space->id),
+            new PresenceChannel('space-' . $this->space->id),
         ];
     }
 
@@ -44,7 +44,7 @@ class ScreenShareToggled implements ShouldBroadcast
      */
     public function broadcastAs(): string
     {
-        return 'screen.share.toggled';
+        return 'screen-share-toggled';
     }
 
     /**

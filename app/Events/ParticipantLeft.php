@@ -27,12 +27,12 @@ class ParticipantLeft implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        return new PresenceChannel('space.' . $this->space->id);
+        return new PresenceChannel('space-' . $this->space->id);
     }
 
     public function broadcastAs()
     {
-        return 'participant.left';
+        return 'participant-left';
     }
 
     public function broadcastWith()

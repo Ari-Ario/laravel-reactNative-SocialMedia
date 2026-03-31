@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Log;
 
-Broadcast::channel('post.{postId}', function ($user, $postId) {
+Broadcast::channel('post-{postId}', function ($user, $postId) {
     return ['id' => $user->id, 'name' => $user->name];
 });
 
@@ -15,7 +15,7 @@ Broadcast::channel('chatbot-training', function ($user) {
     : false;
 });
 
-Broadcast::channel('space.{spaceId}', function ($user, $spaceId) {
+Broadcast::channel('space-{spaceId}', function ($user, $spaceId) {
     // Resolve UUID if spaceId is a slug/name
     if (!\Illuminate\Support\Str::isUuid($spaceId)) {
         $space = \App\Models\CollaborationSpace::where('slug', $spaceId)
@@ -63,11 +63,11 @@ Broadcast::channel('space.{spaceId}', function ($user, $spaceId) {
 // Also keep your existing user channel
 // Public user channel for frontend notifications (matches user.ID)
 // No authorization needed as it's used for public broadcasts to specific IDs
-Broadcast::channel('user.{userId}', function ($user, $userId) {
+Broadcast::channel('user-{userId}', function ($user, $userId) {
     return (int)$user->id === (int)$userId;
 });
 
 // Optional: Global posts channel (public - no auth needed)
-Broadcast::channel('posts.global', function ($user) {
+Broadcast::channel('posts-global', function ($user) {
     return true; // Public channel doesn't need auth
 });

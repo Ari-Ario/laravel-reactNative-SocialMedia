@@ -22,6 +22,7 @@ class RestrictGuests
             $allowedRoutes = [
                 'api/user',
                 'api/pusher/auth',
+                'api/broadcasting/auth', // Added for Unified Reverb Support
                 'api/logout',
                 'api/collaborative-activities'
             ];

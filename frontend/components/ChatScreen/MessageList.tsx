@@ -540,9 +540,11 @@ const MessageList: React.FC<MessageListProps> = ({
             return prev;
           }
 
-          const updated = [...prev, newMessage].sort((a: Message, b: Message) =>
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-          );
+          const updated = [...prev, newMessage].sort((a: Message, b: Message) => {
+            const timeA = new Date(a.created_at || (a as any).timestamp || Date.now()).getTime();
+            const timeB = new Date(b.created_at || (b as any).timestamp || Date.now()).getTime();
+            return timeA - timeB;
+          });
 
           // Scroll to bottom on new message
           setTimeout(() => {

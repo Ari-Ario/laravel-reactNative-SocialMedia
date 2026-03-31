@@ -26,13 +26,13 @@ class SpaceMuted implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new \Illuminate\Broadcasting\Channel('user.' . $this->userId),
+            new \Illuminate\Broadcasting\Channel('user-' . $this->userId),
         ];
     }
 
     public function broadcastAs()
     {
-        return 'space.muted';
+        return 'space-muted';
     }
 
     public function broadcastWith()

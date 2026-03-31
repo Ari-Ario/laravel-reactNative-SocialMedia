@@ -28,12 +28,12 @@ class MuteStateChanged implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        return new PresenceChannel('space.' . $this->space->id);
+        return new PresenceChannel('space-' . $this->space->id);
     }
 
     public function broadcastAs()
     {
-        return 'mute.state.changed';
+        return 'mute-state-changed';
     }
 
     public function broadcastWith()

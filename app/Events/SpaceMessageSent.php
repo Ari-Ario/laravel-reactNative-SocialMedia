@@ -38,7 +38,7 @@ class SpaceMessageSent implements ShouldBroadcast
     {
         $channels = [];
         foreach ($this->userIds as $id) {
-            $channels[] = new PrivateChannel('user.' . $id);
+            $channels[] = new PrivateChannel('user-' . $id);
         }
         return $channels;
     }
@@ -48,7 +48,7 @@ class SpaceMessageSent implements ShouldBroadcast
      */
     public function broadcastAs()
     {
-        return 'space.message';
+        return 'space-message';
     }
 
     /**
@@ -70,6 +70,7 @@ class SpaceMessageSent implements ShouldBroadcast
                     : [],
             ],
             'timestamp' => now()->toISOString(),
+            'created_at' => now()->toISOString(),
         ];
     }
 }

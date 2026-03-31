@@ -33,7 +33,7 @@ class SpaceFavorited implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('user.' . $this->userId),
+            new PrivateChannel('user-' . $this->userId),
         ];
     }
 
@@ -42,7 +42,7 @@ class SpaceFavorited implements ShouldBroadcast
      */
     public function broadcastAs()
     {
-        return 'space.favorited';
+        return 'space-favorited';
     }
 
     /**

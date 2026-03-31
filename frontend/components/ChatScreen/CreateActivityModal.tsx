@@ -431,7 +431,9 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
 
               <Text style={styles.sectionLabel}>Target Space</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
-                {spaces.map((s: any) => (
+                {spaces
+                  .filter((s: any) => s && s.id && (spaceId ? s.id === spaceId : true)) // 🛡️ Filter nulls and restrict if spaceId is provided
+                  .map((s: any) => (
                   <TouchableOpacity
                     key={s.id}
                     activeOpacity={0.7}

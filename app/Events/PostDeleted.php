@@ -55,12 +55,12 @@ class PostDeleted extends LaravelNotification implements ShouldBroadcast
     public function broadcastOn()
     {
         $channels = [
-            new Channel('posts.global'), // For real-time feed updates
+            new Channel('posts-global'), // For real-time feed updates
         ];
 
         // Broadcast to followers for notifications
         foreach ($this->followerIds as $followerId) {
-            $channels[] = new PrivateChannel('user.' . $followerId);
+            $channels[] = new PrivateChannel('user-' . $followerId);
         }
 
         return $channels;

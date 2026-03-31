@@ -42,12 +42,12 @@ class WebRTCSignal implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        return new PresenceChannel('space.' . $this->space->id);
+        return new PresenceChannel('space-' . $this->space->id);
     }
 
     public function broadcastAs()
     {
-        return 'webrtc.signal';
+        return 'webrtc-signal';
     }
 
     public function broadcastWith()

@@ -23,7 +23,7 @@ class StoryDeleted implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        return [new Channel('stories.global')];
+        return [new Channel('stories-global')];
     }
 
     public function broadcastAs()

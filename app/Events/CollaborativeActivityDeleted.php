@@ -36,12 +36,12 @@ class CollaborativeActivityDeleted implements ShouldBroadcast
     public function broadcastOn()
     {
         $channels = [
-            new PresenceChannel('space.' . $this->spaceId),
+            new PresenceChannel('space-' . $this->spaceId),
         ];
 
         // Also broadcast to each participant's private channel
         foreach ($this->participantIds as $participantId) {
-            $channels[] = new PrivateChannel('user.' . $participantId);
+            $channels[] = new PrivateChannel('user-' . $participantId);
         }
 
         return $channels;
@@ -52,7 +52,7 @@ class CollaborativeActivityDeleted implements ShouldBroadcast
      */
     public function broadcastAs()
     {
-        return 'activity.deleted';
+        return 'activity-deleted';
     }
 
     /**

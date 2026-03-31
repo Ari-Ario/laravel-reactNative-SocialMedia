@@ -31,7 +31,7 @@ class WhiteboardCursorMoved implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        return new PresenceChannel('presence-space.' . $this->spaceId);
+        return new PresenceChannel('presence-space-' . $this->spaceId);
     }
 
     public function broadcastAs()

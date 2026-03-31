@@ -38,7 +38,7 @@ export class UnifiedSpaceService {
     });
 
     // Subscribe to real-time channel
-    const channel = pusher.subscribe(`presence-space.${response.data.id}`);
+    const channel = pusher.subscribe(`presence-space-${response.data.id}`);
 
     // Setup event handlers based on type
     this.setupSpaceHandlers(type, channel, response.data.id);
@@ -78,7 +78,7 @@ export class UnifiedSpaceService {
     });
 
     // Subscribe to voice activity
-    const channel = pusher.subscribe(`presence-space.${spaceId}`);
+    const channel = pusher.subscribe(`presence-space-${spaceId}`);
 
     // Handle incoming voice
     channel.bind('voice-data', async (data) => {

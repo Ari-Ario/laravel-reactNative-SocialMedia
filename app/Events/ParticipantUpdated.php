@@ -28,12 +28,12 @@ class ParticipantUpdated implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        return new PresenceChannel('space.' . $this->space->id);
+        return new PresenceChannel('space-' . $this->space->id);
     }
 
     public function broadcastAs()
     {
-        return 'participant.updated';
+        return 'participant-updated';
     }
 
     public function broadcastWith()

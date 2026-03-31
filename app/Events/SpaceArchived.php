@@ -26,13 +26,13 @@ class SpaceArchived implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new \Illuminate\Broadcasting\Channel('user.' . $this->userId),
+            new \Illuminate\Broadcasting\Channel('user-' . $this->userId),
         ];
     }
 
     public function broadcastAs()
     {
-        return 'space.archived';
+        return 'space-archived';
     }
 
     public function broadcastWith()

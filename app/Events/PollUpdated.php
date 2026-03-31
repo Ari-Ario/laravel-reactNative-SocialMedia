@@ -38,7 +38,7 @@ class PollUpdated implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new PresenceChannel('space.' . $this->spaceId),
+            new PresenceChannel('space-' . $this->spaceId),
         ];
     }
 
@@ -47,7 +47,7 @@ class PollUpdated implements ShouldBroadcast
      */
     public function broadcastAs(): string
     {
-        return 'poll.updated';
+        return 'poll-updated';
     }
 
     /**

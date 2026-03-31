@@ -40,12 +40,12 @@ class SpaceUpdated implements ShouldBroadcast
 
         $channels = [
             new Channel('spaces'),
-            new PresenceChannel('space.' . $this->space->id),
+            new PresenceChannel('space-' . $this->space->id),
         ];
 
         // Add user-specific channel if userId is provided
         if ($this->userId) {
-            $channels[] = new PrivateChannel('user.' . $this->userId);
+            $channels[] = new PrivateChannel('user-' . $this->userId);
         }
 
         return $channels;
@@ -53,7 +53,7 @@ class SpaceUpdated implements ShouldBroadcast
 
     public function broadcastAs()
     {
-        return 'space.updated';
+        return 'space-updated';
     }
 
     public function broadcastWith()

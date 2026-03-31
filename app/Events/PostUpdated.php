@@ -66,16 +66,16 @@ class PostUpdated extends LaravelNotification implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        // $channels = [new Channel('post.' . $this->postId)]; // For real-time updates
+        // $channels = [new Channel('post-' . $this->postId)]; // For real-time updates
         
         $channels = [
-            new Channel('posts.global'), // ✅ Use global channel instead of post.{id}
+            new Channel('posts-global'), // ✅ Use global channel instead of post.{id}
             // ... keep user channels for notifications
         ];
         
         // Also broadcast to followers for notifications
         foreach ($this->followerIds as $followerId) {
-            $channels[] = new PrivateChannel('user.' . $followerId);
+            $channels[] = new PrivateChannel('user-' . $followerId);
         }
         
         return $channels;

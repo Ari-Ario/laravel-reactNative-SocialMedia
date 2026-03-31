@@ -31,12 +31,12 @@ class MessagePinned implements ShouldBroadcast
         $channels = [];
         
         if ($this->spaceId) {
-            $channels[] = new PresenceChannel('space.' . $this->spaceId);
+            $channels[] = new PresenceChannel('space-' . $this->spaceId);
         }
         
         foreach ($this->userIds as $userId) {
             if ($userId) {
-                $channels[] = new \Illuminate\Broadcasting\Channel('user.' . $userId);
+                $channels[] = new \Illuminate\Broadcasting\Channel('user-' . $userId);
             }
         }
 
@@ -45,7 +45,7 @@ class MessagePinned implements ShouldBroadcast
 
     public function broadcastAs()
     {
-        return 'message.pinned';
+        return 'message-pinned';
     }
 
     public function broadcastWith()

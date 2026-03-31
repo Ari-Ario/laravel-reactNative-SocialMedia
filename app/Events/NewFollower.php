@@ -48,7 +48,7 @@ class NewFollower extends LaravelNotification implements ShouldBroadcast
     public function broadcastOn()
     {
         return [
-            new PrivateChannel('user.' . $this->followedUserId),
+            new PrivateChannel('user-' . $this->followedUserId),
         ];
     }
 

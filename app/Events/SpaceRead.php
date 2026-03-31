@@ -26,13 +26,13 @@ class SpaceRead implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new \Illuminate\Broadcasting\Channel('user.' . $this->userId),
+            new \Illuminate\Broadcasting\Channel('user-' . $this->userId),
         ];
     }
 
     public function broadcastAs()
     {
-        return 'space.read';
+        return 'space-read';
     }
 
     public function broadcastWith()

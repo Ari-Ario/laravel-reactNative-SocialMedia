@@ -26,13 +26,13 @@ class SpacePinned implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new \Illuminate\Broadcasting\Channel('user.' . $this->userId),
+            new \Illuminate\Broadcasting\Channel('user-' . $this->userId),
         ];
     }
 
     public function broadcastAs()
     {
-        return 'space.pinned';
+        return 'space-pinned';
     }
 
     public function broadcastWith()

@@ -27,11 +27,11 @@ class CommentDeleted implements ShouldBroadcast
     public function broadcastOn()
     {
         $channels = [
-            new Channel('posts.global'), // For real-time feed updates
+            new Channel('posts-global'), // For real-time feed updates
         ];
 
         if ($this->postOwnerId && $this->postOwnerId != auth()->id()) {
-            $channels[] = new PrivateChannel('user.' . $this->postOwnerId); // For post owner notifications
+            $channels[] = new PrivateChannel('user-' . $this->postOwnerId); // For post owner notifications
         }
 
         return $channels;

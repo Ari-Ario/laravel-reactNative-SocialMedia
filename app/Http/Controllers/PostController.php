@@ -515,11 +515,15 @@ class PostController extends Controller
             ]
         );
 
+        $newReactionEvent = new NewReaction($reaction, $post->id, $post->user_id);
         if ($post->user_id != Auth::id()) {
             $postOwner = User::find($post->user_id);
             if ($postOwner) {
-                $postOwner->notify(new NewReaction($reaction, $post->id));
+                $postOwner->notify($newReactionEvent);
             }
+        } else {
+            // Unconditionally broadcast to posts-global for feed real-time sync, even if reacting to own post
+            broadcast($newReactionEvent)->toOthers();
         }
 
         return response()->json([
@@ -551,17 +555,18 @@ class PostController extends Controller
                 'post_id' => $post->id
             ]);
 
+            $newCommentEvent = new NewComment($comment, $post->id, $post->user_id);
+
             if ($post->user_id != Auth::id()) {
                 $postOwner = User::findOrFail($post->user_id);
-                $postOwner->notify(new NewComment(
-                    $comment,
-                    $post->id,
-                    $post->user_id
-                ));
+                $postOwner->notify($newCommentEvent);
                 \Log::info('✅ Notification sent to post owner', [
                     'post_owner_id' => $post->user_id,
                     'comment_id' => $comment->id
                 ]);
+            } else {
+                // Ensure real-time feeds still update when commenting on own post
+                broadcast($newCommentEvent)->toOthers();
             }
 
             return response()->json($comment);

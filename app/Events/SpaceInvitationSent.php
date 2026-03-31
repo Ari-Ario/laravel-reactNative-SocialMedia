@@ -33,14 +33,14 @@ class SpaceInvitationSent implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        $channel = 'user.' . $this->invitedUserId;
+        $channel = 'user-' . $this->invitedUserId;
         \Log::info("📡 Broadcasting SpaceInvitationSent on PRIVATE channel: " . $channel);
         return new PrivateChannel($channel);
     }
 
     public function broadcastAs()
     {
-        return 'space.invitation';
+        return 'space-invitation';
     }
 
     public function broadcastWith()

@@ -30,7 +30,7 @@ class SpaceDeleted implements ShouldBroadcast
 
         // ✅ Phase 71: Only broadcast to affected participants' private channels
         foreach ($this->participantIds as $participantId) {
-            $channels[] = new \Illuminate\Broadcasting\PrivateChannel('user.' . $participantId);
+            $channels[] = new \Illuminate\Broadcasting\PrivateChannel('user-' . $participantId);
         }
 
         return $channels;
@@ -38,7 +38,7 @@ class SpaceDeleted implements ShouldBroadcast
 
     public function broadcastAs()
     {
-        return 'space.deleted';
+        return 'space-deleted';
     }
 
     public function broadcastWith()

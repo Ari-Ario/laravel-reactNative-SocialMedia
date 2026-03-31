@@ -220,7 +220,7 @@ export const useCollaborationStore = create<CollaborationState>()(
         console.log(`🔌 Unsubscribing from ${subscribedSpaceIds.length} space channels`);
 
         subscribedSpaceIds.forEach(spaceId => {
-          PusherService.unsubscribeFromChannel(`presence-space.${spaceId}`);
+          PusherService.unsubscribeFromChannel(`presence-space-${spaceId}`);
         });
 
         set({ subscribedSpaceIds: [] });
@@ -416,7 +416,7 @@ export const useCollaborationStore = create<CollaborationState>()(
                     Alert.alert('Space Deleted', 'This space has been deleted by the owner.');
                     
                     // Unsubscribe to stop receiving further events for this channel
-                    PusherService.unsubscribeFromChannel(`presence-space.${deletedId}`);
+                    PusherService.unsubscribeFromChannel(`presence-space-${deletedId}`);
                 }
             }
             break;
@@ -494,11 +494,14 @@ export const useCollaborationStore = create<CollaborationState>()(
 
 
       setSpaces: (spaces) => {
+        // 🛡️ Filter nulls/undefined to prevent downstream mapping crashes
+        const validSpaces = (spaces || []).filter(s => s && s.id);
+        
         // Recalculate unread counts from the fresh space data
         const newUnreadCounts: Record<string, number> = {};
         let totalUnread = 0;
         
-        spaces.forEach(space => {
+        validSpaces.forEach(space => {
           const sid = space.id.toString();
           const fetchedUnread = (space as any).unread_count || 0;
           if (fetchedUnread > 0) {
@@ -508,7 +511,7 @@ export const useCollaborationStore = create<CollaborationState>()(
         });
 
         set({ 
-          spaces, 
+          spaces: validSpaces, 
           spaceUnreadCounts: newUnreadCounts, 
           totalUnreadSpaces: totalUnread 
         });

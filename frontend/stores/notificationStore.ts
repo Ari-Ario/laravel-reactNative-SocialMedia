@@ -160,8 +160,10 @@ interface NotificationStore {
   unreadModerationCount: number; // ✅ NEW
 
   isRealtimeReady: boolean;
+  currentToastNotification: Notification | null; // ✅ NEW: For showing instant toast
 
   // Actions
+  setCurrentToastNotification: (notif: Notification | null) => void;
   setNotificationPanelVisible: (visible: boolean) => void;
   setIsFollowersPanelVisible: (visible: boolean) => void;
   setCurrentUserId: (userId: number) => void;
@@ -272,7 +274,9 @@ export const useNotificationStore = create<NotificationStore>()(
       unreadChatbotTrainingCount: 0,
       unreadModerationCount: 0, // ✅ NEW
       isRealtimeReady: false,
+      currentToastNotification: null,
 
+      setCurrentToastNotification: (notif) => set({ currentToastNotification: notif }),
       setNotificationPanelVisible: (visible) => set({ isNotificationPanelVisible: visible }),
       setIsFollowersPanelVisible: (visible) => set({ isFollowersPanelVisible: visible }),
       setCurrentUserId: (userId) => set({ currentUserId: userId }),
@@ -361,6 +365,9 @@ export const useNotificationStore = create<NotificationStore>()(
             PostId: ${newNotification.postId}
             isFollower: ${isFollower}, isCall: ${isCall}, isMessage: ${isMessage}, isSpace: ${isSpace}, isActivity: ${isActivity}, isRegular: ${isRegular}
           `);
+          
+          // Trigger the toast globally
+          get().setCurrentToastNotification(newNotification);
 
           if (isFollower) {
             const newFollowerNotifications = [newNotification, ...state.followerNotifications].slice(0, 50);
@@ -712,7 +719,7 @@ export const useNotificationStore = create<NotificationStore>()(
         const { currentUserId } = get();
         if (currentUserId) {
           PusherService.unsubscribeFromUserNotifications(currentUserId);
-          // PusherService.unsubscribeFromChannel(`private-user.${currentUserId}`); // This was private
+          // PusherService.unsubscribeFromChannel(`private-user-${currentUserId}`); // This was private
           get().setLastActiveTime(new Date().toISOString(), currentUserId);
         }
         PusherService.disconnect();

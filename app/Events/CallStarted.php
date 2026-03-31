@@ -32,10 +32,10 @@ class CallStarted implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        $channels = [new PresenceChannel('space.' . $this->space->id)];
+        $channels = [new PresenceChannel('space-' . $this->space->id)];
         
         if ($this->toUserId) {
-            $channels[] = new PrivateChannel('user.' . $this->toUserId);
+            $channels[] = new PrivateChannel('user-' . $this->toUserId);
         }
         
         return $channels;
@@ -43,7 +43,7 @@ class CallStarted implements ShouldBroadcast
 
     public function broadcastAs()
     {
-        return 'call.started';
+        return 'call-started';
     }
 
     public function broadcastWith()

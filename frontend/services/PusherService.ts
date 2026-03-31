@@ -12,6 +12,12 @@ class PusherService {
   private maxConnectionAttempts = 3;
   private pendingSubscriptions: Array<() => void> = []; // ✅ Queue for early subscriptions
   private onConnectedCallbacks: Array<() => void> = []; // ✅ Callbacks for reconnection/initial connection
+  private currentToken: string | null = null; // ✅ Track current token to detect identity changes
+
+
+  getPusher(): PusherType | null {
+    return this.pusher;
+  }
 
   initialize(token: string): boolean {
     // Guard: skip during SSR (Node.js has no window)
@@ -19,31 +25,52 @@ class PusherService {
       return false;
     }
     try {
-      // Prevent multiple initializations
-      if (this.pusher) {
-        if (this.isInitialized) {
-          console.log('ℹ️ Pusher already initialized and connected, reusing connection');
-        } else {
-          console.log('ℹ️ Pusher initialization already in progress, waiting for connection...');
-        }
+      // ✅ FIX: Only skip if SAME token is being used. If token changed, we MUST re-initialize
+      // to ensure the authorizer uses the new credentials (e.g. switching from User to Guest)
+      if (this.pusher && this.isInitialized && this.currentToken === token) {
+        console.log('ℹ️ Pusher already initialized with current token, reusing connection');
         return true;
+      }
+
+      if (this.pusher && this.isInitialized && this.currentToken !== token) {
+        console.log('🔄 Token changed (User/Guest switch), re-initializing Reverb/Pusher...');
+        this.pusher.disconnect();
+        this.pusher = null;
+        this.isInitialized = false;
+        this.channels.clear();
       }
 
       if (this.connectionAttempts >= this.maxConnectionAttempts) {
         console.error('❌ Max connection attempts reached, giving up');
         return false;
       }
+      
+      this.currentToken = token; // Store for future comparison
 
-      const pusherKey = process.env.EXPO_PUBLIC_PUSHER_APP_KEY;
+      const pusherKey = process.env.EXPO_PUBLIC_REVERB_APP_KEY || process.env.EXPO_PUBLIC_PUSHER_APP_KEY;
+      const reverbHost = process.env.EXPO_PUBLIC_REVERB_HOST;
+      const reverbPort = process.env.EXPO_PUBLIC_REVERB_PORT;
+      const reverbScheme = process.env.EXPO_PUBLIC_REVERB_SCHEME || 'https';
       const pusherCluster = process.env.EXPO_PUBLIC_PUSHER_APP_CLUSTER;
       const apiUrl = getApiBase();
 
-      if (!pusherKey || !pusherCluster || !apiUrl) {
-        console.error('❌ Pusher environment variables missing');
+      // ✅ FIX: Dynamically derive Reverb host/port if on local development 
+      // (localhost, 10.0.2.2, or local IP like 192.168.x.x). 
+      // This ensures mobile browsers on the same network hit the local Reverb server.
+      const isLocal = apiUrl.includes('localhost') || 
+                      apiUrl.includes('127.0.0.1') || 
+                      apiUrl.match(/^(http|https):\/\/(\d+\.\d+\.\d+\.\d+)/); // Matches any direct IP like 10.0.2.2 or 192.168.1.x
+      
+      const finalWsHost = isLocal ? apiUrl.split('//')[1].split('/')[0].split(':')[0] : reverbHost;
+      const finalWsPort = isLocal ? 8080 : (reverbPort ? parseInt(reverbPort) : 443);
+      const finalWsScheme = isLocal ? 'http' : (reverbScheme || 'https');
+
+      if (!pusherKey || !apiUrl) {
+        console.error('❌ Pusher/Reverb environment variables missing');
         return false;
       }
 
-      console.log('🔄 Initializing Pusher connection...');
+      console.log(`🔄 Initializing ${reverbHost ? 'Reverb' : 'Pusher'} connection...`);
       this.connectionAttempts++;
 
       // Dynamically import pusher-js to avoid SSR window crash
@@ -59,22 +86,21 @@ class PusherService {
           console.log('🌐 Using native browser environment for Pusher');
         }
 
-        // ✅ FIX: Add authorizer for presence channels
+        // ✅ FIX: Use dynamic host/port for Reverb
         this.pusher = new Pusher(pusherKey, {
           cluster: pusherCluster,
-          forceTLS: true,
+          wsHost: finalWsHost || undefined,
+          wsPort: finalWsPort,
+          wssPort: finalWsPort,
+          forceTLS: finalWsScheme === 'https',
+          enabledTransports: ['ws', 'wss'],
           authorizer: (channel: any, options: any) => {
             return {
               authorize: (socketId: string, callback: Function) => {
-                // Ensure we hit the correct auth endpoint. Laravel's Broadcast::routes() 
-                // by default registers at /broadcasting/auth. 
-                // If it's not under /api, we should use the root URL.
-                const authUrl = apiUrl.includes('/api')
-                  ? `${apiUrl.split('/api')[0]}/broadcasting/auth` // Standard Laravel: /broadcasting/auth
-                  : `${apiUrl}/broadcasting/auth`; // Fallback: /broadcasting/auth on current path
-
-                // If the app uses a custom API prefix for auth:
-                const apiAuthUrl = apiUrl.endsWith('/api') ? `${apiUrl}/broadcasting/auth` : null;
+                // ✅ HARDENING: DECISIVELY Use the api/broadcasting/auth endpoint.
+                // Mobile (via getApiBase) already includes /api, so this is /api/broadcasting/auth.
+                // Web also uses /api, so this is consistent across all platforms.
+                const authUrl = `${apiUrl}/broadcasting/auth`;
 
                 console.log(`🔐 Authorizing channel: ${channel.name} with socket: ${socketId}`);
                 console.log(`🔐 Using token: ${token ? token.substring(0, 20) + '...' : 'MISSING'}`);
@@ -83,7 +109,7 @@ class PusherService {
                 fetch(authUrl, {
                   method: 'POST',
                   headers: {
-                    'Authorization': `Bearer ${token}`,
+                    'Authorization': `Bearer ${this.currentToken || token}`, // ✅ Always use LATEST token
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
                   },
@@ -201,7 +227,7 @@ class PusherService {
     }
 
     try {
-      const channelName = `private-user.${userId}`;
+      const channelName = `private-user-${userId}`;
       console.log(`🔌 Pusher: Subscribing to private user channel: ${channelName}`);
 
       if (this.channels.has(channelName)) {
@@ -421,7 +447,7 @@ class PusherService {
         onNotification(notification);
       });
 
-      channel.bind('space.deleted', (data: any) => {
+      channel.bind('space-deleted', (data: any) => {
         console.log('🗑️ User channel: Space deleted received:', data);
         const notification = {
           type: 'space-deleted',
@@ -435,7 +461,7 @@ class PusherService {
       });
 
       // Handle Violation Reported (Specific Event)
-      channel.bind('violation.reported', (data: any) => {
+      channel.bind('violation-reported', (data: any) => {
         console.log('🚨 Violation Report Received (Real-time):', data);
 
         const innerData = data.data || data;
@@ -524,7 +550,7 @@ class PusherService {
 
 
       // Call started
-      channel.bind('call.started', (data: any) => {
+      channel.bind('call-started', (data: any) => {
         console.log('📞 [PusherService] call.started RAW payload:', JSON.stringify(data));
 
         const notification = {
@@ -577,7 +603,7 @@ class PusherService {
       });
 
       // ✅ ADDED: space.message (used by SpaceMessageSent event)
-      channel.bind('space.message', (data: any) => {
+      channel.bind('space-message', (data: any) => {
         console.log('💬 New message notification (space.message):', data);
 
         const msgObj = data.message || {};
@@ -597,7 +623,7 @@ class PusherService {
       });
 
       // ✅ SPACE MANAGEMENT EVENTS
-      channel.bind('space.muted', (data: any) => {
+      channel.bind('space-muted', (data: any) => {
         onNotification({
           type: 'space_muted',
           spaceId: data.space_id,
@@ -606,7 +632,7 @@ class PusherService {
         });
       });
 
-      channel.bind('space.pinned', (data: any) => {
+      channel.bind('space-pinned', (data: any) => {
         onNotification({
           type: 'space_pinned',
           spaceId: data.space_id,
@@ -615,7 +641,7 @@ class PusherService {
         });
       });
 
-      channel.bind('space.archived', (data: any) => {
+      channel.bind('space-archived', (data: any) => {
         onNotification({
           type: 'space_archived',
           spaceId: data.space_id,
@@ -624,7 +650,7 @@ class PusherService {
         });
       });
 
-      channel.bind('space.unread', (data: any) => {
+      channel.bind('space-unread', (data: any) => {
         onNotification({
           type: 'space_unread',
           spaceId: data.space_id,
@@ -634,7 +660,7 @@ class PusherService {
       });
 
       // Space invitation
-      channel.bind('space.invitation', (data: any) => {
+      channel.bind('space-invitation', (data: any) => {
         console.log('📨 Space invitation event received:', data);
 
         // ✅ FILTER: If this is a Laravel notification wrapper sent via the same event name, skip it.
@@ -661,7 +687,7 @@ class PusherService {
       });
 
       // Participant joined space
-      channel.bind('participant.joined', (data: any) => {
+      channel.bind('participant-joined', (data: any) => {
         console.log('👤 Participant joined notification:', data);
         const notification = {
           type: data.type || 'participant_joined',
@@ -743,7 +769,7 @@ class PusherService {
       });
 
       // New collaborative activity
-      channel.bind('activity.created', (data: any) => {
+      channel.bind('activity-created', (data: any) => {
         console.log('📅 New activity notification:', data);
         const notification = {
           type: data.type || 'activity_created',
@@ -758,9 +784,19 @@ class PusherService {
         };
         console.log('📅 SENDING TO NOTIFICATION STORE:', notification);
         onNotification(notification);
+        
+        // Ensure the calendar gets updated instantly with the new activity
+        if (data.activity) {
+          try {
+            require('@/stores/collaborationStore').useCollaborationStore.getState().handleSpaceEvent({
+              type: 'activity-created',
+              data: { activity: data.activity }
+            });
+          } catch(e) { console.warn('Could not forward activity to calendar', e); }
+        }
       });
 
-      channel.bind('activity.updated', (data: any) => {
+      channel.bind('activity-updated', (data: any) => {
         console.log('📅 Activity updated notification:', data);
         const notification = {
           type: 'activity_updated',
@@ -772,9 +808,17 @@ class PusherService {
           createdAt: new Date()
         };
         onNotification(notification);
+        if (data.activity) {
+          try {
+            require('@/stores/collaborationStore').useCollaborationStore.getState().handleSpaceEvent({
+              type: 'activity-updated',
+              data: { activity: data.activity }
+            });
+          } catch(e) {}
+        }
       });
 
-      channel.bind('activity.deleted', (data: any) => {
+      channel.bind('activity-deleted', (data: any) => {
         console.log('📅 Activity deleted notification:', data);
         const notification = {
           type: 'activity_deleted',
@@ -786,9 +830,15 @@ class PusherService {
           createdAt: new Date()
         };
         onNotification(notification);
+        try {
+          require('@/stores/collaborationStore').useCollaborationStore.getState().handleSpaceEvent({
+            type: 'activity-deleted',
+            data: { activity_id: data.activity_id, space_id: data.space_id }
+          });
+        } catch(e) {}
       });
 
-      channel.bind('space.created', (data: any) => {
+      channel.bind('space-created', (data: any) => {
         console.log('🚀 New space created by someone you follow:', data);
 
         const notification = {
@@ -830,7 +880,7 @@ class PusherService {
     this.unsubscribeFromChannel(channelName);
   }
 
-  // UPDATED: Enhanced posts.global subscription with all event types
+  // UPDATED: Enhanced posts-global subscription with all event types
   subscribeToPosts(
     postIds: number[],
     onNewComment: (data: any) => void,
@@ -850,7 +900,7 @@ class PusherService {
     }
 
     try {
-      const channelName = `posts.global`;
+      const channelName = `posts-global`;
 
       if (this.channels.has(channelName)) {
         console.log(`ℹ️ Already subscribed to global posts channel`);
@@ -936,7 +986,7 @@ class PusherService {
     onCommentDeleted: (data: any) => void
   ): boolean {
     // First unsubscribe from old channel
-    this.unsubscribeFromChannel('posts.global');
+    this.unsubscribeFromChannel('posts-global');
 
     // Then subscribe with new post list
     return this.subscribeToPosts(
@@ -1003,7 +1053,7 @@ class PusherService {
       return false;
     }
 
-    const channelName = `presence-space.${spaceId}`;
+    const channelName = `presence-space-${spaceId}`;
     let channel = this.channels.get(channelName);
 
     if (channel) {
@@ -1016,113 +1066,113 @@ class PusherService {
 
     // Bind all space events
     if (callbacks.onSpaceUpdate) {
-      channel.bind('space.updated', callbacks.onSpaceUpdate);
+      channel.bind('space-updated', callbacks.onSpaceUpdate);
     }
 
     if (callbacks.onParticipantJoined) {
-      channel.bind('participant.joined', callbacks.onParticipantJoined);
+      channel.bind('participant-joined', callbacks.onParticipantJoined);
     }
 
     if (callbacks.onParticipantLeft) {
-      channel.bind('participant.left', callbacks.onParticipantLeft);
+      channel.bind('participant-left', callbacks.onParticipantLeft);
     }
 
     if (callbacks.onMessage) {
-      channel.bind('message.sent', callbacks.onMessage);
+      channel.bind('message-sent', callbacks.onMessage);
     }
 
     if (callbacks.onCallStarted) {
-      channel.bind('call.started', callbacks.onCallStarted);
+      channel.bind('call-started', callbacks.onCallStarted);
     }
 
     if (callbacks.onCallEnded) {
-      channel.bind('call.ended', callbacks.onCallEnded);
+      channel.bind('call-ended', callbacks.onCallEnded);
     }
 
     if (callbacks.onWebRTCSignal) {
-      channel.bind('webrtc.signal', callbacks.onWebRTCSignal);
+      channel.bind('webrtc-signal', callbacks.onWebRTCSignal);
     }
 
     if (callbacks.onMagicEvent) {
-      channel.bind('magic.triggered', callbacks.onMagicEvent);
+      channel.bind('magic-triggered', callbacks.onMagicEvent);
     }
 
     if (callbacks.onScreenShareStarted) {
-      channel.bind('screen_share.started', callbacks.onScreenShareStarted);
+      channel.bind('screen_share-started', callbacks.onScreenShareStarted);
     }
 
     if (callbacks.onScreenShareEnded) {
-      channel.bind('screen_share.ended', callbacks.onScreenShareEnded);
+      channel.bind('screen_share-ended', callbacks.onScreenShareEnded);
     }
 
     if (callbacks.onMuteStateChanged) {
-      channel.bind('mute.state.changed', callbacks.onMuteStateChanged);
+      channel.bind('mute-state-changed', callbacks.onMuteStateChanged);
     }
 
     if (callbacks.onvideoStateChanged) {
-      channel.bind('video.state.changed', callbacks.onvideoStateChanged);
+      channel.bind('video-state-changed', callbacks.onvideoStateChanged);
     }
 
     // Space Management Events
     if (callbacks.onSpaceMuted) {
-      channel.bind('space.muted', callbacks.onSpaceMuted);
+      channel.bind('space-muted', callbacks.onSpaceMuted);
     }
 
     if (callbacks.onSpacePinned) {
-      channel.bind('space.pinned', callbacks.onSpacePinned);
+      channel.bind('space-pinned', callbacks.onSpacePinned);
     }
 
     if (callbacks.onSpaceArchived) {
-      channel.bind('space.archived', callbacks.onSpaceArchived);
+      channel.bind('space-archived', callbacks.onSpaceArchived);
     }
 
     if (callbacks.onSpaceUnread) {
-      channel.bind('space.unread', callbacks.onSpaceUnread);
+      channel.bind('space-unread', callbacks.onSpaceUnread);
     }
 
     // ✅ NEW: message lifecycle events → notification store
     if (callbacks.onMessageDeleted) {
-      channel.bind('message.deleted', callbacks.onMessageDeleted);
+      channel.bind('message-deleted', callbacks.onMessageDeleted);
     }
 
     if (callbacks.onMessageReacted) {
-      channel.bind('message.reacted', callbacks.onMessageReacted);
+      channel.bind('message-reacted', callbacks.onMessageReacted);
     }
 
     if (callbacks.onMessageReplied) {
-      channel.bind('message.replied', callbacks.onMessageReplied);
+      channel.bind('message-replied', callbacks.onMessageReplied);
     }
 
     if (callbacks.onSpaceDeleted) {
-      channel.bind('space.deleted', callbacks.onSpaceDeleted);
+      channel.bind('space-deleted', callbacks.onSpaceDeleted);
     }
 
     // Activity bindings
     if (callbacks.onActivityCreated) {
-      channel.bind('activity.created', callbacks.onActivityCreated);
+      channel.bind('activity-created', callbacks.onActivityCreated);
     }
     if (callbacks.onActivityUpdated) {
-      channel.bind('activity.updated', callbacks.onActivityUpdated);
+      channel.bind('activity-updated', callbacks.onActivityUpdated);
     }
     if (callbacks.onActivityDeleted) {
-      channel.bind('activity.deleted', callbacks.onActivityDeleted);
+      channel.bind('activity-deleted', callbacks.onActivityDeleted);
     }
 
     if (callbacks.onPollCreated) {
-      channel.bind('poll.created', (data: any) => {
+      channel.bind('poll-created', (data: any) => {
         console.log(`📊 Poll created in space ${spaceId}:`, data.poll.question);
         callbacks.onPollCreated?.(data.poll);
       });
     }
     if (callbacks.onPollDeleted) {
-      channel.bind('poll.deleted', (data: any) => {
+      channel.bind('poll-deleted', (data: any) => {
         console.log(`🗑️ Poll deleted from space ${spaceId}:`, data.poll.id);
         callbacks.onPollDeleted?.(data.poll_id);
       });
     }
 
     if (callbacks.onPollUpdated) {
-      channel.bind('poll.updated', (data: any) => {
+      channel.bind('poll-updated', (data: any) => {
         console.log(`📊 Poll updated in space ${spaceId}`);
         callbacks.onPollUpdated?.(data.poll);
       });
@@ -1157,12 +1207,12 @@ class PusherService {
       console.log(`🔌 Subscribing to global spaces channel: ${channelName}`);
       const channel = this.pusher.subscribe(channelName);
 
-      channel.bind('space.updated', (data: any) => {
+      channel.bind('space-updated', (data: any) => {
         console.log('🪐 Global space update received:', data);
         onSpaceUpdated(data);
       });
 
-      channel.bind('space.deleted', (data: any) => {
+      channel.bind('space-deleted', (data: any) => {
         console.log('🗑️ Global space deletion received:', data);
         onSpaceUpdated({ ...data, type: 'space-deleted' });
       });
@@ -1197,7 +1247,7 @@ class PusherService {
 
     try {
       // Private channel format for Laravel
-      const channelName = `private-user.${userId}`;
+      const channelName = `private-user-${userId}`;
 
       if (this.channels.has(channelName)) {
         console.log(`ℹ️ Already subscribed to private user channel: ${channelName}`);
@@ -1232,7 +1282,7 @@ class PusherService {
     }
 
     try {
-      const channelName = 'stories.global';
+      const channelName = 'stories-global';
 
       if (this.channels.has(channelName)) {
         console.log(`ℹ️ Already subscribed to global stories channel`);
@@ -1266,7 +1316,7 @@ class PusherService {
   }
 
   unsubscribeFromStories(): void {
-    this.unsubscribeFromChannel('stories.global');
+    this.unsubscribeFromChannel('stories-global');
   }
 
   // ✅ ADDED: Generic subscribe method for custom notification types

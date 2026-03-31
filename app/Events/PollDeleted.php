@@ -28,12 +28,12 @@ class PollDeleted implements ShouldBroadcast
     public function broadcastOn()
     {
         $channels = [
-            new PresenceChannel('space.' . $this->spaceId)
+            new PresenceChannel('space-' . $this->spaceId)
         ];
         
         foreach ($this->userIds as $userId) {
             if ($userId) {
-                $channels[] = new \Illuminate\Broadcasting\Channel('user.' . $userId);
+                $channels[] = new \Illuminate\Broadcasting\Channel('user-' . $userId);
             }
         }
         
@@ -42,7 +42,7 @@ class PollDeleted implements ShouldBroadcast
 
     public function broadcastAs()
     {
-        return 'poll.deleted';
+        return 'poll-deleted';
     }
 
     public function broadcastWith()

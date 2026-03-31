@@ -38,15 +38,15 @@ class MessageDeleted implements ShouldBroadcast
         $channels = [];
         
         if ($this->spaceId) {
-            $channels[] = new PresenceChannel('space.' . $this->spaceId);
+            $channels[] = new PresenceChannel('space-' . $this->spaceId);
         }
         else if ($this->message && $this->message->conversation_id) {
-            $channels[] = new PresenceChannel('chat.' . $this->message->conversation_id);
+            $channels[] = new PresenceChannel('chat-' . $this->message->conversation_id);
         }
         
         foreach ($this->userIds as $userId) {
             if ($userId) {
-                $channels[] = new \Illuminate\Broadcasting\Channel('user.' . $userId);
+                $channels[] = new \Illuminate\Broadcasting\Channel('user-' . $userId);
             }
         }
 
@@ -55,7 +55,7 @@ class MessageDeleted implements ShouldBroadcast
 
     public function broadcastAs()
     {
-        return 'message.deleted';
+        return 'message-deleted';
     }
 
     public function broadcastWith()

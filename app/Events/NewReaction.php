@@ -47,11 +47,11 @@ class NewReaction extends LaravelNotification implements ShouldBroadcast
     {
 
         $channels = [
-            new Channel('posts.global'), // For real-time feed updates
+            new Channel('posts-global'), // For real-time feed updates
         ];
 
         if ($this->postOwnerId != auth()->id()) {
-            $channels[] = new PrivateChannel('user.' . $this->postOwnerId); // For notifications to post owner
+            $channels[] = new PrivateChannel('user-' . $this->postOwnerId); // For notifications to post owner
         }
         return $channels;
     }

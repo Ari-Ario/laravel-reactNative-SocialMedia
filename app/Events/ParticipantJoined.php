@@ -29,12 +29,12 @@ class ParticipantJoined implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        return new PresenceChannel('space.' . $this->space->id);
+        return new PresenceChannel('space-' . $this->space->id);
     }
 
     public function broadcastAs()
     {
-        return 'participant.joined';
+        return 'participant-joined';
     }
 
     public function broadcastWith()

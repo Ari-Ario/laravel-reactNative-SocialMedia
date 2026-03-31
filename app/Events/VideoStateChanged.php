@@ -28,12 +28,12 @@ class VideoStateChanged implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        return new PresenceChannel('space.' . $this->space->id);
+        return new PresenceChannel('space-' . $this->space->id);
     }
 
     public function broadcastAs()
     {
-        return 'video.state.changed';
+        return 'video-state-changed';
     }
 
     public function broadcastWith()

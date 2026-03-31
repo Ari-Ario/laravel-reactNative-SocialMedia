@@ -46,11 +46,11 @@ class NewComment extends LaravelNotification implements ShouldBroadcast
     public function broadcastOn()
     {
         $channels = [
-            new Channel('posts.global'),
+            new Channel('posts-global'),
         ];
 
         if ($this->postOwnerId != auth()->id()) {
-            $channels[] = new PrivateChannel('user.' . $this->postOwnerId);
+            $channels[] = new PrivateChannel('user-' . $this->postOwnerId);
         }
 
         return $channels;

@@ -67,6 +67,7 @@ class MessageSent extends LaravelNotification implements ShouldBroadcast
             'userId' => $this->user?->id ?? 0,
             'profile_photo' => $this->user?->profile_photo ?? null,
             'timestamp' => now()->toISOString(),
+            'created_at' => now()->toISOString(), // ✅ Added for frontend sorting compatibility
             'message_type' => $type,
             'file_path' => $this->message['file_path'] ?? null,
         ];
@@ -80,7 +81,7 @@ class MessageSent extends LaravelNotification implements ShouldBroadcast
     public function broadcastOn()
     {
         return [
-            new PresenceChannel('space.' . $this->spaceId),
+            new PresenceChannel('space-' . $this->spaceId),
         ];
     }
 
@@ -89,6 +90,21 @@ class MessageSent extends LaravelNotification implements ShouldBroadcast
      */
     public function broadcastAs()
     {
-        return 'message.sent';
+        return 'message-sent';
+    }
+
+    /**
+     * Get the data to broadcast.
+     */
+    public function broadcastWith()
+    {
+        return [
+            'type' => 'new_message',
+            'message' => $this->message,
+            'spaceId' => $this->spaceId,
+            'user' => $this->user,
+            'created_at' => now()->toISOString(),
+            'timestamp' => now()->toISOString(),
+        ];
     }
 }

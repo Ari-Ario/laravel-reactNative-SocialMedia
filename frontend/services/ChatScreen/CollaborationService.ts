@@ -753,7 +753,7 @@ class CollaborationService {
       const pusher = this.getPusherInstance();
       if (!pusher) return;
 
-      const channelName = `presence-space.${spaceId}`;
+      const channelName = `presence-space-${spaceId}`;
       let channel = this.spaceSubscriptions.get(spaceId);
 
       if (!channel) {
@@ -779,39 +779,39 @@ class CollaborationService {
 
       // Create handler mappings
       const handlers: { [key: string]: Function } = {
-        'message.sent': (data: any) => callbacks.onMessage?.(data),
-        'webrtc.signal': (data: any) => callbacks.onWebRTCSignal?.(data),
-        'call.participant.active': (data: any) => callbacks.onWebRTCJoin?.(data),
-        'call.started': (data: any) => callbacks.onCallStarted?.(data),
-        'call.ended': (data: any) => callbacks.onCallEnded?.(data),
-        'magic.triggered': (data: any) => {
+        'message-sent': (data: any) => callbacks.onMessage?.(data),
+        'webrtc-signal': (data: any) => callbacks.onWebRTCSignal?.(data),
+        'call-participant-active': (data: any) => callbacks.onWebRTCJoin?.(data),
+        'call-started': (data: any) => callbacks.onCallStarted?.(data),
+        'call-ended': (data: any) => callbacks.onCallEnded?.(data),
+        'magic-triggered': (data: any) => {
           callbacks.onMagicEvent?.(data);
           callbacks.onMagicTriggered?.(data);
         },
-        'space.updated': (data: any) => callbacks.onSpaceUpdate?.(data),
-        'space.read': (data: any) => callbacks.onSpaceRead?.(data),
-        'space.deleted': (data: any) => callbacks.onSpaceDeleted?.(data),
-        'participant.joined': (data: any) => {
+        'space-updated': (data: any) => callbacks.onSpaceUpdate?.(data),
+        'space-read': (data: any) => callbacks.onSpaceRead?.(data),
+        'space-deleted': (data: any) => callbacks.onSpaceDeleted?.(data),
+        'participant-joined': (data: any) => {
           const normalized = { ...data, user_id: data.user?.id || data.user_id };
           callbacks.onParticipantJoined?.(normalized);
           callbacks.onParticipantUpdate?.(normalized);
         },
-        'participant.left': (data: any) => {
+        'participant-left': (data: any) => {
           const normalized = { ...data, user_id: data.user?.id || data.user_id };
           callbacks.onParticipantLeft?.(normalized);
           callbacks.onParticipantUpdate?.(normalized);
         },
-        'message.reacted': (data: any) => callbacks.onMessageReacted?.(data),
-        'message.deleted': (data: any) => callbacks.onMessageDeleted?.(data),
-        'message.pinned': (data: any) => callbacks.onMessagePinned?.(data),
-        'message.replied': (data: any) => callbacks.onMessageReplied?.(data),
-        'content.updated': (data: any) => callbacks.onContentUpdate?.(data.content_state || data),
-        'poll.created': (data: any) => callbacks.onPollCreated?.(data.poll || data),
-        'poll.updated': (data: any) => callbacks.onPollUpdated?.(data.poll || data),
-        'poll.deleted': (data: any) => callbacks.onPollDeleted?.(data.poll_id),
-        'mute.state.changed': (data: any) => callbacks.onMuteStateChanged?.(data),
-        'video.state.changed': (data: any) => callbacks.onvideoStateChanged?.(data),
-        'screen.share.toggled': (data: any) => {
+        'message-reacted': (data: any) => callbacks.onMessageReacted?.(data),
+        'message-deleted': (data: any) => callbacks.onMessageDeleted?.(data),
+        'message-pinned': (data: any) => callbacks.onMessagePinned?.(data),
+        'message-replied': (data: any) => callbacks.onMessageReplied?.(data),
+        'content-updated': (data: any) => callbacks.onContentUpdate?.(data.content_state || data),
+        'poll-created': (data: any) => callbacks.onPollCreated?.(data.poll || data),
+        'poll-updated': (data: any) => callbacks.onPollUpdated?.(data.poll || data),
+        'poll-deleted': (data: any) => callbacks.onPollDeleted?.(data.poll_id),
+        'mute-state-changed': (data: any) => callbacks.onMuteStateChanged?.(data),
+        'video-state-changed': (data: any) => callbacks.onvideoStateChanged?.(data),
+        'screen-share-toggled': (data: any) => {
           callbacks.onScreenShareStarted?.(data.user_id);
           callbacks.onScreenShareToggled?.(data);
         },
@@ -860,7 +860,7 @@ class CollaborationService {
         // Fully unsubscribe IF there are no more listeners
         if (this.spaceCallbacks.get(spaceId)?.size === 0) {
           channel.unbind_all();
-          pusher.unsubscribe(`presence-space.${spaceId}`);
+          pusher.unsubscribe(`presence-space-${spaceId}`);
           this.spaceSubscriptions.delete(spaceId);
           this.spaceCallbacks.delete(spaceId);
           console.log(`📡 Fully unsubscribed from space ${spaceId} (no more listeners)`);
@@ -868,7 +868,7 @@ class CollaborationService {
       } else {
         // Force unsubscribe completely (legacy fallback)
         channel.unbind_all();
-        pusher.unsubscribe(`presence-space.${spaceId}`);
+        pusher.unsubscribe(`presence-space-${spaceId}`);
         this.spaceSubscriptions.delete(spaceId);
         this.spaceCallbacks.delete(spaceId);
         console.log(`📡 Fully unsubscribed from space ${spaceId} (forced)`);
@@ -1985,7 +1985,7 @@ END:VCALENDAR`;
     onUserJoined?: (userId: number, userName: string) => void;
     onUserLeft?: (userId: number) => void;
   }) {
-    const channelName = `presence-space.${spaceId}`;
+    const channelName = `presence-space-${spaceId}`;
 
     // Ensure Pusher is initialized
     if (!this.pusherService?.isReady()) {

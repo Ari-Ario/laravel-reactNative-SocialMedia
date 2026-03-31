@@ -33,7 +33,7 @@ class MagicEventTriggered implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new PresenceChannel('space.' . $this->space->id),
+            new PresenceChannel('space-' . $this->space->id),
         ];
     }
 

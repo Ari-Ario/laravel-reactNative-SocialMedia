@@ -211,6 +211,15 @@ const SpaceDetailScreen = () => {
         spaceData = await collaborationService.fetchGuestSpaceInfo(id as string);
       }
 
+      // 🛡️ Guest Access Restriction: Only allow 'channel' and 'general' types
+      const isGuest = !user || user.is_guest;
+      if (isGuest && !['channel', 'general'].includes(spaceData.space_type)) {
+        console.log(`🛡️ User identified as guest (${isGuest ? 'guest session' : 'no session'}) and blocked from restricted space type: "${spaceData.space_type}"`);
+        setLoading(false);
+        setSpace(null);
+        return;
+      }
+
       console.log('Space data loaded:', {
         id: spaceData.id,
         title: spaceData.title,
@@ -375,6 +384,27 @@ const SpaceDetailScreen = () => {
         },
 
         // chat real-time granular updates
+        onMessage: (message) => {
+          console.log('💬 New message (onMessage):', message);
+          setSpace((prev: any) => {
+            const msgs = prev?.content_state?.messages || [];
+            // message might be nested under { message: {...} } or raw
+            const newMsg = message.message || message;
+            
+            // Avoid duplicates
+            if (msgs.some((m: any) => m.id === newMsg.id)) {
+              return prev;
+            }
+            
+            return {
+              ...prev,
+              content_state: {
+                ...prev?.content_state,
+                messages: [newMsg, ...msgs] // Prepend for standard chat list order
+              }
+            };
+          });
+        },
         onMessageReplied: (data) => {
           console.log('↩️ Message replied (live chat):', data);
           setSpace((prev: any) => {
@@ -922,9 +952,21 @@ const SpaceDetailScreen = () => {
 
   // ✅ Manage real-time subscription - reactive to participation changes
   useEffect(() => {
+    // 🛡️ Only subscribe if we have a user and a VALID participation record
     if (id && user && id !== 'Login' && id !== 'undefined' && id !== '[id]') {
+      const hasParticipation = !!space?.my_participation;
       const isPending = space?.my_participation?.role === 'pending';
-      if (!isPending) {
+      const isGuest = user.is_guest;
+
+      // Log subscription attempt context for debugging
+      console.log(`🔌 Pusher: Subscription Check (Space: ${id})`, {
+        hasUser: !!user,
+        isGuest: isGuest,
+        hasParticipation: hasParticipation,
+        isPending: isPending
+      });
+
+      if (hasParticipation && !isPending) {
         subscribeToSpace();
       }
     }
@@ -1186,22 +1228,57 @@ const SpaceDetailScreen = () => {
     }
   };
 
+  // 🌀 High-level Loader (Prevents crashes while space data is missing)
+  if (loading && !space) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading space...</Text>
+      </View>
+    );
+  }
 
-  const isDirectChat = space?.settings?.is_direct || space?.space_type === 'direct' || space?.space_type === 'chat' && !!space?.other_participant;
-  const otherParticipant = space?.other_participant || (isDirectChat
+  // 🛡️ Unauthorized Guest State (For non-channel/general spaces)
+  if (!user && !loading && !space) {
+    return (
+      <View style={styles.lockedContainer}>
+        <View style={styles.lockedCard}>
+          <View style={styles.lockedIconBg}>
+            <Ionicons name="lock-closed" size={40} color="#FF6B6B" />
+          </View>
+          <Text style={styles.lockedTitle}>Login Required</Text>
+          <Text style={styles.lockedDescription}>
+            This type of space is private and only accessible to registered members.
+          </Text>
+          <TouchableOpacity 
+            style={styles.joinSpaceButton}
+            onPress={() => router.replace('/LoginScreen')}
+          >
+            <Text style={styles.joinSpaceButtonText}>Go to Login</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  // 🧬 Identification Logic (Refined for guests)
+  const isDirectChat = (space?.settings?.is_direct || space?.space_type === 'direct' || space?.space_type === 'chat') && !!space?.other_participant;
+  
+  // For guests (user === null), we MUST NOT pick a random participant as "other participant"
+  const otherParticipant = space?.other_participant || (isDirectChat && user
     ? participants.find(p => String(p.user?.id || p.user_id) !== String(user?.id))?.user
     : null);
 
   const displayTitle = isDirectChat && otherParticipant
-    ? (otherParticipant.name || otherParticipant.username)
-    : (space?.title && space.title !== 'Direct Message' ? space.title : 'Loading Space...');
+    ? (otherParticipant?.name || otherParticipant?.username)
+    : (space?.title && space.title !== 'Direct Message' ? space.title : (loading ? 'Loading...' : 'Space Detail'));
 
   const displaySubtitle = isDirectChat && otherParticipant
-    ? (otherParticipant.is_online ? 'Online' : 'Direct Message')
+    ? (otherParticipant?.is_online ? 'Online' : 'Direct Message')
     : `${participants.length} ${participants.length === 1 ? 'participant' : 'participants'}`;
 
   const displayPhoto = isDirectChat && otherParticipant
-    ? ((otherParticipant.profile_photo_url || otherParticipant.profile_photo) as string)
+    ? ((otherParticipant?.profile_photo_url || otherParticipant?.profile_photo) as string)
     : (space?.image_url || space?.creator?.profile_photo || null);
 
   if (!user && space) {

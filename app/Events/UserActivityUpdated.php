@@ -26,12 +26,12 @@ class UserActivityUpdated implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        return new PrivateChannel('user.' . $this->userId);
+        return new PrivateChannel('user-' . $this->userId);
     }
 
     public function broadcastAs()
     {
-        return 'user.activity';
+        return 'user-activity';
     }
 
     public function broadcastWith()
