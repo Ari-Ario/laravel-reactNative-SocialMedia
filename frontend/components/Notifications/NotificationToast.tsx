@@ -35,6 +35,10 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
 
   useEffect(() => {
     if (visible && notification) {
+      // RESET animation values FIRST to ensure bounce effect even if already visible
+      slideAnim.setValue(-150);
+      opacityAnim.setValue(0);
+
       // Slide in animation
       Animated.parallel([
         Animated.spring(slideAnim, {

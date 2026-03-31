@@ -530,6 +530,9 @@ class PusherService {
           postId: innerData.postId || innerData.post_id,
           spaceId: innerData.spaceId || innerData.space_id,
           messageId: innerData.messageId || innerData.message_id || innerData.message?.id,
+          commentId: innerData.commentId || innerData.comment_id || innerData.comment?.id || innerData.reaction?.comment_id,
+          activityId: innerData.activityId || innerData.activity_id || innerData.activity?.id,
+          callId: innerData.callId || innerData.call_id || innerData.call?.id,
           avatar: innerData.avatar || innerData.profile_photo || innerData.inviter_avatar || innerData.user?.profile_photo || innerData.follower?.profile_photo,
           createdAt: new Date(data.created_at || Date.now()),
           isRead: false,
@@ -607,14 +610,17 @@ class PusherService {
         console.log('💬 New message notification (space.message):', data);
 
         const msgObj = data.message || {};
-        const userName = msgObj.user_name || 'Someone';
-        const content = msgObj.content || 'New message';
+        const isSystem = msgObj.isSystemMessage || msgObj.type === 'system' || !msgObj.user_id;
+        const userName = isSystem ? '' : (msgObj.user_name || 'Someone');
+        const content = typeof msgObj.content === 'string' ? msgObj.content : 'Sent a message';
+        
+        const messageText = isSystem ? content : `${userName}: ${content}`;
 
         onNotification({
           id: msgObj.id || `msg-${Date.now()}`,
           type: 'new_message',
           title: 'New Message',
-          message: `${userName}: ${typeof content === 'string' ? content : 'Sent a message'}`,
+          message: messageText.length > 65 ? messageText.substring(0, 65) + '...' : messageText,
           spaceId: data.space_id,
           userId: msgObj.user_id,
           data: { ...data, messageId: msgObj.id },

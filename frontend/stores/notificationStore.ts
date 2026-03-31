@@ -341,14 +341,19 @@ export const useNotificationStore = create<NotificationStore>()(
                                  newNotification.type === 'space_invitation' && 
                                  String(notif.spaceId) === String(newNotification.spaceId);
 
+            // Stricter check: avoid matching if both are undefined
             const isSameMetadata = notif.type === newNotification.type &&
-                                 notif.postId === newNotification.postId &&
-                                 notif.messageId === newNotification.messageId &&
-                                 notif.spaceId === newNotification.spaceId;
+                                 (notif.postId || newNotification.postId ? notif.postId === newNotification.postId : true) &&
+                                 (notif.messageId || newNotification.messageId ? notif.messageId === newNotification.messageId : true) &&
+                                 (notif.spaceId || newNotification.spaceId ? notif.spaceId === newNotification.spaceId : true) &&
+                                 (notif.commentId || newNotification.commentId ? notif.commentId === newNotification.commentId : true);
             
-            const withinWindow = Math.abs(new Date(notif.createdAt).getTime() - newNotification.createdAt.getTime()) < 60000;
+            // Reduce aggressive 60s window to 3s to only catch actual double-fires / networking echoes
+            // legitimate sequential messages from users should be permitted to ping sequentially!
+            const withinWindow = Math.abs(new Date(notif.createdAt).getTime() - newNotification.createdAt.getTime()) < 3000;
 
-            return (isSameSpaceInv || isSameMetadata) && withinWindow;
+            return (isSameSpaceInv && Math.abs(new Date(notif.createdAt).getTime() - newNotification.createdAt.getTime()) < 60000) || 
+                   (isSameMetadata && withinWindow && (notif.messageId || notif.postId || notif.spaceId)); // Require at least one valid ID if not an invite
           });
 
           if (isDuplicate) {
