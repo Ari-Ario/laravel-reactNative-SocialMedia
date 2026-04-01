@@ -373,8 +373,8 @@ const PostDetailScreen = () => {
       <View style={styles.errorContainer}>
         <Ionicons name="alert-circle-outline" size={48} color="#999" />
         <Text style={styles.errorText}>Post not found</Text>
-        <TouchableOpacity 
-          style={styles.backButton} 
+        <TouchableOpacity
+          style={styles.backButton}
           onPress={() => {
             if (returnTo) {
               router.replace(returnTo as any);
@@ -803,7 +803,7 @@ const styles = StyleSheet.create({
   },
   webWrapper: {
     width: '100%',
-    maxWidth: Platform.OS === 'web' ? '80%' : '100%',
+    // maxWidth: Platform.OS === 'web' ? '80%' : '100%',
     flex: 1,
     backgroundColor: '#fff',
   },

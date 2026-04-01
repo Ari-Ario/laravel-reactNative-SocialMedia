@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   StatusBar,
   Switch,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,8 +26,13 @@ import getApiBaseImage from '@/services/getApiBaseImage';
 import { router } from 'expo-router';
 import { GlobalStyles } from '@/styles/GlobalStyles';
 import { useNotificationStore } from '@/stores/notificationStore';
+import { useToastStore } from '@/stores/toastStore';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
 import PushNotificationService from '@/services/PushNotificationService';
+import { MediaCompressor } from '@/utils/mediaCompressor';
+import GenericMenu, { MenuItem } from '@/components/GenericMenu';
+import { AnchorPosition, calculateAnchor } from '@/utils/layout';
+import PlatformCameraView from '@/components/PlatformCameraView';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -56,7 +62,9 @@ const Page = () => {
   const [newName, setNewName] = useState(user?.name || '');
   const [saving, setSaving] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(true);
+  const [isCameraVisible, setIsCameraVisible] = useState(false);
   const nameInputRef = useRef<TextInput>(null);
+  const webCameraRef = useRef<any>(null);
 
   useEffect(() => {
     if (editNameMode) {
@@ -114,22 +122,100 @@ const Page = () => {
     }
   };
 
-  const handlePhotoAction = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
+  const { showToast } = useToastStore();
+  const [showPhotoMenu, setShowPhotoMenu] = useState(false);
+  const [photoMenuPosition, setPhotoMenuPosition] = useState<AnchorPosition | undefined>(undefined);
+  const cameraIconRef = useRef<View>(null);
 
-    if (!result.canceled && result.assets[0].uri) {
-      try {
+  const handlePhotoAction = () => {
+    if (cameraIconRef.current) {
+      cameraIconRef.current.measure((x, y, width, height, pageX, pageY) => {
+        const anchor = calculateAnchor(pageX, pageY, width, height, 220);
+        setPhotoMenuPosition(anchor);
+        setShowPhotoMenu(true);
+      });
+    } else {
+      // Fallback for web or if ref is missing
+      setShowPhotoMenu(true);
+    }
+  };
+
+  const showImagePicker = async (useCamera: boolean) => {
+    if (isWeb && useCamera) {
+      setIsCameraVisible(true);
+      setShowPhotoMenu(false);
+      return;
+    }
+
+    try {
+      setShowPhotoMenu(false);
+      const pickerOptions: ImagePicker.ImagePickerOptions = {
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      };
+
+      const result = useCamera
+        ? await ImagePicker.launchCameraAsync(pickerOptions)
+        : await ImagePicker.launchImageLibraryAsync(pickerOptions);
+
+      if (!result.canceled && result.assets[0].uri) {
         setSaving(true);
-        await uploadProfilePhoto(result.assets[0].uri);
+        // Aggressive compression for profile photo (~20KB target)
+        const compressedUri = await MediaCompressor.compressImage(result.assets[0].uri, {
+          maxWidth: 200,
+          quality: 0.5
+        });
+
+        await uploadProfilePhoto(compressedUri);
         const updated = await loadUser();
         setUser(updated);
-      } catch (e) {
-        Alert.alert('Error', 'Photo upload failed');
+        showToast('Profile photo updated successfully', 'success');
+      }
+    } catch (e) {
+      console.error('Photo upload error:', e);
+      showToast('Photo upload failed. Please try again.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const photoMenuItems: MenuItem[] = [
+    {
+      icon: 'camera',
+      label: 'Take Photo',
+      onPress: () => showImagePicker(true),
+    },
+    {
+      icon: 'images',
+      label: 'Choose from Gallery',
+      onPress: () => showImagePicker(false),
+    }
+  ];
+
+  const handleWebCapture = async () => {
+    if (webCameraRef.current) {
+      try {
+        setSaving(true);
+        const result = await webCameraRef.current.takePictureAsync();
+        if (result && result.uri) {
+          setIsCameraVisible(false);
+          
+          // Aggressive compression for profile photo (~20KB target)
+          const compressedUri = await MediaCompressor.compressImage(result.uri, {
+            maxWidth: 200,
+            quality: 0.5
+          });
+
+          await uploadProfilePhoto(compressedUri);
+          const updated = await loadUser();
+          setUser(updated);
+          showToast('Profile photo updated successfully', 'success');
+        }
+      } catch (err) {
+        console.error('Web capture error:', err);
+        showToast('Failed to capture photo', 'error');
       } finally {
         setSaving(false);
       }
@@ -247,11 +333,61 @@ const Page = () => {
           <TouchableOpacity onPress={handlePhotoAction} disabled={saving}>
             <View style={styles.photoWrapper}>
               {renderProfilePhoto()}
-              <View style={styles.cameraBadge}>
+              <View ref={cameraIconRef} style={styles.cameraBadge}>
                 <Ionicons name="camera" size={14} color="#fff" />
               </View>
             </View>
           </TouchableOpacity>
+
+          <GenericMenu
+            visible={showPhotoMenu}
+            onClose={() => setShowPhotoMenu(false)}
+            items={photoMenuItems}
+            anchorPosition={photoMenuPosition}
+          />
+
+          {/* Web Camera Modal */}
+          {isWeb && (
+            <Modal
+              visible={isCameraVisible}
+              animationType="slide"
+              transparent={false}
+              onRequestClose={() => setIsCameraVisible(false)}
+            >
+              <View style={styles.cameraModalContent}>
+                <PlatformCameraView
+                  cameraRef={webCameraRef}
+                  style={styles.webCamera}
+                  facing="front"
+                >
+                  <View style={styles.cameraOverlay}>
+                    <TouchableOpacity 
+                      onPress={() => setIsCameraVisible(false)} 
+                      style={styles.closeCameraButton}
+                    >
+                      <Ionicons name="close" size={30} color="white" />
+                    </TouchableOpacity>
+
+                    <View style={styles.cameraBottomControls}>
+                      <TouchableOpacity 
+                        onPress={handleWebCapture} 
+                        style={styles.captureButton}
+                        disabled={saving}
+                      >
+                        <View style={styles.captureButtonInner} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </PlatformCameraView>
+                {saving && (
+                  <View style={styles.cameraLoadingOverlay}>
+                    <ActivityIndicator size="large" color="#fff" />
+                    <Text style={styles.cameraLoadingText}>Optimizing...</Text>
+                  </View>
+                )}
+              </View>
+            </Modal>
+          )}
 
           <View style={styles.nameSection}>
             {editNameMode ? (
@@ -403,6 +539,57 @@ const styles = StyleSheet.create({
     color: '#1a1a1a',
     fontSize: 13,
     lineHeight: 18,
+  },
+  cameraModalContent: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  webCamera: {
+    flex: 1,
+  },
+  cameraOverlay: {
+    flex: 1,
+    justifyContent: 'space-between',
+    padding: 20,
+    paddingTop: 40,
+    paddingBottom: 40,
+  },
+  closeCameraButton: {
+    alignSelf: 'flex-start',
+    padding: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 25,
+  },
+  cameraBottomControls: {
+    alignItems: 'center',
+  },
+  captureButton: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 4,
+    borderColor: 'white',
+    padding: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  captureButtonInner: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 30,
+    backgroundColor: 'white',
+  },
+  cameraLoadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  cameraLoadingText: {
+    color: '#fff',
+    marginTop: 10,
+    fontWeight: '600',
   }
 });
 
