@@ -8,6 +8,8 @@ use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 use NotificationChannels\Expo\ExpoChannel;
 use NotificationChannels\Expo\ExpoMessage;
+use NotificationChannels\WebPush\WebPushChannel;
+use NotificationChannels\WebPush\WebPushMessage;
 
 class MessageRepliedNotification extends Notification implements ShouldQueue
 {
@@ -36,7 +38,7 @@ class MessageRepliedNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['database', 'broadcast', ExpoChannel::class];
+        return ['database', 'broadcast', ExpoChannel::class, WebPushChannel::class];
     }
 
     /**
@@ -102,6 +104,18 @@ class MessageRepliedNotification extends Notification implements ShouldQueue
             ->body($this->toArray($notifiable)['message'] ?? 'Someone replied to you')
             ->playSound()
             ->channelId('default')
+            ->data($this->toArray($notifiable));
+    }
+
+    /**
+     * Get the WebPush representation of the notification.
+     */
+    public function toWebPush(object $notifiable, $notification): WebPushMessage
+    {
+        return (new WebPushMessage)
+            ->title('New Reply')
+            ->icon($this->replier->profile_photo ?? '/favicon.ico')
+            ->body($this->toArray($notifiable)['message'] ?? 'Someone replied to you')
             ->data($this->toArray($notifiable));
     }
 }

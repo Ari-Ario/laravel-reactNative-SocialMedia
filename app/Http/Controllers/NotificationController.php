@@ -62,10 +62,22 @@ class NotificationController extends Controller
         ]);
 
         $user = auth()->user();
-        $tokens = $user->device_tokens ?? [];
         $newToken = $request->device_token;
-        
-        // Refined deduplication: find and update if exists, otherwise append
+
+        // If it's a VAPID subscription (JSON string)
+        if (str_starts_with($newToken, '{')) {
+            $subscription = json_decode($newToken, true);
+            if ($subscription && isset($subscription['endpoint'])) {
+                $user->updatePushSubscription(
+                    $subscription['endpoint'],
+                    $subscription['keys']['p256dh'] ?? null,
+                    $subscription['keys']['auth'] ?? null
+                );
+            }
+        }
+
+        // Always store in device_tokens for backward compatibility and Expo
+        $tokens = $user->device_tokens ?? [];
         $found = false;
         foreach ($tokens as &$tokenData) {
             if ($tokenData['token'] === $newToken) {
@@ -107,7 +119,15 @@ class NotificationController extends Controller
         $user = auth()->user();
         $deviceToken = $request->device_token;
 
-        // Remove device token
+        // If it's a VAPID subscription
+        if (str_starts_with($deviceToken, '{')) {
+            $subscription = json_decode($deviceToken, true);
+            if ($subscription && isset($subscription['endpoint'])) {
+                $user->deletePushSubscription($subscription['endpoint']);
+            }
+        }
+
+        // Remove from device_tokens
         $deviceTokens = $user->device_tokens ?? [];
         $filteredTokens = array_filter($deviceTokens, function ($token) use ($deviceToken) {
             return $token['token'] !== $deviceToken;

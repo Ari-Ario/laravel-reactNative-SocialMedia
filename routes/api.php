@@ -131,8 +131,8 @@ Route::post('/admin/chatbot/train', [ChatbotTrainingController::class , 'store']
 
 
 Route::middleware(['auth:sanctum'])->group(function () {
-    // Notifications endpoint
-    Route::get('/notifications/missed', [NotificationController::class , 'missedNotifications']);
+    // Notifications base check
+    Route::get('/notifications/missed', [NotificationController::class , 'missedNotifications'])->name('notifications.missed.base');
 
     // search for spaces
     Route::post('/search', [SpaceController::class , 'search']);
@@ -223,9 +223,9 @@ Route::middleware('auth:sanctum')->prefix('messages')->group(function () {
     Route::delete('/{id}/reaction', [MessagesController::class , 'deleteReaction']);
 });
 
-// Notification routes
+// Unified Notification routes
 Route::middleware('auth:sanctum')->prefix('notifications')->group(function () {
-    Route::get('/missed', [NotificationController::class , 'missedNotifications']);
+    Route::get('/missed', [NotificationController::class , 'missedNotifications'])->name('notifications.missed');
     Route::post('/register-device', [NotificationController::class , 'registerDevice']);
     Route::post('/unregister-device', [NotificationController::class , 'unregisterDevice']);
     Route::post('/{id}/read', [NotificationController::class , 'markAsRead']);
