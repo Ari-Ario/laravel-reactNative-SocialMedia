@@ -26,7 +26,9 @@ class SpaceDeleted implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        $channels = [];
+        $channels = [
+            new Channel('spaces')
+        ];
 
         // ✅ Phase 71: Only broadcast to affected participants' private channels
         foreach ($this->participantIds as $participantId) {

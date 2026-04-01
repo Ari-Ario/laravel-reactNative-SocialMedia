@@ -79,6 +79,7 @@ class SpaceUpdated implements ShouldBroadcast
             ],
             'updated_by' => $this->userId,
             'changes' => $this->changes,
+            'update_type' => $this->changes['update_type'] ?? 'updated',
             'timestamp' => now()->toISOString()
         ];
     }

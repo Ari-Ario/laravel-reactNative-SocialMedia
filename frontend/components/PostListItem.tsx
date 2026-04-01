@@ -1,4 +1,4 @@
-// components/PostListItem.tsx
+  // components/PostListItem.tsx
 import {
   View,
   Image,
@@ -462,6 +462,44 @@ export default function PostListItem({
         onClose={() => service.setReportVisible(false)}
         onReportSubmitted={service.handleReportSubmitted}
       />
+
+      {service.mediaViewerVisible && (
+        <MediaViewer
+          visible={service.mediaViewerVisible}
+          mediaItems={sortedMedia}
+          startIndex={service.mediaViewerIndex}
+          onClose={service.handleCloseViewer}
+          post={currentPost}
+          getApiBaseImage={getApiBaseImage}
+          onNavigateNext={() => service.handleNavigateNextPost(posts, post.id)}
+          onNavigatePrev={() => service.handleNavigatePrevPost(posts, post.id)}
+          onReact={(emoji) => service.handleReact(emoji, post.id)}
+          onDeleteReaction={() => service.deletePostReaction(post.id)}
+          onRepost={onRepostPress}
+          onShare={() => openModal('share', { post: currentPost })}
+          onBookmark={handleBookmark}
+          onCommentPress={() => {
+            service.handleCloseViewer();
+            service.setShowComments(true);
+          }}
+          onDoubleTap={() => service.handleReact("❤️", post.id)}
+          currentReactingItem={service.currentReactingItem}
+          setCurrentReactingItem={service.setCurrentReactingItem}
+          setIsEmojiPickerOpen={service.setIsEmojiPickerOpen}
+          onCommentSubmit={async (content) => onCommentSubmit(post.id, content)}
+          getGroupedReactions={(p) => service.getGroupedReactions(p as any)}
+          handleReactComment={(emoji) => {
+            if (service.currentReactingComment) {
+              service.handleReactComment(emoji, post.id, service.currentReactingComment.commentId!);
+            }
+          }}
+          deleteCommentReaction={(emoji) => {
+            if (service.currentReactingComment) {
+              service.deleteCommentReaction(service.currentReactingComment.commentId!, emoji);
+            }
+          }}
+        />
+      )}
 
     </Pressable>
   );

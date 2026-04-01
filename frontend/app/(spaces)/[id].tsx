@@ -709,6 +709,7 @@ const SpaceDetailScreen = () => {
   };
 
   const handleLeaveSpace = async () => {
+    setShowSpaceMenu(false);
     confirmAction(
       'Leave Space',
       'Are you sure you want to leave this space?',
@@ -727,10 +728,10 @@ const SpaceDetailScreen = () => {
         }
       }
     );
-    setShowSpaceMenu(false);
   };
 
   const handleDeleteSpace = async () => {
+    setShowSpaceMenu(false);
     const warningMessage = 'The space will be deleted forever for all participants with all messages and belongings. Proceed?';
 
     confirmAction(
@@ -751,7 +752,6 @@ const SpaceDetailScreen = () => {
         }
       }
     );
-    setShowSpaceMenu(false);
   };
 
   const handleExportContentClick = () => {

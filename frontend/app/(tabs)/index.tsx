@@ -191,6 +191,18 @@ const HomePage = () => {
             try {
                 await fetchUserSpacesFromStore(Number(user.id));
                 PusherService.subscribeToAllSpaces((data: any) => {
+                    // ✅ GUARD: If this is a 'left' or 'deleted' update, don't show the "New Space" notification
+                    // We check both data.update_type and data.changes.update_type for robustness
+                    if (
+                        data.update_type === 'left' || 
+                        data.changes?.update_type === 'left' || 
+                        data.type === 'space-deleted' || 
+                        data.update_type === 'deleted'
+                    ) {
+                        console.log('🔇 Suppressing notification for space leave/delete:', data.update_type || data.type);
+                        return;
+                    }
+
                     if (data?.space && data.space.creator_id != user.id) {
                         addNotification({
                             type: 'space_updated',

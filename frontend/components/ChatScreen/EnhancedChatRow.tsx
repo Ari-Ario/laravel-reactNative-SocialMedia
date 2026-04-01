@@ -801,12 +801,14 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
                 });
               }
 
-              menuItems.push({
-                icon: "exit-outline" as any,
-                label: "Leave Space",
-                onPress: handleLeaveSpace,
-                destructive: true,
-              });
+              if (spaceData?.my_role !== 'owner') {
+                menuItems.push({
+                  icon: "exit-outline" as any,
+                  label: "Leave Space",
+                  onPress: handleLeaveSpace,
+                  destructive: true,
+                });
+              }
             }
 
             menuItems.push({
