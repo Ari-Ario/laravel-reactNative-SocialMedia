@@ -3,7 +3,7 @@
   "overrides": {
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "react-native": "0.83.2",
+    "react-native": "0.83.4",
     "framer-motion": "11.11.17"
   },
   "resolutions": {
