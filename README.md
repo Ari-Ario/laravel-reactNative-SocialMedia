@@ -9,15 +9,17 @@ Chatbot-training must be done by employees, although it learnes from media gradu
 
 ## important commands:
 php artisan optimize:clear  #most important
-
 php artisan config:clear    # Konfiguration (.env & config/*.php)
 php artisan route:clear     # Routen
 php artisan view:clear      # Blade-Templates
 php artisan cache:clear     # App-Daten-Cache
 php artisan event:clear     # Event-Listener
+php artisan serve --host 0.0.0.0
+
+php artisan reverb:start --debug
 
 or deepclean:
 php artisan optimize:clear && php artisan event:clear && composer dump-autoload
 
-
-php artisan reverb:start --debug
+## for notification and HTTPS requests
+npx expo start --tunnel

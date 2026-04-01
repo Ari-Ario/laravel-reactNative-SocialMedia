@@ -6,6 +6,8 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Messages\BroadcastMessage;
+use NotificationChannels\Expo\ExpoChannel;
+use NotificationChannels\Expo\ExpoMessage;
 
 class MessageReactedNotification extends Notification implements ShouldQueue
 {
@@ -34,7 +36,7 @@ class MessageReactedNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['database', 'broadcast'];
+        return ['database', 'broadcast', ExpoChannel::class];
     }
 
     /**
@@ -45,7 +47,7 @@ class MessageReactedNotification extends Notification implements ShouldQueue
     public function toArray(object $notifiable): array
     {
         // $this->message can be an array or object because of how SpaceController stores json
-        $messageArray = is_array($this->message) ? $this->message : (array)$this->message;
+        $messageArray = is_array($this->message) ? $this->message : (array) $this->message;
         $type = $messageArray['type'] ?? 'text';
         $content = $messageArray['content'] ?? '';
         $messageId = $messageArray['id'] ?? '';
@@ -59,8 +61,7 @@ class MessageReactedNotification extends Notification implements ShouldQueue
             $question = $pollData['question'] ?? str_replace('Poll: ', '', $content) ?: 'a poll';
             $shortText = mb_strlen($question) > 30 ? mb_substr($question, 0, 30) . '...' : $question;
             $notifMessage = "{$this->reactor->name} reacted {$this->reaction} to your poll: \"{$shortText}\"";
-        }
-        else {
+        } else {
             $shortText = mb_strlen($content) > 30 ? mb_substr($content, 0, 30) . '...' : ($content ?: 'an attachment');
             $notifMessage = "{$this->reactor->name} reacted {$this->reaction} to your message: \"{$shortText}\"";
         }
@@ -86,5 +87,18 @@ class MessageReactedNotification extends Notification implements ShouldQueue
             'data' => $this->toArray($notifiable),
             'type' => 'message_reaction',
         ]);
+    }
+
+    /**
+     * Get the Expo representation of the notification.
+     */
+    public function toExpoPush(object $notifiable): ExpoMessage
+    {
+        return ExpoMessage::create()
+            ->title('New Reaction')
+            ->body($this->toArray($notifiable)['message'] ?? 'Someone reacted to your message')
+            ->playSound()
+            ->channelId('default')
+            ->data($this->toArray($notifiable));
     }
 }

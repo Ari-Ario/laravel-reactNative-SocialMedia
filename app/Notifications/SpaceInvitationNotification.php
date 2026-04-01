@@ -4,11 +4,10 @@ namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
-use Illuminate\Broadcasting\Channel;
-use App\Models\CollaborationSpace;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Notifications\Messages\BroadcastMessage;
+use NotificationChannels\Expo\ExpoChannel;
+use NotificationChannels\Expo\ExpoMessage;
 
 class SpaceInvitationNotification extends Notification implements ShouldQueue
 {
@@ -16,25 +15,14 @@ class SpaceInvitationNotification extends Notification implements ShouldQueue
 
     public $space;
     public $inviter;
-    public $user; // The user being invited
-    public $message;
 
     /**
      * Create a new notification instance.
      */
-    public function __construct(CollaborationSpace $space, $inviter, $user, $message = null)
+    public function __construct($space, $inviter)
     {
         $this->space = $space;
         $this->inviter = $inviter;
-        $this->user = $user;
-        $this->message = $message;
-    }
-
-    public function broadcastOn(): \Illuminate\Broadcasting\Channel
-    {
-        $channel = 'user.' . $this->user->id;
-        \Illuminate\Support\Facades\Log::info("📡 Broadcasting SpaceInvitationNotification on PUBLIC channel: " . $channel);
-        return new \Illuminate\Broadcasting\Channel($channel);
     }
 
     /**
@@ -44,36 +32,7 @@ class SpaceInvitationNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        // Return only database and broadcast for now
-        return ['database', 'broadcast'];
-    }
-
-    /**
-     * Get the broadcast event name.
-     *
-     * @return string
-     */
-    public function broadcastAs(): string
-    {
-        return 'space.invitation';
-    }
-
-    /**
-     * Get the mail representation of the notification.
-     */
-    public function toMail(object $notifiable): MailMessage
-    {
-        // Create a deep link for your mobile app
-        $deepLink = "yourapp://spaces/{$this->space->id}/join";
-        
-        return (new MailMessage)
-            ->subject('You\'ve been invited to a collaboration space!')
-            ->greeting('Hello ' . $notifiable->name . '!')
-            ->line($this->inviter->name . ' has invited you to join "' . $this->space->title . '"')
-            ->line($this->message ? 'Message: ' . $this->message : '')
-            ->action('Join Space', $deepLink)
-            ->line('This space is for: ' . ($this->space->description ?? 'Collaboration'))
-            ->line('Thank you for using our application!');
+        return ['database', 'broadcast', ExpoChannel::class];
     }
 
     /**
@@ -83,43 +42,43 @@ class SpaceInvitationNotification extends Notification implements ShouldQueue
      */
     public function toArray(object $notifiable): array
     {
-        // Create a deep link for mobile app
-        $deepLink = "yourapp://spaces/{$this->space->id}";
-        
         return [
             'type' => 'space_invitation',
-            'space_id' => $this->space->id,
-            'space_title' => $this->space->title,
-            'space_type' => $this->space->space_type,
-            'inviter_id' => $this->inviter->id,
-            'inviter_name' => $this->inviter->name,
-            'inviter_avatar' => $this->inviter->profile_photo,
-            'message' => $this->message,
-            'deep_link' => $deepLink,
-            'timestamp' => now()->toISOString(),
-            'action_url' => url("/api/spaces/{$this->space->id}/accept-invitation"),
+            'title' => 'Space Invitation',
+            'message' => "{$this->inviter->name} invited you to join \"{$this->space->title}\"",
+            'userId' => $this->inviter->id,
+            'profile_photo' => $this->inviter->profile_photo,
+            'spaceId' => $this->space->id,
+            'data' => [
+                'space' => [
+                    'id' => $this->space->id,
+                    'title' => $this->space->title,
+                ],
+            ],
         ];
     }
 
     /**
      * Get the broadcastable representation of the notification.
      */
-    public function toBroadcast(object $notifiable): array
+    public function toBroadcast(object $notifiable): BroadcastMessage
     {
-        return [
-            'id' => $this->id,
-            'type' => 'space_invitation',
+        return new BroadcastMessage([
             'data' => $this->toArray($notifiable),
-            'read_at' => null,
-            'created_at' => now()->toISOString(),
-        ];
+            'type' => 'space_invitation',
+        ]);
     }
 
     /**
-     * Determine the notification's database type.
+     * Get the Expo representation of the notification.
      */
-    public function databaseType(object $notifiable): string
+    public function toExpoPush(object $notifiable): ExpoMessage
     {
-        return 'space-invitation';
+        return ExpoMessage::create()
+            ->title('New Space Invitation')
+            ->body("{$this->inviter->name} invited you to join \"{$this->space->title}\"")
+            ->playSound()
+            ->channelId('default')
+            ->data($this->toArray($notifiable));
     }
 }

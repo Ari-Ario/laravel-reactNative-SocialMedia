@@ -1,4 +1,3 @@
-// app/(tabs)/settings/index.tsx
 import { useState, useRef, useEffect, useContext, useMemo } from 'react';
 import {
   View,
@@ -13,6 +12,7 @@ import {
   Dimensions,
   ActivityIndicator,
   StatusBar,
+  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,12 +26,13 @@ import { router } from 'expo-router';
 import { GlobalStyles } from '@/styles/GlobalStyles';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
+import PushNotificationService from '@/services/PushNotificationService';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
 
-const SettingsItem = ({ name, icon, color, onPress, badge }: any) => (
-  <TouchableOpacity style={styles.item} onPress={onPress} activeOpacity={0.7}>
+const SettingsItem = ({ name, icon, color, onPress, badge, rightElement }: any) => (
+  <TouchableOpacity style={styles.item} onPress={onPress} activeOpacity={0.7} disabled={!!rightElement}>
     <View style={[styles.iconContainer, { backgroundColor: color + '40' }]}>
       <Ionicons name={icon} size={22} color={color} />
     </View>
@@ -41,7 +42,7 @@ const SettingsItem = ({ name, icon, color, onPress, badge }: any) => (
         <Text style={styles.badgeText}>{badge > 99 ? '99+' : badge}</Text>
       </View>
     )}
-    <Ionicons name="chevron-forward" size={20} color="rgba(0,0,0,0.3)" />
+    {rightElement ? rightElement : <Ionicons name="chevron-forward" size={20} color="rgba(0,0,0,0.3)" />}
   </TouchableOpacity>
 );
 
@@ -54,6 +55,7 @@ const Page = () => {
   const [editNameMode, setEditNameMode] = useState(false);
   const [newName, setNewName] = useState(user?.name || '');
   const [saving, setSaving] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(true);
   const nameInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -61,6 +63,15 @@ const Page = () => {
       setTimeout(() => nameInputRef.current?.focus(), 100);
     }
   }, [editNameMode]);
+
+  const handlePushToggle = async (value: boolean) => {
+    setPushEnabled(value);
+    if (value) {
+      await PushNotificationService.initialize();
+    } else {
+      await PushNotificationService.unregister();
+    }
+  };
 
   const handleNameUpdate = async () => {
     if (newName === user?.name || !newName.trim()) {
@@ -83,6 +94,7 @@ const Page = () => {
   const handleLogout = async () => {
     const confirmLogout = async () => {
       try {
+        await PushNotificationService.unregister();
         await logout();
         setUser(null);
         router.replace('/LoginScreen');
@@ -146,6 +158,25 @@ const Page = () => {
         ]
       },
       {
+        title: 'Notifications',
+        items: [
+          { 
+            name: 'Web Push (Offline)', 
+            icon: 'notifications-outline', 
+            color: '#FF2D55', 
+            rightElement: (
+              <Switch 
+                value={pushEnabled}
+                onValueChange={handlePushToggle}
+                trackColor={{ false: '#eee', true: '#30D158' }}
+                ios_backgroundColor="#eee"
+                style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+              />
+            )
+          },
+        ]
+      },
+      {
         title: 'Content',
         items: [
           { name: 'Bookmarks', icon: 'bookmark-outline', color: '#FFD700', badge: bookmarks?.length, onPress: () => router.push('/settings/bookmarks') },
@@ -171,7 +202,7 @@ const Page = () => {
     ];
 
     if (user?.ai_admin) {
-      sections[1].items.splice(2, 0, { 
+      sections[2].items.splice(2, 0, { 
         name: 'Chatbot Training', 
         icon: 'chatbubbles-outline', 
         color: '#0084ff', 
@@ -189,7 +220,7 @@ const Page = () => {
     }
 
     return sections;
-  }, [user, unreadModerationCount, bookmarks?.length]);
+  }, [user, unreadModerationCount, bookmarks?.length, pushEnabled]);
 
   return (
     <View style={styles.mainContainer}>
@@ -253,7 +284,7 @@ const Page = () => {
               {settingsSections.map((section) => (
                 <View key={section.title} style={styles.section}>
                   <Text style={styles.sectionTitle}>{section.title}</Text>
-                  {section.items.map((item) => (
+                  {section.items.map((item: any) => (
                     <SettingsItem 
                       key={item.name}
                       name={item.name}
@@ -261,10 +292,21 @@ const Page = () => {
                       color={item.color}
                       badge={item.badge}
                       onPress={item.onPress}
+                      rightElement={item.rightElement}
                     />
                   ))}
                 </View>
               ))}
+
+              {/* iOS Web App Tip */}
+              {isWeb && /iPhone|iPad|iPod/.test(navigator.userAgent) && (
+                <View style={styles.tipCard}>
+                  <Ionicons name="information-circle-outline" size={20} color="#0084ff" style={styles.tipIcon} />
+                  <Text style={styles.tipText}>
+                    To receive offline notifications on iOS, tap the "Share" button and select "Add to Home Screen".
+                  </Text>
+                </View>
+              )}
 
               <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
                 <LinearGradient colors={['#F44336', '#D32F2F']} style={styles.logoutGradient}>
@@ -343,6 +385,25 @@ const styles = StyleSheet.create({
   trendBar: { height: 6, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 3, marginBottom: 8 },
   trendFill: { height: '100%', borderRadius: 3 },
   trendLabel: { fontSize: 12, color: '#4CAF50', fontWeight: 'bold' },
+  tipCard: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0,132,255,0.05)',
+    padding: 16,
+    marginBottom: 24,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#0084ff',
+    alignItems: 'center',
+  },
+  tipIcon: {
+    marginRight: 12,
+  },
+  tipText: {
+    flex: 1,
+    color: '#1a1a1a',
+    fontSize: 13,
+    lineHeight: 18,
+  }
 });
 
 export default Page;

@@ -51,6 +51,11 @@
             "expo-router"
           ]
         }
+      },
+      "config": {
+        "notification": {
+          "vapidPublicKey": "BNuVz7Dzn0_p_K9O9XvXe0QXvzYZrIf9AA9AQolJogOXKwMKABVa0787jV9k-G_ugoob_zGO1PcJa-K85jIsKmw"
+        }
       }
     },
     "plugins": [

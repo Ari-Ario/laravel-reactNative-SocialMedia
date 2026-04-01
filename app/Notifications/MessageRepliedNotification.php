@@ -6,6 +6,8 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Messages\BroadcastMessage;
+use NotificationChannels\Expo\ExpoChannel;
+use NotificationChannels\Expo\ExpoMessage;
 
 class MessageRepliedNotification extends Notification implements ShouldQueue
 {
@@ -34,7 +36,7 @@ class MessageRepliedNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['database', 'broadcast'];
+        return ['database', 'broadcast', ExpoChannel::class];
     }
 
     /**
@@ -44,11 +46,11 @@ class MessageRepliedNotification extends Notification implements ShouldQueue
      */
     public function toArray(object $notifiable): array
     {
-        $originalMessageArray = is_array($this->originalMessage) ? $this->originalMessage : (array)$this->originalMessage;
+        $originalMessageArray = is_array($this->originalMessage) ? $this->originalMessage : (array) $this->originalMessage;
         $origContent = $originalMessageArray['content'] ?? '';
         $origType = $originalMessageArray['type'] ?? 'text';
 
-        $replyMessageArray = is_array($this->replyMessage) ? $this->replyMessage : (array)$this->replyMessage;
+        $replyMessageArray = is_array($this->replyMessage) ? $this->replyMessage : (array) $this->replyMessage;
         $replyContent = $replyMessageArray['content'] ?? '';
         $replyId = $replyMessageArray['id'] ?? '';
 
@@ -61,8 +63,7 @@ class MessageRepliedNotification extends Notification implements ShouldQueue
             $question = $pollData['question'] ?? str_replace('Poll: ', '', $origContent) ?: 'a poll';
             $shortOrig = mb_strlen($question) > 20 ? mb_substr($question, 0, 20) . '...' : $question;
             $messageLabel = 'poll';
-        }
-        else {
+        } else {
             $shortOrig = mb_strlen($origContent) > 20 ? mb_substr($origContent, 0, 20) . '...' : ($origContent ?: 'an attachment');
             $messageLabel = 'message';
         }
@@ -89,5 +90,18 @@ class MessageRepliedNotification extends Notification implements ShouldQueue
             'data' => $this->toArray($notifiable),
             'type' => 'message_reply',
         ]);
+    }
+
+    /**
+     * Get the Expo representation of the notification.
+     */
+    public function toExpoPush(object $notifiable): ExpoMessage
+    {
+        return ExpoMessage::create()
+            ->title('New Reply')
+            ->body($this->toArray($notifiable)['message'] ?? 'Someone replied to you')
+            ->playSound()
+            ->channelId('default')
+            ->data($this->toArray($notifiable));
     }
 }

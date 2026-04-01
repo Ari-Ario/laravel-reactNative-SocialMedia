@@ -6,7 +6,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens; 
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
@@ -25,7 +25,7 @@ class User extends Authenticatable
         'password',
         'bio',
         'birthday',
-        'gender', 
+        'gender',
         'profile_photo',
         'cover_photo',
         'job_title',         // Professional title
@@ -38,8 +38,10 @@ class User extends Authenticatable
         'is_private',        // Private account flag
         'is_admin',          // Admin role flag
         'theme_preference',  // Light/dark mode
-        'locale', 
+        'locale',
         'custom_tabs',
+        'device_tokens',     // JSON: array of {token, type, name}
+        'is_premium',        // Premium subscription flag
     ];
 
     /**
@@ -66,6 +68,8 @@ class User extends Authenticatable
             'password' => 'hashed',
             'custom_tabs' => 'array',
             'is_guest' => 'boolean',
+            'device_tokens' => 'array',
+            'is_premium' => 'boolean',
         ];
     }
 
@@ -135,8 +139,8 @@ class User extends Authenticatable
      */
     public function hasBlocked($userId)
     {
-        return $this->blockedUsers()->where(function($q) use ($userId) {
-             $q->where('blocked_id', '=', $userId);
+        return $this->blockedUsers()->where(function ($q) use ($userId) {
+            $q->where('blocked_id', '=', $userId);
         })->exists();
     }
 
@@ -145,8 +149,8 @@ class User extends Authenticatable
      */
     public function isBlockedBy($userId)
     {
-        return $this->blockedBy()->where(function($q) use ($userId) {
-             $q->where('blocker_id', '=', $userId);
+        return $this->blockedBy()->where(function ($q) use ($userId) {
+            $q->where('blocker_id', '=', $userId);
         })->exists();
     }
 
@@ -174,5 +178,41 @@ class User extends Authenticatable
         return $this->belongsToMany(CollaborationSpace::class, 'space_participations', 'user_id', 'space_id')
             ->withPivot('role', 'permissions', 'last_read_at', 'muted_until')
             ->withTimestamps();
+    }
+
+    /**
+     * Route notifications for the Expo channel.
+     * 
+     * @return array
+     */
+    public function routeNotificationForExpo()
+    {
+        if (!$this->device_tokens) {
+            return [];
+        }
+
+        // Only return tokens that contain 'ExponentPushToken'
+        return collect($this->device_tokens)
+            ->pluck('token')
+            ->filter(fn($token) => is_string($token) && str_contains($token, 'ExponentPushToken'))
+            ->toArray();
+    }
+
+    /**
+     * Route notifications for the WebPush channel (VAPID).
+     * 
+     * @return array
+     */
+    public function routeNotificationForWebPush()
+    {
+        if (!$this->device_tokens) {
+            return [];
+        }
+
+        // Return tokens that are JSON strings (our VAPID fallback format)
+        return collect($this->device_tokens)
+            ->pluck('token')
+            ->filter(fn($token) => is_string($token) && str_starts_with($token, '{'))
+            ->toArray();
     }
 }

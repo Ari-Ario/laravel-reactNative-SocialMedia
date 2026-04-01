@@ -19,8 +19,7 @@ class NotificationController extends Controller
 
         if ($lastSeenTime) {
             $query->where('created_at', '>', $lastSeenTime);
-        }
-        else {
+        } else {
             // Return notifications from last 7 days if no last_seen_time
             $query->where('created_at', '>', now()->subDays(7));
         }
@@ -29,23 +28,23 @@ class NotificationController extends Controller
             ->limit(50)
             ->get()
             ->map(function ($notification) {
-            $data = $notification->data;
+                $data = $notification->data;
 
-            return [
-            'id' => $notification->id,
-            'type' => $data['type'] ?? $notification->type,
-            'title' => $data['title'] ?? 'Notification',
-            'message' => $data['message'] ?? '',
-            'data' => $data,
-            'userId' => $data['userId'] ?? null,
-            'postId' => $data['postId'] ?? null,
-            'postCaption' => $data['postCaption'] ?? null,
-            'commentId' => $data['commentId'] ?? null,
-            'avatar' => $data['profile_photo'] ?? null,
-            'isRead' => !is_null($notification->read_at),
-            'createdAt' => $notification->created_at->toISOString(),
-            ];
-        });
+                return [
+                    'id' => $notification->id,
+                    'type' => $data['type'] ?? $notification->type,
+                    'title' => $data['title'] ?? 'Notification',
+                    'message' => $data['message'] ?? '',
+                    'data' => $data,
+                    'userId' => $data['userId'] ?? null,
+                    'postId' => $data['postId'] ?? null,
+                    'postCaption' => $data['postCaption'] ?? null,
+                    'commentId' => $data['commentId'] ?? null,
+                    'avatar' => $data['profile_photo'] ?? null,
+                    'isRead' => !is_null($notification->read_at),
+                    'createdAt' => $notification->created_at->toISOString(),
+                ];
+            });
 
         return response()->json($notifications);
     }
@@ -63,21 +62,32 @@ class NotificationController extends Controller
         ]);
 
         $user = auth()->user();
+        $tokens = $user->device_tokens ?? [];
+        $newToken = $request->device_token;
+        
+        // Refined deduplication: find and update if exists, otherwise append
+        $found = false;
+        foreach ($tokens as &$tokenData) {
+            if ($tokenData['token'] === $newToken) {
+                $tokenData['type'] = $request->device_type;
+                $tokenData['name'] = $request->device_name ?? ($tokenData['name'] ?? null);
+                $tokenData['last_registered_at'] = now()->toISOString();
+                $found = true;
+                break;
+            }
+        }
 
-        // Store device token
-        $user->update([
-            'device_tokens' => array_merge(
-            $user->device_tokens ?? [],
-            [
-                [
-                    'token' => $request->device_token,
-                    'type' => $request->device_type,
-                    'name' => $request->device_name,
-                    'registered_at' => now()->toISOString(),
-                ]
-            ]
-        ),
-        ]);
+        if (!$found) {
+            $tokens[] = [
+                'token' => $newToken,
+                'type' => $request->device_type,
+                'name' => $request->device_name,
+                'registered_at' => now()->toISOString(),
+                'last_registered_at' => now()->toISOString(),
+            ];
+        }
+
+        $user->update(['device_tokens' => $tokens]);
 
         return response()->json([
             'success' => true,
