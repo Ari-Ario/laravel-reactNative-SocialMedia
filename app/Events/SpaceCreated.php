@@ -64,6 +64,10 @@ class SpaceCreated implements ShouldBroadcast
                 'name' => $this->creator->name,
                 'profile_photo' => $this->creator->profile_photo,
             ],
+            'type' => 'space_created',
+            'title' => 'New Space',
+            'message' => $this->creator->name . ' created a new space: ' . $this->space->title,
+            'profile_photo' => $this->creator->profile_photo,
             'creator_id' => $this->creator->id,
             'timestamp' => now()->toISOString()
         ];

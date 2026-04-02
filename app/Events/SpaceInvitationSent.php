@@ -48,13 +48,20 @@ class SpaceInvitationSent implements ShouldBroadcast
         return [
             'id' => (string) \Str::uuid(),
             'type' => 'space_invitation',
+            'title' => 'Space Invitation',
+            'message' => $this->message ?? ($this->inviter->name . ' invited you to join "' . $this->space->title . '"'),
+            'user' => [
+                'id' => $this->inviter->id,
+                'name' => $this->inviter->name,
+                'profile_photo' => $this->inviter->profile_photo,
+            ],
+            'profile_photo' => $this->inviter->profile_photo,
             'space_id' => $this->space->id,
             'space_title' => $this->space->title,
             'space_type' => $this->space->space_type,
             'inviter_id' => $this->inviter->id,
             'inviter_name' => $this->inviter->name,
             'inviter_avatar' => $this->inviter->profile_photo,
-            'message' => $this->message,
             'timestamp' => now()->toISOString(),
         ];
     }

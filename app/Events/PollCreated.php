@@ -69,8 +69,18 @@ class PollCreated implements ShouldBroadcast
 
         return [
             'poll' => $poll,
+            'user' => [
+                'id' => $poll->creator->id ?? null,
+                'name' => $poll->creator->name ?? 'Someone',
+                'profile_photo' => $poll->creator->profile_photo ?? null,
+            ],
+            'type' => 'poll_created',
+            'title' => 'New Poll',
+            'message' => ($poll->creator->name ?? 'Someone') . ' created a new poll: ' . ($poll->question ?? 'New Poll'),
+            'profile_photo' => $poll->creator->profile_photo ?? null,
             'space_id' => $this->spaceId,
             'created_at' => now()->toISOString(),
+            'timestamp' => now()->toISOString(),
         ];
     }
 }

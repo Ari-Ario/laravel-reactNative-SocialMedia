@@ -56,21 +56,25 @@ class SpaceMessageSent implements ShouldBroadcast
      */
     public function broadcastWith()
     {
+        $sender = \App\Models\User::find($this->message['user_id'] ?? 0);
+        
         return [
+            'chat_message' => $this->message,
+            'user' => [
+                'id' => $sender->id ?? null,
+                'name' => $sender->name ?? 'Someone',
+                'profile_photo' => $sender->profile_photo ?? null,
+            ],
+            'type' => 'space_message',
+            'title' => 'New Message',
+            'message' => ($sender->name ?? 'Someone') . ': ' . ($this->message['content'] ?? 'Sent a message'),
+            'profile_photo' => $sender->profile_photo ?? null,
             'space_id' => $this->spaceId,
-            'message' => $this->message,
             'space' => [
                 'id' => $this->spaceId,
-                'creator_id' => \App\Models\CollaborationSpace::where('id', $this->spaceId)->value('creator_id'),
                 'title' => \App\Models\CollaborationSpace::where('id', $this->spaceId)->value('title'),
-                'space_type' => \App\Models\CollaborationSpace::where('id', $this->spaceId)->value('space_type'),
-                // drastically reduce payload size to avoid Pusher 10KB crash limits on heavily populated active spaces!
-                'participations' => \App\Models\CollaborationSpace::where('id', $this->spaceId)->value('space_type') === 'direct' 
-                    ? \App\Models\SpaceParticipation::where('space_id', $this->spaceId)->with('user:id,name,username,profile_photo')->get() 
-                    : [],
             ],
-            'timestamp' => now()->toISOString(),
-            'created_at' => now()->toISOString(),
+            'timestamp' => now()->toISOString()
         ];
     }
 }

@@ -23,6 +23,7 @@ import ReportPost from './ReportPost';
 import AuthContext from '@/context/AuthContext';
 import { router } from 'expo-router';
 import getApiBaseImage from '@/services/getApiBaseImage';
+import Avatar from './Image/Avatar';
 import { useProfileView } from '@/context/ProfileViewContext';
 import { useModal } from '@/context/ModalContext';
 import { usePostStore } from '@/stores/postStore';
@@ -186,9 +187,11 @@ export default function PostListItem({
                 service.setProfilePreviewVisible(true);
               }}
             >
-              <Image
-                source={{ uri: `${getApiBaseImage()}/storage/${post.user.profile_photo}` || '@/assets/favicon.png' }}
-                style={styles.avatar}
+              <Avatar 
+                source={post.user.profile_photo} 
+                name={post.user.name} 
+                size={40} 
+                showStatus={false} 
               />
             </TouchableOpacity>
 
@@ -434,7 +437,7 @@ export default function PostListItem({
 
       {/* Emoji Picker */}
       <EmojiPicker
-        open={service.isEmojiPickerOpen}
+        open={service.isEmojiPickerOpen && !service.currentReactingComment}
         onClose={() => service.setIsEmojiPickerOpen(false)}
         onEmojiSelected={(emoji) => {
           if (service.currentReactingComment) {

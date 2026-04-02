@@ -12,7 +12,9 @@ import {
     Platform,
     Switch,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import Avatar from '../Image/Avatar';
 import { createShadow } from '@/utils/styles';
 import { useNotificationStore, NOTIFICATION_TYPES, getNotificationIcon, getNotificationColor, isChatNotification } from '@/stores/notificationStore';
 import { Notification } from '@/types/Notification';
@@ -165,7 +167,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             if (item.type === NOTIFICATION_TYPES.NEW_MESSAGE ||
                 item.type === NOTIFICATION_TYPES.MESSAGE_REACTION ||
                 item.type === NOTIFICATION_TYPES.MESSAGE_REPLY ||
-                item.type === NOTIFICATION_TYPES.MESSAGE_DELETED) {
+                item.type === NOTIFICATION_TYPES.MESSAGE_DELETED ||
+                item.type === NOTIFICATION_TYPES.SPACE_MESSAGE) {
 
                 const spaceId = resolveSpaceId();
                 const messageId = resolveMessageId();
@@ -180,7 +183,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 // Fallback: DM chat — only if no spaceId found
                 const userId = item.userId || item.data?.user?.id || item.data?.userId;
                 if (userId) {
-                    router.push({ pathname: '/(tabs)/chats/[id]', params: { id: userId.toString() } });
+                    router.push({ pathname: '/(tabs)/chats/[id]', params: { id: userId.toString() } } as any);
                     onClose();
                     return;
                 }
@@ -226,10 +229,14 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             }
 
             // ============= ACTIVITY CREATED =============
-            if (item.type === NOTIFICATION_TYPES.ACTIVITY_CREATED) {
+            if (item.type === NOTIFICATION_TYPES.ACTIVITY_CREATED || item.type === NOTIFICATION_TYPES.ACTIVITY_UPDATED) {
                 const spaceId = resolveSpaceId();
+                const activityId = item.data?.activity?.id || item.data?.activity_id;
                 if (spaceId) {
-                    router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'calendar' } });
+                    router.push({ 
+                        pathname: '/(spaces)/[id]', 
+                        params: { id: spaceId, tab: 'calendar', activity: activityId ? activityId.toString() : undefined } 
+                    });
                     onClose();
                     return;
                 }
@@ -339,14 +346,6 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
     };
 
     const renderNotificationItem = ({ item }: { item: Notification }) => {
-        const getAvatarSource = () => {
-            if (!item.avatar) return require('@/assets/images/favicon.png');
-            const avatarString = String(item.avatar).trim();
-            if (!avatarString) return require('@/assets/images/favicon.png');
-            return { uri: `${getApiBaseImage()}/storage/${avatarString}` };
-        };
-
-        const avatarSource = getAvatarSource();
         const iconName = getNotificationIcon(item.type);
         const iconColor = getNotificationColor(item.type);
 
@@ -362,11 +361,11 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                         handleAvatarPress(item);
                     }}
                 >
-                    <Image
-                        source={avatarSource}
-                        style={styles.avatar}
-                        defaultSource={require('@/assets/images/favicon.png')}
-                        onError={() => console.log('🖼️ Avatar load error:', item.avatar)}
+                    <Avatar 
+                        source={item.avatar} 
+                        name={item.title} 
+                        size={48} 
+                        showStatus={false} 
                     />
                 </TouchableOpacity>
 
@@ -767,6 +766,13 @@ const styles = StyleSheet.create({
         backgroundColor: '#f0f0f0',
         borderWidth: 2,
         borderColor: '#fff',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    initialsText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
     panelFooter: {
         padding: 12,

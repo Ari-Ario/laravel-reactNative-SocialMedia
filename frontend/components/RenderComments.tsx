@@ -1,6 +1,7 @@
 // components/RenderComments.tsx
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, FlatList, Alert } from 'react-native';
+import EmojiPicker from 'rn-emoji-keyboard';
 import { Ionicons } from '@expo/vector-icons';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { usePostStore } from '@/stores/postStore';
@@ -79,7 +80,7 @@ const RenderComments = ({
     const isHighlighted = highlightedCommentId && item.id.toString() === highlightedCommentId;
 
     return (
-      <View 
+      <View
         style={[
           styles.commentContainer,
           isHighlighted && styles.highlightedComment
@@ -101,8 +102,8 @@ const RenderComments = ({
           </TouchableOpacity>
           <Text style={styles.commentContent}>{item.content}</Text>
           {!isMyComment && (
-            <TouchableOpacity 
-              style={styles.headerReportButton} 
+            <TouchableOpacity
+              style={styles.headerReportButton}
               onPress={async () => {
                 const isAlreadyReported = useReportedContentStore.getState().isReported('comment', item.id);
                 if (isAlreadyReported) {
@@ -120,10 +121,10 @@ const RenderComments = ({
                 }
               }}
             >
-              <Ionicons 
-                name={useReportedContentStore.getState().isReported('comment', item.id) ? "flag" : "flag-outline"} 
-                size={14} 
-                color={useReportedContentStore.getState().isReported('comment', item.id) ? "#ff4444" : "#999"} 
+              <Ionicons
+                name={useReportedContentStore.getState().isReported('comment', item.id) ? "flag" : "flag-outline"}
+                size={14}
+                color={useReportedContentStore.getState().isReported('comment', item.id) ? "#ff4444" : "#999"}
               />
             </TouchableOpacity>
           )}
@@ -227,25 +228,40 @@ const RenderComments = ({
   }
 
   return (
-    <FlatList
-      data={comments}
-      renderItem={renderComment}
-      keyExtractor={(comment) => comment.id.toString()}
-      scrollEnabled={false}
-      extraData={comments} // This ensures re-render when comments change
-      ListFooterComponent={
-        <ReportPost
-          visible={showReportModal}
-          targetId={reportingCommentId || 0}
-          type="comment"
-          onClose={() => setShowReportModal(false)}
-          onReportSubmitted={(reportId) => {
-            useToastStore.getState().showToast('Report Submitted: Our AI is reviewing this comment.', 'success');
-            setShowReportModal(false);
+    <View style={{ flex: 1 }}>
+      <FlatList
+        data={comments}
+        renderItem={renderComment}
+        keyExtractor={(comment) => comment.id.toString()}
+        scrollEnabled={false}
+        extraData={comments} // This ensures re-render when comments change
+        ListFooterComponent={
+          <ReportPost
+            visible={showReportModal}
+            targetId={reportingCommentId || 0}
+            type="comment"
+            onClose={() => setShowReportModal(false)}
+            onReportSubmitted={(reportId) => {
+              useToastStore.getState().showToast('Report Submitted: Our AI is reviewing this comment.', 'success');
+              setShowReportModal(false);
+            }}
+          />
+        }
+      />
+      {/* 🚀 Emoji Picker inside Modal boundary for comment reactions */}
+      {typeof service.isEmojiPickerOpen === 'boolean' && (
+        <EmojiPicker
+          open={service.isEmojiPickerOpen && !!service.currentReactingComment}
+          onClose={() => service.setIsEmojiPickerOpen(false)}
+          onEmojiSelected={(emoji: any) => {
+            if (service.currentReactingComment) {
+              service.handleReactComment(emoji.emoji, postId, service.currentReactingComment.commentId!);
+            }
           }}
+          emojiSize={28}
         />
-      }
-    />
+      )}
+    </View>
   );
 };
 

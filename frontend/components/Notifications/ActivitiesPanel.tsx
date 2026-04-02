@@ -38,6 +38,8 @@ const ActivitiesPanel = ({ visible, onClose, anchorPosition }: ActivitiesPanelPr
             case 'magic_event': return 'sparkles';
             case 'screen_share': return 'desktop';
             case 'activity_created': return 'calendar';
+            case 'activity_updated': return 'create';
+            case 'activity_deleted': return 'trash';
             default: return 'notifications';
         }
     };
@@ -48,6 +50,8 @@ const ActivitiesPanel = ({ visible, onClose, anchorPosition }: ActivitiesPanelPr
             case 'magic_event': return '#FF2D55';
             case 'screen_share': return '#5856D6';
             case 'activity_created': return '#FF9500';
+            case 'activity_updated': return '#34C759';
+            case 'activity_deleted': return '#FF3B30';
             default: return '#8E8E93';
         }
     };
@@ -59,11 +63,20 @@ const ActivitiesPanel = ({ visible, onClose, anchorPosition }: ActivitiesPanelPr
 
         if (item.spaceId || item.data?.space_id) {
             const spaceId = item.spaceId || item.data?.space_id;
-            const tab = item.type === 'activity_created' ? 'calendar' : 'chat';
-            router.push({
-                pathname: '/(spaces)/[id]',
-                params: { id: spaceId, tab }
-            });
+            
+            // Don't route if activity was deleted, just stay in chat/current view
+            if (item.type === 'activity_deleted') {
+                router.push({
+                    pathname: '/(spaces)/[id]',
+                    params: { id: spaceId, tab: 'chat' }
+                });
+            } else {
+                const tab = (item.type === 'activity_created' || item.type === 'activity_updated') ? 'calendar' : 'chat';
+                router.push({
+                    pathname: '/(spaces)/[id]',
+                    params: { id: spaceId, tab }
+                });
+            }
         }
         onClose();
     };

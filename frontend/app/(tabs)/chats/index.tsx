@@ -1069,7 +1069,7 @@ const ChatPage = () => {
           onPress={() => setShowActivities(true)}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="people" size={20} color="#007AFF" />
+            <Ionicons name="calendar-outline" size={28} color="#007AFF" />
             {globalUpcomingCount > 0 && (
               <View style={styles.badgeContainer}>
                 <Text style={styles.badgeText}>
@@ -1604,7 +1604,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: 6,
     paddingHorizontal: 12,
     backgroundColor: '#f8f8f8',
     borderRadius: 10,

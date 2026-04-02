@@ -23,7 +23,7 @@ class CollaborativeActivityCreated implements ShouldBroadcast
      */
     public function __construct(CollaborativeActivity $activity)
     {
-        $this->activity = $activity->load('creator', 'participants');
+        $this->activity = $activity->load(['creator', 'space', 'participants']);
         $this->spaceId = $activity->space_id;
     }
 
@@ -62,9 +62,30 @@ class CollaborativeActivityCreated implements ShouldBroadcast
     public function broadcastWith()
     {
         return [
-            'activity' => $this->activity,
+            'type' => 'activity_created',
+            'title' => 'New Activity Created',
+            'message' => "{$this->activity->creator->name} created \"{$this->activity->title}\" in \"{$this->activity->space->title}\"",
+
+            'profile_photo' => $this->activity->creator->profile_photo,
+            'user' => [
+                'id' => $this->activity->creator->id,
+                'name' => $this->activity->creator->name,
+                'profile_photo' => $this->activity->creator->profile_photo,
+            ],
+            'space' => [
+                'id' => $this->activity->space->id,
+                'title' => $this->activity->space->title,
+            ],
+            'activity' => [
+                'id' => $this->activity->id,
+                'title' => $this->activity->title,
+                'status' => $this->activity->status,
+                'start_time' => $this->activity->start_time,
+                'end_time' => $this->activity->end_time,
+            ],
             'space_id' => $this->spaceId,
             'timestamp' => now()->toISOString(),
         ];
     }
+
 }

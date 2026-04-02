@@ -56,11 +56,17 @@ class CallStarted implements ShouldBroadcast
                 'initiator_id' => $this->call->initiator_id,
                 'started_at' => $this->call->started_at->toISOString(),
             ],
-            'space_id' => $this->space->id,
             'user' => [
                 'id' => $this->user->id,
                 'name' => $this->user->name,
+                'profile_photo' => $this->user->profile_photo,
             ],
+            'type' => 'call_started',
+            'title' => 'Incoming Call',
+            'message' => $this->user->name . ' is calling you...',
+            'profile_photo' => $this->user->profile_photo,
+            'space_id' => $this->space->id,
+            'timestamp' => now()->toISOString()
         ];
     }
 }

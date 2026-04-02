@@ -8,6 +8,7 @@ import { getNotificationIcon, getNotificationColor, NOTIFICATION_TYPES, isChatNo
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { router } from 'expo-router';
 import { BlurView } from 'expo-blur';
+import Avatar from '../Image/Avatar';
 import { usePostStore } from '@/stores/postStore';
 import { useProfileView } from '@/context/ProfileViewContext';
 import { fetchPostById } from '@/services/PostService';
@@ -107,7 +108,7 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
       } else if (item.type === NOTIFICATION_TYPES.CALL_STARTED) {
         const spaceId = resolveSpaceId();
         if (spaceId) router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'meeting' } } as any);
-      } else if ([NOTIFICATION_TYPES.NEW_MESSAGE, NOTIFICATION_TYPES.MESSAGE_REACTION, NOTIFICATION_TYPES.MESSAGE_REPLY, NOTIFICATION_TYPES.MESSAGE_DELETED].includes(item.type)) {
+      } else if ([NOTIFICATION_TYPES.NEW_MESSAGE, NOTIFICATION_TYPES.MESSAGE_REACTION, NOTIFICATION_TYPES.MESSAGE_REPLY, NOTIFICATION_TYPES.MESSAGE_DELETED, NOTIFICATION_TYPES.SPACE_MESSAGE].includes(item.type)) {
         const spaceId = resolveSpaceId();
         const messageId = resolveMessageId();
         if (spaceId) {
@@ -126,9 +127,13 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
       } else if (item.type === NOTIFICATION_TYPES.SCREEN_SHARE) {
         const spaceId = resolveSpaceId();
         if (spaceId) router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'meeting' } } as any);
-      } else if (item.type === NOTIFICATION_TYPES.ACTIVITY_CREATED) {
+      } else if (item.type === NOTIFICATION_TYPES.ACTIVITY_CREATED || item.type === NOTIFICATION_TYPES.ACTIVITY_UPDATED) {
         const spaceId = resolveSpaceId();
-        if (spaceId) router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'calendar' } } as any);
+        const activityId = item.data?.activity?.id || item.data?.activity_id;
+        if (spaceId) router.push({ 
+          pathname: '/(spaces)/[id]', 
+          params: { id: spaceId, tab: 'calendar', activity: activityId ? activityId.toString() : undefined } 
+        } as any);
       } else if (item.type === NOTIFICATION_TYPES.SPACE_UPDATED) {
         const spaceId = resolveSpaceId();
         if (spaceId) router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId } } as any);
@@ -168,13 +173,6 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
     }
   };
 
-  const getAvatarSource = () => {
-    if (!notification.avatar) return require('@/assets/images/favicon.png');
-    const avatarString = String(notification.avatar).trim();
-    if (!avatarString) return require('@/assets/images/favicon.png');
-    return { uri: `${getApiBaseImage()}/storage/${avatarString}` };
-  };
-
   const iconName = getNotificationIcon(notification.type);
   const iconColor = getNotificationColor(notification.type);
 
@@ -191,7 +189,12 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
       {Platform.OS === 'web' ? (
         <View style={styles.blurFallback}>
            <TouchableOpacity style={styles.toastContent} onPress={handleToastPress} activeOpacity={0.8}>
-             <Image source={getAvatarSource()} style={styles.avatar} defaultSource={require('@/assets/images/favicon.png')} />
+             <Avatar 
+                source={notification.avatar} 
+                name={notification.title} 
+                size={44} 
+                showStatus={false} 
+             />
              <View style={[styles.iconBadge, { backgroundColor: iconColor }]}>
                <Ionicons name={iconName as any} size={11} color="#fff" />
              </View>
@@ -210,7 +213,12 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
       ) : (
         <BlurView intensity={80} tint="light" style={styles.blurView}>
            <TouchableOpacity style={styles.toastContent} onPress={handleToastPress} activeOpacity={0.8}>
-             <Image source={getAvatarSource()} style={styles.avatar} defaultSource={require('@/assets/images/favicon.png')} />
+             <Avatar 
+                source={notification.avatar} 
+                name={notification.title} 
+                size={44} 
+                showStatus={false} 
+             />
              <View style={[styles.iconBadge, { backgroundColor: iconColor }]}>
                <Ionicons name={iconName as any} size={11} color="#fff" />
              </View>
@@ -262,6 +270,13 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     backgroundColor: '#eee',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  initialsText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   iconBadge: {
     position: 'absolute',

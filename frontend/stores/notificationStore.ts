@@ -51,11 +51,15 @@ export const NOTIFICATION_TYPES = {
   MESSAGE_DELETED: 'message_deleted',
   SPACE_DELETED: 'space-deleted',          // ✅ NEW
   PARTICIPANT_JOINED: 'participant_joined',
+  PARTICIPANT_LEFT: 'participant_left',
   MAGIC_EVENT: 'magic_event',
   SCREEN_SHARE: 'screen_share',
   ACTIVITY_CREATED: 'activity_created',
+  ACTIVITY_UPDATED: 'activity_updated',
+  ACTIVITY_DELETED: 'activity_deleted',
   VIOLATION_REPORTED: 'violation_reported',
   MODERATION_ACTION: 'moderation_action', // ✅ NEW
+  SPACE_MESSAGE: 'space_message',         // ✅ NEW
 };
 
 // Icon mapping for different notification types
@@ -75,6 +79,8 @@ export const getNotificationIcon = (type: string): string => {
     case NOTIFICATION_TYPES.MAGIC_EVENT: return 'sparkles-outline';
     case NOTIFICATION_TYPES.SCREEN_SHARE: return 'desktop-outline';
     case NOTIFICATION_TYPES.ACTIVITY_CREATED: return 'calendar-outline';
+    case NOTIFICATION_TYPES.ACTIVITY_UPDATED: return 'pencil-outline';
+    case NOTIFICATION_TYPES.ACTIVITY_DELETED: return 'trash-outline';
     case NOTIFICATION_TYPES.COMMENT: return 'chatbubble-outline';
     case NOTIFICATION_TYPES.REACTION: return 'heart-outline';
     case NOTIFICATION_TYPES.COMMENT_REACTION: return 'heart-outline';
@@ -106,6 +112,8 @@ export const getNotificationColor = (type: string): string => {
     case NOTIFICATION_TYPES.MAGIC_EVENT: return '#FF2D55';
     case NOTIFICATION_TYPES.SCREEN_SHARE: return '#5856D6';
     case NOTIFICATION_TYPES.ACTIVITY_CREATED: return '#FF9500';
+    case NOTIFICATION_TYPES.ACTIVITY_UPDATED: return '#007AFF';
+    case NOTIFICATION_TYPES.ACTIVITY_DELETED: return '#FF3B30';
     case NOTIFICATION_TYPES.COMMENT: return '#007AFF';
     case NOTIFICATION_TYPES.REACTION: return '#FF3B30';
     case NOTIFICATION_TYPES.COMMENT_REACTION: return '#FF3B30';
@@ -138,6 +146,8 @@ export const isChatNotification = (type: string): boolean => {
     NOTIFICATION_TYPES.MAGIC_EVENT,
     NOTIFICATION_TYPES.SCREEN_SHARE,
     NOTIFICATION_TYPES.ACTIVITY_CREATED,
+    NOTIFICATION_TYPES.ACTIVITY_UPDATED,
+    NOTIFICATION_TYPES.ACTIVITY_DELETED,
   ].includes(type);
 };
 
@@ -225,6 +235,7 @@ const isMessageNotification = (type: string): boolean => {
     NOTIFICATION_TYPES.MESSAGE_REACTION,
     NOTIFICATION_TYPES.MESSAGE_REPLY,
     NOTIFICATION_TYPES.MESSAGE_DELETED,  // ✅ NEW
+    NOTIFICATION_TYPES.SPACE_MESSAGE,     // ✅ NEW
   ].includes(type);
 };
 
@@ -241,9 +252,12 @@ const isSpaceNotification = (type: string): boolean => {
 const isActivityNotification = (type: string): boolean => {
   return [
     NOTIFICATION_TYPES.PARTICIPANT_JOINED,
+    NOTIFICATION_TYPES.PARTICIPANT_LEFT,
     NOTIFICATION_TYPES.MAGIC_EVENT,
     NOTIFICATION_TYPES.SCREEN_SHARE,
     NOTIFICATION_TYPES.ACTIVITY_CREATED,
+    NOTIFICATION_TYPES.ACTIVITY_UPDATED,
+    NOTIFICATION_TYPES.ACTIVITY_DELETED,
   ].includes(type);
 };
 
@@ -294,29 +308,34 @@ export const useNotificationStore = create<NotificationStore>()(
         }
       },
 
-      addNotification: (notificationData) => {
-        const { currentUserId } = get();
-        console.log(`📣 addNotification triggered: Type=${notificationData.type}, ActorId=${notificationData.userId}, CurrentUserId=${currentUserId}`);
-
-        // ✅ GLOBAL FILTER: Don't add notifications for events created by the current user
-        if (notificationData.userId && currentUserId && notificationData.userId == currentUserId) {
-          console.log('🚫 Skipping notification created by self:', notificationData.type);
+      addNotification: (notificationData: any) => {
+        if (notificationData.id && get().notifications.some(n => n.id === notificationData.id)) {
           return;
         }
 
-        // ✅ Fix empty titles/messages before storing
-        if (!notificationData.title) {
-          notificationData.title = 'New Notification';
-        }
-        if (!notificationData.message) {
-          notificationData.message = 'You have a new update';
-        }
+        const rawAvatar = notificationData.avatar || 
+                          notificationData.profile_photo || 
+                          notificationData.data?.profile_photo ||
+                          notificationData.user_avatar ||
+                          notificationData.inviter_avatar ||
+                          (notificationData.user && typeof notificationData.user === 'object' ? (notificationData.user.profile_photo || notificationData.user.avatar) : null) ||
+                          (notificationData.follower && typeof notificationData.follower === 'object' ? (notificationData.follower.profile_photo || notificationData.follower.avatar) : null) ||
+                          (notificationData.post?.user && typeof notificationData.post.user === 'object' ? notificationData.post.user.profile_photo : null) ||
+                          (notificationData.reaction?.user && typeof notificationData.reaction.user === 'object' ? notificationData.reaction.user.profile_photo : null) ||
+                          (notificationData.message?.user && typeof notificationData.message.user === 'object' ? notificationData.message.user.profile_photo : null) || 
+                          (notificationData.call?.user && typeof notificationData.call.user === 'object' ? notificationData.call.user.profile_photo : null);
+
+        const avatar = (typeof rawAvatar === 'string' && rawAvatar.trim().length > 0) ? rawAvatar : undefined;
 
         const newNotification: Notification = {
           ...notificationData,
-          id: (notificationData as any).id || Date.now().toString(),
+          id: notificationData.id || String(Date.now()),
+          type: notificationData.type || 'regular',
+          title: notificationData.title || 'New Notification',
+          message: notificationData.notification_message || notificationData.message || 'You have a new alert',
+          avatar: avatar,
           isRead: false,
-          createdAt: notificationData.createdAt || new Date()
+          createdAt: notificationData.createdAt ? new Date(notificationData.createdAt) : (notificationData.created_at ? new Date(notificationData.created_at) : new Date())
         };
 
         // ✅ Update last seen time to the receipt of this notification 
@@ -386,7 +405,12 @@ export const useNotificationStore = create<NotificationStore>()(
               notifications: newNotifications,
               unreadCount: newNotifications.filter(n => !n.isRead && !isCallNotification(n.type) && !isMessageNotification(n.type) && !isSpaceNotification(n.type) && !isActivityNotification(n.type) && !isChatbotTrainingNotification(n.type)).length,
               unreadCallCount: newNotifications.filter(n => !n.isRead && isCallNotification(n.type)).length,
-              unreadMessageCount: newNotifications.filter(n => !n.isRead && isMessageNotification(n.type)).length,
+              unreadMessageCount: newNotifications.filter(n => 
+                !n.isRead && 
+                isMessageNotification(n.type) && 
+                !(n.data?.is_system || n.data?.call_log || n.message?.toLowerCase().includes('call') || n.message?.toLowerCase().includes('joined') || n.message?.toLowerCase().includes('left') || n.message?.toLowerCase().includes('created') || n.message?.toLowerCase().includes('updated')) &&
+                !(n.userId && state.currentUserId && n.userId === state.currentUserId)
+              ).length,
               unreadSpaceCount: newNotifications.filter(n => !n.isRead && isSpaceNotification(n.type)).length,
               unreadActivityCount: newNotifications.filter(n => !n.isRead && isActivityNotification(n.type)).length,
               unreadChatbotTrainingCount: newNotifications.filter(n => !n.isRead && isChatbotTrainingNotification(n.type)).length,
@@ -411,7 +435,8 @@ export const useNotificationStore = create<NotificationStore>()(
         const { notifications, currentUserId } = get();
         const filtered = notifications.filter(n =>
           isMessageNotification(n.type) &&
-          !(n.userId && currentUserId && n.userId == currentUserId)
+          !(n.userId && currentUserId && n.userId == currentUserId) &&
+          !(n.data?.is_system || n.data?.call_log || n.message?.toLowerCase().includes('call') || n.message?.toLowerCase().includes('joined') || n.message?.toLowerCase().includes('left') || n.message?.toLowerCase().includes('created') || n.message?.toLowerCase().includes('updated'))
         );
         console.log('💬 Getting message notifications:', filtered.length);
         return filtered;
@@ -477,7 +502,12 @@ export const useNotificationStore = create<NotificationStore>()(
             // Calculate all counts
             const newUnreadCount = updatedNotifications.filter(n => !n.isRead && !isCallNotification(n.type) && !isMessageNotification(n.type) && !isSpaceNotification(n.type) && !isActivityNotification(n.type) && !isChatbotTrainingNotification(n.type)).length;
             const newUnreadCallCount = updatedNotifications.filter(n => !n.isRead && isCallNotification(n.type)).length;
-            const newUnreadMessageCount = updatedNotifications.filter(n => !n.isRead && isMessageNotification(n.type)).length;
+            const newUnreadMessageCount = updatedNotifications.filter(n => 
+              !n.isRead && 
+              isMessageNotification(n.type) && 
+              !(n.data?.is_system || n.data?.call_log || n.message?.toLowerCase().includes('call') || n.message?.toLowerCase().includes('joined') || n.message?.toLowerCase().includes('left') || n.message?.toLowerCase().includes('created') || n.message?.toLowerCase().includes('updated')) &&
+              !(n.userId && state.currentUserId && n.userId === state.currentUserId)
+            ).length;
             const newUnreadSpaceCount = updatedNotifications.filter(n => !n.isRead && isSpaceNotification(n.type)).length;
             const newUnreadActivityCount = updatedNotifications.filter(n => !n.isRead && isActivityNotification(n.type)).length;
             const newUnreadChatbotTrainingCount = updatedNotifications.filter(n => !n.isRead && isChatbotTrainingNotification(n.type)).length;
@@ -564,7 +594,12 @@ export const useNotificationStore = create<NotificationStore>()(
           // Recalculate all counts
           const newUnreadCount = updatedNotifications.filter(n => !n.isRead && !isCallNotification(n.type) && !isMessageNotification(n.type) && !isSpaceNotification(n.type) && !isActivityNotification(n.type) && !isChatbotTrainingNotification(n.type)).length;
           const newUnreadCallCount = updatedNotifications.filter(n => !n.isRead && isCallNotification(n.type)).length;
-          const newUnreadMessageCount = updatedNotifications.filter(n => !n.isRead && isMessageNotification(n.type)).length;
+          const newUnreadMessageCount = updatedNotifications.filter(n => 
+            !n.isRead && 
+            isMessageNotification(n.type) && 
+            !(n.data?.is_system || n.data?.call_log || n.message?.toLowerCase().includes('call') || n.message?.toLowerCase().includes('joined') || n.message?.toLowerCase().includes('left') || n.message?.toLowerCase().includes('created') || n.message?.toLowerCase().includes('updated')) &&
+            !(n.userId && state.currentUserId && n.userId === state.currentUserId)
+          ).length;
           const newUnreadSpaceCount = updatedNotifications.filter(n => !n.isRead && isSpaceNotification(n.type)).length;
           const newUnreadActivityCount = updatedNotifications.filter(n => !n.isRead && isActivityNotification(n.type)).length;
           const newUnreadChatbotTrainingCount = updatedNotifications.filter(n => !n.isRead && isChatbotTrainingNotification(n.type)).length;
@@ -590,10 +625,16 @@ export const useNotificationStore = create<NotificationStore>()(
           // Recalculate all counts
           const newUnreadCount = newNotifications.filter(n => !n.isRead && !isCallNotification(n.type) && !isMessageNotification(n.type) && !isSpaceNotification(n.type) && !isActivityNotification(n.type) && !isChatbotTrainingNotification(n.type)).length;
           const newUnreadCallCount = newNotifications.filter(n => !n.isRead && isCallNotification(n.type)).length;
-          const newUnreadMessageCount = newNotifications.filter(n => !n.isRead && isMessageNotification(n.type)).length;
+          const newUnreadMessageCount = newNotifications.filter(n => 
+            !n.isRead && 
+            isMessageNotification(n.type) && 
+            !(n.data?.is_system || n.data?.call_log || n.message?.toLowerCase().includes('call') || n.message?.toLowerCase().includes('joined') || n.message?.toLowerCase().includes('left') || n.message?.toLowerCase().includes('created') || n.message?.toLowerCase().includes('updated')) &&
+            !(n.userId && state.currentUserId && n.userId === state.currentUserId)
+          ).length;
           const newUnreadSpaceCount = newNotifications.filter(n => !n.isRead && isSpaceNotification(n.type)).length;
           const newUnreadActivityCount = newNotifications.filter(n => !n.isRead && isActivityNotification(n.type)).length;
           const newUnreadChatbotTrainingCount = newNotifications.filter(n => !n.isRead && isChatbotTrainingNotification(n.type)).length;
+          const newUnreadModerationCount = newNotifications.filter(n => !n.isRead && n.type === NOTIFICATION_TYPES.MODERATION_ACTION).length;
           const newUnreadFollowerCount = newFollowerNotifications.filter(n => !n.isRead).length;
 
           return {
@@ -605,6 +646,7 @@ export const useNotificationStore = create<NotificationStore>()(
             unreadSpaceCount: newUnreadSpaceCount,
             unreadActivityCount: newUnreadActivityCount,
             unreadChatbotTrainingCount: newUnreadChatbotTrainingCount,
+            unreadModerationCount: newUnreadModerationCount,
             unreadFollowerCount: newUnreadFollowerCount,
           };
         });
@@ -636,7 +678,12 @@ export const useNotificationStore = create<NotificationStore>()(
             // Calculate all counts
             const newUnreadCount = newNotifications.filter(n => !n.isRead && !isCallNotification(n.type) && !isMessageNotification(n.type) && !isSpaceNotification(n.type) && !isActivityNotification(n.type) && !isChatbotTrainingNotification(n.type)).length;
             const newUnreadCallCount = newNotifications.filter(n => !n.isRead && isCallNotification(n.type)).length;
-            const newUnreadMessageCount = newNotifications.filter(n => !n.isRead && isMessageNotification(n.type)).length;
+            const newUnreadMessageCount = newNotifications.filter(n => 
+              !n.isRead && 
+              isMessageNotification(n.type) && 
+              !(n.data?.is_system || n.data?.call_log || n.message?.toLowerCase().includes('call') || n.message?.toLowerCase().includes('joined') || n.message?.toLowerCase().includes('left') || n.message?.toLowerCase().includes('created') || n.message?.toLowerCase().includes('updated')) &&
+              !(n.userId && state.currentUserId && n.userId === state.currentUserId)
+            ).length;
             const newUnreadSpaceCount = newNotifications.filter(n => !n.isRead && isSpaceNotification(n.type)).length;
             const newUnreadActivityCount = newNotifications.filter(n => !n.isRead && isActivityNotification(n.type)).length;
             const newUnreadChatbotTrainingCount = newNotifications.filter(n => !n.isRead && isChatbotTrainingNotification(n.type)).length;
@@ -781,7 +828,7 @@ export const useNotificationStore = create<NotificationStore>()(
                   message: `${notifData.inviter_name || 'Someone'} invited you to join "${notifData.space_title || 'a space'}"`,
                   spaceId: notifData.space_id,
                   userId: notifData.inviter_id,
-                  avatar: notifData.inviter_avatar,
+                  avatar: notifData.profile_photo || notifData.inviter_avatar,
                   data: notifData,
                 };
               }
@@ -868,7 +915,7 @@ export const useNotificationStore = create<NotificationStore>()(
                   spaceId: notifData.spaceId || notifData.space_id,
                   messageId: notifData.messageId || notifData.message_id || notifData.message?.id,
                   userId: notifData.userId || notifData.user_id || notifData.user?.id,
-                  avatar: notifData.avatar || notifData.profile_photo || notifData.user?.profile_photo,
+                  avatar: notifData.profile_photo || notifData.avatar || notifData.user?.profile_photo,
                   data: notifData,
                 };
               }
@@ -883,7 +930,7 @@ export const useNotificationStore = create<NotificationStore>()(
                   spaceId: notifData.spaceId || notifData.space_id,
                   messageId: notifData.messageId || notifData.message_id || notifData.replyId,
                   userId: notifData.userId || notifData.user_id || notifData.user?.id,
-                  avatar: notifData.avatar || notifData.profile_photo || notifData.user?.profile_photo,
+                  avatar: notifData.profile_photo || notifData.avatar || notifData.user?.profile_photo,
                   data: notifData,
                 };
               }

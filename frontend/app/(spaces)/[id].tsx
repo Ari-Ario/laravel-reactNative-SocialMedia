@@ -782,6 +782,23 @@ const SpaceDetailScreen = () => {
       Alert.alert('Error', 'Failed to start call');
     }
   };
+
+  const handleJoinSession = useCallback(async (activity: CollaborativeActivity) => {
+    console.log('🚀 Joining session (Universal):', activity.id, 'type:', activity.activity_type);
+    
+    // Always switch to meeting tab for any joined activity now
+    setActiveTab('meeting');
+    
+    // Trigger automated video call for ALL activity types
+    try {
+      await handleStartCall('video');
+    } catch (err) {
+      console.error('Auto-call failed after join:', err);
+    }
+    
+    // Clear activity query param to prevent modal auto-open
+    router.setParams({ activity: undefined });
+  }, [id, handleStartCall]);
   const handleGuestJoin = async (guestName: string) => {
     try {
       const { user: guestUser, token, space: joinedSpace } = await collaborationService.joinSpaceAsGuest(id as string, guestName);
@@ -1184,6 +1201,7 @@ const SpaceDetailScreen = () => {
             initialActivityId={params.activity as string}
             onActivityCreated={() => loadSpaceDetails(true)}
             onCreateActivity={() => setShowCreateActivity(true)}
+            onJoinSession={handleJoinSession}
           />
         );
 

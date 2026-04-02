@@ -82,6 +82,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   highlighted,
   onJumpToMessage,
 }) => {
+  // ── FILTER SYSTEM CALL LOGS ──────────────────────────────────────────────
+  // These are handled by the separate CallStarted/CallEnded notifications
+  // and do not need to show as bubbles in the chat stream.
+  if (message.type === 'system' && (message.metadata?.call_log || message.content?.toLowerCase().includes('call'))) {
+    return null;
+  }
+
   const { openModal } = useModal();
   const bubbleRef = useRef<React.ElementRef<typeof TouchableOpacity>>(null);
   const [isSelfHighlighted, setIsSelfHighlighted] = useState(false);

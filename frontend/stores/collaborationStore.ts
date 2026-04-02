@@ -209,6 +209,18 @@ export const useCollaborationStore = create<CollaborationState>()(
               console.log('📖 Space read on another device:', data);
               get().handleSpaceEvent({ type: 'space-read', data });
             },
+            onActivityCreated: (data: any) => {
+              console.log('📅 Activity created in space:', data);
+              get().handleSpaceEvent({ type: 'activity.created', data });
+            },
+            onActivityUpdated: (data: any) => {
+              console.log('📅 Activity updated in space:', data);
+              get().handleSpaceEvent({ type: 'activity.updated', data });
+            },
+            onActivityDeleted: (data: any) => {
+              console.log('🗑️ Activity deleted in space:', data);
+              get().handleSpaceEvent({ type: 'activity.deleted', data });
+            },
           });
         });
 

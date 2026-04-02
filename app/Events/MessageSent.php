@@ -45,8 +45,8 @@ class MessageSent extends LaravelNotification implements ShouldBroadcast
     {
         $type = $this->message['type'] ?? 'text';
         $content = $this->message['content'] ?? '';
-        
-        $displayText = match($type) {
+
+        $displayText = match ($type) {
             'poll' => '📊 Poll: ' . ($content ?: 'New Poll'),
             'image' => '📷 Photo',
             'video' => '🎥 Video',
@@ -103,6 +103,7 @@ class MessageSent extends LaravelNotification implements ShouldBroadcast
             'message' => $this->message,
             'spaceId' => $this->spaceId,
             'user' => $this->user,
+            'profile_photo' => $this->user->profile_photo ?? null, // ✅ Added for notification consistency
             'created_at' => now()->toISOString(),
             'timestamp' => now()->toISOString(),
         ];

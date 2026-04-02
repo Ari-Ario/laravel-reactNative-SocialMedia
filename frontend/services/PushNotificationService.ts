@@ -199,7 +199,7 @@ class PushNotificationService {
    */
   private async registerTokenWithBackend(token: string) {
     try {
-      await axios.post('/notifications/register-device', {
+      await axios.post('/api/notifications/register-device', {
         device_token: token,
         device_type: Platform.OS === 'web' ? 'web' : (Platform.OS === 'ios' ? 'ios' : 'android'),
         device_name: Device.modelName || 'Web Browser',
@@ -278,7 +278,7 @@ class PushNotificationService {
     try {
       const token = await this.registerForPushNotificationsAsync();
       if (token) {
-        await axios.post('/notifications/unregister-device', {
+        await axios.post('/api/notifications/unregister-device', {
           device_token: token,
         });
       }

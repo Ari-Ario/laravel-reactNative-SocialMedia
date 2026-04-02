@@ -737,6 +737,9 @@ class CollaborationService {
     onMessageReplied?: (data: any) => void;
     onSpaceRead?: (data: any) => void;
     onSpaceDeleted?: (data: any) => void;
+    onActivityCreated?: (data: any) => void;
+    onActivityUpdated?: (data: any) => void;
+    onActivityDeleted?: (data: any) => void;
   }) {
     if (!callbacks) {
       console.warn(`📡 subscribeToSpace called without callbacks in space ${spaceId}`);
@@ -779,11 +782,41 @@ class CollaborationService {
 
       // Create handler mappings
       const handlers: { [key: string]: Function } = {
-        'message-sent': (data: any) => callbacks.onMessage?.(data),
+        'message-sent': (data: any) => {
+          const normalized = { ...data, message: data.chat_message || data.message };
+          callbacks.onMessage?.(normalized);
+        },
+        'space-message': (data: any) => {
+          const normalized = { ...data, message: data.chat_message || data.message };
+          callbacks.onMessage?.(normalized);
+        },
         'webrtc-signal': (data: any) => callbacks.onWebRTCSignal?.(data),
         'call-participant-active': (data: any) => callbacks.onWebRTCJoin?.(data),
-        'call-started': (data: any) => callbacks.onCallStarted?.(data),
-        'call-ended': (data: any) => callbacks.onCallEnded?.(data),
+        'call-started': (data: any) => {
+          const notification = {
+            ...data,
+            type: data.type || 'call_started',
+            title: data.title || 'Incoming Call',
+            message: data.message && typeof data.message === 'string' ? data.message : `${data.user?.name || 'Someone'} is calling you...`,
+            spaceId: data.space_id,
+            callId: data.call?.id,
+            userId: data.user?.id,
+            avatar: data.profile_photo || data.user?.profile_photo,
+          };
+          callbacks.onCallStarted?.(notification);
+        },
+        'call-ended': (data: any) => {
+          const notification = {
+            ...data,
+            type: data.type || 'call_ended',
+            title: data.title || 'Call Ended',
+            message: data.message || 'The call has ended',
+            spaceId: data.space_id,
+            callId: data.call?.id,
+            avatar: data.profile_photo || data.user?.profile_photo,
+          };
+          callbacks.onCallEnded?.(notification);
+        },
         'magic-triggered': (data: any) => {
           callbacks.onMagicEvent?.(data);
           callbacks.onMagicTriggered?.(data);
@@ -815,6 +848,10 @@ class CollaborationService {
           callbacks.onScreenShareStarted?.(data.user_id);
           callbacks.onScreenShareToggled?.(data);
         },
+        // ✅ ACTIVITY EVENTS
+        'activity-created': (data: any) => callbacks.onActivityCreated?.(data),
+        'activity-updated': (data: any) => callbacks.onActivityUpdated?.(data),
+        'activity-deleted': (data: any) => callbacks.onActivityDeleted?.(data),
         'pusher:subscription_error': (err: any) => {
           if (err?.status === 403) {
             console.warn(`📡 Channel authorization denied for space: ${spaceId}. User might not be a participant yet. Clearing stale channel object.`);
@@ -1569,6 +1606,34 @@ class CollaborationService {
     } catch (error) {
       console.error('Error updating collaborative activity:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Delete a collaborative activity permanently
+   * @param activityId - The ID of the activity to delete
+   */
+  async deleteCollaborativeActivity(activityId: number): Promise<void> {
+    try {
+      const response = await axios.delete(`${this.baseURL}/collaborative-activities/${activityId}`, {
+        headers: await this.getHeaders(),
+      });
+
+      await this.triggerHapticWarning();
+      console.log(`✅ Activity ${activityId} deleted successfully`);
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Error deleting collaborative activity:', error.response?.data || error.message);
+      
+      const errorMessage = error.response?.data?.message || 'Failed to delete activity';
+      if (error.response?.status === 403) {
+        throw new Error('You do not have permission to delete this activity');
+      } else if (error.response?.status === 404) {
+        throw new Error('Activity not found');
+      }
+      
+      throw new Error(errorMessage);
     }
   }
 

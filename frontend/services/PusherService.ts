@@ -44,7 +44,7 @@ class PusherService {
         console.error('❌ Max connection attempts reached, giving up');
         return false;
       }
-      
+
       this.currentToken = token; // Store for future comparison
 
       const pusherKey = process.env.EXPO_PUBLIC_REVERB_APP_KEY || process.env.EXPO_PUBLIC_PUSHER_APP_KEY;
@@ -57,10 +57,10 @@ class PusherService {
       // ✅ FIX: Dynamically derive Reverb host/port if on local development 
       // (localhost, 10.0.2.2, or local IP like 192.168.x.x). 
       // This ensures mobile browsers on the same network hit the local Reverb server.
-      const isLocal = apiUrl.includes('localhost') || 
-                      apiUrl.includes('127.0.0.1') || 
-                      apiUrl.match(/^(http|https):\/\/(\d+\.\d+\.\d+\.\d+)/); // Matches any direct IP like 10.0.2.2 or 192.168.1.x
-      
+      const isLocal = apiUrl.includes('localhost') ||
+        apiUrl.includes('127.0.0.1') ||
+        apiUrl.match(/^(http|https):\/\/(\d+\.\d+\.\d+\.\d+)/); // Matches any direct IP like 10.0.2.2 or 192.168.1.x
+
       const finalWsHost = isLocal ? apiUrl.split('//')[1].split('/')[0].split(':')[0] : reverbHost;
       const finalWsPort = isLocal ? 8080 : (reverbPort ? parseInt(reverbPort) : 443);
       const finalWsScheme = isLocal ? 'http' : (reverbScheme || 'https');
@@ -557,14 +557,14 @@ class PusherService {
         console.log('📞 [PusherService] call.started RAW payload:', JSON.stringify(data));
 
         const notification = {
-          type: 'call_started',
-          title: 'Incoming Call',
-          message: `${data.user?.name || 'Someone'} started a ${data.call?.type || 'video'} call in "${data.space?.title || data.space_id}"`,
-          data: data,
+          ...data,
+          type: data.type || 'call_started',
+          title: data.title || 'Incoming Call',
+          message: data.message && typeof data.message === 'string' ? data.message : `${data.user?.name || 'Someone'} is calling you...`,
           spaceId: data.space_id,
           callId: data.call?.id,
           userId: data.user?.id,
-          avatar: data.user?.profile_photo,
+          avatar: data.profile_photo || data.user?.profile_photo,
           createdAt: new Date()
         };
         console.log('📞 SENDING TO NOTIFICATION STORE:', notification);
@@ -576,9 +576,9 @@ class PusherService {
         // We emit to IncomingCallModal for ALL calls where the caller is someone else.
         // The bridge hook (useIncomingCallBridge) filters out own calls and active calls.
         const callerId: number = data.user?.id || data.caller_id || 0;
-        const spaceId: string  = data.space_id || data.space?.id || '';
-        const callId: string   = data.call?.id  || data.call_id  || '';
-        const callType         = (data.call?.type || data.call_type || 'video') as 'audio' | 'video';
+        const spaceId: string = data.space_id || data.spaceId || data.space?.id || '';
+        const callId: string = data.call?.id || data.call_id || '';
+        const callType = (data.call?.type || data.call_type || 'video') as 'audio' | 'video';
         const spaceType: string = data.space?.space_type || data.space_type || 'direct';
 
         console.log('📞 [PusherService] Parsed call data:', { callerId, spaceId, callId, callType, spaceType });
@@ -592,7 +592,7 @@ class PusherService {
               callId,
               spaceId,
               callerId,
-              callerName:   data.user?.name || data.caller_name || 'Unknown',
+              callerName: data.user?.name || data.caller_name || 'Unknown',
               callerAvatar: data.user?.profile_photo || undefined,
               callType,
               spaceType,
@@ -600,30 +600,42 @@ class PusherService {
           } catch (e) {
             console.warn('📞 [PusherService] Could not emit incoming call event:', e);
           }
-        } else {
-          console.warn('📞 [PusherService] Missing callerId or spaceId — not emitting incoming call', { callerId, spaceId });
         }
+      });
+
+      // ✅ Call Ended (Unified Payload)
+      channel.bind('call-ended', (data: any) => {
+        console.log('📞 [PusherService] call.ended RAW payload:', JSON.stringify(data));
+
+        const notification = {
+          ...data,
+          id: data.id || `end-${data.call?.id || Date.now()}`,
+          type: data.type || 'call_ended',
+          title: data.title || 'Call Ended',
+          message: data.message || 'The call has ended',
+          spaceId: data.space_id,
+          avatar: data.profile_photo || data.user?.profile_photo,
+          createdAt: new Date()
+        };
+
+        console.log('📞 SENDING END-CALL TO STORE:', notification);
+        onNotification(notification);
       });
 
       // ✅ ADDED: space.message (used by SpaceMessageSent event)
       channel.bind('space-message', (data: any) => {
         console.log('💬 New message notification (space.message):', data);
 
-        const msgObj = data.message || {};
-        const isSystem = msgObj.isSystemMessage || msgObj.type === 'system' || !msgObj.user_id;
-        const userName = isSystem ? '' : (msgObj.user_name || 'Someone');
-        const content = typeof msgObj.content === 'string' ? msgObj.content : 'Sent a message';
-        
-        const messageText = isSystem ? content : `${userName}: ${content}`;
+        const msgObj = data.chat_message || data.message || {};
 
         onNotification({
-          id: msgObj.id || `msg-${Date.now()}`,
-          type: 'new_message',
-          title: 'New Message',
-          message: messageText.length > 65 ? messageText.substring(0, 65) + '...' : messageText,
-          spaceId: data.space_id,
-          userId: msgObj.user_id,
-          data: { ...data, messageId: msgObj.id },
+          ...data,
+          id: msgObj.id || data.id || `msg-${Date.now()}`,
+          type: data.type || 'space_message',
+          title: data.title || 'New Message',
+          message: data.message && typeof data.message === 'string' ? data.message : (data.notification_message || 'New message received'),
+          avatar: data.profile_photo || data.user?.profile_photo || data.avatar,
+          spaceId: data.space_id || data.spaceId,
           createdAt: new Date()
         });
       });
@@ -696,17 +708,36 @@ class PusherService {
       channel.bind('participant-joined', (data: any) => {
         console.log('👤 Participant joined notification:', data);
         const notification = {
+          ...data,
+          id: data.id || `join-${data.user?.id}-${data.space_id}-${Date.now()}`,
           type: data.type || 'participant_joined',
           title: data.title || 'New Participant',
-          message: `${data.user?.name || 'Someone'} joined "${data.space?.title}"`,
-          data: data,
+          message: data.message || `${data.user?.name || 'Someone'} joined "${data.space_title || data.space?.title || 'the space'}"`,
           spaceId: data.space_id,
           userId: data.user?.id,
-          avatar: data.user?.profile_photo,
-          createdAt: new Date()
+          avatar: data.profile_photo || data.user?.profile_photo,
+          createdAt: data.timestamp ? new Date(data.timestamp) : new Date()
         };
         console.log('👤 SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification); // ✅ ADD THIS LINE
+        onNotification(notification);
+      });
+
+      // Participant left space
+      channel.bind('participant-left', (data: any) => {
+        console.log('👤 Participant left notification:', data);
+        const notification = {
+          ...data,
+          id: data.id || `leave-${data.user_id || data.user?.id}-${data.space_id}-${Date.now()}`,
+          type: data.type || 'participant_left',
+          title: data.title || 'Participant Left',
+          message: data.message || `${data.user?.name || 'Someone'} left "${data.space_title || data.space?.title || 'the space'}"`,
+          spaceId: data.space_id,
+          userId: data.user_id || data.user?.id,
+          avatar: data.profile_photo || data.user?.profile_photo,
+          createdAt: data.timestamp ? new Date(data.timestamp) : new Date()
+        };
+        console.log('👤 SENDING TO NOTIFICATION STORE:', notification);
+        onNotification(notification);
       });
 
       // Magic event triggered
@@ -774,23 +805,22 @@ class PusherService {
         onNotification(notification);
       });
 
-      // New collaborative activity
       channel.bind('activity-created', (data: any) => {
         console.log('📅 New activity notification:', data);
         const notification = {
           type: data.type || 'activity_created',
           title: data.title || 'New Activity',
-          message: `${data.creator?.name || 'Someone'} created "${data.activity?.title}" in "${data.space?.title}"`,
+          message: data.message || `${data.creator?.name || 'Someone'} created "${data.activity?.title}" in "${data.space?.title}"`,
           data: data,
           spaceId: data.space_id,
           activityId: data.activity?.id,
-          userId: data.creator?.id,
-          avatar: data.creator?.profile_photo,
+          userId: data.creator?.id || data.user?.id,
+          avatar: data.profile_photo || data.creator?.profile_photo || data.user?.profile_photo,
           createdAt: new Date()
         };
         console.log('📅 SENDING TO NOTIFICATION STORE:', notification);
         onNotification(notification);
-        
+
         // Ensure the calendar gets updated instantly with the new activity
         if (data.activity) {
           try {
@@ -798,19 +828,20 @@ class PusherService {
               type: 'activity-created',
               data: { activity: data.activity }
             });
-          } catch(e) { console.warn('Could not forward activity to calendar', e); }
+          } catch (e) { console.warn('Could not forward activity to calendar', e); }
         }
       });
 
       channel.bind('activity-updated', (data: any) => {
         console.log('📅 Activity updated notification:', data);
         const notification = {
-          type: 'activity_updated',
-          title: 'Activity Updated',
-          message: `Activity "${data.activity?.title}" was updated`,
+          type: data.type || 'activity_updated',
+          title: data.title || 'Activity Updated',
+          message: data.message || `Activity "${data.activity?.title}" was updated`,
           data: data,
           spaceId: data.space_id,
           activityId: data.activity?.id,
+          avatar: data.profile_photo || data.creator?.profile_photo || data.user?.profile_photo,
           createdAt: new Date()
         };
         onNotification(notification);
@@ -820,7 +851,7 @@ class PusherService {
               type: 'activity-updated',
               data: { activity: data.activity }
             });
-          } catch(e) {}
+          } catch (e) { }
         }
       });
 
@@ -841,7 +872,7 @@ class PusherService {
             type: 'activity-deleted',
             data: { activity_id: data.activity_id, space_id: data.space_id }
           });
-        } catch(e) {}
+        } catch (e) { }
       });
 
       channel.bind('space-created', (data: any) => {
@@ -1085,6 +1116,7 @@ class PusherService {
 
     if (callbacks.onMessage) {
       channel.bind('message-sent', callbacks.onMessage);
+      channel.bind('space-message', callbacks.onMessage);
     }
 
     if (callbacks.onCallStarted) {

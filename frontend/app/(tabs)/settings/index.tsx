@@ -223,7 +223,8 @@ const Page = () => {
   };
 
   const renderProfilePhoto = () => {
-    if (user?.profile_photo) {
+    // Check for null, undefined, or the literal string "null" from backend
+    if (user?.profile_photo && String(user.profile_photo).trim() !== 'null') {
       return <Image source={{ uri: `${getApiBaseImage()}/storage/${user.profile_photo}` }} style={styles.profilePhoto} />;
     }
     return (

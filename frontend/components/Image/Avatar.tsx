@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import getApiBaseImage from '@/services/getApiBaseImage';
 
 interface AvatarProps {
@@ -59,12 +60,12 @@ const Avatar: React.FC<AvatarProps> = ({
   const renderAvatar = () => {
     if (source === 'system_admin_shield') {
       return (
-        <View style={[styles.initialsContainer, { width: size, height: size, borderRadius: size / 2, backgroundColor: '#FF3B30', borderColor: '#FF3B30' }]}>
+        <View style={[styles.initialsContainer, { width: size, height: size, borderRadius: size / 2, backgroundColor: '#FF3B30', borderColor: '#FF3B30', borderWidth: 0 }]}>
           <Ionicons name="shield-checkmark" size={size * 0.6} color="white" />
         </View>
       );
     }
-    if (source && !imgError) {
+    if (source && String(source).trim() !== 'null' && !imgError) {
       return (
         <Image
           source={{ uri: resolveUri(source), cache: 'force-cache' }}
@@ -73,14 +74,17 @@ const Avatar: React.FC<AvatarProps> = ({
         />
       );
     }
-    // Initials fallback – zero external requests
+    // Initials fallback – premium purple gradient
     return (
-      <View style={[
-        styles.initialsContainer,
-        { width: size, height: size, borderRadius: size / 2 },
-      ]}>
-        <Text style={[styles.initials, { fontSize: size * 0.38 }]}>{initials}</Text>
-      </View>
+      <LinearGradient 
+        colors={['#667eea', '#764ba2']}
+        style={[
+          styles.initialsContainer,
+          { width: size, height: size, borderRadius: size / 2, borderColor: 'transparent' },
+        ]}
+      >
+        <Text style={[styles.initials, { fontSize: size * 0.38, color: '#fff' }]}>{initials}</Text>
+      </LinearGradient>
     );
   };
 

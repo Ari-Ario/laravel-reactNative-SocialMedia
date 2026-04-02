@@ -1259,7 +1259,16 @@ public function endCall(Request $request, $id)
                 'live_participants' => [],
             ]);
             
-            broadcast(new CallEnded($space, $call))->toOthers();
+            // Identify the recipient for notification parity with CallStarted
+            $toUserId = null;
+            if ($space->space_type === 'direct' || $space->space_type === 'chat') {
+                $otherParticipant = SpaceParticipation::where('space_id', $space->id)
+                    ->where('user_id', '!=', $userId)
+                    ->first();
+                $toUserId = $otherParticipant ? $otherParticipant->user_id : null;
+            }
+
+            broadcast(new CallEnded($space, $call, $user, $toUserId))->toOthers();
             
             // System message for entire call end
             $duration = $call->duration_seconds;

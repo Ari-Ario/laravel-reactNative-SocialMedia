@@ -29,7 +29,15 @@ class ParticipantJoined implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        return new PresenceChannel('space-' . $this->space->id);
+        $channels = [new PresenceChannel('space-' . $this->space->id)];
+        
+        // Also broadcast to caller's private channel (if needed, but usually the members)
+        // Here we'll target the creator specifically so they get the persistent notification
+        if ($this->space->creator_id) {
+            $channels[] = new PrivateChannel('user-' . $this->space->creator_id);
+        }
+
+        return $channels;
     }
 
     public function broadcastAs()
@@ -46,8 +54,14 @@ class ParticipantJoined implements ShouldBroadcast
                 'profile_photo' => $this->user->profile_photo,
                 'role' => $this->role,
             ],
+            'type' => 'participant_joined',
+            'title' => 'New Participant',
+            'message' => "{$this->user->name} joined \"{$this->space->title}\"",
+            'profile_photo' => $this->user->profile_photo,
             'space_id' => $this->space->id,
+            'space_title' => $this->space->title,
             'joined_at' => now()->toISOString(),
+            'timestamp' => now()->toISOString()
         ];
     }
 }

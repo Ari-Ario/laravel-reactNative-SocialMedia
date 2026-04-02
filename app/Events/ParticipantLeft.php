@@ -27,7 +27,14 @@ class ParticipantLeft implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        return new PresenceChannel('space-' . $this->space->id);
+        $channels = [new PresenceChannel('space-' . $this->space->id)];
+
+        // Also broadcast to creator's private channel for persistent activity feed
+        if ($this->space->creator_id) {
+            $channels[] = new PrivateChannel('user-' . $this->space->creator_id);
+        }
+
+        return $channels;
     }
 
     public function broadcastAs()
@@ -38,9 +45,19 @@ class ParticipantLeft implements ShouldBroadcast
     public function broadcastWith()
     {
         return [
-            'user_id' => $this->user->id,
+            'user' => [
+                'id' => $this->user->id,
+                'name' => $this->user->name,
+                'profile_photo' => $this->user->profile_photo,
+            ],
+            'type' => 'participant_left',
+            'title' => 'Participant Left',
+            'message' => "{$this->user->name} left \"{$this->space->title}\"",
+            'profile_photo' => $this->user->profile_photo,
             'space_id' => $this->space->id,
+            'space_title' => $this->space->title,
             'left_at' => now()->toISOString(),
+            'timestamp' => now()->toISOString()
         ];
     }
 }

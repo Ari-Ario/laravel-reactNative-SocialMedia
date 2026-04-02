@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { createShadow } from '@/utils/styles';
 import { useNotificationStore, getNotificationIcon, getNotificationColor } from '@/stores/notificationStore';
 import { Notification } from '@/types/Notification';
-import getApiBaseImage from '@/services/getApiBaseImage';
+import Avatar from '../Image/Avatar';
 import { router } from 'expo-router';
 import { useProfileView } from '@/context/ProfileViewContext';
 
@@ -85,12 +85,11 @@ const MessagesPanel = ({ visible, onClose, anchorPosition }: MessagesPanelProps)
                     }
                 }}
             >
-                <Image
-                    source={{
-                        uri: item.avatar ? `${getApiBaseImage()}/storage/${item.avatar}` : undefined
-                    }}
-                    defaultSource={require('@/assets/images/favicon.png')}
-                    style={styles.avatar}
+                <Avatar 
+                    source={item.avatar} 
+                    name={item.title} 
+                    size={48} 
+                    showStatus={false} 
                 />
             </TouchableOpacity>
 
@@ -112,9 +111,7 @@ const MessagesPanel = ({ visible, onClose, anchorPosition }: MessagesPanelProps)
                     <Text style={styles.messagePreview}>
                         {typeof item.message === 'string'
                             ? item.message
-                            : (item.message as any)?.content
-                            ?? (item.message as any)?.text
-                            ?? 'New message received'}
+                            : 'New message received'}
                     </Text>
 
                     {item.data?.space?.title && (
