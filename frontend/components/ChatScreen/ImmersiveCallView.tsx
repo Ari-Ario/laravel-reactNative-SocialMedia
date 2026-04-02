@@ -14,7 +14,7 @@ import {
   VirtualizedList,
   PanResponder,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -46,9 +46,21 @@ if (Platform.OS !== 'web') {
 
 const { width, height } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
+const isMobileWeb = isWeb && 
+  typeof window !== 'undefined' && 
+  window.innerWidth <= 768;
 
 // Optimized grid calculation - reflects Teams (Web) and WhatsApp (Mobile) styles
 const getGridConfig = (participantCount: number) => {
+  if (isMobileWeb) {
+    // Mobile-first layout (WhatsApp style)
+    if (participantCount === 1) return { cols: 1, itemWidth: '100%', itemHeight: '100%' };
+    if (participantCount === 2) return { cols: 1, itemWidth: '100%', itemHeight: '50%' };
+    if (participantCount <= 4) return { cols: 2, itemWidth: '50%', itemHeight: '50%' };
+    if (participantCount <= 6) return { cols: 2, itemWidth: '50%', itemHeight: '33.33%' };
+    return { cols: 2, itemWidth: '50%', itemHeight: '25%' }; // Max 2 columns on mobile
+  }
+
   if (isWeb) {
     // Teams-like Hub: Balanced rectangles
     if (participantCount === 1) return { cols: 1, itemWidth: '100%', itemHeight: '100%' };
@@ -180,6 +192,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
   isMinimized = false,
   onToggleMinimize,
 }) => {
+  const insets = useSafeAreaInsets();
   const { endCall: globalEndCall } = useCall();
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -210,6 +223,49 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
   const [showParticipantsModal, setShowParticipantsModal] = useState(false);
   const [handRaised, setHandRaised] = useState(false);
 
+  // ── PiP State (Mobile Web only, 1-on-1 calls) ──
+  const [isPipExpanded, setIsPipExpanded] = useState(false);
+  const pipPosition = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  // Track the last committed position to carry between drags
+  const pipOffset = useRef({ x: 0, y: 0 }).current;
+
+  const pipPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) =>
+        // Only claim the responder if movement is significant (avoids stealing taps)
+        Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5,
+      onPanResponderGrant: () => {
+        // Sync Animated offset to current position so drag starts from right place
+        pipPosition.setOffset({ x: pipOffset.x, y: pipOffset.y });
+        pipPosition.setValue({ x: 0, y: 0 });
+      },
+      onPanResponderMove: Animated.event(
+        [null, { dx: pipPosition.x, dy: pipPosition.y }],
+        { useNativeDriver: false }
+      ),
+      onPanResponderRelease: (_, gestureState) => {
+        pipPosition.flattenOffset();
+        // Clamp to screen bounds
+        const PIP_W = 120;
+        const PIP_H = 160;
+        const screenW = typeof window !== 'undefined' ? window.innerWidth : 390;
+        const screenH = typeof window !== 'undefined' ? window.innerHeight : 844;
+        const rawX = pipOffset.x + gestureState.dx;
+        const rawY = pipOffset.y + gestureState.dy;
+        const clampedX = Math.max(0, Math.min(rawX, screenW - PIP_W));
+        const clampedY = Math.max(0, Math.min(rawY, screenH - PIP_H - 120));
+        pipOffset.x = clampedX;
+        pipOffset.y = clampedY;
+        Animated.spring(pipPosition, {
+          toValue: { x: clampedX, y: clampedY },
+          useNativeDriver: false,
+          friction: 7,
+        }).start();
+      },
+    })
+  ).current;
+
   // Animations - optimized with useRef
   const controlsOpacity = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -220,6 +276,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
   const durationInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
   const controlsTimer = useRef<NodeJS.Timeout | null>(null);
+  const isInitialized = useRef(false);
 
   // Memoized grid config
   const gridConfig = useMemo(() => {
@@ -422,7 +479,9 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
 
 
   const initializeCall = useCallback(async () => {
+    if (isInitialized.current) return;
     try {
+      isInitialized.current = true;
       setCallStatus('connecting');
       const currentUserId = parseInt(user?.id?.toString() || '0', 10);
 
@@ -525,9 +584,17 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
 
   // Only initialize once on mount or spaceId change
   useEffect(() => {
-    initializeCall();
-    // No longer cleaning up immediately to keep discovery active
-  }, [spaceId]);
+    if (spaceId) {
+      initializeCall();
+    }
+
+    return () => {
+      // Clear initialization flag only if call truly ended to allow discovery re-init if needed
+      if (isInitialized.current && callStatus === 'ended') {
+        isInitialized.current = false;
+      }
+    };
+  }, [spaceId, callStatus, initializeCall]);
 
   // Lobby & Presence Subscription
   useEffect(() => {
@@ -720,6 +787,121 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
     );
   }, [gridConfig, activeSpeaker, handRaised]);
 
+  // ── WhatsApp-style PiP Layout (Mobile Web, exactly 2 participants) ──
+  // ONLY rendered when: isMobileWeb === true AND participants.length === 1 (local + 1 remote)
+  const renderPiPLayout = useCallback(() => {
+    const remoteParticipant = participants[0]; // The one remote person
+    const localParticipant = allParticipants.find(p => p.id === 'local')!;
+    if (!remoteParticipant || !localParticipant) return null;
+
+    const PIP_W = isPipExpanded ? (typeof window !== 'undefined' ? window.innerWidth * 0.6 : 240) : 120;
+    const PIP_H = isPipExpanded ? (typeof window !== 'undefined' ? window.innerHeight * 0.45 : 340) : 160;
+    const PIP_BORDER = isPipExpanded ? 16 : 12;
+
+    // Default position: bottom-right
+    const screenW = typeof window !== 'undefined' ? window.innerWidth : 390;
+    const screenH = typeof window !== 'undefined' ? window.innerHeight : 844;
+    const defaultX = screenW - 120 - 16;
+    const defaultY = screenH - 160 - 140; // above controls
+
+    return (
+      <View style={styles.pipContainer}>
+        {/* ── REMOTE: fullscreen background ── */}
+        <View style={StyleSheet.absoluteFill}>
+          {isWeb && remoteParticipant.stream && remoteParticipant.hasVideo ? (
+            <video
+              ref={(el) => {
+                if (el && remoteParticipant.stream) {
+                  el.srcObject = remoteParticipant.stream;
+                  el.muted = false;
+                }
+                if (el && videoRefs) videoRefs.current.set(remoteParticipant.id, el);
+              }}
+              autoPlay
+              playsInline
+              muted={false}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' } as any}
+            />
+          ) : (
+            <View style={styles.pipRemoteAvatar}>
+              <Avatar source={remoteParticipant.avatar} size={90} name={remoteParticipant.name} />
+              <Text style={styles.pipRemoteName}>{remoteParticipant.name}</Text>
+            </View>
+          )}
+          {/* Subtle gradient at bottom for controls readability */}
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.6)']}
+            style={styles.pipRemoteGradient}
+            pointerEvents="none"
+          />
+          {/* Remote mute indicator */}
+          {remoteParticipant.isMuted && (
+            <View style={styles.pipRemoteMuteTag}>
+              <Ionicons name="mic-off" size={14} color="#fff" />
+            </View>
+          )}
+        </View>
+
+        {/* ── LOCAL: draggable PiP tile ── */}
+        <Animated.View
+          style={[
+            styles.pipLocal,
+            {
+              width: PIP_W,
+              height: PIP_H,
+              borderRadius: PIP_BORDER,
+              // Initial position: bottom right (offset); user can drag after that
+              right: isPipExpanded ? undefined : 16,
+              bottom: isPipExpanded ? undefined : 130,
+              left: isPipExpanded
+                ? (typeof window !== 'undefined' ? (window.innerWidth - PIP_W) / 2 : 80)
+                : undefined,
+              top: isPipExpanded
+                ? (typeof window !== 'undefined' ? (window.innerHeight - PIP_H) / 2 : 200)
+                : undefined,
+              // Apply drag transform only in small mode
+              transform: isPipExpanded ? [] : pipPosition.getTranslateTransform(),
+            },
+          ]}
+          {...(!isPipExpanded ? pipPanResponder.panHandlers : {})}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={{ flex: 1, borderRadius: PIP_BORDER, overflow: 'hidden' }}
+            onPress={() => setIsPipExpanded(prev => !prev)}
+          >
+            {isWeb && localParticipant.stream && localParticipant.hasVideo ? (
+              <video
+                ref={(el) => {
+                  if (el && localParticipant.stream) {
+                    el.srcObject = localParticipant.stream;
+                    el.muted = true;
+                  }
+                }}
+                autoPlay
+                playsInline
+                muted
+                style={{ width: '100%', height: '100%', objectFit: 'cover' } as any}
+              />
+            ) : (
+              <View style={[styles.pipLocalAvatar, { borderRadius: PIP_BORDER }]}>
+                <Avatar source={localParticipant.avatar} size={isPipExpanded ? 60 : 40} name={localParticipant.name} />
+              </View>
+            )}
+            {/* You label */}
+            <View style={styles.pipLocalBadge}>
+              <Text style={styles.pipLocalBadgeText}>You</Text>
+            </View>
+            {/* Expand/collapse hint icon */}
+            <View style={styles.pipExpandHint}>
+              <Ionicons name={isPipExpanded ? 'contract' : 'expand'} size={12} color="rgba(255,255,255,0.8)" />
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+    );
+  }, [participants, allParticipants, isPipExpanded, pipPosition, pipPanResponder, videoRefs, isMuted, hasVideo]);
+
 
   const waitingRoom = useMemo(() => (
     <View style={styles.waitingContainer}>
@@ -857,11 +1039,24 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
 
   if (isMinimized) return renderMinimizedUI();
 
+  const controlSize = isMobileWeb ? 48 : 56;
+  const buttonSize = isMobileWeb ? 52 : 64;
+
   return (
-    <Animated.View style={[styles.container, { opacity: fadeAnim }]} onTouchStart={handleUserInteraction}>
+    <Animated.View 
+      style={[
+        styles.container, 
+        { 
+          opacity: fadeAnim,
+          paddingTop: isMobileWeb ? insets.top : 0,
+          paddingBottom: isMobileWeb ? insets.bottom : 0
+        }
+      ]} 
+      onTouchStart={handleUserInteraction}
+    >
       <StatusBar barStyle="light-content" />
 
-      <Animated.View style={[styles.header, { opacity: controlsOpacity }]}>
+      <Animated.View style={[styles.header, { opacity: controlsOpacity, top: isMobileWeb ? insets.top + 10 : 0 }]}>
         <TouchableOpacity 
           onPress={() => onToggleMinimize ? onToggleMinimize() : router.back()} 
           style={styles.backButton}
@@ -918,7 +1113,10 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
 
       <View style={styles.content}>
         {callStatus === 'ended' ? null : (callStatus === 'waiting' ? waitingRoom : (
-          selectedView === 'grid' ? (
+          // ── PiP Mode: ONLY on mobile web with exactly 2 participants (1 remote) ──
+          isMobileWeb && participants.length === 1 ? (
+            renderPiPLayout()
+          ) : selectedView === 'grid' ? (
             <ScrollView
               contentContainerStyle={styles.gridContainer}
               showsVerticalScrollIndicator={false}
@@ -963,38 +1161,56 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
         ))}
       </View>
 
-      <Animated.View style={[styles.controlsContainer, { opacity: controlsOpacity }]}>
+      <Animated.View style={[styles.controlsContainer, { opacity: controlsOpacity, bottom: isMobileWeb ? insets.bottom + 10 : 0 }]}>
         <BlurView intensity={90} tint="dark" style={styles.controlsBlur}>
           <View style={styles.controlsRow}>
             <TouchableOpacity 
-              style={[styles.controlButton, isMuted && styles.controlButtonActive]} 
+              style={[
+                styles.controlButton, 
+                isMuted && styles.controlButtonActive,
+                { marginHorizontal: isMobileWeb ? 8 : 15 }
+              ]} 
               onPress={toggleMute}
             >
               <LinearGradient 
                 colors={isMuted ? ['#FF6B6B', '#FF5252'] : ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']} 
-                style={styles.controlGradient}
+                style={[styles.controlGradient, { width: controlSize, height: controlSize, borderRadius: controlSize/2 }]}
               >
-                <Ionicons name={isMuted ? "mic-off" : "mic"} size={24} color="#fff" />
+                <Ionicons name={isMuted ? "mic-off" : "mic"} size={isMobileWeb ? 22 : 24} color="#fff" />
               </LinearGradient>
               <Text style={styles.controlLabel}>{isMuted ? 'Unmute' : 'Mute'}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={[styles.controlButton, !hasVideo && styles.controlButtonActive]} 
+              style={[
+                styles.controlButton, 
+                !hasVideo && styles.controlButtonActive,
+                { marginHorizontal: isMobileWeb ? 8 : 15 }
+              ]} 
               onPress={toggleVideo}
             >
               <LinearGradient 
                 colors={!hasVideo ? ['#FF6B6B', '#FF5252'] : ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']} 
-                style={styles.controlGradient}
+                style={[styles.controlGradient, { width: controlSize, height: controlSize, borderRadius: controlSize/2 }]}
               >
-                <Ionicons name={hasVideo ? "videocam" : "videocam-off"} size={24} color="#fff" />
+                <Ionicons name={hasVideo ? "videocam" : "videocam-off"} size={isMobileWeb ? 22 : 24} color="#fff" />
               </LinearGradient>
               <Text style={styles.controlLabel}>{hasVideo ? 'Video' : 'Off'}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.controlButton, styles.endCallButton]} onPress={endCall}>
-              <LinearGradient colors={['#FF3B30', '#D0021B']} style={styles.controlGradientLarge}>
-                <Ionicons name="call" size={28} color="#fff" />
+            <TouchableOpacity 
+              style={[
+                styles.controlButton, 
+                styles.endCallButton,
+                { marginHorizontal: isMobileWeb ? 12 : 25 }
+              ]} 
+              onPress={endCall}
+            >
+              <LinearGradient 
+                colors={['#FF3B30', '#D0021B']} 
+                style={[styles.controlGradientLarge, { width: buttonSize, height: buttonSize, borderRadius: buttonSize/2 }]}
+              >
+                <Ionicons name="call" size={isMobileWeb ? 26 : 28} color="#fff" style={{ transform: [{ rotate: '135deg' }] }} />
               </LinearGradient>
               <Text style={[styles.controlLabel, styles.endCallLabel]}>Leave</Text>
             </TouchableOpacity>
@@ -1131,6 +1347,82 @@ const styles = StyleSheet.create({
   smallParticipantTile: { width: 140, height: 100, marginRight: 8, borderRadius: 12, overflow: 'hidden' },
   controlButtonActive: { backgroundColor: 'rgba(255,255,255,0.2)' },
   controlsContainer: { position: 'absolute', bottom: 0, left: 0, right: 0 },
+
+  // ── PiP Styles (mobile web 1-on-1) ──
+  pipContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+    position: 'relative',
+  },
+  pipRemoteAvatar: {
+    flex: 1,
+    backgroundColor: '#1a1a1a',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pipRemoteName: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 12,
+  },
+  pipRemoteGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 200,
+  },
+  pipRemoteMuteTag: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    backgroundColor: 'rgba(255,59,48,0.85)',
+    borderRadius: 20,
+    padding: 6,
+  },
+  pipLocal: {
+    position: 'absolute',
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: '#2a2a2a',
+    zIndex: 10,
+    // iOS-style shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 12,
+  },
+  pipLocalAvatar: {
+    flex: 1,
+    backgroundColor: '#333',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pipLocalBadge: {
+    position: 'absolute',
+    bottom: 6,
+    left: 6,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  pipLocalBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  pipExpandHint: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 10,
+    padding: 3,
+  },
 
   controlsBlur: { paddingVertical: 16, paddingHorizontal: 20, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
   viewSelector: { flexDirection: 'row', justifyContent: 'center', marginBottom: 16, gap: 8 },

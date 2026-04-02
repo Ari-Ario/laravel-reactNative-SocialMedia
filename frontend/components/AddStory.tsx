@@ -292,11 +292,11 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
         setIsRecording(false);
         // Don't alert or log if it was just a manual stop or a too-short recording
         const msg = e.message?.toLowerCase() || '';
-        const isUserAborted = msg.includes('stopped') || 
-                              msg.includes('data') || 
-                              msg.includes('aborted') ||
-                              msg.includes('cancel');
-        
+        const isUserAborted = msg.includes('stopped') ||
+          msg.includes('data') ||
+          msg.includes('aborted') ||
+          msg.includes('cancel');
+
         if (!isUserAborted) {
           console.error('Recording error:', e);
           showToast('Failed to record video', 'error');
@@ -360,7 +360,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
   const handleLocationSelect = (locData: any) => {
     // Determine the most descriptive name for the location
     let finalName = locData.name;
-    
+
     // If name is generic or missing, try alternative descriptive fields
     if (!finalName || finalName === 'Selected Location' || finalName === 'Dropped Pin') {
       if (locData.address) {
@@ -469,7 +469,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
         id: newStickerId,
         type: 'text',
         text: currentText.trim(),
-        x: width / 2 - 75,
+        x: 0, // Starts at 0 for full-width support
         y: height / 2 - 50,
         color: currentColor,
         // Normalize fontSize to a 375px reference width
@@ -559,7 +559,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
         filename = media.uri.split('/').pop() || (media.type === 'video' ? 'story.mp4' : 'story.jpg');
         const match = /\.(\w+)$/.exec(filename);
         const ext = match ? match[1].toLowerCase() : (media.type === 'video' ? 'mp4' : 'jpg');
-        
+
         if (media.type === 'video') {
           type = 'video/mp4';
         } else {
@@ -599,7 +599,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
             type = 'video/mp4';
           }
         }
-        
+
         // Handle data:image/png;base64 for text backgrounds
         if (media.uri.startsWith('data:image')) {
           finalFilename = 'background.png';
@@ -807,8 +807,8 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                           </TouchableOpacity>
                           <Text style={styles.modeText}>
                             {cameraMode === 'video'
-                                ? isRecording ? `Recording ${Math.floor(recordingProgress * 10)}s` : 'Hold for Video'
-                                : 'Tap for Photo'}
+                              ? isRecording ? `Recording ${Math.floor(recordingProgress * 10)}s` : 'Hold for Video'
+                              : 'Tap for Photo'}
                           </Text>
                         </View>
 
@@ -937,7 +937,10 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.5 }}
                       transition={{ type: 'spring', damping: 15 }}
-                      style={{ position: 'absolute' }}
+                      style={[
+                        { position: 'absolute' },
+                        sticker.type === 'text' && { left: 0, right: 0 }
+                      ]}
                       pointerEvents="box-none"
                     >
                       <DraggableSticker
@@ -990,8 +993,11 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                   placeholder="Type something..."
                   placeholderTextColor="rgba(255,255,255,0.5)"
                   selectionColor="white"
-                  multiline
+                  multiline={true}
                   autoFocus
+                  textAlignVertical="top"
+                  scrollEnabled={true}
+                  returnKeyType="default"
                 />
 
                 <ScrollView
@@ -1033,20 +1039,44 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                   ))}
                 </ScrollView>
 
-                <View style={styles.fontSizePicker}>
-                  <TouchableOpacity
-                    onPress={() => setCurrentFontSize(Math.max(12, currentFontSize - 4))}
-                    style={styles.fontSizeButton}
-                  >
-                    <Ionicons name="remove-circle-outline" size={24} color="white" />
-                  </TouchableOpacity>
-                  <Text style={styles.fontSizeText}>{currentFontSize}px</Text>
-                  <TouchableOpacity
-                    onPress={() => setCurrentFontSize(Math.min(72, currentFontSize + 4))}
-                    style={styles.fontSizeButton}
-                  >
-                    <Ionicons name="add-circle-outline" size={24} color="white" />
-                  </TouchableOpacity>
+                <View style={styles.fontSizeSliderContainer}>
+                  <Feather name="type" size={16} color="white" style={{ opacity: 0.6 }} />
+                  <View style={styles.sliderTrack}>
+                    <GestureDetector
+                      gesture={Gesture.Pan().onUpdate((event) => {
+                        const sliderWidth = width * 0.75;
+                        const newSize = interpolate(
+                          event.x,
+                          [0, sliderWidth],
+                          [0, 80],
+                          Extrapolate.CLAMP
+                        );
+                        runOnJS(setCurrentFontSize)(Math.round(newSize));
+                      })}
+                    >
+                      <View style={styles.sliderInteractiveArea}>
+                        <View style={styles.sliderBackground} />
+                        <Animated.View
+                          style={[
+                            styles.sliderKnob,
+                            {
+                              left: interpolate(
+                                currentFontSize,
+                                [0, 80],
+                                [0, width * 0.75 - 24],
+                                Extrapolate.CLAMP
+                              ),
+                            },
+                          ]}
+                        >
+                          <View style={styles.sliderKnobInner} />
+                        </Animated.View>
+                      </View>
+                    </GestureDetector>
+                  </View>
+                  <BlurView intensity={20} style={styles.fontSizeLabelBadge}>
+                    <Text style={styles.fontSizeLabel}>{currentFontSize}</Text>
+                  </BlurView>
                 </View>
 
                 <TouchableOpacity
@@ -1431,12 +1461,6 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: 'rgba(0,0,0,0.9)',
   },
-  editorClose: {
-    position: 'absolute',
-    right: 20,
-    padding: 10,
-    zIndex: 10,
-  },
   editorContent: {
     width: '100%',
     alignItems: 'center',
@@ -1447,8 +1471,17 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     width: '100%',
+    paddingHorizontal: 20,
     marginBottom: 30,
-    maxHeight: 200,
+    // ✨ Add these lines:
+    maxHeight: height * 0.7,        // 70% of screen height
+    minHeight: 100,                 // minimum comfortable height
+  },
+  editorClose: {
+    position: 'absolute',
+    right: 20,
+    padding: 10,
+    zIndex: 10,
   },
   colorPicker: {
     flexGrow: 0,
@@ -1484,18 +1517,67 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 14,
   },
-  fontSizePicker: {
+  fontSizeSliderContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 20,
-    marginBottom: 30,
+    width: '95%',
+    gap: 12,
+    marginBottom: 40,
+    paddingHorizontal: 15,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 30,
+    paddingVertical: 4,
   },
-  fontSizeButton: {
-    padding: 5,
+  sliderTrack: {
+    flex: 1,
+    height: 48,
+    justifyContent: 'center',
   },
-  fontSizeText: {
+  sliderInteractiveArea: {
+    width: '100%',
+    height: 48,
+    justifyContent: 'center',
+  },
+  sliderBackground: {
+    width: '100%',
+    height: 6,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 3,
+  },
+  sliderKnob: {
+    position: 'absolute',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  sliderKnobInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+  },
+  fontSizeLabelBadge: {
+    minWidth: 40,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  fontSizeLabel: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: 'bold',
   },
   editorDoneBottom: {

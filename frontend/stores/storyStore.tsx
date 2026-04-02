@@ -13,6 +13,8 @@ export interface Story {
   stickers?: any;
   location?: any;
   viewed: boolean;
+  created_at: string;
+  views_count?: number;
   user: {
     id: number;
     name: string;
@@ -80,9 +82,9 @@ export const useStoryStore = create<StoryStore>((set, get) => ({
         // Skip duplicate
         if (group.stories.some(s => s.id === data.story.id)) return state;
 
-        group.stories = [data.story, ...group.stories];
-        group.latest_story = data.story;
-        group.all_viewed = false;
+        group.stories = [data.story, ...group.stories].sort((a, b) => a.id - b.id);
+        group.latest_story = group.stories[group.stories.length - 1];
+        group.all_viewed = group.stories.every(s => s.viewed);
 
         prevGroups[existingGroupIndex] = group;
         return { storyGroups: prevGroups };
@@ -93,7 +95,7 @@ export const useStoryStore = create<StoryStore>((set, get) => ({
           all_viewed: false,
           latest_story: data.story
         };
-        return { storyGroups: [newGroup, ...prevGroups] };
+        return { storyGroups: [newGroup, ...prevGroups].sort((a, b) => b.latest_story.id - a.latest_story.id) };
       }
     });
   },
@@ -141,21 +143,21 @@ export const useStoryStore = create<StoryStore>((set, get) => ({
 
       if (existingGroupIndex !== -1) {
         const group = { ...prevGroups[existingGroupIndex] };
-        group.stories = stories;
-        // latest_story should be the first one in the array (assuming sorted by created_at desc)
-        group.latest_story = stories.length > 0 ? stories[0] : group.latest_story;
-        group.all_viewed = stories.every(s => s.viewed);
+        group.stories = [...stories].sort((a, b) => a.id - b.id);
+        group.latest_story = group.stories.length > 0 ? group.stories[group.stories.length - 1] : group.latest_story;
+        group.all_viewed = group.stories.every(s => s.viewed);
 
         prevGroups[existingGroupIndex] = group;
         return { storyGroups: prevGroups };
       } else if (stories.length > 0) {
+        const sortedStories = [...stories].sort((a, b) => a.id - b.id);
         const newGroup: StoryGroup = {
-          user: stories[0].user,
-          stories: stories,
-          all_viewed: stories.every(s => s.viewed),
-          latest_story: stories[0]
+          user: sortedStories[0].user,
+          stories: sortedStories,
+          all_viewed: sortedStories.every(s => s.viewed),
+          latest_story: sortedStories[sortedStories.length - 1]
         };
-        return { storyGroups: [newGroup, ...prevGroups] };
+        return { storyGroups: [newGroup, ...prevGroups].sort((a, b) => b.latest_story.id - a.latest_story.id) };
       }
       return state;
     });

@@ -67,6 +67,22 @@ class WebRTCService {
       { urls: 'stun:stun2.l.google.com:19302' },
       { urls: 'stun:stun3.l.google.com:19302' },
       { urls: 'stun:stun4.l.google.com:19302' },
+      // ✅ ADD TURN SERVERS - CRITICAL FOR MOBILE NETWORKS
+      { 
+        urls: 'turn:openrelay.metered.ca:80',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      { 
+        urls: 'turn:openrelay.metered.ca:443',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      { 
+        urls: 'turn:openrelay.metered.ca:3478',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      }
     ],
     iceCandidatePoolSize: 10,
   };
@@ -523,7 +539,30 @@ class WebRTCService {
     };
 
     peerConnection.oniceconnectionstatechange = () => {
-      console.log(`📞 ICE connection state with ${peerId}:`, peerConnection.iceConnectionState);
+      const state = peerConnection.iceConnectionState;
+      console.log(`📞 ICE connection state with ${peerId}:`, state);
+
+      // ✅ Detect when TURN is needed or connection is failing
+      if (state === 'failed' || state === 'disconnected') {
+        console.warn(`⚠️ ICE failed for ${peerId}, attempting restart...`);
+        // Attempt ICE restart
+        peerConnection.createOffer({ iceRestart: true })
+          .then((offer: any) => peerConnection.setLocalDescription(offer))
+          .then(() => {
+            const description = peerConnection.localDescription;
+            if (description) {
+              this.sendSignal(parseInt(peerId), 'offer', { offer: description });
+            }
+          })
+          .catch((e: any) => {
+            console.warn(`⚠️ ICE restart for ${peerId} failed, trying fallback:`, e);
+            this.retryWithFallbackServers(peerId);
+          });
+      }
+
+      if (state === 'connected') {
+        console.log(`✅ ICE connected for ${peerId} - media should flow`);
+      }
     };
 
     return peerConnection;
@@ -538,7 +577,7 @@ class WebRTCService {
     try {
       const payload = {
         type,
-        target_user_id: targetUserId,
+        target_user_id: targetUserId || 0, // ✅ Use 0 for broadcast to satisfy backend 'required|integer' validation
         call_id: this.callId,
         ...data,
       };
@@ -771,6 +810,59 @@ class WebRTCService {
     this.spaceId = null;
     this.callId = null;
     this.knownParticipants.clear();
+  }
+
+  private async retryWithFallbackServers(peerId: string) {
+    console.log(`🔄 Retrying connection with fallback ICE servers for ${peerId}...`);
+
+    const fallbackIceServers = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        // Force TURN relay
+        { 
+          urls: 'turn:openrelay.metered.ca:80',
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        }
+      ],
+      iceTransportPolicy: 'relay' as RTCIceTransportPolicy // Force TURN relay
+    };
+
+    const oldConnection = this.peerConnections.get(peerId);
+    if (oldConnection) {
+      oldConnection.close();
+      this.peerConnections.delete(peerId);
+    }
+
+    // Recreate offer logic for this peer
+    const targetUserId = parseInt(peerId, 10);
+    if (targetUserId) {
+        // Create new connection with forced relay policy
+        const newConnection = new RTC_PeerConnection(fallbackIceServers);
+        this.peerConnections.set(peerId, newConnection);
+        
+        // standard setup
+        newConnection.onicecandidate = (event: any) => {
+            if (event.candidate && this.spaceId && this.callId) {
+                this.sendSignal(targetUserId, 'ice-candidate', { candidate: event.candidate });
+            }
+        };
+
+        newConnection.ontrack = (event: any) => {
+            if (this.onRemoteStreamCallback && event.streams?.[0]) {
+                this.onRemoteStreamCallback(peerId, event.streams[0]);
+            }
+        };
+
+        if (this.localStream) {
+            this.localStream.getTracks().forEach(track => newConnection.addTrack(track, this.localStream!));
+        }
+
+        const offer = await newConnection.createOffer();
+        await newConnection.setLocalDescription(offer);
+        await this.sendSignal(targetUserId, 'offer', { offer });
+    }
   }
 
   private normalizeSDP(sdp: string): string {

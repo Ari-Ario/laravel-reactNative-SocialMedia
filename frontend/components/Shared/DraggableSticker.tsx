@@ -110,7 +110,7 @@ export const DraggableSticker: React.FC<DraggableStickerProps> = ({
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateX: translateX.value },
+      { translateX: sticker.type === 'text' ? 0 : translateX.value },
       { translateY: translateY.value },
       { scale: scale.value },
       { rotate: `${rotation.value}rad` },
@@ -119,8 +119,14 @@ export const DraggableSticker: React.FC<DraggableStickerProps> = ({
 
   return (
     <GestureDetector gesture={composed}>
-      <Animated.View style={[styles.sticker, animatedStyle]}>
-        <View style={styles.stickerContent}>
+      <Animated.View 
+        style={[
+          styles.sticker, 
+          sticker.type === 'text' && { width: '100%', left: 0 },
+          animatedStyle
+        ]}
+      >
+        <View style={[styles.stickerContent, sticker.type === 'text' && { width: '100%' }]}>
           {sticker.text !== '' && (
             <Text
               style={[
@@ -129,7 +135,10 @@ export const DraggableSticker: React.FC<DraggableStickerProps> = ({
                   color: sticker.color,
                   // Scale normalized font size back to current screen width
                   fontSize: sticker.fontSize ? (sticker.fontSize / 375) * SCREEN_WIDTH : 32,
+                  lineHeight: sticker.fontSize ? (sticker.fontSize / 375) * SCREEN_WIDTH * 1.2 : 32 * 1.2,
                   fontFamily: sticker.fontFamily,
+                  textAlign: 'center',
+                  width: '100%',
                 }
               ]}
             >
@@ -175,7 +184,7 @@ export const DraggableSticker: React.FC<DraggableStickerProps> = ({
 const styles = StyleSheet.create({
   sticker: {
     position: 'absolute',
-    padding: 20,
+    padding: 10,
     minWidth: 50,
   },
   stickerText: {
@@ -188,6 +197,7 @@ const styles = StyleSheet.create({
   },
   stickerContent: {
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 10,
   },
   integratedLocationSticker: {

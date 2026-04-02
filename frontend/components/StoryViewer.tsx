@@ -49,6 +49,8 @@ interface Story {
   stickers?: any;
   location?: any;
   viewed: boolean;
+  created_at: string;
+  views_count?: number;
   user: {
     id: number;
     name: string;
@@ -70,6 +72,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
   const { storyGroups, setStoriesForUser } = useStoryStore();
   const stories = useMemo(() => {
     const group = storyGroups.find(g => g.user.id === userId);
+    // stories are now kept Oldest-first in the store
     return group ? group.stories : [];
   }, [storyGroups, userId]);
 
@@ -99,8 +102,26 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
   const progressAnim = useRef(new Animated.Value(0)).current;
   const videoRef = useRef<any>(null);
   const replyInputRef = useRef<TextInput>(null);
+  const hasInitialized = useRef(false);
   const { openModal } = useModal();
   const { user } = useContext(AuthContext);
+
+  const formatTimeAgo = (timestamp: string) => {
+    if (!timestamp) return 'Just now';
+    try {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+      if (seconds < 60) return 'Just now';
+      if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+      if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
+      if (seconds < 2592000) return `${Math.floor(seconds / 86400)}d`;
+      return date.toLocaleDateString();
+    } catch {
+      return 'Just now';
+    }
+  };
 
   // Animation values
   const replyButtonScale = useSharedValue(1);
@@ -109,20 +130,26 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
 
   // Initialize current index based on initialStoryId
   useEffect(() => {
-    if (stories.length > 0) {
+    if (stories.length > 0 && !hasInitialized.current) {
       const initialIndex = stories.findIndex((story: any) => story.id === initialStoryId);
       const firstUnviewedIndex = stories.findIndex((story: any) => !story.viewed);
       
       setCurrentStoryIndex(prev => {
-        // If we already have an index and it's valid for new array, keep it or adjust
-        if (prev >= stories.length) return Math.max(0, stories.length - 1);
-        
-        // Initial load
-        if (prev === 0) {
-          return firstUnviewedIndex !== -1 ? firstUnviewedIndex :
-                 initialIndex !== -1 ? initialIndex : 0;
+        // 1. Resume from the first story they haven't seen (highest priority for "Resume" behavior)
+        if (firstUnviewedIndex !== -1) {
+          hasInitialized.current = true;
+          return firstUnviewedIndex;
         }
-        return prev;
+
+        // 2. If all viewed or no unviewed found, go to the specific story clicked
+        if (initialIndex !== -1) {
+          hasInitialized.current = true;
+          return initialIndex;
+        }
+        
+        // 3. Fallback: start at the oldest
+        hasInitialized.current = true;
+        return 0;
       });
     }
   }, [initialStoryId, stories.length, stories]); // Run once when stories loaded
@@ -544,27 +571,28 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                 />
                 <View>
                   <Text style={styles.username}>{currentStory.user.name}</Text>
-                  <Text style={styles.timeAgo}>Just now</Text>
+                  <Text style={styles.timeAgo}>{formatTimeAgo(currentStory.created_at)}</Text>
                 </View>
               </View>
 
               <View style={styles.headerActions}>
-                <TouchableOpacity onPress={toggleMute} style={styles.headerButton}>
-                  <Ionicons
-                    name={isMuted ? 'volume-mute' : 'volume-high'}
-                    size={22}
-                    color="white"
-                  />
-                </TouchableOpacity>
-                {storyLocation ? (
+                {currentStory?.type === 'video' && (
+                  <TouchableOpacity onPress={toggleMute} style={styles.headerButton}>
+                    <Ionicons
+                      name={isMuted ? 'volume-mute' : 'volume-high'}
+                      size={22}
+                      color="white"
+                    />
+                  </TouchableOpacity>
+                )}
+                {storyLocation && (
                   <TouchableOpacity onPress={() => handleLocationPress(storyLocation)} style={styles.headerButton}>
                     <Ionicons name="location" size={24} color="#0084ff" />
                   </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity onPress={() => setShowInfo(true)} style={styles.headerButton}>
-                    <Ionicons name="information-circle-outline" size={24} color="white" />
-                  </TouchableOpacity>
                 )}
+                <TouchableOpacity onPress={() => setShowInfo(true)} style={styles.headerButton}>
+                  <Ionicons name="information-circle-outline" size={24} color="white" />
+                </TouchableOpacity>
                 {Number(currentStory.user.id) !== Number(user?.id) && (
                   <TouchableOpacity onPress={async () => {
                     const reported = useReportedContentStore.getState().isReported('story', currentStory.id);
@@ -641,16 +669,19 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                   style={[
                     styles.stickerWrapper,
                     {
-                      left: sticker.x * width,
+                      left: sticker.type === 'text' ? 0 : sticker.x * width,
+                      right: sticker.type === 'text' ? 0 : undefined,
                       top: sticker.y * height,
                       transform: [
                         { scale: sticker.scale || 1 },
                         { rotate: `${sticker.rotation || 0}rad` }
-                      ]
+                      ],
+                      zIndex: 10,
+                      alignItems: 'center',
                     }
                   ]}
                 >
-                  <View style={styles.stickerContent}>
+                  <View style={[styles.stickerContent, sticker.type === 'text' && { width: '100%' }]}>
                     {sticker.text !== '' && (
                       <Text
                         style={[
@@ -659,7 +690,10 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                             color: sticker.color || 'white',
                             // Scale normalized font size back to current screen width
                             fontSize: sticker.fontSize ? (sticker.fontSize / 375) * width : 32,
+                            lineHeight: sticker.fontSize ? (sticker.fontSize / 375) * width * 1.2 : 32 * 1.2,
                             fontFamily: sticker.fontFamily || 'System',
+                            textAlign: 'center',
+                            width: '100%',
                           }
                         ]}
                       >
@@ -853,14 +887,28 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                   <View style={styles.infoItem}>
                     <Ionicons name="calendar-outline" size={20} color="#FF9F0A" />
                     <Text style={styles.infoLabel}>Posted:</Text>
-                    <Text style={styles.infoValue}>Just now</Text>
+                    <Text style={styles.infoValue}>{new Date(currentStory.created_at).toLocaleString()}</Text>
                   </View>
 
                   <View style={styles.infoItem}>
                     <Ionicons name="eye-outline" size={20} color="#FF9F0A" />
                     <Text style={styles.infoLabel}>Views:</Text>
-                    <Text style={styles.infoValue}>0</Text>
+                    <Text style={styles.infoValue}>{currentStory.views_count || 0}</Text>
                   </View>
+
+                  <View style={styles.infoItem}>
+                    <Ionicons name={currentStory.type === 'video' ? "videocam-outline" : "image-outline"} size={20} color="#FF9F0A" />
+                    <Text style={styles.infoLabel}>Type:</Text>
+                    <Text style={styles.infoValue}>{currentStory.type === 'video' ? 'Video' : 'Photo'}</Text>
+                  </View>
+
+                  {currentStory.caption && (
+                    <View style={styles.infoItem}>
+                      <Ionicons name="chatbubble-outline" size={20} color="#FF9F0A" />
+                      <Text style={styles.infoLabel}>Caption:</Text>
+                      <Text style={styles.infoValue} numberOfLines={2}>{currentStory.caption}</Text>
+                    </View>
+                  )}
 
                   {storyLocation && (
                     <View style={styles.infoItem}>
