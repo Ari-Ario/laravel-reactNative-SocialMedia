@@ -103,6 +103,51 @@ interface ImmersiveCallViewProps {
   onToggleMinimize?: () => void;
 }
 
+// ─── Stable video elements for PiP (prevents re-render flicker) ─────────────
+// These are defined OUTSIDE the component so their identity never changes.
+// They hold their own refs, so srcObject is only set when the stream actually changes.
+const PiPRemoteVideo = React.memo(({ stream, participantId, videoRefs }: {
+  stream: MediaStream;
+  participantId: string;
+  videoRefs: React.MutableRefObject<Map<string, HTMLVideoElement>>;
+}) => {
+  const ref = useRef<HTMLVideoElement | null>(null);
+  useEffect(() => {
+    if (ref.current && ref.current.srcObject !== stream) {
+      ref.current.srcObject = stream;
+    }
+    if (ref.current) videoRefs.current.set(participantId, ref.current);
+  }, [stream, participantId, videoRefs]);
+  return (
+    <video
+      ref={ref}
+      autoPlay
+      playsInline
+      muted={false}
+      style={{ width: '100%', height: '100%', objectFit: 'cover' } as any}
+    />
+  );
+});
+
+const PiPLocalVideo = React.memo(({ stream }: { stream: MediaStream }) => {
+  const ref = useRef<HTMLVideoElement | null>(null);
+  useEffect(() => {
+    if (ref.current && ref.current.srcObject !== stream) {
+      ref.current.srcObject = stream;
+      ref.current.muted = true;
+    }
+  }, [stream]);
+  return (
+    <video
+      ref={ref}
+      autoPlay
+      playsInline
+      muted
+      style={{ width: '100%', height: '100%', objectFit: 'cover' } as any}
+    />
+  );
+});
+
 // Memoized video component for performance
 const VideoTile = React.memo(({
   participant,
@@ -225,43 +270,47 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
 
   // ── PiP State (Mobile Web only, 1-on-1 calls) ──
   const [isPipExpanded, setIsPipExpanded] = useState(false);
-  const pipPosition = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
-  // Track the last committed position to carry between drags
-  const pipOffset = useRef({ x: 0, y: 0 }).current;
+
+  // ── PiP Drag: use absolute top/left Animated values (avoids right/bottom conflict) ──
+  // Initialized to bottom-right corner: will be set properly on first render
+  const PIP_W_DEFAULT = 120;
+  const PIP_H_DEFAULT = 160;
+  const SCREEN_W = typeof window !== 'undefined' ? window.innerWidth : Dimensions.get('window').width;
+  const SCREEN_H = typeof window !== 'undefined' ? window.innerHeight : Dimensions.get('window').height;
+  const CONTROLS_H = 130; // height of bottom controls bar
+
+  // Start at bottom-right corner
+  const pipLeft = useRef(new Animated.Value(SCREEN_W - PIP_W_DEFAULT - 16)).current;
+  const pipTop  = useRef(new Animated.Value(SCREEN_H - PIP_H_DEFAULT - CONTROLS_H - 16)).current;
+
+  // Track last committed position for incremental dragging
+  const pipLastPos = useRef({ x: SCREEN_W - PIP_W_DEFAULT - 16, y: SCREEN_H - PIP_H_DEFAULT - CONTROLS_H - 16 });
 
   const pipPanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gestureState) =>
-        // Only claim the responder if movement is significant (avoids stealing taps)
-        Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5,
+      onMoveShouldSetPanResponder: (_, gs) =>
+        Math.abs(gs.dx) > 4 || Math.abs(gs.dy) > 4,
       onPanResponderGrant: () => {
-        // Sync Animated offset to current position so drag starts from right place
-        pipPosition.setOffset({ x: pipOffset.x, y: pipOffset.y });
-        pipPosition.setValue({ x: 0, y: 0 });
+        // Anchor offset at current committed position
+        pipLeft.setOffset(pipLastPos.current.x);
+        pipTop.setOffset(pipLastPos.current.y);
+        pipLeft.setValue(0);
+        pipTop.setValue(0);
       },
       onPanResponderMove: Animated.event(
-        [null, { dx: pipPosition.x, dy: pipPosition.y }],
+        [null, { dx: pipLeft, dy: pipTop }],
         { useNativeDriver: false }
       ),
-      onPanResponderRelease: (_, gestureState) => {
-        pipPosition.flattenOffset();
-        // Clamp to screen bounds
-        const PIP_W = 120;
-        const PIP_H = 160;
-        const screenW = typeof window !== 'undefined' ? window.innerWidth : 390;
-        const screenH = typeof window !== 'undefined' ? window.innerHeight : 844;
-        const rawX = pipOffset.x + gestureState.dx;
-        const rawY = pipOffset.y + gestureState.dy;
-        const clampedX = Math.max(0, Math.min(rawX, screenW - PIP_W));
-        const clampedY = Math.max(0, Math.min(rawY, screenH - PIP_H - 120));
-        pipOffset.x = clampedX;
-        pipOffset.y = clampedY;
-        Animated.spring(pipPosition, {
-          toValue: { x: clampedX, y: clampedY },
-          useNativeDriver: false,
-          friction: 7,
-        }).start();
+      onPanResponderRelease: (_, gs) => {
+        pipLeft.flattenOffset();
+        pipTop.flattenOffset();
+        // Clamp within screen bounds
+        const newX = Math.max(0, Math.min(pipLastPos.current.x + gs.dx, SCREEN_W - PIP_W_DEFAULT));
+        const newY = Math.max(0, Math.min(pipLastPos.current.y + gs.dy, SCREEN_H - PIP_H_DEFAULT - CONTROLS_H));
+        pipLastPos.current = { x: newX, y: newY };
+        Animated.spring(pipLeft, { toValue: newX, useNativeDriver: false, friction: 7 }).start();
+        Animated.spring(pipTop,  { toValue: newY, useNativeDriver: false, friction: 7 }).start();
       },
     })
   ).current;
@@ -719,9 +768,32 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
 
   const flipCamera = useCallback(async () => {
     if (isWeb) {
-      Alert.alert('Flip Camera', 'Not available on web');
+      // On web, re-acquire camera with toggled facing mode
+      if (localStream) {
+        const videoTrack = localStream.getVideoTracks()[0];
+        if (videoTrack) {
+          const currentFacing = (videoTrack.getSettings() as any).facingMode || 'user';
+          const newFacing = currentFacing === 'user' ? 'environment' : 'user';
+          try {
+            const newStream = await navigator.mediaDevices.getUserMedia({
+              video: { facingMode: newFacing },
+              audio: false, // Audio only — do NOT touch the audio track
+            });
+            const newVideoTrack = newStream.getVideoTracks()[0];
+            // Replace track in all peer connections via WebRTC service
+            await webRTCService.replaceVideoTrack(newVideoTrack);
+            // Swap the video track in the local stream UI (do NOT rebuild the stream object)
+            localStream.removeTrack(videoTrack);
+            localStream.addTrack(newVideoTrack);
+            videoTrack.stop();
+          } catch (e) {
+            console.warn('Camera flip failed (device may not have front/back):', e);
+          }
+        }
+      }
       return;
     }
+    // Native: use _switchCamera from react-native-webrtc
     if (localStream) {
       const videoTrack = localStream.getVideoTracks()[0];
       if (videoTrack && typeof (videoTrack as any)._switchCamera === 'function') {
@@ -729,7 +801,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
         try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch { }
       }
     }
-  }, [localStream]);
+  }, [localStream, webRTCService]);
 
   const endCall = useCallback(async () => {
     setCallStatus('ended');
@@ -787,40 +859,40 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
     );
   }, [gridConfig, activeSpeaker, handRaised]);
 
-  // ── WhatsApp-style PiP Layout (Mobile Web, exactly 2 participants) ──
-  // ONLY rendered when: isMobileWeb === true AND participants.length === 1 (local + 1 remote)
+  // ── WhatsApp-style PiP Layout ──────────────────────────────────────────────
+  // Activated for: isMobileWeb (responsive browser) OR native mobile (!isWeb)
+  // ONLY when exactly 1 remote participant exists (1-on-1 call).
+  // Uses stable sub-components (PiPRemoteVideo, PiPLocalVideo) to prevent flicker.
   const renderPiPLayout = useCallback(() => {
-    const remoteParticipant = participants[0]; // The one remote person
+    const remoteParticipant = participants[0];
     const localParticipant = allParticipants.find(p => p.id === 'local')!;
     if (!remoteParticipant || !localParticipant) return null;
 
-    const PIP_W = isPipExpanded ? (typeof window !== 'undefined' ? window.innerWidth * 0.6 : 240) : 120;
-    const PIP_H = isPipExpanded ? (typeof window !== 'undefined' ? window.innerHeight * 0.45 : 340) : 160;
-    const PIP_BORDER = isPipExpanded ? 16 : 12;
-
-    // Default position: bottom-right
-    const screenW = typeof window !== 'undefined' ? window.innerWidth : 390;
-    const screenH = typeof window !== 'undefined' ? window.innerHeight : 844;
-    const defaultX = screenW - 120 - 16;
-    const defaultY = screenH - 160 - 140; // above controls
+    const PIP_W = isPipExpanded
+      ? (typeof window !== 'undefined' ? window.innerWidth * 0.58 : 220)
+      : 120;
+    const PIP_H = isPipExpanded
+      ? (typeof window !== 'undefined' ? window.innerHeight * 0.42 : 300)
+      : 160;
+    const PIP_BORDER = isPipExpanded ? 20 : 14;
 
     return (
       <View style={styles.pipContainer}>
         {/* ── REMOTE: fullscreen background ── */}
         <View style={StyleSheet.absoluteFill}>
           {isWeb && remoteParticipant.stream && remoteParticipant.hasVideo ? (
-            <video
-              ref={(el) => {
-                if (el && remoteParticipant.stream) {
-                  el.srcObject = remoteParticipant.stream;
-                  el.muted = false;
-                }
-                if (el && videoRefs) videoRefs.current.set(remoteParticipant.id, el);
-              }}
-              autoPlay
-              playsInline
-              muted={false}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' } as any}
+            <PiPRemoteVideo
+              stream={remoteParticipant.stream}
+              participantId={remoteParticipant.id}
+              videoRefs={videoRefs}
+            />
+          ) : !isWeb && RTCView && remoteParticipant.stream && remoteParticipant.hasVideo ? (
+            <RTCView
+              key={(remoteParticipant.stream as any).id}
+              streamURL={(remoteParticipant.stream as any).toURL()}
+              objectFit="cover"
+              style={{ flex: 1 }}
+              zOrder={0}
             />
           ) : (
             <View style={styles.pipRemoteAvatar}>
@@ -828,16 +900,32 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
               <Text style={styles.pipRemoteName}>{remoteParticipant.name}</Text>
             </View>
           )}
-          {/* Subtle gradient at bottom for controls readability */}
+          {/* Bottom gradient for controls readability */}
           <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.6)']}
+            colors={['transparent', 'rgba(0,0,0,0.65)']}
             style={styles.pipRemoteGradient}
             pointerEvents="none"
           />
-          {/* Remote mute indicator */}
-          {remoteParticipant.isMuted && (
-            <View style={styles.pipRemoteMuteTag}>
-              <Ionicons name="mic-off" size={14} color="#fff" />
+          {/* Remote name tag + status badges */}
+          <View style={styles.pipRemoteNameTag}>
+            <Text style={styles.pipRemoteNameTagText}>{remoteParticipant.name}</Text>
+            {remoteParticipant.isMuted && (
+              <View style={styles.pipRemoteMuteTag}>
+                <Ionicons name="mic-off" size={12} color="#fff" />
+              </View>
+            )}
+          </View>
+          {/* Hand raise indicator on remote's fullscreen video */}
+          {remoteParticipant.handRaised && (
+            <View style={styles.pipRemoteHandBadge}>
+              <Ionicons name="hand-left" size={20} color="#FFCC00" />
+              <Text style={styles.pipRemoteHandText}>Raised Hand</Text>
+            </View>
+          )}
+          {/* Local hand raise indicator (so YOU know your hand is up) */}
+          {handRaised && (
+            <View style={styles.pipLocalHandBadge}>
+              <Ionicons name="hand-left" size={14} color="#FFCC00" />
             </View>
           )}
         </View>
@@ -846,61 +934,97 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
         <Animated.View
           style={[
             styles.pipLocal,
-            {
-              width: PIP_W,
-              height: PIP_H,
-              borderRadius: PIP_BORDER,
-              // Initial position: bottom right (offset); user can drag after that
-              right: isPipExpanded ? undefined : 16,
-              bottom: isPipExpanded ? undefined : 130,
-              left: isPipExpanded
-                ? (typeof window !== 'undefined' ? (window.innerWidth - PIP_W) / 2 : 80)
-                : undefined,
-              top: isPipExpanded
-                ? (typeof window !== 'undefined' ? (window.innerHeight - PIP_H) / 2 : 200)
-                : undefined,
-              // Apply drag transform only in small mode
-              transform: isPipExpanded ? [] : pipPosition.getTranslateTransform(),
-            },
+            isPipExpanded
+              ? {
+                  // Centered when expanded
+                  width: PIP_W,
+                  height: PIP_H,
+                  borderRadius: PIP_BORDER,
+                  position: 'absolute',
+                  left: (SCREEN_W - PIP_W) / 2,
+                  top: (SCREEN_H - PIP_H) / 2,
+                }
+              : {
+                  // Draggable position from top/left (no right/bottom conflict)
+                  width: PIP_W,
+                  height: PIP_H,
+                  borderRadius: PIP_BORDER,
+                  position: 'absolute',
+                  left: pipLeft,
+                  top: pipTop,
+                },
           ]}
           {...(!isPipExpanded ? pipPanResponder.panHandlers : {})}
         >
+          {/* Tap-to-expand — only on the video area itself, not the camera button */}
           <TouchableOpacity
-            activeOpacity={1}
+            activeOpacity={0.95}
             style={{ flex: 1, borderRadius: PIP_BORDER, overflow: 'hidden' }}
             onPress={() => setIsPipExpanded(prev => !prev)}
           >
             {isWeb && localParticipant.stream && localParticipant.hasVideo ? (
-              <video
-                ref={(el) => {
-                  if (el && localParticipant.stream) {
-                    el.srcObject = localParticipant.stream;
-                    el.muted = true;
-                  }
-                }}
-                autoPlay
-                playsInline
-                muted
-                style={{ width: '100%', height: '100%', objectFit: 'cover' } as any}
+              <PiPLocalVideo stream={localParticipant.stream} />
+            ) : !isWeb && RTCView && localParticipant.stream && localParticipant.hasVideo ? (
+              <RTCView
+                key={(localParticipant.stream as any).id}
+                streamURL={(localParticipant.stream as any).toURL()}
+                objectFit="cover"
+                style={{ flex: 1 }}
+                mirror
+                zOrder={1}
               />
             ) : (
               <View style={[styles.pipLocalAvatar, { borderRadius: PIP_BORDER }]}>
-                <Avatar source={localParticipant.avatar} size={isPipExpanded ? 60 : 40} name={localParticipant.name} />
+                <Avatar
+                  source={localParticipant.avatar}
+                  size={isPipExpanded ? 60 : 38}
+                  name={localParticipant.name}
+                />
               </View>
             )}
-            {/* You label */}
+
+            {/* "You" label */}
             <View style={styles.pipLocalBadge}>
               <Text style={styles.pipLocalBadgeText}>You</Text>
             </View>
-            {/* Expand/collapse hint icon */}
+
+            {/* Expand / collapse indicator */}
             <View style={styles.pipExpandHint}>
-              <Ionicons name={isPipExpanded ? 'contract' : 'expand'} size={12} color="rgba(255,255,255,0.8)" />
+              <Ionicons
+                name={isPipExpanded ? 'contract' : 'expand'}
+                size={11}
+                color="rgba(255,255,255,0.8)"
+              />
             </View>
+          </TouchableOpacity>
+
+          {/* ── Camera flip button (separate from tap-to-expand) ── */}
+          <TouchableOpacity
+            style={styles.pipCameraFlipBtn}
+            onPress={(e) => {
+              // Stop propagation so it doesn't trigger expand
+              e.stopPropagation?.();
+              flipCamera();
+            }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="camera-reverse" size={16} color="#fff" />
           </TouchableOpacity>
         </Animated.View>
       </View>
     );
-  }, [participants, allParticipants, isPipExpanded, pipPosition, pipPanResponder, videoRefs, isMuted, hasVideo]);
+  }, [
+    participants,
+    allParticipants,
+    isPipExpanded,
+    pipLeft,
+    pipTop,
+    pipPanResponder,
+    videoRefs,
+    hasVideo,
+    flipCamera,
+    handRaised,
+  ]);
 
 
   const waitingRoom = useMemo(() => (
@@ -1113,8 +1237,8 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
 
       <View style={styles.content}>
         {callStatus === 'ended' ? null : (callStatus === 'waiting' ? waitingRoom : (
-          // ── PiP Mode: ONLY on mobile web with exactly 2 participants (1 remote) ──
-          isMobileWeb && participants.length === 1 ? (
+          // ── PiP Mode: mobile web OR native mobile, exactly 1 remote participant ──
+          (isMobileWeb || !isWeb) && participants.length === 1 ? (
             renderPiPLayout()
           ) : selectedView === 'grid' ? (
             <ScrollView
@@ -1424,6 +1548,59 @@ const styles = StyleSheet.create({
     padding: 3,
   },
 
+  pipRemoteNameTag: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  pipRemoteNameTagText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  // Hand raise badges inside PiP
+  pipRemoteHandBadge: {
+    position: 'absolute',
+    top: 80,
+    left: '50%' as any,
+    transform: [{ translateX: -60 }],
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  pipRemoteHandText: {
+    color: '#FFCC00',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  pipLocalHandBadge: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 12,
+    padding: 4,
+    zIndex: 15,
+  },
+  pipCameraFlipBtn: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 16,
+    padding: 6,
+    zIndex: 20,
+  },
   controlsBlur: { paddingVertical: 16, paddingHorizontal: 20, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
   viewSelector: { flexDirection: 'row', justifyContent: 'center', marginBottom: 16, gap: 8 },
   viewButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },

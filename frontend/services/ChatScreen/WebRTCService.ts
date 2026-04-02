@@ -67,7 +67,8 @@ class WebRTCService {
       { urls: 'stun:stun2.l.google.com:19302' },
       { urls: 'stun:stun3.l.google.com:19302' },
       { urls: 'stun:stun4.l.google.com:19302' },
-      // ✅ ADD TURN SERVERS - CRITICAL FOR MOBILE NETWORKS
+      // ✅ TURN SERVERS - CRITICAL FOR MOBILE NETWORKS (carrier-grade NAT)
+      // NOTE: Replace with private TURN server credentials in production
       { 
         urls: 'turn:openrelay.metered.ca:80',
         username: 'openrelayproject',
@@ -85,6 +86,9 @@ class WebRTCService {
       }
     ],
     iceCandidatePoolSize: 10,
+    // ✅ 'all' allows both STUN and TURN simultaneously (correct setting)
+    // Do NOT use 'relay' here — that forces TURN-only and will fail if TURN is unreachable
+    iceTransportPolicy: 'all' as RTCIceTransportPolicy,
   };
 
   private constructor() { }
@@ -212,6 +216,8 @@ class WebRTCService {
   }
 
   private pendingCandidates: Map<string, any[]> = new Map();
+  // ✅ Queue offers that arrive before localStream is ready (Android timing issue)
+  private pendingOffers: any[] = [];
 
   private setupSignalingListeners() {
     if (!this.spaceId || !this.pusherService.isReady()) {
@@ -368,8 +374,24 @@ class WebRTCService {
   }
 
   private async handleOffer(data: any) {
-    if (!this.spaceId || !this.localStream || !this.callId) {
-      console.warn('Cannot handle offer: missing stream or call metadata');
+    // ✅ If stream not ready yet, queue the offer and retry once stream is available
+    if (!this.spaceId || !this.callId) {
+      console.warn('Cannot handle offer: missing call metadata — will retry');
+      this.pendingOffers.push(data);
+      return;
+    }
+    if (!this.localStream) {
+      console.warn('Cannot handle offer: localStream not ready yet — queuing offer');
+      this.pendingOffers.push(data);
+      // Attempt to acquire stream immediately so we can process queued offers
+      this.getLocalStream(true, true).then(stream => {
+        if (stream) {
+          console.log('📞 Stream acquired — processing queued offers:', this.pendingOffers.length);
+          const queued = [...this.pendingOffers];
+          this.pendingOffers = [];
+          queued.forEach(o => this.handleOffer(o));
+        }
+      }).catch(e => console.error('Failed to acquire stream for queued offer:', e));
       return;
     }
 
@@ -450,11 +472,25 @@ class WebRTCService {
     const fromId = data.from_user_id.toString();
     try {
       const peerConnection = this.peerConnections.get(fromId);
-      // ✅ Use pre-defined RTC_IceCandidate
+
+      // Guard: ignore candidates for connections that no longer exist or are closed
+      if (!peerConnection || peerConnection.connectionState === 'closed') {
+        return;
+      }
+
       const candidate = new RTC_IceCandidate(data.candidate);
 
-      if (peerConnection && peerConnection.remoteDescription && peerConnection.remoteDescription.type) {
-        await peerConnection.addIceCandidate(candidate);
+      if (peerConnection.remoteDescription && peerConnection.remoteDescription.type) {
+        try {
+          await peerConnection.addIceCandidate(candidate);
+        } catch (iceError: any) {
+          // This is expected when a stale ICE candidate arrives after an ICE restart.
+          // The new session's candidates will succeed — this one is from the old session.
+          // Not dangerous: the call continues via other valid candidates.
+          console.warn(
+            `⚠️ Stale ICE candidate ignored for peer ${fromId} (likely from before an ICE restart — call unaffected)`
+          );
+        }
       } else {
         // Offer/Answer not yet processed, queue the candidate
         console.log(`📞 Queuing ICE candidate from ${fromId} (Remote description not ready)`);
@@ -464,7 +500,7 @@ class WebRTCService {
         this.pendingCandidates.get(fromId)!.push(candidate);
       }
     } catch (error) {
-      console.error(`Error handling ICE candidate from ${fromId}:`, error);
+      console.warn(`⚠️ Could not process ICE candidate from ${fromId}:`, error);
     }
   }
 
@@ -538,14 +574,36 @@ class WebRTCService {
       }
     };
 
+    // ✅ ICE connection state monitoring with timeout and detailed diagnostics
+    let iceCheckingTimeout: ReturnType<typeof setTimeout> | null = null;
+
     peerConnection.oniceconnectionstatechange = () => {
       const state = peerConnection.iceConnectionState;
       console.log(`📞 ICE connection state with ${peerId}:`, state);
 
-      // ✅ Detect when TURN is needed or connection is failing
+      if (state === 'connected' || state === 'completed') {
+        // Clear timeout on success
+        if (iceCheckingTimeout) { clearTimeout(iceCheckingTimeout); iceCheckingTimeout = null; }
+        console.log(`✅ ICE connected for ${peerId} - media should flow`);
+      }
+
+      if (state === 'checking') {
+        // ✅ Set 15s timeout — if still checking, force ICE restart
+        iceCheckingTimeout = setTimeout(() => {
+          console.warn(`⚠️ ICE checking timeout for ${peerId} — attempting forced restart`);
+          peerConnection.createOffer({ iceRestart: true })
+            .then((offer: any) => peerConnection.setLocalDescription(offer))
+            .then(() => {
+              const desc = peerConnection.localDescription;
+              if (desc) this.sendSignal(parseInt(peerId), 'offer', { offer: desc });
+            })
+            .catch((e: any) => console.warn('ICE forced restart failed:', e));
+        }, 15000);
+      }
+
       if (state === 'failed' || state === 'disconnected') {
-        console.warn(`⚠️ ICE failed for ${peerId}, attempting restart...`);
-        // Attempt ICE restart
+        if (iceCheckingTimeout) { clearTimeout(iceCheckingTimeout); iceCheckingTimeout = null; }
+        console.warn(`⚠️ ICE ${state} for ${peerId}, attempting restart...`);
         peerConnection.createOffer({ iceRestart: true })
           .then((offer: any) => peerConnection.setLocalDescription(offer))
           .then(() => {
@@ -555,14 +613,24 @@ class WebRTCService {
             }
           })
           .catch((e: any) => {
-            console.warn(`⚠️ ICE restart for ${peerId} failed, trying fallback:`, e);
-            this.retryWithFallbackServers(peerId);
+            console.warn(`⚠️ ICE restart for ${peerId} failed:`, e);
           });
       }
+    };
 
-      if (state === 'connected') {
-        console.log(`✅ ICE connected for ${peerId} - media should flow`);
-      }
+    // ✅ ICE candidate error handler — log only once per peer to avoid console spam
+    // Error 701 fires for every STUN/TURN server that times out; connection can still succeed via other candidates
+    let iceErrorLogged = false;
+    (peerConnection as any).onicecandidateerror = (error: any) => {
+      if (error.errorCode !== 701) return; // Non-fatal, ignore
+      if (iceErrorLogged) return;          // Already logged once for this peer
+      iceErrorLogged = true;
+      const isStun = error.url?.startsWith('stun:');
+      const serverType = isStun ? 'STUN' : 'TURN';
+      console.warn(
+        `⚠️ ${serverType} server unreachable for peer ${peerId} (call may still connect via other candidates):`,
+        error.errorText
+      );
     };
 
     return peerConnection;
@@ -768,6 +836,27 @@ class WebRTCService {
     if (this.spaceId && this.callId) {
       await this.sendSignal(0, isRaised ? 'hand-raised' : 'hand-lowered', { user_id: this.userId });
     }
+  }
+
+  /**
+   * Replace the video track in all active peer connections.
+   * Used by flipCamera on web to swap front/back camera without
+   * rebuilding the MediaStream or affecting audio.
+   */
+  async replaceVideoTrack(newTrack: MediaStreamTrack): Promise<void> {
+    const replacePromises: Promise<void>[] = [];
+    this.peerConnections.forEach((connection) => {
+      const sender = (connection as any).getSenders?.().find((s: any) => s.track?.kind === 'video');
+      if (sender) {
+        replacePromises.push(
+          sender.replaceTrack(newTrack).catch((e: any) =>
+            console.warn('replaceVideoTrack error on peer:', e)
+          )
+        );
+      }
+    });
+    await Promise.all(replacePromises);
+    console.log('📞 Video track replaced across', replacePromises.length, 'peer connections');
   }
 
   async cleanup() {

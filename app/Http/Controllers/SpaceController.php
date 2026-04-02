@@ -33,6 +33,7 @@ use App\Events\CallStarted;
 use App\Events\CallEnded;
 use App\Events\ScreenShareToggled;
 use App\Events\SpaceInvitationSent;
+use App\Notifications\IncomingCallNotification;
 use App\Events\SpaceMuted;
 use App\Events\SpacePinned;
 use App\Events\SpaceArchived;

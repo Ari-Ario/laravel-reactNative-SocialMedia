@@ -8,20 +8,25 @@ use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
+// NOTE: SerializesModels intentionally REMOVED — it causes Eloquent model data
+// to bloat the serialized event payload, easily exceeding Reverb/Pusher's 10KB limit.
+// We store only scalar values so the payload stays minimal.
 use App\Models\CollaborationSpace;
 use App\Models\User;
 
 class WebRTCSignal implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use Dispatchable, InteractsWithSockets;
 
-    public $space;
-    public $fromUser;
-    public $toUserId;
-    public $signalType;
-    public $signalData;
-    public $callId;
+    // Store only scalar IDs — no Eloquent models in properties
+    private string $spaceId;
+    private int    $fromUserId;
+    private string $fromUserName;
+
+    public int    $toUserId;
+    public string $signalType;
+    public array  $signalData;
+    public string $callId;
 
     public function __construct(
         CollaborationSpace $space,
@@ -30,19 +35,20 @@ class WebRTCSignal implements ShouldBroadcast
         $signalType,
         $signalData,
         $callId
-        )
-    {
-        $this->space = $space;
-        $this->fromUser = $fromUser;
-        $this->toUserId = $toUserId;
-        $this->signalType = $signalType;
-        $this->signalData = $signalData;
-        $this->callId = $callId;
+    ) {
+        // Extract only the scalar values we need — discard the heavy model objects
+        $this->spaceId      = $space->id;
+        $this->fromUserId   = $fromUser->id;
+        $this->fromUserName = $fromUser->name;
+        $this->toUserId     = (int) $toUserId;
+        $this->signalType   = $signalType;
+        $this->signalData   = $signalData ?? [];
+        $this->callId       = $callId;
     }
 
     public function broadcastOn()
     {
-        return new PresenceChannel('space-' . $this->space->id);
+        return new PresenceChannel('space-' . $this->spaceId);
     }
 
     public function broadcastAs()
@@ -52,20 +58,17 @@ class WebRTCSignal implements ShouldBroadcast
 
     public function broadcastWith()
     {
+        // Build the minimal payload — signalData contains offer/answer/candidate
         $payload = array_merge($this->signalData, [
-            'from_user_id' => $this->fromUser->id,
-            'from_user_name' => $this->fromUser->name,
+            'from_user_id'   => $this->fromUserId,
+            'from_user_name' => $this->fromUserName,
             'target_user_id' => $this->toUserId,
-            'type' => $this->signalType,
-            'call_id' => $this->callId,
-            'timestamp' => now()->toISOString(),
+            'type'           => $this->signalType,
+            'call_id'        => $this->callId,
+            'timestamp'      => now()->toISOString(),
         ]);
 
-        \Illuminate\Support\Facades\Log::debug("📡 Broadcasting WebRTCSignal: {$this->signalType} to Space {$this->space->id}", [
-            'target' => $this->toUserId,
-            'from' => $this->fromUser->id,
-            'type' => $this->signalType
-        ]);
+        \Illuminate\Support\Facades\Log::debug("📡 WebRTCSignal: {$this->signalType} space={$this->spaceId} from={$this->fromUserId} to={$this->toUserId}");
 
         return $payload;
     }
