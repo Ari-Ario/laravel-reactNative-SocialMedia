@@ -59,14 +59,15 @@ class WebRTCService {
   private onHandRaisedCallback: ((userId: string, isRaised: boolean) => void) | null = null;
 
   private knownParticipants = new Set<number>();
-  // Tracks peers for whom an offer has been *scheduled* (setTimeout fired but not yet created a PC).
-  // Prevents the duplicate call-active race where peerConnections.has() is still false
-  // when the second signal arrives within the 1s scheduling window.
+  // Tracks peers for whom an offer has been scheduled OR is in progress.
+  // This is the primary idempotency guard — it only clears when the participant
+  // explicitly leaves. It survives ICE failures, connection state changes, and PC
+  // deletion, so duplicate call-active signals can never create a second offer.
   private scheduledOfferPeers = new Set<number>();
-  // Mutex: tracks peers for whom createOffer() is *currently executing* (async in-flight).
-  // Prevents the concurrent async race where both calls see signalingState='stable'
-  // before either has called setLocalDescription.
   private offerInProgress = new Set<number>();
+  // PERMANENT lock: set the moment we decide to offer, cleared only on participant leave.
+  // Immune to the ICE-disconnected → PC-deleted → duplicate-call-active timing race.
+  private negotiatingPeers = new Set<number>();
 
 
   private iceServers = {
@@ -315,37 +316,28 @@ class WebRTCService {
   public handleNewParticipant(joinedUserId: number) {
     if (!joinedUserId || joinedUserId === this.userId) return;
 
-    // Guard 1: If we already HAVE a peer connection, this is a late duplicate signal.
-    if (this.peerConnections.has(joinedUserId.toString())) {
+    // PERMANENT GUARD: once we've decided to negotiate with a peer, ignore all
+    // further call-active signals until they explicitly leave the call.
+    // This survives ICE failures, PC deletion, and any timing race.
+    if (this.negotiatingPeers.has(joinedUserId)) {
+      // Still update UI if not yet shown
       if (!this.knownParticipants.has(joinedUserId)) {
         this.knownParticipants.add(joinedUserId);
         if (this.onParticipantJoinedCallback) {
           this.onParticipantJoinedCallback(joinedUserId.toString());
         }
       }
-      return;
-    }
-
-    // Guard 2: If we already SCHEDULED an offer (but PC not created yet within the 1s window),
-    // skip silently. This prevents the async race where both duplicate call-active signals
-    // both see peerConnections.has() = false and both schedule a createOffer setTimeout.
-    if (this.scheduledOfferPeers.has(joinedUserId)) {
-      console.log(`ℹ️ Duplicate call-active from ${joinedUserId} within 1s window — offer already scheduled`);
-      if (!this.knownParticipants.has(joinedUserId)) {
-        this.knownParticipants.add(joinedUserId);
-        if (this.onParticipantJoinedCallback) {
-          this.onParticipantJoinedCallback(joinedUserId.toString());
-        }
-      }
+      console.log(`ℹ️ Already negotiating with ${joinedUserId} — ignoring duplicate call-active`);
       return;
     }
 
     if (this.userId! > joinedUserId) {
       console.log(`📞 P2P Mesh: High ID (${this.userId}) offering to Low ID (${joinedUserId})`);
-      // Mark scheduled BEFORE the setTimeout so any duplicate arriving in the next 1s is blocked
+      // Lock BEFORE the setTimeout so any duplicate arriving in the next 1s+ is blocked
+      this.negotiatingPeers.add(joinedUserId);
       this.scheduledOfferPeers.add(joinedUserId);
       setTimeout(() => {
-        this.scheduledOfferPeers.delete(joinedUserId); // Release schedule-lock; PC now exists
+        this.scheduledOfferPeers.delete(joinedUserId);
         this.createOffer(joinedUserId);
       }, 1000);
     } else {
@@ -627,37 +619,32 @@ class WebRTCService {
       }
     };
 
-    // ✅ ICE connection state monitoring with timeout and detailed diagnostics
-    let iceCheckingTimeout: ReturnType<typeof setTimeout> | null = null;
+    // ICE connection state monitoring with diagnostics
+    let iceFailRetryCount = 0;
+    const MAX_ICE_RETRIES = 2;
 
     peerConnection.oniceconnectionstatechange = () => {
       const state = peerConnection.iceConnectionState;
       console.log(`📞 ICE connection state with ${peerId}:`, state);
 
       if (state === 'connected' || state === 'completed') {
-        // Clear timeout on success
-        if (iceCheckingTimeout) { clearTimeout(iceCheckingTimeout); iceCheckingTimeout = null; }
+        iceFailRetryCount = 0;
         console.log(`✅ ICE connected for ${peerId} - media should flow`);
       }
 
-      if (state === 'checking') {
-        // ✅ 30s timeout for mobile data — TURN relay candidates can take longer
-        // than WiFi direct candidates. 15s was too short for 5G/4G TURN negotiation.
-        iceCheckingTimeout = setTimeout(() => {
-          console.warn(`⚠️ ICE checking timeout for ${peerId} — attempting forced restart`);
-          peerConnection.createOffer({ iceRestart: true })
-            .then((offer: any) => peerConnection.setLocalDescription(offer))
-            .then(() => {
-              const desc = peerConnection.localDescription;
-              if (desc) this.sendSignal(parseInt(peerId), 'offer', { offer: desc });
-            })
-            .catch((e: any) => console.warn('ICE forced restart failed:', e));
-        }, 30000); // 30s — safe for both WiFi and mobile data
-      }
-
-      if (state === 'failed' || state === 'disconnected') {
-        if (iceCheckingTimeout) { clearTimeout(iceCheckingTimeout); iceCheckingTimeout = null; }
-        console.warn(`⚠️ ICE ${state} for ${peerId}, attempting restart...`);
+      // Only restart on 'failed' — NOT on 'disconnected'.
+      // 'disconnected' is transient (network hiccup) and immediately sending a restart
+      // offer creates a negotiation collision where the other side answers but we're
+      // already in 'stable' state, breaking ICE state machines on both ends.
+      // Let 'disconnected' self-recover; only force-restart if it reaches 'failed'.
+      if (state === 'failed') {
+        if (iceFailRetryCount >= MAX_ICE_RETRIES) {
+          console.warn(`⚠️ ICE permanently failed for ${peerId} after ${MAX_ICE_RETRIES} retries — giving up`);
+          this.handleParticipantLeft(parseInt(peerId));
+          return;
+        }
+        iceFailRetryCount++;
+        console.warn(`⚠️ ICE failed for ${peerId} (attempt ${iceFailRetryCount}/${MAX_ICE_RETRIES}) — restarting ICE...`);
         peerConnection.createOffer({ iceRestart: true })
           .then((offer: any) => peerConnection.setLocalDescription(offer))
           .then(() => {
@@ -723,6 +710,13 @@ class WebRTCService {
       connection.close();
       this.peerConnections.delete(peerId);
     }
+
+    // Clear the permanent negotiation lock so this peer can re-join later
+    this.negotiatingPeers.delete(userId);
+    this.knownParticipants.delete(userId);
+    this.scheduledOfferPeers.delete(userId);
+    this.offerInProgress.delete(userId);
+    this.pendingCandidates.delete(peerId);
 
     if (this.onParticipantLeftCallback) {
       this.onParticipantLeftCallback(peerId);
