@@ -59,35 +59,45 @@ class WebRTCService {
   private onHandRaisedCallback: ((userId: string, isRaised: boolean) => void) | null = null;
 
   private knownParticipants = new Set<number>();
+  // Tracks peers for whom an offer has been *scheduled* (setTimeout fired but not yet created a PC).
+  // Prevents the duplicate call-active race where peerConnections.has() is still false
+  // when the second signal arrives within the 1s scheduling window.
+  private scheduledOfferPeers = new Set<number>();
+  // Mutex: tracks peers for whom createOffer() is *currently executing* (async in-flight).
+  // Prevents the concurrent async race where both calls see signalingState='stable'
+  // before either has called setLocalDescription.
+  private offerInProgress = new Set<number>();
+
 
   private iceServers = {
     iceServers: [
+      // Google STUN servers — fast but only work on direct-connectable networks
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun2.l.google.com:19302' },
-      { urls: 'stun:stun3.l.google.com:19302' },
-      { urls: 'stun:stun4.l.google.com:19302' },
-      // ✅ TURN SERVERS - CRITICAL FOR MOBILE NETWORKS (carrier-grade NAT)
-      // NOTE: Replace with private TURN server credentials in production
-      { 
-        urls: 'turn:openrelay.metered.ca:80',
-        username: 'openrelayproject',
-        credential: 'openrelayproject'
+      // Metered.ca free TURN — authenticated, more reliable than openrelay for carrier NAT
+      // These credentials are from the free tier and work for mobile data (5G/4G CGNAT)
+      {
+        urls: 'turn:relay.metered.ca:80',
+        username: 'e29e254c0f8dd6a79e02e27f',
+        credential: 'yv2vWAMF9ctoJoLv',
       },
-      { 
-        urls: 'turn:openrelay.metered.ca:443',
-        username: 'openrelayproject',
-        credential: 'openrelayproject'
+      {
+        urls: 'turn:relay.metered.ca:80?transport=tcp',
+        username: 'e29e254c0f8dd6a79e02e27f',
+        credential: 'yv2vWAMF9ctoJoLv',
       },
-      { 
-        urls: 'turn:openrelay.metered.ca:3478',
-        username: 'openrelayproject',
-        credential: 'openrelayproject'
-      }
+      {
+        urls: 'turn:relay.metered.ca:443',
+        username: 'e29e254c0f8dd6a79e02e27f',
+        credential: 'yv2vWAMF9ctoJoLv',
+      },
+      {
+        urls: 'turns:relay.metered.ca:443?transport=tcp',
+        username: 'e29e254c0f8dd6a79e02e27f',
+        credential: 'yv2vWAMF9ctoJoLv',
+      },
     ],
     iceCandidatePoolSize: 10,
-    // ✅ 'all' allows both STUN and TURN simultaneously (correct setting)
-    // Do NOT use 'relay' here — that forces TURN-only and will fail if TURN is unreachable
     iceTransportPolicy: 'all' as RTCIceTransportPolicy,
   };
 
@@ -305,12 +315,8 @@ class WebRTCService {
   public handleNewParticipant(joinedUserId: number) {
     if (!joinedUserId || joinedUserId === this.userId) return;
 
-    // ✅ If we already have an active peer connection for this user, a duplicate
-    // call-active signal arrived (Pusher/Reverb can broadcast events twice).
-    // Skip creating another offer — the existing connection handles this peer.
-    const alreadyConnected = this.peerConnections.has(joinedUserId.toString());
-    if (alreadyConnected) {
-      console.log(`ℹ️ Duplicate call-active from ${joinedUserId} — peer connection already exists, skipping offer`);
+    // Guard 1: If we already HAVE a peer connection, this is a late duplicate signal.
+    if (this.peerConnections.has(joinedUserId.toString())) {
       if (!this.knownParticipants.has(joinedUserId)) {
         this.knownParticipants.add(joinedUserId);
         if (this.onParticipantJoinedCallback) {
@@ -320,12 +326,28 @@ class WebRTCService {
       return;
     }
 
-    // Reliability: Handshake tie-breaker. Higher User ID offers to Lower User ID.
-    // This allows every participant to connect to every other participant in a mesh.
+    // Guard 2: If we already SCHEDULED an offer (but PC not created yet within the 1s window),
+    // skip silently. This prevents the async race where both duplicate call-active signals
+    // both see peerConnections.has() = false and both schedule a createOffer setTimeout.
+    if (this.scheduledOfferPeers.has(joinedUserId)) {
+      console.log(`ℹ️ Duplicate call-active from ${joinedUserId} within 1s window — offer already scheduled`);
+      if (!this.knownParticipants.has(joinedUserId)) {
+        this.knownParticipants.add(joinedUserId);
+        if (this.onParticipantJoinedCallback) {
+          this.onParticipantJoinedCallback(joinedUserId.toString());
+        }
+      }
+      return;
+    }
+
     if (this.userId! > joinedUserId) {
       console.log(`📞 P2P Mesh: High ID (${this.userId}) offering to Low ID (${joinedUserId})`);
-      // Small delay to ensure both sides are ready
-      setTimeout(() => this.createOffer(joinedUserId), 1000);
+      // Mark scheduled BEFORE the setTimeout so any duplicate arriving in the next 1s is blocked
+      this.scheduledOfferPeers.add(joinedUserId);
+      setTimeout(() => {
+        this.scheduledOfferPeers.delete(joinedUserId); // Release schedule-lock; PC now exists
+        this.createOffer(joinedUserId);
+      }, 1000);
     } else {
       console.log(`📞 P2P Mesh: Low ID (${this.userId}) waiting for offer from High ID (${joinedUserId})`);
     }
@@ -359,19 +381,24 @@ class WebRTCService {
       return;
     }
 
+    // ✅ MUTEX: prevents two concurrent createOffer() calls for the same peer
+    // from both seeing signalingState='stable' before either calls setLocalDescription.
+    // This is a JS async race: both awaits can overlap if called within ~10ms of each other.
+    if (this.offerInProgress.has(targetUserId)) {
+      console.warn(`⚠️ Offer already in-flight for ${targetUserId}, skipping concurrent duplicate`);
+      return;
+    }
+    this.offerInProgress.add(targetUserId);
+
     try {
       console.log(`📞 Creating WebRTC offer for user ${targetUserId}`);
 
       const peerConnection = this.createPeerConnection(targetUserId.toString());
 
-      // ✅ Guard: only create an offer when the connection is idle (stable).
-      // If already negotiating (have-local-offer / have-remote-offer), a duplicate
-      // call-active signal arrived while the first offer was still in-flight.
-      // Sending a second offer now would cause 'InvalidAccessError: m-lines order mismatch'
-      // which corrupts ICE on mobile data networks.
+      // Backup signalingState guard (catches restarts and other edge cases)
       if (peerConnection.signalingState !== 'stable') {
         console.warn(
-          `⚠️ Skipping duplicate offer to ${targetUserId}: signalingState is "${peerConnection.signalingState}" (negotiation already in progress)`
+          `⚠️ Skipping offer to ${targetUserId}: signalingState is "${peerConnection.signalingState}"`
         );
         return;
       }
@@ -397,6 +424,9 @@ class WebRTCService {
 
     } catch (error) {
       console.error('Error creating offer:', error);
+    } finally {
+      // Always release mutex so future offers (e.g. after ICE restart) can proceed
+      this.offerInProgress.delete(targetUserId);
     }
   }
 
