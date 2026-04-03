@@ -305,11 +305,26 @@ class WebRTCService {
   public handleNewParticipant(joinedUserId: number) {
     if (!joinedUserId || joinedUserId === this.userId) return;
 
+    // ✅ If we already have an active peer connection for this user, a duplicate
+    // call-active signal arrived (Pusher/Reverb can broadcast events twice).
+    // Skip creating another offer — the existing connection handles this peer.
+    const alreadyConnected = this.peerConnections.has(joinedUserId.toString());
+    if (alreadyConnected) {
+      console.log(`ℹ️ Duplicate call-active from ${joinedUserId} — peer connection already exists, skipping offer`);
+      if (!this.knownParticipants.has(joinedUserId)) {
+        this.knownParticipants.add(joinedUserId);
+        if (this.onParticipantJoinedCallback) {
+          this.onParticipantJoinedCallback(joinedUserId.toString());
+        }
+      }
+      return;
+    }
+
     // Reliability: Handshake tie-breaker. Higher User ID offers to Lower User ID.
     // This allows every participant to connect to every other participant in a mesh.
     if (this.userId! > joinedUserId) {
       console.log(`📞 P2P Mesh: High ID (${this.userId}) offering to Low ID (${joinedUserId})`);
-      // Small delay to ensure both are ready
+      // Small delay to ensure both sides are ready
       setTimeout(() => this.createOffer(joinedUserId), 1000);
     } else {
       console.log(`📞 P2P Mesh: Low ID (${this.userId}) waiting for offer from High ID (${joinedUserId})`);
@@ -348,6 +363,18 @@ class WebRTCService {
       console.log(`📞 Creating WebRTC offer for user ${targetUserId}`);
 
       const peerConnection = this.createPeerConnection(targetUserId.toString());
+
+      // ✅ Guard: only create an offer when the connection is idle (stable).
+      // If already negotiating (have-local-offer / have-remote-offer), a duplicate
+      // call-active signal arrived while the first offer was still in-flight.
+      // Sending a second offer now would cause 'InvalidAccessError: m-lines order mismatch'
+      // which corrupts ICE on mobile data networks.
+      if (peerConnection.signalingState !== 'stable') {
+        console.warn(
+          `⚠️ Skipping duplicate offer to ${targetUserId}: signalingState is "${peerConnection.signalingState}" (negotiation already in progress)`
+        );
+        return;
+      }
 
       // Add all tracks from local stream
       const senders = peerConnection.getSenders();
@@ -563,10 +590,6 @@ class WebRTCService {
     peerConnection.onconnectionstatechange = () => {
       console.log(`📞 Connection state with ${peerId}:`, peerConnection.connectionState);
 
-      if (peerConnection.connectionState === 'connected') {
-        this.triggerHapticSuccess();
-      }
-
       if (peerConnection.connectionState === 'disconnected' ||
         peerConnection.connectionState === 'failed' ||
         peerConnection.connectionState === 'closed') {
@@ -588,7 +611,8 @@ class WebRTCService {
       }
 
       if (state === 'checking') {
-        // ✅ Set 15s timeout — if still checking, force ICE restart
+        // ✅ 30s timeout for mobile data — TURN relay candidates can take longer
+        // than WiFi direct candidates. 15s was too short for 5G/4G TURN negotiation.
         iceCheckingTimeout = setTimeout(() => {
           console.warn(`⚠️ ICE checking timeout for ${peerId} — attempting forced restart`);
           peerConnection.createOffer({ iceRestart: true })
@@ -598,7 +622,7 @@ class WebRTCService {
               if (desc) this.sendSignal(parseInt(peerId), 'offer', { offer: desc });
             })
             .catch((e: any) => console.warn('ICE forced restart failed:', e));
-        }, 15000);
+        }, 30000); // 30s — safe for both WiFi and mobile data
       }
 
       if (state === 'failed' || state === 'disconnected') {

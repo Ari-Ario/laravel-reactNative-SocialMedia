@@ -46,8 +46,8 @@ if (Platform.OS !== 'web') {
 
 const { width, height } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
-const isMobileWeb = isWeb && 
-  typeof window !== 'undefined' && 
+const isMobileWeb = isWeb &&
+  typeof window !== 'undefined' &&
   window.innerWidth <= 768;
 
 // Optimized grid calculation - reflects Teams (Web) and WhatsApp (Mobile) styles
@@ -231,8 +231,8 @@ const VideoTile = React.memo(({
   );
 });
 
-const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({ 
-  spaceId, 
+const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
+  spaceId,
   spaceType = 'group',
   isMinimized = false,
   onToggleMinimize,
@@ -244,7 +244,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
   const initialCallType = (params.type as string) || 'video';
   // ─── Callee joining: joining=1 means we're answering, not starting
   const isJoiningExisting = params.joining === '1';
-  const existingCallId    = (params.call as string) || null;
+  const existingCallId = (params.call as string) || null;
   const collaborationService = CollaborationService.getInstance();
   const webRTCService = WebRTCService.getInstance();
   const { currentSpace } = useSpaceStore();
@@ -281,7 +281,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
 
   // Start at bottom-right corner
   const pipLeft = useRef(new Animated.Value(SCREEN_W - PIP_W_DEFAULT - 16)).current;
-  const pipTop  = useRef(new Animated.Value(SCREEN_H - PIP_H_DEFAULT - CONTROLS_H - 16)).current;
+  const pipTop = useRef(new Animated.Value(SCREEN_H - PIP_H_DEFAULT - CONTROLS_H - 16)).current;
 
   // Track last committed position for incremental dragging
   const pipLastPos = useRef({ x: SCREEN_W - PIP_W_DEFAULT - 16, y: SCREEN_H - PIP_H_DEFAULT - CONTROLS_H - 16 });
@@ -310,7 +310,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
         const newY = Math.max(0, Math.min(pipLastPos.current.y + gs.dy, SCREEN_H - PIP_H_DEFAULT - CONTROLS_H));
         pipLastPos.current = { x: newX, y: newY };
         Animated.spring(pipLeft, { toValue: newX, useNativeDriver: false, friction: 7 }).start();
-        Animated.spring(pipTop,  { toValue: newY, useNativeDriver: false, friction: 7 }).start();
+        Animated.spring(pipTop, { toValue: newY, useNativeDriver: false, friction: 7 }).start();
       },
     })
   ).current;
@@ -605,7 +605,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
               hasVideo: false,
               isSharingScreen: false,
               joinedAt: Date.now()
-          }));
+            }));
           setParticipants(participantList);
 
           await webRTCService.initialize(currentUserId);
@@ -649,7 +649,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
   useEffect(() => {
     if (callStatus === 'waiting' || callStatus === 'connecting' || callStatus === 'connected') {
       console.log(`🔌 Subscribing to lobby presence for discovery: ${spaceId} (status: ${callStatus})`);
-      
+
       collaborationService.subscribeToSpace(spaceId, 'immersive-call-lobby', {
         onCallStarted: (data: any) => {
           console.log('📡 Call started event received in lobby:', data);
@@ -678,7 +678,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
               isSharingScreen: false,
               joinedAt: Date.now()
             }));
-            
+
             // We'll filter in the render or a separate effect to keep this subscription stable
             setWaitingParticipants(participantList);
           }
@@ -844,17 +844,17 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
         ]}
       >
         <VideoTile
-        participant={item}
-        isLocal={isLocal}
-        isSpeaking={isSpeaking}
-        isHandRaised={isLocal ? handRaised : item.handRaised}
-        isMuted={item.isMuted}
-        hasVideo={item.hasVideo}
-        stream={item.stream}
-        videoRefs={videoRefs}
-        name={item.name}
-        avatar={item.avatar}
-      />
+          participant={item}
+          isLocal={isLocal}
+          isSpeaking={isSpeaking}
+          isHandRaised={isLocal ? handRaised : item.handRaised}
+          isMuted={item.isMuted}
+          hasVideo={item.hasVideo}
+          stream={item.stream}
+          videoRefs={videoRefs}
+          name={item.name}
+          avatar={item.avatar}
+        />
       </View>
     );
   }, [gridConfig, activeSpeaker, handRaised]);
@@ -936,23 +936,23 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
             styles.pipLocal,
             isPipExpanded
               ? {
-                  // Centered when expanded
-                  width: PIP_W,
-                  height: PIP_H,
-                  borderRadius: PIP_BORDER,
-                  position: 'absolute',
-                  left: (SCREEN_W - PIP_W) / 2,
-                  top: (SCREEN_H - PIP_H) / 2,
-                }
+                // Centered when expanded
+                width: PIP_W,
+                height: PIP_H,
+                borderRadius: PIP_BORDER,
+                position: 'absolute',
+                left: (SCREEN_W - PIP_W) / 2,
+                top: (SCREEN_H - PIP_H) / 2,
+              }
               : {
-                  // Draggable position from top/left (no right/bottom conflict)
-                  width: PIP_W,
-                  height: PIP_H,
-                  borderRadius: PIP_BORDER,
-                  position: 'absolute',
-                  left: pipLeft,
-                  top: pipTop,
-                },
+                // Draggable position from top/left (no right/bottom conflict)
+                width: PIP_W,
+                height: PIP_H,
+                borderRadius: PIP_BORDER,
+                position: 'absolute',
+                left: pipLeft,
+                top: pipTop,
+              },
           ]}
           {...(!isPipExpanded ? pipPanResponder.panHandlers : {})}
         >
@@ -1029,9 +1029,9 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
 
   const waitingRoom = useMemo(() => (
     <View style={styles.waitingContainer}>
-    <View style={styles.waitingIcon}>
-      <Ionicons name="videocam" size={48} color="#999" />
-    </View>
+      <View style={styles.waitingIcon}>
+        <Ionicons name="videocam" size={48} color="#999" />
+      </View>
       <Text style={styles.waitingTitle}>Connecting...</Text>
       <Text style={styles.waitingText}>
         Please wait while we set up your secure connection
@@ -1086,13 +1086,13 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
   };
 
   const renderParticipantsModal = () => (
-    <View style={styles.modalOverlay}>
-      <BlurView intensity={100} tint="dark" style={styles.modalContainer}>
+    <TouchableOpacity style={styles.modalOverlay} onPress={() => setShowParticipantsModal(false)}>
+      <BlurView intensity={80} tint="dark" style={styles.modalContainer}>
         <View style={styles.modalHeader}>
           <Text style={styles.modalTitle}>Participants ({allParticipants.length})</Text>
-          <TouchableOpacity onPress={() => setShowParticipantsModal(false)}>
+          {/* <TouchableOpacity onPress={() => setShowParticipantsModal(false)}>
             <Ionicons name="close" size={24} color="#fff" />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
         <ScrollView style={styles.modalContent}>
           {allParticipants.map(participant => (
@@ -1107,38 +1107,38 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
                 </View>
               </View>
               <View style={styles.participantActions}>
-                <Ionicons 
-                  name={participant.isMuted ? "mic-off" : "mic"} 
-                  size={20} 
-                  color={participant.isMuted ? "#FF6B6B" : "#4CD964"} 
+                <Ionicons
+                  name={participant.isMuted ? "mic-off" : "mic"}
+                  size={20}
+                  color={participant.isMuted ? "#FF6B6B" : "#4CD964"}
                   style={styles.actionIcon}
                 />
-                <Ionicons 
-                  name={participant.hasVideo ? "videocam" : "videocam-off"} 
-                  size={20} 
-                  color={participant.hasVideo ? "#4CD964" : "#999"} 
+                <Ionicons
+                  name={participant.hasVideo ? "videocam" : "videocam-off"}
+                  size={20}
+                  color={participant.hasVideo ? "#4CD964" : "#999"}
                 />
               </View>
             </View>
           ))}
         </ScrollView>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.inviteButton}
           onPress={() => Alert.alert('Invite', 'Invitation feature coming soon')}
         >
           <Text style={styles.inviteButtonText}>Invite People</Text>
         </TouchableOpacity>
       </BlurView>
-    </View>
+    </TouchableOpacity>
   );
 
   const renderMoreMenu = () => (
-    <TouchableOpacity 
-      style={styles.moreMenuOverlay} 
-      activeOpacity={1} 
+    <TouchableOpacity
+      style={styles.moreMenuOverlay}
+      activeOpacity={1}
       onPress={() => setShowMoreMenu(false)}
     >
-      <BlurView intensity={100} tint="dark" style={styles.moreMenuContainer}>
+      <BlurView intensity={80} tint="dark" style={styles.moreMenuContainer}>
         <View style={styles.moreMenuHeader}>
           <View style={styles.dragHandle} />
         </View>
@@ -1167,22 +1167,22 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
   const buttonSize = isMobileWeb ? 52 : 64;
 
   return (
-    <Animated.View 
+    <Animated.View
       style={[
-        styles.container, 
-        { 
+        styles.container,
+        {
           opacity: fadeAnim,
           paddingTop: isMobileWeb ? insets.top : 0,
           paddingBottom: isMobileWeb ? insets.bottom : 0
         }
-      ]} 
+      ]}
       onTouchStart={handleUserInteraction}
     >
       <StatusBar barStyle="light-content" />
 
       <Animated.View style={[styles.header, { opacity: controlsOpacity, top: isMobileWeb ? insets.top + 10 : 0 }]}>
-        <TouchableOpacity 
-          onPress={() => onToggleMinimize ? onToggleMinimize() : router.back()} 
+        <TouchableOpacity
+          onPress={() => onToggleMinimize ? onToggleMinimize() : router.back()}
           style={styles.backButton}
         >
           <BlurView intensity={80} style={styles.blurButton}>
@@ -1204,7 +1204,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
         </View>
 
         <View style={styles.headerActions}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.headerIconButton}
             onPress={() => setSelectedView(prev => prev === 'grid' ? 'speaker' : 'grid')}
           >
@@ -1213,7 +1213,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
             </BlurView>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.headerIconButton}
             onPress={() => setShowParticipantsModal(true)}
           >
@@ -1253,9 +1253,9 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
             <View style={styles.speakerView}>
               <View style={styles.largeSpeakerContainer}>
                 {renderParticipantTile(
-                  allParticipants.find(p => p.id === activeSpeaker) || 
-                  allParticipants.find(p => p.id !== 'local') || 
-                  allParticipants[0], 
+                  allParticipants.find(p => p.id === activeSpeaker) ||
+                  allParticipants.find(p => p.id !== 'local') ||
+                  allParticipants[0],
                   0
                 )}
               </View>
@@ -1286,53 +1286,53 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
       </View>
 
       <Animated.View style={[styles.controlsContainer, { opacity: controlsOpacity, bottom: isMobileWeb ? insets.bottom + 10 : 0 }]}>
-        <BlurView intensity={90} tint="dark" style={styles.controlsBlur}>
+        <BlurView intensity={0} tint="light" style={styles.controlsBlur}>
           <View style={styles.controlsRow}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[
-                styles.controlButton, 
+                styles.controlButton,
                 isMuted && styles.controlButtonActive,
                 { marginHorizontal: isMobileWeb ? 8 : 15 }
-              ]} 
+              ]}
               onPress={toggleMute}
             >
-              <LinearGradient 
-                colors={isMuted ? ['#FF6B6B', '#FF5252'] : ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']} 
-                style={[styles.controlGradient, { width: controlSize, height: controlSize, borderRadius: controlSize/2 }]}
+              <LinearGradient
+                colors={isMuted ? ['#FF6B6B', '#FF5252'] : ['rgba(255, 255, 255, 0.08)', 'rgba(255,255,255,0.05)']}
+                style={[styles.controlGradient, { width: controlSize, height: controlSize, borderRadius: controlSize / 2 }]}
               >
                 <Ionicons name={isMuted ? "mic-off" : "mic"} size={isMobileWeb ? 22 : 24} color="#fff" />
               </LinearGradient>
               <Text style={styles.controlLabel}>{isMuted ? 'Unmute' : 'Mute'}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[
-                styles.controlButton, 
+                styles.controlButton,
                 !hasVideo && styles.controlButtonActive,
                 { marginHorizontal: isMobileWeb ? 8 : 15 }
-              ]} 
+              ]}
               onPress={toggleVideo}
             >
-              <LinearGradient 
-                colors={!hasVideo ? ['#FF6B6B', '#FF5252'] : ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']} 
-                style={[styles.controlGradient, { width: controlSize, height: controlSize, borderRadius: controlSize/2 }]}
+              <LinearGradient
+                colors={!hasVideo ? ['#FF6B6B', '#FF5252'] : ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
+                style={[styles.controlGradient, { width: controlSize, height: controlSize, borderRadius: controlSize / 2 }]}
               >
                 <Ionicons name={hasVideo ? "videocam" : "videocam-off"} size={isMobileWeb ? 22 : 24} color="#fff" />
               </LinearGradient>
               <Text style={styles.controlLabel}>{hasVideo ? 'Video' : 'Off'}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[
-                styles.controlButton, 
+                styles.controlButton,
                 styles.endCallButton,
                 { marginHorizontal: isMobileWeb ? 12 : 25 }
-              ]} 
+              ]}
               onPress={endCall}
             >
-              <LinearGradient 
-                colors={['#FF3B30', '#D0021B']} 
-                style={[styles.controlGradientLarge, { width: buttonSize, height: buttonSize, borderRadius: buttonSize/2 }]}
+              <LinearGradient
+                colors={['#FF3B30', '#D0021B']}
+                style={[styles.controlGradientLarge, { width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2 }]}
               >
                 <Ionicons name="call" size={isMobileWeb ? 26 : 28} color="#fff" style={{ transform: [{ rotate: '135deg' }] }} />
               </LinearGradient>
@@ -1420,13 +1420,13 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   previewMoreText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  gridContainer: { 
-    flex: 1, 
-    flexDirection: 'row', 
-    flexWrap: 'wrap', 
-    backgroundColor: '#000' 
+  gridContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    backgroundColor: '#000'
   },
-  gridItem: { 
+  gridItem: {
     backgroundColor: '#1a1a1a',
     overflow: 'hidden'
   },
@@ -1459,11 +1459,11 @@ const styles = StyleSheet.create({
     borderColor: '#FFCC00',
   },
 
-  gridInner: { 
-    flexDirection: 'row', 
-    flexWrap: 'wrap', 
-    width: '100%', 
-    height: '100%' 
+  gridInner: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    width: '100%',
+    height: '100%'
   },
   speakerView: { flex: 1 },
   largeSpeakerContainer: { flex: 0.7, marginBottom: 8 },

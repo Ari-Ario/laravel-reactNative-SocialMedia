@@ -30,8 +30,8 @@ export const IncomingCallModal: React.FC = () => {
   const { incomingCall, isRinging, acceptIncomingCall, rejectIncomingCall, messageIncomingCall } = useCall();
 
   // ─── Animations ────────────────────────────────────────────────────────────
-  const slideAnim  = useRef(new Animated.Value(height)).current;
-  const pulseAnim  = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(height)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
   const ring1Scale = useRef(new Animated.Value(1)).current;
   const ring1Alpha = useRef(new Animated.Value(0.6)).current;
   const ring2Scale = useRef(new Animated.Value(1)).current;
@@ -52,7 +52,7 @@ export const IncomingCallModal: React.FC = () => {
       const pulseLoop = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, { toValue: 1.12, duration: 550, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1,    duration: 550, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 550, useNativeDriver: true }),
         ])
       );
       pulseLoop.start();
@@ -62,11 +62,11 @@ export const IncomingCallModal: React.FC = () => {
         Animated.parallel([
           Animated.sequence([
             Animated.timing(ring1Scale, { toValue: 1.5, duration: 1000, useNativeDriver: true }),
-            Animated.timing(ring1Scale, { toValue: 1,   duration: 0,    useNativeDriver: true }),
+            Animated.timing(ring1Scale, { toValue: 1, duration: 0, useNativeDriver: true }),
           ]),
           Animated.sequence([
             Animated.timing(ring1Alpha, { toValue: 0, duration: 1000, useNativeDriver: true }),
-            Animated.timing(ring1Alpha, { toValue: 0.6, duration: 0,  useNativeDriver: true }),
+            Animated.timing(ring1Alpha, { toValue: 0.6, duration: 0, useNativeDriver: true }),
           ]),
         ])
       );
@@ -75,11 +75,11 @@ export const IncomingCallModal: React.FC = () => {
         Animated.parallel([
           Animated.sequence([
             Animated.timing(ring2Scale, { toValue: 1.8, duration: 1400, useNativeDriver: true }),
-            Animated.timing(ring2Scale, { toValue: 1,   duration: 0,    useNativeDriver: true }),
+            Animated.timing(ring2Scale, { toValue: 1, duration: 0, useNativeDriver: true }),
           ]),
           Animated.sequence([
             Animated.timing(ring2Alpha, { toValue: 0, duration: 1400, useNativeDriver: true }),
-            Animated.timing(ring2Alpha, { toValue: 0.4, duration: 0,  useNativeDriver: true }),
+            Animated.timing(ring2Alpha, { toValue: 0.4, duration: 0, useNativeDriver: true }),
           ]),
         ])
       );
