@@ -205,13 +205,17 @@ class WebRTCService {
    */
   private async applyBitrateLimit(peerConnection: any, peerId: string): Promise<void> {
     try {
+      const isMobileWeb = Platform.OS === 'web' && typeof navigator !== 'undefined' && /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(navigator.userAgent.toLowerCase());
+      const isDesktopWeb = Platform.OS === 'web' && !isMobileWeb;
+
       const senders: any[] = peerConnection.getSenders ? peerConnection.getSenders() : [];
       for (const sender of senders) {
         if (!sender.track || !sender.getParameters) continue;
         const kind = sender.track.kind as 'video' | 'audio';
+        
         const capBps = kind === 'video'
-          ? (Platform.OS === 'web' ? WebRTCService.BITRATE_CAPS.video.web : WebRTCService.BITRATE_CAPS.video.native)
-          : (Platform.OS === 'web' ? WebRTCService.BITRATE_CAPS.audio.web : WebRTCService.BITRATE_CAPS.audio.native);
+          ? (isDesktopWeb ? WebRTCService.BITRATE_CAPS.video.web : WebRTCService.BITRATE_CAPS.video.native)
+          : (isDesktopWeb ? WebRTCService.BITRATE_CAPS.audio.web : WebRTCService.BITRATE_CAPS.audio.native);
 
         const params = sender.getParameters();
         if (!params.encodings || params.encodings.length === 0) {
@@ -222,7 +226,7 @@ class WebRTCService {
         });
         await sender.setParameters(params);
       }
-      console.log(`📞 Bitrate caps applied for peer ${peerId} (video: ${Platform.OS === 'web' ? '1200' : '500'}kbps, audio: ${Platform.OS === 'web' ? '64' : '32'}kbps)`);
+      console.log(`📞 Bitrate caps applied for peer ${peerId} (video: ${isDesktopWeb ? '1200' : '500'}kbps, audio: ${isDesktopWeb ? '64' : '32'}kbps)`);
     } catch (e) {
       // Non-fatal: if setParameters is unsupported (old react-native-webrtc), call continues
       console.warn(`⚠️ Could not apply bitrate caps for peer ${peerId}:`, e);
@@ -534,9 +538,10 @@ class WebRTCService {
       const answer = await peerConnection.createAnswer();
       await peerConnection.setLocalDescription(answer);
 
-      await this.sendSignal(parseInt(fromId), 'answer', { answer });
+      // IMPORTANT: Fire and forget the answer so we don't stall ICE candidate processing!
+      this.sendSignal(parseInt(fromId), 'answer', { answer });
 
-      // Process any queued candidates that arrived before the offer
+      // Process any queued candidates that arrived before the offer was fully resolved
       this.processQueuedCandidates(fromId);
 
     } catch (error) {
