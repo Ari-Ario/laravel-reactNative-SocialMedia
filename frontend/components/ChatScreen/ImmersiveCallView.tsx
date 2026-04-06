@@ -175,32 +175,41 @@ const VideoTile = React.memo(({
 
   return (
     <View style={styles.videoTile}>
-      {isWeb && stream && hasVideo ? (
-        <video
-          ref={(el) => {
-            videoElementRef.current = el;
-            if (el && stream) {
-              el.srcObject = stream;
-              if (isLocal) el.muted = true;
-            }
-            if (el && videoRefs) videoRefs.current.set(participant.id, el);
-          }}
-          autoPlay
-          playsInline
-          muted={isLocal}
-          style={styles.videoElement}
-        />
-      ) : stream && !isWeb && RTCView && hasVideo ? (
-        <RTCView
-          key={stream.id || 'remote-stream'}
-          streamURL={stream.toURL()}
-          objectFit="cover"
-          style={styles.videoElement}
-          mirror={isLocal}
-          zOrder={isLocal ? 1 : 0}
-        />
-      ) : (
-        <View style={styles.avatarTile}>
+      {/* ALWAYS mount the media element if we have a stream, so audio NEVER stops playing 
+          even if hasVideo is false. We just hide it visually if video is disabled. */}
+      {stream && (
+        <View style={[StyleSheet.absoluteFill, { opacity: hasVideo ? 1 : 0 }]}>
+          {isWeb ? (
+            <video
+              ref={(el) => {
+                videoElementRef.current = el;
+                if (el && stream && el.srcObject !== stream) {
+                  el.srcObject = stream;
+                  if (isLocal) el.muted = true;
+                }
+                if (el && videoRefs) videoRefs.current.set(participant.id, el);
+              }}
+              autoPlay
+              playsInline
+              muted={isLocal}
+              style={styles.videoElement as any}
+            />
+          ) : RTCView ? (
+            <RTCView
+              key={stream.id || 'remote-stream'}
+              streamURL={stream.toURL()}
+              objectFit="cover"
+              style={styles.videoElement}
+              mirror={isLocal}
+              zOrder={isLocal ? 1 : 0}
+            />
+          ) : null}
+        </View>
+      )}
+
+      {/* Render the Avatar overlay when video is off, or if stream hasn't loaded yet */}
+      {(!stream || !hasVideo) && (
+        <View style={[styles.avatarTile, StyleSheet.absoluteFill, { zIndex: 5, backgroundColor: '#1a1a1a' }]}>
           <Avatar source={avatar} size={60} name={name} />
           <Text style={styles.tileName} numberOfLines={1}>{name}</Text>
         </View>
@@ -1073,6 +1082,19 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
           name={mainParticipant.name}
           avatar={mainParticipant.avatar}
         />
+        
+        {/* WEBRTC AUDIO FIX: Render hidden video elements for all OTHER participants 
+            on web, otherwise unmounting their VideoTile kills their audio playback! */}
+        {isWeb && allParticipants.filter(p => p.id !== mainParticipant.id && p.id !== 'local' && p.stream).map(p => (
+          <video
+            key={`hidden-${p.id}`}
+            ref={(el) => { if (el && p.stream && el.srcObject !== p.stream) el.srcObject = p.stream; }}
+            autoPlay
+            playsInline
+            style={{ display: 'none' }}
+          />
+        ))}
+
         <View style={styles.minimizedOverlay}>
           <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.minimizedGradient}>
             <View style={styles.minimizedHeader}>
@@ -1352,6 +1374,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0a0a0a',
+    paddingTop: Platform.OS === 'ios' ? 50 : 16,
+    width: '100%',
+    height: '100%',
+    alignSelf: 'center',
   },
   header: {
     position: 'absolute',
