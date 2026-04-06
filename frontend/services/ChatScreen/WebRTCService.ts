@@ -76,26 +76,31 @@ class WebRTCService {
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
       // Metered.ca free TURN — authenticated, more reliable than openrelay for carrier NAT
-      // These credentials are from the free tier and work for mobile data (5G/4G CGNAT)
       {
         urls: 'turn:relay.metered.ca:80',
         username: 'e29e254c0f8dd6a79e02e27f',
         credential: 'yv2vWAMF9ctoJoLv',
       },
       {
-        urls: 'turn:relay.metered.ca:80?transport=tcp',
+        urls: 'turn:relay.metered.ca:443?transport=tcp',
         username: 'e29e254c0f8dd6a79e02e27f',
         credential: 'yv2vWAMF9ctoJoLv',
       },
+      // OpenRelay Fallback
       {
-        urls: 'turn:relay.metered.ca:443',
-        username: 'e29e254c0f8dd6a79e02e27f',
-        credential: 'yv2vWAMF9ctoJoLv',
+        urls: 'turn:openrelay.metered.ca:80',
+        username: 'openrelayproject',
+        credential: 'openrelayproject',
       },
       {
-        urls: 'turns:relay.metered.ca:443?transport=tcp',
-        username: 'e29e254c0f8dd6a79e02e27f',
-        credential: 'yv2vWAMF9ctoJoLv',
+        urls: 'turn:openrelay.metered.ca:443',
+        username: 'openrelayproject',
+        credential: 'openrelayproject',
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+        username: 'openrelayproject',
+        credential: 'openrelayproject',
       },
     ],
     iceCandidatePoolSize: 10,
@@ -742,18 +747,21 @@ class WebRTCService {
       }
     };
 
-    // ✅ ICE candidate error handler — log only once per peer to avoid console spam
-    // Error 701 fires for every STUN/TURN server that times out; connection can still succeed via other candidates
     let iceErrorLogged = false;
     (peerConnection as any).onicecandidateerror = (error: any) => {
-      if (error.errorCode !== 701) return; // Non-fatal, ignore
-      if (iceErrorLogged) return;          // Already logged once for this peer
-      iceErrorLogged = true;
+      // Ignore insignificant local local-address-gathering errors
+      if (error.errorCode === undefined || error.errorCode === null) return;
+      if (iceErrorLogged && error.errorCode === 701) return; // Only log timeouts once
+      if (error.errorCode === 701) {
+        iceErrorLogged = true;
+      }
+      
       const isStun = error.url?.startsWith('stun:');
       const serverType = isStun ? 'STUN' : 'TURN';
+      
       console.warn(
-        `⚠️ ${serverType} server unreachable for peer ${peerId} (call may still connect via other candidates):`,
-        error.errorText
+        `⚠️ ${serverType} server error ${error.errorCode} for peer ${peerId}:`,
+        error.errorText || 'Unknown error. Check TURN credentials if using 4G/5G.'
       );
     };
 
