@@ -75,6 +75,9 @@ class WebRTCService {
       // Google STUN servers — fast but only work on direct-connectable networks
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun3.l.google.com:19302' },
+      { urls: 'stun:stun4.l.google.com:19302' },
       // Metered.ca free TURN — authenticated, more reliable than openrelay for carrier NAT
       {
         urls: 'turn:relay.metered.ca:80',
@@ -82,7 +85,7 @@ class WebRTCService {
         credential: 'yv2vWAMF9ctoJoLv',
       },
       {
-        urls: 'turn:relay.metered.ca:443?transport=tcp',
+        urls: 'turns:relay.metered.ca:443?transport=tcp',
         username: 'e29e254c0f8dd6a79e02e27f',
         credential: 'yv2vWAMF9ctoJoLv',
       },
@@ -93,12 +96,7 @@ class WebRTCService {
         credential: 'openrelayproject',
       },
       {
-        urls: 'turn:openrelay.metered.ca:443',
-        username: 'openrelayproject',
-        credential: 'openrelayproject',
-      },
-      {
-        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+        urls: 'turns:openrelay.metered.ca:443?transport=tcp',
         username: 'openrelayproject',
         credential: 'openrelayproject',
       },
