@@ -115,6 +115,7 @@ const PiPRemoteVideo = React.memo(({ stream, participantId, videoRefs }: {
   useEffect(() => {
     if (ref.current && ref.current.srcObject !== stream) {
       ref.current.srcObject = stream;
+      ref.current.play().catch(e => console.warn("AutoPlay blocked in PiPRemoteVideo:", e));
     }
     if (ref.current) videoRefs.current.set(participantId, ref.current);
   }, [stream, participantId, videoRefs]);
@@ -124,6 +125,11 @@ const PiPRemoteVideo = React.memo(({ stream, participantId, videoRefs }: {
       autoPlay
       playsInline
       muted={false}
+      onLoadedMetadata={(e: any) => {
+        try {
+          if (e.target) e.target.play().catch((err: any) => console.warn("onLoadedMetadata play failed:", err));
+        } catch(err) {}
+      }}
       style={{ width: '100%', height: '100%', objectFit: 'cover' } as any}
     />
   );
@@ -135,6 +141,7 @@ const PiPLocalVideo = React.memo(({ stream }: { stream: MediaStream }) => {
     if (ref.current && ref.current.srcObject !== stream) {
       ref.current.srcObject = stream;
       ref.current.muted = true;
+      ref.current.play().catch(e => console.warn("AutoPlay blocked in PiPLocalVideo:", e));
     }
   }, [stream]);
   return (
@@ -143,6 +150,11 @@ const PiPLocalVideo = React.memo(({ stream }: { stream: MediaStream }) => {
       autoPlay
       playsInline
       muted
+      onLoadedMetadata={(e: any) => {
+        try {
+          if (e.target) e.target.play().catch((err: any) => console.warn("onLoadedMetadata play failed:", err));
+        } catch(err) {}
+      }}
       style={{ width: '100%', height: '100%', objectFit: 'cover' } as any}
     />
   );
@@ -165,13 +177,28 @@ const VideoTile = React.memo(({
 
 
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
+  const [autoplayFailed, setAutoplayFailed] = useState(false);
 
   useEffect(() => {
     if (isWeb && stream && videoElementRef.current) {
       videoElementRef.current.srcObject = stream;
       if (isLocal) videoElementRef.current.muted = true;
+      videoElementRef.current.play().then(() => {
+        setAutoplayFailed(false);
+      }).catch(e => {
+        console.warn("AutoPlay blocked in VideoTile:", e);
+        if (!isLocal) setAutoplayFailed(true);
+      });
     }
   }, [stream, isLocal]);
+
+  const handleManualPlay = () => {
+    if (videoElementRef.current) {
+      videoElementRef.current.play().then(() => {
+        setAutoplayFailed(false);
+      }).catch(e => console.warn("Manual play failed:", e));
+    }
+  };
 
   return (
     <View style={styles.videoTile}>
@@ -191,6 +218,18 @@ const VideoTile = React.memo(({
               }}
               autoPlay
               playsInline
+              onLoadedMetadata={(e: any) => {
+                try {
+                  if (e.target) {
+                    e.target.play()
+                      .then(() => setAutoplayFailed(false))
+                      .catch((err: any) => {
+                        console.warn("onLoadedMetadata play failed:", err);
+                        if (!isLocal) setAutoplayFailed(true);
+                      });
+                  }
+                } catch(err) {}
+              }}
               muted={isLocal}
               style={styles.videoElement as any}
             />
@@ -208,10 +247,23 @@ const VideoTile = React.memo(({
       )}
 
       {/* Render the Avatar overlay when video is off, or if stream hasn't loaded yet */}
-      {(!stream || !hasVideo) && (
+      {(!stream || !hasVideo) && !autoplayFailed && (
         <View style={[styles.avatarTile, StyleSheet.absoluteFill, { zIndex: 5, backgroundColor: '#1a1a1a' }]}>
           <Avatar source={avatar} size={60} name={name} />
           <Text style={styles.tileName} numberOfLines={1}>{name}</Text>
+        </View>
+      )}
+
+      {/* Safari Mobile Data Autoplay Fallback Overlay */}
+      {autoplayFailed && (
+        <View style={[StyleSheet.absoluteFill, { zIndex: 6, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' }]}>
+          <TouchableOpacity 
+            style={{ padding: 20, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 40 }}
+            onPress={handleManualPlay}
+          >
+            <Ionicons name="play" size={40} color="#fff" style={{ marginLeft: 5 }} />
+          </TouchableOpacity>
+          <Text style={{ color: '#fff', marginTop: 12, fontSize: 14, fontWeight: '500' }}>Tap to Play Media</Text>
         </View>
       )}
 
