@@ -386,6 +386,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
   const durationInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
   const controlsTimer = useRef<NodeJS.Timeout | null>(null);
+  const endCallGraceTimer = useRef<NodeJS.Timeout | null>(null);
   const isInitialized = useRef(false);
 
   // Memoized grid config
@@ -478,6 +479,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
   // Initialize call
   const cleanup = useCallback(() => {
     if (durationInterval.current) clearInterval(durationInterval.current);
+    if (endCallGraceTimer.current) clearTimeout(endCallGraceTimer.current);
     webRTCService.cleanup();
     setLocalStream(null);
     setParticipants([]);
@@ -577,7 +579,11 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
     });
 
     webRTCService.onCallEnded(() => {
-      handleCallEnded();
+      console.log('📞 [WebRTCService] call.ended received — starting grace period');
+      if (endCallGraceTimer.current) clearTimeout(endCallGraceTimer.current);
+      endCallGraceTimer.current = setTimeout(() => {
+        handleCallEnded();
+      }, 5000);
     });
 
     webRTCService.onHandRaised((userId: string, isRaised: boolean) => {
@@ -714,17 +720,26 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
       collaborationService.subscribeToSpace(spaceId, 'immersive-call-lobby', {
         onCallStarted: (data: any) => {
           console.log('📡 Call started event received in lobby:', data);
+          if (endCallGraceTimer.current) {
+            console.log('📞 [Lobby] Call recovered before grace period expired — cancelling shutdown');
+            clearTimeout(endCallGraceTimer.current);
+            endCallGraceTimer.current = null;
+          }
           if (data.call?.id) {
             setCallId(data.call.id);
             initializeCall();
           }
         },
         onCallEnded: () => {
-          console.log('📞 [Lobby] call.ended received — closing ImmersiveCallView');
-          setCallStatus('ended');
-          cleanup();
-          // ✔️ Clear global activeCall so RootCallOverlay unmounts
-          globalEndCall();
+          console.log('📞 [Lobby] call.ended received — starting grace period');
+          if (endCallGraceTimer.current) clearTimeout(endCallGraceTimer.current);
+          endCallGraceTimer.current = setTimeout(() => {
+             console.log('📞 [Lobby] Grace period expired — closing ImmersiveCallView');
+             setCallStatus('ended');
+             cleanup();
+             // ✔️ Clear global activeCall so RootCallOverlay unmounts
+             globalEndCall();
+          }, 5000);
         },
         onParticipantUpdate: (data: any) => {
           if (data.participants) {

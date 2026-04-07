@@ -716,23 +716,10 @@ class WebRTCService {
         // Wrap in an immediately-invoked async arrow so we can use await.
         // The outer oniceconnectionstatechange handler must remain synchronous.
         (async () => {
-          // On retry >1, drop to low quality (320×240) before restarting.
-          // A smaller stream is far more likely to succeed on a constrained cellular path.
-          if (retryAttempt > 1 && this.localStream) {
-            console.log(`📞 Dropping to low quality (320×240) before ICE restart attempt ${retryAttempt}`);
-            this.localStream.getTracks().forEach((t: any) => t.stop());
-            this.localStream = null;
-            try {
-              await this.getLocalStream(true, true, 'low');
-              const newVideoTrack = (this.localStream as MediaStream | null)?.getVideoTracks()[0];
-              if (newVideoTrack) {
-                const sender = (peerConnection.getSenders?.() ?? []).find((s: any) => s.track?.kind === 'video');
-                if (sender) await sender.replaceTrack(newVideoTrack);
-              }
-            } catch (e) {
-              console.warn('⚠️ Could not reacquire low-quality stream for ICE restart:', e);
-            }
-          }
+          // We removed the destructive track stopping logic here because reacquiring MediaStream
+          // in the background on mobile browsers often fails silently or triggers permission
+          // prompts, resulting in permanent black screens. We rely on the existing stream and 
+          // allow applyBitrateLimit() to cap bandwidth.
 
           peerConnection.createOffer({ iceRestart: true })
             .then((offer: any) => peerConnection.setLocalDescription(offer))

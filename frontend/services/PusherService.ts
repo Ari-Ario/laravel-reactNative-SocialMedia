@@ -106,39 +106,54 @@ class PusherService {
                 console.log(`🔐 Using token: ${token ? token.substring(0, 20) + '...' : 'MISSING'}`);
                 console.log(`📡 Auth endpoint: ${authUrl}`);
 
-                fetch(authUrl, {
-                  method: 'POST',
-                  headers: {
-                    'Authorization': `Bearer ${this.currentToken || token}`, // ✅ Always use LATEST token
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    socket_id: socketId,
-                    channel_name: channel.name
-                  })
-                })
-                  .then(response => {
-                    console.log(`📡 Auth response status: ${response.status}`);
-                    if (!response.ok) {
-                      return response.text().then(text => {
-                        console.error(`❌ Auth failed with status ${response.status}:`, text);
-                        throw new Error(`Auth failed: ${response.status} - ${text}`);
+                const performAuth = async (retries = 3, delayMs = 1000) => {
+                  for (let i = 0; i < retries; i++) {
+                    try {
+                      const response = await fetch(authUrl, {
+                        method: 'POST',
+                        headers: {
+                          'Authorization': `Bearer ${this.currentToken || token}`,
+                          'Accept': 'application/json',
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                          socket_id: socketId,
+                          channel_name: channel.name
+                        })
                       });
+
+                      console.log(`📡 Auth response status: ${response.status}`);
+                      if (!response.ok) {
+                        const text = await response.text();
+                        console.error(`❌ Auth failed with status ${response.status}:`, text);
+                        // HTTP errors usually aren't transient network issues, but might be 502/504
+                        if (response.status !== 502 && response.status !== 504) {
+                           throw new Error(`Auth failed: ${response.status} - ${text}`);
+                        }
+                      } else {
+                        const data = await response.json();
+                        console.log(`✅ Channel authorized: ${channel.name}`);
+                        callback(null, data);
+                        return; // Success, exit retry loop
+                      }
+                    } catch (error: any) {
+                      console.error(`⚠️ Auth loop attempt ${i + 1}/${retries} failed for ${channel.name}:`, error);
+                      // If this was the last attempt, fail permanently
+                      if (i === retries - 1) {
+                         console.error(`❌ Channel authorization permanently failed: ${channel.name}`, error);
+                         if (Platform.OS === 'android' && apiUrl.includes('localhost')) {
+                           console.warn('⚠️ Android detected using localhost. Try 10.0.2.2 instead.');
+                         }
+                         callback(error, null);
+                         return; // Exit
+                      }
+                      // Otherwise wait and retry
+                      await new Promise(resolve => setTimeout(resolve, delayMs));
                     }
-                    return response.json();
-                  })
-                  .then(data => {
-                    console.log(`✅ Channel authorized: ${channel.name}`);
-                    callback(null, data);
-                  })
-                  .catch((error: any) => {
-                    console.error(`❌ Channel authorization failed: ${channel.name}`, error);
-                    if (Platform.OS === 'android' && apiUrl.includes('localhost')) {
-                      console.warn('⚠️ Android detected using localhost. Try 10.0.2.2 instead.');
-                    }
-                    callback(error, null);
-                  });
+                  }
+                };
+
+                performAuth();
               }
             };
           },
