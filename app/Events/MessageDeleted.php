@@ -62,6 +62,7 @@ class MessageDeleted implements ShouldBroadcast
     {
         return [
             'id' => $this->messageId,
+            'message_id' => $this->messageId, // Duplicate for frontend compatibility
             'conversation_id' => $this->message ? $this->message->conversation_id : null,
             'space_id' => $this->spaceId,
         ];

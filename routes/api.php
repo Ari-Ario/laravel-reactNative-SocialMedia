@@ -166,6 +166,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::get('/{id}/media', [SpaceController::class , 'getMedia']);
             Route::delete('/{id}/media/{mediaId}', [SpaceController::class , 'deleteMedia']);
             Route::post('/{id}/send-message', [SpaceController::class , 'sendMessage']);
+            Route::post('/{id}/audio-message', [SpaceController::class , 'sendAudioMessage']);
             Route::delete('/{id}/messages/{messageId}', [SpaceController::class , 'deleteMessage']);
             Route::delete('/{id}/messages/{messageId}/local', [SpaceController::class , 'hideMessage']);
             Route::post('/{id}/messages/{messageId}/react', [SpaceController::class , 'reactToMessage']);

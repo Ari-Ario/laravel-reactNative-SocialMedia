@@ -53,6 +53,8 @@ import SpaceExportModal from '@/components/ChatScreen/SpaceExportModal';
 import SpaceSettingsModal from '@/components/ChatScreen/SpaceSettingsModal';
 import { createShadow } from '@/utils/styles';
 import WhiteboardCanvas from '@/components/ChatScreen/WhiteboardCanvas';
+import * as FileSystem from 'expo-file-system/legacy';
+import getApiBase from '@/services/getApiBase';
 import ReportPost from '@/components/ReportPost';
 import Colors from '@/constants/Colors';
 
@@ -90,11 +92,97 @@ const SpaceDetailScreen = () => {
   const [callMenuPosition, setCallMenuPosition] = useState<AnchorPosition>();
   const [spaceMenuPosition, setSpaceMenuPosition] = useState<AnchorPosition>();
 
+  const collaborationService = CollaborationService.getInstance();
+
   // Refs for button measurements
   const callButtonRef = useRef<any>(null);
   const spaceButtonRef = useRef<any>(null);
 
-  const collaborationService = CollaborationService.getInstance();
+  const handleWhiteboardShare = useCallback(async (base64Data: string) => {
+    if (!id) return;
+    console.log('[SpaceDetail] handleWhiteboardShare received data, length:', base64Data.length);
+    try {
+      showToast('Preparing snapshot...', 'info');
+      
+      const fileName = `whiteboard_${Date.now()}.png`;
+      const token = await getToken();
+      const formData = new FormData();
+
+      if (Platform.OS === 'web') {
+        try {
+          const response = await fetch(base64Data);
+          const blob = await response.blob();
+          const file = new File([blob], fileName, { type: 'image/png' });
+          formData.append('file', file);
+        } catch (e) {
+          console.error('[SpaceDetail] Web blob conversion failed:', e);
+          showToast('Failed to process image on web', 'error');
+          return;
+        }
+      } else {
+        const path = `${(FileSystem as any).cacheDirectory}${fileName}`;
+        const base64Content = base64Data.replace(/^data:image\/png;base64,/, '');
+        await FileSystem.writeAsStringAsync(path, base64Content, { encoding: 'base64' });
+        
+        formData.append('file', {
+          uri: path,
+          type: 'image/png',
+          name: fileName,
+        } as any);
+      }
+      
+      formData.append('type', 'image');
+
+      console.log('[SpaceDetail] Uploading whiteboard snapshot...');
+      const uploadResponse = await fetch(`${getApiBase()}/spaces/${id}/upload-media`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData
+      });
+
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        throw new Error(`Upload failed: ${uploadResponse.status} ${errorText}`);
+      }
+
+      const result = await uploadResponse.json();
+      console.log('[SpaceDetail] Upload result:', JSON.stringify(result));
+      
+      // Preferred: result.media.file_path is the relative path (e.g. spaces/...)
+      // Fallback: result.url is usually /storage/spaces/... -> strip /storage/ if it exists to avoid double-prefixing in components
+      let imageUrl = result.media?.file_path;
+      if (!imageUrl && result.url) {
+        imageUrl = result.url.replace(/^\/?storage\//, '').replace(/^\//, '');
+      } else if (!imageUrl) {
+        imageUrl = result.path || result.media?.url;
+      }
+      
+      console.log('[SpaceDetail] Cleaned image path for message:', imageUrl);
+
+      if (imageUrl) {
+        await collaborationService.sendMessage(id as string, {
+          content: '🎨 Shared a whiteboard snapshot',
+          type: 'image',
+          file_path: imageUrl,
+          metadata: { is_whiteboard_snapshot: true }
+        });
+        
+        showToast('Snapshot shared to chat!', 'success');
+        if (Platform.OS !== 'web') {
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+        
+        setActiveTab('chat');
+      } else {
+        throw new Error('No image URL returned from server');
+      }
+    } catch (err) {
+      console.error('Whiteboard sharing failed:', err);
+      showToast('Failed to share snapshot.', 'error');
+    }
+  }, [id, showToast, collaborationService]);
   const windowHeight = Dimensions.get('window').height;
   const { width: windowWidth } = useWindowDimensions();
 
@@ -1093,18 +1181,32 @@ const SpaceDetailScreen = () => {
             <WhiteboardCanvas
               spaceId={id as string}
               initialElements={space?.content_state?.whiteboard?.elements || []}
+              onShare={handleWhiteboardShare}
               onElementsChange={(elements) => {
-                // Update local state but don't trigger full sync - we already sync via service
-                setSpace((prev: any) => ({
-                  ...prev,
-                  content_state: {
-                    ...prev.content_state,
-                    whiteboard: {
-                      ...prev.content_state?.whiteboard,
-                      elements,
+                // Update local state and remote sync
+                setSpace((prev: any) => {
+                  const newState = {
+                    ...prev,
+                    content_state: {
+                      ...prev.content_state,
+                      whiteboard: {
+                        ...prev.content_state?.whiteboard,
+                        elements,
+                      },
                     },
-                  },
-                }));
+                  };
+
+                  // Debounced remote sync
+                  if ((window as any).whiteboardSyncTimer) {
+                    clearTimeout((window as any).whiteboardSyncTimer);
+                  }
+                  (window as any).whiteboardSyncTimer = setTimeout(() => {
+                    collaborationService.updateContentState(id as string, newState.content_state)
+                      .catch(err => console.error('Whiteboard remote sync failed:', err));
+                  }, 2000);
+
+                  return newState;
+                });
               }}
               onError={(error) => {
                 console.error('Whiteboard error:', error);

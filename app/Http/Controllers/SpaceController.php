@@ -1614,6 +1614,104 @@ public function endCall(Request $request, $id)
     }
 
     /**
+     * Send an audio message in space
+     */
+    public function sendAudioMessage(Request $request, $id)
+    {
+        $request->validate([
+            'audio' => 'required|file|mimes:m4a,wav,mp3,aac,ogg,oga,webm,mp4,opus|max:20480', // 20MB max
+            'duration' => 'required|numeric',
+        ]);
+
+        $space = CollaborationSpace::findOrFail($id);
+        $user = auth()->user();
+
+        // Check if user is a participant
+        $participation = $space->participations()
+            ->where('user_id', $user->id)
+            ->first();
+            
+        if (!$participation || $participation->role === 'pending') {
+            return response()->json([
+                'message' => 'You must be a participant to send messages'
+            ], 403);
+        }
+
+        // Permissions check
+        $role = $participation->role;
+        $isChannel = $space->space_type === 'channel';
+        $isAdmin = in_array($role, ['owner', 'moderator', 'admin']);
+        $canWrite = $participation->permissions['write'] ?? true;
+
+        if ($isChannel && !$isAdmin) {
+            return response()->json(['message' => 'Only admins can send messages in this channel'], 403);
+        }
+
+        if (!$canWrite) {
+            return response()->json(['message' => 'You do not have permission to send messages'], 403);
+        }
+
+        // Store file
+        $file = $request->file('audio');
+        $filename = time() . '_' . $file->getClientOriginalName();
+        $path = $file->storeAs('space_audio/' . $space->id, $filename, 'public');
+        $url = Storage::url($path);
+
+        // Update space state
+        $contentState = $space->content_state ?? [];
+        $messages = $contentState['messages'] ?? [];
+        
+        $message = [
+            'id' => (string) Str::uuid(),
+            'user_id' => $user->id,
+            'user_name' => $user->name,
+            'content' => '',
+            'type' => 'voice',
+            'file_path' => $url,
+            'metadata' => [
+                'duration' => (float) $request->duration,
+                'file_name' => $filename,
+                'mime_type' => $file->getMimeType(),
+                'file_size' => $file->getSize(),
+            ],
+            'created_at' => now()->toISOString(),
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'profile_photo' => $user->profile_photo,
+            ],
+        ];
+        
+        $messages[] = $message;
+        $contentState['messages'] = $messages;
+        
+        $space->update([
+            'content_state' => $contentState,
+            'updated_at' => now(),
+        ]);
+        
+        $participation->update(['last_active_at' => now()]);
+        
+        // Broadcast
+        try {
+            broadcast(new \App\Events\MessageSent($message, $space->id, $user))->toOthers();
+            
+            $participants = $space->participations->where('user_id', '!=', $user->id);
+            $userIds = $participants->pluck('user_id')->toArray();
+            
+            if (!empty($userIds)) {
+                broadcast(new \App\Events\SpaceMessageSent($space->id, $userIds, $message))->toOthers();
+                $targetUsers = User::whereIn('id', $userIds)->get();
+                \Illuminate\Support\Facades\Notification::send($targetUsers, new \App\Events\MessageSent($message, $space->id, $user));
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to broadcast audio message: ' . $e->getMessage());
+        }
+        
+        return response()->json($message);
+    }
+
+    /**
      * Delete a message for everyone (Space Owner/Moderator or Message Author)
      */
     public function deleteMessage(Request $request, $id, $messageId)
@@ -1667,13 +1765,26 @@ public function endCall(Request $request, $id)
         }
         
         // 3. Perform Deletion
+        // 3. Perform Deletion
         foreach (array_unique($filesToDelete) as $path) {
-            // Delete from Storage
-            if (Storage::disk('public')->exists($path)) {
-                Storage::disk('public')->delete($path);
+            // Normalize path (if it's a URL like /storage/path, convert to path)
+            $relativePaths = [
+                $path,
+                str_replace('/storage/', '', $path),
+                ltrim($path, '/')
+            ];
+
+            foreach ($relativePaths as $relPath) {
+                if (Storage::disk('public')->exists($relPath)) {
+                    Storage::disk('public')->delete($relPath);
+                    break; // Deleted successfully
+                }
             }
+
             // Delete Media Record
-            \App\Models\Media::where('file_path', $path)->delete();
+            \App\Models\Media::where('file_path', $path)
+                ->orWhere('file_path', 'LIKE', '%' . $path)
+                ->delete();
         }
         // --- MEDIA CLEANUP END ---
 
@@ -1687,7 +1798,7 @@ public function endCall(Request $request, $id)
         ]);
 
         try {
-            $userIds = $space->participations->where('user_id', '!==', $user->id)->pluck('user_id')->toArray();
+            $userIds = $space->participations->where('user_id', '!=', $user->id)->pluck('user_id')->toArray();
             broadcast(new \App\Events\MessageDeleted($messageId, $space->id, $userIds))->toOthers();
         } catch (\Exception $e) {
             Log::error('Failed to broadcast message deletion: ' . $e->getMessage());

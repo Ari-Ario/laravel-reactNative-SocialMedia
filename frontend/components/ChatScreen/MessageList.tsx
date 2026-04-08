@@ -237,15 +237,13 @@ const MessageList: React.FC<MessageListProps> = ({
     for (const v of viewableItems) {
       const msg = v.item as Message;
       if (!msg?.created_at || msg.type === '__divider__') continue;
-      if (msg.user_id === 0) continue; // skip system messages
-
       const msgTime = new Date(msg.created_at).getTime();
-
-      // Only messages from others, newer than our current session's read position
+  
+      // Detect seen unread messages (including system messages)
       if (msgTime > lastReadPoint && !seenUnreadIds.current.has(msg.id)) {
         seenUnreadIds.current.add(msg.id);
         newlyReadCount++;
-
+  
         if (!latestTimestamp || msgTime > new Date(latestTimestamp).getTime()) {
           latestTimestamp = msg.created_at;
         }
@@ -1374,7 +1372,7 @@ const MessageList: React.FC<MessageListProps> = ({
             : (activeMediaPost.media || [{
               id: activeMediaPost.id,
               type: activeMediaPost.type,
-              file_path: activeMediaPost.file_path,
+              file_path: activeMediaPost.metadata?.url || activeMediaPost.file_path, // Fallback chain
               metadata: activeMediaPost.metadata
             }])
           }

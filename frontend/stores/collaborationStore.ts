@@ -405,6 +405,21 @@ export const useCollaborationStore = create<CollaborationState>()(
             }
             break;
             
+          case 'message-deleted':
+          case 'message.deleted':
+            const msgId = (data.message_id || data.id)?.toString();
+            const sid = (data.space_id || data.spaceId)?.toString();
+            if (msgId && sid) {
+                console.log(`🗑️ Removing message ${msgId} from space ${sid} in store`);
+                get().updateSpace(sid, {
+                    content_state: {
+                        ...(get().activeSpace?.content_state || {}),
+                        messages: (get().activeSpace?.content_state?.messages || []).filter((m: any) => m.id.toString() !== msgId)
+                    }
+                });
+            }
+            break;
+
           case 'space-deleted':
           case 'space.deleted':
             const deletedId = (data.space_id || data.id || data.spaceId)?.toString();

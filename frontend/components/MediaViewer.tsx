@@ -111,7 +111,14 @@ const MediaItemDisplay: React.FC<{
   currentIndex: number;
   getApiBaseImage: () => string;
 }> = ({ media, index, currentIndex, getApiBaseImage }) => {
-  const uri = `${getApiBaseImage()}/storage/${media.file_path}`;
+  const rawPath = media.file_path || media.url || '';
+  const isFullUrl = rawPath.startsWith('http') || rawPath.startsWith('data:') || rawPath.startsWith('file:');
+
+  const uri = isFullUrl
+    ? rawPath
+    : (rawPath.startsWith('storage/') || rawPath.startsWith('/storage/')
+      ? `${getApiBaseImage()}/${rawPath.replace(/^\//, '')}`
+      : `${getApiBaseImage()}/storage/${rawPath}`);
   const isFocused = currentIndex === index;
 
   // useVideoPlayer MUST be called always if this component is rendered for a video
@@ -134,11 +141,13 @@ const MediaItemDisplay: React.FC<{
     }
   }, [isFocused, media.type, player]);
 
+  const isWhiteboard = media.metadata?.is_whiteboard_snapshot === true;
+
   if (media.type === 'video') {
     return (
       <VideoView
         player={player}
-        style={styles.mediaContent}
+        style={[styles.mediaContent, isWhiteboard && { backgroundColor: '#fff' }]}
         contentFit="contain"
         nativeControls={false}
       />
@@ -148,7 +157,7 @@ const MediaItemDisplay: React.FC<{
   return (
     <Image
       source={{ uri }}
-      style={styles.mediaContent}
+      style={[styles.mediaContent, isWhiteboard && { backgroundColor: '#fff' }]}
       resizeMode="contain"
     />
   );

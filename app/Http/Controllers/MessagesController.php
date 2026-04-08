@@ -9,6 +9,7 @@ use App\Models\CollaborationSpace;
 use App\Models\SpaceParticipation;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class MessagesController extends Controller
 {
@@ -274,6 +275,13 @@ class MessagesController extends Controller
             return response()->json([
                 'message' => 'Not authorized'
             ], 403);
+        }
+
+        // Delete file if it's a media message
+        if (!empty($message->file_path)) {
+            if (Storage::disk('public')->exists($message->file_path)) {
+                Storage::disk('public')->delete($message->file_path);
+            }
         }
 
         // Soft delete

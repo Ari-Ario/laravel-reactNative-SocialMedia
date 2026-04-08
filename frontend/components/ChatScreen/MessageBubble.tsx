@@ -26,6 +26,7 @@ import { useModal } from '@/context/ModalContext';
 import { fetchPostById } from '@/services/PostService';
 import { fetchStory } from '@/services/StoryService';
 import { PostVideoPlayer } from '../PostVideoPlayer';
+import VoiceMessagePlayer from './VoiceMessagePlayer';
 
 interface MessageBubbleProps {
   message: {
@@ -82,12 +83,6 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   highlighted,
   onJumpToMessage,
 }) => {
-  // ── FILTER SYSTEM CALL LOGS ──────────────────────────────────────────────
-  // These are handled by the separate CallStarted/CallEnded notifications
-  // and do not need to show as bubbles in the chat stream.
-  if (message.type === 'system' && (message.metadata?.call_log || message.content?.toLowerCase().includes('call'))) {
-    return null;
-  }
 
   const { openModal } = useModal();
   const bubbleRef = useRef<React.ElementRef<typeof TouchableOpacity>>(null);
@@ -178,7 +173,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
         const url = (isNetworkUrl || isFileUrl || isDataUrl)
           ? rawUrl
-          : (rawUrl ? `${getApiBaseImage()}/storage/${rawUrl}` : 'https://via.placeholder.com/300');
+          : (rawUrl 
+            ? (rawUrl.startsWith('storage/') || rawUrl.startsWith('/storage/') 
+                ? `${getApiBaseImage()}/${rawUrl.replace(/^\//, '')}` 
+                : `${getApiBaseImage()}/storage/${rawUrl}`)
+            : 'https://via.placeholder.com/300');
 
         const isVideo = message.type === 'video';
 
@@ -200,8 +199,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               ) : (
                 <Image
                   source={{ uri: url, cache: 'force-cache' }}
-                  style={styles.image}
-                  resizeMode="cover"
+                  style={[styles.image, message.metadata?.is_whiteboard_snapshot && { backgroundColor: '#fff' }]}
+                  resizeMode="contain"
                 />
               )}
             </TouchableOpacity>
@@ -294,23 +293,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
       case 'voice':
         return (
-          <View style={styles.voiceContainer}>
-            <Ionicons name="mic" size={20} color="#007AFF" />
-            <Text style={styles.voiceDuration}>
-              {message.metadata?.duration || '0:30'}
-            </Text>
-            <View style={styles.waveform}>
-              {Array.from({ length: 20 }).map((_, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.waveformBar,
-                    { height: Math.random() * 20 + 4 }
-                  ]}
-                />
-              ))}
-            </View>
-          </View>
+          <VoiceMessagePlayer 
+            file_path={message.file_path || ''} 
+            duration={message.metadata?.duration}
+            isCurrentUser={isCurrentUser}
+          />
         );
 
       case 'poll': {
@@ -1147,28 +1134,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  voiceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 8,
-  },
-  voiceDuration: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#007AFF',
-    fontWeight: '500',
-  },
-  waveform: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 12,
-  },
-  waveformBar: {
-    width: 2,
-    backgroundColor: '#007AFF',
-    marginHorizontal: 1,
-    borderRadius: 1,
   },
   messageFooter: {
     flexDirection: 'row',

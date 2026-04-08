@@ -551,6 +551,24 @@ class CollaborationService {
     }
   }
 
+  async sendAudioMessage(spaceId: string, formData: FormData): Promise<any> {
+    try {
+      // Use axios for multipart upload
+      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/audio-message`, formData, {
+        headers: {
+          ...(await this.getHeaders()),
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      await this.triggerHapticSuccess();
+      return response.data;
+    } catch (error: any) {
+      console.error('Error sending audio message:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
   async clearChat(spaceId: string): Promise<void> {
     try {
       await axios.post(`${this.baseURL}/spaces/${spaceId}/clear-messages`, {}, {

@@ -24,6 +24,8 @@ import { useCollaborationStore } from '@/stores/collaborationStore';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { createShadow } from '@/utils/styles';
 import { useToastStore } from '@/stores/toastStore';
+import { useAudioRecording } from '@/hooks/useAudioRecording';
+import AudioSeeker from './AudioSeeker';
 
 interface SpaceChatTabProps {
     spaceId: string;
@@ -64,6 +66,147 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
     const [isJoining, setIsJoining] = useState(false);
     const uploaderRef = useRef<AdvancedMediaUploaderRef>(null);
     const collaborationService = CollaborationService.getInstance();
+
+    const {
+        isRecording,
+        isPaused,
+        recordingDuration,
+        isUploading,
+        previewStatus,
+        displayProgress,
+        effectiveDuration,
+        startRecording,
+        pauseRecording,
+        resumeRecording,
+        playPreview,
+        pausePreview,
+        seekPreview,
+        stopRecording,
+        cancelRecording,
+        formatDuration,
+        setIsUploading,
+        setIsSeeking,
+    } = useAudioRecording({
+        maxDuration: 60,
+        onRecordingComplete: async (uri, duration) => {
+            setIsUploading(true);
+            
+            // ─── Optimistic UI Update ───
+            const tempId = `temp_${Date.now()}`;
+            const optimisticMessage = {
+                id: tempId,
+                user_id: currentUserId,
+                type: 'voice',
+                content: 'Voice message',
+                file_path: uri,
+                metadata: { duration: Math.round(duration) },
+                created_at: new Date().toISOString(),
+                isOptimistic: true,
+                user: { id: currentUserId, name: 'You' }
+            };
+
+            setSpace((prev: any) => ({
+                ...prev,
+                content_state: {
+                    ...prev.content_state,
+                    messages: [...(prev?.content_state?.messages || []), optimisticMessage]
+                }
+            }));
+
+            try {
+                const formData = new FormData();
+
+                if (Platform.OS === 'web') {
+                    const response = await fetch(uri);
+                    const blob = await response.blob();
+                    
+                    let extension = 'm4a';
+                    if (blob.type.includes('webm')) extension = 'webm';
+                    else if (blob.type.includes('mp4')) extension = 'mp4';
+                    else if (blob.type.includes('ogg')) extension = 'ogg';
+                    else if (blob.type.includes('wav')) extension = 'wav';
+                    else if (blob.type.includes('opus')) extension = 'opus';
+
+                    formData.append('audio', blob, `audio_${Date.now()}.${extension}`);
+                } else {
+                    formData.append('audio', {
+                        uri: uri,
+                        type: 'audio/m4a',
+                        name: `audio_${Date.now()}.m4a`,
+                    } as any);
+                }
+
+                formData.append('duration', Math.round(duration).toString());
+
+                const message = await collaborationService.sendAudioMessage(spaceId, formData);
+
+                // Replace optimistic message with the real one
+                setSpace((prev: any) => ({
+                    ...prev,
+                    content_state: {
+                        ...prev.content_state,
+                        messages: (prev?.content_state?.messages || []).map((m: any) => 
+                            m.id === tempId ? message : m
+                        )
+                    }
+                }));
+
+                showToast('Audio message sent', 'success');
+            } catch (error) {
+                console.error('Failed to send audio message:', error);
+                showToast('Failed to send audio message', 'error');
+                
+                // Remove optimistic message on error
+                setSpace((prev: any) => ({
+                    ...prev,
+                    content_state: {
+                        ...prev.content_state,
+                        messages: (prev?.content_state?.messages || []).filter((m: any) => m.id !== tempId)
+                    }
+                }));
+            } finally {
+                setIsUploading(false);
+            }
+        },
+    });
+
+    const handleAudioPress = () => {
+        if (isRecording || isPaused) {
+            stopRecording();
+        } else {
+            startRecording();
+        }
+    };
+
+    // ─── Recording UI Animations ───
+    const recordingPulseScale = useSharedValue(1);
+    
+    useEffect(() => {
+        if (isRecording && !isPaused) {
+            recordingPulseScale.value = withTiming(1.3, { duration: 600 }, (finished) => {
+                if (finished) {
+                    recordingPulseScale.value = withTiming(1, { duration: 600 });
+                }
+            });
+            
+            const interval = setInterval(() => {
+                recordingPulseScale.value = withTiming(1.3, { duration: 600 }, (finished) => {
+                    if (finished) {
+                        recordingPulseScale.value = withTiming(1, { duration: 600 });
+                    }
+                });
+            }, 1200);
+            
+            return () => clearInterval(interval);
+        } else {
+            recordingPulseScale.value = withTiming(1);
+        }
+    }, [isRecording, isPaused]);
+
+    const recordingPulseStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: recordingPulseScale.value }],
+        opacity: isPaused ? 0.5 : 1
+    }));
 
     const inputTranslateY = useSharedValue(0);
 
@@ -328,42 +471,124 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
 
                     // Default Case: Standard Chat Input (Joined or Private Space)
                     return (
-                        <AnimatedRN.View style={[styles.chatInputContainer, animatedInputStyle]}>
-                            <View style={styles.attachActions}>
+                        <View style={{ width: '100%' }}>
+                            {(isRecording || isPaused) && (
+                                <View style={styles.recordingOverlay}>
+                                    <TouchableOpacity
+                                        style={styles.discardButton}
+                                        onPress={cancelRecording}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Ionicons name="trash-outline" size={22} color="#FF3B30" />
+                                    </TouchableOpacity>
+
+                                    <View style={styles.recordingCenterSection}>
+                                        {isPaused ? (
+                                            <TouchableOpacity 
+                                                onPress={previewStatus.playing ? pausePreview : playPreview}
+                                                style={styles.previewPlayButton}
+                                            >
+                                                <Ionicons 
+                                                    name={previewStatus.playing ? "pause" : "play"} 
+                                                    size={24} 
+                                                    color="#007AFF" 
+                                                />
+                                            </TouchableOpacity>
+                                        ) : (
+                                            <AnimatedRN.View style={[styles.recordingPulse, recordingPulseStyle]} />
+                                        )}
+
+                                        <View style={{ flex: 1, height: 40, justifyContent: 'center' }}>
+                                            {isPaused ? (
+                                                <AudioSeeker
+                                                    progress={displayProgress}
+                                                    duration={effectiveDuration}
+                                                    onSeek={seekPreview}
+                                                    onSeekingChange={setIsSeeking}
+                                                    isCurrentUser={true}
+                                                    color="rgba(0, 122, 255, 0.1)"
+                                                    activeColor="#007AFF"
+                                                />
+                                            ) : (
+                                                <Text style={styles.recordingTimerText}>
+                                                    {formatDuration(recordingDuration)}
+                                                </Text>
+                                            )}
+                                        </View>
+                                        
+                                        <TouchableOpacity
+                                            style={styles.pauseResumeButton}
+                                            onPress={isPaused ? resumeRecording : pauseRecording}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Ionicons 
+                                                name={isPaused ? "mic" : "pause-circle"} 
+                                                size={isPaused ? 24 : 28} 
+                                                color={isPaused ? "#8E8E93" : "#007AFF"} 
+                                            />
+                                        </TouchableOpacity>
+                                    </View>
+
+                                    <TouchableOpacity
+                                        style={styles.sendRecordingButton}
+                                        onPress={stopRecording}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Ionicons name="send" size={20} color="#fff" />
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                            <AnimatedRN.View style={[styles.chatInputContainer, animatedInputStyle]}>
+                                <View style={styles.attachActions}>
+                                    <TouchableOpacity
+                                        onPress={() => setShowAttachmentPicker(!showAttachmentPicker)}
+                                        style={styles.actionButton}
+                                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                    >
+                                        <Ionicons
+                                            name={showAttachmentPicker ? "close" : "attach"}
+                                            size={24}
+                                            color="#007AFF"
+                                        />
+                                    </TouchableOpacity>
+                                </View>
+
+                                <TextInput
+                                    style={styles.messageInput}
+                                    placeholder={isRecording ? "Recording..." : `Message in ${space?.title || 'space'}...`}
+                                    value={content}
+                                    onChangeText={setContent}
+                                    multiline
+                                    maxLength={2000}
+                                    placeholderTextColor="#9a9a9a"
+                                    returnKeyType="default"
+                                    blurOnSubmit={false}
+                                    onFocus={() => setShowAttachmentPicker(false)}
+                                    editable={!isRecording}
+                                />
+
                                 <TouchableOpacity
-                                    onPress={() => setShowAttachmentPicker(!showAttachmentPicker)}
-                                    style={styles.actionButton}
-                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                    style={[
+                                        styles.sendButton, 
+                                        !content.trim() && !isRecording && { backgroundColor: '#FF9500' },
+                                        isUploading && { opacity: 0.7 }
+                                    ]}
+                                    onPress={content.trim() ? handleSendMessage : handleAudioPress}
+                                    disabled={isUploading}
+                                    activeOpacity={0.8}
                                 >
-                                    <Ionicons
-                                        name={showAttachmentPicker ? "close" : "attach"}
-                                        size={24}
-                                        color="#007AFF"
-                                    />
+                                    {isUploading ? (
+                                        <ActivityIndicator color="#fff" size="small" />
+                                    ) : (
+                                        <Ionicons 
+                                            name={content.trim() ? "send" : (isRecording ? "stop" : "mic")} 
+                                            size={content.trim() ? 18 : 22} 
+                                            color="#fff" 
+                                        />
+                                    )}
                                 </TouchableOpacity>
-                            </View>
-
-                            <TextInput
-                                style={styles.messageInput}
-                                placeholder={`Message in ${space?.title || 'space'}...`}
-                                value={content}
-                                onChangeText={setContent}
-                                multiline
-                                maxLength={2000}
-                                placeholderTextColor="#9a9a9a"
-                                returnKeyType="default"
-                                blurOnSubmit={false}
-                                onFocus={() => setShowAttachmentPicker(false)}
-                            />
-
-                            <TouchableOpacity
-                                style={[styles.sendButton, !content.trim() && { backgroundColor: '#FF9500' }]}
-                                onPress={content.trim() ? handleSendMessage : () => showToast('Coming Soon: Voice recording features are coming soon!', 'info')}
-                                activeOpacity={0.8}
-                            >
-                                <Ionicons name={content.trim() ? "send" : "mic"} size={content.trim() ? 18 : 22} color="#fff" />
-                            </TouchableOpacity>
-                        </AnimatedRN.View>
+                            </AnimatedRN.View>
+                        </View>
                     );
                 })()}
             </View>
@@ -662,6 +887,66 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#8E8E93',
         fontWeight: '500',
+    },
+    recordingOverlay: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#fff',
+        borderRadius: 25,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        marginHorizontal: 10,
+        marginBottom: 8,
+        ...createShadow({ width: 0, height: 2, opacity: 0.1, radius: 8, elevation: 5 }),
+    },
+    recordingCenterSection: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 12,
+    },
+    recordingPulse: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: '#FF3B30',
+    },
+    recordingTimerText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#1a1a1a',
+        width: 45,
+        textAlign: 'center',
+    },
+    discardButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#FFE5E5',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    pauseResumeButton: {
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    previewPlayButton: {
+        width: 32,
+        height: 32,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    sendRecordingButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#007AFF',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });
 

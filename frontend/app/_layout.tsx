@@ -139,6 +139,8 @@ export default function RootLayout() {
       '/chatbot',
       '/chatbotTraining',
       '/moderation',
+      '/PrivacyPolicy',
+      '/TermsOfService',
     ];
 
     // Check if current path starts with any allowed route
@@ -159,6 +161,8 @@ export default function RootLayout() {
         '/ForgotPasswordScreen',
         '/ResetPasswordScreen',
         '/VerificationScreen',
+        '/PrivacyPolicy',
+        '/TermsOfService',
       ];
 
       // If the current path is NOT a public route, send to Login

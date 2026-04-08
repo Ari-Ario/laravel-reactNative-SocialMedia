@@ -5,16 +5,12 @@ import {
     ActivityIndicator,
     Alert,
     Platform,
-    TouchableOpacity,
     Text,
     useWindowDimensions,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import CollaborationService from '@/services/ChatScreen/CollaborationService';
 
-// HTML string containing the whiteboard canvas with Fabric.js
+// HTML string containing the enhanced whiteboard canvas with Fabric.js
 const WHITEBOARD_HTML = `
 <!DOCTYPE html>
 <html>
@@ -23,11 +19,18 @@ const WHITEBOARD_HTML = `
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
   <style>
+    :root {
+      --accent: #007AFF;
+      --bg: #f8f9fa;
+      --glass: rgba(255, 255, 255, 0.7);
+      --shadow: 0 8px 32px rgba(0,0,0,0.12);
+    }
     body {
       margin: 0;
       overflow: hidden;
       touch-action: none;
-      background-color: #f5f5f5;
+      background-color: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
     #canvas-container {
       width: 100vw;
@@ -35,85 +38,103 @@ const WHITEBOARD_HTML = `
       display: flex;
       align-items: center;
       justify-content: center;
-      background-color: #f5f5f5;
+      background-image: radial-gradient(#d1d1d1 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+    #canvas-container.no-grid {
+      background-image: none;
     }
     canvas {
-      border: 1px solid #ddd;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      background-color: white;
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
+      background-color: transparent !important;
     }
     .toolbar {
       position: fixed;
       bottom: 16px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(255,255,255,0.9);
-      backdrop-filter: blur(8px);
+      background: var(--glass);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.4);
       border-radius: 40px;
-      padding: 8px 16px;
+      padding: 4px 8px;
       display: flex;
-      gap: 16px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      align-items: center;
+      gap: 4px;
+      box-shadow: var(--shadow);
       z-index: 1000;
+      max-width: 92vw;
+      overflow-x: auto;
+      scrollbar-width: none; /* Firefox */
+      -ms-overflow-style: none;  /* IE 10+ */
+    }
+    .toolbar::-webkit-scrollbar {
+      display: none; /* Safari/Chrome */
+    }
+    .tool-section {
+      display: flex;
+      gap: 2px;
+      padding: 0 2px;
+      flex-shrink: 0;
+    }
+    .divider {
+      width: 1px;
+      height: 18px;
+      background: rgba(0,0,0,0.1);
+      flex-shrink: 0;
     }
     .tool-button {
       background: none;
       border: none;
-      width: 48px;
-      height: 48px;
-      border-radius: 24px;
+      width: 32px;
+      height: 32px;
+      border-radius: 16px;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      color: #444;
+      flex-shrink: 0;
+    }
+    .tool-button:active {
+      transform: scale(0.85);
     }
     .tool-button.active {
-      background: #007AFF20;
+      background: var(--accent);
+      color: white;
+      box-shadow: 0 4px 10px rgba(0,122,255,0.4);
     }
     .tool-button svg {
-      width: 24px;
-      height: 24px;
-      fill: none;
-      stroke: currentColor;
-      stroke-width: 2;
+      width: 16px;
+      height: 16px;
+      pointer-events: none;
     }
     .color-picker {
       display: flex;
-      gap: 8px;
-      align-items: center;
-      padding: 0 8px;
-      border-left: 1px solid #ddd;
+      gap: 4px;
+      flex-shrink: 0;
     }
     .color-swatch {
-      width: 32px;
-      height: 32px;
-      border-radius: 16px;
-      border: 2px solid transparent;
+      width: 20px;
+      height: 20px;
+      border-radius: 10px;
+      border: 2px solid white;
       cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      transition: transform 0.2s;
+      flex-shrink: 0;
     }
     .color-swatch.active {
-      border-color: #007AFF;
+      transform: scale(1.3);
+      border-color: var(--accent);
     }
-    .slider {
-      width: 100px;
-      height: 4px;
-      background: #ddd;
-      border-radius: 2px;
-      position: relative;
-      margin: 0 8px;
-    }
-    .slider-thumb {
-      width: 16px;
-      height: 16px;
-      background: #007AFF;
-      border-radius: 8px;
-      position: absolute;
-      top: -6px;
-      cursor: pointer;
+    @media (min-width: 600px) {
+       .toolbar { padding: 6px 16px; gap: 8px; bottom: 24px; }
+       .tool-button { width: 40px; height: 40px; border-radius: 20px; }
+       .tool-button svg { width: 20px; height: 20px; }
+       .color-swatch { width: 24px; height: 24px; }
+       .divider { height: 24px; }
     }
   </style>
 </head>
@@ -121,103 +142,180 @@ const WHITEBOARD_HTML = `
   <div id="canvas-container">
     <canvas id="whiteboard-canvas"></canvas>
   </div>
-  <div class="toolbar" id="toolbar" style="display: none;">
-    <button class="tool-button" data-tool="select" title="Select">
-      <svg viewBox="0 0 24 24"><path d="M4 4l16 8-7 3-3 7-6-18z"/></svg>
-    </button>
-    <button class="tool-button" data-tool="pencil" title="Pencil">
-      <svg viewBox="0 0 24 24"><path d="M17 3l4 4L7 21H3v-4L17 3z"/></svg>
-    </button>
-    <button class="tool-button" data-tool="line" title="Line">
-      <svg viewBox="0 0 24 24"><path d="M20 20L4 4"/></svg>
-    </button>
-    <button class="tool-button" data-tool="rectangle" title="Rectangle">
-      <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" stroke="currentColor" fill="none"/></svg>
-    </button>
-    <button class="tool-button" data-tool="circle" title="Circle">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" stroke="currentColor" fill="none"/></svg>
-    </button>
-    <button class="tool-button" data-tool="text" title="Text">
-      <svg viewBox="0 0 24 24"><text x="4" y="18" font-family="sans-serif" font-size="14" fill="currentColor">Aa</text></svg>
-    </button>
-    <button class="tool-button" data-tool="eraser" title="Eraser">
-      <svg viewBox="0 0 24 24"><path d="M18 4L20 6L8 18L4 14L16 2L18 4Z"/></svg>
-    </button>
-    <button class="tool-button" data-tool="clear" title="Clear All">
-      <svg viewBox="0 0 24 24"><path d="M3 6h18M5 6v14a2 2 0 002 2h10a2 2 0 002-2V6M9 4h6"/></svg>
-    </button>
-    <button class="tool-button" data-tool="undo" title="Undo">
-      <svg viewBox="0 0 24 24"><path d="M4 10l4-4v8H4V10zm12 0c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5z"/></svg>
-    </button>
-    <button class="tool-button" data-tool="redo" title="Redo">
-      <svg viewBox="0 0 24 24"><path d="M20 10l-4-4v8h4v-4zm-12 0c2.8 0 5 2.2 5 5s-2.2 5-5 5-5-2.2-5-5 2.2-5 5-5z"/></svg>
-    </button>
-    <div class="color-picker">
-      <div class="color-swatch" data-color="#000000" style="background: #000000;"></div>
-      <div class="color-swatch" data-color="#FF3B30" style="background: #FF3B30;"></div>
-      <div class="color-swatch" data-color="#34C759" style="background: #34C759;"></div>
-      <div class="color-swatch" data-color="#007AFF" style="background: #007AFF;"></div>
-      <div class="color-swatch" data-color="#FFCC00" style="background: #FFCC00;"></div>
-      <div class="color-swatch" data-color="#AF52DE" style="background: #AF52DE;"></div>
-      <div class="slider" id="stroke-slider">
-        <div class="slider-thumb" id="stroke-thumb" style="left: 0;"></div>
+  <div class="toolbar" id="toolbar" style="display: none; opacity: 0; transform: translate(-50%, 40px);">
+    <div class="tool-section">
+      <button class="tool-button" data-tool="select" title="Select">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5"></path></svg>
+      </button>
+      <button class="tool-button" data-tool="pencil" title="Draw">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+      </button>
+      <button class="tool-button" data-tool="text" title="Text">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5L6 9H2V15H6L11 19V5Z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+      </button>
+    </div>
+    
+    <div class="divider"></div>
+    
+    <div class="tool-section">
+      <button class="tool-button" data-tool="rectangle" title="Rectangle">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" stroke-width="2"></rect></svg>
+      </button>
+      <button class="tool-button" data-tool="circle" title="Circle">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" stroke-width="2"></circle></svg>
+      </button>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="tool-section">
+      <div class="color-picker" id="color-picker">
+        <div class="color-swatch" data-color="#000000" style="background: #000000;"></div>
+        <div class="color-swatch" data-color="#FF3B30" style="background: #FF3B30;"></div>
+        <div class="color-swatch" data-color="#34C759" style="background: #34C759;"></div>
+        <div class="color-swatch" data-color="#007AFF" style="background: #007AFF;"></div>
+        <div class="color-swatch" data-color="#AF52DE" style="background: #AF52DE;"></div>
       </div>
     </div>
+
+    <div class="divider"></div>
+
+    <div class="tool-section">
+      <button class="tool-button" data-tool="undo" title="Undo">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
+      </button>
+      <button class="tool-button" data-tool="share" title="Share to Chat" style="color: var(--accent);">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+      </button>
+      <button class="tool-button" data-tool="clear" title="Clear">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+      </button>
+    </div>
   </div>
+
   <script>
     (function() {
-      // Canvas setup
+      // Universal postMessage helper
+      window.postToApp = function(data) {
+        console.log('[Whiteboard] postToApp:', data.type);
+        const msg = typeof data === 'string' ? data : JSON.stringify(data);
+        if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+            window.ReactNativeWebView.postMessage(msg);
+        } else if (window.parent && window.parent.postMessage) {
+            window.parent.postMessage(msg, '*');
+        }
+      };
+
+      // Canvas setup with premium defaults
       let canvas = new fabric.Canvas('whiteboard-canvas', {
         isDrawingMode: false,
-        width: window.innerWidth * 0.8,
-        height: window.innerHeight * 0.8,
-        backgroundColor: '#ffffff'
+        width: window.innerWidth,
+        height: window.innerHeight,
+        backgroundColor: 'transparent'
       });
 
-      // State
-      let currentTool = 'select';
-      let currentColor = '#000000';
-      let strokeWidth = 3;
-      let history = [];
-      let historyIndex = -1;
+      // Enable smoothing for pencil
+      canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+      canvas.freeDrawingBrush.width = 4;
+      canvas.freeDrawingBrush.decimate = 2;
 
-      // Undo/Redo stack management
-      function saveState() {
-        const state = canvas.toJSON(['id', 'selectable', 'hasControls']);
-        // Remove previous future states if we're not at the end
-        if (historyIndex < history.length - 1) {
-          history = history.slice(0, historyIndex + 1);
-        }
-        history.push(state);
-        historyIndex++;
-        // Keep history size manageable
-        if (history.length > 50) {
-          history.shift();
-          historyIndex--;
-        }
+      // State
+      let currentTool = 'pencil';
+      let currentColor = '#000000';
+      let isBusy = false;
+
+      function syncToApp() {
+        if (isBusy) return;
+        const raw = canvas.toObject(['id', 'selectable', 'hasControls']);
+        const validObjects = (raw.objects || []).filter(o => o && o.type);
+        
+        window.postToApp({
+           type: 'elementsChanged',
+           elements: validObjects
+        });
       }
 
-      // Initialize with empty state
-      saveState();
+      function exportAsImage() {
+          console.log('[Whiteboard] Exporting snapshot...');
+          // 1. Hide grid for clean shot
+          const container = document.getElementById('canvas-container');
+          const toolbar = document.getElementById('toolbar');
+          container.classList.add('no-grid');
+          toolbar.style.opacity = '0';
 
-      // Tool handlers
+          setTimeout(() => {
+              try {
+                  // 2. Capture
+                  // Limit multiplier to avoid massive data URLs that might crash the bridge
+                  const multiplier = Math.min(window.devicePixelRatio || 1, 1.5);
+                  console.log('[Whiteboard] Capturing with multiplier:', multiplier);
+                  
+                  const dataURL = canvas.toDataURL({
+                      format: 'png',
+                      quality: 0.9,
+                      multiplier: multiplier
+                  });
+
+                  console.log('[Whiteboard] Snapshot captured, length:', dataURL.length);
+
+                  // 3. Send to App
+                  window.postToApp({
+                      type: 'shareImage',
+                      image: dataURL
+                  });
+              } catch (err) {
+                  console.error('[Whiteboard] Export failed:', err);
+              } finally {
+                  // 4. Restore UI
+                  container.classList.remove('no-grid');
+                  toolbar.style.opacity = '1';
+              }
+          }, 100);
+      }
+
       function setTool(tool) {
         currentTool = tool;
-        canvas.isDrawingMode = (tool === 'pencil' || tool === 'eraser');
-        if (tool === 'eraser') {
-          canvas.freeDrawingBrush.color = '#ffffff';
-          canvas.freeDrawingBrush.width = strokeWidth * 2;
-        } else if (tool === 'pencil') {
+        canvas.isDrawingMode = (tool === 'pencil');
+        canvas.selection = (tool === 'select');
+        
+        if (tool === 'pencil') {
           canvas.freeDrawingBrush.color = currentColor;
-          canvas.freeDrawingBrush.width = strokeWidth;
+          canvas.freeDrawingBrush.width = 4;
         } else {
-          canvas.selection = (tool === 'select');
           canvas.forEachObject(obj => {
             obj.selectable = (tool === 'select');
             obj.hasControls = (tool === 'select');
           });
         }
+        
         highlightTool(tool);
+      }
+
+      function createShape(tool) {
+          const common = {
+              left: 100,
+              top: 100,
+              fill: 'transparent',
+              stroke: currentColor,
+              strokeWidth: 3,
+              id: 'shape_' + Date.now()
+          };
+
+          let shape;
+          if (tool === 'rectangle') {
+              shape = new fabric.Rect({ ...common, width: 100, height: 100 });
+          } else if (tool === 'circle') {
+              shape = new fabric.Circle({ ...common, radius: 50 });
+          } else if (tool === 'text') {
+              shape = new fabric.IText('Double click to edit', { ...common, fill: currentColor, strokeWidth: 0, fontSize: 20 });
+          }
+
+          if (shape) {
+              canvas.add(shape);
+              canvas.setActiveObject(shape);
+              setTool('select');
+              syncToApp();
+          }
       }
 
       function highlightTool(tool) {
@@ -228,195 +326,92 @@ const WHITEBOARD_HTML = `
 
       function setColor(color) {
         currentColor = color;
-        canvas.freeDrawingBrush.color = color;
+        if (canvas.isDrawingMode) {
+          canvas.freeDrawingBrush.color = color;
+        }
+        const active = canvas.getActiveObject();
+        if (active) {
+            if (active.type === 'i-text') active.set('fill', color);
+            else active.set('stroke', color);
+            canvas.renderAll();
+            syncToApp();
+        }
+        
         document.querySelectorAll('.color-swatch').forEach(swatch => {
           swatch.classList.toggle('active', swatch.dataset.color === color);
         });
       }
 
-      function setStrokeWidth(width) {
-        strokeWidth = width;
-        canvas.freeDrawingBrush.width = width;
-        const thumb = document.getElementById('stroke-thumb');
-        thumb.style.left = (width - 1) * 8 + 'px'; // scale 1-10 -> 0-72px
-      }
+      // Events
+      canvas.on('object:added', syncToApp);
+      canvas.on('object:modified', syncToApp);
+      canvas.on('object:removed', syncToApp);
+      canvas.on('path:created', syncToApp);
 
-      // Drawing events
-      canvas.on('object:added', function(e) {
-        if (!e.target._skipSave) {
-          saveState();
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'objectAdded',
-            object: e.target.toJSON(['id', 'selectable', 'hasControls'])
-          }));
-        }
-      });
-
-      canvas.on('object:modified', function(e) {
-        if (!e.target._skipSave) {
-          saveState();
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'objectModified',
-            object: e.target.toJSON(['id', 'selectable', 'hasControls'])
-          }));
-        }
-      });
-
-      canvas.on('object:removed', function(e) {
-        saveState();
-        window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: 'objectRemoved',
-          id: e.target.id || e.target._uid
-        }));
-      });
-
-      canvas.on('path:created', function(e) {
-        saveState();
-        window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: 'objectAdded',
-          object: e.path.toJSON(['id', 'selectable', 'hasControls'])
-        }));
-      });
-
-      // Clear action
-      function clearCanvas() {
-        canvas.getObjects().forEach(obj => canvas.remove(obj));
-        canvas.backgroundColor = '#ffffff';
-        canvas.renderAll();
-        saveState();
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'clear' }));
-      }
-
-      // Undo
-      function undo() {
-        if (historyIndex > 0) {
-          historyIndex--;
-          canvas.loadFromJSON(history[historyIndex], () => {
-            canvas.renderAll();
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'undo',
-              state: history[historyIndex]
-            }));
-          });
-        }
-      }
-
-      // Redo
-      function redo() {
-        if (historyIndex < history.length - 1) {
-          historyIndex++;
-          canvas.loadFromJSON(history[historyIndex], () => {
-            canvas.renderAll();
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'redo',
-              state: history[historyIndex]
-            }));
-          });
-        }
-      }
-
-      // Toolbar button listeners
+      // Tool Listeners
       document.querySelectorAll('.tool-button').forEach(btn => {
         btn.addEventListener('click', () => {
           const tool = btn.dataset.tool;
-          switch (tool) {
-            case 'undo': undo(); break;
-            case 'redo': redo(); break;
-            case 'clear': clearCanvas(); break;
-            default: setTool(tool);
+          if (tool === 'clear') {
+            canvas.clear();
+            syncToApp();
+          } else if (tool === 'undo') {
+            if (canvas._objects.length > 0) {
+                canvas.remove(canvas._objects[canvas._objects.length - 1]);
+                syncToApp();
+            }
+          } else if (tool === 'share') {
+            exportAsImage();
+          } else if (['rectangle', 'circle', 'text'].includes(tool)) {
+            createShape(tool);
+          } else {
+            setTool(tool);
           }
         });
       });
 
-      // Color swatches
       document.querySelectorAll('.color-swatch').forEach(swatch => {
-        swatch.addEventListener('click', () => {
-          setColor(swatch.dataset.color);
-        });
+        swatch.addEventListener('click', () => setColor(swatch.dataset.color));
       });
 
-      // Stroke slider (simplified)
-      const slider = document.getElementById('stroke-slider');
-      const thumb = document.getElementById('stroke-thumb');
-      let dragging = false;
-
-      thumb.addEventListener('mousedown', (e) => {
-        dragging = true;
-        e.preventDefault();
-      });
-
-      document.addEventListener('mousemove', (e) => {
-        if (!dragging) return;
-        const rect = slider.getBoundingClientRect();
-        let x = e.clientX - rect.left;
-        x = Math.max(0, Math.min(rect.width, x));
-        const width = 1 + Math.floor(x / 8); // 1-10
-        setStrokeWidth(width);
-      });
-
-      document.addEventListener('mouseup', () => {
-        dragging = false;
-      });
-
-      // Message from React Native
       window.addEventListener('message', (event) => {
         try {
-          const data = JSON.parse(event.data);
-          switch (data.type) {
-            case 'init':
-              if (data.elements && data.elements.length) {
-                canvas.loadFromJSON({ objects: data.elements }, () => {
-                  canvas.renderAll();
-                  // Rebuild history
-                  history = [canvas.toJSON()];
-                  historyIndex = 0;
+          const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+          if (data.type === 'init' || data.type === 'update') {
+            isBusy = true;
+            if (data.elements) {
+                const valid = data.elements.filter(o => o && o.type && typeof fabric[fabric.util.string.camelize(fabric.util.string.capitalize(o.type))] !== 'undefined' || o.type === 'path' || o.type === 'rect' || o.type === 'circle' || o.type === 'i-text');
+                
+                canvas.loadFromJSON({ objects: valid }, () => {
+                   canvas.renderAll();
+                   isBusy = false;
                 });
-              }
-              document.getElementById('toolbar').style.display = 'flex';
-              break;
-            case 'addObject':
-              fabric.util.enlivenObjects([data.object], (objects) => {
-                objects[0]._skipSave = true;
-                canvas.add(objects[0]);
-                canvas.renderAll();
-              });
-              break;
-            case 'updateObject':
-              // Find object by id and update
-              const obj = canvas.getObjects().find(o => (o.id || o._uid) === data.object.id);
-              if (obj) {
-                obj._skipSave = true;
-                obj.set(data.object);
-                canvas.renderAll();
-              }
-              break;
-            case 'removeObject':
-              const toRemove = canvas.getObjects().find(o => (o.id || o._uid) === data.id);
-              if (toRemove) {
-                toRemove._skipSave = true;
-                canvas.remove(toRemove);
-                canvas.renderAll();
-              }
-              break;
-            case 'clear':
-              clearCanvas();
-              break;
+            } else {
+                isBusy = false;
+            }
           }
         } catch (e) {
-          console.error('Failed to parse message', e);
+          console.error('Whiteboard: Parse Error', e);
+          isBusy = false;
         }
       });
 
-      // Resize handling
+      setTimeout(() => {
+        const tb = document.getElementById('toolbar');
+        tb.style.display = 'flex';
+        setTimeout(() => {
+           tb.style.opacity = '1';
+           tb.style.transform = 'translate(-50%, 0)';
+        }, 600);
+        setTool('pencil');
+        window.postToApp({ type: 'ready' });
+      }, 600);
+
       window.addEventListener('resize', () => {
-        canvas.setWidth(window.innerWidth * 0.8);
-        canvas.setHeight(window.innerHeight * 0.8);
+        canvas.setWidth(window.innerWidth);
+        canvas.setHeight(window.innerHeight);
         canvas.renderAll();
       });
-
-      // Expose for RN postMessage
-      window.ready = true;
-      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ready' }));
     })();
   </script>
 </body>
@@ -427,6 +422,7 @@ interface WhiteboardCanvasProps {
     spaceId: string;
     initialElements?: any[];
     onElementsChange?: (elements: any[]) => void;
+    onShare?: (base64Image: string) => void;
     onError?: (error: any) => void;
 }
 
@@ -434,120 +430,82 @@ export default function WhiteboardCanvas({
     spaceId,
     initialElements = [],
     onElementsChange,
+    onShare,
     onError,
 }: WhiteboardCanvasProps) {
     const webViewRef = useRef<WebView>(null);
+    const iframeRef = useRef<HTMLIFrameElement>(null);
     const [loading, setLoading] = useState(true);
     const [connected, setConnected] = useState(false);
-    const { width, height } = useWindowDimensions();
 
-    // Send initial elements when webview is ready
-    useEffect(() => {
-        if (connected && initialElements.length > 0) {
-            webViewRef.current?.postMessage(JSON.stringify({
-                type: 'init',
-                elements: initialElements,
-            }));
-        }
-    }, [connected, initialElements]);
-
-    // Handle messages from webview
     const handleMessage = useCallback(
         (event: any) => {
             try {
-                const data = JSON.parse(event.nativeEvent.data);
-                switch (data.type) {
-                    case 'ready':
-                        setConnected(true);
-                        setLoading(false);
-                        break;
-                    case 'objectAdded':
-                    case 'objectModified':
-                    case 'objectRemoved':
-                    case 'clear':
-                        // Forward to parent if needed
-                        if (onElementsChange) {
-                            // We don't have full elements list here, but we can request it later
-                            // For now, just notify that something changed
-                            onElementsChange([{ type: 'change', data }]);
-                        }
-                        break;
-                    default:
-                        console.log('Unhandled message from whiteboard:', data.type);
+                const data = typeof event.nativeEvent.data === 'string' 
+                    ? JSON.parse(event.nativeEvent.data) 
+                    : event.nativeEvent.data;
+
+                console.log('[WhiteboardBridge] Received:', data.type);
+
+                if (data.type === 'ready') {
+                    setConnected(true);
+                    setLoading(false);
+                } else if (data.type === 'elementsChanged') {
+                    onElementsChange?.(data.elements);
+                } else if (data.type === 'shareImage') {
+                    onShare?.(data.image);
                 }
-            } catch (error) {
-                console.error('Whiteboard message error:', error);
-                onError?.(error);
+            } catch (err) {
+                console.warn('Whiteboard Bridge Signal Error:', err);
             }
         },
-        [onElementsChange, onError]
+        [onElementsChange, onShare]
     );
 
-    // WebView error handler
-    const handleError = (syntheticEvent: any) => {
-        const { nativeEvent } = syntheticEvent;
-        console.error('WebView error:', nativeEvent);
-        Alert.alert('Whiteboard Error', 'Failed to load whiteboard. Please try again.');
-        onError?.(nativeEvent);
-    };
+    // Initial Sync
+    useEffect(() => {
+        if (connected) {
+            const data = JSON.stringify({ type: 'init', elements: initialElements });
+            if (Platform.OS === 'web') iframeRef.current?.contentWindow?.postMessage(data, '*');
+            else webViewRef.current?.postMessage(data);
+        }
+    }, [connected]);
 
-    // WebView load end
-    const handleLoadEnd = () => {
-        setLoading(false);
-    };
+    // Web Event Listener
+    useEffect(() => {
+        if (Platform.OS !== 'web') return;
+        const listener = (e: MessageEvent) => handleMessage({ nativeEvent: { data: e.data } });
+        window.addEventListener('message', listener);
+        return () => window.removeEventListener('message', listener);
+    }, [handleMessage]);
 
     return (
         <View style={styles.container}>
             {loading && (
                 <View style={styles.loadingOverlay}>
                     <ActivityIndicator size="large" color="#007AFF" />
-                    <Text style={styles.loadingText}>Loading whiteboard...</Text>
                 </View>
             )}
-            <WebView
-                ref={webViewRef}
-                source={{ html: WHITEBOARD_HTML }}
-                style={styles.webview}
-                onMessage={handleMessage}
-                onError={handleError}
-                onLoadEnd={handleLoadEnd}
-                javaScriptEnabled={true}
-                domStorageEnabled={true}
-                allowsInlineMediaPlayback={true}
-                mediaPlaybackRequiresUserAction={false}
-                scalesPageToFit={false}
-                scrollEnabled={false}
-                bounces={false}
-                overScrollMode="never"
-                webviewDebuggingEnabled={__DEV__}
-                containerStyle={styles.webviewContainer}
-            />
+            
+            {Platform.OS === 'web' ? (
+                <iframe ref={iframeRef as any} srcDoc={WHITEBOARD_HTML} style={styles.iframe} title="whiteboard" />
+            ) : (
+                <WebView
+                    ref={webViewRef}
+                    source={{ html: WHITEBOARD_HTML }}
+                    style={styles.webview}
+                    onMessage={handleMessage}
+                    javaScriptEnabled={true}
+                    domStorageEnabled={true}
+                />
+            )}
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#f5f5f5',
-    },
-    webviewContainer: {
-        flex: 1,
-    },
-    webview: {
-        flex: 1,
-        backgroundColor: '#f5f5f5',
-    },
-    loadingOverlay: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(255,255,255,0.9)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 10,
-    },
-    loadingText: {
-        marginTop: 12,
-        fontSize: 16,
-        color: '#666',
-    },
+    container: { flex: 1, backgroundColor: '#f8f9fa' },
+    iframe: { flex: 1, width: '100%', height: '100%', borderWidth: 0 },
+    webview: { flex: 1, backgroundColor: 'transparent' },
+    loadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: '#f8f9fa', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
 });
