@@ -58,19 +58,19 @@ const getGridConfig = (participantCount: number) => {
     if (participantCount === 2) return { cols: 1, itemWidth: '100%', itemHeight: '50%' };
     if (participantCount <= 4) return { cols: 2, itemWidth: '50%', itemHeight: '50%' };
     if (participantCount <= 6) return { cols: 2, itemWidth: '50%', itemHeight: '33.33%' };
-    return { cols: 2, itemWidth: '50%', itemHeight: '25%' }; // Max 2 columns on mobile
+    return { cols: 2, itemWidth: '50%', itemHeight: '25%' };
   }
 
   if (isWeb) {
-    // Teams-like Hub: Balanced rectangles
-    if (participantCount === 1) return { cols: 1, itemWidth: '100%', itemHeight: '100%' };
-    if (participantCount === 2) return { cols: 2, itemWidth: '50%', itemHeight: '100%' };
-    if (participantCount <= 4) return { cols: 2, itemWidth: '50%', itemHeight: '50%' };
-    if (participantCount <= 6) return { cols: 3, itemWidth: '33.33%', itemHeight: '50%' };
-    if (participantCount <= 9) return { cols: 3, itemWidth: '33.33%', itemHeight: '33.33%' };
-    return { cols: 4, itemWidth: '25%', itemHeight: '25%' };
+    // Desktop Web: Dynamic Hub (Teams Style) - Balanced and Centered
+    if (participantCount === 1) return { cols: 1, itemWidth: '94%', itemHeight: '94%' };
+    if (participantCount === 2) return { cols: 2, itemWidth: '47%', itemHeight: '85%' };
+    if (participantCount <= 4) return { cols: 2, itemWidth: '47%', itemHeight: '44%' };
+    if (participantCount <= 6) return { cols: 3, itemWidth: '31%', itemHeight: '44%' };
+    if (participantCount <= 9) return { cols: 3, itemWidth: '31%', itemHeight: '30%' };
+    return { cols: 4, itemWidth: '23%', itemHeight: '23%' };
   } else {
-    // WhatsApp-like: Priority on portrait
+    // Native App: Portrait Priority
     if (participantCount === 1) return { cols: 1, itemWidth: '100%', itemHeight: '100%' };
     if (participantCount === 2) return { cols: 1, itemWidth: '100%', itemHeight: '50%' };
     if (participantCount <= 4) return { cols: 2, itemWidth: '50%', itemHeight: '50%' };
@@ -128,7 +128,7 @@ const PiPRemoteVideo = React.memo(({ stream, participantId, videoRefs }: {
       onLoadedMetadata={(e: any) => {
         try {
           if (e.target) e.target.play().catch((err: any) => console.warn("onLoadedMetadata play failed:", err));
-        } catch(err) {}
+        } catch (err) { }
       }}
       style={{ width: '100%', height: '100%', objectFit: 'cover' } as any}
     />
@@ -153,7 +153,7 @@ const PiPLocalVideo = React.memo(({ stream }: { stream: MediaStream }) => {
       onLoadedMetadata={(e: any) => {
         try {
           if (e.target) e.target.play().catch((err: any) => console.warn("onLoadedMetadata play failed:", err));
-        } catch(err) {}
+        } catch (err) { }
       }}
       style={{ width: '100%', height: '100%', objectFit: 'cover' } as any}
     />
@@ -167,6 +167,7 @@ const VideoTile = React.memo(({
   isSpeaking,
   isMuted,
   hasVideo,
+  isSharingScreen,
   stream,
   videoRefs,
   name,
@@ -228,18 +229,21 @@ const VideoTile = React.memo(({
                         if (!isLocal) setAutoplayFailed(true);
                       });
                   }
-                } catch(err) {}
+                } catch (err) { }
               }}
               muted={isLocal}
-              style={styles.videoElement as any}
+              style={StyleSheet.flatten([
+                styles.videoElement,
+                isSharingScreen && { objectFit: 'contain' }
+              ]) as any}
             />
           ) : RTCView ? (
             <RTCView
               key={stream.id || 'remote-stream'}
               streamURL={stream.toURL()}
-              objectFit="cover"
+              objectFit={isSharingScreen ? "contain" : "cover"}
               style={styles.videoElement}
-              mirror={isLocal}
+              mirror={isLocal && !isSharingScreen}
               zOrder={isLocal ? 1 : 0}
             />
           ) : null}
@@ -257,7 +261,7 @@ const VideoTile = React.memo(({
       {/* Safari Mobile Data Autoplay Fallback Overlay */}
       {autoplayFailed && (
         <View style={[StyleSheet.absoluteFill, { zIndex: 6, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' }]}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={{ padding: 20, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 40 }}
             onPress={handleManualPlay}
           >
@@ -328,6 +332,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showParticipantsModal, setShowParticipantsModal] = useState(false);
   const [handRaised, setHandRaised] = useState(false);
+  const [previousView, setPreviousView] = useState<'grid' | 'speaker'>('grid');
 
   // ── PiP State (Mobile Web only, 1-on-1 calls) ──
   const [isPipExpanded, setIsPipExpanded] = useState(false);
@@ -734,11 +739,11 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
           console.log('📞 [Lobby] call.ended received — starting grace period');
           if (endCallGraceTimer.current) clearTimeout(endCallGraceTimer.current);
           endCallGraceTimer.current = setTimeout(() => {
-             console.log('📞 [Lobby] Grace period expired — closing ImmersiveCallView');
-             setCallStatus('ended');
-             cleanup();
-             // ✔️ Clear global activeCall so RootCallOverlay unmounts
-             globalEndCall();
+            console.log('📞 [Lobby] Grace period expired — closing ImmersiveCallView');
+            setCallStatus('ended');
+            cleanup();
+            // ✔️ Clear global activeCall so RootCallOverlay unmounts
+            globalEndCall();
           }, 5000);
         },
         onParticipantUpdate: (data: any) => {
@@ -798,6 +803,30 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
 
     return () => clearInterval(interval);
   }, [callStatus]);
+  
+  // ✅ Screen Share View Synchronization
+  useEffect(() => {
+    if (callStatus !== 'connected') return;
+
+    // Find if anyone is sharing screen
+    const sharingUser = allParticipants.find(p => p.isSharingScreen);
+    
+    if (sharingUser) {
+      // Someone is sharing - switch to speaker view
+      if (selectedView !== 'speaker') {
+        setPreviousView(selectedView);
+        setSelectedView('speaker');
+      }
+      
+      // Feature the sharing user as the primary speaker
+      if (activeSpeaker !== sharingUser.id) {
+        setActiveSpeaker(sharingUser.id);
+      }
+    } else if (selectedView === 'speaker' && previousView === 'grid') {
+      // No one is sharing - if we were forced into speaker mode, switch back
+      setSelectedView('grid');
+    }
+  }, [allParticipants, callStatus]);
 
 
   const formatDuration = useCallback((seconds: number): string => {
@@ -900,7 +929,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
 
 
   // Optimized renderer for participants
-  const renderParticipantTile = useCallback((item: Participant, index: number) => {
+  const renderParticipantTile = useCallback((item: Participant, index: number, isFeatured: boolean = false) => {
     const isLocal = item.id === 'local';
     const isSpeaking = activeSpeaker === item.id;
 
@@ -910,8 +939,8 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
         style={[
           styles.gridItem,
           {
-            width: gridConfig.itemWidth as any,
-            height: gridConfig.itemHeight as any,
+            width: isFeatured ? '100%' : gridConfig.itemWidth as any,
+            height: isFeatured ? '100%' : gridConfig.itemHeight as any,
             // Add spacing adjustment for flex-wrap
             margin: 0,
             borderWidth: 1,
@@ -923,6 +952,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
           participant={item}
           isLocal={isLocal}
           isSpeaking={isSpeaking}
+          isSharingScreen={isLocal ? isSharingScreen : item.isSharingScreen}
           isHandRaised={isLocal ? handRaised : item.handRaised}
           isMuted={item.isMuted}
           hasVideo={item.hasVideo}
@@ -1144,12 +1174,13 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
           isSpeaking={activeSpeaker === mainParticipant.id}
           isMuted={mainParticipant.isMuted}
           hasVideo={mainParticipant.hasVideo}
+          isSharingScreen={mainParticipant.isSharingScreen}
           stream={mainParticipant.stream}
           videoRefs={videoRefs}
           name={mainParticipant.name}
           avatar={mainParticipant.avatar}
         />
-        
+
         {/* WEBRTC AUDIO FIX: Render hidden video elements for all OTHER participants 
             on web, otherwise unmounting their VideoTile kills their audio playback! */}
         {isWeb && allParticipants.filter(p => p.id !== mainParticipant.id && p.id !== 'local' && p.stream).map(p => (
@@ -1235,6 +1266,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
           {[
             { icon: "share-social", label: "Share Screen", onPress: toggleScreenShare, color: isSharingScreen ? "#007AFF" : "#fff" },
             { icon: "hand-left", label: handRaised ? "Lower Hand" : "Raise Hand", onPress: toggleHandRaise, color: handRaised ? "#FFCC00" : "#fff" },
+            { icon: "refresh", label: "Reconnect Connection", onPress: () => webRTCService.reconnectAll(), color: "#4CAF50" },
             ...(!isWeb ? [{ icon: "camera-reverse", label: "Flip Camera", onPress: flipCamera, color: "#fff" }] : []),
           ].map((item, idx) => (
 
@@ -1345,7 +1377,8 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
                   allParticipants.find(p => p.id === activeSpeaker) ||
                   allParticipants.find(p => p.id !== 'local') ||
                   allParticipants[0],
-                  0
+                  0,
+                  true // isFeatured
                 )}
               </View>
               <View style={styles.smallParticipantsContainer}>
@@ -1360,6 +1393,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
                           isSpeaking={activeSpeaker === p.id}
                           isMuted={p.isMuted}
                           hasVideo={p.hasVideo}
+                          isSharingScreen={p.isSharingScreen}
                           stream={p.stream}
                           videoRefs={videoRefs}
                           name={p.name}
@@ -1375,7 +1409,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
       </View>
 
       <Animated.View style={[styles.controlsContainer, { opacity: controlsOpacity, bottom: isMobileWeb ? insets.bottom + 10 : 0 }]}>
-        <BlurView intensity={0} tint="light" style={styles.controlsBlur}>
+        <View style={[styles.controlsBlur, { backgroundColor: 'transparent' }]}>
           <View style={styles.controlsRow}>
             <TouchableOpacity
               style={[
@@ -1428,7 +1462,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
               <Text style={[styles.controlLabel, styles.endCallLabel]}>Leave</Text>
             </TouchableOpacity>
           </View>
-        </BlurView>
+        </View>
       </Animated.View>
 
       {showParticipantsModal && renderParticipantsModal()}
@@ -1444,7 +1478,11 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 50 : 16,
     width: '100%',
     height: '100%',
-    alignSelf: 'center',
+    // Restored flex behavior for visibility
+    ...(Platform.OS === 'web' && !isMobileWeb ? {
+      width: '100vw',
+      height: '100vh',
+    } as any : {})
   },
   header: {
     position: 'absolute',
@@ -1478,7 +1516,14 @@ const styles = StyleSheet.create({
   callDuration: { color: '#4CAF50', fontSize: 12, fontWeight: '500' },
   participantCount: { color: '#999', fontSize: 12, marginLeft: 8 },
   moreButton: { width: 40, height: 40 },
-  content: { flex: 1, backgroundColor: '#000' },
+  content: {
+    flex: 1,
+    backgroundColor: '#000',
+    // Removed destructive centering on root content View
+    ...(Platform.OS === 'web' && !isMobileWeb ? {
+      width: '100vw',
+    } as any : {})
+  },
   waitingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -1515,13 +1560,15 @@ const styles = StyleSheet.create({
   previewMoreText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   gridContainer: {
     flex: 1,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    backgroundColor: '#000'
+    backgroundColor: '#000',
   },
   gridItem: {
     backgroundColor: '#1a1a1a',
-    overflow: 'hidden'
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    margin: isWeb && !isMobileWeb ? 8 : 2, // Gaps between cards
   },
 
   videoTile: { flex: 1, position: 'relative', backgroundColor: '#2a2a2a' },
@@ -1555,12 +1602,35 @@ const styles = StyleSheet.create({
   gridInner: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignContent: 'center',
     width: '100%',
-    height: '100%'
+    minHeight: '100%', // Ensures vertical centering works on widescreen
+    padding: isWeb && !isMobileWeb ? 40 : 4,
+    flexGrow: 1, // Let it fill the ScrollView
   },
-  speakerView: { flex: 1 },
-  largeSpeakerContainer: { flex: 0.7, marginBottom: 8 },
-  smallParticipantsContainer: { height: 120, paddingVertical: 8 },
+  speakerView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    height: '100%',
+    padding: isWeb && !isMobileWeb ? 20 : 0
+  },
+  largeSpeakerContainer: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+    maxHeight: isWeb && !isMobileWeb ? '92%' : '75%'
+  },
+  smallParticipantsContainer: {
+    height: isWeb && !isMobileWeb ? 130 : 120,
+    width: '100%',
+    paddingVertical: 4,
+  },
   smallParticipantTile: { width: 140, height: 100, marginRight: 8, borderRadius: 12, overflow: 'hidden' },
   controlButtonActive: { backgroundColor: 'rgba(255,255,255,0.2)' },
   controlsContainer: { position: 'absolute', bottom: 0, left: 0, right: 0 },

@@ -427,7 +427,7 @@ export const useNotificationStore = create<NotificationStore>()(
           isCallNotification(n.type) &&
           !(n.userId && currentUserId && n.userId == currentUserId)
         );
-        console.log('📞 Getting call notifications:', filtered.length);
+        // console.log('📞 Getting call notifications:', filtered.length);
         return filtered;
       },
 
@@ -438,7 +438,7 @@ export const useNotificationStore = create<NotificationStore>()(
           !(n.userId && currentUserId && n.userId == currentUserId) &&
           !(n.data?.is_system || n.data?.call_log || n.message?.toLowerCase().includes('call') || n.message?.toLowerCase().includes('joined') || n.message?.toLowerCase().includes('left') || n.message?.toLowerCase().includes('created') || n.message?.toLowerCase().includes('updated'))
         );
-        console.log('💬 Getting message notifications:', filtered.length);
+        // console.log('💬 Getting message notifications:', filtered.length);
         return filtered;
       },
 
@@ -448,7 +448,7 @@ export const useNotificationStore = create<NotificationStore>()(
           isSpaceNotification(n.type) &&
           !(n.userId && currentUserId && n.userId == currentUserId)
         );
-        console.log('🌐 Getting space notifications:', filtered.length);
+        // console.log('🌐 Getting space notifications:', filtered.length);
         return filtered;
       },
 
@@ -458,7 +458,7 @@ export const useNotificationStore = create<NotificationStore>()(
           isActivityNotification(n.type) &&
           !(n.userId && currentUserId && n.userId == currentUserId)
         );
-        console.log('✨ Getting activity notifications:', filtered.length);
+        // console.log('✨ Getting activity notifications:', filtered.length);
         return filtered;
       },
 
@@ -473,7 +473,7 @@ export const useNotificationStore = create<NotificationStore>()(
           !isChatbotTrainingNotification(n.type) &&
           !(n.userId && currentUserId && n.userId == currentUserId)
         );
-        console.log('🔔 Getting regular notifications:', filtered.length);
+        // console.log('🔔 Getting regular notifications:', filtered.length);
         return filtered;
       },
 
@@ -1074,14 +1074,14 @@ export const useNotificationStore = create<NotificationStore>()(
       // Getters for filtered notifications
       getFollowerNotifications: () => {
         const { followerNotifications } = get();
-        console.log('👥 Getting follower notifications:', followerNotifications);
+        // console.log('👥 Getting follower notifications:', followerNotifications);
         return followerNotifications;
       },
 
 
       getUnreadFollowerCount: () => {
         const { unreadFollowerCount } = get();
-        console.log('👥 Unread follower count:', unreadFollowerCount);
+        // console.log('👥 Unread follower count:', unreadFollowerCount);
         return unreadFollowerCount;
       },
     }),

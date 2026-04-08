@@ -173,26 +173,66 @@ export default function TabLayout() {
 
           <Tabs
             screenOptions={{
-              tabBarActiveTintColor: (Colors as any)[colorScheme ?? 'light']?.tint,
+              tabBarActiveTintColor: Colors.green,
+              tabBarInactiveTintColor: (Colors as any)[colorScheme ?? 'light']?.icon,
               headerShown: false,
-              tabBarStyle: Platform.select({
-                ios: { position: 'absolute' },
-                default: {},
-              }),
+              tabBarShowLabel: true,
+              tabBarLabelStyle: {
+                fontSize: 10,
+                fontWeight: '600',
+                marginBottom: 4,
+              },
+              tabBarStyle: {
+                position: 'absolute',
+                bottom: Platform.OS === 'ios' ? 30 : 20,
+                left: 16,
+                right: 16,
+                height: 64,
+                borderRadius: 32,
+                backgroundColor: colorScheme === 'dark' ? 'rgba(21, 23, 24, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+                borderTopWidth: 1,
+                borderTopColor: colorScheme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                borderWidth: 1,
+                borderColor: colorScheme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                elevation: 4,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.15,
+                shadowRadius: 12,
+                paddingBottom: 0,
+                overflow: 'hidden',
+              },
+              tabBarItemStyle: {
+                paddingVertical: 8,
+              },
             }}
           >
             <Tabs.Screen
               name="index"
               options={{
                 title: 'Home',
-                tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+                tabBarIcon: ({ color, focused }) => (
+                  <View style={{ alignItems: 'center' }}>
+                    <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
+                      <IconSymbol size={28} name="house.fill" color={color} />
+                    </View>
+                    {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: Colors.green, marginTop: 4 }} />}
+                  </View>
+                ),
               }}
             />
             <Tabs.Screen
               name="chats"
               options={{
                 title: 'Chats',
-                tabBarIcon: ({ color }) => <FontAwesome size={28} name="comments" color={color} />,
+                tabBarIcon: ({ color, focused }) => (
+                  <View style={{ alignItems: 'center' }}>
+                    <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
+                      <FontAwesome size={26} name="comments" color={color} />
+                    </View>
+                    {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: Colors.green, marginTop: 4 }} />}
+                  </View>
+                ),
                 tabBarBadge: totalUnreadSpaces > 0 ? totalUnreadSpaces : undefined,
               }}
             />
@@ -200,22 +240,43 @@ export default function TabLayout() {
               name="market"
               options={{
                 title: 'Market',
-                tabBarIcon: ({ color }) => <FontAwesome size={28} name="shopping-basket" color={color} />,
+                tabBarIcon: ({ color, focused }) => (
+                  <View style={{ alignItems: 'center' }}>
+                    <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
+                      <FontAwesome size={26} name="shopping-basket" color={color} />
+                    </View>
+                    {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: Colors.green, marginTop: 4 }} />}
+                  </View>
+                ),
               }}
             />
             <Tabs.Screen
               name="chatbot"
               options={{
                 title: 'Chatbot',
-                tabBarIcon: ({ color }) => <FontAwesome size={28} name="android" color={color} />,
+                tabBarIcon: ({ color, focused }) => (
+                  <View style={{ alignItems: 'center' }}>
+                    <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
+                      <FontAwesome size={26} name="android" color={color} />
+                    </View>
+                    {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: Colors.green, marginTop: 4 }} />}
+                  </View>
+                ),
               }}
             />
             <Tabs.Screen
               name="settings"
               options={{
                 title: 'Settings',
-                tabBarIcon: ({ color }) => <FontAwesome size={28} name="gear" color={color} />,
-                tabBarBadge: (unreadCallCount || 0) + (unreadModerationCount || 0) > 0 ? (unreadCallCount || 0) + (unreadModerationCount || 0) : undefined,
+                tabBarIcon: ({ color, focused }) => (
+                  <View style={{ alignItems: 'center' }}>
+                    <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
+                      <FontAwesome size={26} name="gear" color={color} />
+                    </View>
+                    {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: Colors.green, marginTop: 4 }} />}
+                  </View>
+                ),
+                tabBarBadge: (unreadModerationCount || 0) > 0 ? unreadModerationCount : undefined,
               }}
             />
 

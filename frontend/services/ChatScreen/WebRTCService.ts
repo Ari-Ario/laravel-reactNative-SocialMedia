@@ -58,6 +58,9 @@ class WebRTCService {
   private onMuteStateChangedCallback: ((userId: string, isMuted: boolean) => void) | null = null;
   private onVideoStateChangedCallback: ((userId: string, hasVideo: boolean) => void) | null = null;
   private onHandRaisedCallback: ((userId: string, isRaised: boolean) => void) | null = null;
+  private isMobileNetwork: boolean = false;
+  private connectionHealthTimers: Map<string, any> = new Map();
+  private retryCount: Map<string, number> = new Map();
 
   private knownParticipants = new Set<number>();
   // Tracks peers for whom an offer has been *scheduled* (setTimeout fired but not yet created a PC).
@@ -72,31 +75,28 @@ class WebRTCService {
 
   private iceServers = {
     iceServers: [
-      // Google STUN servers — fast but only work on direct-connectable networks
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
       { urls: 'stun:stun2.l.google.com:19302' },
       { urls: 'stun:stun3.l.google.com:19302' },
       { urls: 'stun:stun4.l.google.com:19302' },
-      // Metered.ca free TURN — authenticated, more reliable than openrelay for carrier NAT
+      // Metered.ca TURN with TCP fallback
       {
-        urls: 'turn:relay.metered.ca:80',
-        username: 'e29e254c0f8dd6a79e02e27f',
-        credential: 'yv2vWAMF9ctoJoLv',
-      },
-      {
-        urls: 'turns:relay.metered.ca:443?transport=tcp',
+        urls: [
+          'turn:relay.metered.ca:80?transport=tcp',
+          'turn:relay.metered.ca:443?transport=tcp',
+          'turns:relay.metered.ca:443?transport=tcp'
+        ],
         username: 'e29e254c0f8dd6a79e02e27f',
         credential: 'yv2vWAMF9ctoJoLv',
       },
       // OpenRelay Fallback
       {
-        urls: 'turn:openrelay.metered.ca:80',
-        username: 'openrelayproject',
-        credential: 'openrelayproject',
-      },
-      {
-        urls: 'turns:openrelay.metered.ca:443?transport=tcp',
+        urls: [
+          'turn:openrelay.metered.ca:80?transport=tcp',
+          'turn:openrelay.metered.ca:443?transport=tcp',
+          'turns:openrelay.metered.ca:443?transport=tcp'
+        ],
         username: 'openrelayproject',
         credential: 'openrelayproject',
       },
@@ -110,8 +110,50 @@ class WebRTCService {
   static getInstance(): WebRTCService {
     if (!WebRTCService.instance) {
       WebRTCService.instance = new WebRTCService();
+      WebRTCService.instance.detectNetworkType();
     }
     return WebRTCService.instance;
+  }
+
+  async detectNetworkType(): Promise<void> {
+    if (Platform.OS === 'web') {
+      const nav = navigator as any;
+      if (nav.connection) {
+        const conn = nav.connection;
+        this.isMobileNetwork = ['cellular', '4g', '3g', '2g'].includes(conn.effectiveType) || conn.saveData === true;
+        
+        conn.addEventListener('change', () => {
+          const oldType = this.isMobileNetwork;
+          const newIsMobile = ['cellular', '4g', '3g', '2g'].includes(conn.effectiveType);
+          
+          if (oldType !== newIsMobile) {
+            console.log(`🔄 Network handover detected: ${oldType ? 'Mobile' : 'WiFi'} → ${newIsMobile ? 'Mobile' : 'WiFi'}`);
+            this.isMobileNetwork = newIsMobile;
+            
+            // Restart all peer connections to negotiate optimized paths for the new interface
+            this.peerConnections.forEach((_, peerId) => {
+              this.retryWithFallbackServers(peerId);
+            });
+          } else {
+            this.applyBitrateToAllPeers();
+          }
+        });
+      } else if (/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+        // Safari / iOS Fallback
+        this.isMobileNetwork = true;
+      }
+    } else {
+      // Native (iOS/Android) — assume potentially mobile if not on WiFi would be ideal
+      // but react-native-netinfo would be needed. For now assume conservative.
+      this.isMobileNetwork = true; 
+    }
+    console.log(`📞 Mobile network detection completed: ${this.isMobileNetwork}`);
+  }
+
+  private applyBitrateToAllPeers() {
+    this.peerConnections.forEach((pc, peerId) => {
+      this.applyBitrateLimit(pc, peerId);
+    });
   }
 
   async initialize(userId: number) {
@@ -135,22 +177,27 @@ class WebRTCService {
   // Max encoder bitrate applied via RTCRtpSender.setParameters() after ICE connects.
   // This is a soft ceiling — the encoder stays below this under normal conditions.
   private static readonly BITRATE_CAPS = {
-    video: { web: 1200_000, native: 500_000 }, // bps — web can handle more (desktop CPU)
+    video: { web: 1200_000, native: 300_000 }, // bps — native/mobile down to 300k for 4G stability
     audio: { web:   64_000, native:  32_000 }, // bps — Opus is very efficient
   };
 
   async getLocalStream(
     videoEnabled: boolean = true,
     audioEnabled: boolean = true,
-    qualityProfile: 'medium' | 'low' = 'medium'
+    qualityProfile: 'medium' | 'low' | 'auto' = 'auto'
   ): Promise<MediaStream | null> {
+    // Determine profile if 'auto'
+    const actualProfile = qualityProfile === 'auto' 
+      ? (this.isMobileNetwork ? 'low' : 'medium')
+      : qualityProfile;
+
     if (this.localStream) {
       this.localStream.getVideoTracks().forEach(track => { track.enabled = videoEnabled; });
       this.localStream.getAudioTracks().forEach(track => { track.enabled = audioEnabled; });
       return this.localStream;
     }
 
-    const videoConstraints = WebRTCService.VIDEO_CONSTRAINTS[qualityProfile];
+    const videoConstraints = WebRTCService.VIDEO_CONSTRAINTS[actualProfile as 'medium' | 'low'];
 
     try {
       console.log(`📞 Acquiring MediaStream — platform: ${Platform.OS}, quality: ${qualityProfile}`);
@@ -208,8 +255,8 @@ class WebRTCService {
    */
   private async applyBitrateLimit(peerConnection: any, peerId: string): Promise<void> {
     try {
-      const isMobileWeb = Platform.OS === 'web' && typeof navigator !== 'undefined' && /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(navigator.userAgent.toLowerCase());
-      const isDesktopWeb = Platform.OS === 'web' && !isMobileWeb;
+      const isMobile = this.isMobileNetwork || (Platform.OS === 'web' && /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(navigator.userAgent.toLowerCase()));
+      const isDesktopWeb = Platform.OS === 'web' && !isMobile;
 
       const senders: any[] = peerConnection.getSenders ? peerConnection.getSenders() : [];
       for (const sender of senders) {
@@ -227,6 +274,18 @@ class WebRTCService {
         params.encodings.forEach((enc: any) => {
           enc.maxBitrate = capBps;
         });
+
+        // Optimization: Jitter Buffer / Degradation Preference for mobile
+        if (this.isMobileNetwork || isMobile) {
+          if (kind === 'audio') {
+             // For audio, we prioritize fluidity/framerate-equivalence (no drops)
+             (params as any).degradationPreference = 'maintain-framerate';
+          } else {
+             // For video on mobile, we prioritize resolution over framerate to avoid pixelation
+             (params as any).degradationPreference = 'maintain-resolution';
+          }
+        }
+
         await sender.setParameters(params);
       }
       console.log(`📞 Bitrate caps applied for peer ${peerId} (video: ${isDesktopWeb ? '1200' : '500'}kbps, audio: ${isDesktopWeb ? '64' : '32'}kbps)`);
@@ -359,6 +418,14 @@ class WebRTCService {
         const leftUserId = parseInt(data.user_id?.toString() || '0', 10);
         console.log('👤 Participant left call:', leftUserId);
         this.handleParticipantLeft(leftUserId);
+      },
+      onScreenShareStarted: (userId: string) => {
+        console.log(`📡 Signal: Screen share started by ${userId}`);
+        if (this.onScreenShareStartedCallback) this.onScreenShareStartedCallback(userId);
+      },
+      onScreenShareEnded: (userId: string) => {
+        console.log(`📡 Signal: Screen share ended by ${userId}`);
+        if (this.onScreenShareEndedCallback) this.onScreenShareEndedCallback(userId);
       }
     });
 
@@ -647,6 +714,14 @@ class WebRTCService {
     const peerConnection = new RTC_PeerConnection(pcConfig);
     this.peerConnections.set(peerId, peerConnection);
 
+    // Watchdog for ICE establishment
+    let iceWatchdog: NodeJS.Timeout | null = setTimeout(() => {
+      if (peerConnection.iceConnectionState === 'checking' || peerConnection.iceConnectionState === 'new') {
+        console.warn(`⚠️ ICE watchdog triggered for ${peerId} (stuck in ${peerConnection.iceConnectionState}) — forcing TURN relay fallback`);
+        this.retryWithFallbackServers(peerId);
+      }
+    }, 10000);
+
     peerConnection.onicecandidate = (event: any) => {
       if (event.candidate && this.spaceId && this.callId) {
         this.sendSignal(parseInt(peerId), 'ice-candidate', {
@@ -693,12 +768,17 @@ class WebRTCService {
       console.log(`📞 ICE connection state with ${peerId}:`, state);
 
       if (state === 'connected' || state === 'completed') {
+        if (iceWatchdog) {
+          clearTimeout(iceWatchdog);
+          iceWatchdog = null;
+        }
         iceFailRetryCount = 0;
         console.log(`✅ ICE connected for ${peerId} - media should flow`);
         // Apply bitrate caps immediately after ICE connects.
-        // This prevents the encoder from saturating a mobile data link during the
-        // first seconds of the call before the network stack self-regulates.
         this.applyBitrateLimit(peerConnection, peerId);
+        
+        // Start monitoring media flow health
+        this.startConnectionHealthCheck(peerId, peerConnection);
       }
 
       // Restart on 'failed' or 'disconnected' because mobile networks
@@ -1049,24 +1129,95 @@ class WebRTCService {
     this.spaceId = null;
     this.callId = null;
     this.knownParticipants.clear();
+    
+    // Clear health timers
+    this.connectionHealthTimers.forEach(timer => clearInterval(timer));
+    this.connectionHealthTimers.clear();
+    this.retryCount.clear();
+  }
+
+  private startConnectionHealthCheck(peerId: string, peerConnection: any) {
+    if (this.connectionHealthTimers.has(peerId)) {
+      clearInterval(this.connectionHealthTimers.get(peerId));
+    }
+
+    let lastBytesReceived = 0;
+    let stallCount = 0;
+
+    const interval = setInterval(async () => {
+      try {
+        if (peerConnection.connectionState === 'closed') {
+          clearInterval(interval);
+          return;
+        }
+
+        const stats = await peerConnection.getStats();
+        let currentBytes = 0;
+        
+        stats.forEach((report: any) => {
+          if (report.type === 'inbound-rtp' && report.kind === 'video') {
+            currentBytes = report.bytesReceived || 0;
+          }
+        });
+
+        if (currentBytes > 0 && currentBytes === lastBytesReceived) {
+          stallCount++;
+          if (stallCount >= 5) { // 10s stalled
+            console.warn(`⚠️ Media flow stalled for ${peerId} — forcing recovery restart`);
+            clearInterval(interval);
+            
+            if (this.isMobileNetwork && (this.retryCount.get(peerId) || 0) >= 2) {
+               this.fallbackToAudioOnly(peerId);
+            }
+            
+            this.retryWithFallbackServers(peerId);
+          }
+        } else {
+          stallCount = 0;
+        }
+        lastBytesReceived = currentBytes;
+      } catch (e) {
+        console.warn(`⚠️ Health check failed for ${peerId}:`, e);
+      }
+    }, 2000);
+
+    this.connectionHealthTimers.set(peerId, interval);
   }
 
   private async retryWithFallbackServers(peerId: string) {
-    console.log(`🔄 Retrying connection with fallback ICE servers for ${peerId}...`);
+    const attempts = (this.retryCount.get(peerId) || 0) + 1;
+    this.retryCount.set(peerId, attempts);
 
-    const fallbackIceServers = {
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        // Force TURN relay
-        { 
-          urls: 'turn:openrelay.metered.ca:80',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        }
-      ],
-      iceTransportPolicy: 'relay' as RTCIceTransportPolicy // Force TURN relay
-    };
+    if (attempts > 4) {
+      console.error(`❌ Max retries (4) exceeded for ${peerId} — giving up`);
+      this.handleParticipantLeft(parseInt(peerId));
+      return;
+    }
+
+    // Exponential backoff: 1s, 2s, 4s...
+    const backoff = Math.pow(2, attempts - 1) * 1000;
+    console.log(`🔄 Retrying connection for ${peerId} (Attempt ${attempts}/4) in ${backoff}ms...`);
+
+    await new Promise(resolve => setTimeout(resolve, backoff));
+
+    // Fallback Policies:
+    // Attempt 1-2: Normal Relay
+    // Attempt 3: Forced Relay (Only TURN)
+    // Attempt 4: STUN Only (Last resort if TURN is blocked)
+    
+    let currentIceConfig = { ...this.iceServers };
+    
+    if (attempts === 3) {
+      console.log(`🔄 Attempt 3: Forcing RELAY-ONLY policy for ${peerId}`);
+      currentIceConfig.iceTransportPolicy = 'relay';
+    } else if (attempts === 4) {
+      console.log(`🔄 Attempt 4: Falling back to STUN-ONLY (Last Resort) for ${peerId}`);
+      currentIceConfig = {
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+        iceCandidatePoolSize: 10,
+        iceTransportPolicy: 'all' as RTCIceTransportPolicy
+      };
+    }
 
     const oldConnection = this.peerConnections.get(peerId);
     if (oldConnection) {
@@ -1074,14 +1225,12 @@ class WebRTCService {
       this.peerConnections.delete(peerId);
     }
 
-    // Recreate offer logic for this peer
+    // Recreate 
     const targetUserId = parseInt(peerId, 10);
     if (targetUserId) {
-        // Create new connection with forced relay policy
-        const newConnection = new RTC_PeerConnection(fallbackIceServers);
+        const newConnection = new RTC_PeerConnection(currentIceConfig);
         this.peerConnections.set(peerId, newConnection);
         
-        // standard setup
         newConnection.onicecandidate = (event: any) => {
             if (event.candidate && this.spaceId && this.callId) {
                 this.sendSignal(targetUserId, 'ice-candidate', { candidate: event.candidate });
@@ -1089,19 +1238,64 @@ class WebRTCService {
         };
 
         newConnection.ontrack = (event: any) => {
-            if (this.onRemoteStreamCallback && event.streams?.[0]) {
-                this.onRemoteStreamCallback(peerId, event.streams[0]);
+            const stream = event.streams && event.streams[0];
+            if (this.onRemoteStreamCallback && stream) {
+                this.onRemoteStreamCallback(peerId, stream);
             }
+        };
+        
+        // Native compatibility
+        (newConnection as any).onaddstream = (event: any) => {
+          if (this.onRemoteStreamCallback && event.stream) {
+            this.onRemoteStreamCallback(peerId, event.stream);
+          }
         };
 
         if (this.localStream) {
             this.localStream.getTracks().forEach(track => newConnection.addTrack(track, this.localStream!));
         }
 
-        const offer = await newConnection.createOffer();
-        await newConnection.setLocalDescription(offer);
-        await this.sendSignal(targetUserId, 'offer', { offer });
+        try {
+          const offer = await newConnection.createOffer();
+          await newConnection.setLocalDescription(offer);
+          this.sendSignal(targetUserId, 'offer', { offer });
+          
+          // Restart health tracking for new connection
+          this.startConnectionHealthCheck(peerId, newConnection);
+        } catch (e) {
+          console.error(`❌ Fallback offer creation failed for ${peerId}:`, e);
+        }
     }
+  }
+
+  public reconnectAll() {
+    console.log('🔄 Manual reconnect requested for all peers...');
+    this.peerConnections.forEach((_, peerId) => {
+      this.retryWithFallbackServers(peerId);
+    });
+  }
+
+  private async fallbackToAudioOnly(peerId: string): Promise<void> {
+    console.log(`🎙️ Bandwidth CRITICAL: Falling back to audio-only for ${peerId}`);
+    
+    const pc = this.peerConnections.get(peerId);
+    if (!pc) return;
+
+    const videoSender = pc.getSenders?.().find((s: any) => s.track?.kind === 'video');
+    if (videoSender) {
+        // We "disable" video by removing the track but keeping the sender active 
+        // to avoid renegotiation if possible, or we can just disable the local track.
+        if (this.localStream) {
+            const track = this.localStream.getVideoTracks()[0];
+            if (track) track.enabled = false;
+        }
+    }
+
+    if (this.onVideoStateChangedCallback) {
+      this.onVideoStateChangedCallback(peerId, false);
+    }
+    
+    // Alert the user via CollaborationService/UI if needed (handled in UI via callback)
   }
 
   private normalizeSDP(sdp: string): string {

@@ -845,7 +845,11 @@ class CollaborationService {
         'mute-state-changed': (data: any) => callbacks.onMuteStateChanged?.(data),
         'video-state-changed': (data: any) => callbacks.onvideoStateChanged?.(data),
         'screen-share-toggled': (data: any) => {
-          callbacks.onScreenShareStarted?.(data.user_id);
+          if (data.is_sharing) {
+            callbacks.onScreenShareStarted?.(data.user_id?.toString());
+          } else {
+            callbacks.onScreenShareEnded?.(data.user_id?.toString());
+          }
           callbacks.onScreenShareToggled?.(data);
         },
         // ✅ ACTIVITY EVENTS

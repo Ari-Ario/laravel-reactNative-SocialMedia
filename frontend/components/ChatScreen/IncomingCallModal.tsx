@@ -15,6 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCall } from '@/context/CallContext';
 import Avatar from '@/components/Image/Avatar';
 import { createShadow } from '@/utils/styles';
+import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
+import * as Haptics from 'expo-haptics';
 
 const { width, height } = Dimensions.get('window');
 
@@ -37,9 +39,67 @@ export const IncomingCallModal: React.FC = () => {
   const ring2Scale = useRef(new Animated.Value(1)).current;
   const ring2Alpha = useRef(new Animated.Value(0.4)).current;
 
+  // ─── Modern Audio (Zen Temple) ─────────────────────────────────────────────
+  // NOTE: This URL is a high-quality meditation bell Gong. 
+  // If you experience CORS issues on web, please download this file to your local assets/sounds folder.
+  const zenTempleChime = 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3'; 
+  const player = useAudioPlayer(zenTempleChime);
+
   useEffect(() => {
+    let hapticInterval: NodeJS.Timeout | null = null;
+
     if (incomingCall && isRinging) {
-      // Slide in
+      // 1. Configure Audio Mode for Ringing (Override Silent Switch)
+      const setupAudio = async () => {
+        try {
+          await setAudioModeAsync({
+            playsInSilentMode: true,
+            shouldPlayInBackground: true,
+            allowsRecording: false,
+            interruptionMode: 'doNotMix',
+            interruptionModeAndroid: 'doNotMix',
+            shouldRouteThroughEarpiece: false,
+          });
+        } catch (e) {
+          console.warn("Audio Mode setup failed:", e);
+        }
+      };
+      
+      setupAudio();
+
+      // 2. Start Audio Loop
+      const playRingtone = async () => {
+        try {
+          if (player) {
+            player.loop = true;
+            await player.play();
+            console.log("🔔 Zen ringtone playing");
+          }
+        } catch (e: any) {
+          // On Web, autoplay is often blocked until first user interaction.
+          // We catch this error to prevent the app from crashing.
+          console.warn("Ringtone playback blocked or failed:", e.message);
+        }
+      };
+
+      playRingtone();
+
+      // 3. Zen Temple Haptic Pulse (Sync with Bell Gong)
+      const triggerZenHaptic = async () => {
+        try {
+          if (Platform.OS !== 'web') {
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            // Harmonic ripple pulses
+            setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light), 200);
+            setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light), 400);
+          }
+        } catch (e) {}
+      };
+
+      triggerZenHaptic();
+      hapticInterval = setInterval(triggerZenHaptic, 3000); // Pulse every 3s (harmonic interval)
+
+      // 4. Slide in UI
       Animated.spring(slideAnim, {
         toValue: 0,
         useNativeDriver: true,
@@ -48,7 +108,7 @@ export const IncomingCallModal: React.FC = () => {
         stiffness: 120,
       }).start();
 
-      // Pulsing accept-button scale
+      // 5. Pulsing accept-button scale
       const pulseLoop = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, { toValue: 1.12, duration: 550, useNativeDriver: true }),
@@ -88,11 +148,18 @@ export const IncomingCallModal: React.FC = () => {
       ring2Loop.start();
 
       return () => {
+        player.pause();
+        if (hapticInterval) clearInterval(hapticInterval);
         pulseLoop.stop();
         ringLoop.stop();
         ring2Loop.stop();
       };
     } else {
+      // Cleanup Audio when not ringing
+      if (player.playing) {
+        player.pause();
+      }
+      
       // Slide out
       Animated.spring(slideAnim, {
         toValue: height + 200,
@@ -101,7 +168,7 @@ export const IncomingCallModal: React.FC = () => {
         mass: 1,
       }).start();
     }
-  }, [incomingCall, isRinging]);
+  }, [incomingCall, isRinging, player]);
 
   // Don't render at all if no call
   if (!incomingCall || !isRinging) return null;

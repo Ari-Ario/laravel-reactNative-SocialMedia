@@ -25,10 +25,8 @@ use Illuminate\Support\Facades\Notification;
 use App\Http\Controllers\Controller;
 use App\Events\NewComment;
 use App\Events\NewReaction;
-use App\Events\NewCommentReaction;
+use App\Events\ReactionDeleted;
 use App\Events\CommentDeleted;
-use App\Events\DeleteReactionComment;
-use App\Events\DeleteReaction;
 use App\Events\PostDeleted;
 use App\Events\NewPost;
 use App\Events\PostUpdated;
@@ -545,7 +543,7 @@ class PostController extends Controller
                 'user_id' => Auth::id(),
                 'post_id' => $post->id,
                 'parent_id' => $request->parent_id,
-                'content' => $request->content
+                'content' => $request->input('content')
             ]);
 
             $comment->load('user', 'replies');
@@ -622,13 +620,17 @@ class PostController extends Controller
 
     public function deleteReaction(Request $request, $postId)
     {
-        $user = auth()->user();
+        $userId = auth()->id();
         
-        // Delete all reactions from this user for this post
+        // Delete reactions from this user for this post
         $deleted = Reaction::where([
-            'user_id' => $user->id,
+            'user_id' => $userId,
             'post_id' => $postId
         ])->delete();
+
+        // Broadcast to all clients for real-time sync (Device B)
+        // Note: we broadcast even if $deleted was 0 if the user state says it should be gone
+        broadcast(new ReactionDeleted($postId, $userId))->toOthers();
 
         // Get updated reaction counts
         $post = Post::withCount('reactions')
@@ -639,7 +641,7 @@ class PostController extends Controller
             ->findOrFail($postId);
 
         return response()->json([
-            'success' => $deleted > 0,
+            'success' => true, // Decisively true as the resource is gone
             'reaction_counts' => $post->reactions,
             'reaction_comments_count' => $post->reactions_count
         ]);
@@ -647,13 +649,18 @@ class PostController extends Controller
 
     public function deleteCommentReaction(Request $request, $commentId)
     {
-        $user = auth()->user();
+        $userId = auth()->id();
         
-        // Delete all reactions from this user for this comment
+        $comment = Comment::findOrFail($commentId);
+
+        // Delete reactions from this user for this comment
         $deleted = ReactionComment::where([
-            'user_id' => $user->id,
+            'user_id' => $userId,
             'comment_id' => $commentId
         ])->delete();
+
+        // Broadcast specifically with commentId
+        broadcast(new ReactionDeleted($comment->post_id, $userId, $commentId))->toOthers();
 
         // Get updated comment with reactions
         $comment = Comment::withCount('reaction_comments')
@@ -664,7 +671,7 @@ class PostController extends Controller
             ->findOrFail($commentId);
 
         return response()->json([
-            'success' => $deleted > 0,
+            'success' => true,
             'reaction_counts' => $comment->reaction_comments,
             'reaction_comments_count' => $comment->reaction_comments_count
         ]);
@@ -680,11 +687,12 @@ class PostController extends Controller
 
             $post = Post::findOrFail($postId); // Load post to get user_id
             $comment->delete();
+            
+            // ✅ ALWAYS BROADCAST GLOBLALLY: Ensure other users remove the comment from their screen in real-time
+            broadcast(new CommentDeleted($postId, $commentId, $post->user_id))->toOthers();
 
             if ($post->user_id != auth()->id()) {
-                $postOwner = User::findOrFail($post->user_id);
-                broadcast(new CommentDeleted($postId, $commentId, $post->user_id))->toOthers();
-                \Log::info('✅ Comment deletion notification sent', [
+                \Log::info('✅ Comment deletion notification triggered for post owner', [
                     'post_owner_id' => $post->user_id,
                     'comment_id' => $commentId,
                 ]);
@@ -882,8 +890,8 @@ class PostController extends Controller
             'allowed_collaborators.*' => 'exists:users,id',
         ]);
         
-        // Create collaboration space for the post
-        $spaceController = new SpaceController();
+        // ✅ CORRECT: Resolve SpaceController from container to handle its service dependencies
+        $spaceController = app(SpaceController::class);
         $space = $spaceController->createSpaceFromPost($post, $request->all());
         
         // Update post
@@ -943,7 +951,7 @@ class PostController extends Controller
         // If post is collaborative, notify space
         if ($post->linked_project_id) {
             // Trigger event in space
-            event(new VoiceAnnotationAdded($post, $user));
+            // event(new VoiceAnnotationAdded($post, $user)); // Event class does not exist
         }
         
         return response()->json([
@@ -996,5 +1004,26 @@ class PostController extends Controller
             'original' => $post,
             'message' => 'Branch created successfully'
         ]);
+    }
+
+    /**
+     * Internal helper to apply caption transformations for branching
+     */
+    private function applyChanges($original, $changes)
+    {
+        if (!is_array($changes)) return $original;
+        
+        $newContent = $original;
+        
+        // If a direct caption change is provided
+        if (isset($changes['caption']['new'])) {
+            $newContent = $changes['caption']['new'];
+        }
+        // Fallback for generic 'content' or 'new_content' fields
+        elseif (isset($changes['content'])) {
+            $newContent = $changes['content'];
+        }
+
+        return $newContent;
     }
 }

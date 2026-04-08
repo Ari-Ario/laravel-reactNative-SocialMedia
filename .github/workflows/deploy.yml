@@ -10,4 +10,12 @@ jobs:
     steps:
       - name: Trigger Forge Deployment
         run: |
-          curl -X GET "${{ secrets.FORGE_DEPLOYMENT_TRIGGER_URL }}"
+          if [ -z "${{ secrets.FORGE_DEPLOYMENT_TRIGGER_URL }}" ]; then
+            echo "⚠️ FORGE_DEPLOYMENT_TRIGGER_URL secret is not set in GitHub Settings > Secrets."
+            echo "If you have Quick Deploy enabled on Laravel Forge, this is expected and the deployment will still happen automatically."
+            exit 0
+          fi
+          
+          echo "🚀 Triggering deployment on Laravel Forge..."
+          curl -fsSL "${{ secrets.FORGE_DEPLOYMENT_TRIGGER_URL }}"
+          echo "✅ Deployment trigger sent successfully."

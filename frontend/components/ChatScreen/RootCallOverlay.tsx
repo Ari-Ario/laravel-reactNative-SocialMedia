@@ -14,6 +14,11 @@ import { useCall } from '@/context/CallContext';
 import ImmersiveCallView from './ImmersiveCallView';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
+const isMobileWeb = isWeb &&
+  typeof window !== 'undefined' &&
+  window.innerWidth <= 768;
+
 const MINIMIZED_WIDTH = Platform.OS === 'web' ? 320 : 150;
 const MINIMIZED_HEIGHT = Platform.OS === 'web' ? 180 : 220;
 
@@ -145,6 +150,14 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#000',
     zIndex: 9998,
+    // Fix desktop web starting position and ensure fullscreen
+    ...(Platform.OS === 'web' && typeof window !== 'undefined' && window.innerWidth > 768 ? {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100vw',
+      height: '100vh',
+    } as any : {})
   },
   minimizedContainer: {
     position: 'absolute',

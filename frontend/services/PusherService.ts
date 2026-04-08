@@ -9,6 +9,8 @@ class PusherService {
   private channels: Map<string, any> = new Map();
   private isInitialized = false;
   private connectionAttempts = 0;
+  private maxReconnectAttempts = 8;
+  private reconnectTimer: NodeJS.Timeout | null = null;
   private maxConnectionAttempts = 3;
   private pendingSubscriptions: Array<() => void> = []; // ✅ Queue for early subscriptions
   private onConnectedCallbacks: Array<() => void> = []; // ✅ Callbacks for reconnection/initial connection
@@ -204,6 +206,7 @@ class PusherService {
         this.pusher?.connection.bind('disconnected', () => {
           console.log('🔌 Pusher disconnected');
           this.isInitialized = false;
+          this.handleReconnection();
         });
       }).catch((err: any) => {
         console.error('❌ Failed to load pusher-js:', err);
@@ -215,6 +218,28 @@ class PusherService {
       this.isInitialized = false;
       return false;
     }
+  }
+
+  private handleReconnection() {
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    
+    if (this.connectionAttempts >= this.maxReconnectAttempts) {
+      console.error('❌ Pusher: Max reconnection attempts reached');
+      return;
+    }
+
+    this.connectionAttempts++;
+    // Exponential backoff: 1s, 2s, 4s, 8s, 16s... capped at 30s
+    const delay = Math.min(1000 * Math.pow(2, this.connectionAttempts - 1), 30000);
+    
+    console.log(`🔄 Pusher: Reconnecting in ${delay}ms (attempt ${this.connectionAttempts}/${this.maxReconnectAttempts})`);
+    
+    this.reconnectTimer = setTimeout(() => {
+      if (!this.isInitialized && this.pusher) {
+        console.log('🔄 Pusher: Attempting to connect...');
+        this.pusher.connect();
+      }
+    }, delay);
   }
 
   /**
@@ -381,23 +406,9 @@ class PusherService {
         onNotification(notification);
       });
 
-      // ✅ ADDED: Comment deleted
-      channel.bind('comment-deleted', (data: any) => {
-        console.log('🗑️ Comment deleted notification:', data);
-
-        const notification = {
-          type: 'comment_deleted',
-          title: 'Comment Deleted',
-          message: data.message || 'A comment was deleted',
-          data: data,
-          postId: data.postId,
-          commentId: data.commentId,
-          createdAt: new Date()
-        };
-
-        console.log('🗑️ SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification);
-      });
+      // ✅ DELETED: Comment deleted notification binding
+      // Reason: This was causing a redundant "dropdown" toast. 
+      // The actual UI update is already handled by the global channel subscription in PostStore.
 
       channel.bind('chatbot-training-needed', (data: any) => {
         console.log('🤖 Chatbot training notification (user channel):', data);
@@ -941,12 +952,13 @@ class PusherService {
     onNewPost: (data: any) => void,
     onPostUpdated: (data: any) => void,
     onPostDeleted: (data: any) => void,
-    onCommentDeleted: (data: any) => void
+    onCommentDeleted: (data: any) => void,
+    onReactionDeleted: (data: any) => void
   ): boolean {
     if (!this.pusher || !this.isInitialized) {
       console.log('⏳ Pusher not ready. Queuing posts subscription.');
       this.pendingSubscriptions.push(() =>
-        this.subscribeToPosts(postIds, onNewComment, onNewReaction, onCommentReaction, onNewPost, onPostUpdated, onPostDeleted, onCommentDeleted)
+        this.subscribeToPosts(postIds, onNewComment, onNewReaction, onCommentReaction, onNewPost, onPostUpdated, onPostDeleted, onCommentDeleted, onReactionDeleted)
       );
       return true;
     }
@@ -1004,6 +1016,12 @@ class PusherService {
         onCommentDeleted(data);
       });
 
+      // Reaction Deletions
+      channel.bind('reaction-deleted', (data: any) => {
+        console.log('❌ Global channel: reaction deletion received:', data.postId);
+        onReactionDeleted(data);
+      });
+
       // Chatbot Training (if relevant to posts)
       channel.bind('chatbot-training-needed', (data: any) => {
         console.log('🤖 Global channel: Chatbot training needed');
@@ -1035,7 +1053,8 @@ class PusherService {
     onNewPost: (data: any) => void,
     onPostUpdated: (data: any) => void,
     onPostDeleted: (data: any) => void,
-    onCommentDeleted: (data: any) => void
+    onCommentDeleted: (data: any) => void,
+    onReactionDeleted: (data: any) => void
   ): boolean {
     // First unsubscribe from old channel
     this.unsubscribeFromChannel('posts-global');
@@ -1049,7 +1068,8 @@ class PusherService {
       onNewPost,
       onPostUpdated,
       onPostDeleted,
-      onCommentDeleted
+      onCommentDeleted,
+      onReactionDeleted
     );
   }
 
@@ -1339,8 +1359,6 @@ class PusherService {
 
       if (this.channels.has(channelName)) {
         console.log(`ℹ️ Already subscribed to global stories channel`);
-        // If already subscribed, we still want to bind the callbacks if they are new, 
-        // but for now we assume they are passed once at the layout level.
         return true;
       }
 

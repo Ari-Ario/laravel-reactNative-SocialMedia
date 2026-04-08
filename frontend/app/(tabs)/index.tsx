@@ -365,11 +365,13 @@ const HomePage = () => {
                 />
             ) : null}
 
-            <FollowersPanel
+            {isFollowersPanelVisible && (
+              <FollowersPanel
                 visible={isFollowersPanelVisible}
                 onClose={() => setIsFollowersPanelVisible(false)}
                 anchorPosition={followersAnchor}
-            />
+              />
+            )}
 
             {/* Header */}
             <View style={styles.header}>

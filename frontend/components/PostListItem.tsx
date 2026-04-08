@@ -13,7 +13,9 @@ import {
   Alert,
   Dimensions,
   Platform,
-  Pressable
+  Pressable,
+  KeyboardAvoidingView,
+  ActivityIndicator
 } from 'react-native';
 import { Ionicons, Feather, AntDesign } from '@expo/vector-icons';
 import { useContext, useState, useMemo } from 'react';
@@ -412,25 +414,44 @@ export default function PostListItem({
               )}
             </ScrollView>
 
-            {/* Comment input */}
-            <View style={styles.commentInputContainer}>
-              <TextInput
-                style={styles.commentInput}
-                placeholder={
-                  service.replyingTo ? "Replying to comment..." : "Write a comment..."
-                }
-                value={service.commentText}
-                onChangeText={service.setCommentText}
-                multiline
-              />
-              <TouchableOpacity
-                style={styles.commentSubmitButton}
-                onPress={() => { submitComment(); }}
-                disabled={!service.commentText.trim()}
-              >
-                <Text style={styles.commentSubmitText}>Post</Text>
-              </TouchableOpacity>
-            </View>
+            {/* Comment input area with Keyboard Avoiding logic */}
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+              style={styles.commentInputWrapper}
+            >
+              <View style={styles.commentInputContainer}>
+                <TextInput
+                  style={styles.commentInput}
+                  placeholder={
+                    service.replyingTo ? "Replying to comment..." : "Write a comment..."
+                  }
+                  value={service.commentText}
+                  onChangeText={service.setCommentText}
+                  multiline
+                  editable={!service.isSubmittingComment}
+                />
+                <TouchableOpacity
+                  style={[
+                    styles.commentSubmitButton,
+                    (!service.commentText.trim() || service.isSubmittingComment) && styles.commentSubmitButtonDisabled
+                  ]}
+                  onPress={() => { submitComment(); }}
+                  disabled={!service.commentText.trim() || service.isSubmittingComment}
+                >
+                  {service.isSubmittingComment ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <Ionicons 
+                      name="send" 
+                      size={20} 
+                      color="white" 
+                      style={styles.sendIcon} 
+                    />
+                  )}
+                </TouchableOpacity>
+              </View>
+            </KeyboardAvoidingView>
           </View>
         </Modal>
       )}
@@ -729,20 +750,19 @@ const styles = StyleSheet.create({
     color: '#888',
   },
 
+  commentInputWrapper: {
+    width: '100%',
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
   commentInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: "center",
-    paddingLeft: 10,
-    paddingRight: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
     backgroundColor: 'white',
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    ...(Platform.OS === 'ios' && {
-      bottom: 20,
-    }),
+    width: '100%',
   },
   commentInput: {
     flex: 1,
@@ -757,13 +777,18 @@ const styles = StyleSheet.create({
   },
   commentSubmitButton: {
     backgroundColor: '#3498db',
-    padding: 6,
-    borderRadius: 20,
-    paddingHorizontal: 15,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingLeft: 3, // Slight offset to center the send icon
   },
-  commentSubmitText: {
-    color: 'white',
-    fontWeight: 'bold',
+  commentSubmitButtonDisabled: {
+    backgroundColor: '#bedcf3',
+  },
+  sendIcon: {
+    transform: [{ rotate: '-15deg' }], // Telegram-style slight tilt
   },
   emojiPicker: {
     borderRadius: 10,

@@ -22,11 +22,11 @@ type FollowersPanelProps = {
 
 const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProps) => {
   const {
-    getFollowerNotifications,
+    followerNotifications,
+    unreadFollowerCount,
     markAsRead,
     removeNotification,
     markAllFollowerNotificationsAsRead,
-    getUnreadFollowerCount
   } = useNotificationStore();
 
   const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
@@ -34,9 +34,7 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
   const [isFollowingMap, setIsFollowingMap] = useState<Record<string, boolean>>({});
   const [checkingStatus, setCheckingStatus] = useState<Record<string, boolean>>({});
 
-  // Use getter methods to get filtered notifications
-  const followerNotifications = getFollowerNotifications();
-  const unreadFollowerCount = getUnreadFollowerCount();
+  // Using direct state properties from store (pattern from index.tsx)
 
   // Check follow status for all users when panel opens
   useEffect(() => {

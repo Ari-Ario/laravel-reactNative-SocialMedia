@@ -54,6 +54,7 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import * as ExpoFileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
 import VideoTrimmer from './Shared/VideoTrimmer';
+import { MediaCompressor } from '@/utils/mediaCompressor';
 
 const { width, height } = Dimensions.get('window');
 const RECORDING_LIMIT_MS = 10000;
@@ -244,19 +245,18 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
       try {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.9,
+          quality: 0.8,
           base64: false,
           skipProcessing: false,
         });
 
-        // Optional: Enhance image quality
-        const manipulatedImage = await manipulateAsync(
+        // Use MediaCompressor for consistent processing (matches CreatePost)
+        const compressed = await MediaCompressor.prepareMediaForUpload(
           photo.uri,
-          [{ resize: { width: 1080 } }],
-          { compress: 0.9, format: SaveFormat.JPEG }
+          `story-photo-${Date.now()}.jpg`
         );
 
-        setMedia({ uri: manipulatedImage.uri, type: 'photo' });
+        setMedia({ uri: compressed.uri, type: 'photo' });
       } catch (e) {
         console.error('Photo error:', e);
         showToast('Failed to take photo', 'error');
@@ -286,7 +286,12 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
         });
 
         if (video) {
-          setMedia({ uri: video.uri, type: 'video' });
+          // Compress recorded video for better upload speed/size
+          const compressed = await MediaCompressor.prepareMediaForUpload(
+            video.uri,
+            `story-video-${Date.now()}.mp4`
+          );
+          setMedia({ uri: compressed.uri, type: 'video' });
         }
       } catch (e: any) {
         setIsRecording(false);
@@ -340,20 +345,44 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
         mediaTypes: ['images', 'videos'],
         allowsEditing: true,
         aspect: [9, 16],
-        quality: 0.9,
-        videoMaxDuration: 10,
+        quality: 0.8,
       });
 
       if (!result.canceled) {
+        setUploading(true);
         const asset = result.assets[0];
-        setMedia({
-          uri: asset.uri,
-          type: asset.type === 'video' ? 'video' : 'photo'
-        });
+        
+        // 1. Check if it's a long video
+        const duration = asset.duration ? asset.duration / 1000 : 0; // ms to s
+        const isLongVideo = asset.type === 'video' && duration > MAX_VIDEO_DURATION;
+
+        if (isLongVideo) {
+          console.log(`📹 Long video picked from gallery: ${duration}s. Sending to trimmer.`);
+          // Set media with original URI first so trimmer can work
+          setMedia({
+            uri: asset.uri,
+            type: 'video'
+          });
+          setNeedsTrimming(true);
+          setShowTrimmer(true);
+        } else {
+          // 2. Compress normal media immediately
+          const compressed = await MediaCompressor.prepareMediaForUpload(
+            asset.uri,
+            asset.fileName || (asset.type === 'video' ? `gallery-video-${Date.now()}.mp4` : `gallery-photo-${Date.now()}.jpg`)
+          );
+
+          setMedia({
+            uri: compressed.uri,
+            type: asset.type === 'video' ? 'video' : 'photo'
+          });
+        }
       }
     } catch (error) {
       console.error('Gallery pick error:', error);
       showToast('Failed to pick from gallery', 'error');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -494,20 +523,35 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
   };
 
 
-  const handleTrimComplete = (trimmedData: { uri: string; duration: number; startTime?: number; endTime?: number }) => {
-    // Only add cache buster if it's not a blob URL, as blobs don't support query params
-    const finalUri = (Platform.OS === 'web' && !trimmedData.uri.startsWith('blob:'))
-      ? `${trimmedData.uri}${trimmedData.uri.includes('?') ? '&' : '?'}t=${Date.now()}`
-      : trimmedData.uri;
+  const handleTrimComplete = async (trimmedData: { uri: string; duration: number; startTime?: number; endTime?: number }) => {
+    try {
+      setUploading(true);
+      
+      // Compress the trimmed segment (matches CreatePost flow)
+      const compressed = await MediaCompressor.prepareMediaForUpload(
+        trimmedData.uri,
+        `trimmed-story-${Date.now()}.mp4`
+      );
 
-    setMedia({
-      uri: finalUri,
-      type: 'video',
-      startTime: trimmedData.startTime,
-      endTime: trimmedData.endTime
-    });
-    setNeedsTrimming(false);
-    setShowTrimmer(false);
+      // Only add cache buster if it's not a blob URL, as blobs don't support query params
+      const finalUri = (Platform.OS === 'web' && !compressed.uri.startsWith('blob:'))
+        ? `${compressed.uri}${compressed.uri.includes('?') ? '&' : '?'}t=${Date.now()}`
+        : compressed.uri;
+
+      setMedia({
+        uri: finalUri,
+        type: 'video',
+        startTime: trimmedData.startTime,
+        endTime: trimmedData.endTime
+      });
+      setNeedsTrimming(false);
+      setShowTrimmer(false);
+    } catch (error) {
+      console.error('Error processing trimmed video:', error);
+      showToast('Failed to process trimmed video', 'error');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSave = async () => {
