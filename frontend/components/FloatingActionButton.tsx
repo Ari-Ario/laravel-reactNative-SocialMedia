@@ -18,8 +18,8 @@ export default function FloatingActionButton({ onPress }: FloatingActionButtonPr
 const styles = StyleSheet.create({
   button: {
     position: 'absolute',
-    bottom: 20,
-    right: 20,
+    bottom: 84,
+    right: 10,
     width: 56,
     height: 56,
     borderRadius: 28,

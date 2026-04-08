@@ -564,6 +564,32 @@ class PusherService {
           isRead: false,
         };
 
+        // ✅ PROACTIVE CALL DETECTION: If this looks like a call, flag it
+        const msgText = (notification.message || '').toLowerCase();
+        const looksLikeCall = notifType === 'incoming_call' || notifType === 'call_started' || 
+                             msgText.includes('started a video call') || msgText.includes('started an audio call') ||
+                             msgText.includes('is calling you');
+
+        if (looksLikeCall) {
+          notification.isCall = true;
+          notification.type = 'call_started';
+          
+          // Trigger the modal bridge
+          try {
+            const CollaborationService = require('@/services/ChatScreen/CollaborationService').default;
+            const cs = CollaborationService.getInstance();
+            cs.emitIncomingCall({
+              callId: notification.callId,
+              spaceId: notification.spaceId,
+              callerId: notification.userId,
+              callerName: innerData.userName || innerData.user?.name || 'Someone',
+              callerAvatar: notification.avatar,
+              callType: msgText.includes('audio') ? 'audio' : 'video',
+              spaceType: 'direct', // Defaulting for notification-based calls
+            });
+          } catch (e) {}
+        }
+
         // Construct message if missing (common for Laravel notifications with raw data)
         if (!notification.message && notifType === 'space_invitation') {
           const inviter = innerData.inviter_name || 'Someone';
@@ -653,17 +679,39 @@ class PusherService {
         console.log('💬 New message notification (space.message):', data);
 
         const msgObj = data.chat_message || data.message || {};
+        const msgText = (data.message && typeof data.message === 'string' ? data.message : (data.notification_message || '')).toLowerCase();
+        const isCallEvent = msgText.includes('started a video call') || msgText.includes('started an audio call');
 
-        onNotification({
+        const notification = {
           ...data,
           id: msgObj.id || data.id || `msg-${Date.now()}`,
-          type: data.type || 'space_message',
-          title: data.title || 'New Message',
+          type: isCallEvent ? 'call_started' : (data.type || 'space_message'),
+          isCall: isCallEvent,
+          title: data.title || (isCallEvent ? 'Incoming Call' : 'New Message'),
           message: data.message && typeof data.message === 'string' ? data.message : (data.notification_message || 'New message received'),
           avatar: data.profile_photo || data.user?.profile_photo || data.avatar,
           spaceId: data.space_id || data.spaceId,
           createdAt: new Date()
-        });
+        };
+
+        onNotification(notification);
+
+        // If it's a call embedded in a message, trigger the modal
+        if (isCallEvent) {
+          try {
+            const CollaborationService = require('@/services/ChatScreen/CollaborationService').default;
+            const cs = CollaborationService.getInstance();
+            cs.emitIncomingCall({
+              callId: data.call_id || data.call?.id,
+              spaceId: notification.spaceId,
+              callerId: data.user?.id || data.user_id,
+              callerName: data.user?.name || 'Someone',
+              callerAvatar: notification.avatar,
+              callType: msgText.includes('audio') ? 'audio' : 'video',
+              spaceType: data.space_type || 'direct',
+            });
+          } catch (e) {}
+        }
       });
 
       // ✅ SPACE MANAGEMENT EVENTS

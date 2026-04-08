@@ -182,6 +182,15 @@ export const IncomingCallModal: React.FC = () => {
         { transform: [{ translateY: slideAnim }] },
       ]}
       pointerEvents="box-none"
+      onTouchStart={() => {
+        if (Platform.OS === 'web' && player && !player.playing) {
+          try {
+            player.play();
+          } catch (e) {
+            console.warn("Audio unlock failed:", e);
+          }
+        }
+      }}
     >
       <BlurView
         intensity={Platform.OS === 'ios' ? 100 : 85}

@@ -184,7 +184,7 @@ export default function TabLayout() {
               },
               tabBarStyle: {
                 position: 'absolute',
-                bottom: Platform.OS === 'ios' ? 30 : 20,
+                bottom: Platform.OS === 'ios' ? 10 : 5,
                 left: 16,
                 right: 16,
                 height: 64,
@@ -203,7 +203,7 @@ export default function TabLayout() {
                 overflow: 'hidden',
               },
               tabBarItemStyle: {
-                paddingVertical: 8,
+                paddingVertical: Platform.OS === 'web' ? 12 : 8,
               },
             }}
           >

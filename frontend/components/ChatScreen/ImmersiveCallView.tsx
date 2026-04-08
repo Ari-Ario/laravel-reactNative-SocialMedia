@@ -260,15 +260,29 @@ const VideoTile = React.memo(({
 
       {/* Safari Mobile Data Autoplay Fallback Overlay */}
       {autoplayFailed && (
-        <View style={[StyleSheet.absoluteFill, { zIndex: 6, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' }]}>
-          <TouchableOpacity
-            style={{ padding: 20, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 40 }}
-            onPress={handleManualPlay}
-          >
-            <Ionicons name="play" size={40} color="#fff" style={{ marginLeft: 5 }} />
-          </TouchableOpacity>
-          <Text style={{ color: '#fff', marginTop: 12, fontSize: 14, fontWeight: '500' }}>Tap to Play Media</Text>
-        </View>
+        <TouchableOpacity
+          activeOpacity={0.9}
+          style={[StyleSheet.absoluteFill, { 
+            zIndex: 100, 
+            backgroundColor: 'rgba(0,0,0,0.8)', 
+            justifyContent: 'center', 
+            alignItems: 'center' 
+          }]}
+          onPress={handleManualPlay}
+        >
+          <View style={{ 
+            padding: 24, 
+            backgroundColor: 'rgba(255,255,255,0.15)', 
+            borderRadius: 50,
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.3)',
+            alignItems: 'center'
+          }}>
+            <Ionicons name="play" size={48} color="#fff" style={{ marginLeft: 6 }} />
+            <Text style={{ color: '#fff', marginTop: 16, fontSize: 16, fontWeight: '600' }}>Tap to Join Call</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.6)', marginTop: 4, fontSize: 12 }}>Browser restricted media autoplay</Text>
+          </View>
+        </TouchableOpacity>
       )}
 
       <View style={styles.tileOverlay}>

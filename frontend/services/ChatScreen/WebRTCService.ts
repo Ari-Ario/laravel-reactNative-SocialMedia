@@ -1252,11 +1252,20 @@ class WebRTCService {
         };
 
         if (this.localStream) {
-            this.localStream.getTracks().forEach(track => newConnection.addTrack(track, this.localStream!));
+            this.localStream.getTracks().forEach(track => {
+              if (newConnection && newConnection.addTrack) {
+                newConnection.addTrack(track, this.localStream!);
+              }
+            });
         }
 
         try {
+          // Native bridge check: ensures the PC still exists in native before calling
+          if (!newConnection) return;
+          
           const offer = await newConnection.createOffer();
+          if (!offer) throw new Error('Failed to create offer');
+          
           await newConnection.setLocalDescription(offer);
           this.sendSignal(targetUserId, 'offer', { offer });
           
@@ -1264,6 +1273,10 @@ class WebRTCService {
           this.startConnectionHealthCheck(peerId, newConnection);
         } catch (e) {
           console.error(`❌ Fallback offer creation failed for ${peerId}:`, e);
+          // If offer fails, wait and try one last time with simple STUN
+          if (attempts < 4) {
+             setTimeout(() => this.retryWithFallbackServers(peerId), 5000);
+          }
         }
     }
   }

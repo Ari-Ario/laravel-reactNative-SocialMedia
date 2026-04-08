@@ -1,12 +1,12 @@
 // services/PostListService.tsx
 import { useState, useRef, useCallback } from 'react';
 import { Alert, Platform, NativeSyntheticEvent, NativeTouchEvent, Dimensions } from 'react-native';
-import { 
-  deletePost, 
-  reactToPost, 
-  reactToComment, 
-  deleteReactionFromPost, 
-  deleteReactionFromComment, 
+import {
+  deletePost,
+  reactToPost,
+  reactToComment,
+  deleteReactionFromPost,
+  deleteReactionFromComment,
   deleteComment,
   commentOnPost
 } from '@/services/PostService';
@@ -67,32 +67,31 @@ export const usePostListService = (user: any) => {
   ): Array<{ emoji: string; count: number }> => {
     const newCounts = [...counts];
     const index = newCounts.findIndex(item => item.emoji === emoji);
-    
+
     if (index >= 0) {
       newCounts[index] = {
         emoji,
         count: Math.max(0, newCounts[index].count + delta)
       };
-      
+
       if (newCounts[index].count <= 0) {
         newCounts.splice(index, 1);
       }
     } else if (delta > 0) {
       newCounts.push({ emoji, count: 1 });
     }
-    
+
     return newCounts;
   };
 
   // Get reactions to display
-  const getGroupedReactions = (post: Post, currentUserId?: number): 
-    { emoji: string; count: number; user_ids: number[] }[] => {
-    
+  const getGroupedReactions = (post: Post, currentUserId?: number): { emoji: string; count: number; user_ids: number[] }[] => {
+
     const defaultEmojis = ['🤍'];
-    
+
     if (!post.reactions || post.reactions.length === 0) {
-      return defaultEmojis.map(emoji => ({ 
-        emoji, 
+      return defaultEmojis.map(emoji => ({
+        emoji,
         count: 0,
         user_ids: []
       }));
@@ -108,23 +107,23 @@ export const usePostListService = (user: any) => {
       });
     }
 
-    return [...reactionMap.entries()].map(([emoji, { count, user_ids }]) => ({ 
-      emoji, 
+    return [...reactionMap.entries()].map(([emoji, { count, user_ids }]) => ({
+      emoji,
       count,
-      user_ids 
+      user_ids
     })).sort((a, b) => b.count - a.count);
   };
 
   // Get comment reactions
   const getGroupedReactionsComments = (
-    comment: Comment, 
+    comment: Comment,
     currentUserId?: number
   ): { emoji: string; count: number; user_ids: number[] }[] => {
     const defaultEmojis = ['🤍'];
-    
+
     if (!comment?.reaction_comments || comment?.reaction_comments.length === 0) {
-      return defaultEmojis.map(emoji => ({ 
-        emoji, 
+      return defaultEmojis.map(emoji => ({
+        emoji,
         count: 0,
         user_ids: []
       }));
@@ -141,10 +140,10 @@ export const usePostListService = (user: any) => {
     }
 
     return [...reactionMap.entries()]
-      .map(([emoji, { count, user_ids }]) => ({ 
-        emoji, 
+      .map(([emoji, { count, user_ids }]) => ({
+        emoji,
         count,
-        user_ids 
+        user_ids
       }))
       .sort((a, b) => b.count - a.count);
   };
@@ -152,18 +151,18 @@ export const usePostListService = (user: any) => {
   // Handle post deletion
   const handleDelete = async (postId: number) => {
     try {
-      const confirmMessage = Platform.OS === 'web' 
+      const confirmMessage = Platform.OS === 'web'
         ? window.confirm("Are you sure you want to delete this post?")
         : await new Promise((resolve) => {
-            Alert.alert(
-              "Delete Post",
-              "Are you sure you want to delete this post?",
-              [
-                { text: "Cancel", onPress: () => resolve(false) },
-                { text: "Delete", onPress: () => resolve(true) }
-              ]
-            );
-          });
+          Alert.alert(
+            "Delete Post",
+            "Are you sure you want to delete this post?",
+            [
+              { text: "Cancel", onPress: () => resolve(false) },
+              { text: "Delete", onPress: () => resolve(true) }
+            ]
+          );
+        });
 
       if (!confirmMessage) {
         setMenuVisible(false);
@@ -173,9 +172,9 @@ export const usePostListService = (user: any) => {
       await deletePost(postId);
       deletePostById(postId);
       setMenuVisible(false);
-      
+
       showToast("Post deleted successfully", "success");
-      
+
     } catch (error: any) {
       console.error('Delete error:', error);
       const errorMessage = error.message || "Could not delete post. Please try again.";
@@ -213,7 +212,7 @@ export const usePostListService = (user: any) => {
       console.error('Missing reaction data:', { postId, user });
       return;
     }
-    
+
     try {
       const currentPost = postStore.posts.find(p => p.id === postId);
       if (!currentPost) {
@@ -224,7 +223,7 @@ export const usePostListService = (user: any) => {
       const reactionContext = commentId
         ? currentPost.comments?.find((c: any) => Number(c.id) === Number(commentId))
         : currentPost;
-      
+
       const userId = Number(user.id);
       const existingReaction = reactionContext?.reactions?.find(
         (r: any) => Number(r.user_id) === userId
@@ -245,21 +244,21 @@ export const usePostListService = (user: any) => {
       if (commentId) {
         updatedPost.comments = updatedPost.comments?.map((comment: any) => {
           if (Number(comment.id) !== Number(commentId)) return comment;
-          
+
           const filteredReactions = comment.reactions?.filter(
             (r: any) => Number(r.user_id) !== userId
           ) || comment.reaction_comments?.filter(
             (r: any) => Number(r.user_id) !== userId
           ) || [];
-          
+
           const updatedReactions = [...filteredReactions, response.reaction];
           let updatedCounts = [...(comment.reaction_counts || [])];
-          
+
           if (existingReaction) {
             updatedCounts = updateReactionCounts(updatedCounts, existingReaction.emoji, -1);
           }
           updatedCounts = updateReactionCounts(updatedCounts, emoji, 1);
-          
+
           return {
             ...comment,
             reactions: updatedReactions,
@@ -272,10 +271,10 @@ export const usePostListService = (user: any) => {
         const filteredReactions = updatedPost.reactions?.filter(
           (r: any) => Number(r.user_id) !== userId
         ) || [];
-        
+
         updatedPost.reactions = [...filteredReactions, response.reaction];
         let updatedCounts = [...(updatedPost.reaction_counts || [])];
-        
+
         if (existingReaction) {
           updatedCounts = updateReactionCounts(updatedCounts, existingReaction.emoji, -1);
         }
@@ -341,13 +340,13 @@ export const usePostListService = (user: any) => {
 
     try {
       console.log(`🗑️ Optimistically removing reaction from post ${postId}`);
-      
+
       // 1. Optimistic update
       postStore.removePostReaction(postId, { userId: user.id });
 
       // 2. API call
       const response = await deleteReactionFromPost(postId);
-      
+
       // 3. Final sync with server data
       if (response && response.reaction_counts) {
         postStore.updatePost({
@@ -371,7 +370,7 @@ export const usePostListService = (user: any) => {
     if (!commentId || !user?.id) return;
 
     // Find the post containing this comment for reversion
-    const pId = postStore.posts.find(p => 
+    const pId = postStore.posts.find(p =>
       p.comments?.some(c => c.id === Number(commentId))
     )?.id;
 
@@ -380,7 +379,7 @@ export const usePostListService = (user: any) => {
 
     try {
       console.log(`🗑️ Optimistically removing reaction from comment ${commentId}`);
-      
+
       // 1. Optimistic update
       postStore.removeCommentReaction(pId, commentId, user.id);
 
@@ -397,7 +396,7 @@ export const usePostListService = (user: any) => {
           (response as any).reaction_comments_count
         );
       }
-      
+
     } catch (error) {
       console.error('Failed to delete comment reaction:', error);
       // Revert on error
@@ -417,13 +416,13 @@ export const usePostListService = (user: any) => {
 
     try {
       console.log(`🗑️ Optimistically removing comment ${commentId} from post ${postId}`);
-      
+
       // 1. Optimistic update (Immediate removal for user)
       postStore.removeComment(postId, commentId);
-      
+
       // 2. API call
       const response = await deleteComment(postId, commentId);
-      
+
       // 3. Post-success sync (Device A specific)
       // The user wants to be ABSOLUTELY sure it's gone after success.
       // Since removeComment is idempotent, calling it again ensures certainty.
@@ -436,7 +435,7 @@ export const usePostListService = (user: any) => {
 
     } catch (error: any) {
       console.error('❌ Failed to delete comment:', error);
-      
+
       // FULL REVERT on error
       if (postToRevert) {
         console.log('🔄 Reverting comment deletion due to error');
@@ -446,7 +445,7 @@ export const usePostListService = (user: any) => {
           comments_count: previousCount
         } as any);
       }
-      
+
       showToast(
         error.message || 'Failed to delete comment',
         'error'
@@ -455,9 +454,9 @@ export const usePostListService = (user: any) => {
   };
 
   // Double tap handler
-  const useDoubleTap = (onDoubleTap: () => void, onSingleTap: () => void = () => {}) => {
+  const useDoubleTap = (onDoubleTap: () => void, onSingleTap: () => void = () => { }) => {
     const lastTap = useRef(0);
-    
+
     return () => {
       const now = Date.now();
       if (lastTap.current && now - lastTap.current < 300) {
@@ -526,14 +525,14 @@ export const usePostListService = (user: any) => {
   // Submit comment
   const submitComment = async (postId: number, onCommentSubmit: Function) => {
     if (!commentText.trim() || isSubmittingComment) return;
-    
+
     setIsSubmittingComment(true);
     // console.log('Submitting comment:', { postId, commentText, replyingTo, user });
-    
+
     try {
       const comment = await onCommentSubmit(
-        postId, 
-        commentText, 
+        postId,
+        commentText,
         replyingTo || undefined
       );
       console.warn(comment)
@@ -560,10 +559,10 @@ export const usePostListService = (user: any) => {
       };
 
       // console.log(formattedComment)
-      
+
       // Update the store
       postStore.updatePostWithNewComment(postId, formattedComment);
-      
+
       // Reset form
       setCommentText('');
       setReplyingTo(null);
@@ -664,7 +663,7 @@ export const updateCommentInTree = (
     if (comment.id === commentId) {
       return updater(comment);
     }
-    
+
     // Recursively process replies if they exist
     if (comment.replies && comment.replies.length > 0) {
       return {
@@ -672,7 +671,7 @@ export const updateCommentInTree = (
         replies: updateCommentInTree(comment.replies, commentId, updater)
       };
     }
-    
+
     return comment;
   });
 };
@@ -686,14 +685,14 @@ export const addReplyToComment = (comments: Comment[], newComment: Comment): Com
         replies: [...(comment.replies || []), newComment]
       };
     }
-    
+
     if (comment.replies) {
       return {
         ...comment,
         replies: addReplyToComment(comment.replies, newComment)
       };
     }
-    
+
     return comment;
   });
 };
