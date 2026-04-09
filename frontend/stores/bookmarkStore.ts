@@ -91,13 +91,19 @@ export const useBookmarkStore = create<BookmarkStore>()(
             removeBookmark: async (postId) => {
                 try {
                     await apiRemoveBookmark(postId);
-                    set((state) => ({
-                        bookmarks: state.bookmarks.filter(b => b && b.post_id !== postId),
-                    }));
                 } catch (error: any) {
-                    set({ error: error.message });
-                    throw error;
+                    // If post is already 404 (deleted), we still proceed with local removal
+                    // Otherwise, we log it and only throw if it's a real server/network error
+                    if (error.response?.status !== 404) {
+                        set({ error: error.message });
+                        throw error;
+                    }
                 }
+
+                // Always clean up locally
+                set((state) => ({
+                    bookmarks: state.bookmarks.filter(b => b && b.post_id !== postId),
+                }));
             },
 
             updateBookmarkNote: async (postId, note) => {

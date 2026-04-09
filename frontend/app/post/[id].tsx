@@ -15,7 +15,8 @@ import {
   FlatList,
   Modal,
   Pressable,
-  Dimensions
+  Dimensions,
+  Alert
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -24,6 +25,7 @@ import { fetchPostById, commentOnPost, deleteReactionFromPost, deleteComment, re
 import RenderComments from '@/components/RenderComments';
 import { useProfileView } from '@/context/ProfileViewContext';
 import { useModal } from '@/context/ModalContext';
+import { useBookmarkStore } from '@/stores/bookmarkStore';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { Ionicons } from '@expo/vector-icons';
 import AuthContext from '@/context/AuthContext';
@@ -80,6 +82,7 @@ const ImageCarouselItem = ({ uri, index, service, styles }: { uri: string, index
 const PostDetailScreen = () => {
   const { id, highlightCommentId, returnTo } = useLocalSearchParams();
   const { posts, addPost, updatePost } = usePostStore();
+  const { bookmarks, removeBookmark } = useBookmarkStore();
   const { user } = useContext(AuthContext);
   const post = posts.find(p => p.id.toString() === id);
   const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
@@ -109,6 +112,24 @@ const PostDetailScreen = () => {
 
   const postId = parseInt(id as string);
 
+  const handleStalePost = async () => {
+    const isBookmarked = bookmarks.some(b => b.post_id === postId);
+    if (isBookmarked) {
+      Alert.alert(
+        'Post Unavailable',
+        'This post has been deleted from the server and was removed from your bookmarks.',
+        [{ text: 'OK', onPress: () => router.back() }]
+      );
+      await removeBookmark(postId);
+    } else {
+      Alert.alert(
+        'Post Gone',
+        'This post is no longer available.',
+        [{ text: 'OK', onPress: () => router.back() }]
+      );
+    }
+  };
+
   useEffect(() => {
     // If post not found in store, fetch it
     if (!post && postId) {
@@ -119,8 +140,11 @@ const PostDetailScreen = () => {
           if (postData) {
             addPost(postData);
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('Error fetching post:', error);
+          if (error.response?.status === 404) {
+            handleStalePost();
+          }
         } finally {
           setLoading(false);
         }
@@ -128,7 +152,7 @@ const PostDetailScreen = () => {
 
       fetchPost();
     }
-  }, [postId, post, addPost]);
+  }, [postId, post, addPost, bookmarks]);
 
   // Handle comment highlighting when highlightCommentId changes
   useEffect(() => {
@@ -186,8 +210,9 @@ const PostDetailScreen = () => {
       if (postData) {
         addPost(postData);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error reacting to post:', error);
+      if (error.response?.status === 404) handleStalePost();
     }
   };
 
@@ -200,8 +225,9 @@ const PostDetailScreen = () => {
       if (postData) {
         addPost(postData);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error reacting to comment:', error);
+      if (error.response?.status === 404) handleStalePost();
     }
   };
 
@@ -216,8 +242,9 @@ const PostDetailScreen = () => {
       if (postData) {
         addPost(postData);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting post reaction:', error);
+      if (error.response?.status === 404) handleStalePost();
     }
   };
 
@@ -243,8 +270,9 @@ const PostDetailScreen = () => {
       if (postData) {
         addPost(postData);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting comment reaction:', error);
+      if (error.response?.status === 404) handleStalePost();
     }
   };
 
@@ -256,8 +284,9 @@ const PostDetailScreen = () => {
       if (postData) {
         addPost(postData);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting comment:', error);
+      if (error.response?.status === 404) handleStalePost();
     }
   };
 
@@ -274,8 +303,9 @@ const PostDetailScreen = () => {
       if (postData) {
         addPost(postData);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting comment:', error);
+      if (error.response?.status === 404) handleStalePost();
     } finally {
       setIsSubmitting(false);
     }

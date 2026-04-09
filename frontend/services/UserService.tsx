@@ -73,3 +73,42 @@ export const unblockUser = async (userId: string) => {
     throw error;
   }
 };
+
+export const fetchUserByEmail = async (email: string) => {
+  try {
+    const response = await axios.post(`${API_BASE}/users/lookup`, {
+        identifier: email,
+        type: 'email'
+    });
+    return response.data.user;
+  } catch (error) {
+    console.error('Error searching user by email:', error);
+    throw error;
+  }
+};
+
+export const sendFriendRequest = async (userId: number) => {
+  try {
+    // Mapping friend request to follow for now as per api.php
+    const response = await axios.post(`${API_BASE}/profiles/${userId}/follow`, {
+        action: 'follow'
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error sending friend request:', error);
+    throw error;
+  }
+};
+
+export const sendEmailInvitation = async (email: string, message?: string) => {
+  try {
+    const response = await axios.post(`${API_BASE}/settings/invite`, {
+        email,
+        message
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error sending email invitation:', error);
+    throw error;
+  }
+};

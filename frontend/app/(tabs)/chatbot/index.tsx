@@ -36,67 +36,67 @@ export default function ChatbotScreen() {
     ]);
   }, []);
 
-const handleSend = async () => {
-  if (!input.trim()) return;
+  const handleSend = async () => {
+    if (!input.trim()) return;
 
-  const userMessage = {
-    id: Date.now(),
-    text: input,
-    sender: 'user',
-    type: 'text' as const,
-  };
-
-  setMessages(prev => [...prev, userMessage]);
-  setInput('');
-  Keyboard.dismiss();
-  setIsTyping(true);
-
-  try {
-    const API_BASE = getApiBase();
-
-    const response = await axios.post(
-      `${API_BASE}/chatbot`,
-      {
-        message: input,
-        conversation_id: conversationId.current,
-      },
-      {
-        timeout: 200000, // ← 200 seconds (Phi-3 on CPU needs this)
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
-
-    const data = response.data;
-    conversationId.current = data.conversation_id;
-
-    const botReply = {
-      id: Date.now() + 1,
-      text: data.response || "No response",
-      sender: 'bot' as const,
-      type: data.response?.includes('powered by AI') || data.response?.includes('*') ? 'ai' : 'text',
+    const userMessage = {
+      id: Date.now(),
+      text: input,
+      sender: 'user',
+      type: 'text' as const,
     };
 
-    setMessages(prev => [...prev, botReply]);
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    Keyboard.dismiss();
+    setIsTyping(true);
 
-  } catch (error: any) {
-    console.error("Chatbot error:", error.message);
+    try {
+      const API_BASE = getApiBase();
 
-    let errorText = "Sorry, I'm having trouble connecting.";
+      const response = await axios.post(
+        `${API_BASE}/chatbot`,
+        {
+          message: input,
+          conversation_id: conversationId.current,
+        },
+        {
+          timeout: 200000, // ← 200 seconds (Phi-3 on CPU needs this)
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
 
-    if (error.code === 'ECONNABORTED') {
-      errorText = "The AI is thinking deeply... this can take up to 45 seconds.";
+      const data = response.data;
+      conversationId.current = data.conversation_id;
+
+      const botReply = {
+        id: Date.now() + 1,
+        text: data.response || "No response",
+        sender: 'bot' as const,
+        type: data.response?.includes('powered by AI') || data.response?.includes('*') ? 'ai' : 'text',
+      };
+
+      setMessages(prev => [...prev, botReply]);
+
+    } catch (error: any) {
+      console.error("Chatbot error:", error.message);
+
+      let errorText = "Sorry, I'm having trouble connecting.";
+
+      if (error.code === 'ECONNABORTED') {
+        errorText = "The AI is thinking deeply... this can take up to 45 seconds.";
+      }
+
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1,
+        text: errorText,
+        sender: 'bot',
+        type: 'error' as const,
+      }]);
+    } finally {
+      setIsTyping(false);
     }
-
-    setMessages(prev => [...prev, {
-      id: Date.now() + 1,
-      text: errorText,
-      sender: 'bot',
-      type: 'error' as const,
-    }]);
-  } finally {
-    setIsTyping(false);
-  }
-};
+  };
 
   const renderItem = ({ item }) => {
     const isUser = item.sender === 'user';
@@ -216,6 +216,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...(Platform.OS === 'ios' && {
       bottom: 80
+    }),
+    ...(Platform.OS === 'web' && {
+      bottom: 60,
     }),
   },
   input: {

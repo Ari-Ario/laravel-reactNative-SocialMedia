@@ -403,6 +403,152 @@ class MessagesController extends Controller
     }
 
     /**
+     * Get chat highlights (most engaging messages)
+     */
+    public function highlights(Request $request)
+    {
+        $user = auth()->user();
+        $limit = $request->input('limit', 10);
+        $page = $request->input('page', 1);
+
+        // Get conversation IDs the user is part of
+        $conversationIds = $user->conversations()->pluck('conversations.id');
+        
+        // Use a RAW DB query instead of Eloquent models to fetch spaces. 
+        // This is a "total bypass" that ensures no cached relationship or ghost columns (like muted_until) are ever requested.
+        $userSpaces = \Illuminate\Support\Facades\DB::table('collaboration_spaces')
+            ->join('space_participations', 'collaboration_spaces.id', '=', 'space_participations.space_id')
+            ->where('space_participations.user_id', $user->id)
+            ->select('collaboration_spaces.*')
+            ->get();
+            
+        // Map the DB objects to a collection so the rest of the logic (like casting) matches
+        $userSpaces = $userSpaces->map(function($space) {
+            $space->content_state = json_decode($space->content_state, true);
+            return $space;
+        });
+
+        $spaceConversationIds = $userSpaces->whereNotNull('linked_conversation_id')->pluck('linked_conversation_id');
+        
+        $allConvIds = $conversationIds->merge($spaceConversationIds)->unique();
+
+        // 1. Get highlights from the 'messages' table
+        $tableQuery = Message::whereIn('conversation_id', $allConvIds)
+            ->whereNotNull('content')
+            ->where('type', '!=', 'system')
+            ->with(['user', 'conversation'])
+            ->withCount('replies')
+            ->select('*')
+            ->selectRaw('COALESCE(JSON_LENGTH(reactions), 0) as reactions_count')
+            ->addSelect([
+                'space_id' => CollaborationSpace::select('id')
+                    ->whereColumn('linked_conversation_id', 'messages.conversation_id')
+                    ->limit(1)
+            ]);
+
+        $tableMessages = $tableQuery->get()->map(function ($m) {
+            return [
+                'id' => $m->id,
+                'conversation_id' => $m->conversation_id,
+                'space_id' => $m->space_id,
+                'user_id' => $m->user_id,
+                'content' => $m->content,
+                'type' => $m->type,
+                'metadata' => $m->metadata,
+                'file_path' => $m->file_path,
+                'mime_type' => $m->mime_type,
+                'reactions' => $m->reactions,
+                'reactions_count' => (int) $m->reactions_count,
+                'replies_count' => (int) $m->replies_count,
+                'reply_to_id' => $m->reply_to_id,
+                'mood_detected' => $m->mood_detected,
+                'created_at' => $m->created_at->toISOString(),
+                'user' => $m->user ? [
+                    'id' => $m->user->id,
+                    'name' => $m->user->name,
+                    'profile_photo' => $m->user->profile_photo,
+                ] : null,
+            ];
+        });
+
+        // 2. Get highlights from space JSON content_state
+        $jsonMessages = collect();
+        foreach ($userSpaces as $space) {
+            try {
+                $contentState = $space->content_state;
+                if (!is_array($contentState) || !isset($contentState['messages'])) {
+                    continue;
+                }
+                
+                $msgs = $contentState['messages'];
+                foreach ($msgs as $m) {
+                    if (!is_array($m)) continue;
+                    
+                    $id = $m['id'] ?? null;
+                    if (!$id) continue;
+
+                    $reactionsCount = isset($m['reactions']) ? count($m['reactions']) : 0;
+                    $repliesCount = 0; 
+                    
+                    if ($reactionsCount > 0) {
+                        // Extract user info safely
+                        $userData = $m['user'] ?? null;
+                        $userName = $m['user_name'] ?? (is_array($userData) ? ($userData['name'] ?? 'User') : (is_string($userData) ? $userData : 'User'));
+                        $userPhoto = is_array($userData) ? ($userData['profile_photo'] ?? null) : null;
+
+                        $jsonMessages->push([
+                            'id' => $id,
+                            'conversation_id' => $space->linked_conversation_id,
+                            'space_id' => $space->id,
+                            'user_id' => $m['user_id'] ?? (is_array($userData) ? ($userData['id'] ?? 0) : 0),
+                            'content' => $m['content'] ?? '',
+                            'type' => $m['type'] ?? 'text',
+                            'metadata' => $m['metadata'] ?? [],
+                            'file_path' => $m['file_path'] ?? null,
+                            'mime_type' => $m['metadata']['mime_type'] ?? null,
+                            'reactions' => $m['reactions'] ?? [],
+                            'reactions_count' => $reactionsCount,
+                            'replies_count' => $repliesCount,
+                            'reply_to_id' => $m['reply_to_id'] ?? null,
+                            'mood_detected' => $m['mood_detected'] ?? null,
+                            'created_at' => $m['created_at'] ?? now()->toISOString(),
+                            'user' => [
+                                'id' => $m['user_id'] ?? (is_array($userData) ? ($userData['id'] ?? 0) : 0),
+                                'name' => $userName,
+                                'profile_photo' => $userPhoto,
+                            ],
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                \Log::warning("Error processing highlights for space {$space->id}: " . $e->getMessage());
+                continue;
+            }
+        }
+
+        // 3. Merge and Sort
+        // Convert tableMessages to a base collection to avoid "getKey() on array" error when merging with JSON arrays
+        $allMessages = $tableMessages->toBase()->merge($jsonMessages)
+            ->unique('id')
+            ->sortByDesc(function ($m) {
+                $moodScore = ($m['mood_detected'] == 'positive') ? 2 : (($m['mood_detected'] == 'deep') ? 3 : 0);
+                return $m['replies_count'] + $m['reactions_count'] + $moodScore;
+            });
+
+        // 4. Manual Pagination
+        $total = $allMessages->count();
+        $items = $allMessages->slice(($page - 1) * $limit, $limit)->values();
+        $hasMore = $total > ($page * $limit);
+
+        return response()->json([
+            'messages' => $items,
+            'current_page' => (int) $page,
+            'has_more' => $hasMore,
+            'total' => $total,
+        ]);
+    }
+
+    /**
      * Simple mood detection
      */
     private function detectMood($text)

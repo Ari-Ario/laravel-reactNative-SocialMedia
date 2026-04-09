@@ -83,18 +83,18 @@ const WebActionButtons = ({
 }) => (
     <View style={styles.webActionButtons}>
         <TouchableOpacity style={styles.webActionButton} onPress={onNavigate}>
-            <Ionicons name="open-outline" size={18} color="#fff" />
+            <Ionicons name="open-outline" size={18} color="#000" />
             <Text style={styles.webActionText}>Open</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.webActionButton} onPress={onAddNote}>
-            <Ionicons name="pencil" size={18} color="#fff" />
+            <Ionicons name="pencil" size={18} color="#000" />
             <Text style={styles.webActionText}>Note</Text>
         </TouchableOpacity>
         <TouchableOpacity
             style={[styles.webActionButton, styles.webActionDelete]}
             onPress={onRemove}
         >
-            <Ionicons name="trash-outline" size={18} color="#fff" />
+            <Ionicons name="trash-outline" size={18} color="#a00101" />
             <Text style={styles.webActionText}>Delete</Text>
         </TouchableOpacity>
     </View>
@@ -262,15 +262,12 @@ export const BookmarkGallery = ({
                     {items.map((bookmark: Bookmark, index: number) => (
                         <MotiView
                             key={`timeline-${bookmark.id}-${index}`}
-                            from={{ opacity: 0, translateX: -20 }}
-                            animate={{ opacity: 1, translateX: 0 }}
-                            transition={{ delay: index * 50 }}
+                            from={{ opacity: 0, scale: 0.95, translateY: 20 }}
+                            animate={{ opacity: 1, scale: 1, translateY: 0 }}
+                            transition={{ delay: index * 40, type: 'timing', duration: 400 }}
                             style={styles.timelineCard}
                         >
-                            <LinearGradient
-                                colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
-                                style={styles.timelineGradient}
-                            >
+                            <View style={styles.timelineGradient}>
                                 <TouchableOpacity
                                     style={styles.timelineContent}
                                     onPress={() => navigateToPost(bookmark.post_id)}
@@ -298,12 +295,12 @@ export const BookmarkGallery = ({
                                         </View>
 
                                         <Text style={styles.timelineCaption} numberOfLines={2}>
-                                            {bookmark.post.caption || 'No caption'}
+                                            {bookmark.post.caption || 'No caption provided'}
                                         </Text>
 
                                         {bookmark.note && (
                                             <View style={styles.timelineNote}>
-                                                <Ionicons name="chatbubble" size={12} color="#fff" />
+                                                <Ionicons name="chatbubble" size={12} color="#000" />
                                                 <Text style={styles.timelineNoteText}>{bookmark.note}</Text>
                                             </View>
                                         )}
@@ -314,13 +311,13 @@ export const BookmarkGallery = ({
                                                     style={styles.mobileActionButton}
                                                     onPress={() => handleAddNote(bookmark)}
                                                 >
-                                                    <Ionicons name="pencil" size={18} color="#fff" />
+                                                    <Ionicons name="pencil" size={18} color="#000" />
                                                 </TouchableOpacity>
                                                 <TouchableOpacity
                                                     style={[styles.mobileActionButton, styles.mobileActionDelete]}
                                                     onPress={() => handleRemoveBookmark(bookmark.post_id)}
                                                 >
-                                                    <Ionicons name="trash-outline" size={18} color="#fff" />
+                                                    <Ionicons name="trash-outline" size={18} color="#a00101" />
                                                 </TouchableOpacity>
                                             </View>
                                         )}
@@ -349,7 +346,7 @@ export const BookmarkGallery = ({
                                         onNavigate={() => navigateToPost(bookmark.post_id)}
                                     />
                                 )}
-                            </LinearGradient>
+                            </View>
                         </MotiView>
                     ))}
                 </View>
@@ -377,15 +374,15 @@ export const BookmarkGallery = ({
                             style={styles.gridImage}
                         />
                     )}
-                    <BlurView intensity={80} style={styles.gridOverlay}>
+                    <View style={styles.gridOverlay}>
                         <Text style={styles.gridName} numberOfLines={1}>{item.post.user.name}</Text>
                         {item.note && (
                             <View style={styles.gridNote}>
-                                <Ionicons name="chatbubble" size={10} color="#fff" />
+                                <Ionicons name="chatbubble" size={10} color="#000" />
                                 <Text style={styles.gridNoteText} numberOfLines={1}>{item.note}</Text>
                             </View>
                         )}
-                    </BlurView>
+                    </View>
                 </TouchableOpacity>
             )}
         />
@@ -451,46 +448,44 @@ export const BookmarkGallery = ({
                     style={StyleSheet.absoluteFill}
                 />
 
-                <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
-
                 {/* Header */}
                 <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
                     <TouchableOpacity onPress={handleClose} style={styles.headerButton}>
-                        <Ionicons name="close" size={24} color="#fff" />
+                        <Ionicons name="close" size={24} color="#000" />
                     </TouchableOpacity>
 
                     <View style={styles.headerTitle}>
-                        <Text style={styles.greeting}>{getTimeBasedGreeting()},</Text>
-                        <Text style={styles.headerMainTitle}>Your Collection</Text>
+                        <Text style={styles.greeting} numberOfLines={1}>{getTimeBasedGreeting()},</Text>
+                        <Text style={styles.headerMainTitle}>Bookmarked Memories</Text>
                     </View>
 
                     <TouchableOpacity
                         style={styles.headerButton}
                         onPress={() => setShowFilters(!showFilters)}
                     >
-                        <Ionicons name="options-outline" size={22} color="#fff" />
+                        <Ionicons name="options-outline" size={22} color="#000" />
                     </TouchableOpacity>
                 </View>
 
                 {/* Filter Bar */}
                 {showFilters && (
                     <MotiView
-                        from={{ opacity: 0, translateY: -20 }}
+                        from={{ opacity: 0, translateY: -10 }}
                         animate={{ opacity: 1, translateY: 0 }}
                         style={styles.filterBar}
                     >
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScrollContent}>
                             {COLLECTIONS.map((col) => (
                                 <TouchableOpacity
                                     key={col.id}
                                     style={[
                                         styles.filterChip,
-                                        selectedCollection === col.id && { backgroundColor: col.color }
+                                        selectedCollection === col.id && { backgroundColor: col.color, borderColor: '#000', borderWidth: 1 }
                                     ]}
                                     onPress={() => setSelectedCollection(col.id)}
                                 >
-                                    <Ionicons name={col.icon as any} size={14} color="#fff" />
-                                    <Text style={styles.filterChipText}>{col.name}</Text>
+                                    <Ionicons name={col.icon as any} size={16} color={selectedCollection === col.id ? "#fff" : "#000"} />
+                                    <Text style={[styles.filterChipText, selectedCollection === col.id && { fontWeight: '700', color: '#fff' }]}>{col.name}</Text>
                                     {col.id === 'all' && (
                                         <View style={styles.filterBadge}>
                                             <Text style={styles.filterBadgeText}>{bookmarks.length}</Text>
@@ -504,17 +499,17 @@ export const BookmarkGallery = ({
 
                 {/* Search Bar */}
                 <View style={styles.searchContainer}>
-                    <Ionicons name="search" size={18} color="rgba(255,255,255,0.5)" />
+                    <Ionicons name="search" size={18} color="#000" />
                     <TextInput
                         style={styles.searchInput}
                         placeholder="Search your collection..."
-                        placeholderTextColor="rgba(255,255,255,0.5)"
+                        placeholderTextColor="#666"
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                     />
                     {searchQuery !== '' && (
                         <TouchableOpacity onPress={() => setSearchQuery('')}>
-                            <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.5)" />
+                            <Ionicons name="close-circle" size={18} color="#000" />
                         </TouchableOpacity>
                     )}
                 </View>
@@ -528,7 +523,7 @@ export const BookmarkGallery = ({
                         <Ionicons
                             name="time-outline"
                             size={18}
-                            color={viewMode === 'timeline' ? '#fff' : 'rgba(255,255,255,0.5)'}
+                            color={viewMode === 'timeline' ? '#fff' : '#000'}
                         />
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -538,7 +533,7 @@ export const BookmarkGallery = ({
                         <Ionicons
                             name="list-outline"
                             size={18}
-                            color={viewMode === 'list' ? '#fff' : 'rgba(255,255,255,0.5)'}
+                            color={viewMode === 'list' ? '#fff' : '#000'}
                         />
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -548,7 +543,7 @@ export const BookmarkGallery = ({
                         <Ionicons
                             name="grid-outline"
                             size={18}
-                            color={viewMode === 'grid' ? '#fff' : 'rgba(255,255,255,0.5)'}
+                            color={viewMode === 'grid' ? '#fff' : '#000'}
                         />
                     </TouchableOpacity>
                 </View>
@@ -583,7 +578,7 @@ export const BookmarkGallery = ({
                     animationType="fade"
                     onRequestClose={() => setShowNoteModal(false)}
                 >
-                    <BlurView intensity={90} tint="dark" style={styles.modalOverlay}>
+                    <View style={styles.modalOverlay}>
                         <MotiView
                             from={{ scale: 0.8, opacity: 0, translateY: 50 }}
                             animate={{ scale: 1, opacity: 1, translateY: 0 }}
@@ -622,8 +617,8 @@ export const BookmarkGallery = ({
                                         ]}
                                         onPress={() => setTempCollection(col.id)}
                                     >
-                                        <Ionicons name={col.icon as any} size={14} color="#fff" />
-                                        <Text style={styles.filterChipText}>{col.name}</Text>
+                                         <Ionicons name={col.icon as any} size={14} color={tempCollection === col.id ? "#fff" : "#000"} />
+                                         <Text style={[styles.filterChipText, tempCollection === col.id && { color: '#fff' }]}>{col.name}</Text>
                                     </TouchableOpacity>
                                 ))}
                             </ScrollView>
@@ -643,7 +638,7 @@ export const BookmarkGallery = ({
                                 </TouchableOpacity>
                             </View>
                         </MotiView>
-                    </BlurView>
+                    </View>
                 </Modal>
             </View>
         </Modal>
@@ -657,75 +652,90 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: 20,
         paddingBottom: 20,
+        zIndex: 10,
     },
     headerButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1.5,
+        borderColor: '#000',
         justifyContent: 'center',
         alignItems: 'center',
+        ...createShadow({ opacity: 0.15, radius: 8 }),
     },
     headerTitle: {
         alignItems: 'center',
+        flex: 1,
+        paddingHorizontal: 10,
     },
     greeting: {
-        fontSize: 12,
-        color: 'rgba(255,255,255,0.6)',
+        fontSize: 14,
+        color: '#000000',
         textTransform: 'uppercase',
-        letterSpacing: 1,
+        letterSpacing: 2,
+        fontWeight: '700',
     },
     headerMainTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#fff',
+        fontSize: 26,
+        fontWeight: '900',
+        color: '#000000',
     },
     filterBar: {
+        marginBottom: 20,
+    },
+    filterScrollContent: {
         paddingHorizontal: 20,
-        marginBottom: 15,
+        gap: 12,
     },
     filterChip: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 25,
-        marginRight: 10,
-        gap: 6,
+        backgroundColor: '#F5F5F7',
+        borderWidth: 1.5,
+        borderColor: '#000',
+        paddingHorizontal: 18,
+        paddingVertical: 12,
+        borderRadius: 30,
+        gap: 10,
     },
     filterChipText: {
-        color: '#fff',
-        fontSize: 13,
-        fontWeight: '500',
+        color: '#000000',
+        fontSize: 15,
+        fontWeight: '600',
     },
     filterBadge: {
-        backgroundColor: 'rgba(255,255,255,0.3)',
+        backgroundColor: '#1063FD',
         borderRadius: 12,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
+        paddingHorizontal: 10,
+        paddingVertical: 3,
         marginLeft: 4,
     },
     filterBadgeText: {
-        color: '#fff',
-        fontSize: 10,
-        fontWeight: '700',
+        color: '#FFFFFF',
+        fontSize: 12,
+        fontWeight: '900',
     },
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: '#FFFFFF',
+        borderWidth: 2,
+        borderColor: '#000',
         marginHorizontal: 20,
-        marginBottom: 15,
-        paddingHorizontal: 15,
-        paddingVertical: Platform.OS === 'ios' ? 12 : 8,
-        borderRadius: 30,
-        gap: 8,
+        marginBottom: 25,
+        paddingHorizontal: 20,
+        paddingVertical: Platform.OS === 'ios' ? 16 : 12,
+        borderRadius: 35,
+        gap: 12,
+        ...createShadow({ opacity: 0.15, height: 6 }),
     },
     searchInput: {
         flex: 1,
-        color: '#fff',
-        fontSize: 14,
+        color: '#000000',
+        fontSize: 17,
+        fontWeight: '600',
         ...Platform.select({
             web: {
                 outlineStyle: 'none',
@@ -734,21 +744,25 @@ const styles = StyleSheet.create({
     },
     viewToggle: {
         flexDirection: 'row',
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1.5,
+        borderColor: '#000',
         alignSelf: 'center',
-        borderRadius: 25,
-        padding: 3,
-        marginBottom: 20,
+        borderRadius: 30,
+        padding: 5,
+        marginBottom: 30,
     },
     viewToggleButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 50,
+        height: 50,
+        borderRadius: 25,
         justifyContent: 'center',
         alignItems: 'center',
     },
     viewToggleActive: {
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        backgroundColor: '#1063FD',
+        borderColor: '#000',
+        borderWidth: 0.5,
     },
     content: {
         flex: 1,
@@ -756,39 +770,45 @@ const styles = StyleSheet.create({
     },
     // Timeline Styles
     timelineSection: {
-        marginBottom: 25,
+        marginBottom: 35,
     },
     timelineHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 15,
-        paddingHorizontal: isWeb ? 0 : 20,
+        marginBottom: 20,
+        paddingHorizontal: isWeb ? 0 : 25,
     },
     timelineDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: '#fff',
-        marginRight: 10,
+        width: 14,
+        height: 14,
+        borderRadius: 7,
+        backgroundColor: '#1063FD',
+        marginRight: 15,
+        borderWidth: 3,
+        borderColor: '#000000',
     },
     timelineDate: {
-        color: '#fff',
-        fontSize: 14,
-        fontWeight: '600',
-        opacity: 0.8,
+        color: '#000000',
+        fontSize: 17,
+        fontWeight: '900',
+        textTransform: 'uppercase',
+        letterSpacing: 2,
     },
     timelineCard: {
-        width: isWeb ? CARD_WIDTH : width,
+        width: isWeb ? CARD_WIDTH : width * 0.94,
         marginHorizontal: 'auto',
-        borderRadius: isWeb ? 24 : 0,
-        marginBottom: 16,
+        borderRadius: 28,
+        marginBottom: 25,
         overflow: 'hidden',
+        backgroundColor: '#FFFFFF',
+        borderWidth: 2,
+        borderColor: '#000',
         ...createShadow({
             width: 0,
-            height: 4,
-            opacity: 0.2,
-            radius: 12,
-            elevation: 8,
+            height: 12,
+            opacity: 0.1,
+            radius: 20,
+            elevation: 10,
         }),
     },
     timelineGradient: {
@@ -796,13 +816,16 @@ const styles = StyleSheet.create({
     },
     timelineContent: {
         flexDirection: 'row',
-        padding: 16,
-        gap: 16,
+        padding: 24,
+        gap: 24,
     },
     timelineThumb: {
-        width: 100,
-        height: 100,
-        borderRadius: 16,
+        width: 110,
+        height: 110,
+        borderRadius: 20,
+        backgroundColor: '#F5F5F7',
+        borderWidth: 1,
+        borderColor: '#000',
     },
     timelineInfo: {
         flex: 1,
@@ -811,92 +834,93 @@ const styles = StyleSheet.create({
     timelineRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 8,
-        gap: 8,
+        marginBottom: 10,
+        gap: 12,
     },
     timelineAvatar: {
-        width: 18,
-        height: 18,
-        borderRadius: 9,
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        borderWidth: 1.5,
+        borderColor: '#000',
     },
     timelineName: {
-        color: '#fff',
-        fontSize: 13,
-        fontWeight: '600',
+        color: '#555555',
+        fontSize: 14,
+        fontWeight: '800',
     },
     timelineCaption: {
-        color: 'rgba(255,255,255,0.8)',
-        fontSize: 12,
-        marginBottom: 4,
+        color: '#000000',
+        fontSize: 18,
+        fontWeight: '700',
+        lineHeight: 24,
+        marginBottom: 15,
     },
     timelineNote: {
         flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 8,
-        marginTop: 6,
-        gap: 6,
+        alignItems: 'flex-start',
+        backgroundColor: '#F5F5F7',
+        padding: 15,
+        borderRadius: 15,
+        marginTop: 5,
+        gap: 10,
+        borderLeftWidth: 4,
+        borderLeftColor: '#1063FD',
     },
     timelineNoteText: {
-        color: '#fff',
-        fontSize: 12,
-        fontWeight: '500',
+        color: '#555555',
+        fontSize: 14,
+        fontStyle: 'italic',
+        lineHeight: 20,
+        flex: 1,
     },
     mobileActionButtons: {
         flexDirection: 'row',
-        marginTop: 10,
-        gap: 12,
-        justifyContent: 'flex-end',
+        marginTop: 20,
+        gap: 15,
     },
     mobileActionButton: {
-        width: 36,
-        height: 36,
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(255,255,255,0.15)',
-        borderRadius: 18,
+        backgroundColor: '#F5F5F7',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 25,
+        borderWidth: 1.5,
+        borderColor: '#000',
     },
     mobileActionDelete: {
-        backgroundColor: 'rgba(255,59,48,0.4)',
+        backgroundColor: '#FFE5E5',
+        borderColor: '#CC0000',
     },
     collectionBadge: {
         position: 'absolute',
-        top: 8,
-        right: 8,
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    timelineActions: {
-        marginTop: 8,
-        flexDirection: 'row',
-        justifyContent: 'flex-end',
-    },
-    timelineAction: {
+        top: 24,
+        right: 24,
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: '#FFFFFF',
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    timelineList: {
-        paddingBottom: 100,
+        borderWidth: 1.5,
+        borderColor: '#000',
     },
     // Grid Styles
     gridRow: {
-        justifyContent: 'space-between',
-        marginBottom: 10,
+        paddingHorizontal: 20,
+        gap: 20,
+        marginBottom: 20,
     },
     gridCard: {
-        width: (CARD_WIDTH - 30) / 2,
-        height: 150,
-        borderRadius: 16,
+        flex: 1,
+        aspectRatio: 0.8,
+        borderRadius: 25,
         overflow: 'hidden',
+        backgroundColor: '#FFFFFF',
+        borderWidth: 2,
+        borderColor: '#000',
+        ...createShadow({ opacity: 0.15, elevation: 8 }),
     },
     gridImage: {
         width: '100%',
@@ -907,193 +931,212 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        padding: 10,
+        padding: 20,
+        backgroundColor: '#FFFFFFFF',
     },
     gridName: {
-        color: '#fff',
-        fontSize: 12,
-        fontWeight: '600',
+        color: '#000000',
+        fontSize: 15,
+        fontWeight: '900',
+        marginBottom: 6,
     },
     gridNote: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 4,
-        gap: 4,
+        gap: 8,
     },
     gridNoteText: {
-        color: '#fff',
-        fontSize: 10,
-        opacity: 0.8,
+        color: '#555555',
+        fontSize: 12,
+        fontStyle: 'italic',
     },
     // List Styles
     listCard: {
         flexDirection: 'row',
-        backgroundColor: 'rgba(255,255,255,0.05)',
-        borderRadius: 16,
-        marginBottom: 10,
+        backgroundColor: '#FFFFFF',
+        marginHorizontal: 20,
+        marginBottom: 20,
+        borderRadius: 25,
         overflow: 'hidden',
-        ...createShadow({
-            width: 0,
-            height: 2,
-            opacity: 0.1,
-            radius: 8,
-            elevation: 3,
-        }),
+        borderWidth: 2,
+        borderColor: '#000',
+        ...createShadow({ opacity: 0.15, elevation: 6 }),
     },
     listImage: {
-        width: 80,
-        height: 80,
+        width: 130,
+        height: '100%',
+        backgroundColor: '#F5F5F7',
     },
     listInfo: {
         flex: 1,
-        padding: 12,
+        padding: 20,
     },
     listHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 4,
-        gap: 6,
+        marginBottom: 10,
+        gap: 10,
     },
     listAvatar: {
-        width: 18,
-        height: 18,
-        borderRadius: 9,
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#000',
     },
     listName: {
-        color: '#fff',
-        fontSize: 12,
-        fontWeight: '600',
+        color: '#555555',
+        fontSize: 13,
+        fontWeight: '800',
     },
     listCaption: {
-        color: 'rgba(255,255,255,0.8)',
-        fontSize: 12,
-        marginBottom: 4,
+        color: '#000000',
+        fontSize: 16,
+        fontWeight: '700',
+        marginBottom: 12,
     },
     listNote: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
+        backgroundColor: '#F5F5F7',
+        padding: 10,
+        borderRadius: 12,
+        gap: 8,
     },
     listNoteText: {
-        color: 'rgba(255,255,255,0.6)',
-        fontSize: 11,
+        color: '#555555',
+        fontSize: 13,
+        fontStyle: 'italic',
     },
-    // Empty State
-    emptyState: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 40,
-    },
-    emptyIcon: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        backgroundColor: 'rgba(255,255,255,0.05)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    emptyTitle: {
-        fontSize: 22,
-        fontWeight: '700',
-        color: '#fff',
-        marginBottom: 10,
-    },
-    emptyText: {
-        fontSize: 14,
-        color: 'rgba(255,255,255,0.6)',
-        textAlign: 'center',
-        lineHeight: 20,
-    },
-    // Web Action Buttons
+    // Web Actions
     webActionButtons: {
         flexDirection: 'row',
-        justifyContent: 'flex-end',
-        marginTop: 10,
-        gap: 8,
+        backgroundColor: '#FFFFFF',
+        padding: 15,
+        gap: 15,
+        borderTopWidth: 2,
+        borderTopColor: '#000',
     },
     webActionButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-        gap: 4,
+        backgroundColor: '#F5F5F7',
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 15,
+        gap: 10,
+        borderWidth: 1,
+        borderColor: '#000',
     },
     webActionDelete: {
-        backgroundColor: 'rgba(255,68,68,0.2)',
+        backgroundColor: '#FFE5E5',
+        borderColor: '#CC0000',
     },
     webActionText: {
-        color: '#fff',
-        fontSize: 12,
+        color: '#000000',
+        fontSize: 14,
+        fontWeight: '800',
+    },
+    // Common
+    timelineList: {
+        paddingBottom: 50,
+    },
+    emptyState: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 50,
+    },
+    emptyIcon: {
+        width: 140,
+        height: 140,
+        borderRadius: 70,
+        backgroundColor: '#FFFFFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 30,
+        borderWidth: 2,
+        borderColor: '#000',
+    },
+    emptyTitle: {
+        color: '#000000',
+        fontSize: 24,
+        fontWeight: '900',
+        marginBottom: 15,
+        textAlign: 'center',
+    },
+    emptyText: {
+        color: '#555555',
+        fontSize: 16,
+        lineHeight: 24,
+        textAlign: 'center',
     },
     // Note Modal
     modalOverlay: {
         flex: 1,
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
     },
     noteModal: {
-        backgroundColor: '#1a1a2e',
-        borderRadius: 30,
-        padding: 24,
-        width: Math.min(width - 40, 400),
-        ...Platform.select({
-            web: {
-                width: 620,
-            },
-        }),
+        width: Math.min(width * 0.92, 450),
+        backgroundColor: '#FFFFFF',
+        borderRadius: 35,
+        padding: 30,
+        borderWidth: 2,
+        borderColor: '#000',
+        ...createShadow({ opacity: 0.15, radius: 25 }),
     },
     noteModalTitle: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#fff',
-        marginBottom: 6,
+        color: '#000000',
+        fontSize: 26,
+        fontWeight: '900',
+        marginBottom: 10,
     },
     noteModalSubtitle: {
-        fontSize: 14,
-        color: '#aaa',
-        marginBottom: 20,
+        color: '#555555',
+        fontSize: 15,
+        marginBottom: 25,
     },
     noteInput: {
-        backgroundColor: 'rgba(255,255,255,0.05)',
-        borderRadius: 16,
-        padding: 16,
-        color: '#fff',
-        fontSize: 14,
-        minHeight: 100,
+        backgroundColor: '#F5F5F7',
+        borderRadius: 20,
+        padding: 20,
+        color: '#000000',
+        fontSize: 18,
+        height: 140,
         textAlignVertical: 'top',
-        marginBottom: 20,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        marginBottom: 25,
+        borderWidth: 1.5,
+        borderColor: '#000',
     },
     noteActions: {
         flexDirection: 'row',
-        gap: 12,
+        gap: 15,
     },
     noteButton: {
         flex: 1,
-        paddingVertical: 14,
-        borderRadius: 16,
+        paddingVertical: 16,
+        borderRadius: 20,
         alignItems: 'center',
     },
     noteCancel: {
-        backgroundColor: 'rgba(255,255,255,0.05)',
+        backgroundColor: '#F5F5F7',
+        borderWidth: 1,
+        borderColor: '#000',
     },
     noteSave: {
-        backgroundColor: '#0084ff',
+        backgroundColor: '#1063FD',
     },
     noteCancelText: {
-        color: '#aaa',
-        fontSize: 15,
-        fontWeight: '600',
+        color: '#000000',
+        fontSize: 16,
+        fontWeight: '800',
     },
     noteSaveText: {
-        color: '#fff',
-        fontSize: 15,
-        fontWeight: '700',
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '900',
     },
+});
 });

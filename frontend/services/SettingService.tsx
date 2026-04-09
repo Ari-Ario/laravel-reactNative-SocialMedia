@@ -82,3 +82,44 @@ export async function updateUserName(name: string) {
 
   return response.data;
 }
+
+export async function fetchFullSettings() {
+  const token = await getToken();
+  const API_BASE = getApiBase();
+
+  const response = await axios.get(`${API_BASE}/settings/all`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+}
+
+export async function updateFullSettings(data: any) {
+  const token = await getToken();
+  const API_BASE = getApiBase();
+
+  const response = await axios.put(`${API_BASE}/settings/update`, data, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+}
+
+export async function updatePreferences(data: any) {
+  const token = await getToken();
+  const API_BASE = getApiBase();
+
+  const response = await axios.put(`${API_BASE}/preferences`, data, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+}
+
+export async function deleteAccount(password: string) {
+  const token = await getToken();
+  const API_BASE = getApiBase();
+
+  const response = await axios.delete(`${API_BASE}/settings/account`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { password }
+  });
+  return response.data;
+}

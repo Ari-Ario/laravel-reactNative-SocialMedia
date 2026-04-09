@@ -83,23 +83,26 @@ export async function logout() {
   try {
     console.log("🚀 Starting comprehensive logout cleanup...");
 
-    // 1. Disconnect and cleanup Real-time
+    // 1. Clear local session immediately (locally logged out no matter what happens next)
+    await setToken(null);
+
+    // 2. Disconnect and cleanup Real-time
     PusherService.disconnect();
 
-    // 2. Reset all Zustand stores to clear local data
+    // 3. Reset all Zustand stores to clear local data
     usePostStore.getState().reset();
     useNotificationStore.getState().reset();
     useCollaborationStore.getState().reset();
     useSpaceStore.getState().reset();
+
+    // 4. Try to inform the server (best effort)
     const token = await getToken();
     if (token) {
       await axios.post(`/logout`, {});
     }
-    router.replace('/LoginScreen');
   } catch (error) {
-    console.error('Logout API error:', error);
+    console.warn('Logout API notification failed (user still logged out locally):', error);
   } finally {
-    await setToken(null);
     console.log("Local logout completed");
   }
 }

@@ -36,7 +36,7 @@ class User extends Authenticatable
         'website',           // Personal website
         'location',          // City/Country
         'phone',             // Contact number (optional)
-        // 'social_links',      // JSON: {twitter: x, instagram: y}
+        'social_links',      // JSON: {twitter: x, instagram: y}
         'is_private',        // Private account flag
         'is_admin',          // Admin role flag
         'theme_preference',  // Light/dark mode
@@ -72,6 +72,7 @@ class User extends Authenticatable
             'is_guest' => 'boolean',
             'device_tokens' => 'array',
             'is_premium' => 'boolean',
+            'social_links' => 'array',
         ];
     }
 
@@ -178,7 +179,7 @@ class User extends Authenticatable
     public function spaces()
     {
         return $this->belongsToMany(CollaborationSpace::class, 'space_participations', 'user_id', 'space_id')
-            ->withPivot('role', 'permissions', 'last_read_at', 'muted_until')
+            ->withPivot('role', 'permissions', 'last_read_at')
             ->withTimestamps();
     }
 
@@ -216,5 +217,20 @@ class User extends Authenticatable
             ->pluck('token')
             ->filter(fn($token) => is_string($token) && str_starts_with($token, '{'))
             ->toArray();
+    }
+    /**
+     * Get the user's preferences.
+     */
+    public function preferences()
+    {
+        return $this->hasOne(UserPreference::class);
+    }
+
+    /**
+     * Conversations the user is part of.
+     */
+    public function conversations()
+    {
+        return $this->belongsToMany(Conversation::class, 'conversation_user');
     }
 }

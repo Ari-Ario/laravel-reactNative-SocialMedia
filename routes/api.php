@@ -28,6 +28,8 @@ use App\Http\Controllers\GuestAccessController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ModerationController;
 use App\Http\Controllers\ModerationAdminController;
+use App\Http\Controllers\Api\SettingsController;
+use App\Http\Controllers\InviteController;
 use Illuminate\Support\Facades\Broadcast;
 
 use App\Models\User;
@@ -39,7 +41,7 @@ use Illuminate\Auth\Events\Verified;
 use Illuminate\Support\Facades\Event;
 
 // Handle preflight OPTIONS requests
-Route::options('/{any}', function() {
+Route::options('/{any}', function () {
     return response('', 200)
         ->header('Access-Control-Allow-Origin', '*')
         ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
@@ -53,266 +55,278 @@ Route::post('/broadcasting/auth', function (Request $request) {
 Route::group(["middleware" => ["auth:sanctum"]], function () {
 
     // Profile routes
-    Route::get('/users', [AuthenticatedSessionController::class , 'getUsers']); //maybe needed later
-    Route::get('/user', [AuthenticatedSessionController::class , 'getUser']);
-    Route::get('/profiles/{user}', [ProfileController::class , 'show']);
-    Route::post('/profiles/{user}/follow', [ProfileController::class , 'follow']);
-    Route::post('/profiles/{user}/block', [ProfileController::class , 'block']);
-    Route::post('/profiles/{user}/unblock', [ProfileController::class , 'unblock']);
+    Route::get('/users', [AuthenticatedSessionController::class, 'getUsers']); //maybe needed later
+    Route::get('/user', [AuthenticatedSessionController::class, 'getUser']);
+    Route::get('/profiles/{user}', [ProfileController::class, 'show']);
+    Route::post('/profiles/{user}/follow', [ProfileController::class, 'follow']);
+    Route::post('/profiles/{user}/block', [ProfileController::class, 'block']);
+    Route::post('/profiles/{user}/unblock', [ProfileController::class, 'unblock']);
 
-    Route::post('/chatbot', [ChatbotController::class , 'handleMessage']);
+    Route::post('/chatbot', [ChatbotController::class, 'handleMessage']);
     Route::post('/test-csrf', fn() => [1, 2, 3]);
 
-    Route::post('/logout', [ApiAuthController::class , 'logout']);
+    Route::post('/logout', [ApiAuthController::class, 'logout']);
 
 
     // Training endpoints
-    Route::prefix('chatbot-training')->group(function () {
-            Route::get('/', [ChatbotTrainingController::class , 'index']);
-            Route::post('/', [ChatbotTrainingController::class , 'store']);
-            Route::put('/{id}', [ChatbotTrainingController::class , 'update']);
-            Route::post('/bulk-approve', [ChatbotTrainingController::class , 'bulkApprove']);
-            Route::get('/needs-review', [ChatbotTrainingController::class , 'needsReview']);
-            Route::get('/categories', [ChatbotTrainingController::class , 'categories']);
-            Route::delete('/delete/{id}', [ChatbotTrainingController::class , 'destroy']);
+    Route::prefix('chatbot-training')->group(
+        function () {
+            Route::get('/', [ChatbotTrainingController::class, 'index']);
+            Route::post('/', [ChatbotTrainingController::class, 'store']);
+            Route::put('/{id}', [ChatbotTrainingController::class, 'update']);
+            Route::post('/bulk-approve', [ChatbotTrainingController::class, 'bulkApprove']);
+            Route::get('/needs-review', [ChatbotTrainingController::class, 'needsReview']);
+            Route::get('/categories', [ChatbotTrainingController::class, 'categories']);
+            Route::delete('/delete/{id}', [ChatbotTrainingController::class, 'destroy']);
         }
-        );
+    );
 
-        Route::prefix('profile')->group(function () {
-            Route::post('/photo', [ProfileController::class , 'uploadPhoto']);
-            Route::delete('/photo', [ProfileController::class , 'deletePhoto']);
-            Route::post('/name', [ProfileController::class , 'updateName']);
-            Route::get('/followers', [ProfileController::class , 'followers']);
-            Route::get('/following', [ProfileController::class , 'following']);
+    Route::prefix('profile')->group(
+        function () {
+            Route::post('/photo', [ProfileController::class, 'uploadPhoto']);
+            Route::delete('/photo', [ProfileController::class, 'deletePhoto']);
+            Route::post('/name', [ProfileController::class, 'updateName']);
+            Route::get('/followers', [ProfileController::class, 'followers']);
+            Route::get('/following', [ProfileController::class, 'following']);
         }
-        );
+    );
 
-        // Stories
-        Route::get('/stories', [StoryController::class , 'index']);
-        Route::post('/stories', [StoryController::class , 'store']);
-        Route::get('/stories/{story}', [StoryController::class , 'show']);
-        Route::get('/users/{user}/stories', [StoryController::class , 'userStories']);
-        Route::post('/stories/{story}/view', [StoryController::class , 'markAsViewed']);
-        Route::post('/stories/{story}/share', [StoryController::class , 'share']);
-        Route::delete('/stories/{story}', [StoryController::class , 'destroy']);
+    // Stories
+    Route::get('/stories', [StoryController::class, 'index']);
+    Route::post('/stories', [StoryController::class, 'store']);
+    Route::get('/stories/{story}', [StoryController::class, 'show']);
+    Route::get('/users/{user}/stories', [StoryController::class, 'userStories']);
+    Route::post('/stories/{story}/view', [StoryController::class, 'markAsViewed']);
+    Route::post('/stories/{story}/share', [StoryController::class, 'share']);
+    Route::delete('/stories/{story}', [StoryController::class, 'destroy']);
 
-        // Posts
-        Route::get('/posts', [PostController::class , 'index']);
-        Route::post('/posts', [PostController::class , 'store']);
-        Route::match (['put', 'post'], '/posts/{post}', [PostController::class , 'update']);
-        Route::delete('/posts/{post}', [PostController::class , 'destroy']);
+    // Posts
+    Route::get('/posts', [PostController::class, 'index']);
+    Route::post('/posts', [PostController::class, 'store']);
+    Route::match(['put', 'post'], '/posts/{post}', [PostController::class, 'update']);
+    Route::delete('/posts/{post}', [PostController::class, 'destroy']);
 
-        Route::post('/posts/{post}/repost', [PostController::class , 'repost']);
-        Route::post('/posts/{post}/share', [PostController::class , 'share']);
-        Route::get('/bookmarks', [PostController::class , 'getBookmarks']);
-        Route::post('/posts/{post}/bookmark', [PostController::class , 'bookmark']);
-        Route::put('/bookmarks/{id}', [PostController::class , 'updateBookmark']);
-        Route::delete('/posts/{post}/media/{media}', [PostController::class , 'deleteMedia']);
-        // Single Post fetch
-        Route::get('/posts/{id}', [PostController::class , 'showPost']);
+    Route::post('/posts/{post}/repost', [PostController::class, 'repost']);
+    Route::post('/posts/{post}/share', [PostController::class, 'share']);
+    Route::get('/bookmarks', [PostController::class, 'getBookmarks']);
+    Route::post('/posts/{post}/bookmark', [PostController::class, 'bookmark']);
+    Route::put('/bookmarks/{id}', [PostController::class, 'updateBookmark']);
+    Route::delete('/posts/{post}/media/{media}', [PostController::class, 'deleteMedia']);
+    // Single Post fetch
+    Route::get('/posts/{id}', [PostController::class, 'showPost']);
 
-        // Reactions
-        Route::post('/posts/{post}/react', [PostController::class , 'react']);
-        Route::post('/posts/{post}/deletereaction', [PostController::class , 'deleteReaction']);
-        Route::post('/comments/{id}/react', [PostController::class , 'reactToComment']);
-        Route::post('/comments/{comment}/deletereaction', [PostController::class , 'deleteCommentReaction']);
+    // Reactions
+    Route::post('/posts/{post}/react', [PostController::class, 'react']);
+    Route::post('/posts/{post}/deletereaction', [PostController::class, 'deleteReaction']);
+    Route::post('/comments/{id}/react', [PostController::class, 'reactToComment']);
+    Route::post('/comments/{comment}/deletereaction', [PostController::class, 'deleteCommentReaction']);
 
-        // Comments
-        Route::post('/posts/{post}/comment', [PostController::class , 'comment']);
-        Route::delete('/posts/{post}/comments/{comment}', [PostController::class , 'deleteComment']);
+    // Comments
+    Route::post('/posts/{post}/comment', [PostController::class, 'comment']);
+    Route::delete('/posts/{post}/comments/{comment}', [PostController::class, 'deleteComment']);
 
     // routes/api.php
     // Route::get('/notifications/missed', [NotificationController::class, 'missedNotifications'] );
-    });
+
+    // Centralized Settings
+    Route::get('/settings/all', [SettingsController::class, 'index']);
+    Route::put('/settings/update', [SettingsController::class, 'update']);
+    Route::put('/preferences', [SettingsController::class, 'updatePreferences']);
+    Route::delete('/account', [SettingsController::class, 'destroy']);
+    Route::post('/settings/invite', [InviteController::class, 'sendInvitation']);
+});
 
 
-Route::get('/admin/chatbot/train', [ChatbotTrainingController::class , 'show']);
-Route::post('/admin/chatbot/train', [ChatbotTrainingController::class , 'store']);
+Route::get('/admin/chatbot/train', [ChatbotTrainingController::class, 'show']);
+Route::post('/admin/chatbot/train', [ChatbotTrainingController::class, 'store']);
 
 
 Route::middleware(['auth:sanctum'])->group(function () {
     // Notifications base check
-    Route::get('/notifications/missed', [NotificationController::class , 'missedNotifications'])->name('notifications.missed.base');
+    Route::get('/notifications/missed', [NotificationController::class, 'missedNotifications'])->name('notifications.missed.base');
 
     // search for spaces
-    Route::post('/search', [SpaceController::class , 'search']);
+    Route::post('/search', [SpaceController::class, 'search']);
 
     // search to add users to space
-    Route::post('/search/users', [UserSearchController::class , 'search']);
-    Route::post('/users/lookup', [UserSearchController::class , 'lookup']);
+    Route::post('/search/users', [UserSearchController::class, 'search']);
+    Route::post('/users/lookup', [UserSearchController::class, 'lookup']);
 
     // Collaboration Spaces (keep your existing spaces routes)
-    Route::prefix('spaces')->group(function () {
-            Route::get('/', [SpaceController::class , 'index']);
-            Route::post('/', [SpaceController::class , 'store']);
-            Route::get('/direct/{userId}', [SpaceController::class , 'getOrCreateDirectSpace']);
-            Route::get('/{id}', [SpaceController::class , 'show']);
-            Route::put('/{id}', [SpaceController::class , 'update']);
-            Route::put('/{id}/content', [SpaceController::class , 'updateContentState']);
-            Route::delete('/{id}', [SpaceController::class , 'destroy']);
-            Route::post('/{id}/join', [SpaceController::class , 'join']);
-            Route::post('/{id}/leave', [SpaceController::class , 'leave']);
-            Route::post('/{id}/invite', [SpaceController::class , 'invite']);
-            Route::post('/{id}/accept-invitation', [SpaceController::class , 'acceptInvitation']);
-            Route::post('/{id}/start-call', [SpaceController::class , 'startCall']);
-            Route::post('/{id}/end-call', [SpaceController::class , 'endCall']);
-            Route::post('/{id}/call/join', [SpaceController::class , 'joinCall']);
-            Route::post('/{id}/share-screen', [SpaceController::class , 'shareScreen']);
-            Route::post('/{id}/magic', [SpaceController::class , 'triggerMagic']);
-            Route::get('/{id}/participants', [SpaceController::class , 'getParticipants']);
-            Route::get('/{id}/ai-suggestions', [SpaceController::class , 'getAISuggestions']);
-            Route::post('/{id}/ai-query', [SpaceController::class , 'aiQuery']);
-            Route::post('/{id}/upload-media', [SpaceController::class , 'uploadMedia']);
-            Route::get('/{id}/media', [SpaceController::class , 'getMedia']);
-            Route::delete('/{id}/media/{mediaId}', [SpaceController::class , 'deleteMedia']);
-            Route::post('/{id}/send-message', [SpaceController::class , 'sendMessage']);
-            Route::post('/{id}/audio-message', [SpaceController::class , 'sendAudioMessage']);
-            Route::delete('/{id}/messages/{messageId}', [SpaceController::class , 'deleteMessage']);
-            Route::delete('/{id}/messages/{messageId}/local', [SpaceController::class , 'hideMessage']);
-            Route::post('/{id}/messages/{messageId}/react', [SpaceController::class , 'reactToMessage']);
-            Route::post('/{id}/messages/{messageId}/pin', [SpaceController::class , 'pinMessage']);
-            Route::post('/{id}/messages/forward', [SpaceController::class , 'forwardMessages']);
-            Route::post('/{id}/participants/{userId}/role', [SpaceController::class , 'updateParticipantRole']);
-            Route::delete('/{id}/participants/{userId}', [SpaceController::class , 'removeParticipant']);
+    Route::prefix('spaces')->group(
+        function () {
+            Route::get('/', [SpaceController::class, 'index']);
+            Route::post('/', [SpaceController::class, 'store']);
+            Route::get('/direct/{userId}', [SpaceController::class, 'getOrCreateDirectSpace']);
+            Route::get('/{id}', [SpaceController::class, 'show']);
+            Route::put('/{id}', [SpaceController::class, 'update']);
+            Route::put('/{id}/content', [SpaceController::class, 'updateContentState']);
+            Route::delete('/{id}', [SpaceController::class, 'destroy']);
+            Route::post('/{id}/join', [SpaceController::class, 'join']);
+            Route::post('/{id}/leave', [SpaceController::class, 'leave']);
+            Route::post('/{id}/invite', [SpaceController::class, 'invite']);
+            Route::post('/{id}/accept-invitation', [SpaceController::class, 'acceptInvitation']);
+            Route::post('/{id}/start-call', [SpaceController::class, 'startCall']);
+            Route::post('/{id}/end-call', [SpaceController::class, 'endCall']);
+            Route::post('/{id}/call/join', [SpaceController::class, 'joinCall']);
+            Route::post('/{id}/share-screen', [SpaceController::class, 'shareScreen']);
+            Route::post('/{id}/magic', [SpaceController::class, 'triggerMagic']);
+            Route::get('/{id}/participants', [SpaceController::class, 'getParticipants']);
+            Route::get('/{id}/ai-suggestions', [SpaceController::class, 'getAISuggestions']);
+            Route::post('/{id}/ai-query', [SpaceController::class, 'aiQuery']);
+            Route::post('/{id}/upload-media', [SpaceController::class, 'uploadMedia']);
+            Route::get('/{id}/media', [SpaceController::class, 'getMedia']);
+            Route::delete('/{id}/media/{mediaId}', [SpaceController::class, 'deleteMedia']);
+            Route::post('/{id}/send-message', [SpaceController::class, 'sendMessage']);
+            Route::post('/{id}/audio-message', [SpaceController::class, 'sendAudioMessage']);
+            Route::delete('/{id}/messages/{messageId}', [SpaceController::class, 'deleteMessage']);
+            Route::delete('/{id}/messages/{messageId}/local', [SpaceController::class, 'hideMessage']);
+            Route::post('/{id}/messages/{messageId}/react', [SpaceController::class, 'reactToMessage']);
+            Route::post('/{id}/messages/{messageId}/pin', [SpaceController::class, 'pinMessage']);
+            Route::post('/{id}/messages/forward', [SpaceController::class, 'forwardMessages']);
+            Route::post('/{id}/participants/{userId}/role', [SpaceController::class, 'updateParticipantRole']);
+            Route::delete('/{id}/participants/{userId}', [SpaceController::class, 'removeParticipant']);
 
             // Management Menu Actions
-            Route::post('/{id}/mute', [SpaceController::class , 'muteSpace']);
-            Route::post('/{id}/archive', [SpaceController::class , 'archiveSpace']);
-            Route::post('/{id}/pin', [SpaceController::class , 'pinSpace']);
-            Route::post('/{id}/unread', [SpaceController::class , 'markAsUnread']);
-            Route::post('/{id}/mark-as-read', [SpaceController::class , 'markAsRead']);
-            Route::post('/{id}/favorite', [SpaceController::class , 'favoriteSpace']);
-            Route::post('/{id}/clear-messages', [SpaceController::class , 'clearMessages']);
+            Route::post('/{id}/mute', [SpaceController::class, 'muteSpace']);
+            Route::post('/{id}/archive', [SpaceController::class, 'archiveSpace']);
+            Route::post('/{id}/pin', [SpaceController::class, 'pinSpace']);
+            Route::post('/{id}/unread', [SpaceController::class, 'markAsUnread']);
+            Route::post('/{id}/mark-as-read', [SpaceController::class, 'markAsRead']);
+            Route::post('/{id}/favorite', [SpaceController::class, 'favoriteSpace']);
+            Route::post('/{id}/clear-messages', [SpaceController::class, 'clearMessages']);
 
             // Poll routes
-            Route::get('/{id}/polls', [PollController::class , 'index']);
-            Route::post('/{id}/polls', [PollController::class , 'store']);
-            Route::get('/{id}/polls/{pollId}', [PollController::class , 'show']);
-            Route::post('/{id}/polls/{pollId}/vote', [PollController::class , 'vote']);
-            Route::post('/{id}/polls/{pollId}/close', [PollController::class , 'close']);
-            Route::get('/{id}/polls/{pollId}/results', [PollController::class , 'results']);
-            Route::put('/{id}/polls/{pollId}', [PollController::class , 'update']);
-            Route::delete('/{id}/polls/{pollId}', [PollController::class , 'destroy']);
+            Route::get('/{id}/polls', [PollController::class, 'index']);
+            Route::post('/{id}/polls', [PollController::class, 'store']);
+            Route::get('/{id}/polls/{pollId}', [PollController::class, 'show']);
+            Route::post('/{id}/polls/{pollId}/vote', [PollController::class, 'vote']);
+            Route::post('/{id}/polls/{pollId}/close', [PollController::class, 'close']);
+            Route::get('/{id}/polls/{pollId}/results', [PollController::class, 'results']);
+            Route::put('/{id}/polls/{pollId}', [PollController::class, 'update']);
+            Route::delete('/{id}/polls/{pollId}', [PollController::class, 'destroy']);
         }
-        );
-        // Add to routes/api.php inside auth:sanctum group
-        Route::prefix('spaces/{id}/whiteboard')->group(function () {
-            Route::get('/elements', [WhiteboardController::class , 'getElements']);
-            Route::post('/elements', [WhiteboardController::class , 'addElement']);
-            Route::put('/elements/{elementId}', [WhiteboardController::class , 'updateElement']);
-            Route::delete('/elements/{elementId}', [WhiteboardController::class , 'removeElement']);
-            Route::post('/clear', [WhiteboardController::class , 'clear']);
-            Route::post('/cursor', [WhiteboardController::class , 'updateCursor']);
+    );
+    // Add to routes/api.php inside auth:sanctum group
+    Route::prefix('spaces/{id}/whiteboard')->group(
+        function () {
+            Route::get('/elements', [WhiteboardController::class, 'getElements']);
+            Route::post('/elements', [WhiteboardController::class, 'addElement']);
+            Route::put('/elements/{elementId}', [WhiteboardController::class, 'updateElement']);
+            Route::delete('/elements/{elementId}', [WhiteboardController::class, 'removeElement']);
+            Route::post('/clear', [WhiteboardController::class, 'clear']);
+            Route::post('/cursor', [WhiteboardController::class, 'updateCursor']);
         }
-        );
-        Route::post('/spaces/{id}/call/signal', [SpaceController::class , 'callSignal']);
-        Route::post('/spaces/{id}/call/mute', [SpaceController::class , 'callMute']);
-        Route::post('/spaces/{id}/call/video', [SpaceController::class , 'callVideo']);
-        Route::post('/spaces/{id}/call/screen-share', [SpaceController::class , 'callScreenShare']);
-        // forward poll to space
-        Route::post('/polls/{pollId}/forward', [PollController::class , 'forward']);
-    });
+    );
+    Route::post('/spaces/{id}/call/signal', [SpaceController::class, 'callSignal']);
+    Route::post('/spaces/{id}/call/mute', [SpaceController::class, 'callMute']);
+    Route::post('/spaces/{id}/call/video', [SpaceController::class, 'callVideo']);
+    Route::post('/spaces/{id}/call/screen-share', [SpaceController::class, 'callScreenShare']);
+    // forward poll to space
+    Route::post('/polls/{pollId}/forward', [PollController::class, 'forward']);
+});
 
 // Message routes
 Route::middleware('auth:sanctum')->prefix('messages')->group(function () {
-    Route::get('/', [MessagesController::class , 'index']);
-    Route::post('/', [MessagesController::class , 'store']);
-    Route::put('/{id}', [MessagesController::class , 'update']);
-    Route::delete('/{id}', [MessagesController::class , 'destroy']);
-    Route::post('/{id}/react', [MessagesController::class , 'react']);
-    Route::post('/forward-to-user', [MessagesController::class , 'forwardToUser']);
-    Route::delete('/{id}/reaction', [MessagesController::class , 'deleteReaction']);
+    Route::get('/', [MessagesController::class, 'index']);
+    Route::get('/highlights', [MessagesController::class, 'highlights']);
+    Route::post('/', [MessagesController::class, 'store']);
+    Route::put('/{id}', [MessagesController::class, 'update']);
+    Route::delete('/{id}', [MessagesController::class, 'destroy']);
+    Route::post('/{id}/react', [MessagesController::class, 'react']);
+    Route::post('/forward-to-user', [MessagesController::class, 'forwardToUser']);
+    Route::delete('/{id}/reaction', [MessagesController::class, 'deleteReaction']);
 });
 
 // Unified Notification routes
 Route::middleware('auth:sanctum')->prefix('notifications')->group(function () {
-    Route::get('/missed', [NotificationController::class , 'missedNotifications'])->name('notifications.missed');
-    Route::post('/register-device', [NotificationController::class , 'registerDevice']);
-    Route::post('/unregister-device', [NotificationController::class , 'unregisterDevice']);
-    Route::post('/{id}/read', [NotificationController::class , 'markAsRead']);
-    Route::post('/read-all', [NotificationController::class , 'markAllAsRead']);
-    Route::delete('/clear', [NotificationController::class , 'clearAll']);
-    Route::get('/preferences', [NotificationController::class , 'getPreferences']);
-    Route::put('/preferences', [NotificationController::class , 'updatePreferences']);
+    Route::get('/missed', [NotificationController::class, 'missedNotifications'])->name('notifications.missed');
+    Route::post('/register-device', [NotificationController::class, 'registerDevice']);
+    Route::post('/unregister-device', [NotificationController::class, 'unregisterDevice']);
+    Route::post('/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::post('/read-all', [NotificationController::class, 'markAllAsRead']);
+    Route::delete('/clear', [NotificationController::class, 'clearAll']);
+    Route::get('/preferences', [NotificationController::class, 'getPreferences']);
+    Route::put('/preferences', [NotificationController::class, 'updatePreferences']);
 });
 
 Route::prefix('ai')->middleware('auth:sanctum')->group(function () {
     // ... existing interactions ...
-    Route::get('/interactions', [AIController::class , 'getInteractions']);
-    Route::post('/interactions/{id}/feedback', [AIController::class , 'provideFeedback']);
-    Route::post('/spaces/{id}/learn', [AIController::class , 'learnFromSpace']);
-    Route::get('/posts/{id}/enhance', [AIController::class , 'enhancePost']);
-    Route::get('/stories/{id}/continue', [AIController::class , 'suggestStoryContinuation']);
-    Route::post('/enhance-comment', [AIController::class , 'enhanceComment']);
+    Route::get('/interactions', [AIController::class, 'getInteractions']);
+    Route::post('/interactions/{id}/feedback', [AIController::class, 'provideFeedback']);
+    Route::post('/spaces/{id}/learn', [AIController::class, 'learnFromSpace']);
+    Route::get('/posts/{id}/enhance', [AIController::class, 'enhancePost']);
+    Route::get('/stories/{id}/continue', [AIController::class, 'suggestStoryContinuation']);
+    Route::post('/enhance-comment', [AIController::class, 'enhanceComment']);
 });
 
 // Enhance existing post routes
 Route::prefix('posts')->middleware('auth:sanctum')->group(function () {
     // ... your existing routes ...
-    Route::post('/{id}/make-collaborative', [PostController::class , 'makeCollaborative']);
-    Route::post('/{id}/add-voice-annotation', [PostController::class , 'addVoiceAnnotation']);
-    Route::post('/{id}/create-branch', [PostController::class , 'createBranch']);
-    Route::post('/{id}/merge-branch', [PostController::class , 'mergeBranch']);
+    Route::post('/{id}/make-collaborative', [PostController::class, 'makeCollaborative']);
+    Route::post('/{id}/add-voice-annotation', [PostController::class, 'addVoiceAnnotation']);
+    Route::post('/{id}/create-branch', [PostController::class, 'createBranch']);
+    Route::post('/{id}/merge-branch', [PostController::class, 'mergeBranch']);
 });
 
 // Enhance existing story routes
 Route::prefix('stories')->middleware('auth:sanctum')->group(function () {
     // ... your existing routes ...
-    Route::post('/{id}/make-collaborative', [StoryController::class , 'makeCollaborative']);
-    Route::post('/{id}/add-to-chain', [StoryController::class , 'addToChain']);
-    Route::post('/{id}/choose-branch', [StoryController::class , 'chooseBranch']);
+    Route::post('/{id}/make-collaborative', [StoryController::class, 'makeCollaborative']);
+    Route::post('/{id}/add-to-chain', [StoryController::class, 'addToChain']);
+    Route::post('/{id}/choose-branch', [StoryController::class, 'chooseBranch']);
 });
 
 // User spaces
-Route::get('/users/{id}/spaces', [SpaceController::class , 'getUserSpaces'])->middleware('auth:sanctum');
+Route::get('/users/{id}/spaces', [SpaceController::class, 'getUserSpaces'])->middleware('auth:sanctum');
 
 // Synchronicity routes
 Route::middleware('auth:sanctum')->prefix('synchronicity')->group(function () {
-    Route::post('/find-matches', [SynchronicityController::class , 'findMatches']);
-    Route::post('/events', [SynchronicityController::class , 'storeEvent']);
-    Route::get('/space/{spaceId}/matches', [SynchronicityController::class , 'getSpaceMatches']);
+    Route::post('/find-matches', [SynchronicityController::class, 'findMatches']);
+    Route::post('/events', [SynchronicityController::class, 'storeEvent']);
+    Route::get('/space/{spaceId}/matches', [SynchronicityController::class, 'getSpaceMatches']);
 });
 
 // Collaborative Activities Routes
 Route::middleware('auth:sanctum')->prefix('collaborative-activities')->group(function () {
-    Route::get('/', [CollaborativeActivityController::class , 'index']);
-    Route::post('/', [CollaborativeActivityController::class , 'store']);
-    Route::put('/{activityId}', [CollaborativeActivityController::class , 'update']);
-    Route::get('/space/{spaceId}', [CollaborativeActivityController::class , 'getSpaceActivities']);
-    Route::post('/{activityId}/status', [CollaborativeActivityController::class , 'updateStatus']);
-    Route::post('/{activityId}/participants', [CollaborativeActivityController::class , 'updateParticipants']);
-    Route::get('/space/{spaceId}/statistics', [CollaborativeActivityController::class , 'getSpaceStatistics']);
-    Route::delete('/{activityId}', [CollaborativeActivityController::class , 'destroy']);
+    Route::get('/', [CollaborativeActivityController::class, 'index']);
+    Route::post('/', [CollaborativeActivityController::class, 'store']);
+    Route::put('/{activityId}', [CollaborativeActivityController::class, 'update']);
+    Route::get('/space/{spaceId}', [CollaborativeActivityController::class, 'getSpaceActivities']);
+    Route::post('/{activityId}/status', [CollaborativeActivityController::class, 'updateStatus']);
+    Route::post('/{activityId}/participants', [CollaborativeActivityController::class, 'updateParticipants']);
+    Route::get('/space/{spaceId}/statistics', [CollaborativeActivityController::class, 'getSpaceStatistics']);
+    Route::delete('/{activityId}', [CollaborativeActivityController::class, 'destroy']);
 });
 
 
 // Authentication routes
-Route::post('/login', [ApiAuthController::class , 'login']);
-Route::post("/register", [ApiAuthController::class , 'register']);
-Route::post('/verify-email-code', [ApiAuthController::class , 'verifyEmailCode'])->middleware('auth:sanctum');
-Route::post('/resend-verification-code', [ApiAuthController::class , 'resendVerificationCode'])->middleware('auth:sanctum');
-Route::post('/forgot-password', [ApiAuthController::class , 'forgotPassword']);
-Route::post('/verify-reset-code', [ApiAuthController::class , 'verifyResetCode']);
-Route::post('/reset-password', [ApiAuthController::class , 'resetPassword']);
-Route::post('/update-preferences', [ApiAuthController::class , 'updatePreferences'])->middleware('auth:sanctum');
+Route::post('/login', [ApiAuthController::class, 'login']);
+Route::post("/register", [ApiAuthController::class, 'register']);
+Route::post('/verify-email-code', [ApiAuthController::class, 'verifyEmailCode'])->middleware('auth:sanctum');
+Route::post('/resend-verification-code', [ApiAuthController::class, 'resendVerificationCode'])->middleware('auth:sanctum');
+Route::post('/forgot-password', [ApiAuthController::class, 'forgotPassword']);
+Route::post('/verify-reset-code', [ApiAuthController::class, 'verifyResetCode']);
+Route::post('/reset-password', [ApiAuthController::class, 'resetPassword']);
+Route::post('/update-preferences', [ApiAuthController::class, 'updatePreferences'])->middleware('auth:sanctum');
 // Guest Access Routes (Teams-style)
-Route::get('/spaces/{id}/guest-info', [GuestAccessController::class , 'getSpaceInfo']);
-Route::post('/spaces/{id}/guest-join', [GuestAccessController::class , 'joinAsGuest']);
+Route::get('/spaces/{id}/guest-info', [GuestAccessController::class, 'getSpaceInfo']);
+Route::post('/spaces/{id}/guest-join', [GuestAccessController::class, 'joinAsGuest']);
 
 // Pure AI Moderation & Reporting
 Route::middleware('auth:sanctum')->group(function () {
     // Reports
-    Route::post('/reports', [ReportController::class , 'store']);
+    Route::post('/reports', [ReportController::class, 'store']);
     Route::get('/reports/get-by-target', [ReportController::class, 'getByTarget']);
     Route::get('/reports/my-reported-content', [ReportController::class, 'myReportedContent']);
     Route::post('/reports/delete-by-target', [ReportController::class, 'deleteByTarget']);
-    Route::get('/report-categories', [ReportController::class , 'getCategories']);
-    Route::get('/reports/{reportId}/status', [ReportController::class , 'status']);
-    
+    Route::get('/report-categories', [ReportController::class, 'getCategories']);
+    Route::get('/reports/{reportId}/status', [ReportController::class, 'status']);
+
     // Real-time AI Moderation
-    Route::post('/moderation/check', [ModerationController::class , 'quickCheck']);
-    Route::post('/moderation/quick-check', [ModerationController::class , 'quickCheck']); // Alias for frontend compatibility
-    Route::get('/moderation/compliance', [ModerationController::class , 'myCompliance']);
+    Route::post('/moderation/check', [ModerationController::class, 'quickCheck']);
+    Route::post('/moderation/quick-check', [ModerationController::class, 'quickCheck']); // Alias for frontend compatibility
+    Route::get('/moderation/compliance', [ModerationController::class, 'myCompliance']);
 
     // Admin Moderation Dashboard
     Route::group(['prefix' => 'admin/moderation'], function () {

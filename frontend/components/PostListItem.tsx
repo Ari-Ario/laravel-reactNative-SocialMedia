@@ -147,6 +147,17 @@ export default function PostListItem({
     }
   };
 
+  const getMediaUrl = (path: string) => {
+    if (!path) return '';
+    if (path.startsWith('http') || path.startsWith('file://') || path.startsWith('data:')) return path;
+    
+    let cleanPath = path.startsWith('/') ? path.substring(1) : path;
+    if (cleanPath.startsWith('storage/')) {
+      return `${getApiBaseImage()}/${cleanPath}`;
+    }
+    return `${getApiBaseImage()}/storage/${cleanPath}`;
+  };
+
   const onRepostPress = () => {
     if (currentPost.is_reposted) {
       // If already reposted, clicking undoes it
@@ -250,9 +261,11 @@ export default function PostListItem({
             <TouchableOpacity onPress={() => service.openMediaViewer(0)}>
               {sortedMedia[0].type === 'video' ? (
                 <PostVideoPlayer
-                  uri={`${getApiBaseImage()}/storage/${sortedMedia[0].file_path}`}
+                  uri={getMediaUrl(sortedMedia[0].file_path)}
                   style={styles.singleMedia}
                   contentFit="cover"
+                  shouldPlay={true}
+                  isMuted={true}
                 />
               ) : (
                 <Image
@@ -272,9 +285,11 @@ export default function PostListItem({
                 >
                   {media.type === 'video' ? (
                     <PostVideoPlayer
-                      uri={`${getApiBaseImage()}/storage/${media.file_path}`}
+                      uri={getMediaUrl(media.file_path)}
                       style={styles.multiMediaContent}
                       contentFit="cover"
+                      shouldPlay={true}
+                      isMuted={true}
                     />
                   ) : (
                     <Image
@@ -618,11 +633,14 @@ const styles = StyleSheet.create({
   singleMedia: {
     aspectRatio: 16 / 9,
     width: '100%',
+    backgroundColor: '#000',
+    minHeight: 200,
   },
   singleMediaContent: {
     width: '100%',
     height: '100%',
     borderRadius: 8,
+    backgroundColor: '#000',
   },
   multiMediaItem: {
     width: Dimensions.get('window').width * 0.5,
@@ -634,6 +652,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     borderRadius: 8,
+    backgroundColor: '#000',
   },
   reactionBarContainer: {
     paddingHorizontal: 10,

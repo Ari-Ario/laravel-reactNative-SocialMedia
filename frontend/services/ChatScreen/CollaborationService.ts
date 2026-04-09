@@ -581,6 +581,27 @@ class CollaborationService {
     }
   }
 
+  /**
+   * Fetch trending/popular messages across user's conversations
+   */
+  async fetchChatHighlights(page: number = 1, limit: number = 10): Promise<{ 
+    messages: any[], 
+    current_page: number, 
+    has_more: boolean, 
+    total: number 
+  }> {
+    try {
+      const response = await axios.get(`${this.baseURL}/messages/highlights`, {
+        headers: await this.getHeaders(),
+        params: { page, limit }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching chat highlights:', error);
+      throw error;
+    }
+  }
+
   // Poll management
   async createPoll(spaceId: string, pollData: any): Promise<any> {
     try {

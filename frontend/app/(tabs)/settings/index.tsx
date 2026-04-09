@@ -20,7 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MotiView, AnimatePresence } from 'moti';
 import AuthContext from "@/context/AuthContext";
 import { logout, loadUser } from "@/services/AuthService";
-import { uploadProfilePhoto, updateUserName } from '@/services/SettingService';
+import { uploadProfilePhoto, updateUserName, deleteProfilePhoto } from '@/services/SettingService';
 import * as ImagePicker from 'expo-image-picker';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { router } from 'expo-router';
@@ -102,11 +102,21 @@ const Page = () => {
   const handleLogout = async () => {
     const confirmLogout = async () => {
       try {
-        await PushNotificationService.unregister();
+        // Best effort unregister with a 2s timeout to prevent hanging on mobile browsers
+        try {
+          await Promise.race([
+            PushNotificationService.unregister(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2000))
+          ]);
+        } catch (e) {
+          console.log('Push unregister timed out or failed, proceeding with logout.');
+        }
+
         await logout();
         setUser(null);
         router.replace('/LoginScreen');
       } catch (error) {
+        console.error('Logout error:', error);
         setUser(null);
         router.replace('/LoginScreen');
       }
@@ -181,6 +191,22 @@ const Page = () => {
     }
   };
 
+  const handleDeletePhoto = async () => {
+    setSaving(true);
+    setShowPhotoMenu(false);
+    try {
+      await deleteProfilePhoto();
+      const updated = await loadUser();
+      setUser(updated);
+      showToast('Profile photo removed', 'info');
+    } catch (e) {
+      console.error('Photo delete error:', e);
+      showToast('Failed to delete photo', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const photoMenuItems: MenuItem[] = [
     {
       icon: 'camera',
@@ -191,7 +217,13 @@ const Page = () => {
       icon: 'images',
       label: 'Choose from Gallery',
       onPress: () => showImagePicker(false),
-    }
+    },
+    ...(user?.profile_photo && String(user.profile_photo).trim() !== 'null' ? [{
+      icon: 'trash-outline',
+      label: 'Delete Photo',
+      onPress: handleDeletePhoto,
+      isDestructive: true,
+    } as MenuItem] : [])
   ];
 
   const handleWebCapture = async () => {
@@ -239,8 +271,8 @@ const Page = () => {
       {
         title: 'Personal',
         items: [
-          { name: 'Account', icon: 'key-outline', color: '#075E54', onPress: () => Alert.alert('Coming Soon', 'Account settings are under development.') },
-          { name: 'Privacy Settings', icon: 'lock-closed-outline', color: '#2196F3', onPress: () => Alert.alert('Coming Soon', 'Privacy settings are under development.') },
+          { name: 'Account', icon: 'key-outline', color: '#075E54', onPress: () => router.push('/settings/account') },
+          { name: 'Privacy Settings', icon: 'lock-closed-outline', color: '#2196F3', onPress: () => router.push('/settings/privacy') },
           { name: 'Administration', icon: 'shield-half-outline', color: '#FF3B30', badge: unreadModerationCount, onPress: () => router.push('/moderation/admin-channel') },
         ]
       },
@@ -268,22 +300,22 @@ const Page = () => {
         items: [
           { name: 'Bookmarks', icon: 'bookmark-outline', color: '#FFD700', badge: bookmarks?.length, onPress: () => router.push('/settings/bookmarks') },
           { name: 'AI Safety Status', icon: 'shield-checkmark-outline', color: '#4CAF50', onPress: () => router.push('/settings/ai-safety') },
-          { name: 'Storage and Data', icon: 'cloud-outline', color: '#25D366', onPress: () => Alert.alert('Coming Soon', 'Storage settings are under development.') },
+          { name: 'Storage and Data', icon: 'cloud-outline', color: '#25D366', onPress: () => router.push('/settings/storage') },
         ]
       },
       {
         title: 'Connect',
         items: [
-          { name: 'Broadcast Lists', icon: 'megaphone-outline', color: '#25D366', onPress: () => Alert.alert('Coming Soon', 'Broadcast lists are under development.') },
-          { name: 'Linked Devices', icon: 'laptop-outline', color: '#25D366', onPress: () => Alert.alert('Coming Soon', 'Linked devices are under development.') },
-          { name: 'Starred Messages', icon: 'star-outline', color: '#FFD700', onPress: () => Alert.alert('Coming Soon', 'Starred messages are under development.') },
+          { name: 'Broadcast Lists', icon: 'megaphone-outline', color: '#25D366', onPress: () => router.push('/settings/broadcasts') },
+          { name: 'Linked Devices', icon: 'laptop-outline', color: '#25D366', onPress: () => router.push('/settings/linked-devices') },
+          { name: 'Chat Highlights', icon: 'flash-outline', color: '#FFD700', onPress: () => router.push('/settings/highlights') },
         ]
       },
       {
         title: 'Support',
         items: [
-          { name: 'Help Center', icon: 'information-circle-outline', color: '#075E54', onPress: () => Alert.alert('Coming Soon', 'Help Center is under development.') },
-          { name: 'Tell a Friend', icon: 'heart-outline', color: '#FF3B30', onPress: () => Alert.alert('Share', 'Share this app with your friends!') },
+          { name: 'Help Center', icon: 'information-circle-outline', color: '#075E54', onPress: () => router.push('/settings/help') },
+          { name: 'Tell a Friend', icon: 'heart-outline', color: '#FF3B30', onPress: () => router.push('/settings/TellFriend') },
         ]
       }
     ];
@@ -504,9 +536,9 @@ const styles = StyleSheet.create({
   nameInput: { color: '#1a1a1a', fontSize: 24, fontWeight: '700', textAlign: 'center', flex: 1, padding: 0 },
   section: { marginBottom: 24 },
   sectionTitle: { fontSize: 13, fontWeight: '700', color: 'rgba(0,0,0,0.6)', textTransform: 'uppercase', marginBottom: 16, letterSpacing: 1 },
-  item: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.03)', padding: 16, borderRadius: 16, marginBottom: 12 },
-  iconContainer: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  itemText: { flex: 1, color: '#1a1a1a', fontSize: 16, fontWeight: '500' },
+  item: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', padding: 18, borderRadius: 20, marginBottom: 12, borderWidth: 1.5, borderColor: '#000' },
+  iconContainer: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginRight: 15, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)' },
+  itemText: { flex: 1, color: '#1a1a1a', fontSize: 16, fontWeight: '700' },
   badge: { backgroundColor: '#F44336', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2, marginRight: 8 },
   badgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
   logoutBtn: { marginTop: 8 },

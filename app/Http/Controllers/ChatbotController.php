@@ -87,6 +87,42 @@ class ChatbotController extends Controller
             'screenplaye' => 'screenplay',
             'storey' => 'story',
             'storeytelling' => 'storytelling',
+            'zmzir' => 'Zmzir',
+            'vaualt' => 'Privacy Vault',
+            'privcy' => 'Privacy',
+            'spase' => 'Space',
+            'spases' => 'Spaces',
+            'chanel' => 'Channel',
+            'brodcast' => 'Broadcast Hub',
+            'stared' => 'Starred',
+            'bookmrks' => 'Bookmarks',
+            'marching' => 'matching',
+            'collab' => 'Collaboration',
+            'colaborate' => 'collaborate',
+            'pollz' => 'Polls',
+            'vot' => 'vote',
+            'stori' => 'story',
+            'storis' => 'stories',
+            'interacton' => 'interaction',
+            'segmnt' => 'segment',
+            'repostd' => 'reposted',
+            'rankd' => 'ranked',
+            'weightd' => 'weighted',
+            'activty' => 'activity',
+            'recur' => 'recurring',
+            'propos' => 'proposed',
+            'trrust' => 'trust',
+            'witboard' => 'whiteboard',
+            'whitbord' => 'whiteboard',
+            'whitboard' => 'whiteboard',
+            'syncron' => 'synchronicity',
+            'sinchronicity' => 'synchronicity',
+            'synergi' => 'synergy',
+            'reputaton' => 'reputation',
+            'repurtation' => 'reputation',
+            'scren' => 'screen',
+            'shadw' => 'shadow',
+            'factcheck' => 'fact check',
         ];
         
         // Word boundary replacement for all typos
@@ -187,7 +223,31 @@ class ChatbotController extends Controller
             'thank you' => 'You\'re welcome! Let me know if you need anything else.',
             'thankyou' => 'You\'re welcome! Let me know if you need anything else.',
             'help' => 'Sure! What do you need assistance with?',
-            // ... keep all your existing ones
+            'zmzir' => 'Zmzir is your ultimate social experience platform, enhanced with AI for seamless communication and collaboration.',
+            'privacy vault' => 'The Privacy Vault allows you to manage your visibility, birthday privacy, and account security settings.',
+            'spaces' => 'Spaces are collaboration hubs where you can chat, hold meetings, share whiteboards, and use AI assistants.',
+            'protected space' => 'Protected spaces require an invitation or password to join, ensuring your discussions stay private.',
+            'broadcast hub' => 'Broadcast Hub is where you can see all your active channels and announcements in one place.',
+            'bookmarks' => 'You can save any post to your Bookmarks to view it later from your profile settings.',
+            'tell a friend' => 'Use the Tell a Friend feature in Settings to invite others via email or social media.',
+            'ai assistant' => 'Every Space can activate an AI Assistant with personalities like Creative, Analytical, or Helpful.',
+            'polls' => 'Polls allow you to gather feedback in any Space. We support Single, Multiple, Ranked, and Weighted voting styles!',
+            'stories' => 'Stories are ephemeral 24h updates. Use Collaborative Stories to invite others to add segments to your story chain.',
+            'ai suggestions' => 'Our platform AI can suggest hashtags, questions for your posts, and even how to continue your stories.',
+            'activities' => 'Collaborative Activities are events you can schedule within a Space. Support includes recurring daily, weekly, or monthly events.',
+            'scheduled events' => 'You can propose or schedule activities in any Space. Manage participants, durations, and see activity metrics for your group.',
+            'trust score' => 'Your Trust Score is a measure of your community standing. High scores can improve content visibility and reporting integrity.',
+            'whiteboard' => 'The Collaborative Whiteboard allows real-time drawing and brainstorming in any Space. You can even see other people cursors!',
+            'synchronicity' => 'Synchronicity helps you find the perfect time for collaboration by matching your skills, traits, and timing with others.',
+            'shadow check' => 'The Shadow Check evaluates your content for Fact, Morality, and Malicious Intent before you even hit send.',
+            'trust score' => 'Your Trust Score is based on your reporting integrity and history. High scores can grant you Protected Status!',
+            'compliance' => 'Compliance tracking monitors violation and false report counts. You can check your own record in your Safety Settings.',
+            'cursor tracking' => 'Real-time cursor tracking allows you to see exactly where your collaborators are working on the Shared Whiteboard.',
+            'screen share' => 'You can toggle Screen Sharing during any Space call to present your work or review designs in real-time.',
+            'mood detection' => 'Zmzir uses AI to detect the mood of your messages (Positive, Negative, or Neutral) to help better categorize interactions!',
+            'reactions' => 'React to any message with emojis to keep the conversation lively! You can also see who reacted and when.',
+            'forwarding' => 'You can forward messages, posts, polls, and documents to any other Space or individual contact easily.',
+            'media limits' => 'We support high-quality uploads! You can share videos and files up to 40MB in any chat or post.',
         ];
 
         // ————————————————————————————————————
@@ -797,6 +857,14 @@ class ChatbotController extends Controller
                     'password' => 'reset_password',
                     'reset' => 'reset_password',
                     'delete' => 'delete_account',
+                    'privacy' => 'privacy_start',
+                    'settings' => 'settings_start',
+                    'polls' => 'polls_start',
+                    'stories' => 'stories_platform_start',
+                    'ai' => 'ai_platform_start',
+                    'activities' => 'activities_start',
+                    'safety' => 'safety_trust_start',
+                    'sync' => 'sync_collaboration_start',
                 ]
             ],
             'update_info' => [
@@ -810,15 +878,257 @@ class ChatbotController extends Controller
             'delete_account' => [
                 'response' => 'To delete your account, go to Settings > Privacy > Delete Account. This cannot be undone.',
                 'next' => null
-            ]
+            ],
+            // --- SPACES BRANCH ---
+            'spaces_start' => [
+                'pattern' => '/\b(space|spaces|collab)\b/i',
+                'response' => 'Zmzir Spaces are for everyone! Do you want to know about "space types", "ai assistants", or "how to join"?',
+                'next' => [
+                    'types' => 'space_types',
+                    'ai' => 'space_ai',
+                    'join' => 'space_join',
+                ]
+            ],
+            'space_types' => [
+                'response' => 'We have: Channels (public), Protected (private), Direct (1-on-1), and Creative (Whiteboard/Meeting) spaces.',
+                'next' => null
+            ],
+            'space_ai' => [
+                'response' => 'Every Space can activate an AI Assistant. You can choose personalities like Helpful, Analytical, or Creative to assist your group.',
+                'next' => null
+            ],
+            'space_join' => [
+                'response' => 'You can join a space via a direct invitation link or by searching for public channels in the Discover tab.',
+                'next' => null
+            ],
+            // --- POSTS BRANCH ---
+            'posts_start' => [
+                'pattern' => '/\b(post|posts|share|upload)\b/i',
+                'response' => 'Ready to share? I can help with "media trimming", "location tagging", or "bookmarks". What do you need?',
+                'next' => [
+                    'trim' => 'post_trim',
+                    'location' => 'post_location',
+                    'bookmarks' => 'post_bookmarks',
+                ]
+            ],
+            'post_trim' => [
+                'response' => 'When uploading a video, use the slider to trim the start and end points before hitting Post.',
+                'next' => null
+            ],
+            'post_location' => [
+                'response' => 'Tap the location icon when creating a post to tag where you are. It helps others discover your content!',
+                'next' => null
+            ],
+            'post_bookmarks' => [
+                'response' => 'Saved items are in Settings > Bookmarks. You can also organize them into specific collections.',
+                'next' => null
+            ],
+            // --- PRIVACY BRANCH ---
+            'privacy_start' => [
+                'pattern' => '/\b(privacy|vault|secret|visibility)\b/i',
+                'response' => 'Privacy is our priority. Do you need help with "vault settings", "birthday visibility", or "private mode"?',
+                'next' => [
+                    'vault' => 'privacy_vault',
+                    'birthday' => 'privacy_birthday',
+                    'private' => 'privacy_mode',
+                ]
+            ],
+            'privacy_vault' => [
+                'response' => 'The Privacy Vault in Settings lets you secure specific chats and media behind a secondary password.',
+                'next' => null
+            ],
+            'privacy_birthday' => [
+                'response' => 'You can hide your birthday or change who sees it in Settings > Privacy > Birthday Visibility.',
+                'next' => null
+            ],
+            'privacy_mode' => [
+                'response' => 'Private Mode hides your online status and read receipts. Toggle it in your Privacy Settings.',
+                'next' => null
+            ],
+            // --- SETTINGS BRANCH ---
+            'settings_start' => [
+                'pattern' => '/\b(settings|options|customize|setup)\b/i',
+                'response' => 'Everything is customizable! Ask about "linked devices", "storage cleanup", or "tell a friend".',
+                'next' => [
+                    'devices' => 'settings_devices',
+                    'storage' => 'settings_storage',
+                    'friend' => 'settings_friend',
+                ]
+            ],
+            'settings_devices' => [
+                'response' => 'Manage active sessions in Settings > Linked Devices. You can log out from any device remotely.',
+                'next' => null
+            ],
+            'settings_storage' => [
+                'response' => 'Clear your cache or set media auto-clear duration in Settings > Storage & Data.',
+                'next' => null
+            ],
+            'settings_friend' => [
+                'response' => 'Love Zmzir? Go to Settings > Tell a Friend to invite your contacts and earn badges!',
+                'next' => null
+            ],
+            // --- POLLS BRANCH ---
+            'polls_start' => [
+                'pattern' => '/\b(poll|polls|survey|vote)\b/i',
+                'response' => 'Get the consensus! Do you want to know about "poll types", "voting settings", or "forwarding polls"?',
+                'next' => [
+                    'types' => 'poll_types',
+                    'settings' => 'poll_settings',
+                    'forward' => 'poll_forward',
+                ]
+            ],
+            'poll_types' => [
+                'response' => 'We support: Single Choice, Multiple Choice, Ranked (order of preference), and Weighted (point distribution).',
+                'next' => null
+            ],
+            'poll_settings' => [
+                'response' => 'In Poll Settings, you can set deadlines, make votes anonymous, or restrict results to "after vote" or "creator only".',
+                'next' => null
+            ],
+            'poll_forward' => [
+                'response' => 'You can forward any poll you created (or moderate) to another Space to reach more voters!',
+                'next' => null
+            ],
+            // --- STORIES BRANCH ---
+            'stories_platform_start' => [
+                'pattern' => '/\b(story|stories|segment|segments)\b/i',
+                'response' => 'Share your day! Ask about "ephemeral stories", "collaborative chains", or "magic events".',
+                'next' => [
+                    'ephemeral' => 'story_24h',
+                    'chains' => 'story_chains',
+                    'magic' => 'story_magic',
+                ]
+            ],
+            'story_24h' => [
+                'response' => 'Stories expire after 24 hours automatically. You can share photos or videos up to 40MB.',
+                'next' => null
+            ],
+            'story_chains' => [
+                'response' => 'Collaborative chains let multiple people add video/photo segments to a single story topic.',
+                'next' => null
+            ],
+            'story_magic' => [
+                'response' => 'Magic Events happen in your Space whenever someone contributes to a linked collaborative story!',
+                'next' => null
+            ],
+            // --- AI PLATFORM BRANCH ---
+            'ai_platform_start' => [
+                'pattern' => '/\b(ai|intelligence|predict|suggestion|suggest)\b/i',
+                'response' => 'Our AI is everywhere! Need help with "post suggestions", "engagement prediction", or "story continuation"?',
+                'next' => [
+                    'post' => 'ai_post_help',
+                    'predict' => 'ai_predict_help',
+                    'story' => 'ai_story_help',
+                ]
+            ],
+            'ai_post_help' => [
+                'response' => 'The AI can suggest trending hashtags, engaging questions for your captions, and even reply sentiments.',
+                'next' => null
+            ],
+            'ai_predict_help' => [
+                'response' => 'Before you post, our AI can predict your content engagement based on similar successful posts!',
+                'next' => null
+            ],
+            'ai_story_help' => [
+                'response' => 'Stuck? The AI suggests how to continue your story branches or what context to add next.',
+                'next' => null
+            ],
+            // --- ACTIVITIES BRANCH ---
+            'activities_start' => [
+                'pattern' => '/\b(activity|activities|event|events|schedule)\b/i',
+                'response' => 'Stay organized! Do you want to know about "scheduling", "recurring events", or "activity status"?',
+                'next' => [
+                    'scheduling' => 'activity_scheduling',
+                    'recurring' => 'activity_recurring',
+                    'status' => 'activity_status',
+                ]
+            ],
+            'activity_scheduling' => [
+                'response' => 'Propose an activity in your Space with a title, description, and planned time. You can also set participant limits.',
+                'next' => null
+            ],
+            'activity_recurring' => [
+                'response' => 'We support Daily, Weekly, and Monthly recurrence patterns to help you automate regular meetups or tasks.',
+                'next' => null
+            ],
+            'activity_status' => [
+                'response' => 'Activities can be Proposed, Scheduled, or Completed. Track activity metrics like "last proposed" in Space settings.',
+                'next' => null
+            ],
+            // --- SAFETY & TRUST BRANCH ---
+            'safety_trust_start' => [
+                'pattern' => '/\b(safety|trust|reputation|score|standing)\b/i',
+                'response' => 'Safety first! Do you want to know about your "trust score", "shadow checking", or "compliance status"?',
+                'next' => [
+                    'score' => 'safety_score_info',
+                    'shadow' => 'safety_shadow_info',
+                    'compliance' => 'safety_compliance_info',
+                ]
+            ],
+            'safety_score_info' => [
+                'response' => 'Your Trust Score is based on your reporting integrity and history. High scores can grant you Protected Status!',
+                'next' => null
+            ],
+            'safety_shadow_info' => [
+                'response' => 'The Shadow Check evaluates your content for Fact, Morality, and Malicious Intent before you even hit send.',
+                'next' => null
+            ],
+            'safety_compliance_info' => [
+                'response' => 'Compliance tracking monitors violation and false report counts. You can check your own record in your Safety Settings.',
+                'next' => null
+            ],
+            // --- SYNC & COLLABORATION BRANCH ---
+            'sync_collaboration_start' => [
+                'pattern' => '/\b(sync|synergy|skill|matching|whiteboard|cursor|screen)\b/i',
+                'response' => 'Better together! Ask me about "skill synergy", "whiteboard tracking", "timing matches", or "screen sharing".',
+                'next' => [
+                    'synergy' => 'sync_synergy_info',
+                    'whiteboard' => 'sync_whiteboard_info',
+                    'tracking' => 'sync_tracking_info',
+                    'timing' => 'sync_timing_info',
+                    'screen' => 'sync_screen_info',
+                    'mood' => 'sync_mood_info',
+                ]
+            ],
+            'sync_synergy_info' => [
+                'response' => 'Synchronicity matches users via Synergy Traits. We look for compatible collaboration styles to build the best teams.',
+                'next' => null
+            ],
+            'sync_whiteboard_info' => [
+                'response' => 'The Whiteboard supports element versioning and real-time drawing. Your changes are saved persistently within the Space.',
+                'next' => null
+            ],
+            'sync_tracking_info' => [
+                'response' => 'Real-time cursor tracking lets you see where others are drawing. This makes remote brainstorming feel like you are in the same room!',
+                'next' => null
+            ],
+            'sync_timing_info' => [
+                'response' => 'Timing matches detect "Morning Peak" sessions or "High Engagement" patterns based on space activity metrics.',
+                'next' => null
+            ],
+            'sync_screen_info' => [
+                'response' => 'Toggle Screen Sharing in any Space call for visual reviews. You can also see who has their camera or microphone muted.',
+                'next' => null
+            ],
+            'sync_mood_info' => [
+                'response' => 'Our system automatically detects message mood (Sentiment Analysis). This helps in engagement pattern detection and community health monitoring!',
+                'next' => null
+            ],
         ];
 
         $node = $tree[$state] ?? null;
 
-        // Enter tree
-        if ($state === 'start' && $node && preg_match($node['pattern'], $message)) {
-            $this->decisionTreeState[$conversationId] = 'start';
-            return $node['response'];
+        // Enter tree - Multi-node entry support
+        $startNodes = ['start', 'spaces_start', 'posts_start', 'privacy_start', 'settings_start', 'polls_start', 'stories_platform_start', 'ai_platform_start', 'activities_start', 'safety_trust_start', 'sync_collaboration_start'];
+        
+        if ($state === 'start') {
+            foreach ($startNodes as $startNode) {
+                $nodeCandidate = $tree[$startNode];
+                if (preg_match($nodeCandidate['pattern'], $message)) {
+                    $this->decisionTreeState[$conversationId] = $startNode;
+                    return $nodeCandidate['response'];
+                }
+            }
         }
 
         // Traverse tree
@@ -855,7 +1165,9 @@ class ChatbotController extends Controller
             'account' => ['account', 'profile', 'login', 'password', 'email'],
             'payment' => ['payment', 'bill', 'invoice', 'refund', 'charge'],
             'technical' => ['bug', 'error', 'crash', 'not working', 'issue'],
-            'feature' => ['use', 'feature', 'tutorial', 'guide']
+            'feature' => ['use', 'feature', 'tutorial', 'guide'],
+            'spaces' => ['space', 'join', 'assistant', 'personality', 'channel'],
+            'posts' => ['post', 'bookmark', 'location', 'trim', 'share']
         ];
 
         foreach ($contextTriggers as $context => $triggers) {
@@ -899,6 +1211,24 @@ class ChatbotController extends Controller
 
             case 'feature':
                 return 'Ask about any feature: upload, share, notifications, etc.';
+
+            case 'spaces':
+                if ($this->containsAny($lastMessages, ['join', 'link'])) {
+                    return 'To join a space, use the invitation link or find it via Discover.';
+                }
+                if ($this->containsAny($lastMessages, ['ai', 'assistant', 'personality'])) {
+                    return 'AI personalities: Analytical (data focus), Creative (ideas), Helpful (support). Activate in Space Settings.';
+                }
+                return 'Spaces help: create channels, invite members, or manage your AI assistant.';
+
+            case 'posts':
+                if ($this->containsAny($lastMessages, ['bookmark', 'save'])) {
+                    return 'View your saved items in Profile > Bookmarks or Settings > Bookmarks.';
+                }
+                if ($this->containsAny($lastMessages, ['trim', 'video'])) {
+                    return 'Trimming is available for videos up to 40MB during the upload process.';
+                }
+                return 'Posts help: media uploads, location tagging, and interaction tools.';
         }
 
         return null;
@@ -1060,6 +1390,8 @@ class ChatbotController extends Controller
         // This is the GOLD standard for 2025 chatbots
         $categoryMap = [
             // Core app & platform
+            'spaces'           => ['space', 'spaces', 'collab', 'whiteboard', 'meeting room', 'voice channel'],
+            'posts'            => ['post', 'posts', 'feed', 'repost', 'caption', 'trending'],
             'account'          => ['account', 'profile', 'login', 'signup', 'register', 'password', 'email verify'],
             'payment'          => ['payment', 'billing', 'subscription', 'refund', 'charge', 'paypal', 'stripe', 'invoice'],
             'technical'        => ['bug', 'error', 'crash', 'not working', 'broken', 'issue', 'slow', 'lag', 'freeze'],
@@ -1189,6 +1521,19 @@ class ChatbotController extends Controller
             ['keywords' => ['account', 'profile', 'login'], 'response' => 'For account help: go to Settings > Account', 'priority' => 3],
             ['keywords' => ['payment', 'bill', 'refund'], 'response' => 'Payment support: visit Settings > Billing', 'priority' => 3],
             ['keywords' => ['bug', 'error', 'crash'], 'response' => 'Technical support: please describe your device and app version', 'priority' => 4],
+            ['keywords' => ['privacy', 'vault', 'private', 'mode'], 'response' => 'Privacy Vault: Access it in Settings > Privacy to secure your profile and manage visibility.', 'priority' => 5],
+            ['keywords' => ['space', 'spaces', 'collaboration'], 'response' => 'Spaces are interactive hubs. Try asking: "What are space types?" or "How to use AI in spaces?"', 'priority' => 6],
+            ['keywords' => ['post', 'discovery', 'share'], 'response' => 'Creating Posts: Tap the "+" icon. You can add media, trim videos, and tag locations.', 'priority' => 5],
+            ['keywords' => ['bookmark', 'bookmarks', 'save'], 'response' => 'Bookmarks: Tap the bookmark icon on any post to save it. View them in Profile > Bookmarks.', 'priority' => 5],
+            ['keywords' => ['storage', 'clear', 'cache'], 'response' => 'Storage Management: Go to Settings > Storage & Data to clear cache or adjust media upload quality.', 'priority' => 5],
+            ['keywords' => ['invite', 'friend', 'social'], 'response' => 'Spread the word: Go to Settings > Tell a Friend to invite others via email or link.', 'priority' => 5],
+            ['keywords' => ['ranked', 'weighted', 'poll', 'vote'], 'response' => 'Advanced Polls: Try "Ranked" to list preferences or "Weighted" for multi-value importance voting!', 'priority' => 6],
+            ['keywords' => ['story', 'segment', 'chain', 'collab'], 'response' => 'Collaborative Stories: Enable this on your story to let others add segments and build a chain!', 'priority' => 6],
+            ['keywords' => ['suggestion', 'hashtag', 'predict', 'ai'], 'response' => 'AI Platform: Use AI to suggest hashtags, predict engagement, or get story continuation ideas.', 'priority' => 6],
+            ['keywords' => ['activity', 'event', 'schedule', 'recurring'], 'response' => 'Collaborative Activities: Schedule recurring events in your Space to keep everyone engaged!', 'priority' => 6],
+            ['keywords' => ['trust', 'score', 'standing', 'reputation'], 'response' => 'Safety & Trust: Your Trust Score reflects your community contributions. Check your status in Settings > Safety.', 'priority' => 7],
+            ['keywords' => ['shadow', 'check', 'safe', 'moderation'], 'response' => 'Shadow Check: Use our real-time AI to check if your content meets community standards before posting.', 'priority' => 7],
+            ['keywords' => ['synergy', 'traits', 'skill', 'match'], 'response' => 'Synchronicity: We match your unique synergy traits with others in your Space for building perfect teams!', 'priority' => 7],
         ];
 
         usort($patterns, fn($a, $b) => $b['priority'] <=> $a['priority']);

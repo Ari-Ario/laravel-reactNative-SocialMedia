@@ -2578,6 +2578,8 @@ public function endCall(Request $request, $id)
                     ->limit($limit)
                     ->get();
 
+                $followedIds = auth()->user()->following()->pluck('following_id')->toArray();
+
                 foreach ($contacts as $contact) {
                     $results[] = [
                         'id' => $contact->id,
@@ -2593,6 +2595,7 @@ public function endCall(Request $request, $id)
                             'username' => $contact->username,
                             'email' => $contact->email,
                             'profile_photo' => $contact->profile_photo,
+                            'is_following' => in_array($contact->id, $followedIds),
                         ],
                     ];
                 }

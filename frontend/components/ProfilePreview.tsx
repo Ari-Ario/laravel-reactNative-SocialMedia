@@ -12,7 +12,9 @@ import {
   Dimensions,
   Animated,
   RefreshControl,
+  Linking,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect, useRef, useContext, useCallback, useMemo } from 'react';
 import { fetchProfile, followUser } from '@/services/UserService';
@@ -61,6 +63,7 @@ interface MediaItem {
 }
 
 const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
+  const isWeb = Platform.OS === 'web';
   const { openModal } = useModal();
   const { profilePreviewVisible, setProfilePreviewVisible } = useProfileView();
   const { showToast } = useToastStore();
@@ -78,6 +81,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
   const [hasMorePosts, setHasMorePosts] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [postsLastPage, setPostsLastPage] = useState(1);
+  const [photoModalVisible, setPhotoModalVisible] = useState(false);
 
   const headerAnim = useRef(new Animated.Value(0)).current;
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -93,15 +97,23 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
     });
   }, [userPosts]);
 
-  // Deduplicate media items by ID
-  const uniqueMediaItems = useMemo(() => {
-    const seen = new Set();
-    return mediaItems.filter(item => {
-      if (seen.has(item.id)) return false;
-      seen.add(item.id);
-      return true;
+  // Deduplicate media items by ID - sourced EXCLUSIVELY from posts
+  const uniqueMediaFromPosts = useMemo(() => {
+    const allMedia: any[] = [];
+    uniqueUserPosts.forEach(post => {
+      if (post.media && Array.isArray(post.media)) {
+        post.media.forEach((m, index) => {
+          allMedia.push({
+            ...m,
+            // Create a pseudo-unique ID if m.id is missing, but post.id + index is safer
+            uniqueKey: `post-${post.id}-media-${index}`,
+            postId: post.id
+          });
+        });
+      }
     });
-  }, [mediaItems]);
+    return allMedia;
+  }, [uniqueUserPosts]);
 
   // Fetch profile data with deduplication
   const fetchProfileData = useCallback(async (page = 1, isRefresh = false) => {
@@ -195,11 +207,36 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
   }, [fetchProfileData]);
 
   const handleLoadMore = useCallback(() => {
-    if (!hasMorePosts || loadingMore || activeTab !== 'posts') return;
+    // Both posts and media tab now trigger more post fetching
+    if (!hasMorePosts || loadingMore || (activeTab !== 'posts' && activeTab !== 'media')) return;
     if (postsPage < postsLastPage) {
       fetchProfileData(postsPage + 1, false);
     }
   }, [hasMorePosts, loadingMore, activeTab, postsPage, postsLastPage, fetchProfileData]);
+
+  const handleLinkPress = async (url: string) => {
+    if (!url) return;
+    try {
+      if (!isWeb) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      
+      // Basic sanitization
+      let finalUrl = url.trim();
+      if (!finalUrl.startsWith('http')) {
+        finalUrl = `https://${finalUrl}`;
+      }
+      
+      const supported = await Linking.canOpenURL(finalUrl);
+      if (supported) {
+        await Linking.openURL(finalUrl);
+      } else {
+        // Fallback to in-app webview if Linking fails
+        openModal('webview', { url: finalUrl });
+      }
+    } catch (error) {
+      console.error('Error opening URL:', error);
+      showToast('Could not open link', 'error');
+    }
+  };
 
   const handleFollow = async () => {
     try {
@@ -216,6 +253,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
             : (prev.followers_count || 0) + 1,
         };
       });
+      if (!isWeb) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showToast(isFollowing ? 'Unfollowed successfully' : 'Followed successfully', 'success');
     } catch (error) {
       console.error('Error following user:', error);
@@ -226,22 +264,29 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
   };
 
   const renderProfilePhoto = () => {
-    if (profile?.profile_photo) {
-      return (
-        <Image
-          source={{ uri: `${getApiBaseImage()}/storage/${profile.profile_photo}` }}
-          style={styles.profilePhoto}
-        />
-      );
-    }
-    const initials = `${profile?.name?.charAt(0) || ''}${profile?.last_name?.charAt(0) || ''}`;
-    return (
+    const photoContent = profile?.profile_photo ? (
+      <Image
+        source={{ uri: `${getApiBaseImage()}/storage/${profile.profile_photo}` }}
+        style={styles.profilePhoto}
+      />
+    ) : (
       <LinearGradient
         colors={['#667eea', '#764ba2']}
         style={[styles.profilePhoto, styles.initialsContainer]}
       >
-        <Text style={styles.initials}>{initials.toUpperCase()}</Text>
+        <Text style={styles.initials}>
+          {`${profile?.name?.charAt(0) || ''}${profile?.last_name?.charAt(0) || ''}`.toUpperCase()}
+        </Text>
       </LinearGradient>
+    );
+
+    return (
+      <TouchableOpacity 
+        activeOpacity={0.9} 
+        onPress={() => setPhotoModalVisible(true)}
+      >
+        {photoContent}
+      </TouchableOpacity>
     );
   };
 
@@ -267,21 +312,56 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
   );
 
   const AboutSection = () => {
-    const hasBio = profile?.bio;
-    const hasLocation = profile?.location;
-    const hasWebsite = profile?.website;
-    const hasJob = profile?.job_title || profile?.company;
-    const hasEducation = profile?.education;
-    const hasBirthday = profile?.birthday;
-    const hasSocialLinks = profile?.social_links && Object.keys(profile.social_links).length > 0;
+    const isRestricted = profile?.is_private && !isFollowing && user?.id !== String(userId);
 
-    if (!hasBio && !hasLocation && !hasWebsite && !hasJob && !hasEducation && !hasBirthday && !hasSocialLinks) {
+    if (isRestricted) {
       return (
-        <MotiView
-          from={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          style={styles.emptyAbout}
-        >
+        <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} style={styles.privateContainer}>
+          <View style={styles.privateIconCircle}>
+            <Ionicons name="lock-closed" size={32} color="#666" />
+          </View>
+          <Text style={styles.privateTitle}>This Account is Private</Text>
+          <Text style={styles.privateSubtitle}>Follow this account to see their full profile and media uploads.</Text>
+        </MotiView>
+      );
+    }
+
+    const sections = [
+      {
+        title: 'Professional',
+        icon: 'briefcase',
+        show: profile?.job_title || profile?.company || profile?.education,
+        items: [
+          { label: 'Work', value: profile?.job_title && profile?.company ? `${profile.job_title} at ${profile.company}` : (profile?.job_title || profile?.company), icon: 'business-outline' },
+          { label: 'Education', value: profile?.education, icon: 'school-outline' },
+        ]
+      },
+      {
+        title: 'Personal',
+        icon: 'person',
+        show: profile?.bio || profile?.location || profile?.birthday || profile?.gender,
+        items: [
+          { label: 'Bio', value: profile?.bio, icon: 'chatbubble-outline' },
+          { label: 'Location', value: profile?.location, icon: 'location-outline' },
+          { label: 'Gender', value: profile?.gender, icon: 'transgender-outline' },
+          { label: 'Birthday', value: profile?.birthday ? new Date(profile.birthday).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : null, icon: 'cake-outline' },
+        ]
+      },
+      {
+        title: 'Connect',
+        icon: 'link',
+        show: profile?.website || (profile?.social_links && Object.keys(profile.social_links).length > 0) || profile?.phone || profile?.email,
+        items: [
+          { label: 'Website', value: profile?.website, icon: 'globe-outline', isLink: true },
+          { label: 'Email', value: profile?.email, icon: 'mail-outline', isEmail: true },
+          { label: 'Phone', value: profile?.phone, icon: 'call-outline', isPhone: true },
+        ]
+      }
+    ];
+
+    if (!sections.some(s => s.show)) {
+      return (
+        <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} style={styles.emptyAbout}>
           <Ionicons name="person-outline" size={48} color="#ccc" />
           <Text style={styles.emptyAboutText}>No additional information provided</Text>
         </MotiView>
@@ -290,153 +370,71 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
 
     return (
       <View style={styles.aboutContainer}>
-        {profile?.bio && (
+        {sections.filter(s => s.show).map((section, sIndex) => (
           <MotiView
-            from={{ opacity: 0, translateX: -20 }}
-            animate={{ opacity: 1, translateX: 0 }}
-            transition={{ delay: 50 }}
-            style={styles.aboutItem}
+            key={section.title}
+            from={{ opacity: 0, translateY: 10 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{ delay: sIndex * 100 }}
+            style={styles.aboutSection}
           >
-            <View style={styles.aboutIcon}>
-              <Ionicons name="chatbubble-outline" size={18} color="#666" />
+            <View style={styles.sectionHeader}>
+              <Ionicons name={section.icon as any} size={18} color="#3897f0" />
+              <Text style={styles.sectionTitleText}>{section.title}</Text>
             </View>
-            <View style={styles.aboutContent}>
-              <Text style={styles.aboutLabel}>Bio</Text>
-              <Text style={styles.aboutText}>{profile.bio}</Text>
-            </View>
-          </MotiView>
-        )}
 
-        {(profile?.job_title || profile?.company) && (
-          <MotiView
-            from={{ opacity: 0, translateX: -20 }}
-            animate={{ opacity: 1, translateX: 0 }}
-            transition={{ delay: 100 }}
-            style={styles.aboutItem}
-          >
-            <View style={styles.aboutIcon}>
-              <Ionicons name="briefcase-outline" size={18} color="#666" />
-            </View>
-            <View style={styles.aboutContent}>
-              <Text style={styles.aboutLabel}>Work</Text>
-              <Text style={styles.aboutText}>
-                {profile.job_title}{profile.job_title && profile.company ? ' at ' : ''}{profile.company}
-              </Text>
-            </View>
-          </MotiView>
-        )}
-
-        {profile?.education && (
-          <MotiView
-            from={{ opacity: 0, translateX: -20 }}
-            animate={{ opacity: 1, translateX: 0 }}
-            transition={{ delay: 150 }}
-            style={styles.aboutItem}
-          >
-            <View style={styles.aboutIcon}>
-              <Ionicons name="school-outline" size={18} color="#666" />
-            </View>
-            <View style={styles.aboutContent}>
-              <Text style={styles.aboutLabel}>Education</Text>
-              <Text style={styles.aboutText}>{profile.education}</Text>
-            </View>
-          </MotiView>
-        )}
-
-        {profile?.location && (
-          <MotiView
-            from={{ opacity: 0, translateX: -20 }}
-            animate={{ opacity: 1, translateX: 0 }}
-            transition={{ delay: 200 }}
-            style={styles.aboutItem}
-          >
-            <View style={styles.aboutIcon}>
-              <Ionicons name="location-outline" size={18} color="#666" />
-            </View>
-            <View style={styles.aboutContent}>
-              <Text style={styles.aboutLabel}>Location</Text>
-              <Text style={styles.aboutText}>{profile.location}</Text>
-            </View>
-          </MotiView>
-        )}
-
-        {profile?.website && (
-          <MotiView
-            from={{ opacity: 0, translateX: -20 }}
-            animate={{ opacity: 1, translateX: 0 }}
-            transition={{ delay: 250 }}
-            style={styles.aboutItem}
-          >
-            <View style={styles.aboutIcon}>
-              <Ionicons name="link-outline" size={18} color="#666" />
-            </View>
-            <View style={styles.aboutContent}>
-              <Text style={styles.aboutLabel}>Website</Text>
-              <TouchableOpacity onPress={() => openModal('webview', { url: profile.website })}>
-                <Text style={[styles.aboutText, styles.linkText]} numberOfLines={1}>
-                  {profile.website}
-                </Text>
+            {section.items.filter(i => i.value).map((item, iIndex) => (
+              <TouchableOpacity
+                key={item.label}
+                disabled={!item.isLink && !item.isEmail && !item.isPhone}
+                onPress={async () => {
+                  if (item.isLink) {
+                    handleLinkPress(item.value as string);
+                  } else if (item.isEmail || item.isPhone) {
+                    try {
+                      if (!isWeb) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      const url = item.isEmail ? `mailto:${item.value}` : `tel:${item.value}`;
+                      const supported = await Linking.canOpenURL(url);
+                      if (supported) {
+                        await Linking.openURL(url);
+                      } else {
+                        showToast(`Could not open ${item.isEmail ? 'email' : 'phone'}`, 'error');
+                      }
+                    } catch (error) {
+                      console.error('Link Error:', error);
+                    }
+                  }
+                }}
+                style={styles.aboutItem}
+              >
+                <View style={[styles.aboutIconCircle, { backgroundColor: '#f1f1f1' }]}>
+                  <Ionicons name={item.icon as any} size={16} color="#555" />
+                </View>
+                <View style={styles.aboutContent}>
+                  <Text style={styles.aboutLabel}>{item.label}</Text>
+                  <Text style={[styles.aboutText, (item.isLink || item.isEmail || item.isPhone) && styles.linkText]}>
+                    {item.value}
+                  </Text>
+                </View>
               </TouchableOpacity>
-            </View>
-          </MotiView>
-        )}
+            ))}
 
-        {profile?.birthday && (
-          <MotiView
-            from={{ opacity: 0, translateX: -20 }}
-            animate={{ opacity: 1, translateX: 0 }}
-            transition={{ delay: 300 }}
-            style={styles.aboutItem}
-          >
-            <View style={styles.aboutIcon}>
-              <Ionicons name="cake-outline" size={18} color="#666" />
-            </View>
-            <View style={styles.aboutContent}>
-              <Text style={styles.aboutLabel}>Birthday</Text>
-              <Text style={styles.aboutText}>
-                {new Date(profile.birthday).toLocaleDateString('en-US', {
-                  month: 'long',
-                  day: 'numeric',
-                  year: 'numeric'
-                })}
-              </Text>
-            </View>
-          </MotiView>
-        )}
-
-        {profile?.social_links && Object.keys(profile.social_links).length > 0 && (
-          <MotiView
-            from={{ opacity: 0, translateX: -20 }}
-            animate={{ opacity: 1, translateX: 0 }}
-            transition={{ delay: 350 }}
-            style={styles.aboutItem}
-          >
-            <View style={styles.aboutIcon}>
-              <Ionicons name="share-social-outline" size={18} color="#666" />
-            </View>
-            <View style={styles.aboutContent}>
-              <Text style={styles.aboutLabel}>Social Links</Text>
-              <View style={styles.socialLinks}>
+            {section.title === 'Connect' && profile?.social_links && Object.keys(profile.social_links).length > 0 && (
+              <View style={styles.socialGrid}>
                 {Object.entries(profile.social_links).map(([platform, url]) => (
                   <TouchableOpacity
                     key={platform}
-                    style={styles.socialLink}
-                    onPress={() => openModal('webview', { url: url as string })}
+                    style={styles.socialBadge}
+                    onPress={() => handleLinkPress(url as string)}
                   >
-                    <Ionicons
-                      name={getSocialIcon(platform) as any}
-                      size={16}
-                      color="#666"
-                    />
-                    <Text style={styles.socialLinkText} numberOfLines={1}>
-                      {platform}
-                    </Text>
+                    <Ionicons name={getSocialIcon(platform) as any} size={16} color="#666" />
+                    <Text style={styles.socialBadgeText}>{platform}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
-            </View>
+            )}
           </MotiView>
-        )}
+        ))}
       </View>
     );
   };
@@ -483,31 +481,35 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
 
       {user?.id !== String(userId) && (
         <TouchableOpacity
-          style={[
-            styles.followButton,
-            isFollowing && styles.followingButton
-          ]}
+          style={styles.followButton}
           onPress={handleFollow}
           disabled={followLoading}
-          activeOpacity={0.7}
+          activeOpacity={0.8}
         >
-          {followLoading ? (
-            <ActivityIndicator size="small" color={isFollowing ? '#000' : '#fff'} />
-          ) : (
-            <>
-              <Ionicons
-                name={isFollowing ? "checkmark" : "person-add"}
-                size={18}
-                color={isFollowing ? '#000' : '#fff'}
-              />
-              <Text style={[
-                styles.followButtonText,
-                isFollowing && styles.followingButtonText
-              ]}>
-                {isFollowing ? 'Following' : 'Follow'}
-              </Text>
-            </>
-          )}
+          <LinearGradient
+            colors={isFollowing ? ['#efefef', '#e0e0e0'] : ['#3897f0', '#005ed3']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.followButtonGradient}
+          >
+            {followLoading ? (
+              <ActivityIndicator size="small" color={isFollowing ? '#000' : '#fff'} />
+            ) : (
+              <>
+                <Ionicons
+                  name={isFollowing ? "checkmark-circle" : "person-add"}
+                  size={18}
+                  color={isFollowing ? '#000' : '#fff'}
+                />
+                <Text style={[
+                  styles.followButtonLabel,
+                  isFollowing && { color: '#000' }
+                ]}>
+                  {isFollowing ? 'Following' : 'Follow'}
+                </Text>
+              </>
+            )}
+          </LinearGradient>
         </TouchableOpacity>
       )}
 
@@ -574,15 +576,18 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
         </MotiView>
       );
     }
-    if (activeTab === 'media' && uniqueMediaItems.length === 0 && !loading) {
+    if (activeTab === 'media' && uniqueMediaFromPosts.length === 0 && !loading) {
+      const isRestricted = profile?.is_private && !isFollowing && user?.id !== String(userId);
       return (
         <MotiView
           from={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           style={styles.emptyState}
         >
-          <Ionicons name="images-outline" size={48} color="#ccc" />
-          <Text style={styles.emptyStateText}>No media uploads found</Text>
+          <Ionicons name={isRestricted ? "lock-closed-outline" : "images-outline"} size={48} color="#ccc" />
+          <Text style={styles.emptyStateText}>
+            {isRestricted ? "This account is private" : "No media uploads found in posts"}
+          </Text>
         </MotiView>
       );
     }
@@ -592,7 +597,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
   // Get unique key for each item
   const getItemKey = (item: any) => {
     if (activeTab === 'media') {
-      return `media-${item.id}`;
+      return item.uniqueKey;
     }
     return `post-${item.id}`;
   };
@@ -660,22 +665,29 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
           </View>
         ) : (
           <Animated.FlatList
-            data={activeTab === 'posts' ? uniqueUserPosts : (activeTab === 'media' ? uniqueMediaItems : [])}
+            data={activeTab === 'posts' ? uniqueUserPosts : (activeTab === 'media' && (!profile.is_private || isFollowing || user?.id === String(userId)) ? uniqueMediaFromPosts : [])}
             keyExtractor={getItemKey}
             numColumns={activeTab === 'media' ? 3 : 1}
             key={activeTab === 'media' ? 'media-grid' : 'post-list'}
             renderItem={({ item }) => {
               if (activeTab === 'media') {
-                const mediaItem = item as MediaItem;
+                const mediaItem = item as any;
+                const isVideo = mediaItem.type === 'video';
                 return (
                   <TouchableOpacity
                     style={styles.mediaItem}
-                    onPress={() => openModal('image', { url: `${getApiBaseImage()}/storage/${mediaItem.file_path}` })}
+                    activeOpacity={0.9}
+                    onPress={() => openModal(isVideo ? 'video' : 'image', { url: `${getApiBaseImage()}/storage/${mediaItem.file_path}` })}
                   >
                     <Image
                       source={{ uri: `${getApiBaseImage()}/storage/${mediaItem.file_path}` }}
                       style={styles.mediaThumbnail}
                     />
+                    {isVideo && (
+                      <View style={styles.videoOverlay}>
+                        <Ionicons name="play-circle" size={32} color="rgba(255,255,255,0.9)" />
+                      </View>
+                    )}
                   </TouchableOpacity>
                 );
               }
@@ -738,6 +750,51 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
           setShowReportModal(false);
         }}
       />
+
+      {/* Profile Photo Popup Modal */}
+      <Modal
+        visible={photoModalVisible}
+        transparent={true}
+        animationType="none"
+        onRequestClose={() => setPhotoModalVisible(false)}
+      >
+        <TouchableOpacity 
+          style={styles.photoModalBackdrop} 
+          activeOpacity={1} 
+          onPress={() => setPhotoModalVisible(false)}
+        >
+          <AnimatePresence>
+            {photoModalVisible && (
+              <MotiView
+                from={{ opacity: 0, scale: 0.5 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.5 }}
+                transition={{ type: 'spring', damping: 15 }}
+                style={styles.enlargedPhotoContainer}
+              >
+                <TouchableOpacity style={{ width: '100%', height: '100%' }} activeOpacity={1}>
+                  {profile?.profile_photo ? (
+                    <Image
+                      source={{ uri: `${getApiBaseImage()}/storage/${profile.profile_photo}` }}
+                      style={styles.enlargedPhoto}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <LinearGradient
+                      colors={['#667eea', '#764ba2']}
+                      style={[styles.enlargedPhoto, styles.initialsContainer]}
+                    >
+                      <Text style={styles.enlargedInitials}>
+                        {`${profile?.name?.charAt(0) || ''}${profile?.last_name?.charAt(0) || ''}`.toUpperCase()}
+                      </Text>
+                    </LinearGradient>
+                  )}
+                </TouchableOpacity>
+              </MotiView>
+            )}
+          </AnimatePresence>
+        </TouchableOpacity>
+      </Modal>
     </Modal>
   );
 };
@@ -865,13 +922,9 @@ const styles = StyleSheet.create({
   },
   followButton: {
     flexDirection: 'row',
-    backgroundColor: '#3897f0',
     marginHorizontal: 20,
-    paddingVertical: 10,
     borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+    overflow: 'hidden',
     marginBottom: 20,
     ...createShadow({
       width: 0,
@@ -881,18 +934,23 @@ const styles = StyleSheet.create({
       elevation: 2,
     }),
   },
+  followButtonGradient: {
+    flex: 1,
+    flexDirection: 'row',
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  followButtonLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
+  },
   followingButton: {
     backgroundColor: '#efefef',
     borderWidth: 1,
     borderColor: '#e0e0e0',
-  },
-  followButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  followingButtonText: {
-    color: '#000',
   },
   tabsContainer: {
     flexDirection: 'row',
@@ -957,9 +1015,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   aboutText: {
-    fontSize: 14,
-    color: '#333',
-    lineHeight: 20,
+    fontSize: 15,
+    color: '#1a1a1a',
+    lineHeight: 22,
   },
   linkText: {
     color: '#3897f0',
@@ -1012,6 +1070,37 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#f0f0f0',
   },
+  videoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.1)',
+  },
+  photoModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  enlargedPhotoContainer: {
+    width: width * 0.8,
+    height: width * 0.8,
+    maxWidth: 500,
+    maxHeight: 500,
+    borderRadius: Platform.OS === 'web' ? 250 : (width * 0.8) / 2,
+    backgroundColor: '#000',
+    overflow: 'hidden',
+    ...createShadow({ opacity: 0.5, radius: 20 }),
+  },
+  enlargedPhoto: {
+    width: '100%',
+    height: '100%',
+  },
+  enlargedInitials: {
+    fontSize: 80,
+    fontWeight: '800',
+    color: '#fff',
+  },
   footerLoader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1030,6 +1119,92 @@ const styles = StyleSheet.create({
   footerEndText: {
     fontSize: 12,
     color: '#999',
+  },
+  // Enhanced About Styles
+  aboutSection: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    ...createShadow({ opacity: 0.05, radius: 10 }),
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 8,
+  },
+  sectionTitleText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#3897f0',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  aboutIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  socialGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f5f5f5',
+  },
+  socialBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#eee',
+    gap: 6,
+  },
+  socialBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#444',
+    textTransform: 'capitalize',
+  },
+  // Private Account Guard
+  privateContainer: {
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  privateIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#f8f9fa',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  privateTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 8,
+  },
+  privateSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     View,
     Text,
@@ -8,33 +8,61 @@ import {
     ScrollView,
     StatusBar,
     Platform,
+    Switch,
+    Animated,
+    Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import { MotiView } from 'moti';
 import { getMyCompliance } from '@/services/ModerationService';
+import { fetchFullSettings, updatePreferences } from '@/services/SettingService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { GlobalStyles } from '@/styles/GlobalStyles';
 import { router } from 'expo-router';
+import { createShadow } from '@/utils/styles';
+import * as Haptics from 'expo-haptics';
+
+const isWeb = Platform.OS === 'web';
 
 export default function AiSafetyScreen() {
     const insets = useSafeAreaInsets();
     const [compliance, setCompliance] = useState<any>(null);
+    const [preferences, setPreferences] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const scrollY = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        fetchCompliance();
+        loadData();
     }, []);
 
-    const fetchCompliance = async () => {
+    const loadData = async () => {
         try {
             setLoading(true);
-            const data = await getMyCompliance();
-            setCompliance(data);
+            const [complianceData, settingsData] = await Promise.all([
+                getMyCompliance(),
+                fetchFullSettings()
+            ]);
+            setCompliance(complianceData);
+            setPreferences(settingsData.preferences);
         } catch (error) {
-            console.error('Failed to fetch compliance:', error);
+            console.error('Failed to fetch data:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleTogglePreference = async (field: string, value: boolean) => {
+        try {
+            const oldVal = preferences[field];
+            setPreferences((prev: any) => ({ ...prev, [field]: value }));
+            await updatePreferences({ [field]: value });
+            
+            if (!isWeb) {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }
+        } catch (error) {
+            setPreferences((prev: any) => ({ ...prev, [field]: !value }));
+            Alert.alert('Error', 'Failed to update safety preference');
         }
     };
 
@@ -50,33 +78,67 @@ export default function AiSafetyScreen() {
         return 'REDUCING';
     };
 
+    const SafetyToggle = ({ label, description, icon, value, onToggle, color = "#0084ff" }: any) => (
+        <View style={styles.toggleCard}>
+            <View style={styles.toggleInfo}>
+                <View style={[styles.iconContainer, { backgroundColor: color + '15' }]}>
+                    <Ionicons name={icon} size={20} color={color} />
+                </View>
+                <View style={styles.textContainer}>
+                    <Text style={styles.toggleLabel}>{label}</Text>
+                    <Text style={styles.toggleDescription}>{description}</Text>
+                </View>
+            </View>
+            <Switch
+                value={!!value}
+                onValueChange={onToggle}
+                trackColor={{ false: '#e5e5e5', true: color + '80' }}
+                thumbColor={value ? color : '#fff'}
+            />
+        </View>
+    );
+
     return (
-        <View style={GlobalStyles.popupContainer}>
+        <View style={styles.container}>
             <StatusBar barStyle="dark-content" />
 
-            <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-                    <Ionicons name="arrow-back" size={24} color="#333" />
+            <LinearGradient
+                colors={['#fff', '#f8f9fa']}
+                style={[styles.header, { paddingTop: insets.top + 10 }]}
+            >
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <Ionicons name="arrow-back" size={24} color="#000" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>AI Safety & Trust</Text>
-                <View style={{ width: 40 }} />
-            </View>
+                <View style={styles.headerCenter}>
+                    <Text style={styles.headerTitle}>AI Safety & Trust</Text>
+                    <View style={styles.headerUnderline} />
+                </View>
+                <TouchableOpacity onPress={loadData} style={styles.refreshButton}>
+                    <Ionicons name="refresh" size={20} color="#0084ff" />
+                </TouchableOpacity>
+            </LinearGradient>
 
             {loading ? (
                 <View style={styles.loaderContainer}>
                     <ActivityIndicator size="large" color="#0084ff" />
+                    <Text style={styles.loaderText}>Assessing your trust level...</Text>
                 </View>
             ) : (
                 <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                    <View style={styles.scoreCircleContainer}>
-                        <View style={[styles.scoreCircle, { borderColor: getStatusColor(compliance?.trust_score ?? 1) }]}>
-                            <Text style={styles.scorePercent}>{((compliance?.trust_score ?? 1) * 100).toFixed(0)}%</Text>
-                            <Text style={styles.scoreLabel}>Trust Score</Text>
-                        </View>
-                        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(compliance?.trust_score ?? 1) }]}>
-                            <Text style={styles.statusText}>{getStatusLabel(compliance?.trust_score ?? 1)}</Text>
-                        </View>
-                    </View>
+                    <MotiView from={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={styles.scoreCircleContainer}>
+                        <LinearGradient
+                            colors={[getStatusColor(compliance?.trust_score ?? 1) + '20', '#fff']}
+                            style={styles.scoreCircleGradient}
+                        >
+                            <View style={[styles.scoreCircle, { borderColor: getStatusColor(compliance?.trust_score ?? 1) }]}>
+                                <Text style={styles.scorePercent}>{((compliance?.trust_score ?? 1) * 100).toFixed(0)}%</Text>
+                                <Text style={styles.scoreLabel}>Trust Score</Text>
+                            </View>
+                            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(compliance?.trust_score ?? 1) }]}>
+                                <Text style={styles.statusText}>{getStatusLabel(compliance?.trust_score ?? 1)}</Text>
+                            </View>
+                        </LinearGradient>
+                    </MotiView>
 
                     <View style={styles.statsGrid}>
                         <StatItem label="Violations" value={compliance?.violation_count ?? 0} icon="alert-circle" color="#F44336" />
@@ -84,8 +146,29 @@ export default function AiSafetyScreen() {
                         <StatItem label="False Reports" value={compliance?.false_report_count ?? 0} icon="flag" color="#FF9800" />
                     </View>
 
+                    <Text style={styles.sectionTitle}>Safety Controls</Text>
+                    <SafetyToggle
+                        label="Content Filters"
+                        description="Automatically filter sensitive or offensive content from your feed."
+                        icon="shield-alert-outline"
+                        value={preferences?.content_filters}
+                        onToggle={(val: boolean) => handleTogglePreference('content_filters', val)}
+                        color="#1063FD"
+                    />
+                    <SafetyToggle
+                        label="AI Portals"
+                        description="Allow AI to assist in connecting you with relevant community spaces."
+                        icon="planet-outline"
+                        value={preferences?.enable_web_portals}
+                        onToggle={(val: boolean) => handleTogglePreference('enable_web_portals', val)}
+                        color="#9C27B0"
+                    />
+
                     <View style={styles.infoBox}>
-                        <Text style={styles.infoTitle}>About Your Trust Score</Text>
+                        <View style={styles.infoTitleRow}>
+                            <Ionicons name="information-circle" size={20} color="#0084ff" />
+                            <Text style={styles.infoTitle}>About Your Trust Score</Text>
+                        </View>
                         <Text style={styles.infoText}>
                             Your trust score is calculated based on your content history and reporting accuracy. 
                             A high score ensures your reports are prioritized and gives you a "Verified Contributor" standing.
@@ -93,7 +176,7 @@ export default function AiSafetyScreen() {
                         
                         <View style={styles.divider} />
                         
-                        <Text style={styles.infoTitle}>Tips for Improving</Text>
+                        <Text style={styles.infoSubtitle}>How to maintain a high score:</Text>
                         <View style={styles.tipRow}>
                             <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
                             <Text style={styles.tipText}>Follow community guidelines consistently.</Text>
@@ -111,32 +194,78 @@ export default function AiSafetyScreen() {
 
 const StatItem = ({ label, value, icon, color }: any) => (
     <View style={styles.statItem}>
-        <Ionicons name={icon} size={24} color={color} />
+        <View style={[styles.statIconContainer, { backgroundColor: color + '15' }]}>
+            <Ionicons name={icon} size={20} color={color} />
+        </View>
         <Text style={styles.statValue}>{value}</Text>
         <Text style={styles.statLabel}>{label}</Text>
     </View>
 );
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 20 },
-  headerButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.05)', justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#1a1a1a' },
-  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  scrollContent: { paddingHorizontal: 24, paddingBottom: 40 },
-  scoreCircleContainer: { alignItems: 'center', marginVertical: 30 },
-  scoreCircle: { width: 150, height: 150, borderRadius: 75, borderWidth: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.02)' },
-  scorePercent: { fontSize: 32, fontWeight: 'bold', color: '#1a1a1a' },
-  scoreLabel: { fontSize: 12, color: 'rgba(0,0,0,0.4)', marginTop: 4 },
-  statusBadge: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, marginTop: -20 },
-  statusText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
-  statsGrid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 30, gap: 8 },
-  statItem: { flex: 1, alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.02)', padding: 16, borderRadius: 16 },
-  statValue: { fontSize: 18, fontWeight: 'bold', color: '#1a1a1a', marginTop: 8 },
-  statLabel: { fontSize: 10, color: 'rgba(0,0,0,0.4)', marginTop: 2, textAlign: 'center' },
-  infoBox: { backgroundColor: 'rgba(0,84,255,0.05)', padding: 20, borderRadius: 20 },
-  infoTitle: { color: '#0084ff', fontSize: 16, fontWeight: 'bold', marginBottom: 12 },
-  infoText: { color: 'rgba(0,0,0,0.6)', fontSize: 14, lineHeight: 22, marginBottom: 15 },
-  divider: { height: 1, backgroundColor: 'rgba(0,0,0,0.05)', marginVertical: 15 },
-  tipRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  tipText: { color: '#333', fontSize: 13, marginLeft: 10 },
+    container: { flex: 1, backgroundColor: '#FFFFFF' },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(0,0,0,0.05)',
+    },
+    headerCenter: { alignItems: 'center' },
+    headerTitle: { fontSize: 18, fontWeight: '800', color: '#1a1a1a' },
+    headerUnderline: { width: 30, height: 3, backgroundColor: '#0084ff', borderRadius: 2, marginTop: 4 },
+    backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F5F5F7', justifyContent: 'center', alignItems: 'center' },
+    refreshButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F5F5F7', justifyContent: 'center', alignItems: 'center' },
+    loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    loaderText: { marginTop: 12, color: '#666', fontSize: 14 },
+    scrollContent: { paddingHorizontal: 20, paddingBottom: 50 },
+    scoreCircleContainer: { alignItems: 'center', marginVertical: 20 },
+    scoreCircleGradient: { padding: 30, borderRadius: 100, alignItems: 'center' },
+    scoreCircle: { 
+        width: 140, 
+        height: 140, 
+        borderRadius: 70, 
+        borderWidth: 6, 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        backgroundColor: '#fff',
+        ...createShadow({ opacity: 0.1, radius: 10 })
+    },
+    scorePercent: { fontSize: 36, fontWeight: '900', color: '#1a1a1a' },
+    scoreLabel: { fontSize: 11, color: 'rgba(0,0,0,0.4)', fontWeight: '700', textTransform: 'uppercase' },
+    statusBadge: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, marginTop: -15, ...createShadow({ opacity: 0.2, radius: 5 }) },
+    statusText: { color: '#fff', fontSize: 12, fontWeight: '900' },
+    statsGrid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25, gap: 10 },
+    statItem: { flex: 1, alignItems: 'center', backgroundColor: '#F8F9FA', padding: 16, borderRadius: 20, borderWidth: 1, borderColor: '#e5e5e5' },
+    statIconContainer: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+    statValue: { fontSize: 18, fontWeight: '800', color: '#1a1a1a' },
+    statLabel: { fontSize: 10, color: '#666', fontWeight: '700', textTransform: 'uppercase', marginTop: 2 },
+    sectionTitle: { fontSize: 13, fontWeight: '800', color: '#0084ff', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 15, marginLeft: 5 },
+    toggleCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#fff',
+        padding: 18,
+        borderRadius: 20,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#e5e5e5',
+        ...createShadow({ opacity: 0.05, radius: 8 }),
+    },
+    toggleInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 },
+    iconContainer: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+    textContainer: { flex: 1 },
+    toggleLabel: { fontSize: 15, fontWeight: '700', color: '#1a1a1a' },
+    toggleDescription: { fontSize: 11, color: '#666', marginTop: 2, lineHeight: 14 },
+    infoBox: { backgroundColor: '#F8F9FA', padding: 20, borderRadius: 24, borderWidth: 1, borderColor: '#e5e5e5', marginTop: 10 },
+    infoTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+    infoTitle: { color: '#1a1a1a', fontSize: 16, fontWeight: '800' },
+    infoSubtitle: { color: '#0084ff', fontSize: 13, fontWeight: '700', marginBottom: 12 },
+    infoText: { color: '#666', fontSize: 13, lineHeight: 20, marginBottom: 15 },
+    divider: { height: 1, backgroundColor: '#e5e5e5', marginVertical: 15 },
+    tipRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+    tipText: { color: '#1a1a1a', fontSize: 13, marginLeft: 10, fontWeight: '500' },
 });
