@@ -28,7 +28,9 @@ import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import * as Clipboard from 'expo-clipboard';
 import { createShadow } from '@/utils/styles';
+import GlobalStyles from '@/styles/GlobalStyles';
 import AuthContext from '@/context/AuthContext';
 import { fetchUserByEmail, followUser, sendEmailInvitation } from '@/services/UserService';
 import getApiBaseImage from '@/services/getApiBaseImage';
@@ -56,7 +58,7 @@ interface SocialLink {
 
 const SOCIAL_PLATFORMS: SocialLink[] = [
     { platform: 'WhatsApp', url: 'https://wa.me/', icon: 'logo-whatsapp', color: '#25D366' },
-    { platform: 'Telegram', url: 'https://t.me/share/url?url=', icon: 'logo-telegram', color: '#0088cc' },
+    { platform: 'Telegram', url: 'https://t.me/share/url?url=', icon: 'paper-plane', color: '#0088cc' },
     { platform: 'Twitter', url: 'https://twitter.com/intent/tweet?text=', icon: 'logo-twitter', color: '#1DA1F2' },
     { platform: 'Facebook', url: 'https://www.facebook.com/sharer/sharer.php?u=', icon: 'logo-facebook', color: '#1877F2' },
     { platform: 'Instagram', url: 'https://www.instagram.com/', icon: 'logo-instagram', color: '#E4405F' },
@@ -108,13 +110,33 @@ export default function TellFriendScreen() {
     }, [activeTab]);
 
     const loadContacts = async () => {
-        if (isWeb) {
-            // Silence alert on web if just switching tabs, but show if they click it
-            return;
-        }
-
         try {
             setLoadingContacts(true);
+
+            if (isWeb) {
+                // Web Contact Picker API Support (Safari 14.5+, Chrome 80+)
+                if ('contacts' in navigator && 'select' in (navigator as any).contacts) {
+                    const props = ['name', 'email', 'tel'];
+                    const opts = { multiple: true };
+                    try {
+                        const webContacts = await (navigator as any).contacts.select(props, opts);
+                        const formattedContacts = webContacts.map((wc: any, index: number) => ({
+                            id: `web-${index}-${wc.name?.[0] || 'unknown'}`,
+                            name: wc.name?.[0] || 'Unknown Name',
+                            emails: wc.email?.map((e: string) => ({ email: e })) || [],
+                            phoneNumbers: wc.tel?.map((t: string) => ({ number: t })) || [],
+                        }));
+                        setContacts(prev => [...prev, ...formattedContacts]);
+                    } catch (err) {
+                        console.log('Web Contact Picker cancelled or failed:', err);
+                    }
+                } else {
+                    console.log('Web Contact Picker API not supported on this browser');
+                }
+                return;
+            }
+
+            // Native Mobile Implementation
             const { status } = await Contacts.requestPermissionsAsync();
             if (status === 'granted') {
                 const { data } = await Contacts.getContactsAsync({
@@ -134,45 +156,76 @@ export default function TellFriendScreen() {
             let url = platform.url;
             let message = customMessage;
 
+            // Platform-specific logic for prefilling and app detection
             if (platform.platform === 'WhatsApp') {
+                const encodedMessage = encodeURIComponent(message);
                 if (targetContact?.phoneNumbers?.[0]) {
                     const phone = targetContact.phoneNumbers[0].number.replace(/[^0-9]/g, '');
-                    url += phone + '?text=' + encodeURIComponent(message);
+                    url = `whatsapp://send?phone=${phone}&text=${encodedMessage}`;
                 } else {
-                    url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+                    url = `whatsapp://send?text=${encodedMessage}`;
                 }
-            } else if (platform.platform === 'SMS' && targetContact?.phoneNumbers?.[0]) {
-                const phone = targetContact.phoneNumbers[0].number;
-                url += phone + (Platform.OS === 'ios' ? '&' : '?') + 'body=' + encodeURIComponent(message);
-            } else if (platform.platform === 'Email' && targetContact?.emails?.[0]) {
-                const email = targetContact.emails[0].email;
+            } else if (platform.platform === 'SMS') {
+                if (targetContact?.phoneNumbers?.[0]) {
+                    const phone = targetContact.phoneNumbers[0].number;
+                    // iOS uses '&' for params after the first, but 'sms:' URLs on iOS are strict.
+                    // The safer way for body prefill on iOS is sms:phone&body=...
+                    const separator = Platform.OS === 'ios' ? '&' : '?';
+                    url = `sms:${phone}${separator}body=${encodeURIComponent(message)}`;
+                } else {
+                    // General SMS share - native share sheet is much more reliable for body prefill on mobile
+                    if (!isWeb) {
+                        await Share.share({ message });
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        return;
+                    }
+                    url = `sms:?body=${encodeURIComponent(message)}`;
+                }
+            } else if (platform.platform === 'Instagram') {
                 if (!isWeb) {
-                    await MailComposer.composeAsync({
-                        recipients: [email],
-                        subject: 'Join me on Zmzir!',
-                        body: message,
-                    });
+                    await Clipboard.setStringAsync(message);
+                    Alert.alert(
+                        'Message Copied!',
+                        'Instagram does not allow pre-filling text automatically. We have copied the invitation to your clipboard - you can paste it into your post or story!',
+                        [
+                            { 
+                                text: 'Open Instagram', 
+                                onPress: async () => {
+                                    const instaUrl = 'instagram://library';
+                                    const canOpen = await Linking.canOpenURL(instaUrl);
+                                    if (canOpen) {
+                                        await Linking.openURL(instaUrl);
+                                    } else {
+                                        await Share.share({ message, url: APP_STORE_LINKS.web });
+                                    }
+                                } 
+                            },
+                        ]
+                    );
                     return;
                 }
-                url += email + '?subject=Join me on Zmzir!&body=' + encodeURIComponent(message);
+            } else if (platform.platform === 'Telegram') {
+                const encodedMessage = encodeURIComponent(message);
+                if (!isWeb) {
+                    const tgUrl = `tg://msg?text=${encodedMessage}`;
+                    const canOpenTg = await Linking.canOpenURL(tgUrl);
+                    if (canOpenTg) {
+                        url = tgUrl;
+                    } else {
+                        url = platform.url + encodedMessage;
+                    }
+                } else {
+                    url = platform.url + encodedMessage;
+                }
+            } else if (platform.platform === 'Twitter') {
+                url = platform.url + encodeURIComponent(message);
             } else if (platform.platform === 'Facebook' || platform.platform === 'LinkedIn') {
-                // These platforms expect a URL, not pure text
-                url += encodeURIComponent(APP_STORE_LINKS.web);
-                // On mobile, native share is better for including the full text
+                url = platform.url + encodeURIComponent(APP_STORE_LINKS.web);
                 if (!isWeb) {
                     await Share.share({ message: message, url: APP_STORE_LINKS.web, title: 'Join me on Zmzir' });
                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                     return;
                 }
-            } else if (platform.platform === 'Twitter' || platform.platform === 'Telegram') {
-                url += encodeURIComponent(message);
-            } else if (platform.platform === 'Instagram') {
-                // Instagram usually requires native share for stories/posts
-                if (!isWeb) {
-                    await Share.share({ message: message, url: APP_STORE_LINKS.web });
-                    return;
-                }
-                url = platform.url; // Just open the site
             } else {
                 url += encodeURIComponent(message);
             }
@@ -182,12 +235,16 @@ export default function TellFriendScreen() {
                 await Linking.openURL(url);
                 if (!isWeb) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             } else {
-                await Share.share({ message, title: 'Join me on Zmzir' });
+                // Final fallback to native share
+                if (!isWeb) {
+                    await Share.share({ message, title: 'Join me on Zmzir' });
+                } else {
+                    Alert.alert('Sharing', 'Please copy the message and share it manually or try our Email/Link options.');
+                }
             }
         } catch (error) {
             console.error('Share failed:', error);
-            // Fallback to general share
-            await Share.share({ message: customMessage, title: 'Join me on Zmzir' });
+            if (!isWeb) await Share.share({ message: customMessage, title: 'Join me on Zmzir' });
         }
     };
 
@@ -408,7 +465,7 @@ export default function TellFriendScreen() {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, GlobalStyles.popupContainer]}>
             <StatusBar barStyle="light-content" />
             <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={StyleSheet.absoluteFill} />
             <BlurView intensity={20} style={StyleSheet.absoluteFill} />
@@ -450,9 +507,21 @@ export default function TellFriendScreen() {
                         ) : contacts.length === 0 ? (
                             <View style={styles.emptyContainer}>
                                 <Ionicons name="people" size={60} color="rgba(255,255,255,0.2)" />
-                                <Text style={styles.emptyTitle}>{isWeb ? 'Not Available on Web' : 'No contacts found'}</Text>
-                                <Text style={styles.emptyText}>{isWeb ? 'Please use the Social or Invite tabs for sharing.' : 'Allow contact access to invite friends directly.'}</Text>
-                                {!isWeb && <TouchableOpacity style={styles.allowButton} onPress={loadContacts}><Text style={styles.allowButtonText}>Allow Access</Text></TouchableOpacity>}
+                                <Text style={styles.emptyTitle}>
+                                    {isWeb && !('contacts' in navigator) ? 'Not Available on this Browser' : 'No contacts found'}
+                                </Text>
+                                <Text style={styles.emptyText}>
+                                    {isWeb && !('contacts' in navigator) 
+                                        ? 'Your browser does not support contact selection. Try the Social or Invite tabs.' 
+                                        : 'Select contacts from your phone to invite them to Zmzir.'}
+                                </Text>
+                                {( !isWeb || ('contacts' in navigator) ) && (
+                                    <TouchableOpacity style={styles.allowButton} onPress={loadContacts}>
+                                        <Text style={styles.allowButtonText}>
+                                            {isWeb ? 'Select Contacts' : 'Allow Access'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
                             </View>
                         ) : (
                             contacts.map(contact => <ContactCard key={contact.id} contact={contact} />)
@@ -586,8 +655,8 @@ const styles = StyleSheet.create({
     contactDetail: { color: 'rgba(255,255,255,0.5)', fontSize: 12 },
     contactActions: { flexDirection: 'row', gap: 10 },
     contactAction: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
-    socialGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-    socialButton: { width: (width - 52) / 2, borderRadius: 20, padding: 15, alignItems: 'center' },
+    socialGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' },
+    socialButton: { width: (width - 56) / 2, borderRadius: 20, padding: 15, alignItems: 'center' },
     socialIconGradient: { width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
     socialName: { fontSize: 14, fontWeight: '700' },
     inviteForm: { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },

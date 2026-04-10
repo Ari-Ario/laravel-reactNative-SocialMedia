@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { createShadow } from '@/utils/styles';
 import * as Haptics from 'expo-haptics';
+import GlobalStyles from '@/styles/GlobalStyles';
 
 const isWeb = Platform.OS === 'web';
 
@@ -99,7 +100,7 @@ export default function AiSafetyScreen() {
     );
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, GlobalStyles.popupContainer]}>
             <StatusBar barStyle="dark-content" />
 
             <LinearGradient

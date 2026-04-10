@@ -19,6 +19,7 @@ import AuthContext from '@/context/AuthContext';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import MessageBubble from '@/components/ChatScreen/MessageBubble';
 import { createShadow } from '@/utils/styles';
+import GlobalStyles from '@/styles/GlobalStyles';
 
 const { width } = Dimensions.get('window');
 
@@ -167,7 +168,7 @@ const ChatHighlightsScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, GlobalStyles.popupContainer]}>
       <StatusBar barStyle="dark-content" />
       
       <LinearGradient

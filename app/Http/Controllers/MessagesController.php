@@ -14,6 +14,143 @@ use Illuminate\Support\Facades\Storage;
 class MessagesController extends Controller
 {
     /**
+     * Broadcast a message to multiple recipients
+     */
+    public function broadcast(Request $request)
+    {
+        $request->validate([
+            'recipient_ids' => 'required|array',
+            'recipient_ids.*' => 'exists:users,id',
+            'content' => 'required|string',
+            'type' => 'sometimes|string|in:text,image,video,document,voice,poll,post_share',
+            'metadata' => 'sometimes|array',
+        ]);
+
+        $user = auth()->user();
+        $recipientIds = $request->recipient_ids;
+        $content = $request->content;
+        $type = $request->input('type', 'text');
+        $sentCount = 0;
+        $targetUsers = User::whereIn('id', $recipientIds)->get()->keyBy('id');
+
+        foreach ($recipientIds as $targetUserId) {
+            // Skip self if mistakenly included
+            if ($targetUserId == $user->id) continue;
+
+            try {
+                // Find or create space
+                $space = $this->getDirectSpace($user->id, $targetUserId);
+                
+                // Construct message
+                $newMsg = [
+                    'id' => (string)\Illuminate\Support\Str::uuid(),
+                    'user_id' => $user->id,
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'profile_photo' => $user->profile_photo,
+                    ],
+                    'content' => $content,
+                    'type' => $type,
+                    'created_at' => now()->toISOString(),
+                    'metadata' => array_merge($request->metadata ?? [], ['is_broadcast' => true]),
+                    'reactions' => [],
+                    'is_pinned' => false
+                ];
+
+                $contentState = $space->content_state ?? ['messages' => []];
+                $spaceMessages = $contentState['messages'] ?? [];
+                
+                // Prepend the new message
+                array_unshift($spaceMessages, $newMsg);
+                $contentState['messages'] = $spaceMessages;
+
+                $space->update(['content_state' => $contentState]);
+
+                // Broadcast events just like in SpaceController
+                
+                // 1. Presence channel for those inside the space
+                broadcast(new \App\Events\MessageSent($newMsg, $space->id, $user))->toOthers();
+
+                // 2. Individual user channels for chat list snippet updates
+                broadcast(new \App\Events\SpaceMessageSent($space->id, [$targetUserId], $newMsg))->toOthers();
+
+                // 3. Persistent Database Notification for offline/header fetch
+                $targetUser = $targetUsers->get($targetUserId);
+                if ($targetUser) {
+                    \Illuminate\Support\Facades\Notification::send($targetUser, new \App\Events\MessageSent($newMsg, $space->id, $user));
+                }
+
+                $sentCount++;
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Broadcast failed for user $targetUserId: " . $e->getMessage());
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'sent_count' => $sentCount,
+            'total_requested' => count($recipientIds)
+        ]);
+    }
+
+    /**
+     * Helper to find or create a 1-on-1 direct chat space
+     */
+    private function getDirectSpace($userId, $targetUserId)
+    {
+        $spaces = CollaborationSpace::where('space_type', 'chat')
+            ->whereHas('participations', function ($q) use ($userId) {
+                $q->where('user_id', $userId);
+            })
+            ->whereHas('participations', function ($q) use ($targetUserId) {
+                $q->where('user_id', $targetUserId);
+            })
+            ->withCount('participations')
+            ->get();
+
+        $space = $spaces->firstWhere('participations_count', 2);
+
+        if (!$space) {
+            $targetUser = User::find($targetUserId);
+            $spaceName = $targetUser ? "Chat with " . $targetUser->name : 'Direct Chat';
+
+            // Create new space
+            $space = CollaborationSpace::create([
+                'id' => (string)\Illuminate\Support\Str::uuid(),
+                'title' => $spaceName,
+                'space_type' => 'chat',
+                'creator_id' => $userId,
+                'settings' => [
+                    'theme' => 'light',
+                    'privacy' => 'private',
+                    'allow_guests' => false,
+                    'is_direct' => true
+                ],
+                'content_state' => ['messages' => []],
+                'is_live' => false,
+                'has_ai_assistant' => false,
+                'participants_count' => 2
+            ]);
+
+            // Add both users
+            SpaceParticipation::create([
+                'space_id' => $space->id,
+                'user_id' => $userId,
+                'role' => 'owner',
+            ]);
+
+            SpaceParticipation::create([
+                'space_id' => $space->id,
+                'user_id' => $targetUserId,
+                'role' => 'participant',
+            ]);
+        }
+
+        return $space;
+    }
+
+    /**
      * Get messages for a conversation or space
      */
     public function index(Request $request)

@@ -1670,6 +1670,7 @@ public function endCall(Request $request, $id)
             'file_path' => $url,
             'metadata' => [
                 'duration' => (float) $request->duration,
+                'metering' => $request->input('metering') ? json_decode($request->input('metering')) : [],
                 'file_name' => $filename,
                 'mime_type' => $file->getMimeType(),
                 'file_size' => $file->getSize(),

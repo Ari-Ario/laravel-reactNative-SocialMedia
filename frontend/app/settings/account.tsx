@@ -25,10 +25,12 @@ import AuthContext from '@/context/AuthContext';
 import { fetchFullSettings, updateFullSettings, deleteAccount } from '@/services/SettingService';
 import { loadUser } from '@/services/AuthService';
 import { createShadow } from '@/utils/styles';
+import ShareLocation from '@/components/ChatScreen/ShareLocation';
+import GlobalStyles from '@/styles/GlobalStyles';
 
 const SOCIAL_PLATFORMS = [
     { id: 'whatsapp', platform: 'WhatsApp', icon: 'logo-whatsapp', color: '#25D366' },
-    { id: 'telegram', platform: 'Telegram', icon: 'logo-telegram', color: '#0088cc' },
+    { id: 'telegram', platform: 'Telegram', icon: 'paper-plane', color: '#0088cc' },
     { id: 'twitter', platform: 'Twitter', icon: 'logo-twitter', color: '#1a1a1a' },
     { id: 'instagram', platform: 'Instagram', icon: 'logo-instagram', color: '#E4405F' },
     { id: 'facebook', platform: 'Facebook', icon: 'logo-facebook', color: '#1877F2' },
@@ -52,6 +54,122 @@ const EDUCATION_LEVELS = [
 
 const isWeb = Platform.OS === 'web';
 const { width } = Dimensions.get('window');
+
+// ─── Country Data for Phone Picker ──────────────────────────────────────────
+const COUNTRIES = [
+    { name: 'Afghanistan', code: '+93', flag: '🇦🇫' },
+    { name: 'Albania', code: '+355', flag: '🇦🇱' },
+    { name: 'Algeria', code: '+213', flag: '🇩🇿' },
+    { name: 'Andorra', code: '+376', flag: '🇦🇩' },
+    { name: 'Angola', code: '+244', flag: '🇦🇴' },
+    { name: 'Argentina', code: '+54', flag: '🇦🇷' },
+    { name: 'Armenia', code: '+374', flag: '🇦🇲' },
+    { name: 'Australia', code: '+61', flag: '🇦🇺' },
+    { name: 'Austria', code: '+43', flag: '🇦🇹' },
+    { name: 'Azerbaijan', code: '+994', flag: '🇦🇿' },
+    { name: 'Bahrain', code: '+973', flag: '🇧🇭' },
+    { name: 'Bangladesh', code: '+880', flag: '🇧🇩' },
+    { name: 'Belarus', code: '+375', flag: '🇧🇾' },
+    { name: 'Belgium', code: '+32', flag: '🇧🇪' },
+    { name: 'Bolivia', code: '+591', flag: '🇧🇴' },
+    { name: 'Bosnia and Herzegovina', code: '+387', flag: '🇧🇦' },
+    { name: 'Brazil', code: '+55', flag: '🇧🇷' },
+    { name: 'Bulgaria', code: '+359', flag: '🇧🇬' },
+    { name: 'Cambodia', code: '+855', flag: '🇰🇭' },
+    { name: 'Cameroon', code: '+237', flag: '🇨🇲' },
+    { name: 'Canada', code: '+1', flag: '🇨🇦' },
+    { name: 'Chile', code: '+56', flag: '🇨🇱' },
+    { name: 'China', code: '+86', flag: '🇨🇳' },
+    { name: 'Colombia', code: '+57', flag: '🇨🇴' },
+    { name: 'Costa Rica', code: '+506', flag: '🇨🇷' },
+    { name: 'Croatia', code: '+385', flag: '🇭🇷' },
+    { name: 'Cuba', code: '+53', flag: '🇨🇺' },
+    { name: 'Cyprus', code: '+357', flag: '🇨🇾' },
+    { name: 'Czech Republic', code: '+420', flag: '🇨🇿' },
+    { name: 'Denmark', code: '+45', flag: '🇩🇰' },
+    { name: 'Dominican Republic', code: '+1', flag: '🇩🇴' },
+    { name: 'Ecuador', code: '+593', flag: '🇪🇨' },
+    { name: 'Egypt', code: '+20', flag: '🇪🇬' },
+    { name: 'El Salvador', code: '+503', flag: '🇸🇻' },
+    { name: 'Estonia', code: '+372', flag: '🇪🇪' },
+    { name: 'Ethiopia', code: '+251', flag: '🇪🇹' },
+    { name: 'Finland', code: '+358', flag: '🇫🇮' },
+    { name: 'France', code: '+33', flag: '🇫🇷' },
+    { name: 'Georgia', code: '+995', flag: '🇬🇪' },
+    { name: 'Germany', code: '+49', flag: '🇩🇪' },
+    { name: 'Ghana', code: '+233', flag: '🇬🇭' },
+    { name: 'Greece', code: '+30', flag: '🇬🇷' },
+    { name: 'Guatemala', code: '+502', flag: '🇬🇹' },
+    { name: 'Honduras', code: '+504', flag: '🇭🇳' },
+    { name: 'Hong Kong', code: '+852', flag: '🇭🇰' },
+    { name: 'Hungary', code: '+36', flag: '🇭🇺' },
+    { name: 'Iceland', code: '+354', flag: '🇮🇸' },
+    { name: 'India', code: '+91', flag: '🇮🇳' },
+    { name: 'Indonesia', code: '+62', flag: '🇮🇩' },
+    { name: 'Iran', code: '+98', flag: '🇮🇷' },
+    { name: 'Iraq', code: '+964', flag: '🇮🇶' },
+    { name: 'Ireland', code: '+353', flag: '🇮🇪' },
+    { name: 'Israel', code: '+972', flag: '🇮🇱' },
+    { name: 'Italy', code: '+39', flag: '🇮🇹' },
+    { name: 'Jamaica', code: '+1', flag: '🇯🇲' },
+    { name: 'Japan', code: '+81', flag: '🇯🇵' },
+    { name: 'Jordan', code: '+962', flag: '🇯🇴' },
+    { name: 'Kazakhstan', code: '+7', flag: '🇰🇿' },
+    { name: 'Kenya', code: '+254', flag: '🇰🇪' },
+    { name: 'Kuwait', code: '+965', flag: '🇰🇼' },
+    { name: 'Latvia', code: '+371', flag: '🇱🇻' },
+    { name: 'Lebanon', code: '+961', flag: '🇱🇧' },
+    { name: 'Libya', code: '+218', flag: '🇱🇾' },
+    { name: 'Lithuania', code: '+370', flag: '🇱🇹' },
+    { name: 'Luxembourg', code: '+352', flag: '🇱🇺' },
+    { name: 'Malaysia', code: '+60', flag: '🇲🇾' },
+    { name: 'Malta', code: '+356', flag: '🇲🇹' },
+    { name: 'Mexico', code: '+52', flag: '🇲🇽' },
+    { name: 'Moldova', code: '+373', flag: '🇲🇩' },
+    { name: 'Monaco', code: '+377', flag: '🇲🇨' },
+    { name: 'Mongolia', code: '+976', flag: '🇲🇳' },
+    { name: 'Montenegro', code: '+382', flag: '🇲🇪' },
+    { name: 'Morocco', code: '+212', flag: '🇲🇦' },
+    { name: 'Netherlands', code: '+31', flag: '🇳🇱' },
+    { name: 'New Zealand', code: '+64', flag: '🇳🇿' },
+    { name: 'Nigeria', code: '+234', flag: '🇳🇬' },
+    { name: 'Norway', code: '+47', flag: '🇳🇴' },
+    { name: 'Oman', code: '+968', flag: '🇴🇲' },
+    { name: 'Pakistan', code: '+92', flag: '🇵🇰' },
+    { name: 'Panama', code: '+507', flag: '🇵🇦' },
+    { name: 'Paraguay', code: '+595', flag: '🇵🇾' },
+    { name: 'Peru', code: '+51', flag: '🇵🇪' },
+    { name: 'Philippines', code: '+63', flag: '🇵🇭' },
+    { name: 'Poland', code: '+48', flag: '🇵🇱' },
+    { name: 'Portugal', code: '+351', flag: '🇵🇹' },
+    { name: 'Qatar', code: '+974', flag: '🇶🇦' },
+    { name: 'Romania', code: '+40', flag: '🇷🇴' },
+    { name: 'Russia', code: '+7', flag: '🇷🇺' },
+    { name: 'Saudi Arabia', code: '+966', flag: '🇸🇦' },
+    { name: 'Serbia', code: '+381', flag: '🇷🇸' },
+    { name: 'Singapore', code: '+65', flag: '🇸🇬' },
+    { name: 'Slovakia', code: '+421', flag: '🇸🇰' },
+    { name: 'Slovenia', code: '+386', flag: '🇸🇮' },
+    { name: 'South Africa', code: '+27', flag: '🇿🇦' },
+    { name: 'South Korea', code: '+82', flag: '🇰🇷' },
+    { name: 'Spain', code: '+34', flag: '🇪🇸' },
+    { name: 'Sri Lanka', code: '+94', flag: '🇱🇰' },
+    { name: 'Sweden', code: '+46', flag: '🇸🇪' },
+    { name: 'Switzerland', code: '+41', flag: '🇨🇭' },
+    { name: 'Syria', code: '+963', flag: '🇸🇾' },
+    { name: 'Taiwan', code: '+886', flag: '🇹🇼' },
+    { name: 'Thailand', code: '+66', flag: '🇹🇭' },
+    { name: 'Tunisia', code: '+216', flag: '🇹🇳' },
+    { name: 'Turkey', code: '+90', flag: '🇹🇷' },
+    { name: 'Ukraine', code: '+380', flag: '🇺🇦' },
+    { name: 'United Arab Emirates', code: '+971', flag: '🇦🇪' },
+    { name: 'United Kingdom', code: '+44', flag: '🇬🇧' },
+    { name: 'United States', code: '+1', flag: '🇺🇸' },
+    { name: 'Uruguay', code: '+598', flag: '🇺🇾' },
+    { name: 'Uzbekistan', code: '+998', flag: '🇺🇿' },
+    { name: 'Venezuela', code: '+58', flag: '🇻🇪' },
+    { name: 'Vietnam', code: '+84', flag: '🇻🇳' }
+].sort((a, b) => a.name.localeCompare(b.name));
 
 // ─── Date Picker (platform-aware) ────────────────────────────────────────────
 interface DatePickerModalProps {
@@ -426,6 +544,196 @@ const EditableField = ({ label, value, icon, onSave, multiline, keyboardType = '
     );
 };
 
+// ─── Country Code Picker Modal ───────────────────────────────────────────────
+interface CountryPickerModalProps {
+    visible: boolean;
+    onSelect: (country: typeof COUNTRIES[0]) => void;
+    onClose: () => void;
+}
+const CountryPickerModal = ({ visible, onSelect, onClose }: CountryPickerModalProps) => {
+    const [search, setSearch] = useState('');
+    const filtered = COUNTRIES.filter(c => 
+        c.name.toLowerCase().includes(search.toLowerCase()) || 
+        c.code.includes(search)
+    );
+
+    return (
+        <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+            <TouchableOpacity style={modalStyles.overlay} activeOpacity={1} onPress={onClose}>
+                <MotiView
+                    from={{ translateY: 400, opacity: 0 }}
+                    animate={{ translateY: 0, opacity: 1 }}
+                    style={[modalStyles.sheet, { height: '80%' }]}
+                >
+                    <TouchableOpacity activeOpacity={1} style={{ flex: 1 }}>
+                        <View style={modalStyles.handle} />
+                        <View style={modalStyles.header}>
+                            <Text style={modalStyles.title}>Select Country</Text>
+                            <TouchableOpacity onPress={onClose}>
+                                <Ionicons name="close" size={24} color="#666" />
+                            </TouchableOpacity>
+                        </View>
+                        
+                        <View style={styles.searchContainer}>
+                            <Ionicons name="search" size={18} color="#999" />
+                            <TextInput
+                                style={styles.searchInput}
+                                placeholder="Search country or code..."
+                                value={search}
+                                onChangeText={setSearch}
+                                autoFocus={!isWeb}
+                            />
+                        </View>
+
+                        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+                            {filtered.map(country => (
+                                <TouchableOpacity
+                                    key={country.name}
+                                    style={modalStyles.countryItem}
+                                    onPress={() => { onSelect(country); onClose(); }}
+                                >
+                                    <Text style={modalStyles.countryFlag}>{country.flag}</Text>
+                                    <Text style={modalStyles.countryName}>{country.name}</Text>
+                                    <Text style={modalStyles.countryCode}>{country.code}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                        <View style={{ height: 30 }} />
+                    </TouchableOpacity>
+                </MotiView>
+            </TouchableOpacity>
+        </Modal>
+    );
+};
+
+// ─── Premium Phone Input ─────────────────────────────────────────────────────
+interface PhoneInputProps {
+    value: string;
+    onSave: (val: string) => Promise<void>;
+}
+const PremiumPhoneInput = ({ value, onSave }: PhoneInputProps) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [showPicker, setShowPicker] = useState(false);
+    const [loading, setLoading] = useState(false);
+    
+    // Parse existing value
+    const parsePhone = (phone: string) => {
+        if (!phone) return { code: '+41', number: '', flag: '🇨🇭' };
+        
+        // Remove + if present for matching
+        const clean = phone.startsWith('+') ? phone.slice(1) : phone;
+        
+        // Find matching country (longest code first)
+        const sortedCountries = [...COUNTRIES].sort((a,b) => b.code.length - a.code.length);
+        const match = sortedCountries.find(c => clean.startsWith(c.code.slice(1)));
+        
+        if (match) {
+            return {
+                code: match.code,
+                number: clean.slice(match.code.length - 1),
+                flag: match.flag
+            };
+        }
+        return { code: '+', number: clean, flag: '🏳️' };
+    };
+
+    const initial = parsePhone(value);
+    const [country, setCountry] = useState({ code: initial.code, flag: initial.flag });
+    const [localNumber, setLocalNumber] = useState(initial.number);
+
+    useEffect(() => {
+        const reset = parsePhone(value);
+        setCountry({ code: reset.code, flag: reset.flag });
+        setLocalNumber(reset.number);
+    }, [value]);
+
+    const handleSave = async () => {
+        const cleanNumber = localNumber.replace(/\D/g, '');
+        if (cleanNumber.length < 7) {
+            Alert.alert('Invalid Number', 'Please enter a valid phone number (at least 7 digits).');
+            return;
+        }
+        
+        setLoading(true);
+        try {
+            // Save without + prefix to match existing DB format (e.g. 41762166557)
+            const fullNumber = country.code.slice(1) + cleanNumber;
+            await onSave(fullNumber);
+            setIsEditing(false);
+        } catch (error) {
+            Alert.alert('Error', 'Failed to update phone number');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <View style={styles.fieldCard}>
+            <View style={styles.fieldHeader}>
+                <View style={styles.fieldLabelRow}>
+                    <View style={styles.iconContainer}>
+                        <Ionicons name="call-outline" size={18} color="#0084ff" />
+                    </View>
+                    <Text style={styles.fieldLabel}>Phone Number</Text>
+                </View>
+                {!isEditing && (
+                    <TouchableOpacity onPress={() => setIsEditing(true)}>
+                        <Ionicons name="pencil" size={16} color="#0084ff" />
+                    </TouchableOpacity>
+                )}
+            </View>
+
+            {isEditing ? (
+                <View style={styles.phoneInputContainer}>
+                    <TouchableOpacity 
+                        style={styles.countrySelector} 
+                        onPress={() => setShowPicker(true)}
+                    >
+                        <Text style={styles.flagText}>{country.flag}</Text>
+                        <Text style={styles.codeText}>{country.code}</Text>
+                        <Ionicons name="chevron-down" size={12} color="#999" />
+                    </TouchableOpacity>
+                    
+                    <TextInput
+                        style={styles.phoneNumberInput}
+                        value={localNumber}
+                        onChangeText={v => setLocalNumber(v.replace(/\D/g, ''))}
+                        placeholder="Phone number"
+                        keyboardType="phone-pad"
+                        autoFocus
+                    />
+                    
+                    {loading ? (
+                        <ActivityIndicator size="small" color="#0084ff" />
+                    ) : (
+                        <TouchableOpacity onPress={handleSave}>
+                            <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+                        </TouchableOpacity>
+                    )}
+                    <TouchableOpacity onPress={() => setIsEditing(false)} style={{ marginLeft: 8 }}>
+                        <Ionicons name="close-circle" size={24} color="#ccc" />
+                    </TouchableOpacity>
+                </View>
+            ) : (
+                <TouchableOpacity onPress={() => setIsEditing(true)}>
+                    <Text style={[styles.fieldValue, !value && styles.placeholderValue]}>
+                        {value ? `(${country.code}) ${localNumber}` : 'Tap to set phone number'}
+                    </Text>
+                </TouchableOpacity>
+            )}
+
+            <CountryPickerModal
+                visible={showPicker}
+                onClose={() => setShowPicker(false)}
+                onSelect={c => {
+                    setCountry({ code: c.code, flag: c.flag });
+                    setShowPicker(false);
+                }}
+            />
+        </View>
+    );
+};
+
 // ─── Picker Display Field (non-editable, opens modal) ─────────────────────────
 interface PickerFieldProps {
     label: string;
@@ -556,6 +864,7 @@ export default function AccountSettingsScreen() {
     const [showGenderPicker, setShowGenderPicker] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showEducationPicker, setShowEducationPicker] = useState(false);
+    const [showLocationPicker, setShowLocationPicker] = useState(false);
 
     const headerOpacity = scrollY.interpolate({
         inputRange: [0, 100],
@@ -588,6 +897,26 @@ export default function AccountSettingsScreen() {
         } catch (error) {
             throw error;
         }
+    };
+
+    const handleLocationSelect = async (locData: any) => {
+        // Save as JSON string to preserve coordinates ("numbers")
+        const locationValue = JSON.stringify(locData);
+        await handleUpdate('location', locationValue);
+        setShowLocationPicker(false);
+    };
+
+    const getLocationDisplay = (value: string) => {
+        if (!value) return '';
+        if (typeof value === 'string' && value.startsWith('{')) {
+            try {
+                const parsed = JSON.parse(value);
+                return parsed.name || parsed.address || 'Location Pin';
+            } catch (e) {
+                return value;
+            }
+        }
+        return value;
     };
 
     const handleSocialUpdate = async (platformId: string, value: string) => {
@@ -680,7 +1009,7 @@ export default function AccountSettingsScreen() {
     );
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, GlobalStyles.popupContainer]}>
             <StatusBar barStyle="dark-content" />
 
             {/* Pickers */}
@@ -840,23 +1169,16 @@ export default function AccountSettingsScreen() {
                                     onSave={val => handleUpdate('email', val)}
                                     hint="Used for login and notifications"
                                 />
-                                <EditableField
-                                    label="Phone Number"
+                                <PremiumPhoneInput
                                     value={fullSettings?.phone || ''}
-                                    icon="call-outline"
-                                    keyboardType="phone-pad"
                                     onSave={val => handleUpdate('phone', val)}
-                                    hint="Include country code (e.g. +1 555 000 0000)"
-                                    prefix="+"
-                                    maxLength={20}
                                 />
-                                <EditableField
+                                <PickerField
                                     label="Location"
-                                    value={fullSettings?.location || ''}
+                                    displayValue={getLocationDisplay(fullSettings?.location || '')}
                                     icon="location-outline"
-                                    onSave={val => handleUpdate('location', val)}
-                                    hint="City, Country — visible on your profile"
-                                    maxLength={100}
+                                    onPress={() => setShowLocationPicker(true)}
+                                    empty={!fullSettings?.location}
                                 />
                             </>
                         )}
@@ -927,6 +1249,12 @@ export default function AccountSettingsScreen() {
                     </MotiView>
                 </Animated.ScrollView>
             )}
+
+            <ShareLocation
+                visible={showLocationPicker}
+                onClose={() => setShowLocationPicker(false)}
+                onShareLocation={handleLocationSelect}
+            />
         </View>
     );
 }
@@ -945,6 +1273,13 @@ const modalStyles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingTop: 8,
         maxHeight: '75%',
+        ...Platform.select({
+            web: {
+                maxWidth: 1440,
+                width: '100%',
+                alignSelf: 'center',
+            }
+        })
     },
     handle: {
         width: 40,
@@ -1010,6 +1345,17 @@ const modalStyles = StyleSheet.create({
     genderEmoji: { fontSize: 20, marginRight: 14 },
     genderLabel: { flex: 1, fontSize: 16, fontWeight: '600', color: '#333' },
     genderLabelActive: { color: '#0084ff', fontWeight: '800' },
+    countryItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+    },
+    countryFlag: { fontSize: 24, marginRight: 16 },
+    countryName: { flex: 1, fontSize: 16, color: '#1a1a1a', fontWeight: '500' },
+    countryCode: { fontSize: 16, color: '#0084ff', fontWeight: '700' },
 });
 
 // ─── Screen Styles ────────────────────────────────────────────────────────────
@@ -1091,4 +1437,36 @@ const styles = StyleSheet.create({
     deleteButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, gap: 8 },
     deleteButtonText: { color: '#FF3B30', fontSize: 15, fontWeight: '700' },
     deleteNote: { fontSize: 11, color: '#999', textAlign: 'center', lineHeight: 16 },
+    // Phone Picker Styles
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f5f5f7',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        marginBottom: 16,
+        height: 44,
+    },
+    searchInput: { flex: 1, marginLeft: 8, fontSize: 16, color: '#000' },
+    phoneInputContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 8 },
+    countrySelector: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f5f5f7',
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        borderRadius: 10,
+        gap: 6,
+    },
+    flagText: { fontSize: 18 },
+    codeText: { fontSize: 15, fontWeight: '700', color: '#1a1a1a' },
+    phoneNumberInput: {
+        flex: 1,
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#000',
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#0084ff',
+    },
 });

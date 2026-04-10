@@ -6,84 +6,94 @@ import {
   RecordingPresets, 
   requestRecordingPermissionsAsync 
 } from 'expo-audio';
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Platform } from 'react-native';
 import { useToastStore } from '@/stores/toastStore';
 
 interface UseAudioRecordingOptions {
-  maxDuration?: number; // in seconds, default 60
-  onRecordingComplete?: (uri: string, duration: number) => void;
+  maxDuration?: number; 
+  onRecordingComplete?: (uri: string, duration: number, metering?: number[]) => void;
   onRecordingError?: (error: Error) => void;
 }
 
+/**
+ * useAudioRecording (v3.0 - Total Restructure)
+ * Fixes:
+ * 1. [Web] Single-stream recording (no more broken multi-segment files)
+ * 2. [Real-time Waveforms] Amplitude metering support
+ * 3. [Stability] Robust discard / state machine
+ */
 export const useAudioRecording = (options: UseAudioRecordingOptions = {}) => {
-  const { maxDuration = 60, onRecordingComplete, onRecordingError } = options;
+  const { maxDuration = 120, onRecordingComplete, onRecordingError } = options;
   const { showToast } = useToastStore();
   
-  // expo-audio recorder hook
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-  const state = useAudioRecorderState(recorder, 100);
+  // Use refs for callbacks to avoid re-initializing logic when parent re-renders with unstable objects
+  const onRecordingCompleteRef = useRef(onRecordingComplete);
+  const onRecordingErrorRef = useRef(onRecordingError);
+  useEffect(() => {
+    onRecordingCompleteRef.current = onRecordingComplete;
+    onRecordingErrorRef.current = onRecordingError;
+  }, [onRecordingComplete, onRecordingError]);
+  
+  // Recorder setup with metering enabled
+  const recorder = useAudioRecorder({
+    ...RecordingPresets.HIGH_QUALITY,
+    isMeteringEnabled: true,
+  });
+  
+  // High-frequency polling for timer and metering: throttled to 100ms to prevent React re-render loops
+  const state = useAudioRecorderState(recorder, 100); 
   
   const [isUploading, setIsUploading] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isSeeking, setIsSeeking] = useState(false);
+  const [displayProgress, setDisplayProgress] = useState(0);
 
-  // CRITICAL: use Refs for chunks and duration to avoid stale state and blockages
-  const chunksRef = useRef<string[]>([]);
-  const cumulativeDurationRef = useRef(0);
+  // Metering storage (Amplitude values for waveforms)
+  const meteringDataRef = useRef<number[]>([]);
+  const lastMeterPollRef = useRef<number>(0);
+
   const [previewUri, setPreviewUri] = useState<string | null>(null);
-
-  // Preview Player management
   const previewPlayer = useAudioPlayer(previewUri);
   const previewStatus = useAudioPlayerStatus(previewPlayer);
   
-  // Scrubbing stabilization
-  const [displayProgress, setDisplayProgress] = useState(0);
-  
-  // Total duration including previous chunks and current state
-  const totalRecordedMillis = cumulativeDurationRef.current + (state.isRecording ? state.durationMillis : 0);
+  // Memoize state values to avoid unnecessary re-renders in consumers
+  const totalRecordedMillis = state.durationMillis || 0;
   const effectiveDuration = previewStatus.duration > 0 ? previewStatus.duration : (totalRecordedMillis / 1000);
 
+  // Capturing metering data for waveforms while recording
   useEffect(() => {
-    if (!isSeeking) {
-      const p = previewStatus.duration > 0 ? previewStatus.currentTime / previewStatus.duration : 0;
-      setDisplayProgress(p);
-    }
-  }, [previewStatus.currentTime, previewStatus.duration, isSeeking]);
-
-  /**
-   * LAZY MERGE: Efficiently combine segments into a single playable blob ONLY when needed.
-   * This prevents UI lag during the recording phase.
-   */
-  const getMergedUri = useCallback(async (finalChunkUri?: string) => {
-    if (Platform.OS !== 'web') {
-      return finalChunkUri || chunksRef.current[chunksRef.current.length - 1];
-    }
-
-    try {
-      const uls = [...chunksRef.current];
-      if (finalChunkUri && !uls.includes(finalChunkUri)) {
-        uls.push(finalChunkUri);
+    if (state.isRecording && !isPaused) {
+      const now = Date.now();
+      // Poll every 100ms for metering to avoid bloating metadata
+      if (now - lastMeterPollRef.current > 100) {
+        lastMeterPollRef.current = now;
+        // Normalize metering (-160 to 0 dB range usually, but depends on platform)
+        // We push a relative amplitude 0-1
+        const raw = state.metering ?? -160;
+        const normalized = Math.max(0, (raw + 160) / 160);
+        meteringDataRef.current.push(Number(normalized.toFixed(3)));
       }
-      
-      if (uls.length === 0) return null;
-      if (uls.length === 1) return uls[0];
-
-      console.log(`[useAudioRecording] Merging ${uls.length} segments...`);
-      const blobPromises = uls.map(u => fetch(u).then(r => r.blob()));
-      const blobs = await Promise.all(blobPromises);
-      
-      const mergedBlob = new Blob(blobs, { type: blobs[0]?.type || 'audio/webm' });
-      return URL.createObjectURL(mergedBlob);
-    } catch (error) {
-      console.error('Error merging segments:', error);
-      return finalChunkUri || null;
     }
-  }, []);
+  }, [state.isRecording, isPaused, state.metering]);
 
-  // Sync player source when URI becomes available
+  // Throttled progress update to prevent re-render loops during playback
   useEffect(() => {
-    if (previewUri) {
+    // Only track progress when NOT recording to avoid interference with the high-frequency recording state
+    if (!state.isRecording && !isSeeking && previewStatus.duration > 0) {
+      const p = previewStatus.currentTime / previewStatus.duration;
+      const normalizedP = isNaN(p) ? 0 : p;
+      setDisplayProgress(prev => (Math.abs(prev - normalizedP) > 0.01) ? normalizedP : prev);
+    } else if (!state.isRecording && !isSeeking && previewStatus.currentTime === 0) {
+      setDisplayProgress(0);
+    }
+  }, [previewStatus.currentTime, previewStatus.duration, isSeeking, state.isRecording]);
+
+  // Sync player source
+  const lastLoadedPreviewUri = useRef<string | null>(null);
+  useEffect(() => {
+    if (previewUri && previewUri !== lastLoadedPreviewUri.current) {
+      lastLoadedPreviewUri.current = previewUri;
       previewPlayer.replace(previewUri);
     }
   }, [previewUri, previewPlayer]);
@@ -97,43 +107,37 @@ export const useAudioRecording = (options: UseAudioRecordingOptions = {}) => {
       }
 
       setIsPaused(false);
-      chunksRef.current = [];
-      cumulativeDurationRef.current = 0;
       setPreviewUri(null);
+      lastLoadedPreviewUri.current = null;
+      meteringDataRef.current = [];
+      setDisplayProgress(0);
+
       await recorder.prepareToRecordAsync();
       recorder.record();
     } catch (error) {
-      console.error('Error starting recording:', error);
+      console.error('[useAudioRecording] Start failed:', error);
       showToast('Failed to start recording', 'error');
-      onRecordingError?.(error as Error);
+      onRecordingErrorRef.current?.(error as Error);
     }
-  }, [recorder, showToast, onRecordingError]);
+  }, [recorder, showToast]);
 
   const pauseRecording = useCallback(async () => {
     try {
       if (state.isRecording && !isPaused) {
-        const currentChunkDuration = state.durationMillis;
-        
-        // On Web, we MUST stop to make the blob playable
-        if (Platform.OS === 'web') {
-          await recorder.stop();
-          const currentUri = recorder.uri;
-          if (currentUri && !chunksRef.current.includes(currentUri)) {
-            chunksRef.current.push(currentUri);
-            cumulativeDurationRef.current += currentChunkDuration;
-          }
-          // Note: We DO NOT merge here to prevent UI lag. Merge is lazy.
-        } else {
-          await recorder.pause();
-          cumulativeDurationRef.current += currentChunkDuration;
-        }
+        // Native & Web: Just use pause() to keep the stream ALIVE in one file
+        await recorder.pause();
         setIsPaused(true);
+        
+        // Prepare preview immediately if possible
+        if (recorder.uri) {
+           setPreviewUri(recorder.uri);
+        }
       }
     } catch (error) {
-      console.error('Error pausing recording:', error);
-      showToast('Failed to pause recording', 'error');
+      console.error('[useAudioRecording] Pause failed:', error);
+      showToast('Failed to pause', 'error');
     }
-  }, [recorder, state.isRecording, state.durationMillis, isPaused, showToast]);
+  }, [recorder, state.isRecording, isPaused, showToast]);
 
   const resumeRecording = useCallback(async () => {
     try {
@@ -141,44 +145,34 @@ export const useAudioRecording = (options: UseAudioRecordingOptions = {}) => {
         if (previewStatus.playing) {
           previewPlayer.pause();
         }
-        
-        if (Platform.OS === 'web') {
-          await recorder.prepareToRecordAsync();
-          recorder.record();
-        } else {
-          recorder.record();
-        }
+        recorder.record();
         setIsPaused(false);
       }
     } catch (error) {
-      console.error('Error resuming recording:', error);
-      showToast('Failed to resume recording', 'error');
+      console.error('[useAudioRecording] Resume failed:', error);
     }
-  }, [recorder, isPaused, showToast, previewStatus.playing, previewPlayer]);
+  }, [recorder, isPaused, previewStatus.playing, previewPlayer]);
 
   const playPreview = useCallback(async () => {
     try {
-      // Lazy merge if preview URI isn't ready
-      if (!previewUri && chunksRef.current.length > 0) {
-        const merged = await getMergedUri();
-        if (merged) setPreviewUri(merged);
+      if (!previewUri && recorder.uri) {
+        setPreviewUri(recorder.uri);
       }
-
       if (previewStatus.playbackState === 'finished') {
         previewPlayer.seekTo(0);
       }
       previewPlayer.play();
     } catch (error) {
-      console.error('Error playing preview:', error);
+      console.error('[useAudioRecording] Preview Play failed:', error);
     }
-  }, [previewPlayer, previewStatus.playbackState, previewUri, getMergedUri]);
+  }, [previewPlayer, previewStatus.playbackState, previewUri, recorder.uri]);
 
   const pausePreview = useCallback(() => {
     previewPlayer.pause();
   }, [previewPlayer]);
 
-  const seekPreview = useCallback((positionSeconds: number) => {
-    previewPlayer.seekTo(positionSeconds);
+  const seekPreview = useCallback((seconds: number) => {
+    previewPlayer.seekTo(seconds);
   }, [previewPlayer]);
 
   const stopRecording = useCallback(async () => {
@@ -189,65 +183,64 @@ export const useAudioRecording = (options: UseAudioRecordingOptions = {}) => {
         previewPlayer.pause();
       }
 
-      let finalTotalDuration = cumulativeDurationRef.current;
-      let finalSegmentUri: string | undefined;
+      // Final stop - captures the URI
+      const result = await recorder.stop();
+      const finalUri = (result as any)?.uri ?? recorder.uri;
+      const finalDurationSeconds = totalRecordedMillis / 1000;
 
-      if (state.isRecording) {
-        finalTotalDuration += state.durationMillis;
-        await recorder.stop();
-        finalSegmentUri = recorder.uri || undefined;
-      }
-
-      // LAZY MERGE ALL AT ONCE
-      const finalUri = await getMergedUri(finalSegmentUri);
-      
       setIsPaused(false);
-      const totalSeconds = finalTotalDuration / 1000;
       
-      console.log(`[useAudioRecording] Finished. Duration: ${totalSeconds}s, Total Segments: ${chunksRef.current.length + (finalSegmentUri ? 1 : 0)}`);
+      console.log(`[useAudioRecording] Stop: URI=${finalUri ? 'ok' : 'MISSING'}, Dur=${finalDurationSeconds.toFixed(1)}s`);
 
-      if (finalUri && totalSeconds >= 0.5) {
-        onRecordingComplete?.(finalUri, totalSeconds);
-      } else if (totalSeconds < 0.5) {
+      if (finalUri && finalDurationSeconds >= 0.5) {
+        onRecordingCompleteRef.current?.(finalUri, finalDurationSeconds, [...meteringDataRef.current]);
+      } else if (!finalUri) {
+        showToast('Recording failed - please try again', 'error');
+      } else {
         showToast('Recording too short', 'info');
       }
       
-      // Cleanup
-      chunksRef.current = [];
-      cumulativeDurationRef.current = 0;
+      // Cleanup all local state for next recording
       setPreviewUri(null);
+      lastLoadedPreviewUri.current = null;
+      meteringDataRef.current = [];
+      setDisplayProgress(0);
     } catch (error) {
-      console.error('Error stopping recording:', error);
-      showToast('Failed to stop recording', 'error');
-      onRecordingError?.(error as Error);
+      console.error('[useAudioRecording] Stop failed:', error);
+      showToast('Failed to save recording', 'error');
+      onRecordingErrorRef.current?.(error as Error);
     }
-  }, [recorder, state.isRecording, state.durationMillis, isPaused, onRecordingComplete, onRecordingError, showToast, previewPlayer, previewStatus.playing, getMergedUri]);
+  }, [recorder, state.isRecording, isPaused, totalRecordedMillis, showToast, previewPlayer, previewStatus.playing]);
 
   const cancelRecording = useCallback(async () => {
     try {
       if (previewStatus.playing) {
         previewPlayer.pause();
       }
+      
+      // Safely stop if recording or paused
       if (state.isRecording || isPaused) {
         await recorder.stop();
-        setIsPaused(false);
       }
-      chunksRef.current = [];
-      cumulativeDurationRef.current = 0;
+
+      setIsPaused(false);
       setPreviewUri(null);
+      lastLoadedPreviewUri.current = null;
+      meteringDataRef.current = [];
+      setDisplayProgress(0);
     } catch (error) {
-      console.error('Error canceling recording:', error);
+      console.error('[useAudioRecording] Cancel failed:', error);
     }
   }, [recorder, state.isRecording, isPaused, previewPlayer, previewStatus.playing]);
 
   const formatDuration = useCallback((millis: number): string => {
-    const totalSeconds = Math.floor(millis / 1000);
+    const totalSeconds = Math.max(0, Math.floor(millis / 1000));
     const mins = Math.floor(totalSeconds / 60);
     const secs = totalSeconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   }, []);
 
-  return {
+  return useMemo(() => ({
     isRecording: state.isRecording,
     isPaused,
     displayProgress,
@@ -266,5 +259,25 @@ export const useAudioRecording = (options: UseAudioRecordingOptions = {}) => {
     formatDuration,
     setIsUploading,
     setIsSeeking,
-  };
+    meteringData: meteringDataRef.current
+  }), [
+    state.isRecording,
+    isPaused,
+    displayProgress,
+    effectiveDuration,
+    totalRecordedMillis,
+    isUploading,
+    previewStatus,
+    startRecording,
+    pauseRecording,
+    resumeRecording,
+    playPreview,
+    pausePreview,
+    seekPreview,
+    stopRecording,
+    cancelRecording,
+    formatDuration,
+    setIsUploading,
+    setIsSeeking
+  ]);
 };

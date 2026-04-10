@@ -23,6 +23,19 @@ class UserPreference extends Model
         'enable_web_portals',
     ];
 
+    protected $casts = [
+        'email_notifications' => 'boolean',
+        'push_notifications' => 'boolean',
+        'show_birthday' => 'boolean',
+        'show_email' => 'boolean',
+        'show_phone' => 'boolean',
+        'enable_web_portals' => 'boolean',
+        'content_filters' => 'array',
+        'muted_keywords' => 'array',
+        'collaboration_styles' => 'array',
+        'synergy_traits' => 'array',
+    ];
+
     /**
      * Get the user that owns the preferences.
      */

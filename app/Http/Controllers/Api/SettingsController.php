@@ -94,6 +94,27 @@ class SettingsController extends Controller
     }
 
     /**
+     * Update user password.
+     */
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user = $request->user();
+        
+        $user->update([
+            'password' => Hash::make($request->password),
+        ]);
+
+        return response()->json([
+            'message' => 'Password updated successfully'
+        ]);
+    }
+
+    /**
      * Delete user account.
      */
     public function destroy(Request $request)

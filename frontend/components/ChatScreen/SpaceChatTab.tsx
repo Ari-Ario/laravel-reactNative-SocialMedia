@@ -87,8 +87,8 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
         setIsUploading,
         setIsSeeking,
     } = useAudioRecording({
-        maxDuration: 60,
-        onRecordingComplete: async (uri, duration) => {
+        maxDuration: 120, // Increased limit
+        onRecordingComplete: async (uri, duration, metering) => {
             setIsUploading(true);
             
             // ─── Optimistic UI Update ───
@@ -99,7 +99,10 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                 type: 'voice',
                 content: 'Voice message',
                 file_path: uri,
-                metadata: { duration: Math.round(duration) },
+                metadata: { 
+                    duration: Math.round(duration),
+                    metering: metering || [] 
+                },
                 created_at: new Date().toISOString(),
                 isOptimistic: true,
                 user: { id: currentUserId, name: 'You' }
@@ -137,6 +140,9 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                 }
 
                 formData.append('duration', Math.round(duration).toString());
+                if (metering) {
+                    formData.append('metering', JSON.stringify(metering));
+                }
 
                 const message = await collaborationService.sendAudioMessage(spaceId, formData);
 
@@ -478,8 +484,9 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                                         style={styles.discardButton}
                                         onPress={cancelRecording}
                                         activeOpacity={0.7}
+                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                     >
-                                        <Ionicons name="trash-outline" size={22} color="#FF3B30" />
+                                        <Ionicons name="trash-outline" size={24} color="#FF3B30" />
                                     </TouchableOpacity>
 
                                     <View style={styles.recordingCenterSection}>
@@ -520,10 +527,11 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                                             style={styles.pauseResumeButton}
                                             onPress={isPaused ? resumeRecording : pauseRecording}
                                             activeOpacity={0.7}
+                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                         >
                                             <Ionicons 
                                                 name={isPaused ? "mic" : "pause-circle"} 
-                                                size={isPaused ? 24 : 28} 
+                                                size={isPaused ? 26 : 30} 
                                                 color={isPaused ? "#8E8E93" : "#007AFF"} 
                                             />
                                         </TouchableOpacity>
@@ -533,6 +541,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                                         style={styles.sendRecordingButton}
                                         onPress={stopRecording}
                                         activeOpacity={0.8}
+                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                     >
                                         <Ionicons name="send" size={20} color="#fff" />
                                     </TouchableOpacity>

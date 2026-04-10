@@ -112,3 +112,13 @@ export const sendEmailInvitation = async (email: string, message?: string) => {
     throw error;
   }
 };
+
+export const fetchBlockedUsers = async () => {
+    try {
+        const response = await axios.get(`${API_BASE}/profiles/blocked`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching blocked users:', error);
+        throw error;
+    }
+};

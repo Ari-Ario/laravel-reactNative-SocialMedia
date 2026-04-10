@@ -22,6 +22,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createShadow } from '@/utils/styles';
 import * as Haptics from 'expo-haptics';
 import { fetchFullSettings, updatePreferences } from '@/services/SettingService';
+import OfflineService from '@/services/ChatScreen/OfflineServiceChat';
+import axios from '@/services/axios';
+import getApiBase from '@/services/getApiBase';
+import { getToken } from '@/services/TokenService';
+import GlobalStyles from '@/styles/GlobalStyles';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -160,16 +165,33 @@ export default function StorageSettingsScreen() {
     };
 
     const handleClearCache = () => {
-        const confirmClear = () => {
-            setClearing(true);
-            setTimeout(() => {
-                setCacheSize('0.0 MB');
-                setClearing(false);
-                if (!isWeb) {
-                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        const confirmClear = async () => {
+            try {
+                setClearing(true);
+                
+                // 1. Clear Offline Service Cache (AsyncStorage)
+                await OfflineService.getInstance().clearCache();
+                
+                // 2. Clear Web LocalStorage if applicable, but preserve the token!
+                if (Platform.OS === 'web') {
+                    const token = localStorage.getItem('token');
+                    localStorage.clear();
+                    if (token) localStorage.setItem('token', token);
                 }
-                Alert.alert('Success', 'Local cache cleared successfully.');
-            }, 1000);
+
+                // Simulate brief delay for UX if it's too fast
+                setTimeout(() => {
+                    setCacheSize('0.0 MB');
+                    setClearing(false);
+                    if (!isWeb) {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    }
+                    Alert.alert('Success', 'Local cache cleared successfully.');
+                }, 800);
+            } catch (error) {
+                setClearing(false);
+                Alert.alert('Error', 'Failed to clear some local data.');
+            }
         };
 
         if (isWeb) {
@@ -195,7 +217,7 @@ export default function StorageSettingsScreen() {
     });
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, GlobalStyles.popupContainer]}>
             <StatusBar barStyle="dark-content" />
 
             <LinearGradient

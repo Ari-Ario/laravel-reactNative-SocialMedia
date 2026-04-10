@@ -84,12 +84,28 @@ class ProfileController extends Controller
         try {
             $authUserId = Auth::id();
 
-            // Retrieve the user info
+            // Retrieve the user info with preferences
             $user = User::withCount([
                 'posts',
                 'followers',
                 'following'
-            ])->findOrFail($userId);
+            ])
+            ->with('preferences')
+            ->findOrFail($userId);
+
+            $isOwner = $authUserId == $user->id;
+            $prefs = $user->preferences;
+
+            // Apply privacy filters for non-owners
+            $displayEmail = $user->email;
+            $displayPhone = $user->phone;
+            $displayBirthday = $user->birthday;
+
+            if (!$isOwner && $prefs) {
+                if (!$prefs->show_email) $displayEmail = null;
+                if (!$prefs->show_phone) $displayPhone = null;
+                if (!$prefs->show_birthday) $displayBirthday = null;
+            }
 
             // Get the posts exactly like index()
             $posts = Post::where('user_id', $userId)
@@ -146,9 +162,9 @@ class ProfileController extends Controller
                     'name' => $user->name,
                     'last_name' => $user->last_name,
                     'username' => $user->username,
-                    'email' => $user->email,
+                    'email' => $displayEmail,
                     'bio' => $user->bio,
-                    'birthday' => $user->birthday,
+                    'birthday' => $displayBirthday,
                     'gender' => $user->gender,
                     'profile_photo' => $user->profile_photo,
                     'cover_photo' => $user->cover_photo,
@@ -157,7 +173,7 @@ class ProfileController extends Controller
                     'education' => $user->education,
                     'website' => $user->website,
                     'location' => $user->location,
-                    'phone' => $user->phone,
+                    'phone' => $displayPhone,
                     'social_links' => $user->social_links,
                     'is_private' => $user->is_private,
                     'posts_count' => $user->posts_count,
@@ -173,12 +189,13 @@ class ProfileController extends Controller
                         ->latest()
                         ->take(12)
                         ->get(['id', 'file_path', 'type']),
+                    'preferences' => $isOwner ? $user->preferences : null,
                 ],
                 'posts' => $posts
             ]);
 
         } catch (\Exception $e) {
-            Log::error('PostController@show error: ' . $e->getMessage());
+            Log::error('ProfileController@show error: ' . $e->getMessage());
             return response()->json(['error' => 'Server error'], 500);
         }
     }
@@ -316,6 +333,79 @@ class ProfileController extends Controller
         } catch (\Exception $e) {
             Log::error('Block action failed: ' . $e->getMessage());
             return response()->json(['message' => 'Failed to block user'], 500);
+        }
+    }
+
+    /**
+     * Get list of blocked users
+     */
+    public function blockedUsersList()
+    {
+        try {
+            $user = Auth::user();
+            $blocked = $user->blockedUsers()
+                ->get()
+                ->map(function ($blocked) {
+                    return [
+                        'id' => $blocked->id,
+                        'name' => $blocked->name,
+                        'username' => $blocked->username,
+                        'profile_photo' => $blocked->profile_photo,
+                    ];
+                });
+
+            return response()->json($blocked);
+        } catch (\Exception $e) {
+            Log::error('fetch blocked users failed: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to fetch blocked users'], 500);
+        }
+    }
+
+    /**
+     * Export all user data as JSON
+     */
+    public function exportData()
+    {
+        try {
+            $user = Auth::user();
+            $user->load(['preferences', 'posts.media']);
+
+            $exportData = [
+                'metadata' => [
+                    'exported_at' => now()->toIso8601String(),
+                    'app_version' => config('app.version', '1.0.0'),
+                ],
+                'profile' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'username' => $user->username,
+                    'email' => $user->email,
+                    'bio' => $user->bio,
+                    'birthday' => $user->birthday,
+                    'gender' => $user->gender,
+                    'location' => $user->location,
+                    'website' => $user->website,
+                    'created_at' => $user->created_at,
+                ],
+                'preferences' => $user->preferences,
+                'posts' => $user->posts->map(function ($post) {
+                    return [
+                        'id' => $post->id,
+                        'caption' => $post->caption,
+                        'created_at' => $post->created_at,
+                        'media_count' => $post->media->count(),
+                    ];
+                }),
+            ];
+
+            return response()->json($exportData, 200, [
+                'Content-Type' => 'application/json',
+                'Content-Disposition' => 'attachment; filename="user_data_export.json"',
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Data export failed: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to export data'], 500);
         }
     }
 

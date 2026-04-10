@@ -638,7 +638,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       if (isDirect && spaceData.other_participant) {
         isDirectSpace = true;
         displayTitle = spaceData.other_participant.name || spaceData.other_participant.username || displayTitle;
-        displayAvatar = spaceData.other_participant.profile_photo || displayAvatar;
+        displayAvatar = spaceData.other_participant.profile_photo || null;
       }
     }
 

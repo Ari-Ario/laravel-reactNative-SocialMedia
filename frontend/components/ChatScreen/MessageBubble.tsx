@@ -297,6 +297,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             file_path={message.file_path || ''} 
             duration={message.metadata?.duration}
             isCurrentUser={isCurrentUser}
+            metadata={message.metadata}
           />
         );
 

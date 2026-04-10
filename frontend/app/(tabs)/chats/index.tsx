@@ -232,11 +232,10 @@ const ChatPage = () => {
       const otherUser = space.other_participant;
 
       let chatName = space.title || 'Direct Message';
-      let chatAvatar = space.creator?.profile_photo || undefined;
+      let chatAvatar = (isDirect && otherUser) ? (otherUser.profile_photo || undefined) : (space.creator?.profile_photo || undefined);
 
       if (isDirect && otherUser) {
         chatName = otherUser.name || otherUser.username || chatName;
-        chatAvatar = otherUser.profile_photo || chatAvatar;
       }
 
       const updatedAt = space.updated_at || space.created_at || new Date().toISOString();

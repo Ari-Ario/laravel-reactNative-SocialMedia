@@ -14,15 +14,19 @@ import {
     Platform,
     Alert,
     TextInput,
+    Modal,
+    KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { MotiView } from 'moti';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { fetchFullSettings, updateFullSettings, updatePreferences } from '@/services/SettingService';
+import { fetchFullSettings, updateFullSettings, updatePreferences, exportUserData, updatePassword } from '@/services/SettingService';
+import { fetchBlockedUsers, unblockUser } from '@/services/UserService';
 import { createShadow } from '@/utils/styles';
 import * as Haptics from 'expo-haptics';
+import GlobalStyles from '@/styles/GlobalStyles';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -112,10 +116,25 @@ export default function PrivacySettingsScreen() {
     const [activeSection, setActiveSection] = useState('visibility');
     const [keywordInput, setKeywordInput] = useState('');
     const keywordInputRef = useRef<TextInput>(null);
+    const [blockedUsers, setBlockedUsers] = useState<any[]>([]);
+    const [isExporting, setIsExporting] = useState(false);
+    
+    // Password Update State
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
 
     useEffect(() => {
         loadData();
     }, []);
+
+    useEffect(() => {
+        if (activeSection === 'interactions') {
+            loadBlockedUsers();
+        }
+    }, [activeSection]);
 
     const loadData = async () => {
         try {
@@ -127,6 +146,91 @@ export default function PrivacySettingsScreen() {
             console.error('Failed to load privacy settings:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const loadBlockedUsers = async () => {
+        try {
+            const data = await fetchBlockedUsers();
+            setBlockedUsers(data);
+        } catch (error) {
+            console.error('Failed to load blocked users:', error);
+        }
+    };
+
+    const handleUnblock = async (targetId: string) => {
+        try {
+            if (!isWeb) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            await unblockUser(targetId);
+            setBlockedUsers(prev => prev.filter(u => String(u.id) !== String(targetId)));
+        } catch (error) {
+            Alert.alert('Error', 'Failed to unblock user');
+        }
+    };
+
+    const handleExport = async () => {
+        try {
+            setIsExporting(true);
+            const data = await exportUserData();
+
+            // Handle download (works on Web & Mobile Browsers)
+            // if data is already a Blob (from SettingService), use it directly
+            const blob = data instanceof Blob ? data : new Blob([typeof data === 'string' ? data : JSON.stringify(data, null, 2)], { type: 'application/json' });
+            
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'zmzir_privacy_export.json');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            
+            if (!isWeb) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } catch (error) {
+            console.error('Export failed:', error);
+            Alert.alert('Error', 'Failed to export data. Please try again on a web browser.');
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    const handleUpdatePassword = async () => {
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            Alert.alert('Missing Info', 'Please fill in all password fields.');
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            Alert.alert('Error', 'New passwords do not match.');
+            return;
+        }
+
+        if (newPassword.length < 8) {
+            Alert.alert('Too Short', 'Password must be at least 8 characters.');
+            return;
+        }
+
+        try {
+            setIsUpdatingPassword(true);
+            await updatePassword({
+                current_password: currentPassword,
+                password: newPassword,
+                password_confirmation: confirmPassword
+            });
+
+            Alert.alert('Success', 'Your password has been updated securely.');
+            setShowPasswordModal(false);
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
+            
+            if (!isWeb) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } catch (error: any) {
+            const errorMessage = error.response?.data?.message || 'Failed to update password. Check your current password.';
+            Alert.alert('Error', errorMessage);
+        } finally {
+            setIsUpdatingPassword(false);
         }
     };
 
@@ -184,6 +288,7 @@ export default function PrivacySettingsScreen() {
         if (!preferences?.show_phone) score += 10;
         if (!preferences?.show_birthday) score += 5;
         if (mutedKeywords.length > 0) score += 5;
+        if (preferences?.synergy_traits?.two_factor_enabled) score += 15;
         return Math.min(score, 100);
     };
 
@@ -255,7 +360,7 @@ export default function PrivacySettingsScreen() {
     }
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, GlobalStyles.popupContainer]}>
             <StatusBar barStyle="dark-content" />
 
             <LinearGradient
@@ -372,11 +477,10 @@ export default function PrivacySettingsScreen() {
                                 <Ionicons name="chatbubbles" size={14} color="#FF9800" />
                                 <Text style={styles.sectionTitle}>Interaction Controls</Text>
                             </View>
-                            <TouchableOpacity
-                                style={styles.actionCard}
-                                onPress={() => Alert.alert('Coming Soon', 'Blocked users list management is being integrated.')}
-                            >
-                                <View style={styles.actionContent}>
+
+                            {/* Blocked Users List */}
+                            <View style={styles.actionCardCol}>
+                                <View style={styles.actionHeader}>
                                     <View style={[styles.actionIcon, { backgroundColor: '#FF3B3015' }]}>
                                         <Ionicons name="hand-left-outline" size={22} color="#FF3B30" />
                                     </View>
@@ -385,8 +489,35 @@ export default function PrivacySettingsScreen() {
                                         <Text style={styles.actionDescription}>Manage the people you want to restrict.</Text>
                                     </View>
                                 </View>
-                                <Ionicons name="chevron-forward" size={20} color="#999" />
-                            </TouchableOpacity>
+                                
+                                {blockedUsers.length > 0 ? (
+                                    <View style={styles.blockedList}>
+                                        {blockedUsers.map(u => (
+                                            <View key={u.id} style={styles.blockedItem}>
+                                                <View style={styles.blockedUserInfo}>
+                                                    <View style={styles.blockedAvatar}>
+                                                        <Text style={styles.blockedAvatarText}>
+                                                            {u.name?.charAt(0) || u.username?.charAt(0) || '?'}
+                                                        </Text>
+                                                    </View>
+                                                    <View>
+                                                        <Text style={styles.blockedName}>{u.name || u.username}</Text>
+                                                        <Text style={styles.blockedUsername}>@{u.username}</Text>
+                                                    </View>
+                                                </View>
+                                                <TouchableOpacity 
+                                                    style={styles.unblockBtn}
+                                                    onPress={() => handleUnblock(u.id)}
+                                                >
+                                                    <Text style={styles.unblockBtnText}>Unblock</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        ))}
+                                    </View>
+                                ) : (
+                                    <Text style={styles.emptyListText}>No blocked users yet.</Text>
+                                )}
+                            </View>
 
                             {/* Muted Keywords — Tag Chip System */}
                             <View style={styles.actionCard}>
@@ -445,17 +576,30 @@ export default function PrivacySettingsScreen() {
                                 <Ionicons name="shield" size={14} color="#9C27B0" />
                                 <Text style={styles.sectionTitle}>Security Settings</Text>
                             </View>
+                            
+                            <PrivacyToggle
+                                label="Two-Factor Authentication"
+                                description="Add an extra layer of security using synergy traits."
+                                value={!!preferences?.synergy_traits?.two_factor_enabled}
+                                onValueChange={(val) => {
+                                    const traits = preferences?.synergy_traits || {};
+                                    handleUpdatePreference('synergy_traits', { ...traits, two_factor_enabled: val });
+                                }}
+                                icon="key"
+                                color="#1063FD"
+                            />
+
                             <TouchableOpacity
                                 style={styles.actionCard}
-                                onPress={() => Alert.alert('Coming Soon', 'Two-factor authentication setup.')}
+                                onPress={() => setShowPasswordModal(true)}
                             >
                                 <View style={styles.actionContent}>
-                                    <View style={[styles.actionIcon, { backgroundColor: '#1063FD15' }]}>
-                                        <Ionicons name="key" size={22} color="#1063FD" />
+                                    <View style={[styles.actionIcon, { backgroundColor: '#9C27B015' }]}>
+                                        <Ionicons name="lock-closed" size={22} color="#9C27B0" />
                                     </View>
                                     <View style={styles.actionTextContainer}>
-                                        <Text style={styles.actionLabel}>Two-Factor Authentication</Text>
-                                        <Text style={styles.actionDescription}>Add an extra layer of security to your account.</Text>
+                                        <Text style={styles.actionLabel}>Change Password</Text>
+                                        <Text style={styles.actionDescription}>Update your credentials for better security.</Text>
                                     </View>
                                 </View>
                                 <Ionicons name="chevron-forward" size={20} color="#999" />
@@ -463,18 +607,25 @@ export default function PrivacySettingsScreen() {
 
                             <TouchableOpacity
                                 style={styles.actionCard}
-                                onPress={() => Alert.alert('Coming Soon', 'Download your account data.')}
+                                onPress={handleExport}
+                                disabled={isExporting}
                             >
                                 <View style={styles.actionContent}>
                                     <View style={[styles.actionIcon, { backgroundColor: '#4CAF5015' }]}>
-                                        <Ionicons name="download" size={22} color="#4CAF50" />
+                                        {isExporting ? (
+                                            <ActivityIndicator size="small" color="#4CAF50" />
+                                        ) : (
+                                            <Ionicons name="download" size={22} color="#4CAF50" />
+                                        )}
                                     </View>
                                     <View style={styles.actionTextContainer}>
                                         <Text style={styles.actionLabel}>Data Export</Text>
-                                        <Text style={styles.actionDescription}>Download a copy of your data.</Text>
+                                        <Text style={styles.actionDescription}>
+                                            {isExporting ? 'Preparing your package...' : 'Download a copy of your data.'}
+                                        </Text>
                                     </View>
                                 </View>
-                                <Ionicons name="chevron-forward" size={20} color="#999" />
+                                {!isExporting && <Ionicons name="chevron-forward" size={20} color="#999" />}
                             </TouchableOpacity>
                         </>
                     )}
@@ -489,6 +640,89 @@ export default function PrivacySettingsScreen() {
                     </View>
                 </MotiView>
             </Animated.ScrollView>
+
+            <Modal
+                visible={showPasswordModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowPasswordModal(false)}
+            >
+                <KeyboardAvoidingView 
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={styles.modalOverlay}
+                >
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <View style={[styles.actionIcon, { backgroundColor: '#9C27B015' }]}>
+                                <Ionicons name="lock-closed" size={24} color="#9C27B0" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.modalTitle}>Change Password</Text>
+                                <Text style={styles.modalSubtitle}>Please enter your credentials below</Text>
+                            </View>
+                            <TouchableOpacity 
+                                onPress={() => setShowPasswordModal(false)}
+                                style={styles.closeButton}
+                            >
+                                <Ionicons name="close" size={24} color="#999" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.modalBody}>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>Current Password</Text>
+                                <TextInput
+                                    style={styles.modalInput}
+                                    secureTextEntry
+                                    value={currentPassword}
+                                    onChangeText={setCurrentPassword}
+                                    placeholder="Enter current password"
+                                    placeholderTextColor="#AAA"
+                                />
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>New Password</Text>
+                                <TextInput
+                                    style={styles.modalInput}
+                                    secureTextEntry
+                                    value={newPassword}
+                                    onChangeText={setNewPassword}
+                                    placeholder="Min 8 characters"
+                                    placeholderTextColor="#AAA"
+                                />
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>Confirm New Password</Text>
+                                <TextInput
+                                    style={styles.modalInput}
+                                    secureTextEntry
+                                    value={confirmPassword}
+                                    onChangeText={setConfirmPassword}
+                                    placeholder="Repeat new password"
+                                    placeholderTextColor="#AAA"
+                                />
+                            </View>
+
+                            <TouchableOpacity 
+                                style={[styles.updateButton, isUpdatingPassword && { opacity: 0.7 }]}
+                                onPress={handleUpdatePassword}
+                                disabled={isUpdatingPassword}
+                            >
+                                {isUpdatingPassword ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <>
+                                        <Text style={styles.updateButtonText}>Update Password</Text>
+                                        <Ionicons name="shield-checkmark" size={18} color="#fff" />
+                                    </>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
         </View>
     );
 }
@@ -669,4 +903,156 @@ const styles = StyleSheet.create({
         borderColor: '#e5e5e5',
     },
     infoText: { flex: 1, fontSize: 12, color: 'rgba(0,0,0,0.6)', lineHeight: 16, fontWeight: '500' },
+    // Interactions & Security Extended Styles
+    actionCardCol: {
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        padding: 18,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#e5e5e5',
+        ...createShadow({ opacity: 0.05, radius: 8 }),
+    },
+    actionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+        gap: 15,
+    },
+    blockedList: {
+        marginTop: 10,
+        borderTopWidth: 1,
+        borderTopColor: '#f0f0f0',
+        paddingTop: 10,
+    },
+    blockedItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f9f9f9',
+    },
+    blockedUserInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    blockedAvatar: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#f0f0f0',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    blockedAvatarText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#666',
+    },
+    blockedName: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#000',
+    },
+    blockedUsername: {
+        fontSize: 12,
+        color: '#999',
+    },
+    unblockBtn: {
+        backgroundColor: '#F5F5F7',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+    },
+    unblockBtnText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#FF3B30',
+    },
+    emptyListText: {
+        fontSize: 13,
+        color: '#999',
+        textAlign: 'center',
+        paddingVertical: 20,
+        fontStyle: 'italic',
+    },
+    // Modal Styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
+        padding: 24,
+        paddingBottom: 40,
+        ...createShadow({ opacity: 0.2, radius: 20 }),
+        ...Platform.select({
+            web: {
+                maxWidth: 1440,
+                width: '100%',
+                alignSelf: 'center',
+            }
+        })
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 24,
+        gap: 15,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '800',
+        color: '#000',
+    },
+    modalSubtitle: {
+        fontSize: 13,
+        color: '#666',
+        marginTop: 2,
+    },
+    closeButton: {
+        padding: 4,
+    },
+    modalBody: {
+        gap: 20,
+    },
+    inputGroup: {
+        gap: 8,
+    },
+    inputLabel: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#333',
+        marginLeft: 4,
+    },
+    modalInput: {
+        backgroundColor: '#F5F5F7',
+        borderRadius: 16,
+        padding: 16,
+        fontSize: 15,
+        color: '#000',
+        borderWidth: 1,
+        borderColor: '#E5E5E7',
+    },
+    updateButton: {
+        backgroundColor: '#9C27B0',
+        borderRadius: 18,
+        padding: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        marginTop: 10,
+        ...createShadow({ color: '#9C27B0', opacity: 0.3, radius: 10 }),
+    },
+    updateButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '700',
+    },
 });

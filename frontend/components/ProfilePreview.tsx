@@ -182,6 +182,25 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
     }
   }, [userId, showToast]);
 
+  const parsedLocation = useMemo(() => {
+    if (!profile?.location) return null;
+    try {
+      if (typeof profile.location === 'string' && profile.location.startsWith('{')) {
+        return JSON.parse(profile.location);
+      }
+      return { name: profile.location };
+    } catch (e) {
+      return { name: profile.location };
+    }
+  }, [profile?.location]);
+
+  const handleLocationPress = useCallback(() => {
+    if (parsedLocation) {
+      openModal('location', { location: parsedLocation });
+      if (!isWeb) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  }, [parsedLocation, openModal, isWeb]);
+
   useEffect(() => {
     if (visible && userId) {
       fetchProfileData(1, true);
@@ -312,7 +331,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
   );
 
   const AboutSection = () => {
-    const isRestricted = profile?.is_private && !isFollowing && user?.id !== String(userId);
+    const isRestricted = profile?.is_private && !isFollowing && user?.id && String(user.id) !== String(userId);
 
     if (isRestricted) {
       return (
@@ -342,9 +361,23 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
         show: profile?.bio || profile?.location || profile?.birthday || profile?.gender,
         items: [
           { label: 'Bio', value: profile?.bio, icon: 'chatbubble-outline' },
-          { label: 'Location', value: profile?.location, icon: 'location-outline' },
-          { label: 'Gender', value: profile?.gender, icon: 'transgender-outline' },
-          { label: 'Birthday', value: profile?.birthday ? new Date(profile.birthday).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : null, icon: 'cake-outline' },
+          { 
+            label: 'Location', 
+            value: parsedLocation?.name || parsedLocation?.address || profile?.location, 
+            icon: 'location-outline',
+            onPress: handleLocationPress 
+          },
+          { 
+            label: 'Gender', 
+            value: profile?.gender, 
+            icon: 'transgender-outline' 
+          },
+          { 
+            label: 'Birthday', 
+            value: profile?.birthday ? new Date(profile.birthday).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : null, 
+            icon: 'cake-outline',
+            private: profile?.preferences && !profile.preferences.show_birthday
+          },
         ]
       },
       {
@@ -353,8 +386,20 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
         show: profile?.website || (profile?.social_links && Object.keys(profile.social_links).length > 0) || profile?.phone || profile?.email,
         items: [
           { label: 'Website', value: profile?.website, icon: 'globe-outline', isLink: true },
-          { label: 'Email', value: profile?.email, icon: 'mail-outline', isEmail: true },
-          { label: 'Phone', value: profile?.phone, icon: 'call-outline', isPhone: true },
+          { 
+            label: 'Email', 
+            value: profile?.email, 
+            icon: 'mail-outline', 
+            isEmail: true,
+            private: profile?.preferences && !profile.preferences.show_email
+          },
+          { 
+            label: 'Phone', 
+            value: profile?.phone, 
+            icon: 'call-outline', 
+            isPhone: true,
+            private: profile?.preferences && !profile.preferences.show_phone
+          },
         ]
       }
     ];
@@ -386,9 +431,11 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
             {section.items.filter(i => i.value).map((item, iIndex) => (
               <TouchableOpacity
                 key={item.label}
-                disabled={!item.isLink && !item.isEmail && !item.isPhone}
+                disabled={!item.onPress && !item.isLink && !item.isEmail && !item.isPhone}
                 onPress={async () => {
-                  if (item.isLink) {
+                  if (item.onPress) {
+                    item.onPress();
+                  } else if (item.isLink) {
                     handleLinkPress(item.value as string);
                   } else if (item.isEmail || item.isPhone) {
                     try {
@@ -411,7 +458,15 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
                   <Ionicons name={item.icon as any} size={16} color="#555" />
                 </View>
                 <View style={styles.aboutContent}>
-                  <Text style={styles.aboutLabel}>{item.label}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={styles.aboutLabel}>{item.label}</Text>
+                    {String(user?.id) === String(userId) && item.private && (
+                      <View style={styles.privateBadge}>
+                        <Ionicons name="lock-closed" size={10} color="#FF9800" />
+                        <Text style={styles.privateBadgeText}>Hidden</Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={[styles.aboutText, (item.isLink || item.isEmail || item.isPhone) && styles.linkText]}>
                     {item.value}
                   </Text>
@@ -479,7 +534,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
         </View>
       </View>
 
-      {user?.id !== String(userId) && (
+      {user?.id && String(user.id) !== String(userId) && (
         <TouchableOpacity
           style={styles.followButton}
           onPress={handleFollow}
@@ -577,7 +632,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
       );
     }
     if (activeTab === 'media' && uniqueMediaFromPosts.length === 0 && !loading) {
-      const isRestricted = profile?.is_private && !isFollowing && user?.id !== String(userId);
+      const isRestricted = profile?.is_private && !isFollowing && user?.id && String(user.id) !== String(userId);
       return (
         <MotiView
           from={{ opacity: 0 }}
@@ -629,7 +684,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
               {profile.name}
             </Text>
 
-            {user?.id !== String(userId) && (
+            {user?.id && String(user.id) !== String(userId) && (
               <TouchableOpacity
                 style={styles.headerButton}
                 onPress={async () => {
@@ -1205,6 +1260,22 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  privateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF3E0',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: 8,
+    gap: 3,
+  },
+  privateBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FF9800',
+    textTransform: 'uppercase',
   },
 });
 

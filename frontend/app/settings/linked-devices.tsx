@@ -18,9 +18,10 @@ import { MotiView, AnimatePresence } from 'moti';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { createShadow } from '@/utils/styles';
 import * as Haptics from 'expo-haptics';
 import { fetchFullSettings, updateFullSettings } from '@/services/SettingService';
+import GlobalStyles from '@/styles/GlobalStyles';
+import { createShadow } from '@/utils/styles';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -212,7 +213,7 @@ export default function LinkedDevicesScreen() {
             setLoading(true);
             const data = await fetchFullSettings();
             const rawTokens = data.user.device_tokens || [];
-            
+
             // In a real app, the current device token would be compared
             // For now, we'll mark the most recently registered token as current if only one exists,
             // or use a placeholder logic.
@@ -227,7 +228,7 @@ export default function LinkedDevicesScreen() {
                 os: t.type === 'ios' ? 'iOS' : t.type === 'android' ? 'Android' : 'Web',
                 token: t.token
             }));
-            
+
             setDevices(mappedDevices);
         } catch (error) {
             console.error('Failed to load devices:', error);
@@ -242,10 +243,10 @@ export default function LinkedDevicesScreen() {
                 const updatedTokens = devices
                     .filter(d => d.token !== token)
                     .map(d => ({ token: d.token, type: d.os.toLowerCase(), name: d.name }));
-                
+
                 await updateFullSettings({ device_tokens: updatedTokens });
                 setDevices(devices.filter(d => d.token !== token));
-                
+
                 if (!isWeb) {
                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 }
@@ -274,15 +275,15 @@ export default function LinkedDevicesScreen() {
         const confirmAction = async () => {
             try {
                 const currentDevice = devices.find(d => d.isCurrent);
-                const updatedTokens = currentDevice ? [{ 
-                    token: currentDevice.token, 
-                    type: currentDevice.os.toLowerCase(), 
-                    name: currentDevice.name 
+                const updatedTokens = currentDevice ? [{
+                    token: currentDevice.token,
+                    type: currentDevice.os.toLowerCase(),
+                    name: currentDevice.name
                 }] : [];
-                
+
                 await updateFullSettings({ device_tokens: updatedTokens });
                 setDevices(devices.filter(d => d.isCurrent));
-                
+
                 if (!isWeb) {
                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 }
@@ -314,7 +315,7 @@ export default function LinkedDevicesScreen() {
     });
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, GlobalStyles.popupContainer]}>
             <StatusBar barStyle="dark-content" />
 
             <LinearGradient

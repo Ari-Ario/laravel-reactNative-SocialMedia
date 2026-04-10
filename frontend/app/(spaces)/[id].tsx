@@ -77,12 +77,11 @@ const SpaceDetailScreen = () => {
   const [showReportModal, setShowReportModal] = useState(false);
   const { unreadModerationCount } = useNotificationStore();
   
-  // 🛡️ Route Isolation Guard: If the dynamic ID matches a known system route,
-  // it means we've hit a collision (likely from a misspelled link). 
-  // We return null to allow the top-level Router to find the correct static route or handle the cleanup.
-  const isSystemRoute = ['Login', 'LoginScreen', 'RegisterScreen', 'VerificationScreen', 'ForgotPasswordScreen', 'ResetPasswordScreen', 'index'].includes(id || '');
+  const isSystemRoute = ['login', 'loginscreen', 'registerscreen', 'verificationscreen', 'forgotpasswordscreen', 'resetpasswordscreen', 'index', '+not-found']
+    .includes((id || '').toLowerCase());
+    
   if (isSystemRoute) {
-    console.log(`🛡️ Collision detected in (spaces)/[id]: Refusing to load space for system word: "${id}"`);
+    if (loading) setLoading(false);
     return null;
   }
 
@@ -284,10 +283,9 @@ const SpaceDetailScreen = () => {
 
 
   const loadSpaceDetails = async (force: boolean = false) => {
-    if (!force && space && space.id === id) {
-      console.log('♻️ Space details already loaded, skipping re-fetch:', id);
-      setLoading(false);
-      return;
+    if (isSystemRoute) {
+        setLoading(false);
+        return;
     }
     console.log('Loading space details for ID:', id);
     setLoading(true);

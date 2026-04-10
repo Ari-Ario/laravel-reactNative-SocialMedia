@@ -57,6 +57,7 @@ Route::group(["middleware" => ["auth:sanctum"]], function () {
     // Profile routes
     Route::get('/users', [AuthenticatedSessionController::class, 'getUsers']); //maybe needed later
     Route::get('/user', [AuthenticatedSessionController::class, 'getUser']);
+    Route::get('/profiles/blocked', [ProfileController::class, 'blockedUsersList']);
     Route::get('/profiles/{user}', [ProfileController::class, 'show']);
     Route::post('/profiles/{user}/follow', [ProfileController::class, 'follow']);
     Route::post('/profiles/{user}/block', [ProfileController::class, 'block']);
@@ -130,9 +131,11 @@ Route::group(["middleware" => ["auth:sanctum"]], function () {
 
     // Centralized Settings
     Route::get('/settings/all', [SettingsController::class, 'index']);
+    Route::get('/settings/export', [ProfileController::class, 'exportData']);
     Route::put('/settings/update', [SettingsController::class, 'update']);
     Route::put('/preferences', [SettingsController::class, 'updatePreferences']);
     Route::delete('/account', [SettingsController::class, 'destroy']);
+    Route::post('/settings/password', [SettingsController::class, 'changePassword']);
     Route::post('/settings/invite', [InviteController::class, 'sendInvitation']);
 });
 
@@ -150,6 +153,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // search to add users to space
     Route::post('/search/users', [UserSearchController::class, 'search']);
+    Route::post('/users/batch-lookup', [UserSearchController::class, 'batchLookup']);
     Route::post('/users/lookup', [UserSearchController::class, 'lookup']);
 
     // Collaboration Spaces (keep your existing spaces routes)
@@ -228,6 +232,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 // Message routes
 Route::middleware('auth:sanctum')->prefix('messages')->group(function () {
+    Route::post('/broadcast', [MessagesController::class, 'broadcast']);
     Route::get('/', [MessagesController::class, 'index']);
     Route::get('/highlights', [MessagesController::class, 'highlights']);
     Route::post('/', [MessagesController::class, 'store']);
@@ -247,7 +252,6 @@ Route::middleware('auth:sanctum')->prefix('notifications')->group(function () {
     Route::post('/read-all', [NotificationController::class, 'markAllAsRead']);
     Route::delete('/clear', [NotificationController::class, 'clearAll']);
     Route::get('/preferences', [NotificationController::class, 'getPreferences']);
-    Route::put('/preferences', [NotificationController::class, 'updatePreferences']);
 });
 
 Route::prefix('ai')->middleware('auth:sanctum')->group(function () {

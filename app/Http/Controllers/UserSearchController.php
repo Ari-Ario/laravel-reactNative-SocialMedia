@@ -40,6 +40,7 @@ class UserSearchController extends Controller
             'count' => $users->count(),
         ]);
     }
+
     public function lookup(Request $request)
     {
         $request->validate([
@@ -51,34 +52,34 @@ class UserSearchController extends Controller
         $type = $request->type;
         $currentUserId = auth()->id();
 
-        $query = User::where('id', '!=', $currentUserId);
+        $query = User::query();
 
-        switch ($type) {
-            case 'email':
-                $query->where('email', $identifier);
-                break;
-            case 'phone':
-                // Normalize phone number (remove spaces, etc.)
-                $normalizedPhone = preg_replace('/[^0-9+]/', '', $identifier);
-                $query->where('phone', 'like', "%{$normalizedPhone}%");
-                break;
-            case 'user_id':
-                $query->where('id', $identifier);
-                break;
+        if ($type === 'email') {
+            $query->where('email', $identifier);
+        } elseif ($type === 'phone') {
+            $query->where('phone', $identifier);
+        } else {
+            $query->where('id', $identifier);
         }
 
         $user = $query->first(['id', 'name', 'username', 'email', 'phone', 'profile_photo']);
 
-        if ($user) {
-            return response()->json([
-                'exists' => true,
-                'user' => $user,
-            ]);
-        }
-
         return response()->json([
-            'exists' => false,
-            'message' => 'User not found',
+            'exists' => (bool)$user,
+            'user' => $user
         ]);
+    }
+
+    public function batchLookup(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:users,id'
+        ]);
+
+        $users = User::whereIn('id', $request->ids)
+            ->get(['id', 'name', 'username', 'email', 'phone', 'profile_photo']);
+
+        return response()->json(['users' => $users]);
     }
 }

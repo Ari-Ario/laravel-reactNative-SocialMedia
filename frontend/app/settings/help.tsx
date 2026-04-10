@@ -19,6 +19,7 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createShadow } from '@/utils/styles';
 import Fuse from 'fuse.js';
+import GlobalStyles from '@/styles/GlobalStyles';
 
 const { width } = Dimensions.get('window');
 
@@ -166,7 +167,7 @@ export default function HelpCenterScreen() {
     });
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, GlobalStyles.popupContainer]}>
             <StatusBar barStyle="dark-content" />
 
             <LinearGradient

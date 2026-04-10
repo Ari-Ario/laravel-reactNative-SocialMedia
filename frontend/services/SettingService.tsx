@@ -123,3 +123,43 @@ export async function deleteAccount(password: string) {
   });
   return response.data;
 }
+
+export async function exportUserData() {
+    const token = await getToken();
+    const API_BASE = getApiBase();
+
+    const response = await axios.get(`${API_BASE}/settings/export`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+    });
+    return response.data;
+}
+
+export async function updatePassword(data: any) {
+    const token = await getToken();
+    const API_BASE = getApiBase();
+
+    const response = await axios.post(`${API_BASE}/settings/password`, data, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+}
+
+export async function broadcastMessage(data: { recipient_ids: string[]; content: string; type?: string; metadata?: any }) {
+    const token = await getToken();
+    const API_BASE = getApiBase();
+
+    const response = await axios.post(`${API_BASE}/messages/broadcast`, data, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+}
+export async function fetchUsersByIds(ids: number[]) {
+    const token = await getToken();
+    const API_BASE = getApiBase();
+
+    const response = await axios.post(`${API_BASE}/users/batch-lookup`, { ids }, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data.users || [];
+}

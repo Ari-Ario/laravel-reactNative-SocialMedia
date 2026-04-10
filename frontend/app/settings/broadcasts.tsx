@@ -22,7 +22,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createShadow } from '@/utils/styles';
-import { fetchFullSettings, updatePreferences } from '@/services/SettingService';
+import { fetchFullSettings, updatePreferences, broadcastMessage, fetchUsersByIds } from '@/services/SettingService';
+import axios from '@/services/axios';
+import { getToken } from '@/services/TokenService';
+import Avatar from '@/components/Image/Avatar';
+import getApiBase from '@/services/getApiBase';
+import GlobalStyles from '@/styles/GlobalStyles';
 
 const { width } = Dimensions.get('window');
 
@@ -30,6 +35,7 @@ interface BroadcastList {
     id: string;
     name: string;
     members: number;
+    member_ids?: number[];
     lastActive: string;
     avatar?: string;
     color?: string;
@@ -107,6 +113,15 @@ export default function BroadcastListsScreen() {
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newListName, setNewListName] = useState('');
+    const [activeList, setActiveList] = useState<BroadcastList | null>(null);
+    const [showMemberModal, setShowMemberModal] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [broadcastText, setBroadcastText] = useState('');
+    const [isSending, setIsSending] = useState(false);
+    const [activeMemberDetails, setActiveMemberDetails] = useState<any[]>([]);
+    const [loadingMembers, setLoadingMembers] = useState(false);
     const scrollY = useRef(new Animated.Value(0)).current;
 
     useEffect(() => { loadLists(); }, []);
@@ -121,15 +136,43 @@ export default function BroadcastListsScreen() {
             setLoading(true);
             const traits = await getSynergyTraits();
             const savedLists = traits.broadcast_lists || [];
-            setLists(savedLists.length > 0 ? savedLists : [
-                { id: '1', name: 'Major Announcements', members: 0, lastActive: 'Just now', color: '#1063FD' },
-            ]);
+            if (savedLists.length > 0) {
+                setLists(savedLists);
+            } else {
+                 setLists([
+                    { id: '1', name: 'General Announcements', members: 0, member_ids: [], lastActive: 'Just now', color: '#1063FD' },
+                ]);
+            }
         } catch (error) {
             console.error('Failed to load broadcast lists:', error);
         } finally {
             setLoading(false);
         }
     };
+
+    const fetchMemberDetails = async (memberIds: number[]) => {
+        if (!memberIds || memberIds.length === 0) {
+            setActiveMemberDetails([]);
+            return;
+        }
+        try {
+            setLoadingMembers(true);
+            const users = await fetchUsersByIds(memberIds);
+            setActiveMemberDetails(users);
+        } catch (error) {
+            console.error('Failed to fetch member details:', error);
+        } finally {
+            setLoadingMembers(false);
+        }
+    };
+
+    useEffect(() => {
+        if (activeList) {
+            fetchMemberDetails(activeList.member_ids || []);
+        } else {
+            setActiveMemberDetails([]);
+        }
+    }, [activeList?.id]);
 
     const saveLists = async (updatedLists: BroadcastList[]) => {
         try {
@@ -146,6 +189,7 @@ export default function BroadcastListsScreen() {
                 id: Date.now().toString(),
                 name: newListName,
                 members: 0,
+                member_ids: [],
                 lastActive: 'Just now',
                 color: ['#1063FD', '#4CAF50', '#FF9800', '#9C27B0', '#F44336'][Math.floor(Math.random() * 5)],
             };
@@ -154,6 +198,83 @@ export default function BroadcastListsScreen() {
             setNewListName('');
             setShowCreateModal(false);
             await saveLists(updatedLists);
+        }
+    };
+
+    const handleSearchUsers = async (query: string) => {
+        setSearchQuery(query);
+        if (query.trim().length < 2) {
+            setSearchResults([]);
+            return;
+        }
+        try {
+            setIsSearching(true);
+            const token = await getToken();
+            const response = await axios.post('/search/users', { query, limit: 10 }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setSearchResults(response.data.users || []);
+        } catch (e) {
+            console.error('Search failed:', e);
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
+    const toggleMember = async (user: any) => {
+        if (!activeList) return;
+        const currentMemberIds = activeList.member_ids || [];
+        const isMember = currentMemberIds.includes(user.id);
+        
+        const updatedMemberIds = isMember 
+            ? currentMemberIds.filter(id => id !== user.id)
+            : [...currentMemberIds, user.id];
+            
+        const updatedList = { 
+            ...activeList, 
+            member_ids: updatedMemberIds,
+            members: updatedMemberIds.length 
+        };
+        
+        setActiveList(updatedList);
+        setActiveMemberDetails(prev => {
+            if (isMember) return prev.filter(u => u.id !== user.id);
+            return [...prev, user];
+        });
+        const updatedLists = lists.map(l => l.id === activeList.id ? updatedList : l);
+        setLists(updatedLists);
+        await saveLists(updatedLists);
+    };
+
+    const handleSendBroadcast = async () => {
+        if (!activeList || !broadcastText.trim()) return;
+        const memberIds = activeList.member_ids || [];
+        if (memberIds.length === 0) {
+            Alert.alert('Empty List', 'Add some members first!');
+            return;
+        }
+
+        try {
+            setIsSending(true);
+            await broadcastMessage({
+                recipient_ids: memberIds.map(id => id.toString()),
+                content: broadcastText,
+                type: 'text'
+            });
+            
+            setBroadcastText('');
+            // Optional: Update last active in the list
+            const updatedList = { ...activeList, lastActive: 'Just now' };
+            setActiveList(updatedList);
+            const updatedLists = lists.map(l => l.id === activeList.id ? updatedList : l);
+            setLists(updatedLists);
+            await saveLists(updatedLists);
+
+            Alert.alert('Sent!', `Broadcast delivered to ${memberIds.length} members.`);
+        } catch (e) {
+            Alert.alert('Error', 'Failed to send broadcast.');
+        } finally {
+            setIsSending(false);
         }
     };
 
@@ -181,7 +302,7 @@ export default function BroadcastListsScreen() {
     });
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, GlobalStyles.popupContainer]}>
             <StatusBar barStyle="dark-content" />
 
             <LinearGradient
@@ -299,7 +420,7 @@ export default function BroadcastListsScreen() {
                                 <BroadcastCard
                                     item={item}
                                     index={index}
-                                    onPress={() => Alert.alert(item.name, 'Broadcast list detail coming soon!')}
+                                    onPress={() => setActiveList(item)}
                                     onLongPress={() => handleDeleteList(item.id)}
                                 />
                             )}
@@ -393,6 +514,142 @@ export default function BroadcastListsScreen() {
                                 </TouchableOpacity>
                             </View>
                         </LinearGradient>
+                    </MotiView>
+                </View>
+            </Modal>
+
+            {/* List Detail & Sending Modal */}
+            <Modal
+                visible={!!activeList}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setActiveList(null)}
+            >
+                <View style={styles.detailOverlay}>
+                    <MotiView
+                        from={{ translateY: 300, opacity: 0 }}
+                        animate={{ translateY: 0, opacity: 1 }}
+                        style={styles.detailContainer}
+                    >
+                        <View style={styles.detailHeader}>
+                            <View style={[styles.detailIconContainer, { backgroundColor: activeList?.color + '15' }]}>
+                                <Ionicons name="megaphone" size={24} color={activeList?.color} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.detailTitle}>{activeList?.name}</Text>
+                                <Text style={styles.detailSubtitle}>{activeList?.members} Members</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => setActiveList(null)} style={styles.closeBtn}>
+                                <Ionicons name="close" size={24} color="#666" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={styles.inputHeading}>Broadcast Message</Text>
+                        <View style={styles.broadcastInputContainer}>
+                            <TextInput
+                                style={styles.broadcastInput}
+                                placeholder="Type your announcement..."
+                                placeholderTextColor="#999"
+                                multiline
+                                value={broadcastText}
+                                onChangeText={setBroadcastText}
+                            />
+                            <TouchableOpacity 
+                                style={[styles.sendBtn, (!broadcastText.trim() || isSending) && { opacity: 0.5 }]}
+                                onPress={handleSendBroadcast}
+                                disabled={!broadcastText.trim() || isSending}
+                            >
+                                {isSending ? (
+                                    <ActivityIndicator color="#fff" size="small" />
+                                ) : (
+                                    <Ionicons name="send" size={20} color="#fff" />
+                                )}
+                            </TouchableOpacity>
+                        </View>
+
+                        {activeMemberDetails.length > 0 && (
+                            <View style={styles.membersRow}>
+                                <Text style={styles.memberCountLabel}>MEMBERS ({activeMemberDetails.length})</Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.membersList}>
+                                    {activeMemberDetails.map(u => (
+                                        <View key={u.id} style={styles.memberAvatarWrapper}>
+                                            <Avatar source={u.profile_photo} size={36} name={u.name} />
+                                        </View>
+                                    ))}
+                                </ScrollView>
+                            </View>
+                        )}
+
+                        <View style={styles.detailActions}>
+                            <TouchableOpacity 
+                                style={styles.detailActionBtn}
+                                onPress={() => setShowMemberModal(true)}
+                            >
+                                <View style={styles.actionIconCircle}>
+                                    <Ionicons name="person-add" size={20} color="#1063FD" />
+                                </View>
+                                <Text style={styles.actionBtnLabel}>Manage Members</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </MotiView>
+                </View>
+            </Modal>
+
+            {/* Add Member Modal */}
+            <Modal
+                visible={showMemberModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowMemberModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <MotiView
+                        from={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        style={styles.memberModalContainer}
+                    >
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Find Members</Text>
+                            <TouchableOpacity onPress={() => setShowMemberModal(false)}>
+                                <Ionicons name="close" size={24} color="#000" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.searchContainer}>
+                            <Ionicons name="search" size={20} color="#999" style={{ marginLeft: 12 }} />
+                            <TextInput
+                                style={styles.searchInput}
+                                placeholder="Search by name or email..."
+                                placeholderTextColor="#999"
+                                value={searchQuery}
+                                onChangeText={handleSearchUsers}
+                                autoFocus
+                            />
+                        </View>
+
+                        <ScrollView style={styles.resultsList}>
+                            {isSearching ? (
+                                <ActivityIndicator color="#1063FD" style={{ marginVertical: 20 }} />
+                            ) : (searchQuery.trim() === '' ? activeMemberDetails : searchResults).map((user) => {
+                                const isMember = activeList?.member_ids?.includes(user.id);
+                                return (
+                                    <TouchableOpacity 
+                                        key={user.id} 
+                                        style={styles.userItem}
+                                        onPress={() => toggleMember(user)}
+                                    >
+                                        <Avatar source={user.profile_photo} size={44} name={user.name} />
+                                        <View style={{ flex: 1, marginLeft: 12 }}>
+                                            <Text style={styles.userName}>{user.name}</Text>
+                                            <Text style={styles.userEmail}>{user.email}</Text>
+                                        </View>
+                                        <View style={[styles.checkCircle, isMember && styles.checkCircleActive]}>
+                                            {isMember && <Ionicons name="checkmark" size={16} color="#fff" />}
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
                     </MotiView>
                 </View>
             </Modal>
@@ -661,6 +918,11 @@ const styles = StyleSheet.create({
     modalContainer: {
         width: width - 40,
         maxWidth: 400,
+        ...Platform.select({
+            web: {
+                alignSelf: 'center',
+            }
+        })
     },
     modalContent: {
         borderRadius: 28,
@@ -733,5 +995,169 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: '700',
+    },
+    // Detail & Member Styles
+    detailOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        justifyContent: 'flex-end',
+    },
+    detailContainer: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 35,
+        borderTopRightRadius: 35,
+        padding: 24,
+        paddingBottom: 50,
+        ...createShadow({ opacity: 0.2, height: -5, radius: 15 }),
+        ...Platform.select({
+            web: {
+                maxWidth: 1440,
+                width: '100%',
+                alignSelf: 'center',
+            }
+        })
+    },
+    detailHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 24,
+        gap: 16,
+    },
+    detailIconContainer: {
+        width: 56,
+        height: 56,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    detailTitle: { fontSize: 22, fontWeight: '800', color: '#000' },
+    detailSubtitle: { fontSize: 14, color: '#666', marginTop: 2 },
+    closeBtn: { padding: 4 },
+    inputHeading: { fontSize: 13, fontWeight: '800', color: '#666', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 },
+    broadcastInputContainer: {
+        backgroundColor: '#F5F5F7',
+        borderRadius: 20,
+        padding: 4,
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        borderWidth: 1,
+        borderColor: '#e5e5e5',
+        marginBottom: 24,
+    },
+    broadcastInput: {
+        flex: 1,
+        minHeight: 80,
+        maxHeight: 150,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        fontSize: 15,
+        color: '#000',
+    },
+    sendBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#1063FD',
+        justifyContent: 'center',
+        alignItems: 'center',
+        margin: 4,
+    },
+    detailActions: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    detailActionBtn: {
+        backgroundColor: '#F8F9FA',
+        borderRadius: 18,
+        padding: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+        gap: 12,
+        borderWidth: 1,
+        borderColor: '#e5e5e5',
+    },
+    actionIconCircle: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#fff',
+        justifyContent: 'center',
+        alignItems: 'center',
+        ...createShadow({ opacity: 0.05, radius: 2 }),
+    },
+    actionBtnLabel: { fontSize: 15, fontWeight: '700', color: '#000' },
+    membersRow: {
+        marginBottom: 24,
+    },
+    memberCountLabel: {
+        fontSize: 10,
+        fontWeight: '900',
+        color: '#999',
+        letterSpacing: 1.5,
+        marginBottom: 8,
+    },
+    membersList: {
+        flexDirection: 'row',
+    },
+    memberAvatarWrapper: {
+        marginRight: -10,
+        borderWidth: 2,
+        borderColor: '#fff',
+        borderRadius: 20,
+    },
+    memberModalContainer: {
+        width: width - 30,
+        backgroundColor: '#fff',
+        borderRadius: 30,
+        paddingHorizontal: 20,
+        paddingTop: 20,
+        paddingBottom: 30,
+        maxHeight: '80%',
+        ...Platform.select({
+            web: {
+                maxWidth: 1440,
+                width: '100%',
+                alignSelf: 'center',
+            }
+        })
+    },
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F5F5F7',
+        borderRadius: 15,
+        marginBottom: 16,
+    },
+    searchInput: {
+        flex: 1,
+        padding: 12,
+        fontSize: 15,
+        color: '#000',
+    },
+    resultsList: {
+        maxHeight: 400,
+    },
+    userItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+    },
+    userName: { fontSize: 16, fontWeight: '700', color: '#000' },
+    userEmail: { fontSize: 13, color: '#666', marginTop: 2 },
+    checkCircle: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: '#e5e5e5',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    checkCircleActive: {
+        backgroundColor: '#1063FD',
+        borderColor: '#1063FD',
     },
 });
