@@ -323,6 +323,14 @@ const SpaceDetailScreen = () => {
         setIsMuted(perms.is_muted || false);
         setIsPinned(perms.is_pinned || false);
         setIsArchived(perms.is_archived || false);
+        
+        // ✅ Restore notification sync: Mark space read and clear notification badges immediately
+        try {
+          useCollaborationStore.getState().markSpaceAsRead(id as string);
+          useNotificationStore.getState().removeSpaceNotifications(id as string);
+        } catch (err) {
+          console.warn('Failed to sync notification read status on entry:', err);
+        }
 
         // Fetch activities for this space to ensure badges and popups are fresh
         useCollaborationStore.getState().fetchSpaceActivities(id as string).catch(err =>
