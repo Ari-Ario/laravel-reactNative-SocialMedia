@@ -16,9 +16,10 @@ return [
                 'port' => env('APP_ENV') === 'local' ? 8080 : env('REVERB_PORT', 443),
                 'scheme' => env('APP_ENV') === 'local' ? 'http' : env('REVERB_SCHEME', 'https'),
                 'useTLS' => env('APP_ENV') === 'local' ? false : (env('REVERB_SCHEME', 'https') === 'https'),
+                'timeout' => 2,
             ],
             'client_options' => [
-                // Guzzle client options...
+                'timeout' => 2.0,
             ],
         ],
 

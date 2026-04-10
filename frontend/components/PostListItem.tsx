@@ -55,6 +55,7 @@ interface PostListItemProps {
   onRepost: (postId: number) => void;
   onShare: (postId: number) => void;
   onBookmark: (postId: number) => void;
+  shouldPlay?: boolean;
 }
 
 export default function PostListItem({
@@ -64,6 +65,7 @@ export default function PostListItem({
   onCommentSubmit,
   onRepost,
   onShare,
+  shouldPlay = false,
 }: PostListItemProps) {
   const { user } = useContext(AuthContext);
   const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
@@ -264,7 +266,7 @@ export default function PostListItem({
                   uri={getMediaUrl(sortedMedia[0].file_path)}
                   style={styles.singleMedia}
                   contentFit="cover"
-                  shouldPlay={true}
+                  shouldPlay={shouldPlay}
                   isMuted={true}
                 />
               ) : (
@@ -288,7 +290,7 @@ export default function PostListItem({
                       uri={getMediaUrl(media.file_path)}
                       style={styles.multiMediaContent}
                       contentFit="cover"
-                      shouldPlay={true}
+                      shouldPlay={shouldPlay}
                       isMuted={true}
                     />
                   ) : (

@@ -41,16 +41,41 @@ interface BroadcastList {
     color?: string;
 }
 
-const BroadcastCard = ({ item, index, onPress, onLongPress }: { item: BroadcastList; index: number; onPress: () => void; onLongPress?: () => void }) => {
+const BroadcastCard = ({ 
+    item, 
+    index, 
+    onPress, 
+    onDelete, 
+    onRename 
+}: { 
+    item: BroadcastList; 
+    index: number; 
+    onPress: () => void; 
+    onDelete: () => void;
+    onRename: (newName: string) => void;
+}) => {
     const [isHovered, setIsHovered] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedName, setEditedName] = useState(item.name);
     const scaleAnim = useRef(new Animated.Value(1)).current;
 
     const handlePressIn = () => {
-        Animated.spring(scaleAnim, { toValue: 0.98, useNativeDriver: true, friction: 5 }).start();
+        if (!isEditing) {
+            Animated.spring(scaleAnim, { toValue: 0.98, useNativeDriver: true, friction: 5 }).start();
+        }
     };
 
     const handlePressOut = () => {
         Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, friction: 5 }).start();
+    };
+
+    const handleSaveRename = () => {
+        if (editedName.trim() && editedName !== item.name) {
+            onRename(editedName.trim());
+        } else {
+            setEditedName(item.name);
+        }
+        setIsEditing(false);
     };
 
     const colors = ['#1063FD', '#4CAF50', '#FF9800', '#9C27B0', '#F44336'];
@@ -59,9 +84,8 @@ const BroadcastCard = ({ item, index, onPress, onLongPress }: { item: BroadcastL
     return (
         <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
             <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={onPress}
-                onLongPress={onLongPress}
+                activeOpacity={isEditing ? 1 : 0.7}
+                onPress={isEditing ? undefined : onPress}
                 delayLongPress={400}
                 onPressIn={handlePressIn}
                 onPressOut={handlePressOut}
@@ -84,7 +108,18 @@ const BroadcastCard = ({ item, index, onPress, onLongPress }: { item: BroadcastL
                             </LinearGradient>
                         </View>
                         <View style={styles.broadcastInfo}>
-                            <Text style={styles.broadcastName}>{item.name}</Text>
+                            {isEditing ? (
+                                <TextInput
+                                    style={styles.inlineInput}
+                                    value={editedName}
+                                    onChangeText={setEditedName}
+                                    autoFocus
+                                    onBlur={handleSaveRename}
+                                    onSubmitEditing={handleSaveRename}
+                                />
+                            ) : (
+                                <Text style={styles.broadcastName} numberOfLines={1}>{item.name}</Text>
+                            )}
                             <View style={styles.broadcastMetaRow}>
                                 <View style={styles.metaBadge}>
                                     <Ionicons name="people" size={10} color="#666" />
@@ -98,8 +133,34 @@ const BroadcastCard = ({ item, index, onPress, onLongPress }: { item: BroadcastL
                             </View>
                         </View>
                     </View>
-                    <View style={styles.broadcastAction}>
-                        <Ionicons name="chevron-forward" size={18} color="rgba(0,0,0,0.3)" />
+                    <View style={styles.broadcastCardActions}>
+                        <TouchableOpacity 
+                            onPress={() => {
+                                if (isEditing) {
+                                    handleSaveRename();
+                                } else {
+                                    setIsEditing(true);
+                                }
+                            }}
+                            style={styles.inlineActionBtn}
+                        >
+                            <Ionicons 
+                                name={isEditing ? "checkmark-circle" : "pencil-outline"} 
+                                size={20} 
+                                color={isEditing ? "#4CAF50" : "#1063FD"} 
+                            />
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            onPress={onDelete}
+                            style={styles.inlineActionBtn}
+                        >
+                            <Ionicons name="trash-outline" size={20} color="#FF3B30" />
+                        </TouchableOpacity>
+                        {!isEditing && (
+                            <View style={styles.broadcastAction}>
+                                <Ionicons name="chevron-forward" size={18} color="rgba(0,0,0,0.3)" />
+                            </View>
+                        )}
                     </View>
                 </LinearGradient>
             </TouchableOpacity>
@@ -242,6 +303,12 @@ export default function BroadcastListsScreen() {
             return [...prev, user];
         });
         const updatedLists = lists.map(l => l.id === activeList.id ? updatedList : l);
+        setLists(updatedLists);
+        await saveLists(updatedLists);
+    };
+
+    const handleRenameList = async (id: string, newName: string) => {
+        const updatedLists = lists.map(l => l.id === id ? { ...l, name: newName } : l);
         setLists(updatedLists);
         await saveLists(updatedLists);
     };
@@ -421,7 +488,8 @@ export default function BroadcastListsScreen() {
                                     item={item}
                                     index={index}
                                     onPress={() => setActiveList(item)}
-                                    onLongPress={() => handleDeleteList(item.id)}
+                                    onDelete={() => handleDeleteList(item.id)}
+                                    onRename={(newName) => handleRenameList(item.id, newName)}
                                 />
                             )}
                             scrollEnabled={false}
@@ -847,7 +915,27 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.3)',
     },
     broadcastAction: {
+        padding: 4,
+    },
+    broadcastCardActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    inlineActionBtn: {
         padding: 8,
+        borderRadius: 20,
+        backgroundColor: '#F5F5F7',
+    },
+    inlineInput: {
+        fontSize: 17,
+        fontWeight: '700',
+        color: '#1063FD',
+        padding: 0,
+        margin: 0,
+        marginBottom: 4,
+        borderBottomWidth: 1,
+        borderBottomColor: '#1063FD',
     },
     emptyContainer: {
         alignItems: 'center',

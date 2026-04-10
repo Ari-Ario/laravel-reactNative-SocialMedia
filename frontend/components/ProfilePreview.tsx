@@ -756,6 +756,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
                   onShare={() => { }}
                   onBookmark={() => { }}
                   onReactComment={() => { }}
+                  shouldPlay={visible}
                 />
               );
             }}

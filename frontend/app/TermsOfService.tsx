@@ -37,27 +37,32 @@ const TermsOfService = () => {
           
           <Text style={styles.sectionTitle}>1. Acceptance of Terms</Text>
           <Text style={styles.paragraph}>
-            By entering the zmzir universe, you agree to these terms. zmzir is a platform dedicated to creative exploration and artistic social interaction.
+            By entering the zmzir universe, you agree to these terms. zmzir is a platform dedicated to creative exploration, real-time collaboration, and artistic social interaction.
           </Text>
 
-          <Text style={styles.sectionTitle}>2. Creative Ownership</Text>
+          <Text style={styles.sectionTitle}>2. Creative Ownership & Collaboration</Text>
           <Text style={styles.paragraph}>
-            You retain all rights to the content you create and share on zmzir. By posting, you grant us a license to display and distribute your work within our ecosystem.
+            You retain all rights to the content you create. In shared Collaboration Spaces (such as shared project whiteboards), contributions from multiple users are recognized. By collaborating, you grant your partners the right to work on shared assets within that specific space.
           </Text>
 
-          <Text style={styles.sectionTitle}>3. Conduct & Collaboration</Text>
+          <Text style={styles.sectionTitle}>3. Social Discovery & External Links</Text>
           <Text style={styles.paragraph}>
-            Respect is the foundation of our creative spaces. Harassment, plagiarism, and harmful behavior are strictly prohibited to maintain a safe environment for all artists.
+            Linking your external social media handles is optional but recommended for friend discovery. You are responsible for the accuracy of the handles you link and for ensuring they comply with the external platforms' own terms.
           </Text>
 
-          <Text style={styles.sectionTitle}>4. Platform Evolution</Text>
+          <Text style={styles.sectionTitle}>4. Conduct & Spaces Safety</Text>
           <Text style={styles.paragraph}>
-            We are constantly refining our tools. We reserve the right to modify features and services to better serve the creative community.
+            Respect is the foundation of our creative community. Harassment, harmful behavior, or misuse of real-time tools (whiteboards, meetings, calls) are strictly prohibited. We reserve the right to restrict access to spaces for users who violate these standards.
           </Text>
 
-          <Text style={styles.sectionTitle}>5. Termination</Text>
+          <Text style={styles.sectionTitle}>5. Professional Communication (Broadcasts)</Text>
           <Text style={styles.paragraph}>
-            We believe in creative freedom, but we reserve the right to suspend accounts that violate our community standards or pose a risk to other users.
+            Broadcast Lists are provided for streamlined group messaging. By joining a broadcast list, you agree to receive updates from the list creator. Misuse of broadcasts for spam or prohibited content will result in immediate termination of the service.
+          </Text>
+
+          <Text style={styles.sectionTitle}>6. Platform Evolution</Text>
+          <Text style={styles.paragraph}>
+            We are constantly refining our collaboration tools. We reserve the right to modify discovery algorithms, space types, and AI capabilities to better serve the creative community and maintain platform stability.
           </Text>
 
           <View style={styles.footerDecorative}>

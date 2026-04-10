@@ -163,3 +163,13 @@ export async function fetchUsersByIds(ids: number[]) {
     });
     return response.data.users || [];
 }
+
+export async function fetchSocialFriends() {
+    const token = await getToken();
+    const API_BASE = getApiBase();
+
+    const response = await axios.get(`${API_BASE}/settings/social-friends`, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data.friends || [];
+}

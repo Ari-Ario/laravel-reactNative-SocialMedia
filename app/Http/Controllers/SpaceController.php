@@ -3041,7 +3041,11 @@ public function endCall(Request $request, $id)
 
             $participation->save();
 
-            broadcast(new \App\Events\SpaceRead($id, $user->id, $lastReadAt->toIso8601String()));
+            try {
+                broadcast(new \App\Events\SpaceRead($id, $user->id, $lastReadAt->toIso8601String()));
+            } catch (\Exception $e) {
+                Log::warning('Broadcast failed for SpaceRead: ' . $e->getMessage());
+            }
 
             return response()->json([
                 'message' => 'Space marked as read',

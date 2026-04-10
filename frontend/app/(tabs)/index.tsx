@@ -33,6 +33,7 @@ import MessagesPanel from '@/components/Notifications/MessagesPanel';
 import SpacesPanel from '@/components/Notifications/SpacesPanel';
 import ActivitiesPanel from '@/components/Notifications/ActivitiesPanel';
 import PushNotificationService from "@/services/PushNotificationService";
+import { useIsFocused } from "@react-navigation/native";
 
 type StoryGroup = {
     user: {
@@ -46,6 +47,7 @@ type StoryGroup = {
 };
 
 const HomePage = () => {
+    const isFocused = useIsFocused();
     const { user, setUser } = useContext(AuthContext);
     const router = useRouter();
     const { profileViewUserId, setProfileViewUserId, profilePreviewVisible, setProfilePreviewVisible } = useProfileView();
@@ -539,6 +541,7 @@ const HomePage = () => {
                             onRepost={handleRepost}
                             onShare={sharePost}
                             onBookmark={bookmarkPost}
+                            shouldPlay={isFocused}
                         />
                     </View>
                 )}

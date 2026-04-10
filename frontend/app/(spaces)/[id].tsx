@@ -287,7 +287,12 @@ const SpaceDetailScreen = () => {
         setLoading(false);
         return;
     }
-    console.log('Loading space details for ID:', id);
+    // ✅ Restore optimization: Skip refetch if space is already loaded for the same ID
+    if (!force && space && space.id === id) {
+        setLoading(false);
+        return;
+    }
+
     setLoading(true);
     try {
       let spaceData;

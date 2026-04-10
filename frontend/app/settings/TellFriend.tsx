@@ -36,6 +36,7 @@ import { fetchUserByEmail, followUser, sendEmailInvitation } from '@/services/Us
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { useProfileView } from '@/context/ProfileViewContext';
 import SearchService from '@/services/ChatScreen/SearchServiceChat';
+import { fetchSocialFriends } from '@/services/SettingService';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -97,6 +98,7 @@ export default function TellFriendScreen() {
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [searching, setSearching] = useState(false);
     const [sendingInvite, setSendingInvite] = useState(false);
+    const [socialFriends, setSocialFriends] = useState<any[]>([]);
     const [customMessage, setCustomMessage] = useState(SHARE_MESSAGE);
 
     const scrollY = useRef(new Animated.Value(0)).current;
@@ -143,6 +145,13 @@ export default function TellFriendScreen() {
                     fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers, Contacts.Fields.Emails, Contacts.Fields.Image],
                 });
                 setContacts(data);
+            }
+            // Fetch social friends matches from backend
+            try {
+                const sf = await fetchSocialFriends();
+                setSocialFriends(sf);
+            } catch (sfError) {
+                // Silently fail, discovery simply won't show
             }
         } catch (error) {
             console.error('Error loading contacts:', error);
@@ -504,27 +513,52 @@ export default function TellFriendScreen() {
                     <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }}>
                         {loadingContacts ? (
                             <ActivityIndicator size="large" color="#1063FD" style={{ marginTop: 40 }} />
-                        ) : contacts.length === 0 ? (
-                            <View style={styles.emptyContainer}>
-                                <Ionicons name="people" size={60} color="rgba(255,255,255,0.2)" />
-                                <Text style={styles.emptyTitle}>
-                                    {isWeb && !('contacts' in navigator) ? 'Not Available on this Browser' : 'No contacts found'}
-                                </Text>
-                                <Text style={styles.emptyText}>
-                                    {isWeb && !('contacts' in navigator) 
-                                        ? 'Your browser does not support contact selection. Try the Social or Invite tabs.' 
-                                        : 'Select contacts from your phone to invite them to Zmzir.'}
-                                </Text>
-                                {( !isWeb || ('contacts' in navigator) ) && (
-                                    <TouchableOpacity style={styles.allowButton} onPress={loadContacts}>
-                                        <Text style={styles.allowButtonText}>
-                                            {isWeb ? 'Select Contacts' : 'Allow Access'}
-                                        </Text>
-                                    </TouchableOpacity>
-                                )}
-                            </View>
                         ) : (
-                            contacts.map(contact => <ContactCard key={contact.id} contact={contact} />)
+                            <>
+                                {socialFriends.length > 0 && (
+                                    <View style={{ marginBottom: 25 }}>
+                                        <View style={styles.sectionHeader}>
+                                            <Ionicons name="sparkles" size={18} color="#FF9800" />
+                                            <Text style={styles.sectionTitle}>Found on Social Media</Text>
+                                        </View>
+                                        {socialFriends.map(friend => (
+                                            <SearchResultCard key={`social-${friend.id}`} result={{
+                                                ...friend,
+                                                user_id: friend.id.toString(),
+                                                is_following: false // They are discoveries, so initially not followed
+                                            }} />
+                                        ))}
+                                    </View>
+                                )}
+
+                                <View style={styles.sectionHeader}>
+                                    <Ionicons name="phone-portrait-outline" size={18} color="#4CAF50" />
+                                    <Text style={styles.sectionTitle}>Phone Contacts</Text>
+                                </View>
+
+                                {contacts.length === 0 ? (
+                                    <View style={styles.emptyContainer}>
+                                        <Ionicons name="people" size={60} color="rgba(255,255,255,0.2)" />
+                                        <Text style={styles.emptyTitle}>
+                                            {isWeb && !('contacts' in navigator) ? 'Not Available on this Browser' : 'No contacts found'}
+                                        </Text>
+                                        <Text style={styles.emptyText}>
+                                            {isWeb && !('contacts' in navigator) 
+                                                ? 'Your browser does not support contact selection. Try the Social or Invite tabs.' 
+                                                : 'Select contacts from your phone to invite them to Zmzir.'}
+                                        </Text>
+                                        {( !isWeb || ('contacts' in navigator) ) && (
+                                            <TouchableOpacity style={styles.allowButton} onPress={loadContacts}>
+                                                <Text style={styles.allowButtonText}>
+                                                    {isWeb ? 'Select Contacts' : 'Allow Access'}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                ) : (
+                                    contacts.map(contact => <ContactCard key={contact.id} contact={contact} />)
+                                )}
+                            </>
                         )}
                     </MotiView>
                 )}
@@ -660,7 +694,8 @@ const styles = StyleSheet.create({
     socialIconGradient: { width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
     socialName: { fontSize: 14, fontWeight: '700' },
     inviteForm: { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-    sectionTitle: { fontSize: 14, fontWeight: '800', color: '#fff', marginBottom: 15, textTransform: 'uppercase' },
+    sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 15, marginTop: 10 },
+    sectionTitle: { fontSize: 14, fontWeight: '800', color: '#fff', textTransform: 'uppercase' },
     inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 15, paddingHorizontal: 15, height: 50 },
     inputIcon: { marginRight: 10 },
     input: { flex: 1, color: '#fff', fontSize: 15 },

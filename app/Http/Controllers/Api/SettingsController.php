@@ -134,4 +134,52 @@ class SettingsController extends Controller
             'message' => 'Account deleted successfully'
         ]);
     }
+
+    /**
+     * Get suggested friends from social media platforms.
+     */
+    public function getSocialFriends(Request $request)
+    {
+        $user = $request->user();
+        $socialLinks = $user->social_links;
+
+        if (!$socialLinks || count($socialLinks) === 0) {
+            return response()->json([
+                'friends' => []
+            ]);
+        }
+
+        // Platforms the user has linked
+        $platforms = array_keys($socialLinks);
+
+        // Find other users who have at least one of these platforms in their social_links
+        // We exclude the current user and those they already follow
+        $followingIds = $user->following()->pluck('following_id')->toArray();
+        $followingIds[] = $user->id;
+
+        $query = User::whereNotNull('social_links')
+            ->whereNotIn('id', $followingIds);
+
+        // Search for users containing any of the platform keys in their JSON social_links
+        $query->where(function($q) use ($platforms) {
+            foreach ($platforms as $platform) {
+                // MySQL/PostgreSQL support for arrow operator on JSON
+                $q->orWhereNotNull("social_links->$platform");
+            }
+        });
+
+        $matches = $query->limit(20)->get();
+
+        return response()->json([
+            'friends' => $matches->map(function($match) {
+                return [
+                    'id' => $match->id,
+                    'name' => $match->name,
+                    'username' => $match->username,
+                    'profile_photo' => $match->profile_photo,
+                    'platforms' => array_keys(array_filter($match->social_links ?? [])),
+                ];
+            })
+        ]);
+    }
 }

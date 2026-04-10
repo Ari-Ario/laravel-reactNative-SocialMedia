@@ -137,6 +137,7 @@ Route::group(["middleware" => ["auth:sanctum"]], function () {
     Route::delete('/account', [SettingsController::class, 'destroy']);
     Route::post('/settings/password', [SettingsController::class, 'changePassword']);
     Route::post('/settings/invite', [InviteController::class, 'sendInvitation']);
+    Route::get('/settings/social-friends', [SettingsController::class, 'getSocialFriends']);
 });
 
 

@@ -810,8 +810,8 @@ const SocialLinkItem = ({ platform, value, onSave, index }: SocialLinkItemProps)
         >
             <TouchableOpacity
                 style={styles.socialHeader}
-                onPress={() => setIsEditing(!isEditing)}
-                activeOpacity={0.7}
+                onPress={() => !isEditing && setIsEditing(true)}
+                activeOpacity={isEditing ? 1 : 0.7}
             >
                 <View style={[styles.socialIconBg, { backgroundColor: platform.color + '15' }]}>
                     <Ionicons name={platform.icon} size={20} color={platform.color} />
@@ -827,21 +827,26 @@ const SocialLinkItem = ({ platform, value, onSave, index }: SocialLinkItemProps)
                         style={styles.socialInput}
                         value={tempValue}
                         onChangeText={setTempValue}
-                        onBlur={handleSave}
                         onSubmitEditing={handleSave}
                         placeholder="@username or URL"
                         placeholderTextColor="rgba(0,0,0,0.3)"
                         autoCapitalize="none"
+                        selectTextOnFocus // Better for mobile editing
                     />
                 )}
                 {loading ? (
                     <ActivityIndicator size="small" color={platform.color} />
                 ) : (
-                    <Ionicons
-                        name={isEditing ? "checkmark" : (value ? "checkmark-circle" : "add")}
-                        size={16}
-                        color={isEditing ? platform.color : (value ? "#4CAF50" : "rgba(0,0,0,0.2)")}
-                    />
+                    <TouchableOpacity 
+                        onPress={isEditing ? handleSave : () => setIsEditing(true)}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                        <Ionicons
+                            name={isEditing ? "checkmark-circle" : (value ? "checkmark-circle" : "add-circle-outline")}
+                            size={22}
+                            color={isEditing ? "#4CAF50" : (value ? "#4CAF50" : "rgba(0,0,0,0.2)")}
+                        />
+                    </TouchableOpacity>
                 )}
             </TouchableOpacity>
             {!isEditing && value ? (
@@ -921,10 +926,19 @@ export default function AccountSettingsScreen() {
 
     const handleSocialUpdate = async (platformId: string, value: string) => {
         const currentLinks = fullSettings?.social_links || {};
+        const isFirstTime = !currentLinks[platformId] && value;
         const updatedLinks = { ...currentLinks, [platformId]: value };
         try {
             await updateFullSettings({ social_links: updatedLinks });
             setFullSettings((prev: any) => ({ ...prev, social_links: updatedLinks }));
+            
+            if (isFirstTime) {
+                Alert.alert(
+                    'Discovery Activated!',
+                    `Your ${platformId} handle has been linked. You can now discover friends from this platform in the Invite section.`,
+                    [{ text: 'Great!' }]
+                );
+            }
         } catch (error) {
             throw error;
         }
@@ -1412,21 +1426,26 @@ const styles = StyleSheet.create({
     charCountBar: { flex: 1, height: 2, backgroundColor: '#e5e5e5', borderRadius: 1, marginRight: 8, overflow: 'hidden' },
     charCountFill: { height: '100%', backgroundColor: '#0084ff', borderRadius: 1 },
     charCountText: { fontSize: 10, color: '#999' },
-    // Social grid
+    // Social list (Formerly grid)
     premiumBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FF2D55', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, gap: 4 },
     premiumText: { color: '#fff', fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
-    socialGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+    socialGrid: { flexDirection: 'column', gap: 10 },
     socialItem: {
-        width: (width - 56) / 2,
-        backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#e5e5e5', overflow: 'hidden',
+        width: '100%',
+        backgroundColor: '#fff', 
+        borderRadius: 20, 
+        borderWidth: 1, 
+        borderColor: '#e5e5e5', 
+        overflow: 'hidden',
+        ...createShadow({ opacity: 0.04, radius: 10 }),
     },
-    socialItemEditing: { borderColor: '#0084ff', borderWidth: 1.5, ...createShadow({ opacity: 0.1, radius: 8 }) },
-    socialHeader: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 8 },
-    socialIconBg: { width: 32, height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-    socialValue: { flex: 1, fontSize: 13, fontWeight: '600', color: '#1a1a1a' },
-    placeholderSocial: { color: 'rgba(0,0,0,0.2)', fontSize: 12 },
-    socialInput: { flex: 1, fontSize: 13, fontWeight: '600', color: '#000', padding: 0 },
-    socialPlatformName: { fontSize: 10, color: '#999', paddingHorizontal: 12, paddingBottom: 8, fontWeight: '600' },
+    socialItemEditing: { borderColor: '#0084ff', borderWidth: 2, ...createShadow({ opacity: 0.1, radius: 12 }) },
+    socialHeader: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
+    socialIconBg: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+    socialValue: { flex: 1, fontSize: 16, fontWeight: '600', color: '#1a1a1a' },
+    placeholderSocial: { color: 'rgba(0,0,0,0.25)', fontSize: 15, fontStyle: 'italic' },
+    socialInput: { flex: 1, fontSize: 16, fontWeight: '600', color: '#000', padding: 4, backgroundColor: 'rgba(0,0,0,0.02)', borderRadius: 8 },
+    socialPlatformName: { fontSize: 11, color: '#999', paddingHorizontal: 16, paddingBottom: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
     socialTip: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16, paddingHorizontal: 8 },
     socialTipText: { fontSize: 12, color: '#666', fontStyle: 'italic', flex: 1 },
     // Delete section
