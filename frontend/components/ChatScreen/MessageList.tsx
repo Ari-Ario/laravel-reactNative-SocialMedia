@@ -12,6 +12,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import * as Haptics from 'expo-haptics';
 import MessageBubble from './MessageBubble';
 import MessageContextMenu from './MessageContextMenu';
@@ -78,6 +79,7 @@ const MessageList: React.FC<MessageListProps> = ({
   onStartCall,
   isPending = false,
 }) => {
+  const { colors, activeScheme } = useAppTheme();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [translatingMessageId, setTranslatingMessageId] = useState<string | null>(null);
@@ -1210,14 +1212,14 @@ const MessageList: React.FC<MessageListProps> = ({
   return (
     <View style={styles.container}>
       {selectedMessages.size > 0 && (
-        <View style={styles.selectionHeader}>
+        <View style={[styles.selectionHeader, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <TouchableOpacity onPress={() => setSelectedMessages(new Set())} style={styles.selectionClose}>
-            <Ionicons name="close" size={24} color="#333" />
+            <Ionicons name="close" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.selectionCount}>{selectedMessages.size} Selected</Text>
+          <Text style={[styles.selectionCount, { color: colors.text }]}>{selectedMessages.size} Selected</Text>
           <View style={styles.selectionActions}>
             <TouchableOpacity onPress={handleForwardSelected} style={styles.selectionActionBtn}>
-              <Ionicons name="arrow-redo-outline" size={22} color="#333" />
+              <Ionicons name="arrow-redo-outline" size={22} color={colors.text} />
             </TouchableOpacity>
             <TouchableOpacity onPress={handleDeleteSelected} style={styles.selectionActionBtn}>
               <Ionicons name="trash-outline" size={22} color="#FF3B30" />
@@ -1251,9 +1253,9 @@ const MessageList: React.FC<MessageListProps> = ({
         }}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="chatbubbles-outline" size={64} color="#ccc" />
-            <Text style={styles.emptyTitle}>No messages yet</Text>
-            <Text style={styles.emptySubtitle}>
+            <Ionicons name="chatbubbles-outline" size={64} color={colors.textSecondary} />
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>No messages yet</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
               Start the conversation by sending a message
             </Text>
           </View>
@@ -1402,14 +1404,14 @@ const MessageList: React.FC<MessageListProps> = ({
       {/* ── Forward Modal ──────────────────────────────────── */}
       <Modal visible={forwardModalVisible} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Forward to...</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Forward to...</Text>
               <TouchableOpacity onPress={() => {
                 setForwardModalVisible(false);
                 setPendingMessageToForward(null);
               }}>
-                <Ionicons name="close" size={24} color="#333" />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
 
@@ -1428,7 +1430,7 @@ const MessageList: React.FC<MessageListProps> = ({
                   keyExtractor={(item, index) => item.type === 'header' ? `header-${item.title}` : `target-${item.id}-${index}`}
                   renderItem={({ item }) => {
                     if (item.type === 'header') {
-                      return <Text style={styles.modalSectionHeader}>{item.title}</Text>;
+                      return <Text style={[styles.modalSectionHeader, { backgroundColor: colors.muted, color: colors.textSecondary }]}>{item.title}</Text>;
                     }
 
                     const isSelected = item.targetType === 'space'
@@ -1437,7 +1439,7 @@ const MessageList: React.FC<MessageListProps> = ({
 
                     return (
                       <TouchableOpacity
-                        style={[styles.spaceItem, isSelected && styles.spaceItemSelected]}
+                        style={[styles.spaceItem, { borderBottomColor: colors.border }, isSelected && [styles.spaceItemSelected, { backgroundColor: colors.muted, borderColor: colors.tint }]]}
                         onPress={() => {
                           if (item.targetType === 'space') {
                             setSelectedSpacesForForward(prev => {
@@ -1467,8 +1469,8 @@ const MessageList: React.FC<MessageListProps> = ({
                           )}
                         </View>
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.spaceNameText}>{item.name || item.title}</Text>
-                          <Text style={styles.targetTypeText}>{item.targetType === 'space' ? 'Space' : 'Contact'}</Text>
+                          <Text style={[styles.spaceNameText, { color: colors.text }]}>{item.name || item.title}</Text>
+                          <Text style={[styles.targetTypeText, { color: colors.textSecondary }]}>{item.targetType === 'space' ? 'Space' : 'Contact'}</Text>
                         </View>
                         <Ionicons
                           name={isSelected ? "checkmark-circle" : "ellipse-outline"}
@@ -1481,7 +1483,7 @@ const MessageList: React.FC<MessageListProps> = ({
                   contentContainerStyle={{ paddingBottom: 20 }}
                 />
 
-                <View style={styles.modalFooter}>
+                <View style={[styles.modalFooter, { borderTopColor: colors.border, backgroundColor: colors.surface }]}>
                   <TouchableOpacity
                     style={[
                       styles.modalSendBtn,
@@ -1507,7 +1509,6 @@ const MessageList: React.FC<MessageListProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   listContent: {
     paddingVertical: 16,
@@ -1521,12 +1522,10 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
     marginTop: 16,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: '#666',
     textAlign: 'center',
     marginTop: 8,
     paddingHorizontal: 32,
@@ -1536,9 +1535,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#F2F2F7',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: '#C6C6C8',
     justifyContent: 'space-between',
     zIndex: 10,
   },
@@ -1548,7 +1545,6 @@ const styles = StyleSheet.create({
   selectionCount: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
     flex: 1,
     marginLeft: 16,
   },
@@ -1565,7 +1561,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: 16,
@@ -1595,7 +1590,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#eee',
   },
   spaceAvatarPlaceholder: {
     width: 40,
@@ -1614,11 +1608,8 @@ const styles = StyleSheet.create({
   spaceNameText: {
     flex: 1,
     fontSize: 16,
-    color: '#333',
   },
   spaceItemSelected: {
-    backgroundColor: '#F2F2F7',
-    borderColor: '#007AFF',
   },
   modalSendBtn: {
     backgroundColor: '#007AFF',
@@ -1675,7 +1666,6 @@ const styles = StyleSheet.create({
   },
   targetTypeText: {
     fontSize: 12,
-    color: '#8e8e93',
     marginTop: 2,
   },
   modalFooter: {
@@ -1702,12 +1692,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   callLogBadge: {
-    backgroundColor: Platform.OS === 'web' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.98)',
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.05)',
     width: Platform.OS === 'web' ? 'auto' : '94%',
     maxWidth: Platform.OS === 'web' ? 450 : '94%',
     minWidth: Platform.OS === 'web' ? 300 : '94%',
@@ -1747,14 +1735,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2.5,
-    borderColor: '#fff',
     ...createShadow({ width: 0, height: 1, opacity: 0.3, radius: 2, elevation: 2 }),
   },
   callLogTextContainer: {
     flex: 1,
   },
   systemMessageText: {
-    color: '#666',
     fontSize: 12,
     fontWeight: '500',
     textAlign: 'center',
@@ -1763,7 +1749,6 @@ const styles = StyleSheet.create({
   callLogText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1C1C1E',
     textAlign: 'left',
     marginBottom: 1,
     flexWrap: 'wrap',

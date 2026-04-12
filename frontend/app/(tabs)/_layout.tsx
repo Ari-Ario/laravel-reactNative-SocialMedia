@@ -6,7 +6,7 @@ import React from 'react';
 import { Platform, ActivityIndicator, View, Text } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import LoginScreen from '../LoginScreen';
 import { usePostStore } from '@/stores/postStore';
@@ -19,7 +19,7 @@ import { NotificationToast } from '@/components/Notifications/NotificationToast'
 import { Toast } from '@/components/Shared/Toast';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const { colors, activeScheme } = useAppTheme();
   const { user, setUser } = useContext(AuthContext);
   const { initializeRealtime, disconnectRealtime } = usePostStore();
   const {
@@ -143,9 +143,9 @@ export default function TabLayout() {
   // Show loading while checking token and initializing real-time
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
-        <Text>Initializing app...</Text>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.tint} />
+        <Text style={{ color: colors.textSecondary, marginTop: 10 }}>Initializing app...</Text>
       </View>
     );
   }
@@ -173,8 +173,8 @@ export default function TabLayout() {
 
           <Tabs
             screenOptions={{
-              tabBarActiveTintColor: Colors.green,
-              tabBarInactiveTintColor: (Colors as any)[colorScheme ?? 'light']?.icon,
+              tabBarActiveTintColor: colors.tint,
+              tabBarInactiveTintColor: colors.tabIconDefault,
               headerShown: false,
               tabBarShowLabel: true,
               tabBarLabelStyle: {
@@ -189,11 +189,11 @@ export default function TabLayout() {
                 right: 16,
                 height: 64,
                 borderRadius: 32,
-                backgroundColor: colorScheme === 'dark' ? 'rgba(21, 23, 24, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+                backgroundColor: activeScheme === 'dark' ? 'rgba(21, 23, 24, 0.9)' : 'rgba(255, 255, 255, 0.9)',
                 borderTopWidth: 1,
-                borderTopColor: colorScheme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                borderTopColor: activeScheme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
                 borderWidth: 1,
-                borderColor: colorScheme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                borderColor: activeScheme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
                 elevation: 4,
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 4 },
@@ -216,7 +216,7 @@ export default function TabLayout() {
                     <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
                       <IconSymbol size={28} name="house.fill" color={color} />
                     </View>
-                    {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: Colors.green, marginTop: 4 }} />}
+                    {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: colors.tint, marginTop: 4 }} />}
                   </View>
                 ),
               }}
@@ -230,7 +230,7 @@ export default function TabLayout() {
                     <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
                       <FontAwesome size={26} name="comments" color={color} />
                     </View>
-                    {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: Colors.green, marginTop: 4 }} />}
+                    {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: colors.tint, marginTop: 4 }} />}
                   </View>
                 ),
                 tabBarBadge: totalUnreadSpaces > 0 ? totalUnreadSpaces : undefined,
@@ -245,7 +245,7 @@ export default function TabLayout() {
                     <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
                       <FontAwesome size={26} name="shopping-basket" color={color} />
                     </View>
-                    {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: Colors.green, marginTop: 4 }} />}
+                    {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: colors.tint, marginTop: 4 }} />}
                   </View>
                 ),
               }}
@@ -259,7 +259,7 @@ export default function TabLayout() {
                     <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
                       <FontAwesome size={26} name="android" color={color} />
                     </View>
-                    {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: Colors.green, marginTop: 4 }} />}
+                    {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: colors.tint, marginTop: 4 }} />}
                   </View>
                 ),
               }}
@@ -273,7 +273,7 @@ export default function TabLayout() {
                     <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
                       <FontAwesome size={26} name="gear" color={color} />
                     </View>
-                    {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: Colors.green, marginTop: 4 }} />}
+                    {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: colors.tint, marginTop: 4 }} />}
                   </View>
                 ),
                 tabBarBadge: (unreadModerationCount || 0) > 0 ? unreadModerationCount : undefined,

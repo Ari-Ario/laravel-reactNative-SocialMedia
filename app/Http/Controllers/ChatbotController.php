@@ -64,7 +64,6 @@ class ChatbotController extends Controller
             'untill' => 'until',
             'tommorow' => 'tomorrow',
             'tommorrow' => 'tomorrow',
-            'wierd' => 'weird',
             'accomodate' => 'accommodate',
             'acheive' => 'achieve',
             'arguement' => 'argument',
@@ -79,7 +78,6 @@ class ChatbotController extends Controller
             'seige' => 'siege',
             'speach' => 'speech',
             'truely' => 'truly',
-            'wierd' => 'weird',
             'filmz' => 'films',
             'theatre' => 'theater',
             'theather' => 'theater',
@@ -128,10 +126,16 @@ class ChatbotController extends Controller
             'conainer' => 'container',
             'widt' => 'width',
             'centrd' => 'centered',
+            'zentered' => 'centered',
             'inits' => 'initials',
             'fback' => 'fallback',
             'realtime' => 'real-time',
             'notif' => 'notification',
+            'maxwidth' => 'maxWidth',
+            'zindex' => 'zIndex',
+            'isdark' => 'isDark',
+            'bookmar' => 'bookmark',
+            'sent icon' => 'send icon',
         ];
         
         // Word boundary replacement for all typos
@@ -249,9 +253,6 @@ class ChatbotController extends Controller
             'scheduled events' => 'You can propose or schedule activities in any Space. Manage participants, durations, and see activity metrics for your group.',
             'trust score' => 'Your Trust Score is a measure of your community standing. High scores can improve content visibility and reporting integrity.',
             'whiteboard' => 'The Collaborative Whiteboard allows real-time drawing and brainstorming in any Space. You can even see other people cursors!',
-            'synchronicity' => 'Synchronicity helps you find the perfect time for collaboration by matching your skills, traits, and timing with others.',
-            'shadow check' => 'The Shadow Check evaluates your content for Fact, Morality, and Malicious Intent before you even hit send.',
-            'trust score' => 'Your Trust Score is based on your reporting integrity and history. High scores can grant you Protected Status!',
             'compliance' => 'Compliance tracking monitors violation and false report counts. You can check your own record in your Safety Settings.',
             'cursor tracking' => 'Real-time cursor tracking allows you to see exactly where your collaborators are working on the Shared Whiteboard.',
             'screen share' => 'You can toggle Screen Sharing during any Space call to present your work or review designs in real-time.',
@@ -259,10 +260,19 @@ class ChatbotController extends Controller
             'reactions' => 'React to any message with emojis to keep the conversation lively! You can also see who reacted and when.',
             'forwarding' => 'You can forward messages, posts, polls, and documents to any other Space or individual contact easily.',
             'media limits' => 'We support high-quality uploads! You can share videos and files up to 40MB in any chat or post.',
+            'mediaviewer' => 'The MediaViewer is our premium full-screen experience for photos and videos. It uses zIndex: 1000 for layering and supports swipe-to-dismiss. Interaction icons inside are optimized for dark backgrounds with high-contrast white and green colors.',
+            'interaction layering' => 'Our portal-based layering system ensures all overlays like Comments, Reposts, and Bookmarks consistently stay on top of the MediaViewer. We use zIndex: 6000 for these high-priority interactive components.',
+            'web layout' => 'Desktop web views are standardized to a 1440px maximum width and are centered horizontally. This applies to all major overlays including the MediaViewer, Comment Sheets, and Bookmark Gallery.',
+            'repost logic' => 'Reposting is now more intuitive! The Repost context popup (ContextTagSelector) can be dismissed instantly by tapping anywhere on the blurred backdrop, removing the need for a manual close button.',
+            'bookmark gallery' => 'The Bookmark Gallery is a high-fidelity modal that replaces the old bookmark page. It features an "Add Your Note" section for personal high-fidelity cards and categorization.',
+            'unified design' => 'Zmzir uses a unified design system where all overlays are width-constrained (1440px) and centered on web, while mobile remains fully responsive and full-width.',
+            'theme modes' => 'We support 4 premium modes: Light (clean aesthetic), Dark (high-contrast premium experience with #0A84FF tints), Automatic (OS-sync), and Dynamic (Android Material 3 Monet colors).',
+            'repost flow' => 'Our 2024 Repost flow features a blurred backdrop that allows instant dismissal by tapping anywhere outside the selector—no close button required!',
+            'unified spaces' => 'Direct spaces are now unified and strictly private. They support real-time collaboration features like shared whiteboards with living cursor tracking.',
         ];
 
         // ————————————————————————————————————
-        // 1. Direkt Exact Matches; depending on above array, no external functionslike next steps
+        // 1. Direct Exact Matches; depending on above array, no external functions like next steps
         // ————————————————————————————————————
         if (isset($exactResponses[$lowerMessage])) {
             return $exactResponses[$lowerMessage] . " (general exact match)";
@@ -273,7 +283,7 @@ class ChatbotController extends Controller
         // ————————————————————————————————————
         $learnedResponses = cache()->get('learned_responses', []);
         if (isset($learnedResponses[$lowerMessage])) {
-            return $learnedResponses[$lowerMessage] . ' (from cach-memory)';
+            return $learnedResponses[$lowerMessage] . ' (from cache memory)';
         }
 
         // ————————————————————————————————————
@@ -299,7 +309,7 @@ class ChatbotController extends Controller
         // ————————————————————————————————————
         if ($response = $this->handleAccountQuestions($message, $conversationId)) {
             if ($hasTypo) {
-                $response .= " did you mean:" . $message;
+                $response .= " Did you mean: " . $message;
             }
             return $response;
         }
@@ -870,6 +880,7 @@ class ChatbotController extends Controller
                     'delete' => 'delete_account',
                     'privacy' => 'privacy_start',
                     'settings' => 'settings_start',
+                    'theme' => 'settings_theme',
                     'polls' => 'polls_start',
                     'stories' => 'stories_platform_start',
                     'ai' => 'ai_platform_start',
@@ -914,11 +925,14 @@ class ChatbotController extends Controller
             ],
             // --- POSTS BRANCH ---
             'posts_start' => [
-                'pattern' => '/\b(post|posts|share|upload)\b/i',
-                'response' => 'Ready to share? I can help with "media trimming", "location tagging", or "bookmarks". What do you need?',
+                'pattern' => '/\b(post|posts|share|upload|repost|media|segment)\b/i',
+                'response' => 'Ready to share? Ask about "repost logic", "media viewer", "bookmark gallery", or "location tagging".',
                 'next' => [
-                    'trim' => 'post_trim',
+                    'repost' => 'post_repost_logic',
+                    'viewer' => 'post_media_viewer',
+                    'bookmark' => 'post_bookmark_gallery',
                     'location' => 'post_location',
+                    'trim' => 'post_trim',
                     'bookmarks' => 'post_bookmarks',
                 ]
             ],
@@ -958,13 +972,18 @@ class ChatbotController extends Controller
             ],
             // --- SETTINGS BRANCH ---
             'settings_start' => [
-                'pattern' => '/\b(settings|options|customize|setup)\b/i',
-                'response' => 'Everything is customizable! Ask about "linked devices", "storage cleanup", or "tell a friend".',
+                'pattern' => '/\b(settings|options|customize|setup|theme)\b/i',
+                'response' => 'Everything is customizable! Ask about "linked devices", "theme modes", "storage cleanup", or "tell a friend".',
                 'next' => [
                     'devices' => 'settings_devices',
+                    'theme' => 'settings_theme',
                     'storage' => 'settings_storage',
                     'friend' => 'settings_friend',
                 ]
+            ],
+            'settings_theme' => [
+                'response' => 'We offer 4 themes: Light (Focus on clarity), Dark (OLED-optimized high-contrast), Automatic (Follows your phone settings), and Dynamic (Android Material 3 wallpaper colors).',
+                'next' => null
             ],
             'settings_devices' => [
                 'response' => 'Manage active sessions in Settings > Linked Devices. You can log out from any device remotely.',
@@ -1044,6 +1063,41 @@ class ChatbotController extends Controller
                 'response' => 'Stuck? The AI suggests how to continue your story branches or what context to add next.',
                 'next' => null
             ],
+            // --- NEW: DESIGN & LAYERING BRANCH ---
+            'design_layering_start' => [
+                'pattern' => '/\b(layer|layering|stacking|z-index|width|desktop|web)\b/i',
+                'response' => 'We use a portal-based layering system! Want to know about "z-indexes", "web widths", or "how overlays work"?',
+                'next' => [
+                    'z-indexes' => 'layering_zindex',
+                    'width' => 'layering_width',
+                    'overlays' => 'layering_logic',
+                ]
+            ],
+            'layering_zindex' => [
+                'response' => 'MediaViewer uses zIndex: 1000. All interactive overlays (Comments, Emojis, Reposts, Bookmarks) use zIndex: 6000 to stay on top.',
+                'next' => null
+            ],
+            'layering_width' => [
+                'response' => 'On Web, all major components are limited to a 1440px maximum width and centered. This ensures a premium ultra-wide monitor experience!',
+                'next' => null
+            ],
+            'layering_logic' => [
+                'response' => 'Modals are conditionally mounted to append to the end of the portal root, ensuring they override the current view layer.',
+                'next' => null
+            ],
+
+            'post_repost_logic' => [
+                'response' => 'The Repost popup closes when you tap the blurred backdrop. No manual close button is needed anymore for a faster flow!',
+                'next' => null
+            ],
+            'post_media_viewer' => [
+                'response' => 'The MediaViewer features high-contrast white icons and a bold green bookmark/repost status. Close it with the arrow on the top-left.',
+                'next' => null
+            ],
+            'post_bookmark_gallery' => [
+                'response' => 'Save posts to your high-fidelity Bookmark Gallery! You can add personal "notes" that appear as premium cards.',
+                'next' => null
+            ],
             // --- ACTIVITIES BRANCH ---
             'activities_start' => [
                 'pattern' => '/\b(activity|activities|event|events|schedule)\b/i',
@@ -1078,14 +1132,6 @@ class ChatbotController extends Controller
             ],
             'safety_score_info' => [
                 'response' => 'Your Trust Score is based on your reporting integrity and history. High scores can grant you Protected Status!',
-                'next' => null
-            ],
-            'safety_shadow_info' => [
-                'response' => 'The Shadow Check evaluates your content for Fact, Morality, and Malicious Intent before you even hit send.',
-                'next' => null
-            ],
-            'safety_compliance_info' => [
-                'response' => 'Compliance tracking monitors violation and false report counts. You can check your own record in your Safety Settings.',
                 'next' => null
             ],
             // --- SYNC & COLLABORATION BRANCH ---
@@ -1130,7 +1176,7 @@ class ChatbotController extends Controller
         $node = $tree[$state] ?? null;
 
         // Enter tree - Multi-node entry support
-        $startNodes = ['start', 'spaces_start', 'posts_start', 'privacy_start', 'settings_start', 'polls_start', 'stories_platform_start', 'ai_platform_start', 'activities_start', 'safety_trust_start', 'sync_collaboration_start'];
+        $startNodes = ['start', 'spaces_start', 'posts_start', 'privacy_start', 'settings_start', 'polls_start', 'stories_platform_start', 'ai_platform_start', 'activities_start', 'safety_trust_start', 'sync_collaboration_start', 'design_layering_start'];
         
         if ($state === 'start') {
             foreach ($startNodes as $startNode) {
@@ -1237,9 +1283,9 @@ class ChatbotController extends Controller
                     return 'View your saved items in Profile > Bookmarks or Settings > Bookmarks.';
                 }
                 if ($this->containsAny($lastMessages, ['trim', 'video'])) {
-                    return 'Trimming is available for videos up to 40MB during the upload process.';
+                    return 'Trimming: Available for videos during upload. In the MediaViewer, icons are white/green with zIndex: 6000.';
                 }
-                return 'Posts help: media uploads, location tagging, and interaction tools.';
+                return 'Posts help: media uploads, location tagging, and the new Bookmark Gallery with personal notes.';
         }
 
         return null;
@@ -1271,7 +1317,7 @@ class ChatbotController extends Controller
         if ($existing) {
             if ($existing->needs_review && empty($response)) {
                 $this->sendChatbotNotifications($message, $category, $analysis['keywords']);
-                event(new \App\Events\ChatbotTrainingNeeded($message, $category, $analysis['keywords']));
+                event(new ChatbotTrainingNeededEvent($message, $category, $analysis['keywords']));
             }
             return;
         }
@@ -1288,7 +1334,7 @@ class ChatbotController extends Controller
 
         if (empty($response)) {
             $this->sendChatbotNotifications($message, $category, $analysis['keywords']);
-            event(new \App\Events\ChatbotTrainingNeeded($message, $category, $analysis['keywords']));
+            event(new ChatbotTrainingNeededEvent($message, $category, $analysis['keywords']));
         }
 
         cache()->forget('learned_responses');
@@ -1303,7 +1349,7 @@ class ChatbotController extends Controller
             if ($usersToNotify->count() > 0) {
                 \Illuminate\Support\Facades\Notification::send(
                     $usersToNotify,
-                    new \App\Notifications\ChatbotTrainingNeeded($message, $category, $keywords)
+                    new ChatbotTrainingNeeded($message, $category, $keywords)
                 );
             }
         } catch (\Exception $e) {
@@ -1545,6 +1591,9 @@ class ChatbotController extends Controller
             ['keywords' => ['trust', 'score', 'standing', 'reputation'], 'response' => 'Safety & Trust: Your Trust Score reflects your community contributions. Check your status in Settings > Safety.', 'priority' => 7],
             ['keywords' => ['shadow', 'check', 'safe', 'moderation'], 'response' => 'Shadow Check: Use our real-time AI to check if your content meets community standards before posting.', 'priority' => 7],
             ['keywords' => ['synergy', 'traits', 'skill', 'match'], 'response' => 'Synchronicity: We match your unique synergy traits with others in your Space for building perfect teams!', 'priority' => 7],
+            ['keywords' => ['layering', 'stacking', 'z-index', 'top'], 'response' => 'Interaction Layering: MediaViewer (1000) vs Overlays (6000). High-priority portals ensure popups always stay on top.', 'priority' => 8],
+            ['keywords' => ['width', 'desktop', '1440', 'px'], 'response' => 'Unified Layout: Standardized 1440px centered width for all Web UI components for a premium desktop experience.', 'priority' => 8],
+            ['keywords' => ['repost', 'outside', 'backdrop', 'dismiss'], 'response' => 'Repost Flow: Tap the blurred backdrop to instantly close the Context Selector. No close button required!', 'priority' => 8],
         ];
 
         usort($patterns, fn($a, $b) => $b['priority'] <=> $a['priority']);
@@ -1639,7 +1688,7 @@ private function askRAGMicroservice(string $message): array
                 ]);
             }
             
-            $response = \Illuminate\Support\Facades\Http::withOptions([
+            $response = Http::withOptions([
                 'connect_timeout' => 10,
                 'timeout' => 15,
                 'verify' => false,
@@ -1718,9 +1767,10 @@ private function updateKnowledgeBase(): void
     {
         $admins = User::where('email', 'xusrew@yahoo.com')->get();
         foreach ($admins as $admin) {
-            $admin->notify(new ChatbotTrainingNeeded($message));
+            /** @var \App\Models\User $admin */
+            $admin->notify(new ChatbotTrainingNeeded($message, 'general', []));
         }
-        event(new ChatbotTrainingNeeded($message));
+        event(new ChatbotTrainingNeededEvent($message, 'general', []));
     }
 
     private function checkKeywordPatterns2(array $keywords): ?string
@@ -1731,9 +1781,9 @@ private function updateKnowledgeBase(): void
             'account' => ['account', 'profile', 'login'],
         ];
         foreach ($keywords as $kw) {
-            foreach ($groups as $response) {
-                if (in_array($kw, $response)) {
-                    return "$response response";
+            foreach ($groups as $key => $keywords_list) {
+                if (in_array($kw, $keywords_list)) {
+                    return "$key response";
                 }
             }
         }

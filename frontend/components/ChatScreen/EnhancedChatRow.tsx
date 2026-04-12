@@ -1,5 +1,6 @@
 // components/ChatScreen/EnhancedChatRow.tsx
 import { View, Text, StyleSheet, Pressable, Alert, TouchableOpacity, Platform } from 'react-native';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import * as Haptics from 'expo-haptics';
 import { Link, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -61,6 +62,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
   onLeave,
   onDelete,
 }) => {
+  const { colors, activeScheme } = useAppTheme();
   const [showCollaborationMenu, setShowCollaborationMenu] = useState(false);
   const [showContactMenu, setShowContactMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState<AnchorPosition>();
@@ -586,18 +588,18 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
 
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.name} numberOfLines={1}>
+          <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
             {name}
             {username && (
-              <Text style={styles.username}> @{username}</Text>
+              <Text style={[styles.username, { color: colors.textSecondary }]}> @{username}</Text>
             )}
           </Text>
-          <Text style={styles.timestamp}>{timestamp}</Text>
+          <Text style={[styles.timestamp, { color: colors.textSecondary }]}>{timestamp}</Text>
         </View>
 
         <View style={styles.footer}>
           <Text
-            style={[styles.lastMessage, styles.contactMessage]}
+            style={[styles.lastMessage, styles.contactMessage, { color: colors.tint }]}
             numberOfLines={1}
           >
             {lastMessage || 'Available for chat'}
@@ -608,14 +610,14 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
               style={styles.contactActionButton}
               onPress={handleStartVideoCall}
             >
-              <Ionicons name="videocam" size={18} color="#007AFF" />
+              <Ionicons name="videocam" size={18} color={colors.tint} />
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.contactActionButton}
               onPress={handleStartVoiceCall}
             >
-              <Ionicons name="call" size={18} color="#007AFF" />
+              <Ionicons name="call" size={18} color={colors.tint} />
             </TouchableOpacity>
           </View>
         </View>
@@ -674,20 +676,21 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
 
         <View style={styles.content}>
           <View style={styles.header}>
-            <Text style={styles.name} numberOfLines={1}>
+            <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
               {type === 'space' && spaceData?.has_ai_assistant && (
-                <Ionicons name="sparkles" size={14} color="#667EEA" style={styles.aiIcon} />
+                <Ionicons name="sparkles" size={14} color={colors.tint} style={styles.aiIcon} />
               )}
               {displayTitle}
             </Text>
-            <Text style={styles.timestamp}>{timestamp}</Text>
+            <Text style={[styles.timestamp, { color: colors.textSecondary }]}>{timestamp}</Text>
           </View>
 
           <View style={styles.footer}>
             <Text
               style={[
                 styles.lastMessage,
-                type === 'contact' && styles.contactMessage
+                { color: colors.textSecondary },
+                type === 'contact' && [styles.contactMessage, { color: colors.tint }]
               ]}
               numberOfLines={1}
             >
@@ -728,7 +731,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
                 <Ionicons 
                   name={type === 'space' && !isDirectSpace ? getSpaceIcon() as any : "chatbubble-outline"} 
                   size={20} 
-                  color="#007AFF" 
+                  color={colors.tint} 
                 />
               )}
             </View>
@@ -737,7 +740,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
           {/* Evolution level indicator for spaces */}
           {type === 'space' && (spaceData?.evolution_level ?? 0) > 1 && (
             <View style={styles.evolutionIndicator}>
-              <Text style={styles.evolutionText}>Level {spaceData?.evolution_level}</Text>
+              <Text style={[styles.evolutionText, { color: colors.textSecondary }]}>Level {spaceData?.evolution_level}</Text>
               {spaceData?.unlocked_features?.slice(0, 3).map((feature: string, index: number) => (
                 <Ionicons key={index} name="checkmark-circle" size={12} color="#4CAF50" />
               ))}
@@ -867,7 +870,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#fff',
     position: 'relative',
     height: 72,
   },
@@ -896,7 +898,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#4CAF50',
     borderWidth: 2,
-    borderColor: '#fff',
   },
   liveIndicator: {
     position: 'absolute',
@@ -933,8 +934,7 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 17,
-    fontWeight: '600',
-    color: '#111B21',
+    fontWeight: '700',
     flex: 1,
     marginRight: 8,
   },
@@ -954,7 +954,6 @@ const styles = StyleSheet.create({
   },
   timestamp: {
     fontSize: 12,
-    color: '#666',
   },
   footer: {
     flexDirection: 'row',
@@ -963,7 +962,6 @@ const styles = StyleSheet.create({
   },
   lastMessage: {
     fontSize: 14,
-    color: '#667781',
     flex: 1,
     marginRight: 8,
   },
@@ -992,14 +990,12 @@ const styles = StyleSheet.create({
   },
   evolutionText: {
     fontSize: 11,
-    color: '#666',
     marginRight: 4,
   },
   collaborationMenu: {
     position: 'absolute',
     right: 16,
     top: 60,
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 8,
     ...createShadow({
@@ -1025,7 +1021,6 @@ const styles = StyleSheet.create({
 
   username: {
     fontSize: 13,
-    color: '#666',
     fontWeight: '400',
   },
 
@@ -1042,7 +1037,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 70,
     right: 16,
-    backgroundColor: '#fff',
     borderRadius: 12,
     paddingVertical: 8,
     paddingHorizontal: 4,
@@ -1067,12 +1061,10 @@ const styles = StyleSheet.create({
   contactMenuText: {
     marginLeft: 10,
     fontSize: 14,
-    color: '#333',
   },
 
   contactMenuClose: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#eee',
     marginTop: 4,
   },
 

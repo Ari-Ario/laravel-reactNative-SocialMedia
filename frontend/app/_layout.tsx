@@ -9,8 +9,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useEffect, useRef, useState } from 'react';
 import 'react-native-reanimated';
 import AuthContext from '@/context/AuthContext';
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { ActivityIndicator, View, Text, Platform } from 'react-native';
+import { Platform, ActivityIndicator, View, Text, StatusBar } from 'react-native';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { loadUser } from '@/services/AuthService';
 import { getToken, setToken } from '@/services/TokenService';
 import LoginScreen from './LoginScreen';
@@ -22,7 +22,7 @@ import { GlobalModals } from '@/components/GlobalModals';
 import { ModalProvider } from '@/context/ModalContext';
 import ModalManager from '@/components/ModalManager';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Toast } from '@/components/Shared/Toast';
 import { CallProvider } from '@/context/CallContext';
 import { RootCallOverlay } from '@/components/ChatScreen/RootCallOverlay';
@@ -38,7 +38,7 @@ function IncomingCallBridge() {
 }
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const { colors, activeScheme } = useAppTheme();
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
@@ -258,10 +258,10 @@ export default function RootLayout() {
           justifyContent: 'center',
           alignSelf: 'center',
           // marginHorizontal: 'auto',
-          backgroundColor: '#fff',  // Optional: clean background
-          borderLeftWidth: 1,       // Optional: subtle side borders
+          backgroundColor: colors.background,
+          borderLeftWidth: 1,
           borderRightWidth: 1,
-          borderColor: '#ddd',
+          borderColor: colors.border,
         }),
       }}
     >
@@ -273,11 +273,16 @@ export default function RootLayout() {
             <ModalProvider>
               <ProfileViewProvider>
                 {/* Stack must be the last child to properly handle gestures */}
-                <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
+                <SafeAreaView 
+                  style={{ flex: 1, backgroundColor: colors.background }} 
+                  edges={['top', 'left', 'right']}
+                >
+                  <StatusBar barStyle={activeScheme === 'dark' ? 'light-content' : 'dark-content'} />
                   <Stack screenOptions={{
                     headerShown: false,
                     animation: 'none',
-                    gestureEnabled: true
+                    gestureEnabled: true,
+                    contentStyle: { backgroundColor: colors.background }
                   }}>
                     {/* Define ALL screens statically - no conditional rendering */}
                     <Stack.Screen

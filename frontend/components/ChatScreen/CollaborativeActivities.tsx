@@ -18,12 +18,11 @@ import {
   Share,
   Linking,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import CollaborationService, { CollaborativeActivity } from '@/services/ChatScreen/CollaborationService';
 import { createShadow } from '@/utils/styles';
 import * as Haptics from 'expo-haptics';
 import { Calendar } from 'react-native-calendars';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import {
   format,
   parseISO,
@@ -58,6 +57,8 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { safeHaptics } from '@/utils/haptics';
 import CreateActivityModal from './CreateActivityModal';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
 const HOUR_HEIGHT = 70;
@@ -78,7 +79,10 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
 }) => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  
+  const { colors, activeScheme } = useAppTheme();
+  const styles = getStyles(colors, activeScheme);
+  const isDark = activeScheme === 'dark';
+
   const storeSpaces = useCollaborationStore(state => state.spaces);
   const globalActivities = useCollaborationStore(state => state.globalActivities);
   const spaceActivitiesNode = useCollaborationStore(state => state.spaceActivities);
@@ -214,7 +218,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
         setSelectedDate(parseISO(activity.scheduled_start));
         setSelectedActivity(activity);
         setViewMode('day'); // Focus on the day view
-        
+
         // Haptic feedback to confirm the landing
         safeHaptics.success();
       }
@@ -284,7 +288,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
     }
     setSelectedActivity(activity);
     setIsManagingParticipants(false);
-    
+
     // Fetch space details to get full participant list for picking
     try {
       const spaceData = await CollaborationService.getInstance().fetchSpaceDetails(activity.space_id);
@@ -296,7 +300,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
 
   const handleUpdateParticipant = async (userId: number, action: 'add' | 'remove') => {
     if (!selectedActivity) return;
-    
+
     setIsUpdatingParticipants(true);
     try {
       const updatedActivity = await CollaborationService.getInstance().updateActivityParticipants(
@@ -306,12 +310,12 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
           action: action
         }
       );
-      
+
       // Update local state
       setSelectedActivity(updatedActivity);
       // Update global store
       useCollaborationStore.getState().updateActivity(updatedActivity);
-      
+
       if (Platform.OS !== 'web') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
@@ -429,8 +433,8 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
                   });
 
                   return (
-                    <TouchableOpacity 
-                      key={hourIndex} 
+                    <TouchableOpacity
+                      key={hourIndex}
                       style={styles.hourSlot}
                       activeOpacity={0.7}
                       onPress={() => {
@@ -467,7 +471,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
                                   size={10}
                                   color="#666"
                                 />
-                                <Text style={styles.weekActivityTime}>
+                                <Text style={[styles.weekActivityTime, { color: colors.textSecondary }]}>
                                   {format(parseISO(activity.scheduled_start!), 'h:mm a')}
                                 </Text>
                               </View>
@@ -524,7 +528,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
                 </Text>
               </View>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => handleTimeSlotPress(hour)}
                 style={styles.dayHourContent}
@@ -640,17 +644,17 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
       }}
       markedDates={calendarMarked}
       theme={{
-        backgroundColor: '#fff',
-        calendarBackground: '#fff',
-        textSectionTitleColor: '#666',
-        selectedDayBackgroundColor: '#007AFF',
+        backgroundColor: colors.background,
+        calendarBackground: colors.background,
+        textSectionTitleColor: colors.textSecondary,
+        selectedDayBackgroundColor: colors.tint,
         selectedDayTextColor: '#fff',
-        todayTextColor: '#007AFF',
-        dayTextColor: '#333',
-        textDisabledColor: '#ddd',
-        dotColor: '#007AFF',
-        arrowColor: '#007AFF',
-        monthTextColor: '#333',
+        todayTextColor: colors.tint,
+        dayTextColor: colors.text,
+        textDisabledColor: isDark ? '#444' : '#ddd',
+        dotColor: colors.tint,
+        arrowColor: colors.tint,
+        monthTextColor: colors.text,
         textMonthFontWeight: '600',
         textDayFontSize: 16,
         textDayHeaderFontSize: 12,
@@ -659,7 +663,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
         <Ionicons
           name={direction === 'left' ? 'chevron-back' : 'chevron-forward'}
           size={24}
-          color="#007AFF"
+          color={colors.tint}
         />
       )}
       markingType={'multi-dot'}
@@ -684,7 +688,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
               <View style={styles.modalHeader}>
                 <View style={styles.modalHeaderTitleRow}>
                   <Text style={styles.modalTitle}>{selectedActivity.title}</Text>
-                  <Text style={{color: 'rgba(255,255,255,0.3)', fontSize: 8}}>U:{String(user?.id)} C:{String(selectedActivity.created_by)}</Text>
+                  <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 8 }}>U:{String(user?.id)} C:{String(selectedActivity.created_by)}</Text>
                   {(String(selectedActivity.created_by || selectedActivity.creator?.id) === String(user?.id)) && (
                     <TouchableOpacity
                       style={styles.editButton}
@@ -742,19 +746,19 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
                 <View style={styles.modalSection}>
                   <View style={styles.sectionHeaderRow}>
                     <Text style={styles.modalSectionTitle}>Participants</Text>
-                    {(selectedActivity.created_by === useCollaborationStore.getState().spaces.find(s => s.id === selectedActivity.space_id)?.creator_id || 
+                    {(selectedActivity.created_by === useCollaborationStore.getState().spaces.find(s => s.id === selectedActivity.space_id)?.creator_id ||
                       selectedActivity.created_by === Number(useCollaborationStore.getState().spaces.find(s => s.id === selectedActivity.space_id)?.creator_id)) && (
-                      <TouchableOpacity 
-                        onPress={() => setIsManagingParticipants(!isManagingParticipants)}
-                        style={styles.manageButton}
-                      >
-                        <Text style={styles.manageButtonText}>
-                          {isManagingParticipants ? 'Done' : 'Manage'}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
+                        <TouchableOpacity
+                          onPress={() => setIsManagingParticipants(!isManagingParticipants)}
+                          style={styles.manageButton}
+                        >
+                          <Text style={styles.manageButtonText}>
+                            {isManagingParticipants ? 'Done' : 'Manage'}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
                   </View>
-                  
+
                   <View style={styles.participantsList}>
                     {selectedActivity.participants?.map((p: any) => (
                       <View key={p.id} style={styles.participantItem}>
@@ -765,7 +769,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
                           <Text style={styles.participantName}>{p.name}</Text>
                         </View>
                         {isManagingParticipants && (
-                          <TouchableOpacity 
+                          <TouchableOpacity
                             onPress={() => handleUpdateParticipant(p.id, 'remove')}
                             disabled={isUpdatingParticipants}
                           >
@@ -774,9 +778,9 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
                         )}
                       </View>
                     ))}
-                    
+
                     {isManagingParticipants && spaceParticipants
-                      .filter(sp => !selectedActivity.participant_ids?.includes(sp.user_id) && !selectedActivity.participants?.some((p:any) => p.id === sp.user_id))
+                      .filter(sp => !selectedActivity.participant_ids?.includes(sp.user_id) && !selectedActivity.participants?.some((p: any) => p.id === sp.user_id))
                       .map((sp: any) => (
                         <View key={sp.user_id} style={styles.participantItem}>
                           <View style={styles.participantInfo}>
@@ -785,7 +789,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
                             </View>
                             <Text style={[styles.participantName, { color: '#888' }]}>{sp.user?.name}</Text>
                           </View>
-                          <TouchableOpacity 
+                          <TouchableOpacity
                             onPress={() => handleUpdateParticipant(sp.user_id, 'add')}
                             disabled={isUpdatingParticipants}
                           >
@@ -815,11 +819,11 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
                   <TouchableOpacity
                     style={styles.modalAction}
                     onPress={() => {
-                        const frontendHost = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
-                        const deepLink = `${frontendHost}/${selectedActivity.space_id}?activity=${selectedActivity.id}`;
-                        require('expo-clipboard').setStringAsync(deepLink);
-                        try { require('@/stores/toastStore').useToastStore.getState().showToast('Session link copied to clipboard!', 'success'); } catch(e){}
-                        if (Platform.OS !== 'web') try { require('expo-haptics').notificationAsync(require('expo-haptics').NotificationFeedbackType.Success); } catch(e){}
+                      const frontendHost = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
+                      const deepLink = `${frontendHost}/${selectedActivity.space_id}?activity=${selectedActivity.id}`;
+                      require('expo-clipboard').setStringAsync(deepLink);
+                      try { require('@/stores/toastStore').useToastStore.getState().showToast('Session link copied to clipboard!', 'success'); } catch (e) { }
+                      if (Platform.OS !== 'web') try { require('expo-haptics').notificationAsync(require('expo-haptics').NotificationFeedbackType.Success); } catch (e) { }
                     }}
                   >
                     <Ionicons name="link" size={20} color="#666" />
@@ -854,13 +858,13 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
   );
 
   return (
-    <Animated.View entering={FadeIn.duration(300)} style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+    <Animated.View entering={FadeIn.duration(300)} style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
 
       {/* Header */}
-      <BlurView intensity={90} tint="light" style={styles.header}>
+      <BlurView intensity={90} tint={isDark ? 'dark' : 'light'} style={styles.header}>
         <TouchableOpacity onPress={onClose} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
 
         <View style={styles.headerCenter}>
@@ -903,10 +907,11 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
             <Ionicons
               name={mode.icon as any}
               size={18}
-              color={viewMode === mode.id ? '#007AFF' : '#666'}
+              color={viewMode === mode.id ? colors.tint : colors.textSecondary}
             />
             <Text style={[
               styles.viewToggleText,
+              { color: viewMode === mode.id ? colors.tint : colors.textSecondary },
               viewMode === mode.id && styles.viewToggleTextActive
             ]}>
               {mode.label}
@@ -922,7 +927,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
             style={styles.navButton}
             onPress={() => viewMode === 'week' ? navigateWeek('prev') : navigateDay('prev')}
           >
-            <Ionicons name="chevron-back" size={20} color="#007AFF" />
+            <Ionicons name="chevron-back" size={20} color={colors.tint} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -941,7 +946,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
             style={styles.navButton}
             onPress={() => viewMode === 'week' ? navigateWeek('next') : navigateDay('next')}
           >
-            <Ionicons name="chevron-forward" size={20} color="#007AFF" />
+            <Ionicons name="chevron-forward" size={20} color={colors.tint} />
           </TouchableOpacity>
         </View>
       )}
@@ -950,7 +955,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
       <ScrollView
         style={styles.content}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#007AFF" />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.tint} />
         }
       >
         {viewMode === 'day' && <DayView />}
@@ -986,570 +991,573 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1A1A',
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-  },
-  createButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  createButtonGradient: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  viewToggle: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-    gap: 8,
-  },
-  viewToggleButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: '#F5F5F5',
-    gap: 6,
-  },
-  viewToggleButtonActive: {
-    backgroundColor: '#E8F0FE',
-    borderWidth: 1,
-    borderColor: '#007AFF',
-  },
-  viewToggleText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#666',
-  },
-  viewToggleTextActive: {
-    color: '#007AFF',
-  },
-  navBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  navButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-  },
-  navDate: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  navDateText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1A1A1A',
-  },
-  content: {
-    flex: 1,
-  },
-  weekContainer: {
-    flex: 1,
-  },
-  weekContent: {
-    flexDirection: 'row',
-  },
-  timeColumn: {
-    width: 60,
-    backgroundColor: '#FFFFFF',
-    borderRightWidth: 1,
-    borderRightColor: '#F0F0F0',
-  },
-  timeHeader: {
-    height: 80,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  timeSlot: {
-    height: HOUR_HEIGHT,
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  timeText: {
-    fontSize: 11,
-    color: '#666',
-    marginTop: -8,
-  },
-  dayColumn: {
-    width: (width - 60) / DAYS_TO_SHOW,
-    backgroundColor: '#FFFFFF',
-    borderRightWidth: 1,
-    borderRightColor: '#F0F0F0',
-  },
-  dayColumnSelected: {
-    backgroundColor: '#F8F9FA',
-  },
-  dayHeader: {
-    height: 80,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-    backgroundColor: '#FFFFFF',
-  },
-  dayHeaderSelected: {
-    backgroundColor: '#E8F0FE',
-  },
-  dayName: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#666',
-    textTransform: 'uppercase',
-  },
-  dayNameSelected: {
-    color: '#007AFF',
-    fontWeight: '700',
-  },
-  dayNumber: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#1A1A1A',
-    marginTop: 4,
-  },
-  dayNumberSelected: {
-    color: '#007AFF',
-  },
-  todayBadge: {
-    marginTop: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    backgroundColor: '#007AFF',
-    borderRadius: 10,
-  },
-  todayBadgeText: {
-    fontSize: 9,
-    color: '#fff',
-    fontWeight: '600',
-  },
-  dayGrid: {
-    height: 24 * HOUR_HEIGHT,
-  },
-  hourSlot: {
-    height: HOUR_HEIGHT,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-    position: 'relative',
-  },
-  weekActivityCard: {
-    position: 'absolute',
-    left: 4,
-    right: 4,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 6,
-    padding: 4,
-    borderLeftWidth: 3,
-    ...createShadow({
-      width: 0,
-      height: 1,
-      opacity: 0.1,
-      radius: 2,
-      elevation: 1,
-    }),
-  },
-  weekActivityTouchable: {
-    flex: 1,
-    padding: 4,
-  },
-  weekActivityTitle: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#1A1A1A',
-  },
-  weekActivityMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
-    gap: 4,
-  },
-  weekActivityTime: {
-    fontSize: 8,
-    color: '#666',
-  },
-  dayContainer: {
-    flex: 1,
-  },
-  currentTimeLine: {
-    position: 'absolute',
-    left: 60,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  currentTimeDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#FF3B30',
-    marginLeft: -5,
-  },
-  currentTimeBar: {
-    flex: 1,
-    height: 2,
-    backgroundColor: '#FF3B30',
-  },
-  dayHourSlot: {
-    flexDirection: 'row',
-    minHeight: HOUR_HEIGHT,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  dayHourLabel: {
-    width: 60,
-    paddingTop: 8,
-    alignItems: 'center',
-    borderRightWidth: 1,
-    borderRightColor: '#F0F0F0',
-  },
-  dayHourText: {
-    fontSize: 12,
-    color: '#666',
-  },
-  dayHourContent: {
-    flex: 1,
-    padding: 8,
-  },
-  dayActivityCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    marginBottom: 8,
-    borderLeftWidth: 4,
-    ...createShadow({
-      width: 0,
-      height: 2,
-      opacity: 0.05,
-      radius: 4,
-      elevation: 2,
-    }),
-  },
-  dayActivityTouchable: {
-    padding: 12,
-  },
-  dayActivityHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  dayActivityBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  dayActivityType: {
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'capitalize',
-  },
-  spaceBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-    gap: 4,
-  },
-  spaceDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  spaceBadgeText: {
-    fontSize: 10,
-    fontWeight: '500',
-    color: '#666',
-  },
-  dayActivityTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1A1A1A',
-    marginBottom: 4,
-  },
-  dayActivityDescription: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 8,
-    lineHeight: 18,
-  },
-  dayActivityMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 12,
-  },
-  dayActivityDuration: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  dayActivityStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  dayActivityMetaText: {
-    fontSize: 11,
-    color: '#666',
-  },
-  dayActivityActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  dayAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: '#F5F5F5',
-    gap: 4,
-  },
-  dayActionJoin: {
-    padding: 0,
-    backgroundColor: 'transparent',
-  },
-  joinButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 4,
-  },
-  joinButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  dayActionText: {
-    fontSize: 12,
-    color: '#666',
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContainer: {
-    backgroundColor: '#1A1A2E',
-    borderRadius: 24,
-    width: Math.min(width - 40, 500),
-    maxHeight: height * 0.8,
-    ...createShadow({
-      width: 0,
+const getStyles = (colors: any, activeScheme: string) => {
+  const isDark = activeScheme === 'dark';
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 16,
+      backgroundColor: colors.background,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    backButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    headerCenter: {
+      flex: 1,
+      alignItems: 'center',
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    headerSubtitle: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    createButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      overflow: 'hidden',
+    },
+    createButtonGradient: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    viewToggle: {
+      flexDirection: 'row',
+      backgroundColor: colors.background,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      gap: 8,
+    },
+    viewToggleButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 8,
+      borderRadius: 8,
+      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F5F5F5',
+      gap: 6,
+    },
+    viewToggleButtonActive: {
+      backgroundColor: isDark ? 'rgba(0,122,255,0.2)' : '#E8F0FE',
+      borderWidth: 1,
+      borderColor: colors.tint,
+    },
+    viewToggleText: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.textSecondary,
+    },
+    viewToggleTextActive: {
+      color: colors.tint,
+    },
+    navBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      backgroundColor: colors.background,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    navButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F5F5F5',
+    },
+    navDate: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+    },
+    navDateText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    content: {
+      flex: 1,
+    },
+    weekContainer: {
+      flex: 1,
+    },
+    weekContent: {
+      flexDirection: 'row',
+    },
+    timeColumn: {
+      width: 60,
+      backgroundColor: colors.background,
+      borderRightWidth: 1,
+      borderRightColor: colors.border,
+    },
+    timeHeader: {
+      height: 80,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    timeSlot: {
+      height: HOUR_HEIGHT,
+      justifyContent: 'flex-start',
+      alignItems: 'center',
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    timeText: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      marginTop: -8,
+    },
+    dayColumn: {
+      width: (width - 60) / DAYS_TO_SHOW,
+      backgroundColor: colors.background,
+      borderRightWidth: 1,
+      borderRightColor: colors.border,
+    },
+    dayColumnSelected: {
+      backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#F8F9FA',
+    },
+    dayHeader: {
+      height: 80,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      backgroundColor: colors.background,
+    },
+    dayHeaderSelected: {
+      backgroundColor: isDark ? 'rgba(0,122,255,0.1)' : '#E8F0FE',
+    },
+    dayName: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+    },
+    dayNameSelected: {
+      color: colors.tint,
+      fontWeight: '700',
+    },
+    dayNumber: {
+      fontSize: 24,
+      fontWeight: '600',
+      color: colors.text,
+      marginTop: 4,
+    },
+    dayNumberSelected: {
+      color: colors.tint,
+    },
+    todayBadge: {
+      marginTop: 4,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      backgroundColor: colors.tint,
+      borderRadius: 10,
+    },
+    todayBadgeText: {
+      fontSize: 9,
+      color: '#fff',
+      fontWeight: '600',
+    },
+    dayGrid: {
+      height: 24 * HOUR_HEIGHT,
+    },
+    hourSlot: {
+      height: HOUR_HEIGHT,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      position: 'relative',
+    },
+    weekActivityCard: {
+      position: 'absolute',
+      left: 4,
+      right: 4,
+      backgroundColor: isDark ? colors.card : '#FFFFFF',
+      borderRadius: 6,
+      padding: 4,
+      borderLeftWidth: 3,
+      ...createShadow({
+        width: 0,
+        height: 1,
+        opacity: isDark ? 0.3 : 0.1,
+        radius: 2,
+        elevation: 1,
+      }),
+    },
+    weekActivityTouchable: {
+      flex: 1,
+      padding: 4,
+    },
+    weekActivityTitle: {
+      fontSize: 10,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    weekActivityMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 2,
+      gap: 4,
+    },
+    weekActivityTime: {
+      fontSize: 8,
+      color: colors.textSecondary,
+    },
+    dayContainer: {
+      flex: 1,
+    },
+    currentTimeLine: {
+      position: 'absolute',
+      left: 60,
+      right: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      zIndex: 10,
+    },
+    currentTimeDot: {
+      width: 10,
       height: 10,
-      opacity: 0.3,
-      radius: 20,
-      elevation: 10,
-    }),
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
-  },
-  modalHeaderTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: 10,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-    flexShrink: 1,
-  },
-  editButton: {
-    padding: 8,
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
-    borderRadius: 8,
-  },
-  modalContent: {
-    padding: 20,
-  },
-  modalSection: {
-    marginBottom: 20,
-  },
-  modalSectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#007AFF',
-    marginBottom: 8,
-    textTransform: 'uppercase',
-  },
-  modalText: {
-    fontSize: 14,
-    color: '#fff',
-    lineHeight: 20,
-  },
-  modalTimeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  modalSpaceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  modalSpaceDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 20,
-  },
-  modalAction: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    alignItems: 'center',
-    gap: 6,
-  },
-  modalActionJoin: {
-    padding: 0,
-    backgroundColor: 'transparent',
-  },
-  modalJoinGradient: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 6,
-  },
-  modalActionText: {
-    fontSize: 13,
-    color: '#fff',
-  },
-  modalJoinText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  manageButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,122,255,0.1)',
-  },
-  manageButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  participantsList: {
-    gap: 10,
-  },
-  participantItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    padding: 10,
-    borderRadius: 12,
-  },
-  participantInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  participantAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#007AFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  participantName: {
-    fontSize: 14,
-    color: '#fff',
-    fontWeight: '500',
-  },
-});
+      borderRadius: 5,
+      backgroundColor: '#FF3B30',
+      marginLeft: -5,
+    },
+    currentTimeBar: {
+      flex: 1,
+      height: 2,
+      backgroundColor: '#FF3B30',
+    },
+    dayHourSlot: {
+      flexDirection: 'row',
+      minHeight: HOUR_HEIGHT,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    dayHourLabel: {
+      width: 60,
+      paddingTop: 8,
+      alignItems: 'center',
+      borderRightWidth: 1,
+      borderRightColor: colors.border,
+    },
+    dayHourText: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    dayHourContent: {
+      flex: 1,
+      padding: 8,
+    },
+    dayActivityCard: {
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      marginBottom: 8,
+      borderLeftWidth: 4,
+      ...createShadow({
+        width: 0,
+        height: 2,
+        opacity: isDark ? 0.3 : 0.05,
+        radius: 4,
+        elevation: 2,
+      }),
+    },
+    dayActivityTouchable: {
+      padding: 12,
+    },
+    dayActivityHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 8,
+    },
+    dayActivityBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    dayActivityType: {
+      fontSize: 11,
+      fontWeight: '600',
+      textTransform: 'capitalize',
+    },
+    spaceBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 12,
+      gap: 4,
+    },
+    spaceDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
+    spaceBadgeText: {
+      fontSize: 10,
+      fontWeight: '500',
+      color: colors.textSecondary,
+    },
+    dayActivityTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    dayActivityDescription: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginBottom: 8,
+      lineHeight: 18,
+    },
+    dayActivityMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginBottom: 12,
+    },
+    dayActivityDuration: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    dayActivityStatus: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    statusDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
+    dayActivityMetaText: {
+      fontSize: 11,
+      color: colors.textSecondary,
+    },
+    dayActivityActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    dayAction: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 20,
+      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F5F5F5',
+      gap: 4,
+    },
+    dayActionJoin: {
+      padding: 0,
+      backgroundColor: 'transparent',
+    },
+    joinButtonGradient: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 20,
+      gap: 4,
+    },
+    joinButtonText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: '#fff',
+    },
+    dayActionText: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    modalOverlay: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    modalContainer: {
+      backgroundColor: '#1A1A2E',
+      borderRadius: 24,
+      width: Math.min(width - 40, 500),
+      maxHeight: height * 0.8,
+      ...createShadow({
+        width: 0,
+        height: 10,
+        opacity: 0.3,
+        radius: 20,
+        elevation: 10,
+      }),
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      paddingVertical: 15,
+      borderBottomWidth: 1,
+      borderBottomColor: 'rgba(255,255,255,0.1)',
+    },
+    modalHeaderTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+      gap: 10,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: '#fff',
+      flexShrink: 1,
+    },
+    editButton: {
+      padding: 8,
+      backgroundColor: 'rgba(0, 122, 255, 0.1)',
+      borderRadius: 8,
+    },
+    modalContent: {
+      padding: 20,
+    },
+    modalSection: {
+      marginBottom: 20,
+    },
+    modalSectionTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.tint,
+      marginBottom: 8,
+      textTransform: 'uppercase',
+    },
+    modalText: {
+      fontSize: 14,
+      color: '#fff',
+      lineHeight: 20,
+    },
+    modalTimeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 8,
+    },
+    modalSpaceRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    modalSpaceDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+    },
+    modalActions: {
+      flexDirection: 'row',
+      gap: 12,
+      marginTop: 20,
+    },
+    modalAction: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 12,
+      backgroundColor: 'rgba(255,255,255,0.1)',
+      alignItems: 'center',
+      gap: 6,
+    },
+    modalActionJoin: {
+      padding: 0,
+      backgroundColor: 'transparent',
+    },
+    modalJoinGradient: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 12,
+      borderRadius: 12,
+      gap: 6,
+    },
+    modalActionText: {
+      fontSize: 13,
+      color: '#fff',
+    },
+    modalJoinText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: '#fff',
+    },
+    sectionHeaderRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    manageButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+      borderRadius: 12,
+      backgroundColor: 'rgba(0,122,255,0.1)',
+    },
+    manageButtonText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.tint,
+    },
+    participantsList: {
+      gap: 10,
+    },
+    participantItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: 'rgba(255,255,255,0.05)',
+      padding: 10,
+      borderRadius: 12,
+    },
+    participantInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    participantAvatar: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.tint,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    avatarText: {
+      color: '#fff',
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    participantName: {
+      fontSize: 14,
+      color: '#fff',
+      fontWeight: '500',
+    },
+  });
+};
 
 export default CollaborativeActivities;

@@ -33,31 +33,53 @@ import { MediaCompressor } from '@/utils/mediaCompressor';
 import GenericMenu, { MenuItem } from '@/components/GenericMenu';
 import { AnchorPosition, calculateAnchor } from '@/utils/layout';
 import PlatformCameraView from '@/components/PlatformCameraView';
+import { Colors } from '@/constants/Colors';
+import { useAppTheme } from '@/hooks/useAppTheme';
+import { useThemeStore } from '@/stores/themeStore';
+
+export const THEME_CONFIG = {
+  nav: Colors.nav,
+  backButtonSize: 28,
+  backButtonIcon: 'chevron-back' as const,
+};
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
 
-const SettingsItem = ({ name, icon, color, onPress, badge, rightElement }: any) => (
-  <TouchableOpacity style={styles.item} onPress={onPress} activeOpacity={0.7} disabled={!!rightElement}>
-    <View style={[styles.iconContainer, { backgroundColor: color + '40' }]}>
-      <Ionicons name={icon} size={22} color={color} />
-    </View>
-    <Text style={styles.itemText}>{name}</Text>
-    {!!badge && badge > 0 && (
-      <View style={styles.badge}>
-        <Text style={styles.badgeText}>{badge > 99 ? '99+' : badge}</Text>
+const SettingsItem = ({ name, icon, color, onPress, badge, rightElement }: any) => {
+  const { colors, activeScheme } = useAppTheme();
+  return (
+    <TouchableOpacity 
+      style={[styles.item, { backgroundColor: colors.card, borderColor: activeScheme === 'dark' ? colors.border : '#000' }]} 
+      onPress={onPress} 
+      activeOpacity={0.7} 
+      disabled={!!rightElement}
+    >
+      <View style={[styles.iconContainer, { backgroundColor: color + '20', borderColor: activeScheme === 'dark' ? colors.border : 'rgba(0,0,0,0.05)' }]}>
+        <Ionicons name={icon} size={22} color={color} />
       </View>
-    )}
-    {rightElement ? rightElement : <Ionicons name="chevron-forward" size={20} color="rgba(0,0,0,0.3)" />}
-  </TouchableOpacity>
-);
+      <Text style={[styles.itemText, { color: colors.text }]}>{name}</Text>
+      {!!badge && badge > 0 && (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{badge > 99 ? '99+' : badge}</Text>
+        </View>
+      )}
+      {rightElement ? rightElement : <Ionicons name="chevron-forward" size={20} color={colors.textSecondary + '99'} />}
+    </TouchableOpacity>
+  );
+};
 
 const Page = () => {
+  const { colors, activeScheme, themePreference } = useAppTheme();
+  const { setThemePreference } = useThemeStore();
   const { user, setUser } = useContext(AuthContext);
   const { unreadModerationCount } = useNotificationStore();
   const { bookmarks } = useBookmarkStore();
   
   const [activeTab, setActiveTab] = useState<'settings' | 'stats'>('settings');
+  const [showThemeMenu, setShowThemeMenu] = useState(false);
+  const [themeMenuPosition, setThemeMenuPosition] = useState<AnchorPosition | undefined>(undefined);
+  const themeIconRef = useRef<View>(null);
   const [editNameMode, setEditNameMode] = useState(false);
   const [newName, setNewName] = useState(user?.name || '');
   const [saving, setSaving] = useState(false);
@@ -226,6 +248,34 @@ const Page = () => {
     } as MenuItem] : [])
   ];
 
+  const handleThemeAction = () => {
+    if (themeIconRef.current) {
+      themeIconRef.current.measure((x, y, width, height, pageX, pageY) => {
+        const anchor = calculateAnchor(pageX, pageY, width, height, 220);
+        setThemeMenuPosition(anchor);
+        setShowThemeMenu(true);
+      });
+    } else {
+      setShowThemeMenu(true);
+    }
+  };
+
+  const getThemeIcon = () => {
+    switch (themePreference) {
+      case 'light': return 'sunny';
+      case 'dark': return 'moon';
+      case 'dynamic': return 'color-palette';
+      default: return 'contrast';
+    }
+  };
+
+  const themeMenuItems: MenuItem[] = [
+    { icon: 'contrast', label: 'Automatic (System)', onPress: () => { setThemePreference('automatic'); setShowThemeMenu(false); } },
+    { icon: 'sunny', label: 'Light Mode', onPress: () => { setThemePreference('light'); setShowThemeMenu(false); } },
+    { icon: 'moon', label: 'Dark Mode', onPress: () => { setThemePreference('dark'); setShowThemeMenu(false); } },
+    { icon: 'color-palette', label: 'Dynamic (Android 12+)', onPress: () => { setThemePreference('dynamic'); setShowThemeMenu(false); } },
+  ];
+
   const handleWebCapture = async () => {
     if (webCameraRef.current) {
       try {
@@ -342,32 +392,51 @@ const Page = () => {
   }, [user, unreadModerationCount, bookmarks?.length, pushEnabled]);
 
   return (
-    <View style={styles.mainContainer}>
-      <StatusBar barStyle="dark-content" />
+    <View style={[styles.mainContainer, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={activeScheme === 'dark' ? 'light-content' : 'dark-content'} />
       
       <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 60 : 40 }]}>
-        <Text style={styles.headerTitle}>Settings & Stats</Text>
-        <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
-          <Ionicons name="close" size={24} color="#1a1a1a" />
-        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Settings & Stats</Text>
+        <View ref={themeIconRef}>
+          <TouchableOpacity onPress={handleThemeAction} style={styles.closeButton}>
+            <Ionicons name={getThemeIcon()} size={22} color={colors.tint} />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <View style={styles.tabBar}>
-        <TouchableOpacity style={[styles.tab, activeTab === 'settings' && styles.activeTab]} onPress={() => setActiveTab('settings')}>
-          <Text style={[styles.tabText, activeTab === 'settings' && styles.activeTabText]}>Profile & Security</Text>
+      <GenericMenu
+        visible={showThemeMenu}
+        onClose={() => setShowThemeMenu(false)}
+        items={themeMenuItems}
+        anchorPosition={themeMenuPosition}
+      />
+
+      <View style={[styles.tabBar, { backgroundColor: colors.muted }]}>
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'settings' && { backgroundColor: colors.tint }]} 
+          onPress={() => setActiveTab('settings')}
+        >
+          <Text style={[styles.tabText, activeTab === 'settings' ? { color: '#fff' } : { color: colors.textSecondary }]}>
+            Profile & Security
+          </Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.tab, activeTab === 'stats' && styles.activeTab]} onPress={() => setActiveTab('stats')}>
-          <Text style={[styles.tabText, activeTab === 'stats' && styles.activeTabText]}>Insights</Text>
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'stats' && { backgroundColor: colors.tint }]} 
+          onPress={() => setActiveTab('stats')}
+        >
+          <Text style={[styles.tabText, activeTab === 'stats' ? { color: '#fff' } : { color: colors.textSecondary }]}>
+            Insights
+          </Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.profileCard}>
+        <View style={[styles.profileCard, { backgroundColor: colors.surface }]}>
           <TouchableOpacity onPress={handlePhotoAction} disabled={saving}>
             <View style={styles.photoWrapper}>
               {renderProfilePhoto()}
-              <View ref={cameraIconRef} style={styles.cameraBadge}>
-                <Ionicons name="camera" size={14} color="#fff" />
+              <View ref={cameraIconRef} style={[styles.cameraBadge, { backgroundColor: colors.tint, borderColor: colors.surface }]}>
+                <Ionicons name="camera" size={14} color={activeScheme === 'dark' ? colors.background : "#fff"} />
               </View>
             </View>
           </TouchableOpacity>
@@ -424,26 +493,27 @@ const Page = () => {
 
           <View style={styles.nameSection}>
             {editNameMode ? (
-              <View style={styles.nameInputWrapper}>
+              <View style={[styles.nameInputWrapper, { borderBottomColor: colors.tint }]}>
                 <TextInput
                   ref={nameInputRef}
-                  style={styles.nameInput}
+                  style={[styles.nameInput, { color: colors.text }]}
                   value={newName}
                   onChangeText={setNewName}
                   onBlur={handleNameUpdate}
                   onSubmitEditing={handleNameUpdate}
-                  placeholderTextColor="rgba(0,0,0,0.3)"
+                  placeholderTextColor={activeScheme === 'dark' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
                   returnKeyType="done"
+                  keyboardAppearance={activeScheme}
                 />
-                {saving && <ActivityIndicator size="small" color="#0084ff" />}
+                {saving && <ActivityIndicator size="small" color={colors.tint} />}
               </View>
             ) : (
               <TouchableOpacity style={styles.nameRow} onPress={() => setEditNameMode(true)}>
-                <Text style={styles.userName}>{user?.name}</Text>
-                <Ionicons name="pencil-outline" size={16} color="#0084ff" />
+                <Text style={[styles.userName, { color: colors.text }]}>{user?.name}</Text>
+                <Ionicons name="pencil-outline" size={16} color={colors.tint} />
               </TouchableOpacity>
             )}
-            <Text style={styles.userRole}>{user?.is_admin ? 'Elite Admin' : 'Premium Member'}</Text>
+            <Text style={[styles.userRole, { color: colors.textSecondary }]}>{user?.is_admin ? 'Elite Admin' : 'Premium Member'}</Text>
           </View>
         </View>
 
@@ -452,7 +522,7 @@ const Page = () => {
             <MotiView from={{ opacity: 0, translateY: 10 }} animate={{ opacity: 1, translateY: 0 }} key="settings">
               {settingsSections.map((section) => (
                 <View key={section.title} style={styles.section}>
-                  <Text style={styles.sectionTitle}>{section.title}</Text>
+                  <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{section.title}</Text>
                   {section.items.map((item: any) => (
                     <SettingsItem 
                       key={item.name}
@@ -486,21 +556,21 @@ const Page = () => {
           ) : (
             <MotiView from={{ opacity: 0, translateY: 10 }} animate={{ opacity: 1, translateY: 0 }} key="stats">
               <View style={styles.statsGrid}>
-                <View style={styles.statCard}>
-                  <Text style={styles.statValue}>{bookmarks?.length || 0}</Text>
-                  <Text style={styles.statLabel}>Total Saves</Text>
+                <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+                  <Text style={[styles.statValue, { color: colors.text }]}>{bookmarks?.length || 0}</Text>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Saves</Text>
                 </View>
-                <View style={styles.statCard}>
-                  <Text style={styles.statValue}>0</Text>
-                  <Text style={styles.statLabel}>App Influence</Text>
+                <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+                  <Text style={[styles.statValue, { color: colors.text }]}>0</Text>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>App Influence</Text>
                 </View>
               </View>
               
-              <View style={styles.aiInsightsCard}>
-                <Text style={styles.insightTitle}>AI Engagement Trends</Text>
-                <Text style={styles.insightText}>Your activity suggests a high interest in creative communities. Your content interactions are 100% compliant.</Text>
-                <View style={styles.trendBar}>
-                  <LinearGradient colors={['#0084ff', '#00c6ff']} style={[styles.trendFill, { width: '85%' }]} />
+              <View style={[styles.aiInsightsCard, { backgroundColor: colors.tint + '10', borderLeftColor: colors.tint }]}>
+                <Text style={[styles.insightTitle, { color: colors.tint }]}>AI Engagement Trends</Text>
+                <Text style={[styles.insightText, { color: colors.textSecondary }]}>Your activity suggests a high interest in creative communities. Your content interactions are 100% compliant.</Text>
+                <View style={[styles.trendBar, { backgroundColor: colors.muted }]}>
+                  <LinearGradient colors={[colors.tint, colors.tint + '80']} style={[styles.trendFill, { width: '85%' }]} />
                 </View>
                 <Text style={styles.trendLabel}>Account Health: Excellent</Text>
               </View>
@@ -513,7 +583,7 @@ const Page = () => {
 };
 
 const styles = StyleSheet.create({
-  mainContainer: { flex: 1, backgroundColor: '#fff' },
+  mainContainer: { flex: 1 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 20 },
   headerTitle: { fontSize: 22, fontWeight: '800', color: '#1a1a1a', letterSpacing: -0.5 },
   closeButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.05)', justifyContent: 'center', alignItems: 'center' },
@@ -527,18 +597,18 @@ const styles = StyleSheet.create({
   photoWrapper: { position: 'relative', marginBottom: 16 },
   profilePhoto: { width: 100, height: 100, borderRadius: 50, borderWidth: 2, borderColor: '#0084ff', justifyContent: 'center', alignItems: 'center' },
   initials: { fontSize: 36, fontWeight: 'bold', color: '#fff' },
-  cameraBadge: { position: 'absolute', bottom: -4, right: -4, backgroundColor: '#0084ff', width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#fff' },
+  cameraBadge: { position: 'absolute', bottom: -4, right: -4, backgroundColor: '#0084ff', width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center', borderWidth: 3 },
   nameSection: { alignItems: 'center' },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  userName: { fontSize: 24, fontWeight: '700', color: '#1a1a1a' },
-  userRole: { fontSize: 14, color: 'rgba(0,0,0,0.6)', marginTop: 4 },
+  userName: { fontSize: 24, fontWeight: '700' },
+  userRole: { fontSize: 14, marginTop: 4 },
   nameInputWrapper: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#0084ff', width: width * 0.6 },
   nameInput: { color: '#1a1a1a', fontSize: 24, fontWeight: '700', textAlign: 'center', flex: 1, padding: 0 },
   section: { marginBottom: 24 },
   sectionTitle: { fontSize: 13, fontWeight: '700', color: 'rgba(0,0,0,0.6)', textTransform: 'uppercase', marginBottom: 16, letterSpacing: 1 },
   item: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', padding: 18, borderRadius: 20, marginBottom: 12, borderWidth: 1.5, borderColor: '#000' },
-  iconContainer: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginRight: 15, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)' },
-  itemText: { flex: 1, color: '#1a1a1a', fontSize: 16, fontWeight: '700' },
+  iconContainer: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginRight: 15, borderWidth: 1 },
+  itemText: { flex: 1, fontSize: 16, fontWeight: '700' },
   badge: { backgroundColor: '#F44336', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2, marginRight: 8 },
   badgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
   logoutBtn: { marginTop: 8 },

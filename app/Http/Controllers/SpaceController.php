@@ -66,7 +66,7 @@ class SpaceController extends Controller
     public function index(Request $request)
     {
         try {
-            /** @var \App\Models\User $user */
+            /** @var User $user */
             $user = Auth::user();
             
             $spaces = CollaborationSpace::forUser($user->id)
@@ -165,7 +165,7 @@ class SpaceController extends Controller
                 ], 422);
             }
 
-            /** @var \App\Models\User $user */
+            /** @var User $user */
             $user = Auth::user();
 
             // Create the space
@@ -281,7 +281,7 @@ class SpaceController extends Controller
         DB::beginTransaction();
         
         try {
-            /** @var \App\Models\User $user */
+            /** @var User $user */
             $user = Auth::user();
             
             $space = CollaborationSpace::create([
@@ -342,7 +342,7 @@ class SpaceController extends Controller
 
         // ✅ Permisions Fix (WhatsApp/Telegram Style)
         // 1. Direct and Protected spaces are strictly private
-        $settings = is_string($space->settings) ? json_decode($space->settings, true) : $space->settings;
+        $settings = $space->settings;
         $isPrivateType = in_array($space->space_type, ['direct', 'protected']);
         $isDirectChat = $isPrivateType || ($space->space_type === 'chat' && ($settings['is_direct'] ?? false));
         
@@ -354,7 +354,7 @@ class SpaceController extends Controller
         }
 
         // Update last active
-        if ($participation) {
+        if ($participation instanceof SpaceParticipation) {
             $participation->update(['last_active_at' => now()]);
         }
 
@@ -392,7 +392,7 @@ class SpaceController extends Controller
 
         // Get other participant for direct spaces
         $directSpaceIds = $spaces->filter(function($s) {
-            $settings = is_string($s->settings) ? json_decode($s->settings, true) : $s->settings;
+            $settings = (array) $s->settings;
             return ($settings['is_direct'] ?? false) || $s->space_type === 'direct';
         })->pluck('id')->toArray();
 
@@ -645,9 +645,11 @@ public function updateContentState(Request $request, $id)
     ]);
     
     // Update user's last active time
-    $participation->update([
-        'last_active_at' => now(),
-    ]);
+    if ($participation instanceof SpaceParticipation) {
+        $participation->update([
+            'last_active_at' => now(),
+        ]);
+    }
     
     // Refresh the space
     $space->refresh()->load('creator');
@@ -689,11 +691,13 @@ public function updateContentState(Request $request, $id)
                     $canWrite = true;
                 }
 
-                $existing->update([
-                    'role' => $role,
-                    'permissions' => ['read' => true, 'write' => $canWrite],
-                    'last_active_at' => now(),
-                ]);
+                if ($existing instanceof SpaceParticipation) {
+                    $existing->update([
+                        'role' => $role,
+                        'permissions' => ['read' => true, 'write' => $canWrite],
+                        'last_active_at' => now(),
+                    ]);
+                }
                 $participation = $existing;
             } else {
                 return response()->json([
@@ -716,7 +720,7 @@ public function updateContentState(Request $request, $id)
         }
 
         // ✅ Clear any SpaceInvitation notification for this space to avoid duplication
-        /** @var \App\Models\User $authUser */
+        /** @var User $authUser */
         $authUser = auth()->user();
         $authUser->unreadNotifications()
             ->where('type', 'App\Notifications\SpaceInvitationNotification')
@@ -724,7 +728,7 @@ public function updateContentState(Request $request, $id)
             ->update(['read_at' => now()]);
         
         // Broadcast participant joined
-        /** @var \App\Models\User $authUser */
+        /** @var User $authUser */
         $authUser = auth()->user();
         broadcast(new ParticipantJoined($space, $authUser))->toOthers();
         
@@ -735,7 +739,7 @@ public function updateContentState(Request $request, $id)
         $this->sendSystemMessage($space, $authUser->name . " joined the space");
         
         return response()->json([
-            'participation' => $participation->load('user'),
+            'participation' => ($participation instanceof SpaceParticipation) ? $participation->load('user') : $participation,
             'space' => $this->formatSpaceData($space->load(['creator', 'participations.user']), $authUser),
             'message' => 'Successfully joined space'
         ]);
@@ -769,10 +773,12 @@ public function updateContentState(Request $request, $id)
 
             // Broadcast before deleting
             $authUser = auth()->user();
-            if ($authUser instanceof \App\Models\User) {
+            if ($authUser instanceof User) {
                 broadcast(new ParticipantLeft($space, $authUser))->toOthers();
             }
-            $participation->delete();
+            if ($participation instanceof SpaceParticipation) {
+                $participation->delete();
+            }
 
             // Broadcast participation update to everyone in the space channel 
             // AND to the public 'spaces' channel so list views can update count
@@ -801,7 +807,7 @@ public function updateContentState(Request $request, $id)
         ]);
         
         $space = CollaborationSpace::findOrFail($id);
-        /** @var \App\Models\User $inviter */
+        /** @var User $inviter */
         $inviter = auth()->user();
         
         // Check if user has permission to invite
@@ -838,9 +844,9 @@ public function updateContentState(Request $request, $id)
                 ]);
                 
                 $user = User::find($userId);
-                if ($user && $inviter instanceof \App\Models\User) {
+                if ($user && $inviter instanceof User) {
                     // Send database notification
-                    $user->notify(new \App\Notifications\SpaceInvitationNotification($space, $inviter, $user, $request->message));
+                    $user->notify(new SpaceInvitationNotification($space, $inviter, $user, $request->message));
                     
                     // Broadcast real-time event
                     broadcast(new SpaceInvitationSent($space, $inviter, $userId, $request->message))->toOthers();
@@ -884,7 +890,7 @@ public function updateContentState(Request $request, $id)
         
         // Broadcast participant joined
         $authUser = auth()->user();
-        if ($authUser instanceof \App\Models\User) {
+        if ($authUser instanceof User) {
             broadcast(new ParticipantJoined($space, $authUser))->toOthers();
         }
         
@@ -928,7 +934,7 @@ public function startCall(Request $request, $id)
 
     // Ensure conversation exists
     if (!$space->linked_conversation_id) {
-        $conversation = \App\Models\Conversation::create([
+        $conversation = Conversation::create([
             'type' => 'meeting',
             'name' => $space->title,
             'has_meeting_mode' => true,
@@ -980,7 +986,7 @@ public function startCall(Request $request, $id)
 
     // Notify all participants
     $authUser = auth()->user();
-    if ($authUser instanceof \App\Models\User) {
+    if ($authUser instanceof User) {
         foreach ($participantIds as $participantId) {
             if ($participantId != $authUser->id) {
                 // Individual direct notification on user's private channel
@@ -1027,12 +1033,12 @@ public function startCall(Request $request, $id)
         ]);
     
     $space = CollaborationSpace::findOrFail($id);
-    /** @var \App\Models\User $user */
+    /** @var User $user */
     $user = auth()->user();
     if (!$user) return response()->json(['message' => 'Unauthenticated'], 401);
     
     // Broadcast signal to target user
-    if ($user instanceof \App\Models\User) {
+    if ($user instanceof User) {
         Log::info("📡 WebRTC Signal: {$request->type} from User {$user->id} to User {$request->target_user_id} in Space {$id}", [
             'call_id' => $request->call_id,
             'has_offer' => isset($request->offer),
@@ -1078,8 +1084,8 @@ public function callMute(Request $request, $id)
     }
     
     // Broadcast mute state to space
-    if ($user instanceof \App\Models\User) {
-        broadcast(new \App\Events\MuteStateChanged($space, $user, $request->is_muted))->toOthers();
+    if ($user instanceof User) {
+        broadcast(new MuteStateChanged($space, $user, $request->is_muted))->toOthers();
     }
     
     return response()->json(['success' => true]);
@@ -1110,8 +1116,8 @@ public function callVideo(Request $request, $id)
     }
     
     // Broadcast video state to space
-    if ($user instanceof \App\Models\User) {
-        broadcast(new \App\Events\VideoStateChanged($space, $user, $request->has_video))->toOthers();
+    if ($user instanceof User) {
+        broadcast(new VideoStateChanged($space, $user, $request->has_video))->toOthers();
     }
     
     return response()->json(['success' => true]);
@@ -1142,8 +1148,8 @@ public function callScreenShare(Request $request, $id)
     }
     
     // Broadcast screen share state to space
-    if ($user instanceof \App\Models\User) {
-        broadcast(new \App\Events\ScreenShareToggled($space, $user, $request->is_sharing))->toOthers();
+    if ($user instanceof User) {
+        broadcast(new ScreenShareToggled($space, $user, $request->is_sharing))->toOthers();
     }
     
     return response()->json(['success' => true]);
@@ -1193,8 +1199,8 @@ public function joinCall(Request $request, $id)
         
         // Broadcast join signal on signaling channel
         $authUser = auth()->user();
-        if ($authUser instanceof \App\Models\User) {
-            broadcast(new \App\Events\WebRTCSignal($space, $authUser, 0, 'call-active', ['user_id' => $userId], $call->id))->toOthers();
+        if ($authUser instanceof User) {
+            broadcast(new WebRTCSignal($space, $authUser, 0, 'call-active', ['user_id' => $userId], $call->id))->toOthers();
         }
 
         return response()->json([
@@ -1283,7 +1289,7 @@ public function endCall(Request $request, $id)
             ]);
         } else {
             // Just broadcast that this participant left
-            if ($user instanceof \App\Models\User) {
+            if ($user instanceof User) {
                 broadcast(new ParticipantLeft($space, $user))->toOthers();
             }
         }
@@ -1316,7 +1322,7 @@ public function endCall(Request $request, $id)
             ->where('user_id', $user->id)
             ->first();
             
-        if ($participation) {
+        if ($participation instanceof SpaceParticipation) {
             $audioVideoState = $participation->audio_video_state ?? [];
             $audioVideoState['is_sharing_screen'] = $request->is_sharing;
             
@@ -1326,7 +1332,7 @@ public function endCall(Request $request, $id)
         }
         
         // Broadcast screen share state
-        if ($user instanceof \App\Models\User) {
+        if ($user instanceof User) {
             broadcast(new ScreenShareToggled($space, $user, $request->is_sharing))->toOthers();
         }
         
@@ -1356,7 +1362,7 @@ public function endCall(Request $request, $id)
         // Create media record
         $media = \App\Models\Media::create([
             'user_id' => $user->id,
-            'model_type' => \App\Models\CollaborationSpace::class,
+            'model_type' => CollaborationSpace::class,
             'model_id' => $space->id,
             'file_path' => $path,
             'original_name' => $file->getClientOriginalName(),
@@ -1372,8 +1378,8 @@ public function endCall(Request $request, $id)
         // Handle as space logo if requested
         if ($request->boolean('is_logo')) {
             // Delete old photo if exists
-            if ($space->image_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($space->image_path)) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($space->image_path);
+            if ($space->image_path && Storage::disk('public')->exists($space->image_path)) {
+                Storage::disk('public')->delete($space->image_path);
             }
             $space->update(['image_path' => $path]);
         }
@@ -1538,7 +1544,7 @@ public function endCall(Request $request, $id)
             'id' => (string) Str::uuid(),
             'user_id' => $user->id,
             'user_name' => $user->name,
-            'content' => $request->content,
+            'content' => $request->input('content'),
             'type' => $request->type ?? 'text',
             'file_path' => $request->file_path,
             'reply_to_id' => $request->reply_to_id,
@@ -1560,9 +1566,11 @@ public function endCall(Request $request, $id)
         ]);
         
         // Update user's last active time
-        $participation->update([
-            'last_active_at' => now(),
-        ]);
+        if ($participation instanceof SpaceParticipation) {
+            $participation->update([
+                'last_active_at' => now(),
+            ]);
+        }
         
         // 🔔 Notify original sender if this is a reply
         if ($request->reply_to_id) {
@@ -1571,7 +1579,7 @@ public function endCall(Request $request, $id)
                 $recipient = User::find(data_get($origMsg, 'user_id'));
                 if ($recipient) {
                     try {
-                        \Illuminate\Support\Facades\Notification::send($recipient, 
+                        Notification::send($recipient, 
                             new \App\Notifications\MessageRepliedNotification($user, $origMsg, $message, $space->id)
                         );
                     } catch (\Exception $e) {
@@ -1586,7 +1594,7 @@ public function endCall(Request $request, $id)
         // ✅ FIX: Broadcast to presence channel and all participants' individual user channels
         try {
             // General presence channel for those inside the space
-            broadcast(new \App\Events\MessageSent($message, $space->id, $user))->toOthers();
+            broadcast(new MessageSent($message, $space->id, $user))->toOthers();
             
             // Individual user channels for those on the chat list page
             $participants = $space->participations->where('user_id', '!=', $user->id);
@@ -1594,11 +1602,11 @@ public function endCall(Request $request, $id)
             
             if (!empty($userIds)) {
                 // 1. Real-time broadcast for chat list snippet updates
-                broadcast(new \App\Events\SpaceMessageSent($space->id, $userIds, $message))->toOthers();
+                broadcast(new SpaceMessageSent($space->id, $userIds, $message))->toOthers();
 
                 // 2. Persistent Database Notification for offline/header fetch
                 $targetUsers = User::whereIn('id', $userIds)->get();
-                \Illuminate\Support\Facades\Notification::send($targetUsers, new \App\Events\MessageSent($message, $space->id, $user));
+                Notification::send($targetUsers, new MessageSent($message, $space->id, $user));
             }
         } catch (\Exception $e) {
             Log::error('Failed to broadcast/notify message:', [
@@ -1691,19 +1699,21 @@ public function endCall(Request $request, $id)
             'updated_at' => now(),
         ]);
         
-        $participation->update(['last_active_at' => now()]);
+        if ($participation instanceof SpaceParticipation) {
+            $participation->update(['last_active_at' => now()]);
+        }
         
         // Broadcast
         try {
-            broadcast(new \App\Events\MessageSent($message, $space->id, $user))->toOthers();
+            broadcast(new MessageSent($message, $space->id, $user))->toOthers();
             
             $participants = $space->participations->where('user_id', '!=', $user->id);
             $userIds = $participants->pluck('user_id')->toArray();
             
             if (!empty($userIds)) {
-                broadcast(new \App\Events\SpaceMessageSent($space->id, $userIds, $message))->toOthers();
+                broadcast(new SpaceMessageSent($space->id, $userIds, $message))->toOthers();
                 $targetUsers = User::whereIn('id', $userIds)->get();
-                \Illuminate\Support\Facades\Notification::send($targetUsers, new \App\Events\MessageSent($message, $space->id, $user));
+                Notification::send($targetUsers, new MessageSent($message, $space->id, $user));
             }
         } catch (\Exception $e) {
             Log::error('Failed to broadcast audio message: ' . $e->getMessage());
@@ -1800,7 +1810,7 @@ public function endCall(Request $request, $id)
 
         try {
             $userIds = $space->participations->where('user_id', '!=', $user->id)->pluck('user_id')->toArray();
-            broadcast(new \App\Events\MessageDeleted($messageId, $space->id, $userIds))->toOthers();
+            broadcast(new MessageDeleted($messageId, $space->id, $userIds))->toOthers();
         } catch (\Exception $e) {
             Log::error('Failed to broadcast message deletion: ' . $e->getMessage());
         }
@@ -1905,15 +1915,15 @@ public function endCall(Request $request, $id)
         if ($isNewReaction) {
             $messageOwnerId = $msg['user_id'] ?? null;
             if ($messageOwnerId && (int)$messageOwnerId !== (int)$user->id) {
-                $owner = \App\Models\User::find($messageOwnerId);
+                $owner = User::find($messageOwnerId);
                 if ($owner) {
-                    \Illuminate\Support\Facades\Notification::send($owner, new \App\Notifications\MessageReactedNotification($user, $msg, $emoji, $space->id));
+                    Notification::send($owner, new \App\Notifications\MessageReactedNotification($user, $msg, $emoji, $space->id));
                 }
             }
         }
 
         try {
-            broadcast(new \App\Events\MessageReacted((object)$msg, $user, $emoji, $space->id))->toOthers();
+            broadcast(new MessageReacted((object)$msg, $user, $emoji, $space->id))->toOthers();
         } catch (\Exception $e) {
             Log::error('Failed to broadcast reaction: ' . $e->getMessage());
         }
@@ -1960,7 +1970,7 @@ public function endCall(Request $request, $id)
 
         try {
             $userIds = $space->participations->where('user_id', '!==', $user->id)->pluck('user_id')->toArray();
-            broadcast(new \App\Events\MessagePinned($messageId, $isPinned, $space->id, $userIds))->toOthers();
+            broadcast(new MessagePinned($messageId, $isPinned, $space->id, $userIds))->toOthers();
         } catch (\Exception $e) {
             Log::error('Failed to broadcast message pin: ' . $e->getMessage());
         }
@@ -2021,7 +2031,7 @@ public function endCall(Request $request, $id)
                 $forwardedCount++;
 
                 try {
-                    broadcast(new \App\Events\MessageSent($newMsg, $destSpace->id, $user))->toOthers();
+                    broadcast(new MessageSent($newMsg, $destSpace->id, $user))->toOthers();
                 } catch (\Exception $e) {
                     Log::error('Failed to broadcast forwarded message: ' . $e->getMessage());
                 }
@@ -2253,7 +2263,7 @@ public function endCall(Request $request, $id)
         $response = $training ? $training->response : 'I\'m here to help with your collaboration!';
         
         // Log interaction
-        $interaction = \App\Models\AIInteraction::create([
+        $interaction = AIInteraction::create([
             'space_id' => $space->id,
             'user_id' => auth()->id(),
             'interaction_type' => $request->action ?? 'query',
@@ -2743,17 +2753,19 @@ public function endCall(Request $request, $id)
         }
 
         // Update the role
-        $targetParticipation->update([
-            'role' => $request->role,
-            'permissions' => $this->getPermissionsForRole($request->role),
-        ]);
+        if ($targetParticipation instanceof SpaceParticipation) {
+            $targetParticipation->update([
+                'role' => $request->role,
+                'permissions' => $this->getPermissionsForRole($request->role),
+            ]);
+        }
 
         // Broadcast the change
-        broadcast(new \App\Events\ParticipantUpdated($space, $targetParticipation->user, $request->role))->toOthers();
+        broadcast(new ParticipantUpdated($space, $targetParticipation->user, $request->role))->toOthers();
 
         return response()->json([
             'message' => 'Role updated successfully',
-            'participant' => $targetParticipation->load('user'),
+            'participant' => ($targetParticipation instanceof SpaceParticipation) ? $targetParticipation->load('user') : $targetParticipation,
         ]);
     }
 
@@ -2861,10 +2873,12 @@ public function endCall(Request $request, $id)
         }
 
         // Remove the participant
-        $targetParticipation->delete();
+        if ($targetParticipation instanceof SpaceParticipation) {
+            $targetParticipation->delete();
+        }
 
         // Broadcast the removal
-        broadcast(new \App\Events\ParticipantLeft($space, User::find($userId)))->toOthers();
+        broadcast(new ParticipantLeft($space, User::find($userId)))->toOthers();
         
         return response()->json([
             'message' => 'Participant removed successfully'
@@ -2906,7 +2920,7 @@ public function endCall(Request $request, $id)
     public function muteSpace(Request $request, $id)
     {
         try {
-            /** @var \App\Models\User $user */
+            /** @var User $user */
             $user = Auth::user();
             $isMuted = $this->toggleSpaceProperty($id, $user->id, 'is_muted');
             
@@ -2932,7 +2946,7 @@ public function endCall(Request $request, $id)
     public function archiveSpace(Request $request, $id)
     {
         try {
-            /** @var \App\Models\User $user */
+            /** @var User $user */
             $user = Auth::user();
             $isArchived = $this->toggleSpaceProperty($id, $user->id, 'is_archived');
             
@@ -2958,7 +2972,7 @@ public function endCall(Request $request, $id)
     public function pinSpace(Request $request, $id)
     {
         try {
-            /** @var \App\Models\User $user */
+            /** @var User $user */
             $user = Auth::user();
             $isPinned = $this->toggleSpaceProperty($id, $user->id, 'is_pinned');
             
@@ -2984,7 +2998,7 @@ public function endCall(Request $request, $id)
     public function markAsUnread(Request $request, $id)
     {
         try {
-            /** @var \App\Models\User $user */
+            /** @var User $user */
             $user = Auth::user();
             $isUnread = $this->toggleSpaceProperty($id, $user->id, 'is_unread');
             
@@ -3010,7 +3024,7 @@ public function endCall(Request $request, $id)
     public function markAsRead(Request $request, $id)
     {
         try {
-            /** @var \App\Models\User $user */
+            /** @var User $user */
             $user = Auth::user();
             $participation = SpaceParticipation::where('space_id', $id)
                 ->where('user_id', $user->id)
@@ -3042,7 +3056,7 @@ public function endCall(Request $request, $id)
             $participation->save();
 
             try {
-                broadcast(new \App\Events\SpaceRead($id, $user->id, $lastReadAt->toIso8601String()));
+                broadcast(new SpaceRead($id, $user->id, $lastReadAt->toIso8601String()));
             } catch (\Exception $e) {
                 Log::warning('Broadcast failed for SpaceRead: ' . $e->getMessage());
             }
@@ -3062,7 +3076,7 @@ public function endCall(Request $request, $id)
     public function favoriteSpace(Request $request, $id)
     {
         try {
-            /** @var \App\Models\User $user */
+            /** @var User $user */
             $user = Auth::user();
             $isFavorite = $this->toggleSpaceProperty($id, $user->id, 'is_favorite');
             
@@ -3070,7 +3084,7 @@ public function endCall(Request $request, $id)
                  return response()->json(['message' => 'Participation not found'], 404);
             }
 
-            broadcast(new \App\Events\SpaceFavorited($id, $user->id, $isFavorite));
+            broadcast(new SpaceFavorited($id, $user->id, $isFavorite));
 
             return response()->json([
                 'message' => $isFavorite ? 'Space favorited' : 'Space unfavorited',
@@ -3228,7 +3242,7 @@ public function endCall(Request $request, $id)
         $messages = $contentState['messages'] ?? [];
         
         $message = [
-            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'id' => (string) Str::uuid(),
             'user_id' => 0,
             'user_name' => 'System',
             'content' => $content,
@@ -3247,14 +3261,14 @@ public function endCall(Request $request, $id)
         
         try {
             // General presence channel for those inside the space
-            broadcast(new \App\Events\MessageSent($message, $space->id, null))->toOthers();
+            broadcast(new MessageSent($message, $space->id, null))->toOthers();
             
             // Individual user channels for those on the chat list page
             foreach ($space->participations as $p) {
-                broadcast(new \App\Events\SpaceMessageSent($space->id, $p->user_id, $message))->toOthers();
+                broadcast(new SpaceMessageSent($space->id, $p->user_id, $message))->toOthers();
             }
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('System message broadcast failed: ' . $e->getMessage());
+            Log::error('System message broadcast failed: ' . $e->getMessage());
         }
     }
     /**
@@ -3311,7 +3325,7 @@ public function endCall(Request $request, $id)
             'image_url' => $space->image_url,
             'is_online_in_space' => $participation ? ($participation->presence_data['is_online'] ?? false) : false,
             'my_permissions' => $participation 
-                ? array_merge($this->getDefaultParticipantPermissions($space), (array)($participation->permissions ?? []))
+                ? array_merge($this->getDefaultParticipantPermissions(), (array)($participation->permissions ?? []))
                 : [
                     'is_muted' => false,
                     'is_pinned' => false,

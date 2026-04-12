@@ -1,5 +1,6 @@
 import React, { memo } from "react";
 import { View, Text, TextInput, StyleSheet, TextInputProps } from "react-native"
+import { useAppTheme } from "@/hooks/useAppTheme";
 
 interface FormTextFieldProps extends TextInputProps {
     label?: string;
@@ -7,17 +8,27 @@ interface FormTextFieldProps extends TextInputProps {
 }
 
 const FormTextField = memo(({ label, errors = [], ...rest }: FormTextFieldProps) => {
+    const { colors, activeScheme } = useAppTheme();
+    
     return (
         <View style={styles.container}>
-            {label && <Text style={styles.label}>{label}</Text>}
+            {label && <Text style={[styles.label, { color: colors.textSecondary }]}>{label}</Text>}
             <TextInput 
-                style={styles.textInput} 
+                style={[
+                    styles.textInput, 
+                    { 
+                        backgroundColor: colors.surface, 
+                        borderColor: colors.border,
+                        color: colors.text
+                    }
+                ]} 
                 autoCapitalize='none' 
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={activeScheme === 'dark' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
+                keyboardAppearance={activeScheme}
                 {...rest} 
             />
             {Array.isArray(errors) && errors.map((err) => {
-                return <Text key={err} style={styles.error}>{err}</Text>
+                return <Text key={err} style={[styles.error, { color: colors.error }]}>{err}</Text>
             })}
         </View>
     );

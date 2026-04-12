@@ -23,6 +23,7 @@ import { MediaCompressor } from '@/utils/mediaCompressor';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import getApiBase from '@/services/getApiBase';
 import { getToken } from '@/services/TokenService';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 type Step = 'CONTACTS' | 'DETAILS';
 type PrivacyTier = 'general' | 'protected' | 'channel';
@@ -41,6 +42,8 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
     onSpaceCreated,
 }) => {
     const insets = useSafeAreaInsets();
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
     const [step, setStep] = useState<Step>('CONTACTS');
 
     // Contacts Step State
@@ -126,7 +129,7 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
                             </View>
                         )}
                         {isSelected && (
-                            <View style={styles.contactSelectedBadge}>
+                            <View style={[styles.contactSelectedBadge, { borderColor: colors.background }]}>
                                 <Ionicons name="checkmark" size={14} color="#fff" />
                             </View>
                         )}
@@ -139,7 +142,7 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
                         <Ionicons
                             name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
                             size={24}
-                            color={isSelected ? '#007AFF' : '#C7C7CC'}
+                            color={isSelected ? colors.tint : (activeScheme === 'dark' ? colors.border : '#C7C7CC')}
                         />
                     </View>
                 </TouchableOpacity>
@@ -345,7 +348,7 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
             onRequestClose={onClose}
         >
             <KeyboardAvoidingView
-                style={[GlobalStyles.popupContainer, { paddingTop: insets.top, backgroundColor: '#F2F2F7' }]}
+                style={[GlobalStyles.popupContainer, { paddingTop: insets.top, backgroundColor: activeScheme === 'dark' ? colors.background : '#F2F2F7' }]}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             >
                 <View style={styles.header}>
@@ -361,9 +364,9 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
                         disabled={isCreating}
                     >
                         {isCreating ? (
-                            <ActivityIndicator size="small" color="#007AFF" />
+                            <ActivityIndicator size="small" color={colors.tint} />
                         ) : (
-                            <Text style={[styles.headerButtonText, { fontWeight: '600', textAlign: 'right' }]}>
+                            <Text style={[styles.headerButtonText, { fontWeight: '600', textAlign: 'right', color: colors.tint }]}>
                                 {step === 'CONTACTS' ? 'Next' : 'Create'}
                             </Text>
                         )}
@@ -373,10 +376,11 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
                 {step === 'CONTACTS' && (
                     <View style={styles.stepContainer}>
                         <View style={styles.searchContainer}>
-                            <Ionicons name="search" size={20} color="#8E8E93" style={styles.searchIcon} />
+                            <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
                             <TextInput
                                 style={styles.searchInput}
                                 placeholder="Search contacts..."
+                                placeholderTextColor={colors.textSecondary}
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
                                 clearButtonMode="while-editing"
@@ -411,11 +415,11 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
                                 {spacePhoto ? (
                                     <Image source={{ uri: spacePhoto }} style={styles.photoPreview} />
                                 ) : (
-                                    <View style={styles.photoPlaceholder}>
-                                        <Ionicons name="camera" size={30} color="#007AFF" />
+                                    <View style={[styles.photoPlaceholder, { backgroundColor: activeScheme === 'dark' ? colors.muted : '#E5E5EA' }]}>
+                                        <Ionicons name="camera" size={30} color={colors.tint} />
                                     </View>
                                 )}
-                                <View style={styles.photoEditBadge}>
+                                <View style={[styles.photoEditBadge, { backgroundColor: colors.tint, borderColor: colors.background }]}>
                                     <Ionicons name="add" size={14} color="#fff" />
                                 </View>
                             </TouchableOpacity>
@@ -423,7 +427,7 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
                             <View style={styles.nameInputContainer}>
                                 <TextInput
                                     style={styles.nameInput}
-                                    placeholder="Space Name"
+                                    placeholderTextColor={colors.textSecondary}
                                     value={spaceName}
                                     onChangeText={setSpaceName}
                                     maxLength={100}
@@ -436,7 +440,7 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
                             <Text style={styles.sectionLabel}>Description (Optional)</Text>
                             <TextInput
                                 style={styles.descriptionInput}
-                                placeholder="What is this space for?"
+                                placeholderTextColor={colors.textSecondary}
                                 value={spaceDescription}
                                 onChangeText={setSpaceDescription}
                                 multiline
@@ -453,7 +457,7 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
                                     <Text style={[styles.tierTitle, privacyTier === 'general' && styles.tierTitleSelected]}>General</Text>
                                     <Text style={styles.tierDescription}>Open group. Anyone can find and join.</Text>
                                 </View>
-                                {privacyTier === 'general' && <Ionicons name="checkmark" size={20} color="#007AFF" />}
+                                {privacyTier === 'general' && <Ionicons name="checkmark" size={20} color={colors.tint} />}
                             </TouchableOpacity>
 
                             <TouchableOpacity style={[styles.tierOption, privacyTier === 'protected' && styles.tierOptionSelected]} onPress={() => setPrivacyTier('protected')}>
@@ -493,7 +497,7 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -501,22 +505,22 @@ const styles = StyleSheet.create({
         paddingTop: Platform.OS === 'ios' ? 10 : 20,
         paddingBottom: 10,
         paddingHorizontal: 16,
-        backgroundColor: '#fff',
+        backgroundColor: colors.background,
         borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: '#C7C7CC',
+        borderBottomColor: colors.border,
     },
     headerButton: {
         minWidth: 60,
         justifyContent: 'center',
     },
     headerButtonText: {
-        color: '#007AFF',
+        color: colors.tint,
         fontSize: 17,
     },
     headerTitle: {
         fontSize: 17,
         fontWeight: '600',
-        color: '#000',
+        color: colors.text,
     },
     stepContainer: {
         flex: 1,
@@ -524,7 +528,7 @@ const styles = StyleSheet.create({
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#fff',
+        backgroundColor: activeScheme === 'dark' ? colors.muted : '#fff',
         margin: 16,
         paddingHorizontal: 12,
         borderRadius: 10,
@@ -537,6 +541,7 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 17,
         height: '100%',
+        color: colors.text,
     },
     selectionSummary: {
         paddingHorizontal: 16,
@@ -544,13 +549,13 @@ const styles = StyleSheet.create({
     },
     selectionText: {
         fontSize: 13,
-        color: '#8E8E93',
+        color: colors.textSecondary,
         textTransform: 'uppercase',
     },
     listContent: {
-        backgroundColor: '#fff',
+        backgroundColor: colors.background,
         borderTopWidth: StyleSheet.hairlineWidth,
-        borderTopColor: '#C7C7CC',
+        borderTopColor: colors.border,
     },
     contactRow: {
         flexDirection: 'row',
@@ -558,8 +563,8 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         paddingHorizontal: 16,
         borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: '#C7C7CC',
-        backgroundColor: '#fff',
+        borderBottomColor: colors.border,
+        backgroundColor: colors.background,
     },
     contactAvatarContainer: {
         position: 'relative',
@@ -571,14 +576,14 @@ const styles = StyleSheet.create({
         borderRadius: 22,
     },
     contactAvatarFallback: {
-        backgroundColor: '#E5E5EA',
+        backgroundColor: activeScheme === 'dark' ? colors.muted : '#E5E5EA',
         justifyContent: 'center',
         alignItems: 'center',
     },
     contactAvatarText: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#8E8E93',
+        color: colors.textSecondary,
     },
     contactSelectedBadge: {
         position: 'absolute',
@@ -591,7 +596,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 2,
-        borderColor: '#fff',
     },
     contactInfo: {
         flex: 1,
@@ -600,11 +604,11 @@ const styles = StyleSheet.create({
     contactName: {
         fontSize: 17,
         fontWeight: '500',
-        color: '#000',
+        color: colors.text,
     },
     contactUsername: {
         fontSize: 14,
-        color: '#8E8E93',
+        color: colors.textSecondary,
         marginTop: 2,
     },
     checkboxContainer: {
@@ -615,12 +619,12 @@ const styles = StyleSheet.create({
     detailsTopContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#fff',
+        backgroundColor: colors.background,
         padding: 16,
         marginTop: 20,
         borderTopWidth: StyleSheet.hairlineWidth,
         borderBottomWidth: StyleSheet.hairlineWidth,
-        borderColor: '#C7C7CC',
+        borderColor: colors.border,
     },
     photoPicker: {
         position: 'relative',
@@ -630,7 +634,6 @@ const styles = StyleSheet.create({
         width: 60,
         height: 60,
         borderRadius: 30,
-        backgroundColor: '#E5E5EA',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -643,24 +646,23 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 0,
         right: 0,
-        backgroundColor: '#007AFF',
         borderRadius: 12,
         width: 24,
         height: 24,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 2,
-        borderColor: '#fff',
     },
     nameInputContainer: {
         flex: 1,
         borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: '#C7C7CC',
+        borderBottomColor: colors.border,
     },
     nameInput: {
         fontSize: 17,
         paddingVertical: 10,
         fontWeight: '500',
+        color: colors.text,
     },
     formSection: {
         marginTop: 20,
@@ -669,28 +671,29 @@ const styles = StyleSheet.create({
         marginLeft: 16,
         marginBottom: 8,
         fontSize: 13,
-        color: '#8E8E93',
+        color: colors.textSecondary,
         textTransform: 'uppercase',
     },
     descriptionInput: {
-        backgroundColor: '#fff',
+        backgroundColor: colors.background,
         padding: 16,
         fontSize: 17,
+        color: colors.text,
         minHeight: 80,
         borderTopWidth: StyleSheet.hairlineWidth,
         borderBottomWidth: StyleSheet.hairlineWidth,
-        borderColor: '#C7C7CC',
+        borderColor: colors.border,
     },
     tierOption: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#fff',
+        backgroundColor: colors.background,
         padding: 16,
         borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: '#C7C7CC',
+        borderBottomColor: colors.border,
     },
     tierOptionSelected: {
-        backgroundColor: '#F2F2F7',
+        backgroundColor: colors.surface,
     },
     tierTextContainer: {
         flex: 1,
@@ -699,15 +702,15 @@ const styles = StyleSheet.create({
     tierTitle: {
         fontSize: 17,
         fontWeight: '500',
-        color: '#000',
+        color: colors.text,
         marginBottom: 2,
     },
     tierTitleSelected: {
-        color: '#007AFF',
+        color: colors.tint,
     },
     tierDescription: {
         fontSize: 14,
-        color: '#8E8E93',
+        color: colors.textSecondary,
     },
 });
 

@@ -17,9 +17,11 @@ import { MotiView, AnimatePresence } from 'moti';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BackButton } from '@/components/ui/IconButton';
 import { createShadow } from '@/utils/styles';
 import Fuse from 'fuse.js';
 import GlobalStyles from '@/styles/GlobalStyles';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 const { width } = Dimensions.get('window');
 
@@ -31,6 +33,8 @@ interface FAQ {
 }
 
 const FAQItem = ({ faq, index, searchQuery }: { faq: FAQ; index: number; searchQuery: string }) => {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
     const [isOpen, setIsOpen] = useState(false);
     const [helpful, setHelpful] = useState(faq.helpful);
     const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -94,17 +98,17 @@ const FAQItem = ({ faq, index, searchQuery }: { faq: FAQ; index: number; searchQ
                                 <Text style={styles.helpfulLabel}>Was this helpful?</Text>
                                 <View style={styles.helpfulButtons}>
                                     <TouchableOpacity
-                                        style={[styles.helpfulButton, helpful === 1 && styles.helpfulButtonActive]}
+                                        style={[styles.helpfulButton, helpful === 1 && { backgroundColor: activeScheme === 'dark' ? '#1b2e1b' : '#E8F5E9' }]}
                                         onPress={() => setHelpful(1)}
                                     >
-                                        <Ionicons name="thumbs-up" size={14} color={helpful === 1 ? '#4CAF50' : '#999'} />
+                                        <Ionicons name="thumbs-up" size={14} color={helpful === 1 ? '#4CAF50' : colors.textSecondary} />
                                         <Text style={[styles.helpfulButtonText, helpful === 1 && { color: '#4CAF50' }]}>Yes</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
-                                        style={[styles.helpfulButton, helpful === 0 && styles.helpfulButtonActive]}
+                                        style={[styles.helpfulButton, helpful === 0 && { backgroundColor: activeScheme === 'dark' ? '#2e1b1b' : '#FFEBEE' }]}
                                         onPress={() => setHelpful(0)}
                                     >
-                                        <Ionicons name="thumbs-down" size={14} color={helpful === 0 ? '#F44336' : '#999'} />
+                                        <Ionicons name="thumbs-down" size={14} color={helpful === 0 ? '#F44336' : colors.textSecondary} />
                                         <Text style={[styles.helpfulButtonText, helpful === 0 && { color: '#F44336' }]}>No</Text>
                                     </TouchableOpacity>
                                 </View>
@@ -118,6 +122,8 @@ const FAQItem = ({ faq, index, searchQuery }: { faq: FAQ; index: number; searchQ
 };
 
 export default function HelpCenterScreen() {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
     const insets = useSafeAreaInsets();
     const [searchQuery, setSearchQuery] = useState('');
     const [activeCategory, setActiveCategory] = useState('all');
@@ -168,15 +174,13 @@ export default function HelpCenterScreen() {
 
     return (
         <View style={[styles.container, GlobalStyles.popupContainer]}>
-            <StatusBar barStyle="dark-content" />
+            <StatusBar barStyle={activeScheme === 'dark' ? 'light-content' : 'dark-content'} />
 
             <LinearGradient
-                colors={['#fff', '#f8f9fa']}
+                colors={[colors.surface, colors.background]}
                 style={[styles.header, { paddingTop: insets.top + 10 }]}
             >
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color="#000" />
-                </TouchableOpacity>
+                <BackButton onPress={() => router.back()} />
                 <Text style={styles.headerTitle}>Support Center</Text>
                 <View style={{ width: 40 }} />
             </LinearGradient>
@@ -200,17 +204,17 @@ export default function HelpCenterScreen() {
                     >
                         <Text style={styles.heroTitle}>How can we help?</Text>
                         <View style={styles.searchBar}>
-                            <Ionicons name="search" size={20} color="rgba(0,0,0,0.4)" />
+                            <Ionicons name="search" size={20} color={colors.textSecondary} />
                             <TextInput
                                 style={styles.searchInput}
                                 placeholder="Search for help articles..."
-                                placeholderTextColor="rgba(0,0,0,0.4)"
+                                placeholderTextColor={colors.textSecondary}
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
                             />
                             {searchQuery !== '' && (
                                 <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                    <Ionicons name="close-circle" size={18} color="rgba(0,0,0,0.4)" />
+                                    <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
                                 </TouchableOpacity>
                             )}
                         </View>
@@ -240,7 +244,7 @@ export default function HelpCenterScreen() {
                                 <Ionicons
                                     name={cat.icon as any}
                                     size={14}
-                                    color={activeCategory === cat.id ? '#fff' : '#1063FD'}
+                                    color={activeCategory === cat.id ? '#fff' : colors.tint}
                                 />
                                 <Text style={[
                                     styles.categoryText,
@@ -264,7 +268,7 @@ export default function HelpCenterScreen() {
                                 animate={{ opacity: 1, scale: 1 }}
                                 style={styles.noResults}
                             >
-                                <Ionicons name="search" size={48} color="rgba(0,0,0,0.2)" />
+                                <Ionicons name="search" size={48} color={colors.textSecondary + '40'} />
                                 <Text style={styles.noResultsTitle}>No results found</Text>
                                 <Text style={styles.noResultsText}>
                                     Try different keywords or browse categories
@@ -286,11 +290,11 @@ export default function HelpCenterScreen() {
                                 onPress={() => Linking.openURL('mailto:support@zmzir.com')}
                             >
                                 <LinearGradient
-                                    colors={['#fff', '#f8f9fa']}
+                                    colors={[colors.surface, colors.background]}
                                     style={styles.contactCardGradient}
                                 >
-                                    <View style={[styles.contactIcon, { backgroundColor: '#1063FD15' }]}>
-                                        <Ionicons name="mail" size={24} color="#1063FD" />
+                                    <View style={[styles.contactIcon, { backgroundColor: colors.tint + '15' }]}>
+                                        <Ionicons name="mail" size={24} color={colors.tint} />
                                     </View>
                                     <Text style={styles.contactLabel}>Email Support</Text>
                                     <Text style={styles.contactDescription}>Response within 24h</Text>
@@ -302,7 +306,7 @@ export default function HelpCenterScreen() {
                                 onPress={() => router.push('/(tabs)/chatbot')}
                             >
                                 <LinearGradient
-                                    colors={['#fff', '#f8f9fa']}
+                                    colors={[colors.surface, colors.background]}
                                     style={styles.contactCardGradient}
                                 >
                                     <View style={[styles.contactIcon, { backgroundColor: '#4CAF5015' }]}>
@@ -337,23 +341,24 @@ export default function HelpCenterScreen() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF' },
+function getStyles(colors: any, activeScheme: string) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 20,
         paddingBottom: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
+        borderBottomWidth:1,
+        borderBottomColor: colors.border,
     },
-    headerTitle: { fontSize: 22, fontWeight: '800', color: '#1a1a1a' },
+    headerTitle: { fontSize: 22, fontWeight: '800', color: colors.text },
     backButton: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#F5F5F7',
+        backgroundColor: colors.surface,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -375,7 +380,7 @@ const styles = StyleSheet.create({
     searchBar: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#fff',
+        backgroundColor: colors.surface,
         paddingHorizontal: 16,
         paddingVertical: 12,
         borderRadius: 25,
@@ -385,7 +390,7 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 15,
         fontWeight: '500',
-        color: '#000',
+        color: colors.text,
         outlineStyle: 'none',
     },
     searchResultText: {
@@ -405,19 +410,19 @@ const styles = StyleSheet.create({
     categoryChip: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F5F5F7',
+        backgroundColor: colors.surface,
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 25,
         gap: 6,
     },
     categoryChipActive: {
-        backgroundColor: '#1063FD',
+        backgroundColor: colors.tint,
     },
     categoryText: {
         fontSize: 13,
         fontWeight: '600',
-        color: '#1063FD',
+        color: colors.tint,
     },
     categoryTextActive: {
         color: '#fff',
@@ -428,22 +433,22 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 13,
         fontWeight: '800',
-        color: '#1063FD',
+        color: colors.tint,
         textTransform: 'uppercase',
         letterSpacing: 1.5,
         marginBottom: 15,
     },
     faqCard: {
-        backgroundColor: '#fff',
+        backgroundColor: colors.surface,
         borderRadius: 20,
         padding: 18,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: '#e5e5e5',
+        borderColor: colors.border,
         ...createShadow({ opacity: 0.05, radius: 8 }),
     },
     faqCardOpen: {
-        borderColor: '#1063FD',
+        borderColor: colors.tint,
         ...createShadow({ opacity: 0.1, radius: 12 }),
     },
     faqHeader: {
@@ -461,14 +466,14 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 10,
-        backgroundColor: '#1063FD10',
+        backgroundColor: colors.tint + '10',
         justifyContent: 'center',
         alignItems: 'center',
     },
     faqQuestion: {
         fontSize: 15,
         fontWeight: '700',
-        color: '#000',
+        color: colors.text,
         flex: 1,
         lineHeight: 20,
     },
@@ -480,7 +485,7 @@ const styles = StyleSheet.create({
     },
     faqAnswer: {
         fontSize: 14,
-        color: 'rgba(0,0,0,0.6)',
+        color: colors.textSecondary,
         lineHeight: 20,
     },
     helpfulSection: {
@@ -490,11 +495,11 @@ const styles = StyleSheet.create({
         marginTop: 15,
         paddingTop: 12,
         borderTopWidth: 1,
-        borderTopColor: '#f0f0f0',
+        borderTopColor: colors.border,
     },
     helpfulLabel: {
         fontSize: 12,
-        color: '#666',
+        color: colors.textSecondary,
     },
     helpfulButtons: {
         flexDirection: 'row',
@@ -507,7 +512,7 @@ const styles = StyleSheet.create({
         paddingVertical: 5,
         borderRadius: 15,
         gap: 4,
-        backgroundColor: '#F5F5F7',
+        backgroundColor: colors.background,
     },
     helpfulButtonActive: {
         backgroundColor: '#E8F5E9',
@@ -524,13 +529,13 @@ const styles = StyleSheet.create({
     noResultsTitle: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#1a1a1a',
+        color: colors.text,
         marginTop: 12,
         marginBottom: 4,
     },
     noResultsText: {
         fontSize: 13,
-        color: '#999',
+        color: colors.textSecondary,
         textAlign: 'center',
     },
     contactSection: {
@@ -546,7 +551,7 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: '#e5e5e5',
+        borderColor: colors.border,
     },
     contactCardGradient: {
         padding: 20,
@@ -563,12 +568,12 @@ const styles = StyleSheet.create({
     contactLabel: {
         fontSize: 15,
         fontWeight: '800',
-        color: '#000',
+        color: colors.text,
         marginBottom: 4,
     },
     contactDescription: {
         fontSize: 11,
-        color: '#666',
+        color: colors.textSecondary,
     },
     footer: {
         marginTop: 60,
@@ -578,7 +583,7 @@ const styles = StyleSheet.create({
     versionText: {
         fontSize: 12,
         fontWeight: '700',
-        color: 'rgba(0,0,0,0.3)',
+        color: colors.textSecondary + '60',
         marginBottom: 10,
     },
     linkRow: {
@@ -589,11 +594,11 @@ const styles = StyleSheet.create({
     },
     footerLink: {
         fontSize: 13,
-        color: '#1063FD',
+        color: colors.tint,
         fontWeight: '700'
     },
     footerDot: {
-        color: 'rgba(0,0,0,0.2)',
+        color: colors.textSecondary + '40',
         fontSize: 12,
     },
     feedbackButton: {
@@ -602,7 +607,8 @@ const styles = StyleSheet.create({
     },
     feedbackText: {
         fontSize: 12,
-        color: '#666',
+        color: colors.textSecondary,
         fontWeight: '600',
     },
 });
+}

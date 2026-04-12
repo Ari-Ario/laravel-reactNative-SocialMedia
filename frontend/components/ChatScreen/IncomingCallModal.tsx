@@ -102,7 +102,7 @@ export const IncomingCallModal: React.FC = () => {
       // 4. Slide in UI
       Animated.spring(slideAnim, {
         toValue: 0,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
         damping: 18,
         mass: 0.9,
         stiffness: 120,
@@ -111,8 +111,8 @@ export const IncomingCallModal: React.FC = () => {
       // 5. Pulsing accept-button scale
       const pulseLoop = Animated.loop(
         Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.12, duration: 550, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1, duration: 550, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1.12, duration: 550, useNativeDriver: Platform.OS !== 'web' }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 550, useNativeDriver: Platform.OS !== 'web' }),
         ])
       );
       pulseLoop.start();
@@ -121,12 +121,12 @@ export const IncomingCallModal: React.FC = () => {
       const ringLoop = Animated.loop(
         Animated.parallel([
           Animated.sequence([
-            Animated.timing(ring1Scale, { toValue: 1.5, duration: 1000, useNativeDriver: true }),
-            Animated.timing(ring1Scale, { toValue: 1, duration: 0, useNativeDriver: true }),
+            Animated.timing(ring1Scale, { toValue: 1.5, duration: 1000, useNativeDriver: Platform.OS !== 'web' }),
+            Animated.timing(ring1Scale, { toValue: 1, duration: 0, useNativeDriver: Platform.OS !== 'web' }),
           ]),
           Animated.sequence([
-            Animated.timing(ring1Alpha, { toValue: 0, duration: 1000, useNativeDriver: true }),
-            Animated.timing(ring1Alpha, { toValue: 0.6, duration: 0, useNativeDriver: true }),
+            Animated.timing(ring1Alpha, { toValue: 0, duration: 1000, useNativeDriver: Platform.OS !== 'web' }),
+            Animated.timing(ring1Alpha, { toValue: 0.6, duration: 0, useNativeDriver: Platform.OS !== 'web' }),
           ]),
         ])
       );
@@ -134,12 +134,12 @@ export const IncomingCallModal: React.FC = () => {
       const ring2Loop = Animated.loop(
         Animated.parallel([
           Animated.sequence([
-            Animated.timing(ring2Scale, { toValue: 1.8, duration: 1400, useNativeDriver: true }),
-            Animated.timing(ring2Scale, { toValue: 1, duration: 0, useNativeDriver: true }),
+            Animated.timing(ring2Scale, { toValue: 1.8, duration: 1400, useNativeDriver: Platform.OS !== 'web' }),
+            Animated.timing(ring2Scale, { toValue: 1, duration: 0, useNativeDriver: Platform.OS !== 'web' }),
           ]),
           Animated.sequence([
-            Animated.timing(ring2Alpha, { toValue: 0, duration: 1400, useNativeDriver: true }),
-            Animated.timing(ring2Alpha, { toValue: 0.4, duration: 0, useNativeDriver: true }),
+            Animated.timing(ring2Alpha, { toValue: 0, duration: 1400, useNativeDriver: Platform.OS !== 'web' }),
+            Animated.timing(ring2Alpha, { toValue: 0.4, duration: 0, useNativeDriver: Platform.OS !== 'web' }),
           ]),
         ])
       );
@@ -163,7 +163,7 @@ export const IncomingCallModal: React.FC = () => {
       // Slide out
       Animated.spring(slideAnim, {
         toValue: height + 200,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
         damping: 20,
         mass: 1,
       }).start();
@@ -180,8 +180,8 @@ export const IncomingCallModal: React.FC = () => {
       style={[
         styles.container,
         { transform: [{ translateY: slideAnim }] },
+        { pointerEvents: Platform.OS === 'web' ? 'auto' : 'box-none' }
       ]}
-      pointerEvents="box-none"
       onTouchStart={() => {
         if (Platform.OS === 'web' && player && !player.playing) {
           try {

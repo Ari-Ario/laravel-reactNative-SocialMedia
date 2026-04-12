@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { Platform, View, Text, StyleSheet, Animated } from 'react-native';
 
 const alphabets = [
   '𒀀',    // Ancient Sumerian (Cuneiform)
@@ -50,7 +50,7 @@ const HomePage = () => {
         Animated.timing(opacity, {
           toValue: randomOpacity,
           duration: 300,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }).start();
       });
     };

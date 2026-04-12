@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Platform } from 'react-native';
+import { Platform, View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { createShadow } from '@/utils/styles';
 import { AnchorPosition } from '@/utils/layout';
 
@@ -26,57 +27,75 @@ export default function GenericMenu({
     items,
     anchorPosition
 }: GenericMenuProps) {
+    const { colors } = useAppTheme();
+
     return (
         <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
-            <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
-                {Platform.OS === 'web' && <View style={[StyleSheet.absoluteFill, styles.webBackdrop]} />}
+            <TouchableOpacity 
+                style={styles.overlay} 
+                activeOpacity={1} 
+                onPress={onClose}
+            >
+                {Platform.OS === 'web' && (
+                    <View style={[StyleSheet.absoluteFill, styles.webBackdrop]} />
+                )}
                 <View
                     style={[
                         styles.menuContainer,
+                        { backgroundColor: colors.surface },
                         anchorPosition ? {
-                            top: anchorPosition.top + 15, // Standard offset from trigger
+                            top: anchorPosition.top + 15,
                             left: anchorPosition.left,
-                        } : { top: 100, left: 20 } // Fallback
+                        } : { top: 100, left: 20 }
                     ]}
                 >
-                    {/* Pointer Arrow */}
                     {anchorPosition && (
                         <View
                             style={[
                                 styles.pointer,
-                                { left: anchorPosition.arrowOffset }
+                                {
+                                    left: anchorPosition.arrowOffset,
+                                    borderBottomColor: colors.surface
+                                }
                             ]}
                         />
                     )}
 
-                    {items.map((item, index) => (
-                        <TouchableOpacity
-                            key={index}
-                            style={styles.menuItem}
-                            onPress={item.onPress}
+                    {items.map((item, index) => {
+                        return (
+                            <TouchableOpacity
+                                key={`${index}-${item.label}`}
+                                style={styles.menuItem}
+                                onPress={() => {
+                                    item.onPress();
+                                    onClose();
+                                }}
                             >
-                            <View style={styles.itemContent}>
-                                <Ionicons
-                                    name={item.icon}
-                                    size={20}
-                                    color={item.destructive ? '#FF453A' : (item.color || '#3A7AFE')}
-                                />
-                                <Text style={[
-                                    styles.menuText,
-                                    { color: item.destructive ? '#FF453A' : (item.color || '#EBEBF5') }
-                                ]}>
-                                    {item.label}
-                                </Text>
-                            </View>
-                            {item.badge !== undefined && item.badge > 0 && (
-                                <View style={styles.badgeContainer}>
-                                    <Text style={styles.badgeText}>
-                                        {item.badge > 99 ? '99+' : item.badge}
+                                <View style={styles.itemContent}>
+                                    <Ionicons
+                                        name={item.icon}
+                                        size={20}
+                                        color={item.destructive ? '#FF453A' : (item.color || colors.tint)}
+                                    />
+                                    <Text 
+                                        style={[
+                                            styles.menuText,
+                                            { color: item.destructive ? '#FF453A' : (item.color || colors.text) }
+                                        ]}
+                                    >
+                                        {item.label}
                                     </Text>
                                 </View>
-                            )}
-                        </TouchableOpacity>
-                    ))}
+                                {item.badge !== undefined && item.badge > 0 && (
+                                    <View style={styles.badgeContainer}>
+                                        <Text style={styles.badgeText}>
+                                            {item.badge > 99 ? '99+' : item.badge}
+                                        </Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        );
+                    })}
                 </View>
             </TouchableOpacity>
         </Modal>
@@ -93,14 +112,19 @@ const styles = StyleSheet.create({
     },
     webBackdrop: {
         backgroundColor: 'rgba(0,0,0,0.42)',
-        backdropFilter: 'blur(6px)',
+        ...Platform.select({
+            web: {
+                backdropFilter: 'blur(6px)',
+            }
+        })
     } as any,
     menuContainer: {
         position: 'absolute',
-        backgroundColor: '#1C1C1E',
         borderRadius: 18,
         width: 220,
         paddingVertical: 8,
+        borderWidth: 1,
+        borderColor: 'rgba(128,128,128,0.1)',
         ...createShadow({
             width: 0,
             height: 8,
@@ -123,7 +147,7 @@ const styles = StyleSheet.create({
         borderLeftColor: 'transparent',
         borderRightColor: 'transparent',
         borderBottomColor: '#1C1C1E',
-        marginLeft: -10, // Center on the peak
+        marginLeft: -10,
     },
     menuItem: {
         flexDirection: 'row',
@@ -140,7 +164,6 @@ const styles = StyleSheet.create({
         marginLeft: 12,
         fontSize: 15,
         fontWeight: '500',
-        color: '#EBEBF5',
     },
     badgeContainer: {
         backgroundColor: '#FF3B30',

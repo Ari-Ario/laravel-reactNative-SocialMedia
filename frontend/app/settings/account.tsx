@@ -21,12 +21,15 @@ import { MotiView, AnimatePresence } from 'moti';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Colors from '@/constants/Colors';
+import { BackButton } from '@/components/ui/IconButton';
 import AuthContext from '@/context/AuthContext';
 import { fetchFullSettings, updateFullSettings, deleteAccount } from '@/services/SettingService';
 import { loadUser } from '@/services/AuthService';
 import { createShadow } from '@/utils/styles';
 import ShareLocation from '@/components/ChatScreen/ShareLocation';
 import GlobalStyles from '@/styles/GlobalStyles';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 const SOCIAL_PLATFORMS = [
     { id: 'whatsapp', platform: 'WhatsApp', icon: 'logo-whatsapp', color: '#25D366' },
@@ -179,6 +182,8 @@ interface DatePickerModalProps {
     onClose: () => void;
 }
 const DatePickerModal = ({ visible, value, onConfirm, onClose }: DatePickerModalProps) => {
+    const { colors, activeScheme } = useAppTheme();
+    const modalStyles = getModalStyles(colors, activeScheme);
     const parsed = value ? new Date(value) : new Date(1995, 0, 1);
     const [year, setYear] = useState(String(parsed.getFullYear()));
     const [month, setMonth] = useState(String(parsed.getMonth() + 1).padStart(2, '0'));
@@ -237,11 +242,11 @@ const DatePickerModal = ({ visible, value, onConfirm, onClose }: DatePickerModal
                                         padding: 14,
                                         fontSize: 18,
                                         borderRadius: 12,
-                                        border: '2px solid #e5e5e5',
+                                        border: `2px solid ${colors.border}`,
                                         outline: 'none',
                                         fontFamily: 'inherit',
-                                        color: '#1a1a1a',
-                                        backgroundColor: '#F8F9FA',
+                                        color: colors.text,
+                                        backgroundColor: colors.surface,
                                         marginTop: 8,
                                     }}
                                 />
@@ -309,7 +314,10 @@ interface GenderPickerModalProps {
     onSelect: (val: string) => void;
     onClose: () => void;
 }
-const GenderPickerModal = ({ visible, value, onSelect, onClose }: GenderPickerModalProps) => (
+const GenderPickerModal = ({ visible, value, onSelect, onClose }: GenderPickerModalProps) => {
+    const { colors, activeScheme } = useAppTheme();
+    const modalStyles = getModalStyles(colors, activeScheme);
+    return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
         <TouchableOpacity style={modalStyles.overlay} activeOpacity={1} onPress={onClose}>
             <MotiView
@@ -337,7 +345,7 @@ const GenderPickerModal = ({ visible, value, onSelect, onClose }: GenderPickerMo
                                 {opt.label}
                             </Text>
                             {value === opt.value && (
-                                <Ionicons name="checkmark-circle" size={20} color="#1063FD" />
+                                <Ionicons name="checkmark-circle" size={20} color={colors.tint} />
                             )}
                         </TouchableOpacity>
                     ))}
@@ -346,7 +354,8 @@ const GenderPickerModal = ({ visible, value, onSelect, onClose }: GenderPickerMo
             </MotiView>
         </TouchableOpacity>
     </Modal>
-);
+    );
+};
 
 // ─── Education Picker ─────────────────────────────────────────────────────────
 interface EducationPickerModalProps {
@@ -355,7 +364,10 @@ interface EducationPickerModalProps {
     onSelect: (val: string) => void;
     onClose: () => void;
 }
-const EducationPickerModal = ({ visible, value, onSelect, onClose }: EducationPickerModalProps) => (
+const EducationPickerModal = ({ visible, value, onSelect, onClose }: EducationPickerModalProps) => {
+    const { colors, activeScheme } = useAppTheme();
+    const modalStyles = getModalStyles(colors, activeScheme);
+    return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
         <TouchableOpacity style={modalStyles.overlay} activeOpacity={1} onPress={onClose}>
             <MotiView
@@ -379,12 +391,12 @@ const EducationPickerModal = ({ visible, value, onSelect, onClose }: EducationPi
                                 style={[modalStyles.genderItem, value === lvl && modalStyles.genderItemActive]}
                                 onPress={() => { onSelect(lvl); onClose(); }}
                             >
-                                <Ionicons name="school-outline" size={18} color={value === lvl ? '#1063FD' : '#666'} style={{ marginRight: 12 }} />
+                                <Ionicons name="school-outline" size={18} color={value === lvl ? colors.tint : colors.textSecondary} style={{ marginRight: 12 }} />
                                 <Text style={[modalStyles.genderLabel, value === lvl && modalStyles.genderLabelActive]}>
                                     {lvl}
                                 </Text>
                                 {value === lvl && (
-                                    <Ionicons name="checkmark-circle" size={20} color="#1063FD" />
+                                    <Ionicons name="checkmark-circle" size={20} color={colors.tint} />
                                 )}
                             </TouchableOpacity>
                         ))}
@@ -394,7 +406,8 @@ const EducationPickerModal = ({ visible, value, onSelect, onClose }: EducationPi
             </MotiView>
         </TouchableOpacity>
     </Modal>
-);
+    );
+};
 
 // ─── Editable Field ───────────────────────────────────────────────────────────
 interface EditableFieldProps {
@@ -410,6 +423,8 @@ interface EditableFieldProps {
 }
 
 const EditableField = ({ label, value, icon, onSave, multiline, keyboardType = 'default', hint, maxLength = 255, prefix }: EditableFieldProps) => {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
     const [isEditing, setIsEditing] = useState(false);
     const [tempValue, setTempValue] = useState(value);
     const [loading, setLoading] = useState(false);
@@ -453,11 +468,9 @@ const EditableField = ({ label, value, icon, onSave, multiline, keyboardType = '
             <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => setIsEditing(true)}
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
             >
                 <LinearGradient
-                    colors={isHovered ? ['rgba(0,132,255,0.02)', 'rgba(0,132,255,0.05)'] : ['#fff', '#fff']}
+                    colors={isHovered ? [colors.tint + '05', colors.tint + '10'] : [colors.surface, colors.surface]}
                     style={[styles.fieldCard, isEditing && styles.fieldCardEditing]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
@@ -465,12 +478,12 @@ const EditableField = ({ label, value, icon, onSave, multiline, keyboardType = '
                     <View style={styles.fieldHeader}>
                         <View style={styles.fieldLabelRow}>
                             <View style={styles.iconContainer}>
-                                <Ionicons name={icon as any} size={18} color="#0084ff" />
+                                <Ionicons name={icon as any} size={18} color={colors.tint} />
                             </View>
                             <Text style={styles.fieldLabel}>{label}</Text>
                             {value && !isEditing && (
                                 <View style={styles.verifiedBadge}>
-                                    <Ionicons name="checkmark-circle" size={12} color="#4CAF50" />
+                                    <Ionicons name="checkmark-circle" size={12} color={colors.success} />
                                 </View>
                             )}
                         </View>
@@ -481,7 +494,7 @@ const EditableField = ({ label, value, icon, onSave, multiline, keyboardType = '
                                 transition={{ type: 'timing' }}
                             >
                                 <TouchableOpacity onPress={() => setIsEditing(true)}>
-                                    <Ionicons name="pencil" size={16} color="#0084ff" />
+                                    <Ionicons name="pencil" size={16} color={colors.tint} />
                                 </TouchableOpacity>
                             </MotiView>
                         )}
@@ -505,13 +518,13 @@ const EditableField = ({ label, value, icon, onSave, multiline, keyboardType = '
                                     multiline={multiline}
                                     keyboardType={keyboardType}
                                     placeholder={`Enter ${label.toLowerCase()}...`}
-                                    placeholderTextColor="rgba(0,0,0,0.3)"
+                                    placeholderTextColor={colors.textSecondary + '60'}
                                     maxLength={maxLength}
                                 />
                             </View>
-                            {loading && <ActivityIndicator size="small" color="#0084ff" />}
+                            {loading && <ActivityIndicator size="small" color={colors.tint} />}
                             <TouchableOpacity onPress={() => setIsEditing(false)} style={styles.cancelEdit}>
-                                <Ionicons name="close" size={18} color="#999" />
+                                <Ionicons name="close" size={18} color={colors.textSecondary} />
                             </TouchableOpacity>
                         </MotiView>
                     ) : (
@@ -551,6 +564,9 @@ interface CountryPickerModalProps {
     onClose: () => void;
 }
 const CountryPickerModal = ({ visible, onSelect, onClose }: CountryPickerModalProps) => {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
+    const modalStyles = getModalStyles(colors, activeScheme);
     const [search, setSearch] = useState('');
     const filtered = COUNTRIES.filter(c => 
         c.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -570,12 +586,12 @@ const CountryPickerModal = ({ visible, onSelect, onClose }: CountryPickerModalPr
                         <View style={modalStyles.header}>
                             <Text style={modalStyles.title}>Select Country</Text>
                             <TouchableOpacity onPress={onClose}>
-                                <Ionicons name="close" size={24} color="#666" />
+                                <Ionicons name="close" size={24} color={colors.textSecondary} />
                             </TouchableOpacity>
                         </View>
                         
                         <View style={styles.searchContainer}>
-                            <Ionicons name="search" size={18} color="#999" />
+                            <Ionicons name="search" size={18} color={colors.textSecondary} />
                             <TextInput
                                 style={styles.searchInput}
                                 placeholder="Search country or code..."
@@ -612,6 +628,8 @@ interface PhoneInputProps {
     onSave: (val: string) => Promise<void>;
 }
 const PremiumPhoneInput = ({ value, onSave }: PhoneInputProps) => {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
     const [isEditing, setIsEditing] = useState(false);
     const [showPicker, setShowPicker] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -672,13 +690,13 @@ const PremiumPhoneInput = ({ value, onSave }: PhoneInputProps) => {
             <View style={styles.fieldHeader}>
                 <View style={styles.fieldLabelRow}>
                     <View style={styles.iconContainer}>
-                        <Ionicons name="call-outline" size={18} color="#0084ff" />
+                        <Ionicons name="call-outline" size={18} color={colors.tint} />
                     </View>
                     <Text style={styles.fieldLabel}>Phone Number</Text>
                 </View>
                 {!isEditing && (
                     <TouchableOpacity onPress={() => setIsEditing(true)}>
-                        <Ionicons name="pencil" size={16} color="#0084ff" />
+                        <Ionicons name="pencil" size={16} color={colors.tint} />
                     </TouchableOpacity>
                 )}
             </View>
@@ -691,7 +709,7 @@ const PremiumPhoneInput = ({ value, onSave }: PhoneInputProps) => {
                     >
                         <Text style={styles.flagText}>{country.flag}</Text>
                         <Text style={styles.codeText}>{country.code}</Text>
-                        <Ionicons name="chevron-down" size={12} color="#999" />
+                        <Ionicons name="chevron-down" size={12} color={colors.textSecondary} />
                     </TouchableOpacity>
                     
                     <TextInput
@@ -704,14 +722,14 @@ const PremiumPhoneInput = ({ value, onSave }: PhoneInputProps) => {
                     />
                     
                     {loading ? (
-                        <ActivityIndicator size="small" color="#0084ff" />
+                        <ActivityIndicator size="small" color={colors.tint} />
                     ) : (
                         <TouchableOpacity onPress={handleSave}>
-                            <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+                            <Ionicons name="checkmark-circle" size={24} color={colors.success} />
                         </TouchableOpacity>
                     )}
                     <TouchableOpacity onPress={() => setIsEditing(false)} style={{ marginLeft: 8 }}>
-                        <Ionicons name="close-circle" size={24} color="#ccc" />
+                        <Ionicons name="close-circle" size={24} color={colors.border} />
                     </TouchableOpacity>
                 </View>
             ) : (
@@ -743,10 +761,13 @@ interface PickerFieldProps {
     color?: string;
     empty?: boolean;
 }
-const PickerField = ({ label, displayValue, icon, onPress, color = '#0084ff', empty }: PickerFieldProps) => (
+const PickerField = ({ label, displayValue, icon, onPress, color = '#0084ff', empty }: PickerFieldProps) => {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
+    return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
         <LinearGradient
-            colors={['#fff', '#fff']}
+            colors={[colors.surface, colors.surface]}
             style={styles.fieldCard}
         >
             <View style={styles.fieldHeader}>
@@ -757,18 +778,19 @@ const PickerField = ({ label, displayValue, icon, onPress, color = '#0084ff', em
                     <Text style={styles.fieldLabel}>{label}</Text>
                     {!empty && (
                         <View style={styles.verifiedBadge}>
-                            <Ionicons name="checkmark-circle" size={12} color="#4CAF50" />
+                            <Ionicons name="checkmark-circle" size={12} color={colors.success} />
                         </View>
                     )}
                 </View>
-                <Ionicons name="chevron-down" size={18} color="#ccc" />
+                <Ionicons name="chevron-down" size={18} color={colors.textSecondary + 'B3'} />
             </View>
             <Text style={[styles.fieldValue, empty && styles.placeholderValue]}>
                 {empty ? `Tap to select ${label.toLowerCase()}` : displayValue}
             </Text>
         </LinearGradient>
     </TouchableOpacity>
-);
+    );
+};
 
 // ─── Social Link Item ─────────────────────────────────────────────────────────
 interface SocialLinkItemProps {
@@ -778,6 +800,8 @@ interface SocialLinkItemProps {
     index: number;
 }
 const SocialLinkItem = ({ platform, value, onSave, index }: SocialLinkItemProps) => {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
     const [isEditing, setIsEditing] = useState(false);
     const [tempValue, setTempValue] = useState(value);
     const [loading, setLoading] = useState(false);
@@ -829,7 +853,7 @@ const SocialLinkItem = ({ platform, value, onSave, index }: SocialLinkItemProps)
                         onChangeText={setTempValue}
                         onSubmitEditing={handleSave}
                         placeholder="@username or URL"
-                        placeholderTextColor="rgba(0,0,0,0.3)"
+                        placeholderTextColor={colors.textSecondary + '60'}
                         autoCapitalize="none"
                         selectTextOnFocus // Better for mobile editing
                     />
@@ -844,7 +868,7 @@ const SocialLinkItem = ({ platform, value, onSave, index }: SocialLinkItemProps)
                         <Ionicons
                             name={isEditing ? "checkmark-circle" : (value ? "checkmark-circle" : "add-circle-outline")}
                             size={22}
-                            color={isEditing ? "#4CAF50" : (value ? "#4CAF50" : "rgba(0,0,0,0.2)")}
+                            color={isEditing ? colors.success : (value ? colors.success : colors.border)}
                         />
                     </TouchableOpacity>
                 )}
@@ -858,6 +882,9 @@ const SocialLinkItem = ({ platform, value, onSave, index }: SocialLinkItemProps)
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function AccountSettingsScreen() {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
+    const modalStyles = getModalStyles(colors, activeScheme);
     const insets = useSafeAreaInsets();
     const { user, setUser } = useContext(AuthContext);
     const [fullSettings, setFullSettings] = useState<any>(null);
@@ -884,7 +911,8 @@ export default function AccountSettingsScreen() {
             setLoading(true);
             const data = await fetchFullSettings();
             setFullSettings(data.user);
-            if (data.user) setUser((prev: any) => ({ ...prev, ...data.user }));
+            if (data.user && user) setUser({ ...user, ...data.user });
+            else if (data.user) setFullSettings(data.user); // Fallback if user context is lost
         } catch (error) {
             console.error('Failed to load settings:', error);
             Alert.alert('Error', 'Could not refresh settings. Please check your connection.');
@@ -962,7 +990,7 @@ export default function AccountSettingsScreen() {
                                 {
                                     text: 'Delete',
                                     style: 'destructive',
-                                    onPress: async (password) => {
+                                    onPress: async (password?: string) => {
                                         if (!password) return;
                                         try {
                                             await deleteAccount(password);
@@ -1009,7 +1037,7 @@ export default function AccountSettingsScreen() {
             onPress={() => setActiveSection(id)}
         >
             <LinearGradient
-                colors={activeSection === id ? [color, color + '80'] : ['#f5f5f7', '#f5f5f7']}
+                colors={activeSection === id ? [color, color + 'CC'] : [colors.muted, colors.muted]}
                 style={styles.sectionButtonGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
@@ -1048,12 +1076,10 @@ export default function AccountSettingsScreen() {
 
             {/* Header */}
             <LinearGradient
-                colors={['#fff', '#f8f9fa']}
+                colors={[colors.surface, colors.background]}
                 style={[styles.header, { paddingTop: insets.top + 10 }]}
             >
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color="#000" />
-                </TouchableOpacity>
+                <BackButton onPress={() => router.navigate('/(tabs)/settings')} />
 
                 <View style={styles.headerCenter}>
                     <Text style={styles.headerTitle}>Account Identity</Text>
@@ -1079,7 +1105,7 @@ export default function AccountSettingsScreen() {
 
             {loading ? (
                 <View style={styles.center}>
-                    <ActivityIndicator size="large" color="#0084ff" />
+                    <ActivityIndicator size="large" color={colors.tint} />
                     <Text style={styles.loadingText}>Loading your profile...</Text>
                 </View>
             ) : (
@@ -1165,7 +1191,7 @@ export default function AccountSettingsScreen() {
                                     ))}
                                 </View>
                                 <View style={styles.socialTip}>
-                                    <Ionicons name="information-circle-outline" size={14} color="#666" />
+                                    <Ionicons name="information-circle-outline" size={14} color={colors.textSecondary} />
                                     <Text style={styles.socialTipText}>Enter your username or full profile URL for each platform.</Text>
                                 </View>
                             </>
@@ -1274,14 +1300,15 @@ export default function AccountSettingsScreen() {
 }
 
 // ─── Picker Modal Styles ──────────────────────────────────────────────────────
-const modalStyles = StyleSheet.create({
+function getModalStyles(colors: any, activeScheme: string) {
+    return StyleSheet.create({
     overlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.45)',
         justifyContent: 'flex-end',
     },
     sheet: {
-        backgroundColor: '#fff',
+        backgroundColor: colors.surface,
         borderTopLeftRadius: 28,
         borderTopRightRadius: 28,
         paddingHorizontal: 20,
@@ -1299,7 +1326,7 @@ const modalStyles = StyleSheet.create({
         width: 40,
         height: 4,
         borderRadius: 2,
-        backgroundColor: '#e5e5e5',
+        backgroundColor: colors.border,
         alignSelf: 'center',
         marginBottom: 12,
     },
@@ -1309,29 +1336,30 @@ const modalStyles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingBottom: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        borderBottomColor: colors.border,
         marginBottom: 12,
     },
-    title: { fontSize: 18, fontWeight: '800', color: '#1a1a1a' },
-    cancelBtn: { fontSize: 15, color: '#666', fontWeight: '600' },
-    doneBtn: { fontSize: 15, color: '#0084ff', fontWeight: '800' },
+    title: { fontSize: 18, fontWeight: '800', color: colors.text },
+    cancelBtn: { fontSize: 15, color: colors.textSecondary, fontWeight: '600' },
+    doneBtn: { fontSize: 15, color: colors.tint, fontWeight: '800' },
     pickerRow: {
         flexDirection: 'row',
         gap: 12,
         paddingVertical: 12,
     },
     pickerCol: { flex: 1, alignItems: 'center' },
-    pickerLabel: { fontSize: 11, fontWeight: '700', color: '#999', textTransform: 'uppercase', marginBottom: 8 },
+    pickerLabel: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 8 },
     pickerInput: {
         width: '100%',
         borderWidth: 2,
-        borderColor: '#e5e5e5',
+        borderColor: colors.border,
         borderRadius: 12,
         padding: 12,
         fontSize: 20,
         fontWeight: '700',
         textAlign: 'center',
-        color: '#1a1a1a',
+        color: colors.text,
+        backgroundColor: colors.background,
     },
     monthScroll: { maxHeight: 160, width: '100%' },
     monthItem: {
@@ -1341,11 +1369,11 @@ const modalStyles = StyleSheet.create({
         marginBottom: 4,
         alignItems: 'center',
     },
-    monthItemActive: { backgroundColor: '#0084ff20' },
-    monthText: { fontSize: 14, color: '#666', fontWeight: '600' },
-    monthTextActive: { color: '#0084ff', fontWeight: '800' },
+    monthItemActive: { backgroundColor: colors.tint + '20' },
+    monthText: { fontSize: 14, color: colors.textSecondary, fontWeight: '600' },
+    monthTextActive: { color: colors.tint, fontWeight: '800' },
     webDateContainer: { paddingVertical: 16 },
-    webDateLabel: { fontSize: 14, color: '#666', fontWeight: '600', marginBottom: 4 },
+    webDateLabel: { fontSize: 14, color: colors.textSecondary, fontWeight: '600', marginBottom: 4 },
     genderItem: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1353,139 +1381,155 @@ const modalStyles = StyleSheet.create({
         paddingHorizontal: 16,
         borderRadius: 16,
         marginBottom: 8,
-        backgroundColor: '#F8F9FA',
+        backgroundColor: colors.background,
     },
-    genderItemActive: { backgroundColor: '#0084ff10', borderWidth: 2, borderColor: '#0084ff40' },
+    genderItemActive: { backgroundColor: colors.tint + '10', borderWidth: 2, borderColor: colors.tint + '40' },
     genderEmoji: { fontSize: 20, marginRight: 14 },
-    genderLabel: { flex: 1, fontSize: 16, fontWeight: '600', color: '#333' },
-    genderLabelActive: { color: '#0084ff', fontWeight: '800' },
+    genderLabel: { flex: 1, fontSize: 16, fontWeight: '600', color: colors.text },
+    genderLabelActive: { color: colors.tint, fontWeight: '800' },
     countryItem: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 14,
         paddingHorizontal: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        borderBottomColor: colors.border,
     },
     countryFlag: { fontSize: 24, marginRight: 16 },
-    countryName: { flex: 1, fontSize: 16, color: '#1a1a1a', fontWeight: '500' },
-    countryCode: { fontSize: 16, color: '#0084ff', fontWeight: '700' },
+    countryName: { flex: 1, fontSize: 16, color: colors.text, fontWeight: '500' },
+    countryCode: { fontSize: 16, color: colors.tint, fontWeight: '700' },
 });
+}
 
 // ─── Screen Styles ────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF' },
+function getStyles(colors: any, activeScheme: string) {
+    return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 20,
         paddingBottom: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
+        borderBottomWidth:1,
+        borderBottomColor: colors.border,
     },
     headerCenter: { alignItems: 'center' },
-    headerTitle: { fontSize: 20, fontWeight: '800', color: '#1a1a1a' },
-    headerUnderline: { width: 40, height: 3, backgroundColor: '#0084ff', borderRadius: 2, marginTop: 4 },
-    backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F5F5F7', justifyContent: 'center', alignItems: 'center' },
-    refreshButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F5F5F7', justifyContent: 'center', alignItems: 'center' },
+    headerTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
+    headerUnderline: { width: 40, height: 3, backgroundColor: colors.tint, borderRadius: 2, marginTop: 4 },
+    backButton: { padding: 4 },
+    refreshButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.muted, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: colors.border },
     sectionNav: { maxHeight: 50, marginTop: 16 },
     sectionNavContent: { paddingHorizontal: 20, gap: 8 },
     sectionButton: { borderRadius: 25, overflow: 'hidden' },
     sectionButtonActive: { ...createShadow({ opacity: 0.2, radius: 8 }) },
     sectionButtonGradient: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, gap: 6 },
-    sectionButtonText: { fontSize: 13, fontWeight: '600', color: '#666' },
+    sectionButtonText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
     sectionButtonTextActive: { color: '#fff' },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    loadingText: { marginTop: 12, color: '#666', fontSize: 14 },
+    loadingText: { marginTop: 12, color: colors.textSecondary, fontSize: 14 },
     scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
     sectionTitle: {
-        fontSize: 13, fontWeight: '800', color: '#0084ff', textTransform: 'uppercase',
+        fontSize: 13, fontWeight: '800', color: colors.tint, textTransform: 'uppercase',
         letterSpacing: 1.5, marginTop: 30, marginBottom: 15, marginLeft: 5,
     },
     sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 30, marginBottom: 15, paddingHorizontal: 5 },
     fieldCard: {
-        borderRadius: 20, padding: 18, marginBottom: 12, borderWidth: 1, borderColor: '#e5e5e5',
+        borderRadius: 20, padding: 18, marginBottom: 12, borderWidth: 1, borderColor: colors.border,
+        backgroundColor: colors.surface,
         ...createShadow({ opacity: 0.05, radius: 8 }),
     },
-    fieldCardEditing: { borderColor: '#0084ff', borderWidth: 2, ...createShadow({ opacity: 0.1, radius: 12 }) },
+    fieldCardEditing: { borderColor: colors.tint, borderWidth: 2, ...createShadow({ opacity: 0.1, radius: 12 }) },
     fieldHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
     fieldLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    iconContainer: { width: 28, height: 28, borderRadius: 8, backgroundColor: 'rgba(0,132,255,0.1)', justifyContent: 'center', alignItems: 'center' },
-    fieldLabel: { fontSize: 13, fontWeight: '700', color: 'rgba(0,0,0,0.5)', textTransform: 'uppercase' },
+    iconContainer: { width: 28, height: 28, borderRadius: 8, backgroundColor: colors.tint + '15', justifyContent: 'center', alignItems: 'center' },
+    fieldLabel: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase' },
     verifiedBadge: { marginLeft: 4 },
-    fieldValue: { fontSize: 17, fontWeight: '600', color: '#000' },
-    placeholderValue: { color: 'rgba(0,0,0,0.25)', fontStyle: 'italic', fontSize: 15 },
-    hintText: { fontSize: 11, color: 'rgba(0,0,0,0.35)', marginTop: 4, fontStyle: 'italic' },
-    prefix: { fontSize: 17, fontWeight: '600', color: '#0084ff', marginRight: 2 },
+    fieldValue: { fontSize: 17, fontWeight: '600', color: colors.text },
+    placeholderValue: { color: colors.textSecondary + '60', fontStyle: 'italic', fontSize: 15 },
+    hintText: { fontSize: 11, color: colors.textSecondary, marginTop: 4, fontStyle: 'italic' },
+    prefix: { fontSize: 17, fontWeight: '600', color: colors.tint, marginRight: 2 },
     inputContainer: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
-    input: { flex: 1, fontSize: 17, fontWeight: '600', color: '#000', padding: 0 },
+    input: { flex: 1, fontSize: 17, fontWeight: '600', color: colors.text, padding: 0 },
     multilineInput: { minHeight: 60, textAlignVertical: 'top' },
     cancelEdit: { padding: 4 },
     charCountContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
-    charCountBar: { flex: 1, height: 2, backgroundColor: '#e5e5e5', borderRadius: 1, marginRight: 8, overflow: 'hidden' },
-    charCountFill: { height: '100%', backgroundColor: '#0084ff', borderRadius: 1 },
-    charCountText: { fontSize: 10, color: '#999' },
+    charCountBar: { flex: 1, height: 2, backgroundColor: colors.border, borderRadius: 1, marginRight: 8, overflow: 'hidden' },
+    charCountFill: { height: '100%', backgroundColor: colors.tint, borderRadius: 1 },
+    charCountText: { fontSize: 10, color: colors.textSecondary },
     // Social list (Formerly grid)
     premiumBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FF2D55', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, gap: 4 },
     premiumText: { color: '#fff', fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
     socialGrid: { flexDirection: 'column', gap: 10 },
     socialItem: {
         width: '100%',
-        backgroundColor: '#fff', 
+        backgroundColor: colors.surface, 
         borderRadius: 20, 
         borderWidth: 1, 
-        borderColor: '#e5e5e5', 
+        borderColor: colors.border, 
         overflow: 'hidden',
         ...createShadow({ opacity: 0.04, radius: 10 }),
     },
-    socialItemEditing: { borderColor: '#0084ff', borderWidth: 2, ...createShadow({ opacity: 0.1, radius: 12 }) },
+    socialItemEditing: { borderColor: colors.tint, borderWidth: 2, ...createShadow({ opacity: 0.1, radius: 12 }) },
     socialHeader: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
     socialIconBg: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-    socialValue: { flex: 1, fontSize: 16, fontWeight: '600', color: '#1a1a1a' },
-    placeholderSocial: { color: 'rgba(0,0,0,0.25)', fontSize: 15, fontStyle: 'italic' },
-    socialInput: { flex: 1, fontSize: 16, fontWeight: '600', color: '#000', padding: 4, backgroundColor: 'rgba(0,0,0,0.02)', borderRadius: 8 },
-    socialPlatformName: { fontSize: 11, color: '#999', paddingHorizontal: 16, paddingBottom: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+    socialValue: { flex: 1, fontSize: 16, fontWeight: '600', color: colors.text },
+    placeholderSocial: { color: colors.textSecondary + '60', fontSize: 15, fontStyle: 'italic' },
+    socialInput: { flex: 1, fontSize: 16, fontWeight: '600', color: colors.text, padding: 4, backgroundColor: colors.background, borderRadius: 8 },
+    socialPlatformName: { fontSize: 11, color: colors.textSecondary, paddingHorizontal: 16, paddingBottom: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
     socialTip: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16, paddingHorizontal: 8 },
-    socialTipText: { fontSize: 12, color: '#666', fontStyle: 'italic', flex: 1 },
+    socialTipText: { fontSize: 12, color: colors.textSecondary, fontStyle: 'italic', flex: 1 },
     // Delete section
-    deleteSection: { marginTop: 40, marginBottom: 20, padding: 16, borderRadius: 20, backgroundColor: '#FFF5F5', borderWidth: 1, borderColor: '#FFCDD2' },
+    deleteSection: { 
+        marginTop: 40, 
+        marginBottom: 20, 
+        padding: 16, 
+        borderRadius: 20, 
+        backgroundColor: colors.error + '10', 
+        borderWidth: 1, 
+        borderColor: colors.error + '30' 
+    },
     deleteWarning: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
-    deleteWarningText: { fontSize: 13, fontWeight: '800', color: '#FF3B30', textTransform: 'uppercase', letterSpacing: 1 },
+    deleteWarningText: { fontSize: 13, fontWeight: '800', color: colors.error, textTransform: 'uppercase', letterSpacing: 1 },
     deleteButton: { borderRadius: 16, overflow: 'hidden', marginBottom: 12 },
     deleteButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, gap: 8 },
-    deleteButtonText: { color: '#FF3B30', fontSize: 15, fontWeight: '700' },
-    deleteNote: { fontSize: 11, color: '#999', textAlign: 'center', lineHeight: 16 },
+    deleteButtonText: { color: colors.error, fontSize: 15, fontWeight: '700' },
+    deleteNote: { fontSize: 11, color: colors.textSecondary, textAlign: 'center', lineHeight: 16 },
     // Phone Picker Styles
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#f5f5f7',
+        backgroundColor: colors.background,
         borderRadius: 12,
         paddingHorizontal: 12,
         marginBottom: 16,
         height: 44,
+        borderWidth: 1,
+        borderColor: colors.border,
     },
-    searchInput: { flex: 1, marginLeft: 8, fontSize: 16, color: '#000' },
+    searchInput: { flex: 1, marginLeft: 8, fontSize: 16, color: colors.text },
     phoneInputContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 8 },
     countrySelector: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#f5f5f7',
+        backgroundColor: colors.background,
         paddingHorizontal: 10,
         paddingVertical: 8,
         borderRadius: 10,
         gap: 6,
+        borderWidth: 1,
+        borderColor: colors.border,
     },
     flagText: { fontSize: 18 },
-    codeText: { fontSize: 15, fontWeight: '700', color: '#1a1a1a' },
+    codeText: { fontSize: 15, fontWeight: '700', color: colors.text },
     phoneNumberInput: {
         flex: 1,
         fontSize: 18,
         fontWeight: '600',
-        color: '#000',
+        color: colors.text,
         paddingVertical: 8,
         borderBottomWidth: 1,
-        borderBottomColor: '#0084ff',
+        borderBottomColor: colors.tint,
     },
 });
+}

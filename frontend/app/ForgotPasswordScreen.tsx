@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
 import { Link, router } from 'expo-router';
 import axios from '@/services/axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 export default function ForgotPasswordScreen() {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
@@ -38,69 +42,134 @@ export default function ForgotPasswordScreen() {
     
     return (
         <View style={styles.container}>
+            <View style={styles.headerIcon}>
+                <Ionicons name="key-outline" size={40} color={colors.tint} />
+            </View>
+
             <Text style={styles.title}>Reset Password</Text>
             <Text style={styles.subtitle}>
-                Enter your email to receive a reset code
+                Enter your email address to receive a secure reset code
             </Text>
             
-            <TextInput
-                style={styles.input}
-                placeholder="Email"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-            />
+            <View style={styles.inputWrapper}>
+                <Ionicons name="mail-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                    style={styles.input}
+                    placeholder="Email"
+                    placeholderTextColor={colors.textSecondary + '70'}
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                />
+            </View>
             
             {message ? <Text style={styles.message}>{message}</Text> : null}
             
-            <Button
-                title={loading ? "Sending..." : "Send Reset Code"}
-                onPress={handleSendCode}
+            <TouchableOpacity 
+                style={[styles.button, loading && { opacity: 0.7 }]} 
+                onPress={handleSendCode} 
                 disabled={loading}
-            />
+            >
+                <Text style={styles.buttonText}>{loading ? "Sending..." : "Send Reset Code"}</Text>
+            </TouchableOpacity>
             
-            <Link href="/LoginScreen" style={styles.link}>
-                Back to Login
+            <Link href="/LoginScreen" asChild>
+                <TouchableOpacity style={styles.backLink}>
+                    <Ionicons name="arrow-back" size={16} color={colors.tint} />
+                    <Text style={styles.linkText}>Back to Login</Text>
+                </TouchableOpacity>
             </Link>
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+function getStyles(colors: any, activeScheme: string) {
+  return StyleSheet.create({
     container: {
         flex: 1,
-        padding: 20,
+        padding: 24,
         justifyContent: 'center',
+        backgroundColor: colors.background,
+    },
+    headerIcon: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: colors.surface,
+        alignItems: 'center',
+        justifyContent: 'center',
+        alignSelf: 'center',
+        marginBottom: 24,
+        borderWidth: 1,
+        borderColor: colors.border,
     },
     title: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginBottom: 10,
+        fontSize: 28,
+        fontWeight: '900',
+        color: colors.text,
+        marginBottom: 8,
         textAlign: 'center',
+        letterSpacing: -0.5,
     },
     subtitle: {
         fontSize: 16,
-        color: '#666',
-        marginBottom: 30,
+        color: colors.textSecondary,
+        marginBottom: 32,
         textAlign: 'center',
+        lineHeight: 24,
+    },
+    inputWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.surface,
+        borderRadius: 16,
+        paddingHorizontal: 16,
+        marginBottom: 24,
+        borderWidth: 1,
+        borderColor: colors.border,
+        height: 56,
+    },
+    inputIcon: {
+        marginRight: 12,
     },
     input: {
-        borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 8,
-        padding: 12,
-        marginBottom: 20,
+        flex: 1,
+        height: '100%',
+        color: colors.text,
         fontSize: 16,
+        fontWeight: '600',
     },
     message: {
         textAlign: 'center',
         marginBottom: 20,
-        color: '#666',
+        color: colors.error,
+        fontWeight: '600',
     },
-    link: {
-        marginTop: 20,
-        textAlign: 'center',
-        color: 'blue',
+    button: {
+        backgroundColor: colors.tint,
+        height: 56,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 8,
+    },
+    buttonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '800',
+    },
+    backLink: {
+        marginTop: 24,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+    },
+    linkText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: colors.tint,
     },
 });
+}

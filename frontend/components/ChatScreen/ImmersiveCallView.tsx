@@ -37,7 +37,7 @@ import { useSpaceStore } from '@/stores/spaceStore';
 import Avatar from '@/components/Image/Avatar';
 import AuthContext from '@/context/AuthContext';
 import { useCall } from '@/context/CallContext';
-import { createShadow } from '@/utils/styles';
+import { createShadow, createTextShadow } from '@/utils/styles';
 
 let RTCView: any;
 if (Platform.OS !== 'web') {
@@ -1023,8 +1023,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
           {/* Bottom gradient for controls readability */}
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.65)']}
-            style={styles.pipRemoteGradient}
-            pointerEvents="none"
+            style={[styles.pipRemoteGradient, { pointerEvents: 'none' }]}
           />
           {/* Remote name tag + status badges */}
           <View style={styles.pipRemoteNameTag}>
@@ -1737,9 +1736,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-    textShadowColor: 'rgba(0,0,0,0.8)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    ...createTextShadow({ color: 'rgba(0,0,0,0.8)', width: 0, height: 1, radius: 3 }),
   },
   // Hand raise badges inside PiP
   pipRemoteHandBadge: {

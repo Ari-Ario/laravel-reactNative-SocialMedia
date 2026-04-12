@@ -6,9 +6,12 @@ import { Ionicons } from '@expo/vector-icons';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { usePostStore } from '@/stores/postStore';
 import ReportPost from './ReportPost';
+import { LinkPreviewCard } from './LinkPreviewCard';
+import { extractFirstUrl } from '@/utils/urlUtils';
 import { useToastStore } from '@/stores/toastStore';
 import { useReportedContentStore } from '@/stores/reportedContentStore';
 import { deleteReportByTarget } from '@/services/ReportService';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 interface RenderCommentsProps {
   user: any;
@@ -20,14 +23,13 @@ interface RenderCommentsProps {
   onDeleteCommentReaction: (commentId: number, emoji: string) => void;
   onDeleteComment: (commentId: number) => void;
   highlightedCommentId?: string | null;
-  onCommentLayout?: (commentId: string, y: number) => void; // Add this
+  onCommentLayout?: (commentId: string, y: number) => void;
 }
 
 const RenderComments = ({
   user,
   service,
   postId,
-  // comments,
   onProfilePress,
   onReply,
   onReactComment,
@@ -36,7 +38,7 @@ const RenderComments = ({
   highlightedCommentId,
   onCommentLayout
 }: RenderCommentsProps) => {
-  // Get the latest comments from Zustand store
+  const { colors, activeScheme } = useAppTheme();
   const { posts } = usePostStore();
   const currentPost = posts.find(p => p.id === postId);
   const comments = currentPost?.comments || [];
@@ -46,7 +48,6 @@ const RenderComments = ({
 
   const getGroupedReactionsComments = (comment: any) => {
     const defaultEmojis = ['🤍'];
-
     if (!comment?.reaction_comments || comment?.reaction_comments.length === 0) {
       return defaultEmojis.map(emoji => ({
         emoji,
@@ -56,7 +57,6 @@ const RenderComments = ({
     }
 
     const reactionMap = new Map<string, { count: number, user_ids: number[] }>();
-
     for (const reaction of comment.reaction_comments) {
       const existing = reactionMap.get(reaction.emoji) || { count: 0, user_ids: [] };
       reactionMap.set(reaction.emoji, {
@@ -66,11 +66,7 @@ const RenderComments = ({
     }
 
     return [...reactionMap.entries()]
-      .map(([emoji, { count, user_ids }]) => ({
-        emoji,
-        count,
-        user_ids
-      }))
+      .map(([emoji, { count, user_ids }]) => ({ emoji, count, user_ids }))
       .sort((a, b) => b.count - a.count);
   };
 
@@ -79,11 +75,16 @@ const RenderComments = ({
     const isMyComment = String(item.user_id) === String(user?.id);
     const isHighlighted = highlightedCommentId && item.id.toString() === highlightedCommentId;
 
+    // Detect URL in comment using unified utility
+    const detectedUrl = extractFirstUrl(item.content);
+
     return (
       <View
         style={[
           styles.commentContainer,
-          isHighlighted && styles.highlightedComment
+          { borderTopColor: colors.border },
+          isHighlighted && styles.highlightedComment,
+          isHighlighted && { backgroundColor: colors.primary + '15', borderLeftColor: colors.primary }
         ]}
         onLayout={(e) => {
           if (isHighlighted && onCommentLayout) {
@@ -91,16 +92,20 @@ const RenderComments = ({
           }
         }}
       >
-        {/* Comment header */}
         <View style={styles.commentHeader}>
           <TouchableOpacity onPress={() => onProfilePress(item.user.id)}>
             <Image
               source={{ uri: `${getApiBaseImage()}/storage/${item.user.profile_photo}` || 'https://picsum.photos/200' }}
               style={styles.commentAvatar}
             />
-            <Text style={styles.commentUsername}>{item.user.name}</Text>
+            <Text style={[styles.commentUsername, { color: colors.text }]}>{item.user.name}</Text>
           </TouchableOpacity>
-          <Text style={styles.commentContent}>{item.content}</Text>
+          <Text style={[styles.commentContent, { color: colors.text }]}>{item.content}</Text>
+          {detectedUrl && (
+            <View style={styles.commentLinkPreview}>
+              <LinkPreviewCard url={detectedUrl} compact={true} />
+            </View>
+          )}
           {!isMyComment && (
             <TouchableOpacity
               style={styles.headerReportButton}
@@ -124,22 +129,20 @@ const RenderComments = ({
               <Ionicons
                 name={useReportedContentStore.getState().isReported('comment', item.id) ? "flag" : "flag-outline"}
                 size={14}
-                color={useReportedContentStore.getState().isReported('comment', item.id) ? "#ff4444" : "#999"}
+                color={useReportedContentStore.getState().isReported('comment', item.id) ? "#ff4444" : colors.textSecondary}
               />
             </TouchableOpacity>
           )}
         </View>
 
         <View style={styles.commentButtons}>
-          {/* Reply button */}
           <TouchableOpacity
             style={styles.replyButton}
             onPress={() => onReply(item)}
           >
-            <Text style={styles.replyButtonText}>Reply</Text>
+            <Text style={[styles.replyButtonText, { color: colors.tint }]}>Reply</Text>
           </TouchableOpacity>
 
-          {/* Comment reactions */}
           <View style={styles.commentReactionsScrollContainer}>
             {groupedReactions.length > 0 ? (
               <ScrollView
@@ -149,7 +152,6 @@ const RenderComments = ({
               >
                 {groupedReactions.map((reaction, idx) => {
                   const isMyReaction = reaction.user_ids?.some(id => String(id) === String(user?.id));
-
                   return isMyReaction ? (
                     <TouchableOpacity
                       key={`${reaction.emoji}-${idx}`}
@@ -167,7 +169,7 @@ const RenderComments = ({
                   ) : (
                     <TouchableOpacity
                       key={`${reaction.emoji}-${idx}`}
-                      style={styles.reactionItem}
+                      style={[styles.reactionItem, { borderColor: colors.border }]}
                       onPress={() => {
                         service.setCurrentReactingComment({ postId, commentId: item.id });
                         service.setCurrentReactingItem(null);
@@ -176,7 +178,7 @@ const RenderComments = ({
                     >
                       <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
                       {reaction.count > 1 && (
-                        <Text style={styles.reactionCount}>
+                        <Text style={[styles.reactionCount, { color: colors.textSecondary }]}>
                           {reaction.count}
                         </Text>
                       )}
@@ -192,13 +194,12 @@ const RenderComments = ({
                   service.setIsEmojiPickerOpen(true);
                 }}
               >
-                <Ionicons name="happy-outline" size={16} color="#666" />
-                <Text style={styles.addReactionText}>React</Text>
+                <Ionicons name="happy-outline" size={16} color={colors.textSecondary} />
+                <Text style={[styles.addReactionText, { color: colors.textSecondary }]}>React</Text>
               </TouchableOpacity>
             )}
           </View>
 
-          {/* Add delete button for my comments */}
           {isMyComment && (
             <TouchableOpacity
               style={styles.deleteButton}
@@ -209,7 +210,6 @@ const RenderComments = ({
           )}
         </View>
 
-        {/* Nested replies */}
         {item.replies?.length > 0 && (
           <View style={styles.repliesContainer}>
             <FlatList
@@ -224,7 +224,7 @@ const RenderComments = ({
   };
 
   if (comments.length === 0) {
-    return <Text style={styles.noCommentsText}>No comments yet</Text>;
+    return <Text style={[styles.noCommentsText, { color: colors.textSecondary }]}>No comments yet</Text>;
   }
 
   return (
@@ -234,7 +234,7 @@ const RenderComments = ({
         renderItem={renderComment}
         keyExtractor={(comment) => comment.id.toString()}
         scrollEnabled={false}
-        extraData={comments} // This ensures re-render when comments change
+        extraData={comments}
         ListFooterComponent={
           <ReportPost
             visible={showReportModal}
@@ -248,7 +248,6 @@ const RenderComments = ({
           />
         }
       />
-      {/* 🚀 Emoji Picker inside Modal boundary for comment reactions */}
       {typeof service.isEmojiPickerOpen === 'boolean' && (
         <EmojiPicker
           open={service.isEmojiPickerOpen && !!service.currentReactingComment}
@@ -269,18 +268,15 @@ const styles = StyleSheet.create({
   commentContainer: {
     padding: 0,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    // backgroundColor: '#f0f0f0'
   },
   highlightedComment: {
-    backgroundColor: '#e6f3ff',
     borderLeftWidth: 3,
-    borderLeftColor: '#0095f6',
     marginLeft: -3,
   },
   commentHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
   commentAvatar: {
     width: 32,
@@ -296,6 +292,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginLeft: 40,
     flex: 1,
+  },
+  commentLinkPreview: {
+    marginLeft: 40,
+    marginTop: 4,
+    marginBottom: 4,
+    width: '90%',
   },
   headerReportButton: {
     padding: 5,
@@ -326,20 +328,17 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   replyButtonText: {
-    color: '#3498db',
     fontSize: 12,
   },
   repliesContainer: {
     paddingLeft: 10,
     marginTop: 10,
-    borderLeftColor: '#eee',
   },
   reactionItem: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
     borderRadius: 15,
-    borderColor: '#e8eaed',
     paddingHorizontal: 6,
     paddingVertical: 4,
     backgroundColor: 'transparent',
@@ -354,7 +353,6 @@ const styles = StyleSheet.create({
   reactionCount: {
     fontSize: 12,
     marginLeft: 4,
-    color: '#65676B',
   },
   reactionCountMine: {
     color: '#10b981',
@@ -367,7 +365,6 @@ const styles = StyleSheet.create({
   },
   addReactionText: {
     fontSize: 12,
-    color: '#65676B',
     fontStyle: 'italic',
   },
   deleteButton: {

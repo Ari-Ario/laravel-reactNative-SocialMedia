@@ -30,7 +30,7 @@ import { safeHaptics } from '@/utils/haptics';
 import { MediaCompressor } from '@/utils/mediaCompressor';
 import { getToken } from '@/services/TokenService';
 import getApiBase from '@/services/getApiBase';
-import { createShadow } from '@/utils/styles';
+import { createShadow, createTextShadow } from '@/utils/styles';
 
 export interface UploadedMedia {
   id: number;
@@ -1154,9 +1154,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginTop: 12,
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    ...createTextShadow({ color: 'rgba(0,0,0,0.5)', width: 0, height: 1, radius: 3 }),
   },
   cameraFlipBtn: {
     width: 44,

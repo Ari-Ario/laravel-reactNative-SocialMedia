@@ -16,9 +16,9 @@ export async function fetchUserProfile(userId: string) {
 
 
 //Functions handling every profile
-export const fetchProfile = async (userId: string) => {
+export const fetchProfile = async (userId: string, page: number = 1) => {
   try {
-    const response = await axios.get(`${API_BASE}/profiles/${userId}`);
+    const response = await axios.get(`${API_BASE}/profiles/${userId}?page=${page}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching user profile:', error);

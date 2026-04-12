@@ -24,7 +24,6 @@ export const createShadow = ({
 }: ShadowOptions = {}) => {
     return Platform.select({
         web: {
-            // Use rgba for better compatibility and to avoid potential issues with hex opacity
             boxShadow: `${width}px ${height}px ${radius}px rgba(0, 0, 0, ${opacity})`,
         },
         default: {
@@ -33,6 +32,29 @@ export const createShadow = ({
             shadowOpacity: opacity,
             shadowRadius: radius,
             elevation: elevation,
+        },
+    });
+};
+
+/**
+ * Creates cross-platform text shadow styles.
+ * On Web, it uses textShadow to avoid deprecation warnings.
+ * On Native, it uses traditional textShadow props.
+ */
+export const createTextShadow = ({
+    color = 'rgba(0, 0, 0, 0.75)',
+    width = 0,
+    height = 2,
+    radius = 4,
+}: { color?: string; width?: number; height?: number; radius?: number } = {}) => {
+    return Platform.select({
+        web: {
+            textShadow: `${width}px ${height}px ${radius}px ${color}`,
+        },
+        default: {
+            textShadowColor: color,
+            textShadowOffset: { width, height },
+            textShadowRadius: radius,
         },
     });
 };

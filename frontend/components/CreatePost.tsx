@@ -19,9 +19,11 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import { GlobalStyles } from '@/styles/GlobalStyles';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import PlatformCameraView from '@/components/PlatformCameraView';
+import { createShadow, createTextShadow } from '@/utils/styles';
+import { fetchPostById, updatePost, createPost } from '@/services/PostService';
 import * as ImagePicker from 'expo-image-picker';
-import { createPost, updatePost } from '@/services/PostService';
 import { useLocalSearchParams, router } from 'expo-router';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { deletePostMedia, fetchPosts } from '@/services/PostService';
@@ -62,6 +64,8 @@ interface CreatePostProps {
 }
 
 export default function CreatePost({ visible, onClose, onPostCreated, initialParams }: CreatePostProps) {
+  const { colors, activeScheme } = useAppTheme();
+  const styles = getStyles(colors, activeScheme);
   const insets = useSafeAreaInsets();
   const params = initialParams || useLocalSearchParams();
   const isEditing = !!(params.postId && params.postId !== 'null');
@@ -706,12 +710,12 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
       {cameraVisible ? (
         renderCameraView()
       ) : (
-        <View style={[GlobalStyles.popupContainer, { paddingTop: insets.top }]}>
-            <View style={styles.header}>
+        <View style={[GlobalStyles.popupContainer, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+            <View style={[styles.header, { borderBottomColor: colors.border }]}>
               <TouchableOpacity onPress={handleClose}>
-                <Ionicons name="close" size={24} color="black" />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
-              <Text style={styles.title}>{isEditing ? 'Edit Post' : 'New Post'}</Text>
+              <Text style={[styles.title, { color: colors.text }]}>{isEditing ? 'Edit Post' : 'New Post'}</Text>
               <TouchableOpacity
                 onPress={handleSubmit}
                 disabled={isUploading || (longVideosDetected && !isEditing)}
@@ -731,9 +735,9 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
 
             <ScrollView contentContainerStyle={styles.content}>
               <TextInput
-                style={styles.captionInput}
+                style={[styles.captionInput, { color: colors.text }]}
                 placeholder="What's happening?"
-            placeholderTextColor="#657786"
+            placeholderTextColor={colors.textSecondary}
             multiline
             value={caption}
             onChangeText={setCaption}
@@ -741,28 +745,28 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
 
           {/* AI Shield Feedback */}
           {caption.length > 5 && (
-            <View style={styles.aiShieldContainer}>
+            <View style={[styles.aiShieldContainer, { backgroundColor: colors.muted, borderColor: colors.border }]}>
               <View style={styles.aiShieldHeader}>
                 <Ionicons 
                   name={isSafe ? "shield-checkmark-outline" : "alert-circle-outline"} 
                   size={16} 
-                  color={isSafe ? "#4CAF50" : "#F44336"} 
+                  color={isSafe ? colors.success : colors.error} 
                 />
-                <Text style={[styles.aiShieldTitle, { color: isSafe ? "#4CAF50" : "#F44336" }]}>
+                <Text style={[styles.aiShieldTitle, { color: isSafe ? colors.success : colors.error }]}>
                   AI Shield: {isChecking ? 'Analyzing...' : isSafe ? 'Safe Content' : 'Potential Violation'}
                 </Text>
               </View>
               
               <View style={styles.aiMetricsRow}>
                 <View style={styles.aiMetric}>
-                  <Text style={styles.aiMetricLabel}>Scientific / Factual</Text>
-                  <Text style={[styles.aiMetricValue, { color: factScore > 0.8 ? "#4CAF50" : "#666" }]}>
+                  <Text style={[styles.aiMetricLabel, { color: colors.textSecondary }]}>Scientific / Factual</Text>
+                  <Text style={[styles.aiMetricValue, { color: factScore > 0.8 ? colors.success : colors.text }]}>
                     {(factScore * 100).toFixed(0)}%
                   </Text>
                 </View>
                 <View style={styles.aiMetric}>
-                  <Text style={styles.aiMetricLabel}>Morality Score</Text>
-                  <Text style={[styles.aiMetricValue, { color: moralityScore > 0.8 ? "#4CAF50" : "#666" }]}>
+                  <Text style={[styles.aiMetricLabel, { color: colors.textSecondary }]}>Morality Score</Text>
+                  <Text style={[styles.aiMetricValue, { color: moralityScore > 0.8 ? colors.success : colors.text }]}>
                     {(moralityScore * 100).toFixed(0)}%
                   </Text>
                 </View>
@@ -771,8 +775,8 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
               {analysis?.flags && analysis.flags.length > 0 && (
                 <View style={styles.aiFlagsRow}>
                   {analysis.flags.map(flag => (
-                    <View key={flag} style={styles.aiFlagBadge}>
-                      <Text style={styles.aiFlagText}>{flag.replace('_', ' ')}</Text>
+                    <View key={flag} style={[styles.aiFlagBadge, { backgroundColor: colors.background }]}>
+                      <Text style={[styles.aiFlagText, { color: colors.textSecondary }]}>{flag.replace('_', ' ')}</Text>
                     </View>
                   ))}
                 </View>
@@ -784,21 +788,21 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
           <View style={styles.locationContainer}>
             {location ? (
               <View style={styles.locationTag}>
-                <BlurView intensity={80} tint="light" style={styles.locationTagContent}>
-                  <Ionicons name="location" size={16} color="#1DA1F2" />
-                  <Text style={styles.locationTagText}>{location.name}</Text>
+                <BlurView intensity={80} tint={activeScheme === 'dark' ? 'dark' : 'light'} style={styles.locationTagContent}>
+                  <Ionicons name="location" size={16} color={colors.tint} />
+                  <Text style={[styles.locationTagText, { color: colors.text }]}>{location.name}</Text>
                   <TouchableOpacity onPress={removeLocation} style={styles.removeLocationButton}>
-                    <Ionicons name="close-circle" size={20} color="#999" />
+                    <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
                   </TouchableOpacity>
                 </BlurView>
               </View>
             ) : (
               <TouchableOpacity
-                style={styles.addLocationButton}
+                style={[styles.addLocationButton, { backgroundColor: colors.muted }]}
                 onPress={() => setShowLocationSearch(true)}
               >
-                <Ionicons name="location-outline" size={20} color="#1DA1F2" />
-                <Text style={styles.addLocationText}>Add location</Text>
+                <Ionicons name="location-outline" size={20} color={colors.tint} />
+                <Text style={[styles.addLocationText, { color: colors.tint }]}>Add location</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -888,19 +892,19 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
 
           <View style={styles.mediaButtons}>
             <TouchableOpacity
-              style={styles.mediaButton}
+              style={[styles.mediaButton, { backgroundColor: colors.muted }]}
               onPress={pickMedia}
             >
-              <Ionicons name="image" size={24} color="#1DA1F2" />
-              <Text style={styles.mediaButtonText}>Library</Text>
+              <Ionicons name="image" size={24} color={colors.tint} />
+              <Text style={[styles.mediaButtonText, { color: colors.tint }]}>Library</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.mediaButton}
+              style={[styles.mediaButton, { backgroundColor: colors.muted }]}
               onPress={() => setCameraVisible(true)}
             >
-              <Ionicons name="camera" size={24} color="#1DA1F2" />
-              <Text style={styles.mediaButtonText}>Camera</Text>
+              <Ionicons name="camera" size={24} color={colors.tint} />
+              <Text style={[styles.mediaButtonText, { color: colors.tint }]}>Camera</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -928,7 +932,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
   cameraContainer: {
     flex: 1,
     zIndex: 9999,
@@ -1015,7 +1019,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
   title: {
     fontSize: 18,
@@ -1027,7 +1030,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   postButtonDisabled: {
-    color: '#999',
+    opacity: 0.5,
   },
   content: {
     padding: 16,
@@ -1035,7 +1038,6 @@ const styles = StyleSheet.create({
   },
   captionInput: {
     fontSize: 18,
-    color: 'black',
     minHeight: 100,
   },
   locationContainer: {
@@ -1045,12 +1047,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 8,
-    backgroundColor: '#f0f8ff',
     borderRadius: 20,
     alignSelf: 'flex-start',
   },
   addLocationText: {
-    color: '#1DA1F2',
     marginLeft: 5,
     fontSize: 14,
   },
@@ -1066,7 +1066,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   locationTagText: {
-    color: '#1DA1F2',
     marginLeft: 4,
     marginRight: 4,
     fontSize: 14,
@@ -1209,11 +1208,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 10,
     borderRadius: 8,
-    backgroundColor: '#f0f8ff',
     width: '45%',
   },
   mediaButtonText: {
-    color: '#1DA1F2',
     marginTop: 5,
   },
   deleteStatus: {
@@ -1302,9 +1299,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 12,
     fontWeight: 'bold',
-    textShadowColor: 'black',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    ...createTextShadow({ color: 'black', width: 0, height: 1, radius: 2 }),
   },
   modeSelector: {
     flexDirection: 'row',
@@ -1343,12 +1338,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   aiShieldContainer: {
-    backgroundColor: '#F8F9FA',
     borderRadius: 12,
     padding: 12,
     marginTop: 10,
     borderWidth: 1,
-    borderColor: '#E1E8ED',
   },
   aiShieldHeader: {
     flexDirection: 'row',
@@ -1370,7 +1363,6 @@ const styles = StyleSheet.create({
   },
   aiMetricLabel: {
     fontSize: 10,
-    color: '#657786',
   },
   aiMetricValue: {
     fontSize: 14,

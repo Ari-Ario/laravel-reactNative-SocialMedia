@@ -28,6 +28,7 @@ import { GlobalStyles } from '@/styles/GlobalStyles';
 import { useToastStore } from '@/stores/toastStore';
 import AuthContext from '@/context/AuthContext';
 import { useContext } from 'react';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 interface PostShareModalProps {
   visible: boolean;
@@ -48,6 +49,8 @@ interface PostShareModalProps {
 
 export default function PostShareModal({ visible, onClose, post, story, location, initialRecipient }: PostShareModalProps) {
   const insets = useSafeAreaInsets();
+  const { colors, activeScheme } = useAppTheme();
+  const styles = getStyles(colors, activeScheme);
   const { user: currentUser } = useContext(AuthContext);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState<string | null>(null); // spaceId if sending
@@ -60,9 +63,9 @@ export default function PostShareModal({ visible, onClose, post, story, location
     return spaces.filter(space => {
       const isChannel = space.space_type === 'channel';
       const isAuthorized = space.my_role === 'owner' || space.my_role === 'moderator';
-      
+
       const matchesSearch = space.title.toLowerCase().includes(searchQuery.toLowerCase());
-      
+
       if (isChannel) {
         return isAuthorized && matchesSearch;
       }
@@ -73,11 +76,11 @@ export default function PostShareModal({ visible, onClose, post, story, location
   // Merge spaces with initialRecipient suggestion
   const displaySpaces = useMemo(() => {
     let result: any[] = [...filteredSpaces];
-    
+
     if (initialRecipient && !searchQuery) {
       // Check if space already exists for this recipient
-      const existingSpace = spaces.find(s => 
-        (s.space_type === 'direct' || s.space_type === 'chat') && 
+      const existingSpace = spaces.find(s =>
+        (s.space_type === 'direct' || s.space_type === 'chat') &&
         s.other_participant?.id === initialRecipient.id
       );
 
@@ -91,11 +94,11 @@ export default function PostShareModal({ visible, onClose, post, story, location
           title: initialRecipient.name,
           space_type: 'direct',
           other_participant: {
-             id: initialRecipient.id,
-             name: initialRecipient.name,
-             profile_photo: initialRecipient.profile_photo,
-             is_private: initialRecipient.is_private,
-             is_following: initialRecipient.is_following
+            id: initialRecipient.id,
+            name: initialRecipient.name,
+            profile_photo: initialRecipient.profile_photo,
+            is_private: initialRecipient.is_private,
+            is_following: initialRecipient.is_following
           },
           is_virtual: true
         } as any;
@@ -107,7 +110,7 @@ export default function PostShareModal({ visible, onClose, post, story, location
 
   const handleSendInternal = useCallback(async (spaceId: string) => {
     if (loading) return;
-    
+
     let targetSpaceId = spaceId;
 
     // Handle virtual space creation
@@ -117,22 +120,22 @@ export default function PostShareModal({ visible, onClose, post, story, location
 
       // Final privacy check before creating space
       if (initialRecipient && initialRecipient.is_private && !initialRecipient.is_following) {
-         useToastStore.getState().showToast("This profile is private", "error");
-         setLoading(null);
-         return;
+        useToastStore.getState().showToast("This profile is private", "error");
+        setLoading(null);
+        return;
       }
 
       try {
         const collaborationService = CollaborationService.getInstance();
         const directSpace = await collaborationService.getOrCreateDirectSpace(realUserId);
         const newSpaceId = directSpace?.space?.id || directSpace?.id;
-        
+
         if (!newSpaceId) throw new Error("Could not create space");
-        
+
         targetSpaceId = newSpaceId.toString();
         // Refresh store to include new space
         if (currentUser) {
-           useCollaborationStore.getState().fetchUserSpaces(Number(currentUser.id));
+          useCollaborationStore.getState().fetchUserSpaces(Number(currentUser.id));
         }
       } catch (err) {
         console.error("Space creation failed", err);
@@ -150,7 +153,7 @@ export default function PostShareModal({ visible, onClose, post, story, location
       const itemToShare = post || story || location;
       const isStory = !!story;
       const isLocation = !!location;
-      
+
       let shareUrl = '';
       let content = '';
       let type = '';
@@ -170,16 +173,16 @@ export default function PostShareModal({ visible, onClose, post, story, location
           appended_message: additionalMessage.trim() || undefined
         };
       } else {
-        shareUrl = isStory 
+        shareUrl = isStory
           ? `${baseUrl}/story/${story.id}`
           : `${baseUrl}/post/${post.id}`;
-        
-        const mediaPreview = isStory 
-          ? story.media_path 
+
+        const mediaPreview = isStory
+          ? story.media_path
           : (post.media?.length > 0 ? (post.media[0].file_path || post.media[0].url) : null);
-          
-        const mediaType = isStory 
-          ? (story.type || 'image') 
+
+        const mediaType = isStory
+          ? (story.type || 'image')
           : (post.media?.length > 0 ? post.media[0].type : 'text');
 
         content = (isStory ? story.caption : post.caption) || (isStory ? 'Shared a story' : 'Shared a post');
@@ -212,7 +215,7 @@ export default function PostShareModal({ visible, onClose, post, story, location
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-      
+
       // Track that we've shared to this space in this session
       setSharedSpaces(prev => new Set(prev).add(spaceId).add(targetSpaceId));
       // Modal stays open for more shares
@@ -231,7 +234,7 @@ export default function PostShareModal({ visible, onClose, post, story, location
       const baseUrl = getApiBaseImage();
       const isStory = !!story;
       const isLocation = !!location;
-      
+
       let shareUrl = '';
       let message = '';
       let title = '';
@@ -241,10 +244,10 @@ export default function PostShareModal({ visible, onClose, post, story, location
         message = `📍 *${location.name || 'Location'}*\n${location.address || ''}\n\n🗺️ ${shareUrl}`;
         title = 'Share Location';
       } else {
-        shareUrl = isStory 
+        shareUrl = isStory
           ? `${baseUrl}/story/${story.id}`
           : `${baseUrl}/post/${post.id}`;
-        
+
         const caption = isStory ? story.caption : post.caption;
         message = `${caption ? caption + '\n\n' : ''}Check out this ${isStory ? 'story' : 'post'}: ${shareUrl}`;
         title = `Share ${isStory ? 'Story' : 'Post'}`;
@@ -263,10 +266,10 @@ export default function PostShareModal({ visible, onClose, post, story, location
         url: shareUrl, // iOS
         title
       });
-      
+
       if (result.action === Share.sharedAction) {
         if (Platform.OS !== 'web') {
-           await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
         onClose();
       }
@@ -301,8 +304,8 @@ export default function PostShareModal({ visible, onClose, post, story, location
       subtitle = post.caption || 'Shared a post';
       const firstMedia = post.media?.[0];
       if (firstMedia) {
-        imageUri = (firstMedia.file_path || firstMedia.url)?.startsWith('http') 
-          ? (firstMedia.file_path || firstMedia.url) 
+        imageUri = (firstMedia.file_path || firstMedia.url)?.startsWith('http')
+          ? (firstMedia.file_path || firstMedia.url)
           : `${baseUrl}/storage/${firstMedia.file_path || firstMedia.url}`;
       }
       typeIcon = 'image';
@@ -319,8 +322,8 @@ export default function PostShareModal({ visible, onClose, post, story, location
             </View>
           )}
           <View style={styles.previewTextContainer}>
-            <Text style={styles.previewTitle} numberOfLines={1}>{title}</Text>
-            <Text style={styles.previewSubtitle} numberOfLines={1}>{subtitle}</Text>
+            <Text style={[styles.previewTitle, { color: colors.text }]} numberOfLines={1}>{title}</Text>
+            <Text style={[styles.previewSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>{subtitle}</Text>
           </View>
         </View>
       </View>
@@ -332,34 +335,34 @@ export default function PostShareModal({ visible, onClose, post, story, location
     const hasShared = sharedSpaces.has(item.id.toString());
     const isDirect = item.space_type === 'direct' || item.space_type === 'chat';
     const displayName = isDirect ? (item.other_participant?.name || item.title) : item.title;
-    
+
     // Use raw paths for Avatar component to handle
-    const displayImage = isDirect 
-      ? item.other_participant?.profile_photo 
+    const displayImage = isDirect
+      ? item.other_participant?.profile_photo
       : (item.image_path || item.image_url);
 
     return (
-      <TouchableOpacity 
-        style={[styles.spaceItem, hasShared && styles.sharedSpaceItem]} 
+      <TouchableOpacity
+        style={[styles.spaceItem, hasShared && styles.sharedSpaceItem]}
         onPress={() => !hasShared && handleSendInternal(item.id.toString())}
         activeOpacity={hasShared ? 1 : 0.7}
         disabled={hasShared}
       >
         <View style={styles.imageContainer}>
-          <Avatar 
-            source={displayImage} 
-            size={50} 
+          <Avatar
+            source={displayImage}
+            size={50}
             name={displayName}
             showStatus={item.is_live}
             isOnline={item.is_live}
           />
         </View>
-        
+
         <View style={styles.spaceInfo}>
-          <Text style={[styles.spaceName, hasShared && styles.sharedText]} numberOfLines={1}>{displayName}</Text>
-          <Text style={styles.spaceType}>{item.space_type.toUpperCase()}</Text>
+          <Text style={[styles.spaceName, { color: colors.text }, hasShared && styles.sharedText]} numberOfLines={1}>{displayName}</Text>
+          <Text style={[styles.spaceType, { color: colors.textSecondary }]}>{item.space_type.toUpperCase()}</Text>
         </View>
- 
+
         {isSending ? (
           <ActivityIndicator size="small" color="#007AFF" />
         ) : hasShared ? (
@@ -382,47 +385,47 @@ export default function PostShareModal({ visible, onClose, post, story, location
       animationType="slide"
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.modalOverlay}
       >
-        <TouchableOpacity 
-          style={styles.backdrop} 
-          activeOpacity={1} 
-          onPress={onClose} 
+        <TouchableOpacity
+          style={styles.backdrop}
+          activeOpacity={1}
+          onPress={onClose}
         />
-        
-        <View style={[styles.sheet, GlobalStyles.popupContainer]}>
-          <View style={styles.handle} />
-          
-          <View style={styles.header}>
-            <Text style={styles.title}>Share {location ? 'Location' : story ? 'Story' : 'Post'}</Text>
+
+        <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
+          <View style={[styles.handle, { backgroundColor: colors.border }]} />
+
+          <View style={[styles.header, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.title, { color: colors.text }]}>Share {location ? 'Location' : story ? 'Story' : 'Post'}</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color="#000" />
+              <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
 
           {renderPreview()}
 
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color="#888" style={styles.searchIcon} />
+          <View style={[styles.searchContainer, { backgroundColor: colors.background }]}>
+            <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: colors.text }]}
               placeholder="Search spaces or contacts..."
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholderTextColor="#888"
+              placeholderTextColor={colors.textSecondary}
             />
           </View>
 
           <View style={styles.messageInputContainer}>
             <TextInput
-              style={styles.messageInput}
+              style={[styles.messageInput, { backgroundColor: colors.background, color: colors.text }]}
               placeholder="Add a message..."
               value={additionalMessage}
               onChangeText={setAdditionalMessage}
               multiline
-              placeholderTextColor="#888"
+              placeholderTextColor={colors.textSecondary}
             />
           </View>
 
@@ -431,24 +434,25 @@ export default function PostShareModal({ visible, onClose, post, story, location
             renderItem={renderItem}
             keyExtractor={item => item.id.toString()}
             contentContainerStyle={styles.listContent}
+            style={styles.list}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No spaces or contacts found</Text>
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No spaces or contacts found</Text>
               </View>
             }
           />
 
-          <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
-            <TouchableOpacity 
-              style={styles.externalButton} 
+          <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20), borderTopColor: colors.border }]}>
+            <TouchableOpacity
+              style={[styles.externalButton, { backgroundColor: colors.background }]}
               onPress={handleExternalShare}
               activeOpacity={0.8}
             >
               <View style={styles.externalIconBackground}>
                 <Feather name="share" size={20} color="white" />
               </View>
-              <Text style={styles.externalButtonText}>Other Messaging Apps</Text>
-              <Ionicons name="chevron-forward" size={18} color="#888" />
+              <Text style={[styles.externalButtonText, { color: colors.text }]}>Other Messaging Apps</Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -459,7 +463,7 @@ export default function PostShareModal({ visible, onClose, post, story, location
 
 const { width } = Dimensions.get('window');
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -469,11 +473,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   sheet: {
-    backgroundColor: 'white',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     width: '100%',
     maxWidth: 600,
+    maxHeight: Platform.OS === 'web' ? '85%' : '90%',
     alignSelf: 'center',
     ...(createShadow({
       width: 0,
@@ -486,7 +490,6 @@ const styles = StyleSheet.create({
   handle: {
     width: 40,
     height: 4,
-    backgroundColor: '#E5E5EA',
     borderRadius: 2,
     alignSelf: 'center',
     marginTop: 10,
@@ -497,13 +500,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 15,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E5EA',
     position: 'relative',
   },
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#000',
+    color: colors.text,
   },
   closeButton: {
     position: 'absolute',
@@ -513,7 +515,6 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
     margin: 15,
     paddingHorizontal: 12,
     borderRadius: 12,
@@ -525,7 +526,11 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#000',
+    color: colors.text,
+  },
+  list: {
+    flexGrow: 0,
+    flexShrink: 1,
   },
   listContent: {
     paddingHorizontal: 15,
@@ -536,7 +541,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E5EA',
   },
   imageContainer: {
     position: 'relative',
@@ -560,7 +564,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: '#4CD964',
     borderWidth: 2,
-    borderColor: 'white',
+    borderColor: colors.surface,
   },
   spaceInfo: {
     flex: 1,
@@ -569,22 +573,20 @@ const styles = StyleSheet.create({
   spaceName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
   },
   spaceType: {
     fontSize: 11,
-    color: '#8E8E93',
+    color: colors.textSecondary,
     marginTop: 2,
     letterSpacing: 0.5,
   },
   sendButton: {
-    backgroundColor: '#F2F2F7',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 18,
   },
   sendButtonText: {
-    color: '#007AFF',
+    color: colors.tint,
     fontWeight: '600',
     fontSize: 14,
   },
@@ -593,18 +595,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    color: '#8E8E93',
+    color: colors.textSecondary,
     fontSize: 16,
   },
   footer: {
     padding: 15,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E5E5EA',
   },
   externalButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
     padding: 12,
     borderRadius: 12,
   },
@@ -612,7 +612,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.tint,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -621,25 +621,22 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
   },
   messageInputContainer: {
     paddingHorizontal: 15,
     paddingBottom: 10,
   },
   messageInput: {
-    backgroundColor: '#F2F2F7',
     borderRadius: 12,
     padding: 12,
     fontSize: 16,
     maxHeight: 100,
-    color: '#000',
   },
   sharedSpaceItem: {
     opacity: 0.8,
   },
   sharedText: {
-    color: '#8E8E93',
+    color: colors.textSecondary,
   },
   sentBadge: {
     width: 60,
@@ -648,13 +645,10 @@ const styles = StyleSheet.create({
   previewContainer: {
     padding: 15,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E5EA',
-    backgroundColor: '#F9F9F9',
   },
   previewContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
     padding: 10,
     borderRadius: 12,
     ...createShadow({
@@ -686,11 +680,10 @@ const styles = StyleSheet.create({
   previewTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#000',
   },
   previewSubtitle: {
     fontSize: 13,
-    color: '#8E8E93',
+    color: colors.textSecondary,
     marginTop: 2,
   },
 });

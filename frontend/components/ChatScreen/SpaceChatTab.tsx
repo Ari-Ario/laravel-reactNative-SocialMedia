@@ -12,6 +12,7 @@ import {
     Platform,
     ActivityIndicator,
 } from 'react-native';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import AnimatedRN, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -56,6 +57,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
     highlightMessageId,
     onStartCall,
 }) => {
+    const { colors, activeScheme } = useAppTheme();
     const { showToast } = useToastStore();
     const [content, setContent] = useState<string>('');
     const [showMediaUploader, setShowMediaUploader] = useState(false);
@@ -358,19 +360,19 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                 {/* ─── Chat header bar with Poll shortcut ─── */}
                 {polls.length > 0 && (
                     <TouchableOpacity
-                        style={styles.pollsBanner}
+                        style={[styles.pollsBanner, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}
                         onPress={onNavigateToAllPolls}
                         activeOpacity={0.8}
                     >
                         <View style={styles.pollsBannerLeft}>
-                            <Ionicons name="bar-chart" size={16} color="#007AFF" />
-                            <Text style={styles.pollsBannerText}>
+                            <Ionicons name="bar-chart" size={16} color={colors.tint} />
+                            <Text style={[styles.pollsBannerText, { color: colors.tint }]}>
                                 {pollCount} active poll{pollCount !== 1 ? 's' : ''}
                             </Text>
                         </View>
                         <View style={styles.pollsBannerRight}>
-                            <Text style={styles.pollsBannerCta}>View all</Text>
-                            <Ionicons name="chevron-forward" size={14} color="#007AFF" />
+                            <Text style={[styles.pollsBannerCta, { color: colors.tint }]}>View all</Text>
+                            <Ionicons name="chevron-forward" size={14} color={colors.tint} />
                         </View>
                     </TouchableOpacity>
                 )}
@@ -547,7 +549,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                                     </TouchableOpacity>
                                 </View>
                             )}
-                            <AnimatedRN.View style={[styles.chatInputContainer, animatedInputStyle]}>
+                            <AnimatedRN.View style={[styles.chatInputContainer, { borderTopColor: colors.border }, animatedInputStyle]}>
                                 <View style={styles.attachActions}>
                                     <TouchableOpacity
                                         onPress={() => setShowAttachmentPicker(!showAttachmentPicker)}
@@ -557,23 +559,24 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                                         <Ionicons
                                             name={showAttachmentPicker ? "close" : "attach"}
                                             size={24}
-                                            color="#007AFF"
+                                            color={colors.tint}
                                         />
                                     </TouchableOpacity>
                                 </View>
 
                                 <TextInput
-                                    style={styles.messageInput}
+                                    style={[styles.messageInput, { backgroundColor: colors.muted, color: colors.text }]}
                                     placeholder={isRecording ? "Recording..." : `Message in ${space?.title || 'space'}...`}
                                     value={content}
                                     onChangeText={setContent}
                                     multiline
                                     maxLength={2000}
-                                    placeholderTextColor="#9a9a9a"
+                                    placeholderTextColor={colors.textSecondary + '80'}
                                     returnKeyType="default"
                                     blurOnSubmit={false}
                                     onFocus={() => setShowAttachmentPicker(false)}
                                     editable={!isRecording}
+                                    keyboardAppearance={activeScheme}
                                 />
 
                                 <TouchableOpacity
@@ -693,18 +696,15 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
 const styles = StyleSheet.create({
     chatContainer: {
         flex: 1,
-        backgroundColor: '#F7F7F7',
     },
     /* ── Polls banner ── */
     pollsBanner: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        backgroundColor: '#EBF3FF',
         paddingHorizontal: 14,
         paddingVertical: 8,
         borderBottomWidth: 1,
-        borderBottomColor: '#D0E4FF',
     },
     pollsBannerLeft: {
         flexDirection: 'row',
@@ -730,11 +730,9 @@ const styles = StyleSheet.create({
     chatInputContainer: {
         flexDirection: 'row',
         alignItems: 'flex-end',
-        backgroundColor: '#fff',
         paddingHorizontal: 8,
         paddingVertical: 8,
         borderTopWidth: 1,
-        borderTopColor: '#e8e8e8',
         ...createShadow({ width: 0, height: -2, opacity: 0.04, radius: 4, elevation: 4 }),
     },
     attachActions: {
@@ -748,7 +746,6 @@ const styles = StyleSheet.create({
     },
     messageInput: {
         flex: 1,
-        backgroundColor: '#f4f4f4',
         borderRadius: 22,
         paddingHorizontal: 16,
         paddingTop: Platform.OS === 'ios' ? 10 : 8,
@@ -757,7 +754,6 @@ const styles = StyleSheet.create({
         fontSize: 15,
         maxHeight: 120,
         lineHeight: 20,
-        color: '#1a1a1a',
     },
     sendButton: {
         backgroundColor: '#007AFF',

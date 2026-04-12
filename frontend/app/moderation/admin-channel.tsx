@@ -13,6 +13,8 @@ import { router } from 'expo-router';
 import { useNotificationStore, NOTIFICATION_TYPES } from '@/stores/notificationStore';
 import MessageBubble from '@/components/ChatScreen/MessageBubble';
 import Colors from '@/constants/Colors';
+import { BackButton } from '@/components/ui/IconButton';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 interface AdminMessage {
   id: string;
@@ -35,6 +37,8 @@ interface AdminMessage {
 }
 
 const AdminChannelScreen = () => {
+  const { colors, activeScheme } = useAppTheme();
+  const styles = getStyles(colors, activeScheme);
   const { notifications, markModerationAsRead } = useNotificationStore();
   const [messages, setMessages] = useState<AdminMessage[]>([]);
 
@@ -63,11 +67,9 @@ const AdminChannelScreen = () => {
 
   const renderHeader = () => (
     <View style={styles.header}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Ionicons name="chevron-back" size={28} color={(Colors as any)?.light?.tint || '#007AFF'} />
-      </TouchableOpacity>
+      <BackButton onPress={() => router.back()} />
       <View style={styles.headerTitleContainer}>
-        <Ionicons name="shield-checkmark" size={24} color="#FF3B30" style={{ marginRight: 8 }} />
+        <Ionicons name="shield-checkmark" size={24} color={colors.error} style={{ marginRight: 8 }} />
         <Text style={styles.headerTitle}>Administration</Text>
       </View>
       <View style={{ width: 40 }} /> 
@@ -111,7 +113,7 @@ const AdminChannelScreen = () => {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="notifications-off-outline" size={64} color="#ccc" />
+            <Ionicons name="notifications-off-outline" size={64} color={colors.textSecondary} />
             <Text style={styles.emptyText}>No administration messages yet.</Text>
           </View>
         }
@@ -121,10 +123,11 @@ const AdminChannelScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+function getStyles(colors: any, activeScheme: string) {
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -133,8 +136,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#ccc',
-    backgroundColor: '#fff',
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
     ...Platform.select({
       ios: { paddingTop: 0 },
       android: { paddingTop: 10 }
@@ -150,7 +153,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: colors.text,
   },
   listContent: {
     paddingVertical: 20,
@@ -168,35 +171,38 @@ const styles = StyleSheet.create({
   emptyText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#999',
+    color: colors.textSecondary,
   },
   reportContextBubble: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 12,
     marginTop: 8,
     marginLeft: 40,
     borderLeftWidth: 3,
-    borderLeftColor: '#FF9800',
+    borderLeftColor: colors.warning,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   reportContextTitle: {
-    color: '#FF9800',
+    color: colors.warning,
     fontSize: 11,
     fontWeight: '700',
     marginBottom: 4,
     textTransform: 'uppercase',
   },
   reportContextText: {
-    color: '#333',
+    color: colors.text,
     fontSize: 13,
     fontWeight: '600',
   },
   reportContextDesc: {
-    color: '#666',
+    color: colors.textSecondary,
     fontSize: 12,
     fontStyle: 'italic',
     marginTop: 4,
   },
 });
+}
 
 export default AdminChannelScreen;

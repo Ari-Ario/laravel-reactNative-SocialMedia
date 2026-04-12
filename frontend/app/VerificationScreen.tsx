@@ -4,13 +4,15 @@ import {
     View,
     Text,
     TextInput,
-    Button,
     StyleSheet,
     Alert,
     KeyboardAvoidingView,
     Platform,
+    TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAppTheme } from '@/hooks/useAppTheme';
+import { BackButton } from '@/components/ui/IconButton';
 
 import { router, useLocalSearchParams } from 'expo-router';
 import { verifyEmailCode, resendVerificationCode } from '@/services/AuthService';
@@ -19,6 +21,8 @@ import AuthContext from '@/context/AuthContext';
 import { getToken } from '@/services/TokenService';
 
 const VerificationScreen = () => {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
     const params = useLocalSearchParams();
     const { user, setUser } = useContext(AuthContext);
 
@@ -237,19 +241,14 @@ const VerificationScreen = () => {
     // }
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.content}
             >
                 <View style={styles.header}>
-                    <Button
-                        title="← Back"
-                        onPress={() => router.push('/RegisterScreen')}
-                        color="blue"
-                    />
+                    <BackButton onPress={() => router.push('/RegisterScreen')} />
                 </View>
-
                 <View style={styles.formContainer}>
                     <Text style={styles.title}>Verify Your Email</Text>
                     <Text style={styles.subtitle}>
@@ -273,6 +272,7 @@ const VerificationScreen = () => {
                                 maxLength={1}
                                 editable={!loading}
                                 selectTextOnFocus
+                                keyboardAppearance={activeScheme}
                             />
                         ))}
                     </View>
@@ -289,38 +289,45 @@ const VerificationScreen = () => {
                     ) : null}
 
                     <View style={styles.buttonContainer}>
-                        <Button
-                            title={loading ? "Verifying..." : "Verify Email"}
+                        <TouchableOpacity
+                            style={[
+                                styles.button,
+                                (loading || code.join('').length !== 6) && styles.buttonDisabled
+                            ]}
                             onPress={verifyCode}
                             disabled={loading || code.join('').length !== 6}
-                            color={code.join('').length === 6 && !loading ? "#007AFF" : "#CCCCCC"}
-                        />
+                        >
+                            <Text style={styles.buttonText}>{loading ? "Verifying..." : "Verify Email"}</Text>
+                        </TouchableOpacity>
                     </View>
 
-                    <View style={styles.buttonContainer}>
-                        <Button
-                            title={
-                                resendLoading
-                                    ? 'Sending...'
-                                    : countdown > 0
-                                        ? `Resend code in ${countdown}s`
-                                        : "Didn't receive code? Resend"
-                            }
-                            onPress={handleResendCode}
-                            disabled={resendLoading || countdown > 0}
-                            color={!resendLoading && countdown === 0 ? "#007AFF" : "#CCCCCC"}
-                        />
-                    </View>
+                    <TouchableOpacity
+                        style={[
+                            styles.resendButton,
+                            (resendLoading || countdown > 0) && styles.resendButtonDisabled
+                        ]}
+                        onPress={handleResendCode}
+                        disabled={resendLoading || countdown > 0}
+                    >
+                        <Text style={styles.resendButtonText}>
+                            {resendLoading
+                                ? 'Sending...'
+                                : countdown > 0
+                                    ? `Resend code in ${countdown}s`
+                                    : "Didn't receive code? Resend"}
+                        </Text>
+                    </TouchableOpacity>
                 </View>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
 };
 
-const styles = StyleSheet.create({
+function getStyles(colors: any, activeScheme: string) {
+    return StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: colors.background,
     },
     content: {
         flex: 1,
@@ -329,79 +336,108 @@ const styles = StyleSheet.create({
         padding: 20,
         alignItems: 'flex-start',
     },
+    backButton: {
+        padding: 8,
+    },
+    backButtonText: {
+        color: colors.tint,
+        fontWeight: '700',
+        fontSize: 16,
+    },
     formContainer: {
         flex: 1,
         padding: 30,
         justifyContent: 'center',
     },
-    errorContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    errorText: {
-        fontSize: 18,
-        color: 'red',
-        marginBottom: 20,
-    },
     title: {
         fontSize: 28,
-        fontWeight: 'bold',
+        fontWeight: '900',
+        color: colors.text,
         textAlign: 'center',
-        marginBottom: 10,
+        marginBottom: 8,
     },
     subtitle: {
         fontSize: 16,
         textAlign: 'center',
-        color: '#666',
-        marginBottom: 5,
+        color: colors.textSecondary,
+        marginBottom: 4,
     },
     email: {
         fontSize: 16,
         textAlign: 'center',
-        fontWeight: '600',
+        fontWeight: '800',
+        color: colors.text,
         marginBottom: 40,
-        color: '#333',
     },
     codeContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 30,
+        marginBottom: 40,
     },
     codeInput: {
-        width: 45,
-        height: 55,
+        width: 48,
+        height: 64,
         borderWidth: 2,
-        borderColor: '#ddd',
-        borderRadius: 10,
+        borderColor: colors.border,
+        borderRadius: 12,
         textAlign: 'center',
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#333',
+        fontSize: 28,
+        fontWeight: '800',
+        color: colors.text,
+        backgroundColor: colors.surface,
     },
     codeInputFilled: {
-        borderColor: '#007AFF',
-        backgroundColor: '#f0f8ff',
+        borderColor: colors.tint,
+        backgroundColor: colors.tint + '10',
     },
     buttonContainer: {
-        marginBottom: 15,
+        marginBottom: 20,
+    },
+    button: {
+        backgroundColor: colors.tint,
+        height: 56,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    buttonDisabled: {
+        opacity: 0.5,
+        backgroundColor: colors.textSecondary,
+    },
+    buttonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '800',
+    },
+    resendButton: {
+        padding: 12,
+        alignItems: 'center',
+    },
+    resendButtonDisabled: {
+        opacity: 0.6,
+    },
+    resendButtonText: {
+        color: colors.tint,
+        fontSize: 15,
+        fontWeight: '700',
     },
     message: {
         textAlign: 'center',
-        marginBottom: 20,
+        marginBottom: 24,
         fontSize: 14,
-        padding: 10,
-        borderRadius: 5,
+        padding: 12,
+        borderRadius: 12,
+        fontWeight: '600',
     },
     successMessage: {
-        color: '#155724',
-        backgroundColor: '#d4edda',
+        color: colors.success,
+        backgroundColor: colors.success + '15',
     },
     errorMessage: {
-        color: '#721c24',
-        backgroundColor: '#f8d7da',
+        color: colors.error,
+        backgroundColor: colors.error + '15',
     },
 });
+}
 
 export default VerificationScreen;

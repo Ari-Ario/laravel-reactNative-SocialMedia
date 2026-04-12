@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, Image, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import getApiBaseImage from '@/services/getApiBaseImage';
 
 interface UserData {
@@ -28,13 +29,14 @@ export const Avatar: React.FC<AvatarProps> = ({
     textStyle,
     showBorder = false,
 }) => {
+    const { colors } = useAppTheme();
     const [imgError, setImgError] = useState(false);
 
     // If there's no user object at all, render a default blank avatar
     if (!user) {
         return (
-            <View style={[styles.fallbackContainer, { width: size, height: size, borderRadius: size / 2 }, style]}>
-                <Text style={[styles.initials, { fontSize: size * 0.4 }, textStyle]}>?</Text>
+            <View style={[styles.fallbackContainer, { width: size, height: size, borderRadius: size / 2, backgroundColor: colors.tint + '15', borderColor: colors.tint + '30' }, style]}>
+                <Text style={[styles.initials, { fontSize: size * 0.4, color: colors.tint }, textStyle]}>?</Text>
             </View>
         );
     }
@@ -68,12 +70,12 @@ export const Avatar: React.FC<AvatarProps> = ({
         <View
             style={[
                 styles.fallbackContainer,
-                { width: size, height: size, borderRadius: size / 2 },
+                { width: size, height: size, borderRadius: size / 2, backgroundColor: colors.tint + '15', borderColor: colors.tint + '30' },
                 showBorder && styles.defaultBorder,
                 style
             ]}
         >
-            <Text style={[styles.initials, { fontSize: size * 0.4 }, textStyle]}>
+            <Text style={[styles.initials, { fontSize: size * 0.4, color: colors.tint }, textStyle]}>
                 {initials}
             </Text>
         </View>
@@ -82,18 +84,14 @@ export const Avatar: React.FC<AvatarProps> = ({
 
 const styles = StyleSheet.create({
     fallbackContainer: {
-        backgroundColor: '#007AFF15', // Light blue background for initials
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#007AFF30',
     },
     initials: {
-        color: '#007AFF', // Blue text for initials
         fontWeight: '700',
     },
     defaultBorder: {
         borderWidth: 2,
-        borderColor: '#fff',
     }
 });

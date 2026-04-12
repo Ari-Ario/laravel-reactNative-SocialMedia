@@ -11,6 +11,7 @@ import {
     Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { createShadow } from '@/utils/styles';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { Notification } from '@/types/Notification';
@@ -24,6 +25,7 @@ type CallsPanelProps = {
 };
 
 const CallsPanel = ({ visible, onClose, anchorPosition }: CallsPanelProps) => {
+    const { colors, activeScheme } = useAppTheme();
     const {
         getCalls,
         markAsRead,
@@ -45,81 +47,73 @@ const CallsPanel = ({ visible, onClose, anchorPosition }: CallsPanelProps) => {
                 pathname: '/(spaces)/[id]',
                 params: { 
                     id: spaceId, 
-                    tab: 'meeting',
-                    call: callId
+                    tab: 'calls',
+                    callId: callId
                 }
             });
         }
         onClose();
     };
 
-    const renderCallItem = ({ item }: { item: Notification }) => (
-        <TouchableOpacity
-            style={[styles.callItem, !item.isRead && styles.unreadCall]}
-            onPress={() => handleCallPress(item)}
-        >
+    const renderCallItem = ({ item }: { item: Notification }) => {
+        const iconName = item.type === 'missed_call' ? 'call-outline' : 'videocam-outline';
+        const iconColor = item.type === 'missed_call' ? '#FF3B30' : '#4CAF50';
+
+        return (
             <TouchableOpacity
-                style={styles.Foto}
-                onPress={(e) => {
-                    e.stopPropagation();
-                    // Optional: navigate to user profile
-                }}
+                style={[
+                    styles.callItem, 
+                    { borderBottomColor: colors.border },
+                    !item.isRead && styles.unreadCall,
+                    !item.isRead && { backgroundColor: colors.primary + '10', borderLeftColor: colors.primary }
+                ]}
+                onPress={() => handleCallPress(item)}
             >
-                <Image
-                    source={{
-                        uri: item.avatar ? `${getApiBaseImage()}/storage/${item.avatar}` : undefined
-                    }}
-                    defaultSource={require('@/assets/images/favicon.png')}
-                    style={styles.avatar}
-                />
-            </TouchableOpacity>
+                <View style={styles.Foto}>
+                    <Image
+                        source={{
+                            uri: item.avatar ? `${getApiBaseImage()}/storage/${item.avatar}` : undefined
+                        }}
+                        defaultSource={require('@/assets/images/favicon.png')}
+                        style={[styles.avatar, { borderColor: colors.surface, backgroundColor: colors.muted }]}
+                    />
+                </View>
 
-            <View style={styles.callContent}>
-                <View style={styles.textContent}>
-                    <View style={styles.titleRow}>
-                        <View style={styles.titleWithIcon}>
-                            <Ionicons
-                                name={item.type === 'call_ended' ? 'call-outline' : 'call'}
-                                size={16}
-                                color={item.type === 'call_ended' ? '#8E8E93' : '#4CD964'}
-                            />
-                            <Text style={styles.callTitle}>{item.title}</Text>
-                        </View>
-                        <Text style={styles.callTime}>
-                            {formatTimeAgo(item.createdAt)}
-                        </Text>
-                    </View>
-                    <Text style={styles.callMessage}>{item.message}</Text>
-
-                    {item.data?.call?.type && (
-                        <View style={styles.metadataContainer}>
-                            <Ionicons
-                                name={item.data.call.type === 'video' ? 'videocam' : 'call'}
-                                size={12}
-                                color="#4CD964"
-                            />
-                            <Text style={styles.metadataText}>
-                                {item.data.call.type === 'video' ? 'Video call' : 'Audio call'}
+                <View style={styles.callContent}>
+                    <View style={styles.textContent}>
+                        <View style={styles.titleRow}>
+                            <View style={styles.titleWithIcon}>
+                                <Ionicons name={iconName} size={16} color={iconColor} />
+                                <Text style={[styles.callTitle, { color: colors.text }]}>{item.title}</Text>
+                            </View>
+                            <Text style={[styles.callTime, { color: colors.textSecondary }]}>
+                                {formatTimeAgo(item.createdAt)}
                             </Text>
                         </View>
-                    )}
-                </View>
-            </View>
-            <TouchableOpacity
-                onPress={() => removeNotification(item.id)}
-                style={styles.deleteButton}
-            >
-                <Ionicons name="close" size={16} color="#999" />
-            </TouchableOpacity>
-        </TouchableOpacity>
-    );
+                        <Text style={[styles.callMessage, { color: colors.textSecondary }]}>{item.message}</Text>
+                    </View>
 
-    const formatTimeAgo = (date: Date) => {
+                    <TouchableOpacity
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            removeNotification(item.id);
+                        }}
+                        style={[styles.deleteButton, { backgroundColor: colors.muted }]}
+                    >
+                        <Ionicons name="close" size={16} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                </View>
+            </TouchableOpacity>
+        );
+    };
+
+    const formatTimeAgo = (dateString: string) => {
+        const date = new Date(dateString);
         const now = new Date();
         const diffMs = now.getTime() - date.getTime();
         const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
+        const diffHours = Math.floor(diffMins / 60);
+        const diffDays = Math.floor(diffHours / 24);
 
         if (diffMins < 1) return 'Just now';
         if (diffMins < 60) return `${diffMins}m ago`;
@@ -140,10 +134,13 @@ const CallsPanel = ({ visible, onClose, anchorPosition }: CallsPanelProps) => {
                 style={styles.backdrop}
                 activeOpacity={1}
                 onPress={onClose}
-            />
+            >
+                {Platform.OS === 'web' && <View style={[StyleSheet.absoluteFill, { backgroundColor: 'transparent', backdropFilter: 'blur(4px)' }]} />}
+            </TouchableOpacity>
             <View
                 style={[
                     styles.panelContainer,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
                     anchorPosition ? {
                         top: anchorPosition.top + 15,
                         left: anchorPosition.left,
@@ -156,6 +153,7 @@ const CallsPanel = ({ visible, onClose, anchorPosition }: CallsPanelProps) => {
                     <View
                         style={[
                             styles.pointer,
+                            { backgroundColor: colors.surface, borderColor: colors.border },
                             anchorPosition.right !== undefined
                                 ? { right: anchorPosition.arrowOffset }
                                 : { left: anchorPosition.arrowOffset }
@@ -164,21 +162,21 @@ const CallsPanel = ({ visible, onClose, anchorPosition }: CallsPanelProps) => {
                 )}
 
                 <View style={styles.contentWrapper}>
-                    <View style={styles.panelHeader}>
-                        <Text style={styles.panelTitle}>
+                    <View style={[styles.panelHeader, { borderBottomColor: colors.border, backgroundColor: colors.surface }]}>
+                        <Text style={[styles.panelTitle, { color: colors.text }]}>
                             Calls {calls.length > 0 ? `(${calls.length})` : ''}
                         </Text>
-                        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                            <Ionicons name="close" size={20} color="#666" />
+                        <TouchableOpacity onPress={onClose} style={[styles.closeButton, { backgroundColor: colors.muted }]}>
+                            <Ionicons name="close" size={20} color={colors.textSecondary} />
                         </TouchableOpacity>
                     </View>
                     <View style={{ flex: 1 }}>
                         {calls.length === 0 ? (
                             <View style={styles.emptyState}>
-                                <Ionicons name="call-outline" size={48} color="#ccc" />
-                                <Text style={styles.emptyText}>No call notifications</Text>
-                                <Text style={styles.emptySubtext}>
-                                    Incoming calls will appear here
+                                <Ionicons name="call-outline" size={48} color={colors.textSecondary + '40'} />
+                                <Text style={[styles.emptyText, { color: colors.text }]}>No call history</Text>
+                                <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
+                                    Your recent calls will appear here
                                 </Text>
                             </View>
                         ) : (
@@ -188,6 +186,7 @@ const CallsPanel = ({ visible, onClose, anchorPosition }: CallsPanelProps) => {
                                 keyExtractor={(item) => item.id}
                                 contentContainerStyle={styles.callsList}
                                 showsVerticalScrollIndicator={false}
+                                indicatorStyle={activeScheme === 'dark' ? 'white' : 'black'}
                             />
                         )}
                     </View>
@@ -200,13 +199,11 @@ const CallsPanel = ({ visible, onClose, anchorPosition }: CallsPanelProps) => {
 const styles = StyleSheet.create({
     backdrop: {
         flex: 1,
-        backgroundColor: 'transparent',
     },
     panelContainer: {
         position: 'absolute',
         width: Platform.OS === 'web' ? 400 : 320,
         maxHeight: 500,
-        backgroundColor: '#ffffff',
         borderRadius: 16,
         ...createShadow({
             width: 0,
@@ -216,7 +213,6 @@ const styles = StyleSheet.create({
             elevation: 8,
         }),
         borderWidth: 1,
-        borderColor: '#efefef',
         zIndex: 1000,
     },
     defaultPosition: {
@@ -234,11 +230,9 @@ const styles = StyleSheet.create({
         top: -10,
         width: 20,
         height: 20,
-        backgroundColor: '#ffffff',
         transform: [{ rotate: '45deg' }],
         borderTopWidth: 1,
         borderLeftWidth: 1,
-        borderColor: '#efefef',
         zIndex: -1,
     },
     panelHeader: {
@@ -248,17 +242,14 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 12,
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
     },
     panelTitle: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#1a1a1a',
     },
     closeButton: {
         padding: 4,
         borderRadius: 20,
-        backgroundColor: '#f5f5f5',
     },
     callsList: {
         flexGrow: 1,
@@ -270,12 +261,9 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
         paddingHorizontal: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#f5f5f5',
     },
     unreadCall: {
-        backgroundColor: '#f8faff',
         borderLeftWidth: 3,
-        borderLeftColor: '#4CD964',
     },
     callContent: {
         flex: 1,
@@ -302,41 +290,21 @@ const styles = StyleSheet.create({
     callTitle: {
         fontWeight: '600',
         fontSize: 15,
-        color: '#1a1a1a',
         flex: 1,
     },
     callMessage: {
         fontSize: 13,
-        color: '#666',
         marginBottom: 6,
         lineHeight: 18,
     },
     callTime: {
         fontSize: 11,
-        color: '#999',
         marginLeft: 8,
-    },
-    metadataContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 4,
-        gap: 6,
-        backgroundColor: '#f5f5f5',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
-        alignSelf: 'flex-start',
-    },
-    metadataText: {
-        fontSize: 11,
-        color: '#555',
-        fontWeight: '500',
     },
     deleteButton: {
         padding: 6,
         marginLeft: 8,
         borderRadius: 16,
-        backgroundColor: '#f5f5f5',
         width: 28,
         height: 28,
         justifyContent: 'center',
@@ -351,13 +319,11 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         marginTop: 16,
-        color: '#666',
         fontSize: 18,
         fontWeight: '600',
     },
     emptySubtext: {
         marginTop: 8,
-        color: '#999',
         fontSize: 14,
         textAlign: 'center',
         lineHeight: 20,
@@ -370,9 +336,7 @@ const styles = StyleSheet.create({
         height: 48,
         borderRadius: 24,
         marginRight: 12,
-        backgroundColor: '#f0f0f0',
         borderWidth: 2,
-        borderColor: '#fff',
     },
 });
 

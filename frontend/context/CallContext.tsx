@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
-import { Animated, Dimensions, Platform, Vibration } from 'react-native';
+import { Platform, Animated, Dimensions, Vibration } from 'react-native';
 import { useRouter } from 'expo-router';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');

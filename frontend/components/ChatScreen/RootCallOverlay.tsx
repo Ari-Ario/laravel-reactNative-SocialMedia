@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCall } from '@/context/CallContext';
 import ImmersiveCallView from './ImmersiveCallView';
+import { createShadow } from '@/utils/styles';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -35,19 +36,19 @@ export const RootCallOverlay: React.FC = () => {
       // Return to full screen position
       Animated.spring(pan, {
         toValue: { x: 0, y: 0 },
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
         tension: 40,
         friction: 7
       }).start();
       Animated.spring(scale, {
         toValue: 1,
-        useNativeDriver: true
+        useNativeDriver: Platform.OS !== 'web'
       }).start();
     } else {
       // Go to saved Pip position
       Animated.spring(pan, {
         toValue: callPosition,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
         tension: 40,
         friction: 7
       }).start();
@@ -63,12 +64,12 @@ export const RootCallOverlay: React.FC = () => {
           x: (pan.x as any)._value,
           y: (pan.y as any)._value,
         });
-        Animated.spring(scale, { toValue: 1.05, useNativeDriver: true }).start();
+        Animated.spring(scale, { toValue: 1.05, useNativeDriver: Platform.OS !== 'web' }).start();
       },
       onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false }),
       onPanResponderRelease: (_, gesture) => {
         pan.flattenOffset();
-        Animated.spring(scale, { toValue: 1, useNativeDriver: true }).start();
+        Animated.spring(scale, { toValue: 1, useNativeDriver: Platform.OS !== 'web' }).start();
 
         let newX = (pan.x as any)._value;
         let newY = (pan.y as any)._value;
@@ -86,11 +87,12 @@ export const RootCallOverlay: React.FC = () => {
   if (!activeCall) return null;
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+    <View style={[StyleSheet.absoluteFill, { pointerEvents: Platform.OS === 'web' ? 'none' : 'box-none' }]}>
       <Animated.View
         {...(isMinimized ? panResponder.panHandlers : {})}
         style={[
           isMinimized ? styles.minimizedContainer : styles.fullScreenContainer,
+          { pointerEvents: 'auto' },
           {
             transform: [
               { translateX: pan.x },
@@ -166,19 +168,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: '#1a1a1a',
+    ...createShadow({ 
+      color: '#000', 
+      opacity: 0.3, 
+      radius: 8, 
+      offset: { width: 0, height: 4 } 
+    }),
     zIndex: 9999,
     ...Platform.select({
       web: {
-        // @ts-ignore
-        boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
         cursor: 'auto',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 10,
       },
     }),
   },

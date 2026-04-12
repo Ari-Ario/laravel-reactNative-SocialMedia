@@ -20,9 +20,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { MotiView, AnimatePresence } from 'moti';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createShadow } from '@/utils/styles';
+import { useAppTheme } from '@/hooks/useAppTheme';
+import { BackButton } from '@/components/ui/IconButton';
 import { fetchFullSettings, updatePreferences, broadcastMessage, fetchUsersByIds } from '@/services/SettingService';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import axios from '@/services/axios';
 import { getToken } from '@/services/TokenService';
 import Avatar from '@/components/Image/Avatar';
@@ -54,6 +56,8 @@ const BroadcastCard = ({
     onDelete: () => void;
     onRename: (newName: string) => void;
 }) => {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
     const [isHovered, setIsHovered] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editedName, setEditedName] = useState(item.name);
@@ -78,8 +82,8 @@ const BroadcastCard = ({
         setIsEditing(false);
     };
 
-    const colors = ['#1063FD', '#4CAF50', '#FF9800', '#9C27B0', '#F44336'];
-    const bgColor = item.color || colors[index % colors.length];
+    const BROADCAST_COLORS = ['#1063FD', '#4CAF50', '#FF9800', '#9C27B0', '#F44336'];
+    const bgColor = item.color || BROADCAST_COLORS[index % BROADCAST_COLORS.length];
 
     return (
         <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
@@ -93,7 +97,7 @@ const BroadcastCard = ({
                 onMouseLeave={() => setIsHovered(false)}
             >
                 <LinearGradient
-                    colors={isHovered ? ['#fff', '#f8f9fa'] : ['#fff', '#fff']}
+                    colors={isHovered ? [colors.muted, colors.surface] : [colors.surface, colors.surface]}
                     style={styles.broadcastCard}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
@@ -122,12 +126,12 @@ const BroadcastCard = ({
                             )}
                             <View style={styles.broadcastMetaRow}>
                                 <View style={styles.metaBadge}>
-                                    <Ionicons name="people" size={10} color="#666" />
+                                    <Ionicons name="people" size={10} color={colors.textSecondary} />
                                     <Text style={styles.metaText}>{item.members} members</Text>
                                 </View>
                                 <View style={styles.metaDot} />
                                 <View style={styles.metaBadge}>
-                                    <Ionicons name="time" size={10} color="#666" />
+                                    <Ionicons name="time" size={10} color={colors.textSecondary} />
                                     <Text style={styles.metaText}>Active {item.lastActive}</Text>
                                 </View>
                             </View>
@@ -158,7 +162,7 @@ const BroadcastCard = ({
                         </TouchableOpacity>
                         {!isEditing && (
                             <View style={styles.broadcastAction}>
-                                <Ionicons name="chevron-forward" size={18} color="rgba(0,0,0,0.3)" />
+                                <Ionicons name="chevron-forward" size={18} color={colors.border} />
                             </View>
                         )}
                     </View>
@@ -169,6 +173,8 @@ const BroadcastCard = ({
 };
 
 export default function BroadcastListsScreen() {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
     const insets = useSafeAreaInsets();
     const [lists, setLists] = useState<BroadcastList[]>([]);
     const [loading, setLoading] = useState(true);
@@ -274,6 +280,7 @@ export default function BroadcastListsScreen() {
             const response = await axios.post('/search/users', { query, limit: 10 }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
+            
             setSearchResults(response.data.users || []);
         } catch (e) {
             console.error('Search failed:', e);
@@ -373,15 +380,13 @@ export default function BroadcastListsScreen() {
             <StatusBar barStyle="dark-content" />
 
             <LinearGradient
-                colors={['#fff', '#f8f9fa']}
+                colors={[colors.surface, colors.background]}
                 style={[styles.header, { paddingTop: insets.top + 10 }]}
             >
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color="#000" />
-                </TouchableOpacity>
+                <BackButton onPress={() => router.back()} />
                 <Text style={styles.headerTitle}>Broadcast Hub</Text>
                 <TouchableOpacity onPress={() => setShowCreateModal(true)} style={styles.createHeaderButton}>
-                    <Ionicons name="add" size={24} color="#1063FD" />
+                    <Ionicons name="add" size={24} color={colors.tint} />
                 </TouchableOpacity>
             </LinearGradient>
 
@@ -401,7 +406,7 @@ export default function BroadcastListsScreen() {
                 >
                     {/* Hero Section */}
                     <LinearGradient
-                        colors={['#1063FD', '#0050CC']}
+                        colors={[colors.tint, colors.tint + 'CC']}
                         style={styles.heroSection}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
@@ -421,12 +426,12 @@ export default function BroadcastListsScreen() {
                             onPress={() => setShowCreateModal(true)}
                         >
                             <LinearGradient
-                                colors={['#fff', '#f0f0f0']}
+                                colors={[colors.surface, colors.background]}
                                 style={styles.createButtonGradient}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 0 }}
                             >
-                                <Ionicons name="add" size={22} color="#1063FD" />
+                                <Ionicons name="add" size={22} color={colors.tint} />
                                 <Text style={styles.createButtonText}>New Broadcast List</Text>
                             </LinearGradient>
                         </TouchableOpacity>
@@ -462,8 +467,8 @@ export default function BroadcastListsScreen() {
 
                     {loading ? (
                         <View style={{ alignItems: 'center', paddingVertical: 30 }}>
-                            <ActivityIndicator size="large" color="#1063FD" />
-                            <Text style={{ marginTop: 12, color: '#666', fontSize: 13 }}>Loading your lists...</Text>
+                            <ActivityIndicator size="large" color={colors.tint} />
+                            <Text style={{ marginTop: 12, color: colors.textSecondary, fontSize: 13 }}>Loading your lists...</Text>
                         </View>
                     ) : lists.length === 0 ? (
                         <MotiView
@@ -472,7 +477,7 @@ export default function BroadcastListsScreen() {
                             style={styles.emptyContainer}
                         >
                             <View style={styles.emptyIcon}>
-                                <Ionicons name="megaphone" size={48} color="rgba(0,0,0,0.2)" />
+                                <Ionicons name="megaphone" size={48} color={colors.border} />
                             </View>
                             <Text style={styles.emptyTitle}>No broadcast lists yet</Text>
                             <Text style={styles.emptyText}>
@@ -502,19 +507,19 @@ export default function BroadcastListsScreen() {
                         <Text style={styles.tipsTitle}>💡 Pro Tips</Text>
                         <View style={styles.tipItem}>
                             <View style={styles.tipIcon}>
-                                <Ionicons name="bulb" size={14} color="#FF9800" />
+                                <Ionicons name="bulb" size={14} color={colors.warning} />
                             </View>
                             <Text style={styles.tipText}>Lists are private - members don't see each other</Text>
                         </View>
                         <View style={styles.tipItem}>
                             <View style={styles.tipIcon}>
-                                <Ionicons name="trending-up" size={14} color="#4CAF50" />
+                                <Ionicons name="trending-up" size={14} color={colors.success} />
                             </View>
                             <Text style={styles.tipText}>Track engagement metrics for each broadcast</Text>
                         </View>
                         <View style={styles.tipItem}>
                             <View style={styles.tipIcon}>
-                                <Ionicons name="time" size={14} color="#1063FD" />
+                                <Ionicons name="time" size={14} color={colors.tint} />
                             </View>
                             <Text style={styles.tipText}>Schedule broadcasts for optimal timing</Text>
                         </View>
@@ -537,13 +542,13 @@ export default function BroadcastListsScreen() {
                         style={styles.modalContainer}
                     >
                         <LinearGradient
-                            colors={['#fff', '#f8f9fa']}
+                            colors={[colors.surface, colors.background]}
                             style={styles.modalContent}
                         >
                             <View style={styles.modalHeader}>
                                 <Text style={styles.modalTitle}>Create Broadcast List</Text>
                                 <TouchableOpacity onPress={() => setShowCreateModal(false)}>
-                                    <Ionicons name="close" size={24} color="#000" />
+                                    <Ionicons name="close" size={24} color={colors.text} />
                                 </TouchableOpacity>
                             </View>
 
@@ -552,7 +557,7 @@ export default function BroadcastListsScreen() {
                                 <TextInput
                                     style={styles.input}
                                     placeholder="e.g., Weekly Updates, Announcements"
-                                    placeholderTextColor="#999"
+                                    placeholderTextColor={colors.textSecondary + '60'}
                                     value={newListName}
                                     onChangeText={setNewListName}
                                     autoFocus
@@ -561,7 +566,7 @@ export default function BroadcastListsScreen() {
                                 <View style={styles.modalPreview}>
                                     <Text style={styles.previewLabel}>Preview</Text>
                                     <View style={styles.previewCard}>
-                                        <Ionicons name="megaphone" size={20} color="#1063FD" />
+                                        <Ionicons name="megaphone" size={20} color={colors.tint} />
                                         <Text style={styles.previewName}>
                                             {newListName || 'New Broadcast List'}
                                         </Text>
@@ -574,7 +579,7 @@ export default function BroadcastListsScreen() {
                                     disabled={!newListName.trim()}
                                 >
                                     <LinearGradient
-                                        colors={newListName.trim() ? ['#1063FD', '#0050CC'] : ['#ccc', '#ccc']}
+                                        colors={newListName.trim() ? [colors.tint, colors.tint + 'CC'] : [colors.border, colors.border]}
                                         style={styles.modalCreateGradient}
                                     >
                                         <Text style={styles.modalCreateText}>Create List</Text>
@@ -697,7 +702,7 @@ export default function BroadcastListsScreen() {
 
                         <ScrollView style={styles.resultsList}>
                             {isSearching ? (
-                                <ActivityIndicator color="#1063FD" style={{ marginVertical: 20 }} />
+                                <ActivityIndicator color={colors.tint} style={{ marginVertical: 20 }} />
                             ) : (searchQuery.trim() === '' ? activeMemberDetails : searchResults).map((user) => {
                                 const isMember = activeList?.member_ids?.includes(user.id);
                                 return (
@@ -712,7 +717,7 @@ export default function BroadcastListsScreen() {
                                             <Text style={styles.userEmail}>{user.email}</Text>
                                         </View>
                                         <View style={[styles.checkCircle, isMember && styles.checkCircleActive]}>
-                                            {isMember && <Ionicons name="checkmark" size={16} color="#fff" />}
+                                            {isMember && <Ionicons name="checkmark" size={16} color={colors.surface} />}
                                         </View>
                                     </TouchableOpacity>
                                 );
@@ -725,8 +730,9 @@ export default function BroadcastListsScreen() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF' },
+function getStyles(colors: any, activeScheme: string) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -734,22 +740,15 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingBottom: 16,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
+        borderBottomColor: colors.border,
     },
-    headerTitle: { fontSize: 22, fontWeight: '800', color: '#1a1a1a' },
-    backButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#F5F5F7',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
+    headerTitle: { fontSize: 22, fontWeight: '800', color: colors.text },
+    backButton: { padding: 4 },
     createHeaderButton: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#F5F5F7',
+        backgroundColor: colors.surface,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -769,20 +768,20 @@ const styles = StyleSheet.create({
         width: 64,
         height: 64,
         borderRadius: 32,
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        backgroundColor: colors.surface + '33',
         justifyContent: 'center',
         alignItems: 'center',
     },
     heroTitle: {
         fontSize: 22,
         fontWeight: '900',
-        color: '#fff',
+        color: colors.surface,
         textAlign: 'center',
         marginBottom: 8,
     },
     heroDescription: {
         fontSize: 14,
-        color: 'rgba(255,255,255,0.8)',
+        color: colors.surface + 'CC',
         textAlign: 'center',
         marginTop: 8,
         lineHeight: 20,
@@ -804,7 +803,7 @@ const styles = StyleSheet.create({
     createButtonText: {
         fontSize: 15,
         fontWeight: '800',
-        color: '#1063FD'
+        color: colors.tint,
     },
     statsContainer: {
         flexDirection: 'row',
@@ -813,22 +812,22 @@ const styles = StyleSheet.create({
     },
     statCard: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: colors.surface,
         borderRadius: 16,
         padding: 16,
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#e5e5e5',
+        borderColor: colors.border,
         ...createShadow({ opacity: 0.05, radius: 8 }),
     },
     statNumber: {
         fontSize: 24,
         fontWeight: '800',
-        color: '#1a1a1a',
+        color: colors.text,
     },
     statLabel: {
         fontSize: 11,
-        color: '#666',
+        color: colors.textSecondary,
         marginTop: 4,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
@@ -842,13 +841,13 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 13,
         fontWeight: '800',
-        color: '#1063FD',
+        color: colors.tint,
         textTransform: 'uppercase',
         letterSpacing: 1.5,
     },
     viewAllText: {
         fontSize: 13,
-        color: '#1063FD',
+        color: colors.tint,
         fontWeight: '600',
     },
     listContainer: {
@@ -862,7 +861,7 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: '#e5e5e5',
+        borderColor: colors.border,
         ...createShadow({ opacity: 0.05, radius: 8 }),
     },
     broadcastContent: {
@@ -891,7 +890,7 @@ const styles = StyleSheet.create({
     broadcastName: {
         fontSize: 17,
         fontWeight: '700',
-        color: '#000',
+        color: colors.text,
         marginBottom: 4,
     },
     broadcastMetaRow: {
@@ -906,13 +905,13 @@ const styles = StyleSheet.create({
     },
     metaText: {
         fontSize: 12,
-        color: 'rgba(0,0,0,0.5)',
+        color: colors.textSecondary,
     },
     metaDot: {
         width: 3,
         height: 3,
         borderRadius: 1.5,
-        backgroundColor: 'rgba(0,0,0,0.3)',
+        backgroundColor: colors.border,
     },
     broadcastAction: {
         padding: 4,
@@ -925,17 +924,17 @@ const styles = StyleSheet.create({
     inlineActionBtn: {
         padding: 8,
         borderRadius: 20,
-        backgroundColor: '#F5F5F7',
+        backgroundColor: colors.surface,
     },
     inlineInput: {
         fontSize: 17,
         fontWeight: '700',
-        color: '#1063FD',
+        color: colors.tint,
         padding: 0,
         margin: 0,
         marginBottom: 4,
         borderBottomWidth: 1,
-        borderBottomColor: '#1063FD',
+        borderBottomColor: colors.tint,
     },
     emptyContainer: {
         alignItems: 'center',
@@ -946,7 +945,7 @@ const styles = StyleSheet.create({
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: '#F5F5F7',
+        backgroundColor: colors.surface,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 16,
@@ -954,11 +953,11 @@ const styles = StyleSheet.create({
     emptyTitle: {
         fontSize: 18,
         fontWeight: '700',
-        color: '#1a1a1a',
+        color: colors.text,
         marginBottom: 8,
     },
     emptyText: {
-        color: 'rgba(0,0,0,0.4)',
+        color: colors.textSecondary,
         fontSize: 14,
         textAlign: 'center',
         lineHeight: 20,
@@ -966,15 +965,15 @@ const styles = StyleSheet.create({
     tipsSection: {
         marginTop: 20,
         padding: 20,
-        backgroundColor: '#F8F9FA',
+        backgroundColor: colors.surface,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: '#e5e5e5',
+        borderColor: colors.border,
     },
     tipsTitle: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#1a1a1a',
+        color: colors.text,
         marginBottom: 12,
     },
     tipItem: {
@@ -987,13 +986,13 @@ const styles = StyleSheet.create({
         width: 24,
         height: 24,
         borderRadius: 12,
-        backgroundColor: '#fff',
+        backgroundColor: colors.background,
         justifyContent: 'center',
         alignItems: 'center',
     },
     tipText: {
         fontSize: 13,
-        color: '#666',
+        color: colors.textSecondary,
         flex: 1,
     },
     modalOverlay: {
@@ -1022,12 +1021,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 20,
         borderBottomWidth: 1,
-        borderBottomColor: '#e5e5e5',
+        borderBottomColor: colors.border,
     },
     modalTitle: {
         fontSize: 20,
         fontWeight: '800',
-        color: '#1a1a1a',
+        color: colors.text,
     },
     modalBody: {
         padding: 20,
@@ -1035,16 +1034,16 @@ const styles = StyleSheet.create({
     inputLabel: {
         fontSize: 13,
         fontWeight: '600',
-        color: '#666',
+        color: colors.textSecondary,
         marginBottom: 8,
     },
     input: {
         borderWidth: 1,
-        borderColor: '#e5e5e5',
+        borderColor: colors.border,
         borderRadius: 12,
         padding: 14,
         fontSize: 16,
-        color: '#000',
+        color: colors.text,
         marginBottom: 20,
     },
     modalPreview: {
@@ -1052,13 +1051,13 @@ const styles = StyleSheet.create({
     },
     previewLabel: {
         fontSize: 12,
-        color: '#666',
+        color: colors.textSecondary,
         marginBottom: 8,
     },
     previewCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F5F5F7',
+        backgroundColor: colors.surface,
         padding: 12,
         borderRadius: 12,
         gap: 10,
@@ -1066,7 +1065,7 @@ const styles = StyleSheet.create({
     previewName: {
         fontSize: 15,
         fontWeight: '600',
-        color: '#1a1a1a',
+        color: colors.text,
     },
     modalCreateButton: {
         borderRadius: 16,
@@ -1080,7 +1079,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     modalCreateText: {
-        color: '#fff',
+        color: colors.surface,
         fontSize: 16,
         fontWeight: '700',
     },
@@ -1091,7 +1090,7 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     detailContainer: {
-        backgroundColor: '#fff',
+        backgroundColor: colors.surface,
         borderTopLeftRadius: 35,
         borderTopRightRadius: 35,
         padding: 24,
@@ -1118,18 +1117,18 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    detailTitle: { fontSize: 22, fontWeight: '800', color: '#000' },
-    detailSubtitle: { fontSize: 14, color: '#666', marginTop: 2 },
+    detailTitle: { fontSize: 22, fontWeight: '800', color: colors.text },
+    detailSubtitle: { fontSize: 14, color: colors.textSecondary, marginTop: 2 },
     closeBtn: { padding: 4 },
-    inputHeading: { fontSize: 13, fontWeight: '800', color: '#666', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 },
+    inputHeading: { fontSize: 13, fontWeight: '800', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 },
     broadcastInputContainer: {
-        backgroundColor: '#F5F5F7',
+        backgroundColor: colors.background,
         borderRadius: 20,
         padding: 4,
         flexDirection: 'row',
         alignItems: 'flex-end',
         borderWidth: 1,
-        borderColor: '#e5e5e5',
+        borderColor: colors.border,
         marginBottom: 24,
     },
     broadcastInput: {
@@ -1139,13 +1138,13 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 12,
         fontSize: 15,
-        color: '#000',
+        color: colors.text,
     },
     sendBtn: {
         width: 44,
         height: 44,
         borderRadius: 22,
-        backgroundColor: '#1063FD',
+        backgroundColor: colors.tint,
         justifyContent: 'center',
         alignItems: 'center',
         margin: 4,
@@ -1155,7 +1154,7 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     detailActionBtn: {
-        backgroundColor: '#F8F9FA',
+        backgroundColor: colors.background,
         borderRadius: 18,
         padding: 16,
         flexDirection: 'row',
@@ -1163,25 +1162,25 @@ const styles = StyleSheet.create({
         flex: 1,
         gap: 12,
         borderWidth: 1,
-        borderColor: '#e5e5e5',
+        borderColor: colors.border,
     },
     actionIconCircle: {
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: '#fff',
+        backgroundColor: colors.surface,
         justifyContent: 'center',
         alignItems: 'center',
         ...createShadow({ opacity: 0.05, radius: 2 }),
     },
-    actionBtnLabel: { fontSize: 15, fontWeight: '700', color: '#000' },
+    actionBtnLabel: { fontSize: 15, fontWeight: '700', color: colors.text },
     membersRow: {
         marginBottom: 24,
     },
     memberCountLabel: {
         fontSize: 10,
         fontWeight: '900',
-        color: '#999',
+        color: colors.textSecondary,
         letterSpacing: 1.5,
         marginBottom: 8,
     },
@@ -1191,12 +1190,12 @@ const styles = StyleSheet.create({
     memberAvatarWrapper: {
         marginRight: -10,
         borderWidth: 2,
-        borderColor: '#fff',
+        borderColor: colors.surface,
         borderRadius: 20,
     },
     memberModalContainer: {
         width: width - 30,
-        backgroundColor: '#fff',
+        backgroundColor: colors.surface,
         borderRadius: 30,
         paddingHorizontal: 20,
         paddingTop: 20,
@@ -1213,7 +1212,7 @@ const styles = StyleSheet.create({
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F5F5F7',
+        backgroundColor: colors.background,
         borderRadius: 15,
         marginBottom: 16,
     },
@@ -1221,7 +1220,7 @@ const styles = StyleSheet.create({
         flex: 1,
         padding: 12,
         fontSize: 15,
-        color: '#000',
+        color: colors.text,
     },
     resultsList: {
         maxHeight: 400,
@@ -1231,21 +1230,22 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 12,
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        borderBottomColor: colors.border,
     },
-    userName: { fontSize: 16, fontWeight: '700', color: '#000' },
-    userEmail: { fontSize: 13, color: '#666', marginTop: 2 },
+    userName: { fontSize: 16, fontWeight: '700', color: colors.text },
+    userEmail: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
     checkCircle: {
         width: 24,
         height: 24,
         borderRadius: 12,
         borderWidth: 2,
-        borderColor: '#e5e5e5',
+        borderColor: colors.border,
         justifyContent: 'center',
         alignItems: 'center',
     },
     checkCircleActive: {
-        backgroundColor: '#1063FD',
-        borderColor: '#1063FD',
+        backgroundColor: colors.tint,
+        borderColor: colors.tint,
     },
 });
+}

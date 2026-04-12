@@ -22,6 +22,7 @@ import { createShadow } from '@/utils/styles';
 import { useToastStore } from '@/stores/toastStore';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -56,6 +57,9 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
 }) => {
   const { showToast } = useToastStore();
   const insets = useSafeAreaInsets();
+  const { colors, activeScheme } = useAppTheme();
+  const styles = getStyles(colors, activeScheme);
+  const isDark = activeScheme === 'dark';
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -346,8 +350,8 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
       onRequestClose={onClose}
     >
       <LinearGradient
-        colors={['#f8fafc', '#f1f5f9']}
-        style={[GlobalStyles.popupContainer, { paddingTop: insets.top || 20, backgroundColor: '#f8fafc' }]}
+        colors={isDark ? [colors.background, colors.background] : ['#f8fafc', '#f1f5f9']}
+        style={[GlobalStyles.popupContainer, { paddingTop: insets.top || 20, backgroundColor: colors.background }]}
       >
         {/* Header */}
         <Animated.View style={[styles.header, animatedHeaderStyle]}>
@@ -355,7 +359,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
             onPress={step > 1 ? () => setStep(step - 1) : onClose}
             hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
           >
-            <Ionicons name={step > 1 ? 'chevron-back' : 'close'} size={28} color="#1e293b" />
+            <Ionicons name={step > 1 ? 'chevron-back' : 'close'} size={28} color={colors.text} />
           </TouchableOpacity>
 
           {renderStepIndicator()}
@@ -379,7 +383,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
                 <TextInput
                   style={styles.titleInput}
                   placeholder="Session title"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor={colors.textSecondary}
                   value={title}
                   onChangeText={setTitle}
                   autoFocus
@@ -387,7 +391,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
                 <TextInput
                   style={styles.descriptionInput}
                   placeholder="Add description (optional)"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor={colors.textSecondary}
                   value={description}
                   onChangeText={setDescription}
                   multiline
@@ -465,7 +469,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
                   style={styles.dateTimeRow}
                   onPress={() => setShowDatePicker(true)}
                 >
-                  <Ionicons name="calendar-outline" size={22} color="#64748b" />
+                  <Ionicons name="calendar-outline" size={22} color={colors.textSecondary} />
                   <Text style={styles.dateTimeValue}>
                     {format(scheduledStart, 'EEEE, MMMM d, yyyy')}
                   </Text>
@@ -477,7 +481,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
                   style={styles.dateTimeRow}
                   onPress={() => setShowTimePicker(true)}
                 >
-                  <Ionicons name="time-outline" size={22} color="#64748b" />
+                  <Ionicons name="time-outline" size={22} color={colors.textSecondary} />
                   <Text style={styles.dateTimeValue}>
                     {format(scheduledStart, 'h:mm a')}
                   </Text>
@@ -572,7 +576,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
               <Text style={styles.heroTitle}>Almost done!</Text>
 
               <LinearGradient
-                colors={['#ffffff', '#f8fafc']}
+                colors={isDark ? [colors.card, colors.card] : ['#ffffff', '#f8fafc']}
                 style={styles.summaryCard}
               >
                 <View style={styles.summaryHeader}>
@@ -591,24 +595,24 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
                   </Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Ionicons name="calendar-outline" size={18} color="#64748b" />
+                  <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
                   <Text style={styles.summaryValue}>
                     {format(scheduledStart, 'EEE, MMM d • h:mm a')}
                   </Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Ionicons name="time-outline" size={18} color="#64748b" />
+                  <Ionicons name="time-outline" size={18} color={colors.textSecondary} />
                   <Text style={styles.summaryValue}>{duration} minutes</Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Ionicons name="people-outline" size={18} color="#64748b" />
+                  <Ionicons name="people-outline" size={18} color={colors.textSecondary} />
                   <Text style={styles.summaryValue}>
                     {maxParticipants ? `Max ${maxParticipants} people` : 'Open to all'}
                   </Text>
                 </View>
                 {isRecurring && (
                   <View style={styles.summaryRow}>
-                    <Ionicons name="repeat-outline" size={18} color="#64748b" />
+                    <Ionicons name="repeat-outline" size={18} color={colors.textSecondary} />
                     <Text style={styles.summaryValue}>
                       Repeats {recurrencePattern === 'weekly' ? 'weekly' : recurrencePattern === 'biweekly' ? 'every 2 weeks' : 'monthly'}
                     </Text>
@@ -627,8 +631,8 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
                     setIsRecurring(val);
                     safeHaptics.impact();
                   }}
-                  trackColor={{ false: '#cbd5e1', true: '#6366f1' }}
-                  thumbColor={isRecurring ? '#fff' : '#f1f5f9'}
+                  trackColor={{ false: isDark ? '#334155' : '#cbd5e1', true: colors.tint }}
+                  thumbColor={isRecurring ? '#fff' : isDark ? '#94a3b8' : '#f1f5f9'}
                 />
               </View>
 
@@ -665,7 +669,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
                   <TextInput
                     style={styles.participantInput}
                     placeholder="Unlimited"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={colors.textSecondary}
                     value={maxParticipants?.toString() ?? ''}
                     onChangeText={(txt) => setMaxParticipants(txt ? Number(txt) : undefined)}
                     keyboardType="number-pad"
@@ -710,358 +714,366 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
   );
 };
 
-const SHADOW = createShadow({ height: 6, opacity: 0.12, radius: 12, elevation: 8 });
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  progressContainer: {
-    alignItems: 'center',
-  },
-  progressBar: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 6,
-  },
-  progressDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#e2e8f0',
-  },
-  progressDotActive: {
-    backgroundColor: '#6366f1',
-  },
-  progressDotCurrent: {
-    width: 12,
-    height: 12,
-    borderWidth: 3,
-    borderColor: '#a5b4fc',
-  },
-  stepText: {
-    fontSize: 13,
-    color: '#64748b',
-    fontWeight: '600',
-  },
-  scrollContent: {
-    flex: 1,
-  },
-  scrollContentContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 140,
-  },
-  heroTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#0f172a',
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  heroSubtitle: {
-    fontSize: 15,
-    color: '#64748b',
-    marginBottom: 28,
-  },
-  card: {
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 28,
-    ...SHADOW,
-  },
-  titleInput: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#0f172a',
-    paddingBottom: 12,
-    borderBottomWidth: 2,
-    borderBottomColor: '#6366f1',
-  },
-  descriptionInput: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#334155',
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  sectionLabel: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#1e293b',
-    marginBottom: 14,
-  },
-  sectionLabelSmall: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#475569',
-    marginBottom: 12,
-  },
-  typeScroll: {
-    marginHorizontal: -4,
-  },
-  typeChip: {
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    marginHorizontal: 4,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    backgroundColor: '#ffffff',
-    ...SHADOW,
-    minWidth: 110,
-  },
-  typeChipSelected: {
-    borderWidth: 2,
-  },
-  typeIconGradient: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  typeName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#475569',
-  },
-  dateTimeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-  },
-  dateTimeValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginLeft: 14,
-    flex: 1,
-  },
-  separator: {
-    height: 1,
-    backgroundColor: '#e2e8f0',
-    marginVertical: 4,
-  },
-  quickGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 28,
-  },
-  quickPill: {
-    flex: 1,
-    minWidth: '45%',
-    backgroundColor: '#f1f5f9',
-    borderRadius: 16,
-    paddingVertical: 14,
-    alignItems: 'center',
-    ...SHADOW,
-  },
-  quickLabel: {
-    fontSize: 13,
-    color: '#64748b',
-    marginBottom: 4,
-  },
-  quickLabelBig: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#334155',
-  },
-  quickValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1e293b',
-  },
-  durationGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  durationChip: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: '#f1f5f9',
-    borderRadius: 20,
-    ...SHADOW,
-  },
-  durationChipActive: {
-    backgroundColor: '#6366f1',
-  },
-  durationText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#475569',
-  },
-  durationTextActive: {
-    color: '#ffffff',
-  },
-  summaryCard: {
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 24,
-    ...SHADOW,
-  },
-  summaryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  summaryIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  summaryTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#0f172a',
-    flex: 1,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  summaryValue: {
-    fontSize: 15,
-    color: '#475569',
-    marginLeft: 12,
-    flex: 1,
-  },
-  settingCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 16,
-    ...SHADOW,
-  },
-  settingLeft: {
-    flex: 1,
-  },
-  settingTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  settingDesc: {
-    fontSize: 13,
-    color: '#64748b',
-    marginTop: 2,
-  },
-  recurrenceRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  recurrenceOption: {
-    flex: 1,
-    paddingVertical: 14,
-    backgroundColor: '#f1f5f9',
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  recurrenceOptionActive: {
-    backgroundColor: '#e0e7ff',
-    borderWidth: 1.5,
-    borderColor: '#6366f1',
-  },
-  recurrenceText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#475569',
-  },
-  recurrenceTextActive: {
-    color: '#4f46e5',
-    fontWeight: '700',
-  },
-  participantInputWrapper: {
-    backgroundColor: '#f1f5f9',
-    borderRadius: 16,
-    marginTop: 8,
-    ...SHADOW,
-  },
-  participantInput: {
-    fontSize: 16,
-    padding: 16,
-    color: '#0f172a',
-  },
-  footer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-    backgroundColor: '#ffffff',
-  },
-  actionButton: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    ...SHADOW,
-  },
-  actionButtonDisabled: {
-    opacity: 0.5,
-  },
-  buttonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-    gap: 10,
-  },
-  buttonText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#ffffff',
-  },
-  spaceChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    marginHorizontal: 4,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    ...SHADOW,
-  },
-  spaceChipSelected: {
-    borderColor: '#6366f1',
-    backgroundColor: '#f5f3ff',
-  },
-  spaceAvatarPlaceholder: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#e2e8f0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  spaceAvatarText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#64748b',
-  },
-  spaceChipName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#475569',
-    maxWidth: 100,
-  },
-});
+const getStyles = (colors: any, activeScheme: string) => {
+  const isDark = activeScheme === 'dark';
+  const SHADOW = createShadow({ 
+    height: 6, 
+    opacity: isDark ? 0.3 : 0.12, 
+    radius: 12, 
+    elevation: 8 
+  });
+  
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      paddingBottom: 16,
+    },
+    progressContainer: {
+      alignItems: 'center',
+    },
+    progressBar: {
+      flexDirection: 'row',
+      gap: 10,
+      marginBottom: 6,
+    },
+    progressDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: isDark ? '#334155' : '#e2e8f0',
+    },
+    progressDotActive: {
+      backgroundColor: colors.tint,
+    },
+    progressDotCurrent: {
+      width: 12,
+      height: 12,
+      borderWidth: 3,
+      borderColor: isDark ? '#4338ca' : '#a5b4fc',
+    },
+    stepText: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      fontWeight: '600',
+    },
+    scrollContent: {
+      flex: 1,
+    },
+    scrollContentContainer: {
+      paddingHorizontal: 20,
+      paddingBottom: 140,
+    },
+    heroTitle: {
+      fontSize: 28,
+      fontWeight: '700',
+      color: colors.text,
+      marginTop: 8,
+      marginBottom: 4,
+    },
+    heroSubtitle: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      marginBottom: 28,
+    },
+    card: {
+      backgroundColor: colors.card,
+      borderRadius: 20,
+      padding: 20,
+      marginBottom: 28,
+      ...SHADOW,
+    },
+    titleInput: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
+      paddingBottom: 12,
+      borderBottomWidth: 2,
+      borderBottomColor: colors.tint,
+    },
+    descriptionInput: {
+      marginTop: 16,
+      fontSize: 16,
+      color: colors.text,
+      minHeight: 80,
+      textAlignVertical: 'top',
+    },
+    sectionLabel: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 14,
+    },
+    sectionLabelSmall: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 12,
+    },
+    typeScroll: {
+      marginHorizontal: -4,
+    },
+    typeChip: {
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      marginHorizontal: 4,
+      borderRadius: 16,
+      borderWidth: 1.5,
+      backgroundColor: colors.card,
+      ...SHADOW,
+      minWidth: 110,
+    },
+    typeChipSelected: {
+      borderWidth: 2,
+    },
+    typeIconGradient: {
+      width: 54,
+      height: 54,
+      borderRadius: 27,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 10,
+    },
+    typeName: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    dateTimeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 14,
+    },
+    dateTimeValue: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginLeft: 14,
+      flex: 1,
+    },
+    separator: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginVertical: 4,
+    },
+    quickGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 12,
+      marginBottom: 28,
+    },
+    quickPill: {
+      flex: 1,
+      minWidth: '45%',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
+      borderRadius: 16,
+      paddingVertical: 14,
+      alignItems: 'center',
+      ...SHADOW,
+    },
+    quickLabel: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginBottom: 4,
+    },
+    quickLabelBig: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    quickValue: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    durationGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 12,
+    },
+    durationChip: {
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
+      borderRadius: 20,
+      ...SHADOW,
+    },
+    durationChipActive: {
+      backgroundColor: colors.tint,
+    },
+    durationText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    durationTextActive: {
+      color: '#ffffff',
+    },
+    summaryCard: {
+      borderRadius: 20,
+      padding: 20,
+      marginBottom: 24,
+      ...SHADOW,
+    },
+    summaryHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    summaryIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 12,
+    },
+    summaryTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
+      flex: 1,
+    },
+    summaryRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    summaryValue: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      marginLeft: 12,
+      flex: 1,
+    },
+    settingCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      padding: 18,
+      marginBottom: 16,
+      ...SHADOW,
+    },
+    settingLeft: {
+      flex: 1,
+    },
+    settingTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    settingDesc: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    recurrenceRow: {
+      flexDirection: 'row',
+      gap: 10,
+    },
+    recurrenceOption: {
+      flex: 1,
+      paddingVertical: 14,
+      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
+      borderRadius: 12,
+      alignItems: 'center',
+    },
+    recurrenceOptionActive: {
+      backgroundColor: isDark ? 'rgba(99,102,241,0.2)' : '#e0e7ff',
+      borderWidth: 1.5,
+      borderColor: colors.tint,
+    },
+    recurrenceText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    recurrenceTextActive: {
+      color: isDark ? '#a5b4fc' : '#4f46e5',
+      fontWeight: '700',
+    },
+    participantInputWrapper: {
+      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
+      borderRadius: 16,
+      marginTop: 8,
+      ...SHADOW,
+    },
+    participantInput: {
+      fontSize: 16,
+      padding: 16,
+      color: colors.text,
+    },
+    footer: {
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      backgroundColor: colors.background,
+    },
+    actionButton: {
+      borderRadius: 20,
+      overflow: 'hidden',
+      ...SHADOW,
+    },
+    actionButtonDisabled: {
+      opacity: 0.5,
+    },
+    buttonGradient: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 18,
+      gap: 10,
+    },
+    buttonText: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: '#ffffff',
+    },
+    spaceChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.card,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 12,
+      marginHorizontal: 4,
+      borderWidth: 1,
+      borderColor: colors.border,
+      ...SHADOW,
+    },
+    spaceChipSelected: {
+      borderColor: colors.tint,
+      backgroundColor: isDark ? 'rgba(99,102,241,0.1)' : '#f5f3ff',
+    },
+    spaceAvatarPlaceholder: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: colors.border,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 8,
+    },
+    spaceAvatarText: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: colors.textSecondary,
+    },
+    spaceChipName: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      maxWidth: 100,
+    },
+  });
+};
 
 export default CreateActivityModal;

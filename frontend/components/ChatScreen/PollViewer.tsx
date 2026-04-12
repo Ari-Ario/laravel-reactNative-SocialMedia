@@ -32,6 +32,7 @@ import PollComponent from './PollComponent';
 import PollVotersModal from './PollVotersModal';
 import GenericMenu, { MenuItem } from '../GenericMenu';
 import { calculateAnchor, AnchorPosition } from '@/utils/layout';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { GlobalStyles } from '@/styles/GlobalStyles';
 
 const { width, height } = Dimensions.get('window');
@@ -66,6 +67,9 @@ const PollViewer: React.FC<PollViewerProps> = ({
     isPreview = false,
     inChatMode = false,
 }) => {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
+
     // State
     const [selectedOptions, setSelectedOptions] = useState<Set<string>>(new Set());
     const [hasVoted, setHasVoted] = useState(false);
@@ -1022,14 +1026,14 @@ const PollViewer: React.FC<PollViewerProps> = ({
 };
 
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     container: {
-        backgroundColor: '#fff',
+        backgroundColor: activeScheme === 'dark' ? colors.surface : '#fff',
         borderRadius: 16,
         padding: 16,
         marginVertical: 8,
         borderWidth: 1,
-        borderColor: '#f0f0f0',
+        borderColor: activeScheme === 'dark' ? colors.border : '#f0f0f0',
         ...createShadow({
             width: 0,
             height: 2,
@@ -1058,11 +1062,11 @@ const styles = StyleSheet.create({
     creatorName: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#333',
+        color: colors.text,
     },
     timestamp: {
         fontSize: 11,
-        color: '#999',
+        color: colors.textSecondary,
     },
     headerRight: {
         flexDirection: 'row',
@@ -1083,7 +1087,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     typeBadge: {
-        backgroundColor: '#f0f0f0',
+        backgroundColor: activeScheme === 'dark' ? colors.muted : '#f0f0f0',
         paddingHorizontal: 8,
         paddingVertical: 2,
         borderRadius: 4,
@@ -1091,7 +1095,7 @@ const styles = StyleSheet.create({
     typeText: {
         fontSize: 10,
         fontWeight: '500',
-        color: '#666',
+        color: colors.textSecondary,
     },
     menuButton: {
         padding: 4,
@@ -1099,7 +1103,7 @@ const styles = StyleSheet.create({
     question: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#333',
+        color: colors.text,
         marginBottom: 12,
         lineHeight: 24,
     },
@@ -1111,7 +1115,7 @@ const styles = StyleSheet.create({
     deadlineText: {
         marginLeft: 6,
         fontSize: 12,
-        color: '#666',
+        color: colors.textSecondary,
     },
     deadlinePassed: {
         color: '#FF6B6B',
@@ -1122,14 +1126,14 @@ const styles = StyleSheet.create({
     },
     optionContainer: {
         borderWidth: 1,
-        borderColor: '#e0e0e0',
+        borderColor: activeScheme === 'dark' ? colors.border : '#e0e0e0',
         borderRadius: 12,
         padding: 12,
-        backgroundColor: '#fff',
+        backgroundColor: activeScheme === 'dark' ? 'rgba(255,255,255,0.05)' : '#fff',
     },
     optionSelected: {
-        borderColor: '#007AFF',
-        backgroundColor: '#007AFF08',
+        borderColor: colors.tint,
+        backgroundColor: colors.tint + '15',
     },
     optionDisabled: {
         opacity: 0.6,
@@ -1144,12 +1148,12 @@ const styles = StyleSheet.create({
     },
     optionText: {
         fontSize: 15,
-        color: '#333',
+        color: colors.text,
         flex: 1,
     },
     optionTextSelected: {
         fontWeight: '500',
-        color: '#007AFF',
+        color: colors.tint,
     },
     votedBadge: {
         marginLeft: 8,
@@ -1159,13 +1163,13 @@ const styles = StyleSheet.create({
     },
     progressBarContainer: {
         height: 6,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: activeScheme === 'dark' ? colors.muted : '#f0f0f0',
         borderRadius: 3,
         overflow: 'hidden',
     },
     progressBar: {
         height: '100%',
-        backgroundColor: '#007AFF',
+        backgroundColor: colors.tint,
         borderRadius: 3,
     },
     progressBarSelected: {
@@ -1178,12 +1182,12 @@ const styles = StyleSheet.create({
     },
     voteCount: {
         fontSize: 12,
-        color: '#666',
+        color: colors.textSecondary,
     },
     percentageText: {
         fontSize: 12,
         fontWeight: '600',
-        color: '#007AFF',
+        color: colors.tint,
     },
     statsContainer: {
         flexDirection: 'row',
@@ -1192,11 +1196,11 @@ const styles = StyleSheet.create({
         marginBottom: 12,
         paddingTop: 8,
         borderTopWidth: 1,
-        borderTopColor: '#f0f0f0',
+        borderTopColor: colors.border,
     },
     statsText: {
         fontSize: 12,
-        color: '#666',
+        color: colors.textSecondary,
     },
     quorumText: {
         fontSize: 12,
@@ -1212,14 +1216,14 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     tag: {
-        backgroundColor: '#f0f0f0',
+        backgroundColor: activeScheme === 'dark' ? colors.muted : '#f0f0f0',
         paddingHorizontal: 8,
         paddingVertical: 2,
         borderRadius: 4,
     },
     tagText: {
         fontSize: 10,
-        color: '#666',
+        color: colors.textSecondary,
     },
     submitButton: {
         flexDirection: 'row',
@@ -1245,12 +1249,12 @@ const styles = StyleSheet.create({
         marginTop: 8,
         paddingTop: 8,
         borderTopWidth: 1,
-        borderTopColor: '#f0f0f0',
+        borderTopColor: colors.border,
     },
     forwardedText: {
         marginLeft: 4,
         fontSize: 11,
-        color: '#999',
+        color: colors.textSecondary,
     },
     // Modal styles
     modalOverlay: {
@@ -1263,7 +1267,7 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     modalContent: {
-        backgroundColor: '#fff',
+        backgroundColor: colors.card,
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
         padding: 20,
@@ -1278,20 +1282,21 @@ const styles = StyleSheet.create({
     modalTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#333',
+        color: colors.text,
     },
     modalDescription: {
         fontSize: 14,
-        color: '#666',
+        color: colors.textSecondary,
         marginBottom: 16,
     },
     messageInput: {
         fontSize: 16,
         padding: 12,
-        backgroundColor: '#f8f8f8',
+        backgroundColor: colors.muted,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#e0e0e0',
+        borderColor: colors.border,
+        color: colors.text,
         marginBottom: 16,
         minHeight: 120,
         textAlignVertical: 'top',
@@ -1299,10 +1304,11 @@ const styles = StyleSheet.create({
     searchInput: {
         fontSize: 16,
         padding: 12,
-        backgroundColor: '#f8f8f8',
+        backgroundColor: colors.muted,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#e0e0e0',
+        borderColor: colors.border,
+        color: colors.text,
         marginBottom: 16,
     },
     loadingContainer: {
@@ -1312,7 +1318,7 @@ const styles = StyleSheet.create({
     loadingText: {
         marginTop: 12,
         fontSize: 14,
-        color: '#666',
+        color: colors.textSecondary,
     },
     spacesList: {
         maxHeight: 400,
@@ -1323,11 +1329,11 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         paddingHorizontal: 8,
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
-        backgroundColor: '#fff',
+        borderBottomColor: colors.border,
+        backgroundColor: colors.card,
     },
     spaceItemSelected: {
-        backgroundColor: '#007AFF08',
+        backgroundColor: colors.tint + '15',
     },
     spaceInfo: {
         flex: 1,
@@ -1336,18 +1342,18 @@ const styles = StyleSheet.create({
     spaceTitle: {
         fontSize: 16,
         fontWeight: '500',
-        color: '#333',
+        color: colors.text,
         marginBottom: 2,
     },
     spaceType: {
         fontSize: 12,
-        color: '#999',
+        color: colors.textSecondary,
         textTransform: 'capitalize',
     },
     emptyText: {
         textAlign: 'center',
         padding: 20,
-        color: '#999',
+        color: colors.textSecondary,
         fontSize: 14,
     },
     modalButtons: {
@@ -1356,7 +1362,7 @@ const styles = StyleSheet.create({
         marginTop: 16,
         paddingTop: 16,
         borderTopWidth: 1,
-        borderTopColor: '#f0f0f0',
+        borderTopColor: colors.border,
     },
     modalButton: {
         flex: 1,
@@ -1365,10 +1371,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     modalButtonCancel: {
-        backgroundColor: '#f0f0f0',
+        backgroundColor: colors.muted,
     },
     modalButtonConfirm: {
-        backgroundColor: '#007AFF',
+        backgroundColor: colors.tint,
     },
     modalButtonDisabled: {
         opacity: 0.5,
@@ -1376,12 +1382,12 @@ const styles = StyleSheet.create({
     modalButtonTextCancel: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#666',
+        color: colors.textSecondary,
     },
     modalButtonTextConfirm: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#fff',
+        color: activeScheme === 'dark' ? '#000' : '#fff',
     },
 });
 

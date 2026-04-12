@@ -11,7 +11,6 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { GlobalStyles } from '@/styles/GlobalStyles';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { GestureHandlerRootView, Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -28,6 +27,11 @@ import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system';
 import { Alert, Share as RNShare } from 'react-native';
 import AuthContext from '@/context/AuthContext';
+import { useAppTheme } from '@/hooks/useAppTheme';
+
+const { width, height } = Dimensions.get('window');
+const SWIPE_THRESHOLD = 50;
+const ANIMATION_CONFIG = { duration: 300 };
 
 type Media = {
   id: string;
@@ -99,10 +103,9 @@ interface MediaViewerProps {
   // For comment reactions
   handleReactComment: (emoji: string) => void;
   deleteCommentReaction: (emoji: string) => void;
+  isBookmarked?: boolean;
 }
-const { width, height } = Dimensions.get('window');
-const SWIPE_THRESHOLD = 50; // More sensitive
-const ANIMATION_CONFIG = { duration: 300 };
+const isMobileWeb = Platform.OS === 'web' && Dimensions.get('window').width < 768;
 
 // Internal component to handle individual media rendering and its hooks correctly
 const MediaItemDisplay: React.FC<{
@@ -119,6 +122,11 @@ const MediaItemDisplay: React.FC<{
     : (rawPath.startsWith('storage/') || rawPath.startsWith('/storage/')
       ? `${getApiBaseImage()}/${rawPath.replace(/^\//, '')}`
       : `${getApiBaseImage()}/storage/${rawPath}`);
+
+  const posterUri = media.thumbnail_path
+    ? (media.thumbnail_path.startsWith('http') ? media.thumbnail_path : `${getApiBaseImage()}/storage/${media.thumbnail_path}`)
+    : undefined;
+
   const isFocused = currentIndex === index;
 
   // useVideoPlayer MUST be called always if this component is rendered for a video
@@ -126,6 +134,8 @@ const MediaItemDisplay: React.FC<{
     media.type === 'video' ? uri : '',
     (p) => {
       p.loop = true;
+      // On mobile web, default to muted for the 'photo-like' experience
+      p.muted = isMobileWeb ? true : false;
       if (isFocused) p.play();
     }
   );
@@ -149,7 +159,10 @@ const MediaItemDisplay: React.FC<{
         player={player}
         style={[styles.mediaContent, isWhiteboard && { backgroundColor: '#fff' }]}
         contentFit="contain"
-        nativeControls={false}
+        nativeControls={isMobileWeb ? true : false} // Support native controls on mobile web
+        allowsVideoFrameAnalysis={false}
+        // @ts-ignore
+        posterSource={posterUri ? { uri: posterUri } : undefined}
       />
     );
   }
@@ -190,6 +203,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   handleReactComment,
   deleteCommentReaction,
   onDoubleTap,
+  isBookmarked,
 }) => {
   const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(startIndex);
@@ -200,6 +214,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const overlayOpacity = useSharedValue(0.7);
   const bgOpacity = useSharedValue(1);
 
+  const { colors } = useAppTheme();
   const { user } = React.useContext(AuthContext);
   const reactionsToShow = getGroupedReactions(post, Number(user?.id) || undefined);
 
@@ -329,7 +344,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
         statusBarTranslucent
         onRequestClose={handleClose}
       >
-        <Animated.View style={[StyleSheet.absoluteFill, bgStyle, GlobalStyles.popupContainer, { backgroundColor: '#000' }]}>
+        <Animated.View style={[StyleSheet.absoluteFill, bgStyle, { backgroundColor: '#000', zIndex: 1000 }]}>
           <GestureDetector gesture={panGesture}>
             <Animated.View style={[styles.modalContainer, containerStyle]}>
               {mediaItems.map((media, index) => (
@@ -385,13 +400,15 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
                 setIsEmojiPickerOpen={setIsEmojiPickerOpen}
                 getGroupedReactions={getGroupedReactions}
                 compact={true}
+                isDark={true}
+                isBookmarked={isBookmarked}
               />
             </Animated.View>
           )}
 
           {/* Close button (now on the left) */}
           <TouchableOpacity style={[styles.closeButton, { top: Math.max(insets.top, 20) }]} onPress={handleClose}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+            <Ionicons name="chevron-back" size={24} color="#fff" />
           </TouchableOpacity>
 
           {/* Navigation Arrows */}
@@ -561,5 +578,6 @@ const styles = StyleSheet.create({
   bottomActions: {
     padding: 16,
     backgroundColor: 'rgba(0,0,0,0.5)',
+    width: '100%',
   },
 });

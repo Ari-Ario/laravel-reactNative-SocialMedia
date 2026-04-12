@@ -9,9 +9,10 @@ import {
     Image,
     Modal,
     Platform,
-    Alert,                    // ← ADDED
+    Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { createShadow } from '@/utils/styles';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { Notification } from '@/types/Notification';
@@ -29,13 +30,13 @@ type SpacesPanelProps = {
 };
 
 const SpacesPanel = ({ visible, onClose, anchorPosition }: SpacesPanelProps) => {
+    const { colors, activeScheme } = useAppTheme();
     const {
         getSpaces,
         markAsRead,
         removeNotification
     } = useNotificationStore();
-    
-    const { user } = React.useContext(AuthContext);
+    const { refreshCollaborations } = useCollaborationStore();
 
     const spaces = getSpaces();
 
@@ -44,133 +45,104 @@ const SpacesPanel = ({ visible, onClose, anchorPosition }: SpacesPanelProps) => 
             markAsRead(item.id);
         }
 
-        if (item.spaceId || item.data?.space_id || item.data?.space?.id) {
-            const spaceId = item.spaceId || item.data?.space_id || item.data?.space?.id;
+        if (item.spaceId || item.data?.space_id) {
+            const spaceId = item.spaceId || item.data?.space_id;
             router.push({
                 pathname: '/(spaces)/[id]',
-                params: {
-                    id: spaceId,
-                    ...(item.type === 'space_invitation' ? { justInvited: 'true' } : {})
-                }
+                params: { id: spaceId }
             });
         }
         onClose();
     };
 
+    const handleAcceptInvitation = async (item: Notification) => {
+        if (!item.spaceId && !item.data?.space_id) return;
+        const spaceId = item.spaceId || item.data?.space_id;
+
+        try {
+            await CollaborationService.respondToInvitation(spaceId, 'accepted');
+            await refreshCollaborations();
+            markAsRead(item.id);
+            Alert.alert('Success', 'You have joined the space');
+            handleSpacePress(item);
+        } catch (error) {
+            console.error('Error accepting invitation:', error);
+            Alert.alert('Error', 'Failed to accept invitation');
+        }
+    };
+
     const renderSpaceItem = ({ item }: { item: Notification }) => (
         <TouchableOpacity
-            style={[styles.spaceItem, !item.isRead && styles.unreadSpace]}
+            style={[
+                styles.spaceItem, 
+                { borderBottomColor: colors.border },
+                !item.isRead && styles.unreadSpace,
+                !item.isRead && { backgroundColor: colors.primary + '10', borderLeftColor: colors.primary }
+            ]}
             onPress={() => handleSpacePress(item)}
         >
-            <TouchableOpacity
-                style={styles.Foto}
-                onPress={(e) => {
-                    e.stopPropagation();
-                    // Optional: navigate to user profile
-                }}
-            >
+            <View style={styles.Foto}>
                 <Image
                     source={{
                         uri: item.avatar ? `${getApiBaseImage()}/storage/${item.avatar}` : undefined
                     }}
                     defaultSource={require('@/assets/images/favicon.png')}
-                    style={styles.avatar}
+                    style={[styles.avatar, { borderColor: colors.surface, backgroundColor: colors.muted }]}
                 />
-            </TouchableOpacity>
+            </View>
 
             <View style={styles.spaceContent}>
                 <View style={styles.textContent}>
                     <View style={styles.titleRow}>
                         <View style={styles.titleWithIcon}>
                             <Ionicons
-                                name={item.type === 'space_invitation' ? 'people' : 'cube'}
+                                name={item.type === 'space_invitation' ? 'mail-outline' : 'cube-outline'}
                                 size={16}
-                                color="#5856D6"
+                                color={item.type === 'space_invitation' ? colors.primary : colors.textSecondary}
                             />
-                            <Text style={styles.spaceTitle}>{item.title}</Text>
-                            {useReportedContentStore.getState().isReported('space', item.spaceId || item.data?.space_id || item.data?.space?.id) && (
-                                <Ionicons name="flag" size={14} color="#ff4444" style={{ marginLeft: 4 }} />
-                            )}
+                            <Text style={[styles.spaceTitle, { color: colors.text }]}>{item.title}</Text>
                         </View>
-                        <Text style={styles.spaceTime}>
+                        <Text style={[styles.spaceTime, { color: colors.textSecondary }]}>
                             {formatTimeAgo(item.createdAt)}
                         </Text>
                     </View>
-                    <Text style={styles.spaceMessage}>{item.message}</Text>
-
-                    {(item.data?.space?.title || item.data?.space_title) && (
-                        <View style={styles.metadataContainer}>
-                            <Ionicons name="cube" size={12} color="#5856D6" />
-                            <Text style={styles.metadataText}>
-                                {item.data?.space?.title || item.data?.space_title}
-                            </Text>
+                    <Text style={[styles.spaceMessage, { color: colors.textSecondary }]}>{item.message}</Text>
+                    
+                    {item.type === 'space_invitation' && !item.isRead && (
+                        <View style={{ flexDirection: 'row', marginTop: 8 }}>
+                            <TouchableOpacity
+                                style={[styles.acceptButton, { backgroundColor: colors.primary }]}
+                                onPress={(e) => {
+                                    e.stopPropagation();
+                                    handleAcceptInvitation(item);
+                                }}
+                            >
+                                <Text style={styles.acceptButtonText}>Accept</Text>
+                            </TouchableOpacity>
                         </View>
                     )}
                 </View>
-            </View>
 
-            {/* ACCEPT BUTTON - only for space invitations */}
-            {item.type === 'space_invitation' && (
                 <TouchableOpacity
-                    style={styles.acceptButton}
-                    onPress={async (e) => {
+                    onPress={(e) => {
                         e.stopPropagation();
-                        const spaceId = item.spaceId || item.data?.space_id || item.data?.space?.id;
-                        if (!spaceId) {
-                            Alert.alert('Error', 'Space ID not found');
-                            return;
-                        }
-
-                        try {
-                            const response = await CollaborationService.getInstance().acceptSpaceInvitation(spaceId.toString());
-
-                            markAsRead(item.id);
-                            removeNotification(item.id);
-
-                            // Update global store so the UI reflects the new space immediately
-                            if (user?.id) {
-                                if (response?.space) {
-                                    useCollaborationStore.getState().addSpace(response.space);
-                                } else {
-                                    useCollaborationStore.getState().fetchUserSpaces(Number(user.id));
-                                }
-                            }
-
-                            router.push({
-                                pathname: '/(spaces)/[id]',
-                                params: { id: spaceId.toString() }
-                            });
-                            onClose();
-                        } catch (error: any) {
-                            console.error('Accept invitation failed:', error);
-                            Alert.alert(
-                                'Failed to Accept',
-                                error.response?.data?.message ||
-                                error.message ||
-                                'Please try again later.'
-                            );
-                        }
+                        removeNotification(item.id);
                     }}
+                    style={[styles.deleteButton, { backgroundColor: colors.muted }]}
                 >
-                    <Text style={styles.acceptButtonText}>Accept</Text>
+                    <Ionicons name="close" size={16} color={colors.textSecondary} />
                 </TouchableOpacity>
-            )}
-
-            <TouchableOpacity
-                onPress={() => removeNotification(item.id)}
-                style={styles.deleteButton}
-            >
-                <Ionicons name="close" size={16} color="#999" />
-            </TouchableOpacity>
+            </View>
         </TouchableOpacity>
     );
 
-    const formatTimeAgo = (date: Date) => {
+    const formatTimeAgo = (dateString: string) => {
+        const date = new Date(dateString);
         const now = new Date();
         const diffMs = now.getTime() - date.getTime();
         const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
+        const diffHours = Math.floor(diffMins / 60);
+        const diffDays = Math.floor(diffHours / 24);
 
         if (diffMins < 1) return 'Just now';
         if (diffMins < 60) return `${diffMins}m ago`;
@@ -191,10 +163,13 @@ const SpacesPanel = ({ visible, onClose, anchorPosition }: SpacesPanelProps) => 
                 style={styles.backdrop}
                 activeOpacity={1}
                 onPress={onClose}
-            />
+            >
+                {Platform.OS === 'web' && <View style={[StyleSheet.absoluteFill, { backgroundColor: 'transparent', backdropFilter: 'blur(4px)' }]} />}
+            </TouchableOpacity>
             <View
                 style={[
                     styles.panelContainer,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
                     anchorPosition ? {
                         top: anchorPosition.top + 15,
                         left: anchorPosition.left,
@@ -207,6 +182,7 @@ const SpacesPanel = ({ visible, onClose, anchorPosition }: SpacesPanelProps) => 
                     <View
                         style={[
                             styles.pointer,
+                            { backgroundColor: colors.surface, borderColor: colors.border },
                             anchorPosition.right !== undefined
                                 ? { right: anchorPosition.arrowOffset }
                                 : { left: anchorPosition.arrowOffset }
@@ -215,20 +191,20 @@ const SpacesPanel = ({ visible, onClose, anchorPosition }: SpacesPanelProps) => 
                 )}
 
                 <View style={styles.contentWrapper}>
-                    <View style={styles.panelHeader}>
-                        <Text style={styles.panelTitle}>
+                    <View style={[styles.panelHeader, { borderBottomColor: colors.border, backgroundColor: colors.surface }]}>
+                        <Text style={[styles.panelTitle, { color: colors.text }]}>
                             Spaces {spaces.length > 0 ? `(${spaces.length})` : ''}
                         </Text>
-                        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                            <Ionicons name="close" size={20} color="#666" />
+                        <TouchableOpacity onPress={onClose} style={[styles.closeButton, { backgroundColor: colors.muted }]}>
+                            <Ionicons name="close" size={20} color={colors.textSecondary} />
                         </TouchableOpacity>
                     </View>
                     <View style={{ flex: 1 }}>
                         {spaces.length === 0 ? (
                             <View style={styles.emptyState}>
-                                <Ionicons name="cube-outline" size={48} color="#ccc" />
-                                <Text style={styles.emptyText}>No space notifications</Text>
-                                <Text style={styles.emptySubtext}>
+                                <Ionicons name="cube-outline" size={48} color={colors.textSecondary + '40'} />
+                                <Text style={[styles.emptyText, { color: colors.text }]}>No space notifications</Text>
+                                <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
                                     Space invitations and updates will appear here
                                 </Text>
                             </View>
@@ -239,6 +215,7 @@ const SpacesPanel = ({ visible, onClose, anchorPosition }: SpacesPanelProps) => 
                                 keyExtractor={(item) => item.id}
                                 contentContainerStyle={styles.spacesList}
                                 showsVerticalScrollIndicator={false}
+                                indicatorStyle={activeScheme === 'dark' ? 'white' : 'black'}
                             />
                         )}
                     </View>
@@ -251,13 +228,11 @@ const SpacesPanel = ({ visible, onClose, anchorPosition }: SpacesPanelProps) => 
 const styles = StyleSheet.create({
     backdrop: {
         flex: 1,
-        backgroundColor: 'transparent',
     },
     panelContainer: {
         position: 'absolute',
         width: Platform.OS === 'web' ? 400 : 320,
         maxHeight: 500,
-        backgroundColor: '#ffffff',
         borderRadius: 16,
         ...createShadow({
             width: 0,
@@ -267,7 +242,6 @@ const styles = StyleSheet.create({
             elevation: 8,
         }),
         borderWidth: 1,
-        borderColor: '#efefef',
         zIndex: 1000,
     },
     defaultPosition: {
@@ -285,11 +259,9 @@ const styles = StyleSheet.create({
         top: -10,
         width: 20,
         height: 20,
-        backgroundColor: '#ffffff',
         transform: [{ rotate: '45deg' }],
         borderTopWidth: 1,
         borderLeftWidth: 1,
-        borderColor: '#efefef',
         zIndex: -1,
     },
     panelHeader: {
@@ -299,17 +271,14 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 12,
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
     },
     panelTitle: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#1a1a1a',
     },
     closeButton: {
         padding: 4,
         borderRadius: 20,
-        backgroundColor: '#f5f5f5',
     },
     spacesList: {
         flexGrow: 1,
@@ -321,12 +290,9 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
         paddingHorizontal: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#f5f5f5',
     },
     unreadSpace: {
-        backgroundColor: '#f8faff',
         borderLeftWidth: 3,
-        borderLeftColor: '#5856D6',
     },
     spaceContent: {
         flex: 1,
@@ -353,18 +319,15 @@ const styles = StyleSheet.create({
     spaceTitle: {
         fontWeight: '600',
         fontSize: 15,
-        color: '#1a1a1a',
         flex: 1,
     },
     spaceMessage: {
         fontSize: 13,
-        color: '#666',
         marginBottom: 6,
         lineHeight: 18,
     },
     spaceTime: {
         fontSize: 11,
-        color: '#999',
         marginLeft: 8,
     },
     metadataContainer: {
@@ -372,7 +335,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginTop: 4,
         gap: 6,
-        backgroundColor: '#f5f5f5',
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 12,
@@ -380,21 +342,18 @@ const styles = StyleSheet.create({
     },
     metadataText: {
         fontSize: 11,
-        color: '#555',
         fontWeight: '500',
     },
     deleteButton: {
         padding: 6,
         marginLeft: 8,
         borderRadius: 16,
-        backgroundColor: '#f5f5f5',
         width: 28,
         height: 28,
         justifyContent: 'center',
         alignItems: 'center',
     },
     acceptButton: {
-        backgroundColor: '#007AFF',
         paddingHorizontal: 14,
         paddingVertical: 6,
         borderRadius: 20,
@@ -414,13 +373,11 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         marginTop: 16,
-        color: '#666',
         fontSize: 18,
         fontWeight: '600',
     },
     emptySubtext: {
         marginTop: 8,
-        color: '#999',
         fontSize: 14,
         textAlign: 'center',
         lineHeight: 20,
@@ -433,9 +390,7 @@ const styles = StyleSheet.create({
         height: 48,
         borderRadius: 24,
         marginRight: 12,
-        backgroundColor: '#f0f0f0',
         borderWidth: 2,
-        borderColor: '#fff',
     },
 });
 

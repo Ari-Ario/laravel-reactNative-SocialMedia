@@ -9,6 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { useNavigation } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
@@ -18,7 +19,7 @@ import getApiBaseImage from '@/services/getApiBaseImage';
 import PollViewer from './PollViewer';
 import { router } from 'expo-router';
 import * as Linking from 'expo-linking';
-import { MotiView } from 'moti';
+import { MotiView, AnimatePresence } from 'moti';
 import LocationPreview from './LocationPreview';
 import { createShadow } from '@/utils/styles';
 import { useModal } from '@/context/ModalContext';
@@ -27,6 +28,8 @@ import { fetchPostById } from '@/services/PostService';
 import { fetchStory } from '@/services/StoryService';
 import { PostVideoPlayer } from '../PostVideoPlayer';
 import VoiceMessagePlayer from './VoiceMessagePlayer';
+import { LinkPreviewCard } from '../LinkPreviewCard';
+import { extractFirstUrl } from '@/utils/urlUtils';
 
 interface MessageBubbleProps {
   message: {
@@ -84,6 +87,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   onJumpToMessage,
 }) => {
 
+  const { colors, activeScheme } = useAppTheme();
+  const styles = getStyles(colors, activeScheme);
   const { openModal } = useModal();
   const bubbleRef = useRef<React.ElementRef<typeof TouchableOpacity>>(null);
   const [isSelfHighlighted, setIsSelfHighlighted] = useState(false);
@@ -199,7 +204,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               ) : (
                 <Image
                   source={{ uri: url, cache: 'force-cache' }}
-                  style={[styles.image, message.metadata?.is_whiteboard_snapshot && { backgroundColor: '#fff' }]}
+                  style={[styles.image, message.metadata?.is_whiteboard_snapshot && { backgroundColor: activeScheme === 'dark' ? '#f0f0f0' : '#fff' }]}
                   resizeMode="contain"
                 />
               )}
@@ -319,8 +324,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         // Fallback if no spaceId/userId context
         return (
           <View style={styles.pollFallback}>
-            <Ionicons name="bar-chart" size={14} color="#007AFF" />
-            <Text style={styles.pollFallbackText}>
+            <Ionicons name="bar-chart" size={14} color={colors.tint} />
+            <Text style={[styles.pollFallbackText, { color: colors.tint }]}>
               {pollData?.question || 'Poll'}
             </Text>
           </View>
@@ -356,7 +361,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               <Text
                 style={[
                   styles.documentName,
-                  isCurrentUser ? styles.currentUserText : styles.otherUserText
+                  isCurrentUser ? styles.currentUserText : [styles.otherUserText, { color: colors.text }]
                 ]}
                 numberOfLines={1}
               >
@@ -368,7 +373,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                 </Text>
               )}
             </View>
-            <Ionicons name="download-outline" size={20} color={isCurrentUser ? "#fff" : "#007AFF"} />
+            <Ionicons name="download-outline" size={20} color={isCurrentUser ? "#fff" : colors.tint} />
           </TouchableOpacity>
         );
       }
@@ -400,11 +405,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               />
             </View>
             <View style={styles.locationInfo}>
-              <Text style={[styles.locationName, isCurrentUser && { color: '#fff' }]} numberOfLines={1}>
+              <Text style={[styles.locationName, { color: colors.text }, isCurrentUser && { color: '#fff' }]} numberOfLines={1}>
                 {name || 'Selected Location'}
               </Text>
               {address && (
-                <Text style={[styles.locationAddress, isCurrentUser ? { color: 'rgba(255,255,255,1)' } : { color: '#007AFF', fontWeight: '500' }]} numberOfLines={2}>
+                <Text style={[styles.locationAddress, isCurrentUser ? { color: 'rgba(255,255,255,1)' } : { color: colors.tint, fontWeight: '500' }]} numberOfLines={2}>
                   {address}
                 </Text>
               )}
@@ -430,11 +435,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               ]}>
                 {renderLocationContent()}
                 <View style={styles.appendedMessageContainer}>
-                  <Text style={[styles.appendedMessageText, !isCurrentUser && { color: '#333' }]}>
+                  <Text style={[styles.appendedMessageText, !isCurrentUser && { color: colors.text }]}>
                     {message.metadata.appended_message}
                   </Text>
                   <View style={styles.appendedMessageMeta}>
-                    <Text style={[styles.appendedMessageTime, !isCurrentUser && { color: '#666' }]}>
+                    <Text style={[styles.appendedMessageTime, !isCurrentUser && { color: colors.textSecondary }]}>
                       {formatTime(message.created_at)}
                     </Text>
                     {isCurrentUser && (
@@ -476,7 +481,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             activeOpacity={0.9}
           >
             <View style={styles.locationMapContainer}>
-               <View style={[styles.locationMiniMap, { backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center' }]}>
+               <View style={[styles.locationMiniMap, { backgroundColor: activeScheme === 'dark' ? colors.surface : '#f0f0f0', justifyContent: 'center', alignItems: 'center' }]}>
                   {!isExpired && (
                     <MotiView
                       from={{ scale: 1, opacity: 0.5 }}
@@ -491,7 +496,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             <View style={styles.locationInfo}>
               <View style={styles.liveHeader}>
                 <View style={[styles.liveIndicator, isExpired && { backgroundColor: '#8E8E93' }]} />
-                <Text style={[styles.locationName, isCurrentUser && { color: '#fff' }]}>
+                <Text style={[styles.locationName, { color: colors.text }, isCurrentUser && { color: '#fff' }]}>
                   {isExpired ? 'Live location ended' : 'Live Location'}
                 </Text>
               </View>
@@ -509,25 +514,39 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         return null; // Handled by specialized block below
 
       case 'text':
-      default:
+      default: {
         // Use translation if provided
+        const contentToRender = translatedContent || message.content;
+        const detectedUrl = extractFirstUrl(contentToRender);
+
         return (
           <View>
             <Text style={[styles.text, isCurrentUser ? styles.currentUserText : styles.otherUserText]}>
-              {translatedContent || message.content}
+              {contentToRender}
             </Text>
+            
+            {/* High-Fidelity Link Preview Integration */}
+            {detectedUrl ? (
+              <View style={[styles.chatLinkPreviewContainer, { backgroundColor: colors.surface }]}>
+                <LinkPreviewCard 
+                  url={detectedUrl} 
+                />
+              </View>
+            ) : null}
+
             {translatedContent && (
               <TouchableOpacity onPress={onToggleTranslation} style={styles.translatedContainer}>
-                <Text style={[styles.translatedLabel, isCurrentUser ? styles.currentUserText : styles.otherUserText]}>
+                <Text style={[styles.translatedLabel, { color: colors.textSecondary }, isCurrentUser ? styles.currentUserText : styles.otherUserText]}>
                   (Translated)
                 </Text>
-                <Text style={[styles.seeOriginalLink, isCurrentUser ? styles.currentUserText : { color: '#007AFF' }]}>
+                <Text style={[styles.seeOriginalLink, isCurrentUser ? styles.currentUserText : { color: colors.tint }]}>
                   See Original
                 </Text>
               </TouchableOpacity>
             )}
           </View>
         );
+      }
     }
   };
 
@@ -545,10 +564,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         isCurrentUser ? styles.currentUserReactions : styles.otherUserReactions
       ]}>
         {Object.entries(reactionCounts).map(([reaction, count]) => (
-          <View key={reaction} style={styles.reactionBadge}>
+          <View key={reaction} style={[styles.reactionBadge, { backgroundColor: activeScheme === 'dark' ? colors.muted : 'rgba(255, 255, 255, 0.9)' }]}>
             <Text style={styles.reactionEmoji}>{reaction}</Text>
             {count > 1 && (
-              <Text style={styles.reactionCount}>{count}</Text>
+              <Text style={[styles.reactionCount, { color: colors.textSecondary }]}>{count}</Text>
             )}
           </View>
         ))}
@@ -564,15 +583,15 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         onPress={() => onJumpToMessage?.(message.reply_to_id!)}
         style={[
           styles.replyHeaderContainer,
-          isCurrentUser ? styles.currentUserReplyHeader : styles.otherUserReplyHeader
+          isCurrentUser ? styles.currentUserReplyHeader : [styles.otherUserReplyHeader, { backgroundColor: activeScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' }]
         ]}
       >
-        <View style={[styles.replyHeaderBar, isCurrentUser && { backgroundColor: '#fff' }]} />
+        <View style={[styles.replyHeaderBar, isCurrentUser && { backgroundColor: activeScheme === 'dark' ? 'rgba(255,255,255,0.7)' : '#fff' }]} />
         <View style={styles.replyHeaderContent}>
           <Text style={[styles.replyHeaderName, isCurrentUser && { color: '#fff' }]} numberOfLines={1}>
             {repliedToMessage.user?.name || repliedToMessage.user_name || 'User'}
           </Text>
-          <Text style={[styles.replyHeaderText, isCurrentUser && { color: 'rgba(255,255,255,0.8)' }]} numberOfLines={1}>
+          <Text style={[styles.replyHeaderText, { color: colors.textSecondary }, isCurrentUser && { color: 'rgba(255,255,255,0.8)' }]} numberOfLines={1}>
             {repliedToMessage.type === 'text' ? repliedToMessage.content : `[${repliedToMessage.type}]`}
           </Text>
         </View>
@@ -602,8 +621,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           style={[
             styles.container,
             isCurrentUser ? styles.currentUserContainer : styles.otherUserContainer,
-            isSelfHighlighted && styles.selectedContainer,
-            isSelected && styles.selectedContainer,
+            isSelfHighlighted && [styles.selectedContainer, { backgroundColor: activeScheme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 122, 255, 0.1)' }],
+            isSelected && [styles.selectedContainer, { backgroundColor: activeScheme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 122, 255, 0.1)' }],
           ]}
         >
           {!isCurrentUser && showAvatar && (
@@ -620,25 +639,17 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             styles.bubbleContainer,
             isCurrentUser ? styles.currentUserBubble : styles.otherUserBubble,
             isSelfHighlighted && styles.highlightedBubble,
-            { maxWidth: '85%' } // Polls can be wider than text
           ]}>
             {!isCurrentUser && showAvatar && (
-              <Text style={styles.userName}>{message.user?.name}</Text>
+              <Text style={[styles.userName, { color: colors.textSecondary }]}>{message.user?.name}</Text>
             )}
 
             {renderReplyHeader()}
-            <PollViewer
-              poll={pollData}
-              spaceId={spaceId}
-              currentUserId={currentUserId}
-              currentUserRole={currentUserRole || 'participant'}
-              onRefresh={() => { }}
-              inChatMode={true}
-            />
+            {renderContent()}
 
             <View style={styles.messageFooter}>
               {message.user?.id === 0 && (
-                <Ionicons name="shield-checkmark" size={12} color={isCurrentUser ? "#fff" : "#FF3B30"} style={{ marginRight: 4 }} />
+                <Ionicons name="shield-checkmark" size={12} color={isCurrentUser ? "#fff" : colors.tint} style={{ marginRight: 4 }} />
               )}
               <Text style={styles.timestamp}>
                 {formatTime(message.created_at)}
@@ -805,53 +816,35 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         delayLongPress={200}
         style={[
           styles.sharedPostContainer,
+          { 
+            backgroundColor: activeScheme === 'dark' ? colors.surface : '#fff', 
+            borderColor: activeScheme === 'dark' ? 'rgba(255, 255, 255, 0.45)' : colors.border,
+            borderWidth: activeScheme === 'dark' ? 1.2 : 1.5 
+          },
           isCurrentUser ? styles.currentUserSharedPost : styles.otherUserSharedPost,
-          isSelected && styles.selectedContainer,
-          isStory && { width: 250 },
-          metadata.appended_message && { borderRadius: 12 }
+          isSelected && styles.selectedContainer
         ]}
       >
-        <BlurView intensity={20} tint="light" style={styles.sharedPostHeader}>
-          <Avatar 
-            source={creatorAvatar} 
-            size={24} 
-            name={creatorName}
-            showStatus={false}
-          />
-          <Text style={styles.sharedPostCreatorName} numberOfLines={1}>
-            {creatorName}
-          </Text>
-          <Ionicons name="chevron-forward" size={12} color="#8E8E93" style={{marginLeft: 'auto'}} />
-        </BlurView>
+        <View style={[styles.sharedPostHeader, { backgroundColor: activeScheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(255, 255, 255, 0.65)' }]}>
+          <Avatar source={creatorAvatar} size={28} name={creatorName} showStatus={false} />
+          <Text style={[styles.sharedPostCreatorName, { color: colors.text }]} numberOfLines={1}>{creatorName}</Text>
+        </View>
 
         {renderMediaCollection()}
 
-        <BlurView intensity={30} tint="light" style={styles.sharedPostFooter}>
-           {metadata.curator_context || metadata.curator_note ? (
-             <View style={styles.curatorPerspective}>
-               <View style={styles.curatorHeader}>
-                 <Ionicons name="sparkles" size={12} color="#766dfc" />
-                 <Text style={styles.curatorLabel}>CURATOR PERSPECTIVE</Text>
-               </View>
-               {metadata.curator_context && (
-                 <Text style={styles.curatorTag}>{metadata.curator_context}</Text>
-               )}
-               {metadata.curator_note && (
-                 <Text style={styles.curatorNote}>"{metadata.curator_note}"</Text>
-               )}
-               <View style={styles.curatorDivider} />
-             </View>
-           ) : null}
-           <Text style={styles.sharedPostCaption} numberOfLines={2}>
-              <Text style={styles.sharedPostCreatorLabel}>{creatorName} </Text>
+        <View style={[styles.sharedPostFooter, { backgroundColor: activeScheme === 'dark' ? 'rgba(0,0,0,0.1)' : 'rgba(255, 255, 255, 0.7)' }]}>
+          {caption ? (
+            <Text style={[styles.sharedPostCaption, { color: colors.text }]} numberOfLines={3}>
+              <Text style={[styles.sharedPostCreatorLabel, { color: colors.text }]}>{creatorName} </Text>
               {caption}
-           </Text>
+            </Text>
+          ) : null}
            <View style={styles.sharedPostMeta}>
               <Text style={styles.sharedPostTime}>
                 {formatTime(message.created_at)}
               </Text>
            </View>
-        </BlurView>
+        </View>
 
         {renderReactions()}
       </TouchableOpacity>
@@ -955,7 +948,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         {renderContent()}
 
         <View style={styles.messageFooter}>
-          <Text style={[styles.timestamp, !isCurrentUser && { color: '#333333ff' }]}>
+          <Text style={[styles.timestamp, !isCurrentUser && { color: activeScheme === 'dark' ? colors.textSecondary : '#333' }]}>
             {formatTime(message.created_at)}
           </Text>
           {isCurrentUser && (
@@ -984,7 +977,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+function getStyles(colors: any, activeScheme: string) {
+  return StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -1010,19 +1004,20 @@ const styles = StyleSheet.create({
     maxWidth: '70%',
     padding: 12,
     borderRadius: 18,
+    borderWidth: activeScheme === 'dark' ? 1.2 : 0,
+    borderColor: activeScheme === 'dark' ? 'rgba(255, 255, 255, 0.45)' : 'transparent',
   },
   currentUserBubble: {
     backgroundColor: '#007AFF',
     borderBottomRightRadius: 4,
   },
   otherUserBubble: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: activeScheme === 'dark' ? colors.surface : '#f0f0f0',
     borderBottomLeftRadius: 4,
   },
   userName: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#666',
     marginBottom: 4,
   },
   text: {
@@ -1049,7 +1044,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   otherUserText: {
-    color: '#333',
+    color: activeScheme === 'dark' ? colors.text : '#000',
   },
   imageContainer: {
     borderRadius: 12,
@@ -1082,7 +1077,7 @@ const styles = StyleSheet.create({
     width: 240,
     borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    backgroundColor: activeScheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
   },
   albumGrid: {
     flexDirection: 'row',
@@ -1199,7 +1194,6 @@ const styles = StyleSheet.create({
   pollQuestionText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 4,
   },
   pollMeta: {
@@ -1246,11 +1240,9 @@ const styles = StyleSheet.create({
   // Shared Post Styles
   sharedPostContainer: {
     width: 280,
-    backgroundColor: '#fff',
     borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1.5,
-    borderColor: 'rgba(229, 229, 234, 0.5)',
     ...createShadow({
       width: 0,
       height: 8,
@@ -1270,12 +1262,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     gap: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.65)',
   },
   sharedPostCreatorName: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1C1C1E',
   },
   sharedPostMediaContainer: {
     width: '100%',
@@ -1302,7 +1292,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 1,
-    backgroundColor: '#fff',
+    backgroundColor: activeScheme === 'dark' ? colors.muted : '#fff',
   },
   gridItem: {
     width: '49.8%',
@@ -1353,16 +1343,13 @@ const styles = StyleSheet.create({
   },
   sharedPostFooter: {
     padding: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
   },
   sharedPostCaption: {
     fontSize: 14,
-    color: '#2C2C2E',
     lineHeight: 20,
   },
   sharedPostCreatorLabel: {
     fontWeight: '800',
-    color: '#000',
   },
   sharedPostMeta: {
     marginTop: 8,
@@ -1392,12 +1379,10 @@ const styles = StyleSheet.create({
   curatorTag: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#1C1C1E',
     marginBottom: 2,
   },
   curatorNote: {
     fontSize: 13,
-    color: '#3A3A3C',
     fontStyle: 'italic',
     lineHeight: 18,
   },
@@ -1438,7 +1423,6 @@ const styles = StyleSheet.create({
   },
   replyHeaderText: {
     fontSize: 12,
-    color: '#666',
   },
   pollBubbleContent: {
     flex: 1,
@@ -1522,7 +1506,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#fff',
+    backgroundColor: activeScheme === 'dark' ? colors.muted : '#fff',
     justifyContent: 'center',
     alignItems: 'center',
     ...createShadow({ width: 0, height: 2, opacity: 0.1, radius: 4, elevation: 2 }),
@@ -1545,6 +1529,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     padding: 4,
+    borderWidth: activeScheme === 'dark' ? 1.2 : 0,
+    borderColor: activeScheme === 'dark' ? 'rgba(255, 255, 255, 0.45)' : 'transparent',
   },
   locationMapContainer: {
     width: '100%',
@@ -1574,7 +1560,6 @@ const styles = StyleSheet.create({
   locationName: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1a1a1a',
   },
   locationAddress: {
     fontSize: 12,
@@ -1598,6 +1583,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: 'rgba(255,59,48,0.3)',
   },
+  chatLinkPreviewContainer: {
+    marginTop: 8,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
 });
+}
 
 export default MessageBubble;

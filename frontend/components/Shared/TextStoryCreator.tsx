@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { GradientPreset } from './StoryTypes';
+import { createTextShadow } from '@/utils/styles';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -246,9 +247,7 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 14,
     fontWeight: '600',
-    textShadowColor: 'black',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    ...createTextShadow({ color: 'black', width: 0, height: 1, radius: 3 }),
   },
   colorPaletteContainer: {
     width: Platform.OS === 'web' ? '100%' : SCREEN_WIDTH * 0.9,
@@ -313,8 +312,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 12,
     fontWeight: 'bold',
-    textShadowColor: 'black',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    ...createTextShadow({ color: 'black', width: 0, height: 1, radius: 2 }),
   },
 });

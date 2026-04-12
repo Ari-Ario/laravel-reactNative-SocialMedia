@@ -19,6 +19,7 @@ import { MotiView } from 'moti';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BackButton } from '@/components/ui/IconButton';
 import { createShadow } from '@/utils/styles';
 import * as Haptics from 'expo-haptics';
 import { fetchFullSettings, updatePreferences } from '@/services/SettingService';
@@ -27,6 +28,7 @@ import axios from '@/services/axios';
 import getApiBase from '@/services/getApiBase';
 import { getToken } from '@/services/TokenService';
 import GlobalStyles from '@/styles/GlobalStyles';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -50,6 +52,8 @@ const StorageOption = ({
     description,
     color = "#1063FD"
 }: StorageOptionProps) => {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
     const scaleAnim = useRef(new Animated.Value(1)).current;
     const [isHovered, setIsHovered] = useState(false);
 
@@ -75,8 +79,8 @@ const StorageOption = ({
                 onMouseLeave={() => setIsHovered(false)}
             >
                 <LinearGradient
-                    colors={isSelected ? [color + '10', color + '05'] : isHovered ? ['#f8f9fa', '#fff'] : ['#fff', '#fff']}
-                    style={[styles.optionCard, isSelected && styles.optionCardSelected]}
+                    colors={isSelected ? [color + '15', color + '05'] : isHovered ? [colors.muted, colors.surface] : [colors.surface, colors.surface]}
+                    style={[styles.optionCard, isSelected && { borderColor: color, borderWidth: 2 }]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                 >
@@ -101,6 +105,8 @@ const StorageOption = ({
 };
 
 export default function StorageSettingsScreen() {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
     const insets = useSafeAreaInsets();
     const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -156,6 +162,7 @@ export default function StorageSettingsScreen() {
             const currentStyles = data.preferences?.collaboration_styles || {};
             const updatedStyles = { ...currentStyles, [key]: value };
             await updatePreferences({ collaboration_styles: updatedStyles });
+            
             if (!isWeb) {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             }
@@ -221,12 +228,10 @@ export default function StorageSettingsScreen() {
             <StatusBar barStyle="dark-content" />
 
             <LinearGradient
-                colors={['#fff', '#f8f9fa']}
+                colors={[colors.surface, colors.background]}
                 style={[styles.header, { paddingTop: insets.top + 10 }]}
             >
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color="#000" />
-                </TouchableOpacity>
+                <BackButton onPress={() => router.back()} />
 
                 <View style={styles.headerCenter}>
                     <Text style={styles.headerTitle}>Storage Manager</Text>
@@ -238,7 +243,7 @@ export default function StorageSettingsScreen() {
 
             {loading ? (
                 <View style={styles.loaderContainer}>
-                    <ActivityIndicator size="large" color="#1063FD" />
+                    <ActivityIndicator size="large" color={colors.tint} />
                     <Text style={styles.loaderText}>Analyzing storage...</Text>
                 </View>
             ) : (
@@ -320,19 +325,18 @@ export default function StorageSettingsScreen() {
                                     onPress={handleClearCache}
                                     disabled={clearing || cacheSize === '0.0 MB'}
                                 >
-                                    <LinearGradient
-                                        colors={clearing ? ['#ccc', '#ccc'] : ['#FF3B30', '#CC2F26']}
-                                        style={styles.clearButtonGradient}
+                                    <View
+                                        style={[styles.clearButtonContainer, { backgroundColor: clearing ? colors.muted : colors.error }]}
                                     >
                                         {clearing ? (
-                                            <ActivityIndicator size="small" color="#fff" />
+                                            <ActivityIndicator size="small" color={colors.text} />
                                         ) : (
                                             <>
-                                                <Ionicons name="trash-outline" size={16} color="#fff" />
+                                                <Ionicons name="trash-outline" size={16} color={colors.surface} />
                                                 <Text style={styles.clearButtonText}>Clear</Text>
                                             </>
                                         )}
-                                    </LinearGradient>
+                                    </View>
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -373,7 +377,7 @@ export default function StorageSettingsScreen() {
                             <View style={styles.cacheInfoRow}>
                                 <View>
                                     <Text style={styles.cacheLabel}>Wi-Fi Only Downloads</Text>
-                                    <Text style={{ fontSize: 12, color: '#666', marginTop: 2 }}>
+                                    <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
                                         Only auto-download media on Wi-Fi
                                     </Text>
                                 </View>
@@ -383,9 +387,9 @@ export default function StorageSettingsScreen() {
                                         setWifiOnly(val);
                                         updateStoragePref('wifi_only', val);
                                     }}
-                                    trackColor={{ false: '#e5e5e5', true: '#1063FD80' }}
-                                    thumbColor={wifiOnly ? '#1063FD' : '#fff'}
-                                    ios_backgroundColor="#e5e5e5"
+                                    trackColor={{ false: colors.border, true: colors.tint + '80' }}
+                                    thumbColor={wifiOnly ? colors.tint : '#fff'}
+                                    ios_backgroundColor={colors.border}
                                 />
                             </View>
                         </View>
@@ -396,8 +400,9 @@ export default function StorageSettingsScreen() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF' },
+function getStyles(colors: any, activeScheme: string) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -405,40 +410,41 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingBottom: 16,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
+        borderBottomColor: colors.border,
     },
     headerCenter: { alignItems: 'center' },
-    headerTitle: { fontSize: 20, fontWeight: '800', color: '#1a1a1a' },
-    headerUnderline: { width: 40, height: 3, backgroundColor: '#1063FD', borderRadius: 2, marginTop: 4 },
-    backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F5F5F7', justifyContent: 'center', alignItems: 'center' },
+    headerTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
+    headerUnderline: { width: 40, height: 3, backgroundColor: colors.tint, borderRadius: 2, marginTop: 4 },
+    backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface, justifyContent: 'center', alignItems: 'center' },
     loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    loaderText: { marginTop: 12, color: '#666', fontSize: 14 },
+    loaderText: { marginTop: 12, color: colors.textSecondary, fontSize: 14 },
     scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
     storageOverview: { borderRadius: 24, padding: 20, marginTop: 10, marginBottom: 24, ...createShadow({ opacity: 0.15, radius: 12 }) },
-    storageTitle: { fontSize: 12, color: 'rgba(255,255,255,0.8)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
-    storageSize: { fontSize: 32, fontWeight: '800', color: '#fff', marginBottom: 2 },
-    storageSubtext: { fontSize: 13, color: 'rgba(255,255,255,0.7)', marginBottom: 12 },
-    storageBar: { height: 6, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 3, overflow: 'hidden', marginBottom: 12 },
-    storageBarFill: { height: '100%', backgroundColor: '#fff', borderRadius: 3 },
+    storageTitle: { fontSize: 12, color: colors.surface + 'B3', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
+    storageSize: { fontSize: 32, fontWeight: '800', color: colors.surface, marginBottom: 2 },
+    storageSubtext: { fontSize: 13, color: colors.surface + 'B3', marginBottom: 12 },
+    storageBar: { height: 6, backgroundColor: colors.surface + '4D', borderRadius: 3, overflow: 'hidden', marginBottom: 12 },
+    storageBarFill: { height: '100%', backgroundColor: colors.surface, borderRadius: 3 },
     storageStats: { flexDirection: 'row', gap: 16 },
     storageStat: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     storageDot: { width: 8, height: 8, borderRadius: 4 },
-    storageStatText: { fontSize: 11, color: 'rgba(255,255,255,0.7)' },
-    sectionTitle: { fontSize: 13, fontWeight: '800', color: '#1063FD', textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 24, marginBottom: 12, marginLeft: 5 },
-    optionCard: { borderRadius: 16, padding: 16, marginBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#e5e5e5', ...createShadow({ opacity: 0.05, radius: 6 }) },
-    optionCardSelected: { borderColor: '#1063FD', borderWidth: 2 },
+    storageStatText: { fontSize: 11, color: colors.surface + 'B3' },
+    sectionTitle: { fontSize: 13, fontWeight: '800', color: colors.tint, textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 24, marginBottom: 12, marginLeft: 5 },
+    optionCard: { borderRadius: 16, padding: 16, marginBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, ...createShadow({ opacity: 0.05, radius: 6 }) },
+    optionCardSelected: { borderColor: colors.tint, borderWidth: 2 },
     optionInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 },
     optionIconContainer: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
     optionTextContainer: { flex: 1 },
-    optionLabel: { fontSize: 15, fontWeight: '700', color: '#000' },
-    optionDescription: { fontSize: 11, color: '#666', marginTop: 2 },
-    radioCircle: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#ccc', justifyContent: 'center', alignItems: 'center' },
-    cacheCard: { borderRadius: 20, padding: 20, marginBottom: 10, borderWidth: 1, borderColor: '#e5e5e5', ...createShadow({ opacity: 0.05, radius: 8 }) },
+    optionLabel: { fontSize: 15, fontWeight: '700', color: colors.text },
+    optionDescription: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
+    radioCircle: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' },
+    cacheCard: { borderRadius: 20, padding: 20, marginBottom: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, ...createShadow({ opacity: 0.05, radius: 8 }) },
     cacheInfoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    cacheLabel: { fontSize: 12, fontWeight: '700', color: '#666', textTransform: 'uppercase' },
-    cacheValue: { fontSize: 28, fontWeight: '900', color: '#000', marginTop: 4 },
+    cacheLabel: { fontSize: 12, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase' },
+    cacheValue: { fontSize: 28, fontWeight: '900', color: colors.text, marginTop: 4 },
     clearButton: { borderRadius: 12, overflow: 'hidden' },
     clearButtonDisabled: { opacity: 0.6 },
-    clearButtonGradient: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10, gap: 6 },
-    clearButtonText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+    clearButtonContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10, gap: 6 },
+    clearButtonText: { color: colors.surface, fontSize: 13, fontWeight: '700' },
 });
+}

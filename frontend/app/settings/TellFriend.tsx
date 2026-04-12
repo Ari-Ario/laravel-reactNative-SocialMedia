@@ -28,9 +28,12 @@ import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import Colors from '@/constants/Colors';
+import { BackButton } from '@/components/ui/IconButton';
 import * as Clipboard from 'expo-clipboard';
 import { createShadow } from '@/utils/styles';
 import GlobalStyles from '@/styles/GlobalStyles';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import AuthContext from '@/context/AuthContext';
 import { fetchUserByEmail, followUser, sendEmailInvitation } from '@/services/UserService';
 import getApiBaseImage from '@/services/getApiBaseImage';
@@ -85,6 +88,8 @@ Download now: ${APP_STORE_LINKS.web}
 See you there! 👋`;
 
 export default function TellFriendScreen() {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
     const insets = useSafeAreaInsets();
     const { user } = React.useContext(AuthContext);
     const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
@@ -329,70 +334,77 @@ export default function TellFriendScreen() {
         { id: 'invite', label: 'Invite', icon: 'mail', color: '#1063FD' },
     ];
 
-    const TabButton = ({ tab }: { tab: typeof tabs[0] }) => (
-        <TouchableOpacity
-            style={[styles.tabButton, activeTab === tab.id && styles.tabButtonActive]}
-            onPress={() => setActiveTab(tab.id as any)}
-        >
-            <LinearGradient
-                colors={activeTab === tab.id ? [tab.color, tab.color + '80'] : ['transparent', 'transparent']}
-                style={styles.tabButtonGradient}
+    const TabButton = ({ tab }: { tab: typeof tabs[0] }) => {
+        const { colors } = useAppTheme();
+        return (
+            <TouchableOpacity
+                style={[styles.tabButton, activeTab === tab.id && styles.tabButtonActive]}
+                onPress={() => setActiveTab(tab.id as any)}
             >
-                <Ionicons
-                    name={tab.icon as any}
-                    size={18}
-                    color={activeTab === tab.id ? '#fff' : tab.color}
-                />
-                <Text style={[styles.tabLabel, activeTab === tab.id && styles.tabLabelActive]}>
-                    {tab.label}
-                </Text>
-            </LinearGradient>
-        </TouchableOpacity>
-    );
+                <LinearGradient
+                    colors={activeTab === tab.id ? [tab.color, tab.color + '80'] : ['transparent', 'transparent']}
+                    style={styles.tabButtonGradient}
+                >
+                    <Ionicons
+                        name={tab.icon as any}
+                        size={18}
+                        color={activeTab === tab.id ? '#fff' : tab.color}
+                    />
+                    <Text style={[styles.tabLabel, activeTab === tab.id && styles.tabLabelActive]}>
+                        {tab.label}
+                    </Text>
+                </LinearGradient>
+            </TouchableOpacity>
+        );
+    };
 
-    const ContactCard = ({ contact }: { contact: Contact }) => (
-        <MotiView
-            from={{ opacity: 0, translateX: -20 }}
-            animate={{ opacity: 1, translateX: 0 }}
-            style={styles.contactCard}
-        >
-            <View style={styles.contactAvatar}>
-                {contact.imageAvailable && contact.image ? (
-                    <Image source={{ uri: contact.image?.uri }} style={styles.contactImage} />
-                ) : (
-                    <LinearGradient colors={['#1063FD', '#00c6ff']} style={styles.contactInitials}>
-                        <Text style={styles.contactInitial}>{contact.name?.charAt(0) || '?'}</Text>
-                    </LinearGradient>
-                )}
-            </View>
-            <View style={styles.contactInfo}>
-                <Text style={styles.contactName}>{contact.name}</Text>
-                {contact.phoneNumbers?.[0] && <Text style={styles.contactDetail}>{contact.phoneNumbers[0].number}</Text>}
-                {contact.emails?.[0] && <Text style={styles.contactDetail}>{contact.emails[0].email}</Text>}
-            </View>
-            <View style={styles.contactActions}>
-                {contact.phoneNumbers?.[0] && (
-                    <TouchableOpacity
-                        style={styles.contactAction}
-                        onPress={() => handleSocialShare(SOCIAL_PLATFORMS.find(p => p.platform === 'WhatsApp')!, contact)}
-                    >
-                        <Ionicons name="logo-whatsapp" size={22} color="#25D366" />
-                    </TouchableOpacity>
-                )}
-                {contact.emails?.[0] && (
-                    <TouchableOpacity
-                        style={styles.contactAction}
-                        onPress={() => {
-                            setInviteEmail(contact.emails![0].email);
-                            setActiveTab('invite');
-                        }}
-                    >
-                        <Ionicons name="mail" size={20} color="#1063FD" />
-                    </TouchableOpacity>
-                )}
-            </View>
-        </MotiView>
-    );
+    const ContactCard = ({ contact }: { contact: Contact }) => {
+        const { colors } = useAppTheme();
+        const styles = getStyles(colors, activeScheme);
+        return (
+            <MotiView
+                from={{ opacity: 0, translateX: -20 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                style={styles.contactCard}
+            >
+                <View style={styles.contactAvatar}>
+                    {contact.imageAvailable && contact.image ? (
+                        <Image source={{ uri: contact.image?.uri }} style={styles.contactImage} />
+                    ) : (
+                        <LinearGradient colors={['#1063FD', '#00c6ff']} style={styles.contactInitials}>
+                            <Text style={styles.contactInitial}>{contact.name?.charAt(0) || '?'}</Text>
+                        </LinearGradient>
+                    )}
+                </View>
+                <View style={styles.contactInfo}>
+                    <Text style={styles.contactName}>{contact.name}</Text>
+                    {contact.phoneNumbers?.[0] && <Text style={styles.contactDetail}>{contact.phoneNumbers[0].number}</Text>}
+                    {contact.emails?.[0] && <Text style={styles.contactDetail}>{contact.emails[0].email}</Text>}
+                </View>
+                <View style={styles.contactActions}>
+                    {contact.phoneNumbers?.[0] && (
+                        <TouchableOpacity
+                            style={styles.contactAction}
+                            onPress={() => handleSocialShare(SOCIAL_PLATFORMS.find(p => p.platform === 'WhatsApp')!, contact)}
+                        >
+                            <Ionicons name="logo-whatsapp" size={22} color="#25D366" />
+                        </TouchableOpacity>
+                    )}
+                    {contact.emails?.[0] && (
+                        <TouchableOpacity
+                            style={styles.contactAction}
+                            onPress={() => {
+                                setInviteEmail(contact.emails![0].email);
+                                setActiveTab('invite');
+                            }}
+                        >
+                            <Ionicons name="mail" size={20} color={colors.tint} />
+                        </TouchableOpacity>
+                    )}
+                </View>
+            </MotiView>
+        );
+    };
 
     const SocialButton = ({ platform }: { platform: SocialLink }) => (
         <TouchableOpacity
@@ -407,26 +419,12 @@ export default function TellFriendScreen() {
     );
 
     const SearchResultCard = ({ result }: { result: any }) => {
+        const { colors } = useAppTheme();
+        const styles = getStyles(colors, activeScheme);
         const [isFollowing, setIsFollowing] = useState(result.is_following || false);
         const [loading, setLoading] = useState(false);
-
-        const handleToggleFollow = async () => {
-            if (loading) return;
-            setLoading(true);
-            const action = isFollowing ? 'unfollow' : 'follow';
-            try {
-                await followUser(result.id, action);
-                setIsFollowing(!isFollowing);
-                if (!isWeb) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            } catch (error) {
-                Alert.alert('Error', `Could not ${action} user`);
-            } finally {
-                setLoading(false);
-            }
-        };
-
+// ... existing logic ...
         const handleOpenProfile = () => {
-            // Use the same ProfilePreview pattern as chats/index.tsx
             setProfileViewUserId(result.id?.toString() || result.user_id?.toString());
             setProfilePreviewVisible(true);
         };
@@ -455,11 +453,24 @@ export default function TellFriendScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.followButton, isFollowing && styles.unfollowButton]}
-                    onPress={handleToggleFollow}
+                    onPress={async () => {
+                        if (loading) return;
+                        setLoading(true);
+                        const action = isFollowing ? 'unfollow' : 'follow';
+                        try {
+                            await followUser(result.id, action);
+                            setIsFollowing(!isFollowing);
+                            if (!isWeb) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        } catch (error) {
+                            Alert.alert('Error', `Could not ${action} user`);
+                        } finally {
+                            setLoading(false);
+                        }
+                    }}
                     disabled={loading}
                 >
                     <LinearGradient 
-                        colors={isFollowing ? ['#ff4b2b', '#ff416c'] : ['#1063FD', '#0050CC']} 
+                        colors={isFollowing ? ['#ff4b2b', '#ff416c'] : [colors.tint, colors.tint + 'CC']} 
                         style={styles.followButtonGradient}
                     >
                         {loading ? (
@@ -475,15 +486,13 @@ export default function TellFriendScreen() {
 
     return (
         <View style={[styles.container, GlobalStyles.popupContainer]}>
-            <StatusBar barStyle="light-content" />
-            <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={StyleSheet.absoluteFill} />
-            <BlurView intensity={20} style={StyleSheet.absoluteFill} />
+            <StatusBar barStyle={activeScheme === 'dark' ? 'light-content' : 'dark-content'} />
+            <LinearGradient colors={activeScheme === 'dark' ? ['#1a1a2e', '#16213e', '#0f3460'] : [colors.background, colors.surface]} style={StyleSheet.absoluteFill} />
+            <BlurView intensity={activeScheme === 'dark' ? 20 : 10} style={StyleSheet.absoluteFill} />
 
             {/* Header */}
-            <LinearGradient colors={['rgba(0,0,0,0.3)', 'transparent']} style={[styles.header, { paddingTop: insets.top + 10 }]}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
-                    <Ionicons name="arrow-back" size={24} color="#fff" />
-                </TouchableOpacity>
+            <LinearGradient colors={activeScheme === 'dark' ? ['rgba(0,0,0,0.3)', 'transparent'] : [colors.surface, 'transparent']} style={[styles.header, { paddingTop: insets.top + 10 }]}>
+                <BackButton onPress={() => router.back()} />
                 <View style={styles.headerCenter}>
                     <Text style={styles.headerTitle}>Invite Friends</Text>
                     <View style={styles.headerUnderline} />
@@ -494,7 +503,7 @@ export default function TellFriendScreen() {
             {/* Hero Section */}
             <MotiView from={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={styles.heroSection}>
                 <LinearGradient colors={['#1063FD', '#00c6ff']} style={styles.heroGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                    <View style={styles.heroIcon}><Ionicons name="gift" size={40} color="#fff" /></View>
+                    <View style={styles.heroIcon}><Ionicons name="gift" size={40} color={colors.surface} /></View>
                     <Text style={styles.heroTitle}>Invite & Connect</Text>
                     <Text style={styles.heroSubtitle}>Bring your friends to Zmzir and build your community together.</Text>
                 </LinearGradient>
@@ -512,7 +521,7 @@ export default function TellFriendScreen() {
                 {activeTab === 'contacts' && (
                     <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }}>
                         {loadingContacts ? (
-                            <ActivityIndicator size="large" color="#1063FD" style={{ marginTop: 40 }} />
+                            <ActivityIndicator size="large" color={colors.tint} style={{ marginTop: 40 }} />
                         ) : (
                             <>
                                 {socialFriends.length > 0 && (
@@ -538,7 +547,7 @@ export default function TellFriendScreen() {
 
                                 {contacts.length === 0 ? (
                                     <View style={styles.emptyContainer}>
-                                        <Ionicons name="people" size={60} color="rgba(255,255,255,0.2)" />
+                                        <Ionicons name="people" size={60} color={colors.border} />
                                         <Text style={styles.emptyTitle}>
                                             {isWeb && !('contacts' in navigator) ? 'Not Available on this Browser' : 'No contacts found'}
                                         </Text>
@@ -572,11 +581,11 @@ export default function TellFriendScreen() {
                 {activeTab === 'search' && (
                     <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }}>
                         <View style={styles.inputWrapper}>
-                            <Ionicons name="search-outline" size={20} color="#FF9800" style={styles.inputIcon} />
+                            <Ionicons name="search-outline" size={20} color={colors.tint} style={styles.inputIcon} />
                             <TextInput
                                 style={styles.input}
                                 placeholder="Search by name, username or email..."
-                                placeholderTextColor="rgba(255,255,255,0.3)"
+                                placeholderTextColor={colors.textSecondary + '60'}
                                 value={searchQuery}
                                 onChangeText={(t) => {
                                     setSearchQuery(t);
@@ -594,19 +603,19 @@ export default function TellFriendScreen() {
                                         if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
                                     }}
                                 >
-                                    <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.4)" />
+                                    <Ionicons name="close-circle" size={18} color={colors.textSecondary + '66'} />
                                 </TouchableOpacity>
                             )}
                         </View>
                         {searching && (
                             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 8 }}>
-                                <ActivityIndicator size="small" color="#FF9800" />
-                                <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>Searching...</Text>
+                                <ActivityIndicator size="small" color={colors.tint} />
+                                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>Searching...</Text>
                             </View>
                         )}
                         {!searching && searchQuery.length >= 2 && searchResults.length === 0 && (
                             <View style={styles.emptyContainer}>
-                                <Ionicons name="person-add-outline" size={48} color="rgba(255,255,255,0.2)" />
+                                <Ionicons name="person-add-outline" size={48} color={colors.border} />
                                 <Text style={styles.emptyTitle}>No users found</Text>
                                 <Text style={styles.emptyText}>
                                     Try a different name or invite them via the Invite tab.
@@ -624,11 +633,11 @@ export default function TellFriendScreen() {
                         <View style={styles.inviteForm}>
                             <Text style={styles.sectionTitle}>Direct Branded Invitation</Text>
                             <View style={styles.inputWrapper}>
-                                <Ionicons name="mail-outline" size={20} color="#1063FD" style={styles.inputIcon} />
+                                <Ionicons name="mail-outline" size={20} color={colors.tint} style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
                                     placeholder="friend@example.com"
-                                    placeholderTextColor="rgba(255,255,255,0.3)"
+                                    placeholderTextColor={colors.textSecondary + '60'}
                                     value={inviteEmail}
                                     onChangeText={setInviteEmail}
                                     keyboardType="email-address"
@@ -637,14 +646,14 @@ export default function TellFriendScreen() {
                             </View>
 
                             <TouchableOpacity style={[styles.primaryButton, sendingInvite && { opacity: 0.7 }]} onPress={handleSendInvite} disabled={sendingInvite}>
-                                <LinearGradient colors={['#1063FD', '#0050CC']} style={styles.primaryButtonGradient}>
-                                    {sendingInvite ? <ActivityIndicator color="#fff" /> : <><Ionicons name="paper-plane" size={18} color="#fff" /><Text style={styles.primaryButtonText}>Send Invite via SMTP</Text></>}
+                                <LinearGradient colors={[colors.tint, colors.tint + 'CC']} style={styles.primaryButtonGradient}>
+                                    {sendingInvite ? <ActivityIndicator color={colors.surface} /> : <><Ionicons name="paper-plane" size={18} color={colors.surface} /><Text style={styles.primaryButtonText}>Send Invite via SMTP</Text></>}
                                 </LinearGradient>
                             </TouchableOpacity>
 
                             <View style={styles.editorContainer}>
                                 <Text style={styles.invitePreviewLabel}>Invitation Message Preview:</Text>
-                                <TextInput style={styles.messageEditor} multiline value={customMessage} onChangeText={setCustomMessage} placeholderTextColor="rgba(255,255,255,0.3)" />
+                                <TextInput style={styles.messageEditor} multiline value={customMessage} onChangeText={setCustomMessage} placeholderTextColor={colors.textSecondary + '4D'} />
                             </View>
                         </View>
                     </MotiView>
@@ -652,77 +661,88 @@ export default function TellFriendScreen() {
             </ScrollView>
 
             {/* Confetti Animation */}
-            <Animated.View style={[styles.confetti, { opacity: confettiAnim, transform: [{ scale: confettiAnim }] }]} pointerEvents="none">
+            <Animated.View 
+                style={[
+                    styles.confetti, 
+                    { 
+                        opacity: confettiAnim, 
+                        transform: [{ scale: confettiAnim }],
+                        pointerEvents: 'none'
+                    }
+                ]}
+            >
                 <Ionicons name="sparkles" size={100} color="#FFD700" />
             </Animated.View>
         </View>
     );
 }
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#1a1a2e' },
+function getStyles(colors: any, activeScheme: string) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 16 },
     headerCenter: { alignItems: 'center' },
-    headerTitle: { fontSize: 18, fontWeight: '800', color: '#fff' },
-    headerUnderline: { width: 30, height: 3, backgroundColor: '#1063FD', borderRadius: 2, marginTop: 4 },
-    closeButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
+    headerTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
+    headerUnderline: { width: 30, height: 3, backgroundColor: colors.tint, borderRadius: 2, marginTop: 4 },
+    backButton: { padding: 4 },
     heroSection: { marginHorizontal: 20, marginTop: 10, marginBottom: 20, borderRadius: 24, overflow: 'hidden' },
     heroGradient: { padding: 24, alignItems: 'center' },
-    heroIcon: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-    heroTitle: { fontSize: 20, fontWeight: '800', color: '#fff', marginBottom: 6 },
-    heroSubtitle: { fontSize: 13, color: 'rgba(255,255,255,0.8)', textAlign: 'center' },
+    heroIcon: { width: 60, height: 60, borderRadius: 30, backgroundColor: colors.surface + '33', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+    heroTitle: { fontSize: 20, fontWeight: '800', color: colors.surface, marginBottom: 6 },
+    heroSubtitle: { fontSize: 13, color: colors.surface + 'CC', textAlign: 'center' },
     tabsWrapper: { marginBottom: 20 },
     tabsContainer: { paddingHorizontal: 20, gap: 10 },
     tabButton: { borderRadius: 15, overflow: 'hidden', minWidth: 100 },
     tabButtonActive: { ...createShadow({ opacity: 0.2, radius: 8 }) },
     tabButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, paddingHorizontal: 15, gap: 6 },
-    tabLabel: { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.6)' },
-    tabLabelActive: { color: '#fff' },
+    tabLabel: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
+    tabLabelActive: { color: colors.surface },
     content: { paddingHorizontal: 20, paddingBottom: 50 },
-    contactCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)', padding: 15, borderRadius: 20, marginBottom: 12 },
+    contactCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, padding: 15, borderRadius: 20, marginBottom: 12, borderWidth: 1, borderColor: colors.border },
     contactAvatar: { width: 50, height: 50, borderRadius: 25, overflow: 'hidden' },
     contactImage: { width: '100%', height: '100%' },
     contactInitials: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
-    contactInitial: { color: '#fff', fontSize: 20, fontWeight: '800' },
+    contactInitial: { color: colors.surface, fontSize: 20, fontWeight: '800' },
     contactInfo: { flex: 1, marginLeft: 15 },
-    contactName: { color: '#fff', fontSize: 15, fontWeight: '700' },
-    contactDetail: { color: 'rgba(255,255,255,0.5)', fontSize: 12 },
+    contactName: { color: colors.text, fontSize: 15, fontWeight: '700' },
+    contactDetail: { color: colors.textSecondary, fontSize: 12 },
     contactActions: { flexDirection: 'row', gap: 10 },
-    contactAction: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
+    contactAction: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.muted, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: colors.border },
     socialGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' },
-    socialButton: { width: (width - 56) / 2, borderRadius: 20, padding: 15, alignItems: 'center' },
+    socialButton: { width: (width - 56) / 2, borderRadius: 20, padding: 15, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
     socialIconGradient: { width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
     socialName: { fontSize: 14, fontWeight: '700' },
-    inviteForm: { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+    inviteForm: { backgroundColor: colors.surface, borderRadius: 24, padding: 20, borderWidth: 1, borderColor: colors.border },
     sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 15, marginTop: 10 },
-    sectionTitle: { fontSize: 14, fontWeight: '800', color: '#fff', textTransform: 'uppercase' },
-    inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 15, paddingHorizontal: 15, height: 50 },
+    sectionTitle: { fontSize: 14, fontWeight: '800', color: colors.text, textTransform: 'uppercase' },
+    inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 15, paddingHorizontal: 15, height: 50, borderWidth: 1, borderColor: colors.border },
     inputIcon: { marginRight: 10 },
-    input: { flex: 1, color: '#fff', fontSize: 15 },
+    input: { flex: 1, color: colors.text, fontSize: 15 },
     messageToggle: { marginTop: 15 },
-    messageToggleText: { color: '#1063FD', fontSize: 12, fontWeight: '600' },
-    editorContainer: { marginTop: 15, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 15, padding: 12 },
-    invitePreviewLabel: { color: '#1063FD', fontSize: 11, fontWeight: '700', marginBottom: 8, textTransform: 'uppercase' },
-    messageEditor: { color: 'rgba(255,255,255,0.7)', fontSize: 13, minHeight: 80, textAlignVertical: 'top' },
+    messageToggleText: { color: colors.tint, fontSize: 12, fontWeight: '600' },
+    editorContainer: { marginTop: 15, backgroundColor: colors.background, borderRadius: 15, padding: 12, borderWidth: 1, borderColor: colors.border },
+    invitePreviewLabel: { color: colors.tint, fontSize: 11, fontWeight: '700', marginBottom: 8, textTransform: 'uppercase' },
+    messageEditor: { color: colors.textSecondary, fontSize: 13, minHeight: 80, textAlignVertical: 'top' },
     primaryButton: { marginTop: 25, borderRadius: 15, overflow: 'hidden' },
     primaryButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 50, gap: 8 },
-    primaryButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-    searchResultCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)', padding: 15, borderRadius: 20, marginBottom: 12 },
+    primaryButtonText: { color: colors.surface, fontSize: 15, fontWeight: '700' },
+    searchResultCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, padding: 15, borderRadius: 20, marginBottom: 12, borderWidth: 1, borderColor: colors.border },
     searchResultTouchable: { flexDirection: 'row', alignItems: 'center', flex: 1 },
     searchAvatar: { width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
-    searchAvatarInitials: { color: '#fff', fontWeight: '800', fontSize: 18 },
+    searchAvatarInitials: { color: colors.surface, fontWeight: '800', fontSize: 18 },
     searchInfo: { flex: 1, marginLeft: 15 },
-    searchName: { color: '#fff', fontSize: 15, fontWeight: '700' },
-    searchUsername: { color: 'rgba(255,255,255,0.5)', fontSize: 12 },
+    searchName: { color: colors.text, fontSize: 15, fontWeight: '700' },
+    searchUsername: { color: colors.textSecondary, fontSize: 12 },
     followButton: { borderRadius: 12, overflow: 'hidden' },
     unfollowButton: { borderWidth: 1, borderColor: '#ff4b2b' },
     followButtonDisabled: { opacity: 0.6 },
     followButtonGradient: { paddingHorizontal: 15, paddingVertical: 8, minWidth: 80, alignItems: 'center', justifyContent: 'center' },
-    followButtonText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+    followButtonText: { color: colors.surface, fontSize: 12, fontWeight: '700' },
     emptyContainer: { alignItems: 'center', marginTop: 40 },
-    emptyTitle: { color: '#fff', fontSize: 18, fontWeight: '700', marginTop: 15 },
-    emptyText: { color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginTop: 10, paddingHorizontal: 40 },
-    allowButton: { backgroundColor: '#1063FD', paddingHorizontal: 30, paddingVertical: 12, borderRadius: 25, marginTop: 20 },
-    allowButtonText: { color: '#fff', fontWeight: '700' },
+    emptyTitle: { color: colors.text, fontSize: 18, fontWeight: '700', marginTop: 15 },
+    emptyText: { color: colors.textSecondary, textAlign: 'center', marginTop: 10, paddingHorizontal: 40 },
+    allowButton: { backgroundColor: colors.tint, paddingHorizontal: 30, paddingVertical: 12, borderRadius: 25, marginTop: 20 },
+    allowButtonText: { color: colors.surface, fontWeight: '700' },
     confetti: { position: 'absolute', top: '40%', alignSelf: 'center' },
 });
+}

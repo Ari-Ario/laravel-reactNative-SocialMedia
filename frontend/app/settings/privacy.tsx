@@ -22,11 +22,14 @@ import { MotiView } from 'moti';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Colors from '@/constants/Colors';
+import { BackButton } from '@/components/ui/IconButton';
 import { fetchFullSettings, updateFullSettings, updatePreferences, exportUserData, updatePassword } from '@/services/SettingService';
 import { fetchBlockedUsers, unblockUser } from '@/services/UserService';
 import { createShadow } from '@/utils/styles';
 import * as Haptics from 'expo-haptics';
 import GlobalStyles from '@/styles/GlobalStyles';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -50,6 +53,8 @@ const PrivacyToggle = ({
     color = "#1063FD",
     warning
 }: PrivacyToggleProps) => {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
     const [isHovered, setIsHovered] = useState(false);
     const scaleAnim = useRef(new Animated.Value(1)).current;
 
@@ -108,6 +113,8 @@ const PrivacyToggle = ({
 };
 
 export default function PrivacySettingsScreen() {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
     const insets = useSafeAreaInsets();
     const scrollY = useRef(new Animated.Value(0)).current;
     const [settings, setSettings] = useState<any>(null);
@@ -321,7 +328,7 @@ export default function PrivacySettingsScreen() {
             onPress={() => setActiveSection(id)}
         >
             <LinearGradient
-                colors={activeSection === id ? [color, color + '80'] : ['#f5f5f7', '#f5f5f7']}
+                colors={activeSection === id ? [color, color + '80'] : [colors.background, colors.background]}
                 style={styles.sectionButtonGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
@@ -345,9 +352,7 @@ export default function PrivacySettingsScreen() {
             <View style={styles.container}>
                 <StatusBar barStyle="dark-content" />
                 <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                        <Ionicons name="arrow-back" size={24} color="#000" />
-                    </TouchableOpacity>
+                    <BackButton onPress={() => router.back()} />
                     <Text style={styles.headerTitle}>Privacy Vault</Text>
                     <View style={{ width: 44 }} />
                 </View>
@@ -364,12 +369,10 @@ export default function PrivacySettingsScreen() {
             <StatusBar barStyle="dark-content" />
 
             <LinearGradient
-                colors={['#fff', '#f8f9fa']}
+                colors={[colors.surface, colors.background]}
                 style={[styles.header, { paddingTop: insets.top + 10 }]}
             >
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color="#000" />
-                </TouchableOpacity>
+                <BackButton onPress={() => router.back()} />
 
                 <View style={styles.headerCenter}>
                     <Text style={styles.headerTitle}>Privacy Vault</Text>
@@ -727,36 +730,32 @@ export default function PrivacySettingsScreen() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF' },
+function getStyles(colors: any, activeScheme: string) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 20,
         paddingBottom: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
+        borderBottomWidth:1,
+        borderBottomColor: colors.border,
     },
     headerCenter: { alignItems: 'center' },
-    headerTitle: { fontSize: 20, fontWeight: '800', color: '#1a1a1a' },
+    headerTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
     headerUnderline: {
         width: 40,
         height: 3,
-        backgroundColor: '#1063FD',
+        backgroundColor: colors.tint,
         borderRadius: 2,
         marginTop: 4,
     },
     backButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#F5F5F7',
-        justifyContent: 'center',
-        alignItems: 'center',
+        padding: 4,
     },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    loadingText: { marginTop: 12, color: '#666', fontSize: 14 },
+    loadingText: { marginTop: 12, color: colors.textSecondary, fontSize: 14 },
     sectionNav: {
         maxHeight: 50,
         marginTop: 16,
@@ -782,10 +781,10 @@ const styles = StyleSheet.create({
     sectionButtonText: {
         fontSize: 13,
         fontWeight: '600',
-        color: '#666',
+        color: colors.textSecondary,
     },
     sectionButtonTextActive: {
-        color: '#fff',
+        color: colors.surface,
     },
     scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
     privacyScoreCard: {
@@ -797,7 +796,7 @@ const styles = StyleSheet.create({
     },
     privacyScoreLabel: {
         fontSize: 12,
-        color: 'rgba(255,255,255,0.8)',
+        color: colors.surface + 'B3',
         textTransform: 'uppercase',
         letterSpacing: 1,
         marginBottom: 4,
@@ -805,24 +804,24 @@ const styles = StyleSheet.create({
     privacyScore: {
         fontSize: 32,
         fontWeight: '800',
-        color: '#fff',
+        color: colors.surface,
         marginBottom: 8,
     },
     privacyScoreBar: {
         height: 6,
-        backgroundColor: 'rgba(255,255,255,0.3)',
+        backgroundColor: colors.surface + '4D',
         borderRadius: 3,
         overflow: 'hidden',
         marginBottom: 8,
     },
     privacyScoreFill: {
         height: '100%',
-        backgroundColor: '#fff',
+        backgroundColor: colors.surface,
         borderRadius: 3,
     },
     privacyScoreHint: {
         fontSize: 11,
-        color: 'rgba(255,255,255,0.7)',
+        color: colors.surface + 'B3',
     },
     sectionTitleRow: {
         flexDirection: 'row',
@@ -835,7 +834,7 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 13,
         fontWeight: '800',
-        color: '#1063FD',
+        color: colors.tint,
         textTransform: 'uppercase',
         letterSpacing: 1.5,
     },
@@ -847,18 +846,19 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         borderWidth: 1,
-        borderColor: '#e5e5e5',
+        borderColor: colors.border,
+        backgroundColor: colors.surface,
         ...createShadow({ opacity: 0.05, radius: 8 }),
     },
     toggleInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 15 },
     iconContainer: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
     textContainer: { flex: 1 },
-    toggleLabel: { fontSize: 16, fontWeight: '700', color: '#000', marginBottom: 2 },
-    toggleDescription: { fontSize: 12, color: 'rgba(0,0,0,0.5)', lineHeight: 16 },
+    toggleLabel: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 2 },
+    toggleDescription: { fontSize: 12, color: colors.textSecondary, lineHeight: 16 },
     warningBadge: { flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 4 },
-    warningText: { fontSize: 11, color: '#FF9800', fontWeight: '600' },
+    warningText: { fontSize: 11, color: colors.warning, fontWeight: '600' },
     actionCard: {
-        backgroundColor: '#fff',
+        backgroundColor: colors.surface,
         borderRadius: 20,
         padding: 18,
         marginBottom: 12,
@@ -866,51 +866,52 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         borderWidth: 1,
-        borderColor: '#e5e5e5',
+        borderColor: colors.border,
         ...createShadow({ opacity: 0.05, radius: 8 }),
     },
     actionContent: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 15 },
     actionIcon: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-    actionLabel: { fontSize: 16, fontWeight: '700', color: '#000', marginBottom: 2, marginLeft: 12 },
-    actionDescription: { fontSize: 12, color: 'rgba(0,0,0,0.5)', lineHeight: 16, marginLeft: 12, marginBottom: 8 },
+    actionLabel: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 2, marginLeft: 12 },
+    actionDescription: { fontSize: 12, color: colors.textSecondary, lineHeight: 16, marginLeft: 12, marginBottom: 8 },
     chipsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginLeft: 12, marginBottom: 8 },
     chip: {
         flexDirection: 'row', alignItems: 'center', backgroundColor: '#9C27B0',
         borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5, gap: 4,
     },
-    chipText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+    chipText: { color: colors.surface, fontSize: 12, fontWeight: '700' },
     chipRemove: { marginLeft: 2 },
     keywordInputRow: {
         flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: 12, marginTop: 4,
     },
     keywordInput: {
-        flex: 1, borderWidth: 1, borderColor: '#e5e5e5', borderRadius: 12,
-        padding: 10, fontSize: 13, color: '#000', fontWeight: '500',
+        flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 12,
+        padding: 10, fontSize: 13, color: colors.text, fontWeight: '500',
+        backgroundColor: colors.background,
     },
     addKeywordBtn: {
-        width: 32, height: 32, borderRadius: 16, backgroundColor: '#9C27B0',
+        width: 32, height: 32, borderRadius: 16, backgroundColor: colors.tint,
         justifyContent: 'center', alignItems: 'center',
     },
     infoBox: {
         marginTop: 30,
         flexDirection: 'row',
-        backgroundColor: '#F8F9FA',
+        backgroundColor: colors.surface,
         padding: 16,
         borderRadius: 20,
         gap: 12,
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#e5e5e5',
+        borderColor: colors.border,
     },
-    infoText: { flex: 1, fontSize: 12, color: 'rgba(0,0,0,0.6)', lineHeight: 16, fontWeight: '500' },
+    infoText: { flex: 1, fontSize: 12, color: colors.textSecondary, lineHeight: 16, fontWeight: '500' },
     // Interactions & Security Extended Styles
     actionCardCol: {
-        backgroundColor: '#fff',
+        backgroundColor: colors.surface,
         borderRadius: 20,
         padding: 18,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: '#e5e5e5',
+        borderColor: colors.border,
         ...createShadow({ opacity: 0.05, radius: 8 }),
     },
     actionHeader: {
@@ -922,7 +923,7 @@ const styles = StyleSheet.create({
     blockedList: {
         marginTop: 10,
         borderTopWidth: 1,
-        borderTopColor: '#f0f0f0',
+        borderTopColor: colors.border,
         paddingTop: 10,
     },
     blockedItem: {
@@ -931,7 +932,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingVertical: 12,
         borderBottomWidth: 1,
-        borderBottomColor: '#f9f9f9',
+        borderBottomColor: colors.border,
     },
     blockedUserInfo: {
         flexDirection: 'row',
@@ -942,38 +943,40 @@ const styles = StyleSheet.create({
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: colors.border,
         justifyContent: 'center',
         alignItems: 'center',
     },
     blockedAvatarText: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#666',
+        color: colors.textSecondary,
     },
     blockedName: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#000',
+        color: colors.text,
     },
     blockedUsername: {
         fontSize: 12,
-        color: '#999',
+        color: colors.textSecondary,
     },
     unblockBtn: {
-        backgroundColor: '#F5F5F7',
+        backgroundColor: colors.background,
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 12,
+        borderWidth: 1,
+        borderColor: colors.border,
     },
     unblockBtnText: {
         fontSize: 12,
         fontWeight: '700',
-        color: '#FF3B30',
+        color: colors.error,
     },
     emptyListText: {
         fontSize: 13,
-        color: '#999',
+        color: colors.textSecondary,
         textAlign: 'center',
         paddingVertical: 20,
         fontStyle: 'italic',
@@ -985,7 +988,7 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     modalContent: {
-        backgroundColor: '#fff',
+        backgroundColor: colors.surface,
         borderTopLeftRadius: 32,
         borderTopRightRadius: 32,
         padding: 24,
@@ -1008,11 +1011,11 @@ const styles = StyleSheet.create({
     modalTitle: {
         fontSize: 20,
         fontWeight: '800',
-        color: '#000',
+        color: colors.text,
     },
     modalSubtitle: {
         fontSize: 13,
-        color: '#666',
+        color: colors.textSecondary,
         marginTop: 2,
     },
     closeButton: {
@@ -1027,17 +1030,17 @@ const styles = StyleSheet.create({
     inputLabel: {
         fontSize: 13,
         fontWeight: '700',
-        color: '#333',
+        color: colors.text,
         marginLeft: 4,
     },
     modalInput: {
-        backgroundColor: '#F5F5F7',
+        backgroundColor: colors.background,
         borderRadius: 16,
         padding: 16,
         fontSize: 15,
-        color: '#000',
+        color: colors.text,
         borderWidth: 1,
-        borderColor: '#E5E5E7',
+        borderColor: colors.border,
     },
     updateButton: {
         backgroundColor: '#9C27B0',
@@ -1051,8 +1054,9 @@ const styles = StyleSheet.create({
         ...createShadow({ color: '#9C27B0', opacity: 0.3, radius: 10 }),
     },
     updateButtonText: {
-        color: '#fff',
+        color: colors.surface,
         fontSize: 16,
         fontWeight: '700',
     },
 });
+}

@@ -5,7 +5,7 @@ import React from 'react';
 import AuthContext from '@/context/AuthContext';
 import { useReportedContentStore } from '@/stores/reportedContentStore';
 import { deleteReportByTarget } from '@/services/ReportService';
-import { useToastStore } from '@/stores/toastStore';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 interface PostActionButtonsProps {
   post: {
@@ -36,6 +36,7 @@ interface PostActionButtonsProps {
   }>;
   isBookmarked?: boolean;
   compact?: boolean;
+  isDark?: boolean;
 }
 
 export const PostActionButtons = ({
@@ -52,7 +53,9 @@ export const PostActionButtons = ({
   getGroupedReactions,
   isBookmarked,
   compact,
+  isDark,
 }: PostActionButtonsProps) => {
+  const { colors } = useAppTheme();
   const { user } = React.useContext(AuthContext);
   const reactionsToShow = getGroupedReactions(post, Number(user?.id) || undefined);
 
@@ -68,14 +71,14 @@ export const PostActionButtons = ({
           size={compact ? 20 : 24}
           color={
             !post.comments || post.comments.length === 0
-              ? '#888'
+              ? colors.textSecondary
               : post.comments.some(comment => String(comment.user_id) === String(user?.id))
                 ? '#10b981'
-                : '#000'
+                : colors.text
           }
         />
         {post.comments_count > 0 && (
-          <Text style={styles.actionCount}>{post.comments_count}</Text>
+          <Text style={[styles.actionCount, { color: colors.textSecondary }]}>{post.comments_count}</Text>
         )}
       </TouchableOpacity>
 
@@ -87,11 +90,13 @@ export const PostActionButtons = ({
         <Feather
           name="repeat"
           size={compact ? 20 : 24}
-          color={post.is_reposted ? '#10b981' : '#000'}
+          color={post.is_reposted ? '#10b981' : colors.text}
+          strokeWidth={2}
         />
         {(post.reposts_count ?? 0) > 0 && (
           <Text style={[
             styles.actionCount,
+            { color: colors.textSecondary },
             post.is_reposted && styles.activeActionCount
           ]}>
             {post.reposts_count}
@@ -100,14 +105,17 @@ export const PostActionButtons = ({
       </TouchableOpacity>
 
       {/* Share button */}
-      {!compact && (
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={onShare}
-        >
-          <Feather name="send" size={24} />
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity
+        style={[styles.actionButton, compact && styles.compactActionButton]}
+        onPress={onShare}
+      >
+        <Feather 
+          name="send" 
+          size={24} 
+          color={colors.text}
+          strokeWidth={2}
+        />
+      </TouchableOpacity>
 
       {/* Reaction bar Component */}
       <View style={styles.reactionScrollContainer}>
@@ -140,6 +148,7 @@ export const PostActionButtons = ({
                 {reaction.count > 0 && (
                   <Text style={[
                     styles.reactionCount,
+                    { color: colors.textSecondary },
                     compact && styles.compactReactionCount,
                     isMyReaction && styles.reactionCountMine
                   ]}>
@@ -153,8 +162,7 @@ export const PostActionButtons = ({
       </View>
 
       {/* Bookmark button */}
-      {!compact && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 'auto', gap: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 'auto', gap: 12 }}>
           {useReportedContentStore.getState().isReported('post', post.id) && (
             <TouchableOpacity
               onPress={async () => {
@@ -184,11 +192,10 @@ export const PostActionButtons = ({
             <Ionicons 
               name={isBookmarked ? "bookmark" : "bookmark-outline"} 
               size={24} 
-              color={isBookmarked ? "#10b981" : "#000"} 
+              color={isBookmarked ? "#10b981" : colors.text} 
             />
           </TouchableOpacity>
-        </View>
-      )}
+      </View>
     </View>
   );
 };
@@ -200,7 +207,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 10,
     paddingVertical: 8,
-    backgroundColor: 'rgba(247, 240, 240, 0.7)',
   },
   actionButton: {
     flexDirection: 'row',
@@ -210,7 +216,10 @@ const styles = StyleSheet.create({
   actionCount: {
     marginLeft: 5,
     fontSize: 12,
-    color: '#65676B',
+  },
+  darkActionCount: {
+    color: '#fff',
+    fontWeight: '700',
   },
   reactionScrollContainer: {
     flex: 1,
@@ -227,7 +236,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderRadius: 15,
-    borderColor: '#e8eaed',
     paddingHorizontal: 6,
     paddingVertical: 4,
     backgroundColor: 'transparent',
@@ -246,7 +254,6 @@ const styles = StyleSheet.create({
   reactionCount: {
     fontSize: 12,
     marginLeft: 4,
-    color: '#65676B',
   },
   activeActionCount: {
     color: '#10b981',

@@ -25,6 +25,7 @@ import { usePostStore } from '@/stores/postStore';
 import { fetchPostById } from '@/services/PostService';
 import { fetchProfile } from '@/services/UserService';
 import PushNotificationService from '@/services/PushNotificationService';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 interface NotificationPanelProps {
     visible: boolean;
@@ -39,6 +40,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
     initialType = 'all',
     anchorPosition,
 }) => {
+    const { colors, activeScheme } = useAppTheme();
     const {
         getRegularNotifications,
         markAsRead,
@@ -351,7 +353,12 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
 
         return (
             <TouchableOpacity
-                style={[styles.notificationItem, !item.isRead && styles.unreadNotification]}
+                style={[
+                    styles.notificationItem, 
+                    { borderBottomColor: colors.border },
+                    !item.isRead && styles.unreadNotification,
+                    !item.isRead && { backgroundColor: colors.primary + '10', borderLeftColor: colors.primary }
+                ]}
                 onPress={() => handleNotificationPress(item)}
             >
                 <TouchableOpacity
@@ -374,38 +381,38 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                         <View style={styles.titleRow}>
                             <View style={styles.titleWithIcon}>
                                 <Ionicons name={iconName as any} size={16} color={iconColor} />
-                                <Text style={styles.notificationTitle}>{item.title}</Text>
+                                <Text style={[styles.notificationTitle, { color: colors.text }]}>{item.title}</Text>
                             </View>
-                            <Text style={styles.notificationTime}>
+                            <Text style={[styles.notificationTime, { color: colors.textSecondary }]}>
                                 {formatTimeAgo(item.createdAt)}
                             </Text>
                         </View>
 
-                        <Text style={styles.notificationMessage}>
+                        <Text style={[styles.notificationMessage, { color: colors.textSecondary }]}>
                             {typeof item.message === 'object' ? JSON.stringify(item.message) : item.message}
                         </Text>
 
                         {/* Metadata for chat notifications */}
                         {item.type === NOTIFICATION_TYPES.SPACE_INVITATION && item.data?.space?.title && (
-                            <View style={styles.metadataContainer}>
-                                <Ionicons name="people" size={12} color="#666" />
-                                <Text style={styles.metadataText}>Space: {item.data.space.title}</Text>
+                            <View style={[styles.metadataContainer, { backgroundColor: colors.background }]}>
+                                <Ionicons name="people" size={12} color={colors.textSecondary} />
+                                <Text style={[styles.metadataText, { color: colors.textSecondary }]}>Space: {item.data.space.title}</Text>
                             </View>
                         )}
 
                         {item.type === NOTIFICATION_TYPES.CALL_STARTED && item.data?.call?.type && (
-                            <View style={styles.metadataContainer}>
+                            <View style={[styles.metadataContainer, { backgroundColor: colors.background }]}>
                                 <Ionicons name={item.data.call.type === 'video' ? 'videocam' : 'call'} size={12} color="#4CD964" />
-                                <Text style={styles.metadataText}>
+                                <Text style={[styles.metadataText, { color: colors.textSecondary }]}>
                                     {item.data.call.type === 'video' ? 'Video call' : 'Audio call'} started
                                 </Text>
                             </View>
                         )}
 
                         {item.type === NOTIFICATION_TYPES.MAGIC_EVENT && (
-                            <View style={styles.metadataContainer}>
+                            <View style={[styles.metadataContainer, { backgroundColor: colors.background }]}>
                                 <Ionicons name="sparkles" size={12} color="#FF2D55" />
-                                <Text style={styles.metadataText}>✨ Magic discovered!</Text>
+                                <Text style={[styles.metadataText, { color: colors.textSecondary }]}>✨ Magic discovered!</Text>
                             </View>
                         )}
                     </View>
@@ -416,9 +423,9 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                         e.stopPropagation();
                         removeNotification(item.id);
                     }}
-                    style={styles.deleteButton}
+                    style={[styles.deleteButton, { backgroundColor: colors.muted }]}
                 >
-                    <Ionicons name="close" size={16} color="#999" />
+                    <Ionicons name="close" size={16} color={colors.textSecondary} />
                 </TouchableOpacity>
             </TouchableOpacity>
         );
@@ -447,66 +454,66 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             contentContainerStyle={styles.filterTabsContent}
         >
             {/* All tabs (same as before) */}
-            <TouchableOpacity style={[styles.filterTab, activeFilter === 'all' && styles.activeFilterTab]} onPress={() => setActiveFilter('all')}>
-                <Ionicons name="apps" size={16} color={activeFilter === 'all' ? '#007AFF' : '#666'} />
-                <Text style={[styles.filterTabText, activeFilter === 'all' && styles.activeFilterText]}>All</Text>
+            <TouchableOpacity style={[styles.filterTab, { backgroundColor: colors.muted }, activeFilter === 'all' && styles.activeFilterTab, activeFilter === 'all' && { borderColor: colors.primary }]} onPress={() => setActiveFilter('all')}>
+                <Ionicons name="apps" size={16} color={activeFilter === 'all' ? colors.primary : colors.textSecondary} />
+                <Text style={[styles.filterTabText, { color: colors.textSecondary }, activeFilter === 'all' && { color: colors.primary, fontWeight: '600' }]}>All</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.filterTab, activeFilter === 'calls' && styles.activeFilterTab]} onPress={() => setActiveFilter('calls')}>
-                <Ionicons name="call" size={16} color={activeFilter === 'calls' ? '#4CD964' : '#666'} />
-                <Text style={[styles.filterTabText, activeFilter === 'calls' && styles.activeFilterText]}>Calls</Text>
+            <TouchableOpacity style={[styles.filterTab, { backgroundColor: colors.muted }, activeFilter === 'calls' && styles.activeFilterTab]} onPress={() => setActiveFilter('calls')}>
+                <Ionicons name="call" size={16} color={activeFilter === 'calls' ? '#4CD964' : colors.textSecondary} />
+                <Text style={[styles.filterTabText, { color: colors.textSecondary }, activeFilter === 'calls' && { color: '#4CD964', fontWeight: '600' }]}>Calls</Text>
                 {getCalls().filter(n => !n.isRead).length > 0 && (
-                    <View style={[styles.filterBadge, { backgroundColor: '#4CD964' }]}>
+                    <View style={[styles.filterBadge, { backgroundColor: '#4CD964', borderColor: colors.surface }]}>
                         <Text style={styles.filterBadgeText}>{getCalls().filter(n => !n.isRead).length}</Text>
                     </View>
                 )}
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.filterTab, activeFilter === 'messages' && styles.activeFilterTab]} onPress={() => setActiveFilter('messages')}>
-                <Ionicons name="chatbubble" size={16} color={activeFilter === 'messages' ? '#007AFF' : '#666'} />
-                <Text style={[styles.filterTabText, activeFilter === 'messages' && styles.activeFilterText]}>Messages</Text>
+            <TouchableOpacity style={[styles.filterTab, { backgroundColor: colors.muted }, activeFilter === 'messages' && styles.activeFilterTab, activeFilter === 'messages' && { borderColor: colors.primary }]} onPress={() => setActiveFilter('messages')}>
+                <Ionicons name="chatbubble" size={16} color={activeFilter === 'messages' ? colors.primary : colors.textSecondary} />
+                <Text style={[styles.filterTabText, { color: colors.textSecondary }, activeFilter === 'messages' && { color: colors.primary, fontWeight: '600' }]}>Messages</Text>
                 {getMessages().filter(n => !n.isRead).length > 0 && (
-                    <View style={[styles.filterBadge, { backgroundColor: '#007AFF' }]}>
+                    <View style={[styles.filterBadge, { backgroundColor: colors.primary, borderColor: colors.surface }]}>
                         <Text style={styles.filterBadgeText}>{getMessages().filter(n => !n.isRead).length}</Text>
                     </View>
                 )}
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.filterTab, activeFilter === 'spaces' && styles.activeFilterTab]} onPress={() => setActiveFilter('spaces')}>
-                <Ionicons name="cube" size={16} color={activeFilter === 'spaces' ? '#5856D6' : '#666'} />
-                <Text style={[styles.filterTabText, activeFilter === 'spaces' && styles.activeFilterText]}>Spaces</Text>
+            <TouchableOpacity style={[styles.filterTab, { backgroundColor: colors.muted }, activeFilter === 'spaces' && styles.activeFilterTab]} onPress={() => setActiveFilter('spaces')}>
+                <Ionicons name="cube" size={16} color={activeFilter === 'spaces' ? '#5856D6' : colors.textSecondary} />
+                <Text style={[styles.filterTabText, { color: colors.textSecondary }, activeFilter === 'spaces' && { color: '#5856D6', fontWeight: '600' }]}>Spaces</Text>
                 {getSpaces().filter(n => !n.isRead).length > 0 && (
-                    <View style={[styles.filterBadge, { backgroundColor: '#5856D6' }]}>
+                    <View style={[styles.filterBadge, { backgroundColor: '#5856D6', borderColor: colors.surface }]}>
                         <Text style={styles.filterBadgeText}>{getSpaces().filter(n => !n.isRead).length}</Text>
                     </View>
                 )}
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.filterTab, activeFilter === 'activities' && styles.activeFilterTab]} onPress={() => setActiveFilter('activities')}>
-                <Ionicons name="sparkles" size={16} color={activeFilter === 'activities' ? '#FF2D55' : '#666'} />
-                <Text style={[styles.filterTabText, activeFilter === 'activities' && styles.activeFilterText]}>Activities</Text>
+            <TouchableOpacity style={[styles.filterTab, { backgroundColor: colors.muted }, activeFilter === 'activities' && styles.activeFilterTab]} onPress={() => setActiveFilter('activities')}>
+                <Ionicons name="sparkles" size={16} color={activeFilter === 'activities' ? '#FF2D55' : colors.textSecondary} />
+                <Text style={[styles.filterTabText, { color: colors.textSecondary }, activeFilter === 'activities' && { color: '#FF2D55', fontWeight: '600' }]}>Activities</Text>
                 {getActivities().filter(n => !n.isRead).length > 0 && (
-                    <View style={[styles.filterBadge, { backgroundColor: '#FF2D55' }]}>
+                    <View style={[styles.filterBadge, { backgroundColor: '#FF2D55', borderColor: colors.surface }]}>
                         <Text style={styles.filterBadgeText}>{getActivities().filter(n => !n.isRead).length}</Text>
                     </View>
                 )}
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.filterTab, activeFilter === 'regular' && styles.activeFilterTab]} onPress={() => setActiveFilter('regular')}>
-                <Ionicons name="notifications" size={16} color={activeFilter === 'regular' ? '#000' : '#666'} />
-                <Text style={[styles.filterTabText, activeFilter === 'regular' && styles.activeFilterText]}>Regular</Text>
+            <TouchableOpacity style={[styles.filterTab, { backgroundColor: colors.muted }, activeFilter === 'regular' && styles.activeFilterTab]} onPress={() => setActiveFilter('regular')}>
+                <Ionicons name="notifications" size={16} color={activeFilter === 'regular' ? colors.text : colors.textSecondary} />
+                <Text style={[styles.filterTabText, { color: colors.textSecondary }, activeFilter === 'regular' && { color: colors.text, fontWeight: '600' }]}>Regular</Text>
                 {getRegularNotifications().filter(n => !n.isRead).length > 0 && (
-                    <View style={[styles.filterBadge, { backgroundColor: '#FF9500' }]}>
+                    <View style={[styles.filterBadge, { backgroundColor: '#FF9500', borderColor: colors.surface }]}>
                         <Text style={styles.filterBadgeText}>{getRegularNotifications().filter(n => !n.isRead).length}</Text>
                     </View>
                 )}
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.filterTab, activeFilter === 'admin' && styles.activeFilterTab]} onPress={() => setActiveFilter('admin')}>
-                <Ionicons name="shield-checkmark" size={16} color={activeFilter === 'admin' ? '#FF3B30' : '#666'} />
-                <Text style={[styles.filterTabText, activeFilter === 'admin' && styles.activeFilterText]}>Administration</Text>
+            <TouchableOpacity style={[styles.filterTab, { backgroundColor: colors.muted }, activeFilter === 'admin' && styles.activeFilterTab]} onPress={() => setActiveFilter('admin')}>
+                <Ionicons name="shield-checkmark" size={16} color={activeFilter === 'admin' ? '#FF3B30' : colors.textSecondary} />
+                <Text style={[styles.filterTabText, { color: colors.textSecondary }, activeFilter === 'admin' && { color: '#FF3B30', fontWeight: '600' }]}>Administration</Text>
                 {useNotificationStore.getState().unreadModerationCount > 0 && (
-                    <View style={[styles.filterBadge, { backgroundColor: '#FF3B30' }]}>
+                    <View style={[styles.filterBadge, { backgroundColor: '#FF3B30', borderColor: colors.surface }]}>
                         <Text style={styles.filterBadgeText}>{useNotificationStore.getState().unreadModerationCount}</Text>
                     </View>
                 )}
@@ -521,6 +528,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             <View
                 style={[
                     styles.panelContainer,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
                     anchorPosition ? {
                         top: anchorPosition.top + 15,
                         left: anchorPosition.left,
@@ -533,6 +541,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                     <View
                         style={[
                             styles.pointer,
+                            { backgroundColor: colors.surface, borderColor: colors.border },
                             anchorPosition.right !== undefined
                                 ? { right: anchorPosition.arrowOffset }
                                 : { left: anchorPosition.arrowOffset }
@@ -541,20 +550,20 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 )}
 
                 <View style={styles.contentWrapper}>
-                    <View style={styles.panelHeader}>
-                        <Text style={styles.panelTitle}>
+                    <View style={[styles.panelHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+                        <Text style={[styles.panelTitle, { color: colors.text }]}>
                             Notifications {totalCount > 0 ? `(${totalCount})` : ''}
                         </Text>
-                        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                            <Ionicons name="close" size={20} color="#666" />
+                        <TouchableOpacity onPress={onClose} style={[styles.closeButton, { backgroundColor: colors.muted }]}>
+                            <Ionicons name="close" size={20} color={colors.textSecondary} />
                         </TouchableOpacity>
                     </View>
 
-                    <View style={styles.filterTabsContainer}>
+                    <View style={[styles.filterTabsContainer, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
                         {renderFilterTabs()}
                     </View>
 
-                    <View style={styles.listContainer}>
+                    <View style={[styles.listContainer, { backgroundColor: colors.surface }]}>
                         {totalCount > 0 ? (
                             <FlatList
                                 style={{ flex: 1 }}
@@ -567,22 +576,22 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                             />
                         ) : (
                             <View style={styles.emptyState}>
-                                <Ionicons name="notifications-off-outline" size={48} color="#ccc" />
-                                <Text style={styles.emptyText}>No notifications yet</Text>
+                                <Ionicons name="notifications-off-outline" size={48} color={colors.textSecondary} />
+                                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No notifications yet</Text>
                             </View>
                         )}
                     </View>
 
                     {/* Footer Toggle */}
-                    <View style={styles.panelFooter}>
+                    <View style={[styles.panelFooter, { backgroundColor: colors.muted, borderTopColor: colors.border }]}>
                         <View style={styles.pushToggleRow}>
-                            <Ionicons name="notifications-outline" size={16} color="#666" />
-                            <Text style={styles.pushToggleText}>Push Notifications</Text>
+                            <Ionicons name="notifications-outline" size={16} color={colors.textSecondary} />
+                            <Text style={[styles.pushToggleText, { color: colors.textSecondary }]}>Push Notifications</Text>
                             <Switch
                                 value={pushEnabled}
                                 onValueChange={handlePushToggle}
-                                trackColor={{ false: '#eee', true: '#30D158' }}
-                                ios_backgroundColor="#eee"
+                                trackColor={{ false: colors.border, true: '#30D158' }}
+                                ios_backgroundColor={colors.border}
                                 style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
                             />
                         </View>
@@ -609,7 +618,6 @@ const styles = StyleSheet.create({
         position: 'absolute',
         width: Platform.OS === 'web' ? 400 : 320,
         maxHeight: 500,
-        backgroundColor: '#ffffff',
         borderRadius: 16,
         ...createShadow({
             width: 0,
@@ -619,7 +627,6 @@ const styles = StyleSheet.create({
             elevation: 8,
         }),
         borderWidth: 1,
-        borderColor: '#efefef',
         zIndex: 1000,
     },
     defaultPosition: {
@@ -637,11 +644,9 @@ const styles = StyleSheet.create({
         top: -10,
         width: 20,
         height: 20,
-        backgroundColor: '#ffffff',
         transform: [{ rotate: '45deg' }],
         borderTopWidth: 1,
         borderLeftWidth: 1,
-        borderColor: '#efefef',
         zIndex: -1, // Behind the content but shadows will show
     },
     panelHeader: {
@@ -651,23 +656,19 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 12,
         borderBottomWidth: 1,
-        backgroundColor: '#fff',
         flexShrink: 0,
         zIndex: 10,
     },
-    panelTitle: { fontSize: 16, fontWeight: '700', color: '#1a1a1a' },
+    panelTitle: { fontSize: 16, fontWeight: '700' },
     closeButton: {
         padding: 4,
         borderRadius: 20,
-        backgroundColor: '#f5f5f5',
     },
     filterTabsContainer: {
         height: 60,
-        backgroundColor: '#fff',
         flexShrink: 0,
         zIndex: 100,
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
     },
     filterTabs: {
         flex: 1,
@@ -675,7 +676,6 @@ const styles = StyleSheet.create({
     filterTabsContent: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
     listContainer: {
         flex: 1,
-        backgroundColor: '#fff',
         zIndex: 1,
         overflow: 'hidden',
     },
@@ -685,15 +685,14 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
         paddingVertical: 8,
         borderRadius: 24,
-        backgroundColor: '#f8f9fa',
         marginRight: 8,
         gap: 6,
     },
 
 
-    activeFilterTab: { backgroundColor: '#e8f0fe', borderColor: '#007AFF', borderWidth: 1 },
-    filterTabText: { fontSize: 13, fontWeight: '500', color: '#666' },
-    activeFilterText: { color: '#007AFF', fontWeight: '600' },
+    activeFilterTab: { borderColor: '#007AFF', borderWidth: 1 },
+    filterTabText: { fontSize: 13, fontWeight: '500' },
+    activeFilterText: { fontWeight: '600' },
     filterBadge: {
         position: 'absolute',
         top: -4,
@@ -705,7 +704,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 4,
         borderWidth: 2,
-        borderColor: '#ffffff',
     },
     filterBadgeText: { color: '#fff', fontSize: 9, fontWeight: '700' },
     listContent: { flexGrow: 1, paddingVertical: 8 },
@@ -715,17 +713,16 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
         paddingHorizontal: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#f5f5f5',
         minHeight: 80,
     },
-    unreadNotification: { backgroundColor: '#f8faff', borderLeftWidth: 3, borderLeftColor: '#007AFF' },
+    unreadNotification: { borderLeftWidth: 3 },
     notificationContent: { flex: 1, flexDirection: 'row', alignItems: 'flex-start' },
     textContent: { flex: 1, marginLeft: 12 },
     titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
     titleWithIcon: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
-    notificationTitle: { fontWeight: '600', fontSize: 15, color: '#1a1a1a', flex: 1 },
-    notificationMessage: { fontSize: 13, color: '#666', marginBottom: 6, lineHeight: 18 },
-    notificationTime: { fontSize: 11, color: '#999', marginLeft: 8 },
+    notificationTitle: { fontWeight: '600', fontSize: 15, flex: 1 },
+    notificationMessage: { fontSize: 13, marginBottom: 6, lineHeight: 18 },
+    notificationTime: { fontSize: 11, marginLeft: 8 },
     metadataContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -737,12 +734,11 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         alignSelf: 'flex-start',
     },
-    metadataText: { fontSize: 11, color: '#555', fontWeight: '500' },
+    metadataText: { fontSize: 11, fontWeight: '500' },
     deleteButton: {
         padding: 6,
         marginLeft: 8,
         borderRadius: 16,
-        backgroundColor: '#f5f5f5',
         width: 28,
         height: 28,
         justifyContent: 'center',
@@ -755,17 +751,15 @@ const styles = StyleSheet.create({
         paddingVertical: 60,
         paddingHorizontal: 32,
     },
-    emptyText: { marginTop: 16, color: '#666', fontSize: 18, fontWeight: '600' },
-    emptySubtext: { marginTop: 8, color: '#999', fontSize: 14, textAlign: 'center', lineHeight: 20 },
+    emptyText: { marginTop: 16, fontSize: 18, fontWeight: '600' },
+    emptySubtext: { marginTop: 8, fontSize: 14, textAlign: 'center', lineHeight: 20 },
     Foto: { alignSelf: 'flex-start' },
     avatar: {
         width: 48,
         height: 48,
         borderRadius: 24,
         marginRight: 12,
-        backgroundColor: '#f0f0f0',
         borderWidth: 2,
-        borderColor: '#fff',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -777,8 +771,6 @@ const styles = StyleSheet.create({
     panelFooter: {
         padding: 12,
         borderTopWidth: 1,
-        borderTopColor: '#f0f0f0',
-        backgroundColor: '#fafafa',
         borderBottomLeftRadius: 16,
         borderBottomRightRadius: 16,
     },
@@ -792,7 +784,6 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 13,
         fontWeight: '500',
-        color: '#666',
     },
     iosWebTip: {
         marginTop: 8,

@@ -21,6 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { BackButton } from '@/components/ui/IconButton';
 import { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import AuthContext from '@/context/AuthContext';
 import { useCall } from '@/context/CallContext';
@@ -56,9 +57,12 @@ import WhiteboardCanvas from '@/components/ChatScreen/WhiteboardCanvas';
 import * as FileSystem from 'expo-file-system/legacy';
 import getApiBase from '@/services/getApiBase';
 import ReportPost from '@/components/ReportPost';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import Colors from '@/constants/Colors';
 
 const SpaceDetailScreen = () => {
+  const { colors, activeScheme } = useAppTheme();
+  const styles = getStyles(colors, activeScheme);
   const { showToast } = useToastStore();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user, setUser, logout } = useContext(AuthContext);
@@ -1163,7 +1167,7 @@ const SpaceDetailScreen = () => {
     if (loading) {
       return (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator size="large" color={colors.tint} />
           <Text style={styles.loadingText}>Loading space...</Text>
         </View>
       );
@@ -1234,13 +1238,13 @@ const SpaceDetailScreen = () => {
               style={styles.createPollButton}
               onPress={() => setShowPollCreator(true)}
             >
-              <Ionicons name="add-circle" size={24} color="#007AFF" />
+              <Ionicons name="add-circle" size={24} color={colors.tint} />
               <Text style={styles.createPollText}>Create New Poll</Text>
             </TouchableOpacity>
 
             {polls.length === 0 ? (
               <View style={styles.emptyPolls}>
-                <Ionicons name="bar-chart" size={64} color="#ccc" />
+                <Ionicons name="bar-chart" size={64} color={colors.border} />
                 <Text style={styles.emptyPollsTitle}>No polls yet</Text>
                 <Text style={styles.emptyPollsSubtext}>
                   Create your first poll to gather opinions
@@ -1282,7 +1286,7 @@ const SpaceDetailScreen = () => {
 
         return (
           <View style={styles.meetingContainer}>
-            <Ionicons name="videocam" size={64} color="#007AFF" />
+            <Ionicons name="videocam" size={64} color={colors.tint} />
             <Text style={styles.placeholderText}>Video Meeting Room</Text>
             <Text style={styles.placeholderSubtext}>
               Start a video call with {participants.length} participants
@@ -1292,7 +1296,7 @@ const SpaceDetailScreen = () => {
                 style={[styles.callButton, styles.videoButton]}
                 onPress={() => handleStartCall('video')}
               >
-                <Ionicons name="videocam" size={24} color="#fff" />
+                <Ionicons name="videocam" size={24} color={colors.surface} />
                 <Text style={styles.callButtonText}>Start Video Call</Text>
               </TouchableOpacity>
 
@@ -1300,7 +1304,7 @@ const SpaceDetailScreen = () => {
                 style={[styles.callButton, styles.audioButton]}
                 onPress={() => handleStartCall('audio')}
               >
-                <Ionicons name="call" size={24} color="#fff" />
+                <Ionicons name="call" size={24} color={colors.surface} />
                 <Text style={styles.callButtonText}>Start Audio Call</Text>
               </TouchableOpacity>
             </View>
@@ -1321,7 +1325,7 @@ const SpaceDetailScreen = () => {
       case 'document':
         return (
           <View style={styles.documentContainer}>
-            <Ionicons name="document-text" size={64} color="#007AFF" />
+            <Ionicons name="document-text" size={64} color={colors.tint} />
             <Text style={styles.placeholderText}>Document Collaboration</Text>
             <Text style={styles.placeholderSubtext}>
               Edit documents together in real-time
@@ -1335,7 +1339,7 @@ const SpaceDetailScreen = () => {
       case 'brainstorm':
         return (
           <View style={styles.brainstormContainer}>
-            <Ionicons name="bulb" size={64} color="#007AFF" />
+            <Ionicons name="bulb" size={64} color={colors.tint} />
             <Text style={styles.placeholderText}>Brainstorming Session</Text>
             <Text style={styles.placeholderSubtext}>
               Generate and organize ideas together
@@ -1349,7 +1353,7 @@ const SpaceDetailScreen = () => {
       default:
         return (
           <View style={styles.defaultContainer}>
-            <Ionicons name="cube" size={64} color="#007AFF" />
+            <Ionicons name="cube" size={64} color={colors.tint} />
             <Text style={styles.placeholderText}>{activeTab.toUpperCase()} Collaboration</Text>
             <Text style={styles.placeholderSubtext}>
               {space?.description || 'Work together in real-time'}
@@ -1363,7 +1367,7 @@ const SpaceDetailScreen = () => {
   if (loading && !space) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={colors.tint} />
         <Text style={styles.loadingText}>Loading space...</Text>
       </View>
     );
@@ -1375,7 +1379,7 @@ const SpaceDetailScreen = () => {
       <View style={styles.lockedContainer}>
         <View style={styles.lockedCard}>
           <View style={styles.lockedIconBg}>
-            <Ionicons name="lock-closed" size={40} color="#FF6B6B" />
+            <Ionicons name="lock-closed" size={40} color={colors.error} />
           </View>
           <Text style={styles.lockedTitle}>Login Required</Text>
           <Text style={styles.lockedDescription}>
@@ -1424,11 +1428,10 @@ const SpaceDetailScreen = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          disabled={!!user?.is_guest}
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <BackButton
           onPress={() => {
             if (params.returnTo) {
               router.replace(params.returnTo as any);
@@ -1436,10 +1439,8 @@ const SpaceDetailScreen = () => {
               router.back();
             }
           }}
-          style={[styles.backButton, user?.is_guest && { opacity: 0 }]}
-        >
-          <Ionicons name="arrow-back" size={24} color="#007AFF" />
-        </TouchableOpacity>
+          style={user?.is_guest ? { opacity: 0 } : undefined}
+        />
 
         <TouchableOpacity
           style={styles.headerContent}
@@ -1453,26 +1454,26 @@ const SpaceDetailScreen = () => {
               <Avatar source={displayPhoto} size={36} name={displayTitle} />
             </View>
           ) : (
-            <View style={[styles.headerAvatar, { backgroundColor: '#007AFF', justifyContent: 'center', alignItems: 'center' }]}>
-              <Ionicons name="cube" size={20} color="#fff" />
+            <View style={[styles.headerAvatar, { backgroundColor: colors.tint, justifyContent: 'center', alignItems: 'center' }]}>
+              <Ionicons name="cube" size={20} color={colors.surface} />
             </View>
           )}
           <View style={styles.headerTextContainer}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={styles.title} numberOfLines={1}>
+              <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
                 {displayTitle}
               </Text>
               {useReportedContentStore.getState().isReported('space', id as string) && (
-                <Ionicons name="flag" size={14} color="#ff4444" style={{ marginLeft: 4 }} />
+                <Ionicons name="flag" size={14} color={colors.error} style={{ marginLeft: 4 }} />
               )}
-              {isPinned && <Ionicons name="pin" size={12} color="#007AFF" style={{ marginLeft: 4 }} />}
-              {isMuted && <Ionicons name="volume-mute" size={12} color="#666" style={{ marginLeft: 4 }} />}
+              {isPinned && <Ionicons name="pin" size={12} color={colors.tint} style={{ marginLeft: 4 }} />}
+              {isMuted && <Ionicons name="volume-mute" size={12} color={colors.textSecondary} style={{ marginLeft: 4 }} />}
             </View>
             <View style={styles.subtitleRow}>
-              {(!isDirectChat || !otherParticipant) && <Ionicons name="people" size={12} color="#666" />}
-              {(!isDirectChat || !otherParticipant) && <Text style={styles.subtitle}>{displaySubtitle}</Text>}
-              {(!isDirectChat || !otherParticipant) && <View style={styles.dotSeparator} />}
-              <Text style={styles.subtitle}>
+              {(!isDirectChat || !otherParticipant) && <Ionicons name="people" size={12} color={colors.textSecondary} />}
+              {(!isDirectChat || !otherParticipant) && <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{displaySubtitle}</Text>}
+              {(!isDirectChat || !otherParticipant) && <View style={[styles.dotSeparator, { backgroundColor: colors.textSecondary }]} />}
+              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                 {isDirectChat && otherParticipant ? displaySubtitle : (space?.space_type || 'chat')}
               </Text>
             </View>
@@ -1487,7 +1488,7 @@ const SpaceDetailScreen = () => {
               onPress={() => setShowInviteModal(true)}
               disabled={isLocked}
             >
-              <Ionicons name="person-add-outline" size={24} color="#007AFF" />
+              <Ionicons name="person-add-outline" size={24} color={colors.tint} />
             </TouchableOpacity>
           )}
 
@@ -1502,7 +1503,7 @@ const SpaceDetailScreen = () => {
               <Ionicons
                 name={isDirectChat ? "call-outline" : "videocam-outline"}
                 size={24}
-                color={isLocked ? "#999" : "#007AFF"}
+                color={isLocked ? colors.border : colors.tint}
               />
             </TouchableOpacity>
           )}
@@ -1514,7 +1515,7 @@ const SpaceDetailScreen = () => {
               onPress={() => setShowActivitiesModal(true)}
               disabled={isLocked}
             >
-              <Ionicons name="calendar-outline" size={24} color={isLocked ? "#999" : "#007AFF"} />
+              <Ionicons name="calendar-outline" size={24} color={isLocked ? colors.border : colors.tint} />
               <View style={styles.activitiesBadge}>
                 <Text style={styles.badgeText}>{spaceUpcomingCounts[id as string]}</Text>
               </View>
@@ -1528,7 +1529,7 @@ const SpaceDetailScreen = () => {
             onPress={measureSpaceButton}
             disabled={isLocked}
           >
-            <Ionicons name="ellipsis-vertical" size={24} color="#007AFF" />
+            <Ionicons name="ellipsis-vertical" size={24} color={colors.tint} />
           </TouchableOpacity>
         </View>
       </View>
@@ -1539,34 +1540,30 @@ const SpaceDetailScreen = () => {
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            backgroundColor: '#F8F9FA',
+            backgroundColor: colors.surface,
             paddingVertical: 10,
             paddingHorizontal: 16,
             borderBottomWidth: 1,
-            borderColor: '#EFEFEF',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.05,
-            shadowRadius: 2,
-            elevation: 2,
+            borderColor: colors.border,
+            ...createShadow({ opacity: 0.05, radius: 2 }),
             zIndex: 10
           }}
           activeOpacity={0.8}
           onPress={() => setActiveTab('chat')}
         >
-          <Ionicons name="return-up-back" size={18} color="#444" />
-          <Text style={{ marginLeft: 8, fontSize: 13, fontWeight: '600', color: '#444' }}>
+          <Ionicons name="return-up-back" size={18} color={colors.text} />
+          <Text style={{ marginLeft: 8, fontSize: 13, fontWeight: '600', color: colors.text }}>
             Back to Conversation
           </Text>
           <View style={{ flex: 1 }} />
-          <Ionicons name="chatbubbles-outline" size={18} color="#999" />
+          <Ionicons name="chatbubbles-outline" size={18} color={colors.textSecondary} />
         </TouchableOpacity>
       )}
 
       {/* Archived Banner */}
       {isArchived && (
         <View style={styles.archivedBanner}>
-          <Ionicons name="archive" size={16} color="#007AFF" />
+          <Ionicons name="archive" size={16} color={colors.tint} />
           <Text style={styles.archivedBannerText}>This chat is archived</Text>
         </View>
       )}
@@ -1580,13 +1577,13 @@ const SpaceDetailScreen = () => {
           {
             icon: 'videocam',
             label: 'Video Call',
-            color: '#525df8ff',
+            color: colors.tint,
             onPress: () => handleStartCall('video'),
           },
           {
             icon: 'call',
             label: 'Audio Call',
-            color: '#4CAF50',
+            color: colors.success,
             onPress: () => handleStartCall('audio'),
           },
         ]}
@@ -1699,7 +1696,7 @@ const SpaceDetailScreen = () => {
               <View style={styles.lockedContainer}>
                 <View style={styles.lockedCard}>
                   <View style={styles.lockedIconBg}>
-                    <Ionicons name="lock-closed" size={40} color="#007AFF" />
+                    <Ionicons name="lock-closed" size={40} color={colors.tint} />
                   </View>
                   <Text style={styles.lockedTitle}>Private Space</Text>
                   <Text style={styles.lockedDescription}>
@@ -2117,10 +2114,11 @@ const SpaceDetailScreen = () => {
 };
 
 
-const styles = StyleSheet.create({
+function getStyles(colors: any, activeScheme: string) {
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -2130,7 +2128,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
   },
   header: {
     flexDirection: 'row',
@@ -2138,7 +2136,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: colors.border,
   },
   backButton: {
     padding: 4,
@@ -2162,7 +2160,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginBottom: 2,
   },
   subtitleRow: {
@@ -2171,14 +2169,14 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 12,
-    color: '#666',
+    color: colors.textSecondary,
     marginLeft: 4,
   },
   dotSeparator: {
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: '#999',
+    backgroundColor: colors.textSecondary,
     marginHorizontal: 6,
   },
   headerActions: {
@@ -2201,7 +2199,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 3,
     borderWidth: 1.5,
-    borderColor: '#fff',
+    borderColor: colors.surface,
   },
   activitiesBadge: {
     position: 'absolute',
@@ -2215,7 +2213,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 3,
     borderWidth: 1.5,
-    borderColor: '#fff',
+    borderColor: colors.surface,
   },
   badgeText: {
     color: '#fff',
@@ -2228,9 +2226,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   tabContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: colors.border,
     maxHeight: 60,
     alignSelf: 'center',
   },
@@ -2246,20 +2244,20 @@ const styles = StyleSheet.create({
     marginRight: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: colors.border,
   },
   activeTab: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: colors.tint,
+    borderColor: colors.tint,
   },
   tabText: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     marginLeft: 6,
     fontWeight: '500',
   },
   activeTabText: {
-    color: '#fff',
+    color: colors.surface,
   },
   contentArea: {
     flex: 1,
@@ -2270,32 +2268,33 @@ const styles = StyleSheet.create({
   },
   chatContainer: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
   },
 
   chatInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: colors.border,
   },
 
   messageInput: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.surface,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
     marginHorizontal: 8,
     fontSize: 16,
     maxHeight: 100,
+    color: colors.text,
   },
 
   sendButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.tint,
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -2304,7 +2303,7 @@ const styles = StyleSheet.create({
   },
 
   sendButtonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: colors.muted,
   },
 
   mediaButton: {
@@ -2320,29 +2319,31 @@ const styles = StyleSheet.create({
   },
   myMessage: {
     alignSelf: 'flex-end',
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.tint,
     borderBottomRightRadius: 4,
   },
   theirMessage: {
     alignSelf: 'flex-start',
-    backgroundColor: '#f0f0f0',
+    backgroundColor: colors.surface,
     borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   messageAuthor: {
     fontSize: 12,
-    color: '#666',
+    color: colors.textSecondary,
     marginBottom: 2,
   },
   messageText: {
     fontSize: 16,
-    color: '#333',
+    color: colors.text,
   },
   myMessageText: {
-    color: '#fff',
+    color: colors.surface,
   },
   messageTime: {
     fontSize: 10,
-    color: '#999',
+    color: colors.textSecondary,
     marginTop: 4,
     alignSelf: 'flex-end',
   },
@@ -2355,12 +2356,12 @@ const styles = StyleSheet.create({
   emptyChatText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginTop: 16,
   },
   emptyChatSubtext: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     marginTop: 4,
   },
   whiteboardContainer: {
@@ -2396,24 +2397,24 @@ const styles = StyleSheet.create({
   placeholderText: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#333',
+    color: colors.text,
     marginTop: 16,
     marginBottom: 8,
   },
   placeholderSubtext: {
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 24,
   },
   placeholderButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.tint,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
   },
   placeholderButtonText: {
-    color: '#fff',
+    color: colors.surface,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -2431,13 +2432,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   videoButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.tint,
   },
   audioButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: colors.success,
   },
   callButtonText: {
-    color: '#fff',
+    color: colors.surface,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -2464,7 +2465,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
     ...createShadow({
@@ -2482,8 +2483,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    backgroundColor: '#fff',
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
   },
   modalOverlay: {
     flex: 1,
@@ -2493,7 +2494,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderRadius: 16,
     padding: 24,
     width: '100%',
@@ -2508,20 +2509,21 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#333',
+    color: colors.text,
   },
   modalDescription: {
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
     marginBottom: 20,
     lineHeight: 24,
   },
   modalInput: {
     fontSize: 16,
     padding: 12,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.muted,
     borderRadius: 8,
     marginBottom: 24,
+    color: colors.text,
   },
   modalButtons: {
     flexDirection: 'row',
@@ -2534,10 +2536,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalButtonCancel: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: colors.muted,
   },
   modalButtonConfirm: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.tint,
   },
   modalButtonDisabled: {
     opacity: 0.5,
@@ -2545,15 +2547,15 @@ const styles = StyleSheet.create({
   modalButtonTextCancel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#666',
+    color: colors.textSecondary,
   },
   modalButtonTextConfirm: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.surface,
   },
   modalContentLarge: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 24,
     width: '90%',
@@ -2569,7 +2571,7 @@ const styles = StyleSheet.create({
   settingsSectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginBottom: 12,
   },
   settingsRow: {
@@ -2580,10 +2582,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     padding: 12,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.muted,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: colors.border,
+    color: colors.text,
   },
   textArea: {
     minHeight: 100,
@@ -2592,11 +2595,11 @@ const styles = StyleSheet.create({
   photoUploadArea: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.muted,
     borderRadius: 12,
     padding: 20,
     borderWidth: 2,
-    borderColor: '#e0e0e0',
+    borderColor: colors.border,
     borderStyle: 'dashed',
   },
   spacePhoto: {
@@ -2615,14 +2618,14 @@ const styles = StyleSheet.create({
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.muted,
     padding: 12,
     borderRadius: 8,
   },
   infoText: {
     marginLeft: 8,
     fontSize: 16,
-    color: '#333',
+    color: colors.text,
   },
   infoSubtext: {
     marginTop: 4,
@@ -2632,7 +2635,7 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.muted,
     padding: 12,
     borderRadius: 8,
   },
@@ -2653,7 +2656,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: colors.border,
   },
   participantInfo: {
     flex: 1,
@@ -2661,8 +2664,8 @@ const styles = StyleSheet.create({
   },
   participantName: {
     fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
+    fontWeight: '600',
+    color: colors.text,
     marginBottom: 4,
   },
   participantMeta: {
@@ -2691,19 +2694,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 16,
     padding: 12,
-    backgroundColor: '#007AFF10',
+    backgroundColor: colors.tint + '10',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#007AFF',
+    borderColor: colors.tint,
   },
   inviteButtonText: {
     marginLeft: 8,
     fontSize: 16,
     fontWeight: '600',
-    color: '#007AFF',
+    color: colors.tint,
   },
   roleModal: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderRadius: 16,
     padding: 24,
     width: '90%',
@@ -2712,7 +2715,7 @@ const styles = StyleSheet.create({
   roleModalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginBottom: 20,
     textAlign: 'center',
   },
@@ -2723,10 +2726,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: colors.border,
   },
   roleOptionSelected: {
-    backgroundColor: '#f0f8ff',
+    backgroundColor: colors.tint + '10',
   },
   roleOptionLeft: {
     flexDirection: 'row',
@@ -2740,7 +2743,7 @@ const styles = StyleSheet.create({
   roleOptionTitle: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#333',
+    color: colors.text,
     marginBottom: 2,
   },
   roleOptionDescription: {
@@ -2753,16 +2756,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 16,
     padding: 12,
-    backgroundColor: '#FF6B6B10',
+    backgroundColor: colors.error + '10',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FF6B6B',
+    borderColor: colors.error,
   },
   removeButtonText: {
     marginLeft: 8,
     fontSize: 16,
     fontWeight: '600',
-    color: '#FF6B6B',
+    color: colors.error,
   },
   cancelRoleButton: {
     marginTop: 12,
@@ -2786,14 +2789,16 @@ const styles = StyleSheet.create({
   },
   dropdownMenu: {
     position: 'absolute',
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     paddingVertical: 8,
     minWidth: 200,
+    borderWidth: 1,
+    borderColor: colors.border,
     ...createShadow({
       width: 0,
       height: 2,
-      opacity: 0.25,
+      opacity: 0.1,
       radius: 3.84,
       elevation: 5,
     }),
@@ -2811,15 +2816,15 @@ const styles = StyleSheet.create({
   },
   menuItemText: {
     fontSize: 16,
-    color: '#333',
+    color: colors.text,
     flex: 1,
   },
   menuItemTextDestructive: {
-    color: '#FF6B6B',
+    color: colors.error,
   },
   menuDivider: {
     height: 1,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: colors.border,
     marginVertical: 4,
   },
   pollsContainer: {
@@ -2830,11 +2835,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#007AFF10',
+    backgroundColor: colors.tint + '10',
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#007AFF',
+    borderColor: colors.tint,
     borderStyle: 'dashed',
     marginBottom: 16,
   },
@@ -2842,7 +2847,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 16,
     fontWeight: '600',
-    color: '#007AFF',
+    color: colors.tint,
   },
   emptyPolls: {
     alignItems: 'center',
@@ -2852,12 +2857,12 @@ const styles = StyleSheet.create({
   emptyPollsTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginTop: 16,
   },
   emptyPollsSubtext: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 8,
     paddingHorizontal: 32,
@@ -2866,15 +2871,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#007AFF08',
+    backgroundColor: colors.tint + '08',
     paddingVertical: 10,
     gap: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#007AFF15',
+    borderBottomColor: colors.tint + '15',
   },
   archivedBannerText: {
     fontSize: 14,
-    color: '#007AFF',
+    color: colors.tint,
     fontWeight: '600',
   },
   deletingOverlay: {
@@ -2892,12 +2897,12 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
   },
   deletingSubtext: {
     marginTop: 8,
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   // Phase 70: Locked UI Styles
@@ -2908,12 +2913,14 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   lockedCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 24,
     padding: 32,
     alignItems: 'center',
     width: '100%',
     maxWidth: 340,
+    borderWidth: 1,
+    borderColor: colors.border,
     ...createShadow({
       width: 0,
       height: 10,
@@ -2926,7 +2933,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#007AFF10',
+    backgroundColor: colors.tint + '10',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
@@ -2934,18 +2941,18 @@ const styles = StyleSheet.create({
   lockedTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: colors.text,
     marginBottom: 12,
   },
   lockedDescription: {
     fontSize: 15,
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 32,
   },
   joinSpaceButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.tint,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2956,7 +2963,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   joinSpaceButtonText: {
-    color: '#fff',
+    color: colors.surface,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -2965,7 +2972,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
-    backgroundColor: '#f8f9ff',
+    backgroundColor: colors.muted,
     borderRadius: 16,
     width: '100%',
   },
@@ -2985,5 +2992,6 @@ const styles = StyleSheet.create({
     }),
   },
 });
+}
 
 export default SpaceDetailScreen;

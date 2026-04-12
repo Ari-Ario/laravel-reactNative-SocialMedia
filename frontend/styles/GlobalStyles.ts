@@ -14,7 +14,6 @@ export const GlobalStyles = StyleSheet.create({
      */
     popupContainer: {
         flex: 1,
-        // backgroundColor: '#000', // Default background, can be overridden
         ...Platform.select({
             web: {
                 width: '100%',
@@ -41,9 +40,23 @@ export const GlobalStyles = StyleSheet.create({
      */
     modalOverlay: {
         flex: 1,
-        // backgroundColor: 'rgba(0,0,0,0.6)',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+
+    /**
+     * Responsive constraint for overlays.
+     * Web: Limits width and centers content.
+     * Mobile: Full width.
+     */
+    responsiveModal: {
+        width: '100%',
+        ...Platform.select({
+            web: {
+                maxWidth: 1440,
+                alignSelf: 'center',
+            },
+        }),
     }
 });
 

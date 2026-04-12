@@ -1,5 +1,5 @@
 import { useState, useContext } from "react";
-import { View, Text, StyleSheet, Button, TouchableOpacity, Platform } from 'react-native';
+import { Platform, View, Text, StyleSheet, Button, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import axios from "@/services/axios";
@@ -7,8 +7,10 @@ import FormTextField from "@/components/FormTextField";
 import { login, loadUser } from "@/services/AuthService";
 import { Link, router } from 'expo-router';
 import AuthContext from "@/context/AuthContext";
+import { useAppTheme } from "@/hooks/useAppTheme";
 
 export default function () {
+    const { colors } = useAppTheme();
     const { setUser } = useContext(AuthContext);
 
     const [email, setEmail] = useState("");
@@ -63,11 +65,11 @@ export default function () {
     }
 
     return (
-        <SafeAreaView style={styles.wrapper}>
+        <SafeAreaView style={[styles.wrapper, { backgroundColor: colors.background }]}>
             <View>
                 <Link href={'/'} asChild>
                     <TouchableOpacity style={styles.button}>
-                        <Text style={styles.buttonText}>◀ Back to Homescreen</Text>
+                        <Text style={[styles.buttonText, { color: colors.tint }]}>◀ Back to Homescreen</Text>
                     </TouchableOpacity>
                 </Link>
             </View>
@@ -92,19 +94,19 @@ export default function () {
                 <Button title="login" onPress={handleLogin} />
 
                 {errors.general && (
-                    <Text style={styles.errorText}>{errors.general}</Text>
+                    <Text style={[styles.errorText, { color: colors.error }]}>{errors.general}</Text>
                 )}
 
 
                 <Link href={'/ForgotPasswordScreen'} >
-                    <Text style={styles.buttonText}>Forgot Password</Text>
+                    <Text style={[styles.buttonText, { color: colors.tint }]}>Forgot Password</Text>
                 </Link>
 
                 <View style={styles.loginLink}>
-                    <Text>Don't have an account? </Text>
+                    <Text style={{ color: colors.textSecondary }}>Don't have an account? </Text>
                     <Link href="/RegisterScreen" asChild>
                         <TouchableOpacity>
-                            <Text style={styles.linkText}>Register</Text>
+                            <Text style={[styles.linkText, { color: colors.tint }]}>Register</Text>
                         </TouchableOpacity>
                     </Link>
                 </View>
@@ -119,7 +121,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
-        backgroundColor: '#fff',
     },
     container: {
         padding: 20,

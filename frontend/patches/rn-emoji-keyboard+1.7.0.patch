@@ -1,40 +1,64 @@
-diff --git a/node_modules/rn-emoji-keyboard/lib/commonjs/components/ModalWithBackdrop.js b/node_modules/rn-emoji-keyboard/lib/commonjs/components/ModalWithBackdrop.js
-index befb2d6..389c343 100644
---- a/node_modules/rn-emoji-keyboard/lib/commonjs/components/ModalWithBackdrop.js
-+++ b/node_modules/rn-emoji-keyboard/lib/commonjs/components/ModalWithBackdrop.js
-@@ -31,13 +31,13 @@ const ModalWithBackdrop = _ref => {
-   React.useEffect(() => {
-     _reactNative.Animated.spring(translateY, {
-       toValue: isOpen ? 0 : screenHeight,
--      useNativeDriver: true
-+      useNativeDriver: false
-     }).start();
-   }, [isOpen, screenHeight, translateY]);
-   const handleClose = () => {
-     _reactNative.Animated.spring(translateY, {
-       toValue: screenHeight,
--      useNativeDriver: true
-+      useNativeDriver: false
-     }).start();
-     handleTimeout(() => backdropPress(), 200);
-   };
-diff --git a/node_modules/rn-emoji-keyboard/lib/module/components/ModalWithBackdrop.js b/node_modules/rn-emoji-keyboard/lib/module/components/ModalWithBackdrop.js
-index 2e2b55e..f1235f9 100644
---- a/node_modules/rn-emoji-keyboard/lib/module/components/ModalWithBackdrop.js
-+++ b/node_modules/rn-emoji-keyboard/lib/module/components/ModalWithBackdrop.js
-@@ -23,13 +23,13 @@ export const ModalWithBackdrop = _ref => {
-   React.useEffect(() => {
-     Animated.spring(translateY, {
-       toValue: isOpen ? 0 : screenHeight,
--      useNativeDriver: true
-+      useNativeDriver: false
-     }).start();
-   }, [isOpen, screenHeight, translateY]);
-   const handleClose = () => {
-     Animated.spring(translateY, {
-       toValue: screenHeight,
--      useNativeDriver: true
-+      useNativeDriver: false
-     }).start();
-     handleTimeout(() => backdropPress(), 200);
-   };
+diff --git a/node_modules/rn-emoji-keyboard/lib/commonjs/components/EmojiStaticKeyboard.js b/node_modules/rn-emoji-keyboard/lib/commonjs/components/EmojiStaticKeyboard.js
+index 7e954a4..e65efc0 100644
+--- a/node_modules/rn-emoji-keyboard/lib/commonjs/components/EmojiStaticKeyboard.js
++++ b/node_modules/rn-emoji-keyboard/lib/commonjs/components/EmojiStaticKeyboard.js
+@@ -153,13 +153,20 @@ const styles = _reactNative.StyleSheet.create({
+     flexDirection: 'column-reverse'
+   },
+   containerShadow: {
+-    shadowColor: 'black',
+-    shadowOpacity: 0.15,
+-    shadowOffset: {
+-      width: 0,
+-      height: 0
+-    },
+-    shadowRadius: 5,
++    ..._reactNative.Platform.select({
++      ios: {
++        shadowColor: 'black',
++        shadowOpacity: 0.15,
++        shadowOffset: {
++          width: 0,
++          height: 0
++        },
++        shadowRadius: 5
++      },
++      web: {
++        boxShadow: '0 0 5px rgba(0,0,0,0.15)'
++      }
++    }),
+     elevation: 10
+   }
+ });
+diff --git a/node_modules/rn-emoji-keyboard/lib/module/components/EmojiStaticKeyboard.js b/node_modules/rn-emoji-keyboard/lib/module/components/EmojiStaticKeyboard.js
+index 505c217..a3309cb 100644
+--- a/node_modules/rn-emoji-keyboard/lib/module/components/EmojiStaticKeyboard.js
++++ b/node_modules/rn-emoji-keyboard/lib/module/components/EmojiStaticKeyboard.js
+@@ -144,13 +144,20 @@ const styles = StyleSheet.create({
+     flexDirection: 'column-reverse'
+   },
+   containerShadow: {
+-    shadowColor: 'black',
+-    shadowOpacity: 0.15,
+-    shadowOffset: {
+-      width: 0,
+-      height: 0
+-    },
+-    shadowRadius: 5,
++    ...Platform.select({
++      ios: {
++        shadowColor: 'black',
++        shadowOpacity: 0.15,
++        shadowOffset: {
++          width: 0,
++          height: 0
++        },
++        shadowRadius: 5
++      },
++      web: {
++        boxShadow: '0 0 5px rgba(0,0,0,0.15)'
++      }
++    }),
+     elevation: 10
+   }
+ });

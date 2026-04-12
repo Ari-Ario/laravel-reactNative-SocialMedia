@@ -1,4 +1,4 @@
-  // components/PostListItem.tsx
+// components/PostListItem.tsx
 import {
   View,
   Image,
@@ -34,6 +34,7 @@ import React from 'react';
 import { PostActionButtons } from './PostActionButtons';
 import { PostVideoPlayer } from './PostVideoPlayer';
 import { usePostListService } from '@/services/PostListService';
+import { LinkPreviewCard } from './LinkPreviewCard';
 import RenderComments from './RenderComments';
 import { createShadow } from '@/utils/styles';
 import PusherService from '@/services/PusherService';
@@ -45,6 +46,8 @@ import { useToastStore } from '@/stores/toastStore';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
 import { BookmarkGallery } from './BookmarkGallery';
 import { Bookmark } from '@/services/BookmarkService';
+import { GlobalStyles } from '@/styles/GlobalStyles';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 
 interface PostListItemProps {
@@ -67,6 +70,8 @@ export default function PostListItem({
   onShare,
   shouldPlay = false,
 }: PostListItemProps) {
+  const { colors, activeScheme } = useAppTheme();
+  const styles = getStyles(colors, activeScheme);
   const { user } = useContext(AuthContext);
   const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
   const { openModal } = useModal();
@@ -85,9 +90,29 @@ export default function PostListItem({
 
   const isOwner = service.isOwner(post.user.id);
 
-  const sortedMedia = useMemo(() => {
+  const { visualMedia, extraMedia } = useMemo(() => {
     return service.sortMedia(post.media);
   }, [post.media]);
+
+  // Detect link in caption
+  const detectedUrl = useMemo(() => {
+    if (!post.caption) return null;
+    // Enhanced regex to catch both http and www links
+    const urlRegex = /((https?:\/\/|www\.)[^\s\n\r]+)/g;
+    const matches = post.caption.match(urlRegex);
+    if (!matches) return null;
+    
+    let url = matches[0];
+    // Clean up trailing punctuation
+    if (url.endsWith('.') || url.endsWith(',') || url.endsWith(')')) {
+      url = url.slice(0, -1);
+    }
+    // Prefix www with https if missing for Linking to work
+    if (url.startsWith('www.')) {
+      url = 'https://' + url;
+    }
+    return url;
+  }, [post.caption]);
 
   const reactionsToShow = service.getGroupedReactions(currentPost, user?.id ? Number(user.id) : undefined);
   const totalReactions = reactionsToShow.reduce((acc, r) => acc + r.count, 0);
@@ -122,7 +147,7 @@ export default function PostListItem({
   const handleRepostWithContext = async (tag?: string, note?: string) => {
     try {
       const response = await repostPost(post.id, tag, note);
-      
+
       // Update store with new repost count and potentially the new repost data
       const currentPost = posts.find(p => p.id === post.id);
       if (currentPost) {
@@ -136,12 +161,12 @@ export default function PostListItem({
           reposts: isCurrentlyReposted
             ? (response.repost ? [response.repost, ...(currentPost.reposts || [])] : currentPost.reposts)
             : (currentPost.reposts || []).filter((r: any) => {
-                const reposterId = r.user?.id || r.user_id;
-                return Number(reposterId) !== Number(currentUserId);
-              })
+              const reposterId = r.user?.id || r.user_id;
+              return Number(reposterId) !== Number(currentUserId);
+            })
         });
       }
-      
+
       showToast(response.message, 'success');
     } catch (error) {
       console.error("Repost failed:", error);
@@ -152,12 +177,31 @@ export default function PostListItem({
   const getMediaUrl = (path: string) => {
     if (!path) return '';
     if (path.startsWith('http') || path.startsWith('file://') || path.startsWith('data:')) return path;
-    
+
     let cleanPath = path.startsWith('/') ? path.substring(1) : path;
     if (cleanPath.startsWith('storage/')) {
       return `${getApiBaseImage()}/${cleanPath}`;
     }
     return `${getApiBaseImage()}/storage/${cleanPath}`;
+  };
+
+  const getPosterUrl = (media: any) => {
+    if (media.thumbnail_path) return getMediaUrl(media.thumbnail_path);
+    if (media.metadata?.thumbnail) return getMediaUrl(media.metadata.thumbnail);
+    if (media.metadata?.poster) return getMediaUrl(media.metadata.poster);
+    return undefined;
+  };
+
+  const isMobileWeb = Platform.OS === 'web' && Dimensions.get('window').width < 768;
+
+  const onMediaPress = (index: number) => {
+    const item = visualMedia[index];
+    if (isMobileWeb && item.type === 'video') {
+      // On mobile web, don't open MediaViewer for videos
+      // The video element itself will handle the native play trigger via its internal state
+      return;
+    }
+    service.openMediaViewer(index);
   };
 
   const onRepostPress = () => {
@@ -174,10 +218,8 @@ export default function PostListItem({
       const result = await addBookmark(post.id);
       if (result.bookmarked && result.bookmark) {
         showToast('Post bookmarked!', 'success');
-        router.push({
-          pathname: '/settings/bookmarks',
-          params: { initialPostId: post.id, returnTo: '/' }
-        });
+        setNewBookmark(result.bookmark as any);
+        setBookmarkGalleryVisible(true);
       } else {
         showToast('Bookmark removed', 'info');
       }
@@ -202,24 +244,24 @@ export default function PostListItem({
                 service.setProfilePreviewVisible(true);
               }}
             >
-              <Avatar 
-                source={post.user.profile_photo} 
-                name={post.user.name} 
-                size={40} 
-                showStatus={false} 
+              <Avatar
+                source={post.user.profile_photo}
+                name={post.user.name}
+                size={40}
+                showStatus={false}
               />
             </TouchableOpacity>
 
             <View style={styles.nameCaption}>
               <View style={styles.usernameRow}>
-                <Text style={styles.username}>{post.user.name}</Text>
+                <Text style={[styles.username, { color: colors.text }]}>{post.user.name}</Text>
                 {postLocation && (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={() => openModal('location', { location: postLocation })}
-                    style={styles.locationPill}
+                    style={[styles.locationPill, { backgroundColor: colors.tint + '10' }]}
                   >
-                    <Ionicons name="location" size={10} color="#0084ff" />
-                    <Text style={styles.locationName} numberOfLines={1}>{postLocation.name}</Text>
+                    <Ionicons name="location" size={10} color={colors.tint} />
+                    <Text style={[styles.locationName, { color: colors.tint }]} numberOfLines={1}>{postLocation.name}</Text>
                   </TouchableOpacity>
                 )}
                 {currentPost.moderation_check?.fact_score > 0.8 && (
@@ -232,7 +274,7 @@ export default function PostListItem({
               <View style={styles.menuContainer}>
                 {post.caption && (
                   <Pressable onPress={() => toggleExpandedPostId(post.id)}>
-                    <Text style={styles.caption}>
+                    <Text style={[styles.caption, { color: colors.text }]}>
                       {expandedPostId === post.id
                         ? post.caption
                         : post.caption.length > 60
@@ -250,67 +292,99 @@ export default function PostListItem({
             style={styles.menuButton}
             onPress={service.handleMenuPress}
           >
-            <Ionicons name="ellipsis-horizontal" size={20} />
+            <Ionicons name="ellipsis-horizontal" size={20} color={colors.text} />
           </TouchableOpacity>
         </View>
 
       </View>
 
-      {/* Post media */}
-      {post.media && post.media.length > 0 && (
+      {/* Media Rendering */}
+      {(visualMedia.length > 0 || extraMedia.length > 0 || detectedUrl) && (
         <View style={styles.mediaContainer}>
-          {sortedMedia.length === 1 ? (
-            <TouchableOpacity onPress={() => service.openMediaViewer(0)}>
-              {sortedMedia[0].type === 'video' ? (
-                <PostVideoPlayer
-                  uri={getMediaUrl(sortedMedia[0].file_path)}
-                  style={styles.singleMedia}
-                  contentFit="cover"
-                  shouldPlay={shouldPlay}
-                  isMuted={true}
-                />
-              ) : (
-                <Image
-                  source={{ uri: `${getApiBaseImage()}/storage/${sortedMedia[0].file_path}` }}
-                  style={styles.singleMedia}
-                  resizeMode="cover"
-                />
-              )}
-            </TouchableOpacity>
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {sortedMedia.map((media: any, index: number) => (
+          {/* Visual Media Carousel */}
+          {visualMedia.length > 0 && (
+            <View>
+              {visualMedia.length === 1 ? (
                 <TouchableOpacity
-                  key={`${media.id}-${index}`}
-                  onPress={() => service.openMediaViewer(index)}
-                  style={styles.multiMediaItem}
+                  onPress={() => onMediaPress(0)}
+                  disabled={isMobileWeb && visualMedia[0].type === 'video'}
                 >
-                  {media.type === 'video' ? (
+                  {visualMedia[0].type === 'video' ? (
                     <PostVideoPlayer
-                      uri={getMediaUrl(media.file_path)}
-                      style={styles.multiMediaContent}
+                      uri={getMediaUrl(visualMedia[0].file_path)}
+                      style={styles.singleMedia}
                       contentFit="cover"
                       shouldPlay={shouldPlay}
                       isMuted={true}
+                      poster={getPosterUrl(visualMedia[0])}
                     />
                   ) : (
                     <Image
-                      source={{ uri: `${getApiBaseImage()}/storage/${media.file_path}` }}
-                      style={styles.multiMediaContent}
+                      source={{ uri: `${getApiBaseImage()}/storage/${visualMedia[0].file_path}` }}
+                      style={styles.singleMedia}
                       resizeMode="cover"
                     />
                   )}
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+              ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {visualMedia.map((media: any, index: number) => (
+                    <TouchableOpacity
+                      key={`${media.id}-${index}`}
+                      onPress={() => onMediaPress(index)}
+                      style={styles.multiMediaItem}
+                      disabled={isMobileWeb && media.type === 'video' && visualMedia.length === 1}
+                    >
+                      {media.type === 'video' ? (
+                        <PostVideoPlayer
+                          uri={getMediaUrl(media.file_path)}
+                          style={styles.multiMediaContent}
+                          contentFit="cover"
+                          shouldPlay={shouldPlay}
+                          isMuted={true}
+                          poster={getPosterUrl(media)}
+                        />
+                      ) : (
+                        <Image
+                          source={{ uri: `${getApiBaseImage()}/storage/${media.file_path}` }}
+                          style={styles.multiMediaContent}
+                          resizeMode="cover"
+                        />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
           )}
+
+          {/* Interactive Media (Links) */}
+          {detectedUrl && !extraMedia.some(m => m.file_path === detectedUrl) && (
+            <LinkPreviewCard url={detectedUrl} />
+          )}
+
+          {extraMedia.map((media: any, index: number) => {
+            if (media.type === 'link' || media.mime_type === 'text/url') {
+              return <LinkPreviewCard key={media.id || index} url={media.file_path} />;
+            }
+            // Add other extra media types (PDF, etc.) here if needed
+            return null;
+          })}
         </View>
       )}
     </>
   );
 
+  const reactions = currentPost.reactions || [];
+  const reactionsByEmoji = reactions.reduce((acc: any, r: any) => {
+    acc[r.reaction] = (acc[r.reaction] || 0) + 1;
+    return acc;
+  }, {});
+
+  const myReactions = reactions.filter((r: any) => Number(r.user_id) === Number(user?.id)).map((r: any) => r.reaction);
+
   return (
-    <Pressable 
+    <Pressable
       style={styles.container}
       onLongPress={service.handleMenuPress}
       delayLongPress={300}
@@ -318,13 +392,13 @@ export default function PostListItem({
 
       {/* Show Grouped Reposts if multiple people shared it */}
       {currentPost.reposts && currentPost.reposts.length > 1 && (
-        <CuratorCircle 
+        <CuratorCircle
           reposters={currentPost.reposts.map((r: any) => ({
             ...r.user,
             context_tag: r.context_tag,
             personal_note: r.personal_note,
             created_at: r.created_at
-          }))} 
+          }))}
           postId={currentPost.id}
           postContent={currentPost.caption}
           post={currentPost}
@@ -333,7 +407,7 @@ export default function PostListItem({
 
       {/* If it's a single repost - wrap in CuratorFrame */}
       {currentPost.reposts && currentPost.reposts.length === 1 ? (
-        <CuratorFrame 
+        <CuratorFrame
           reposter={{
             ...currentPost.reposts[0].user,
             context_tag: currentPost.reposts[0].context_tag,
@@ -346,12 +420,45 @@ export default function PostListItem({
       ) : (
         renderMainContent()
       )}
+      {service.mediaViewerVisible && (
+        <MediaViewer
+          visible={service.mediaViewerVisible}
+          mediaItems={visualMedia}
+          startIndex={service.mediaViewerIndex}
+          onClose={service.handleCloseViewer}
+          post={currentPost}
+          getApiBaseImage={getApiBaseImage}
+          onNavigateNext={() => service.handleNavigateNextPost(posts, post.id)}
+          onNavigatePrev={() => service.handleNavigatePrevPost(posts, post.id)}
+          onReact={(emoji) => service.handleReact(emoji, post.id)}
+          onDeleteReaction={() => service.deletePostReaction(post.id)}
+          onRepost={onRepostPress}
+          onShare={() => openModal('share', { post: currentPost })}
+          onBookmark={handleBookmark}
+          onCommentPress={() => {
+            // Keep viewer open while comments are shown
+            service.setShowComments(true);
+          }}
+          onDoubleTap={() => service.handleReact("❤️", post.id)}
+          currentReactingItem={service.currentReactingItem}
+          setCurrentReactingItem={service.setCurrentReactingItem}
+          setIsEmojiPickerOpen={service.setIsEmojiPickerOpen}
+          onCommentSubmit={async (content) => onCommentSubmit(post.id, content)}
+          getGroupedReactions={(p) => service.getGroupedReactions(p as any)}
+          isBookmarked={isBookmarked}
+          handleReactComment={(emoji) => {
+            if (service.currentReactingComment) {
+              service.handleReactComment(emoji, post.id, service.currentReactingComment.commentId!);
+            }
+          }}
+          deleteCommentReaction={(emoji) => {
+            if (service.currentReactingComment) {
+              service.deleteCommentReaction(service.currentReactingComment.commentId!, emoji);
+            }
+          }}
+        />
+      )}
 
-      <ContextTagSelector
-        visible={tagSelectorVisible}
-        onClose={() => setTagSelectorVisible(false)}
-        onConfirm={handleRepostWithContext}
-      />
 
       {/* Action buttons */}
       <PostActionButtons
@@ -388,7 +495,9 @@ export default function PostListItem({
 
           <View style={[
             styles.commentsSheet,
-            service.isFullScreen && styles.fullScreenSheet
+            { backgroundColor: colors.surface },
+            service.isFullScreen && styles.fullScreenSheet,
+            GlobalStyles.responsiveModal,
           ]}>
             <TouchableOpacity
               style={styles.sheetHandleContainer}
@@ -401,6 +510,7 @@ export default function PostListItem({
             <ScrollView
               style={styles.commentsList}
               contentContainerStyle={{ paddingBottom: 100 }}
+              indicatorStyle={activeScheme === 'dark' ? 'white' : 'black'}
             >
               {comments.length > 0 ? (
                 <RenderComments
@@ -427,7 +537,7 @@ export default function PostListItem({
                   }}
                 />
               ) : (
-                <Text style={styles.noCommentsText}>No comments yet</Text>
+                <Text style={[styles.noCommentsText, { color: colors.textSecondary }]}>No comments yet</Text>
               )}
             </ScrollView>
 
@@ -435,18 +545,20 @@ export default function PostListItem({
             <KeyboardAvoidingView
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-              style={styles.commentInputWrapper}
+              style={[styles.commentInputWrapper, { backgroundColor: colors.surface, borderTopColor: colors.border }]}
             >
-              <View style={styles.commentInputContainer}>
+              <View style={[styles.commentInputContainer, { backgroundColor: colors.surface }]}>
                 <TextInput
-                  style={styles.commentInput}
+                  style={[styles.commentInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]}
                   placeholder={
                     service.replyingTo ? "Replying to comment..." : "Write a comment..."
                   }
+                  placeholderTextColor={colors.textSecondary + '80'}
                   value={service.commentText}
                   onChangeText={service.setCommentText}
                   multiline
                   editable={!service.isSubmittingComment}
+                  keyboardAppearance={activeScheme}
                 />
                 <TouchableOpacity
                   style={[
@@ -459,11 +571,11 @@ export default function PostListItem({
                   {service.isSubmittingComment ? (
                     <ActivityIndicator size="small" color="white" />
                   ) : (
-                    <Ionicons 
-                      name="send" 
-                      size={20} 
-                      color="white" 
-                      style={styles.sendIcon} 
+                    <Ionicons
+                      name="send"
+                      size={20}
+                      color="white"
+                      style={styles.sendIcon}
                     />
                   )}
                 </TouchableOpacity>
@@ -473,72 +585,67 @@ export default function PostListItem({
         </Modal>
       )}
 
-      {/* Emoji Picker */}
-      <EmojiPicker
-        open={service.isEmojiPickerOpen && !service.currentReactingComment}
-        onClose={() => service.setIsEmojiPickerOpen(false)}
-        onEmojiSelected={(emoji) => {
-          if (service.currentReactingComment) {
-            service.handleReactComment(emoji.emoji, post.id, service.currentReactingComment.commentId!);
-          } else if (service.currentReactingItem) {
-            service.handleReact(emoji.emoji, post.id);
-          }
-        }}
-        emojiSize={28}
-      />
+      <Modal
+        transparent
+        visible={service.isEmojiPickerOpen && !service.currentReactingComment}
+        animationType="fade"
+        onRequestClose={() => service.setIsEmojiPickerOpen(false)}
+      >
+        <TouchableOpacity
+          style={styles.commentsBackdrop}
+          activeOpacity={1}
+          onPress={() => service.setIsEmojiPickerOpen(false)}
+        />
+        <View style={[GlobalStyles.responsiveModal, { flex: 1, justifyContent: 'flex-end', zIndex: 6000 }]}>
+          <EmojiPicker
+            open={service.isEmojiPickerOpen && !service.currentReactingComment}
+            onClose={() => service.setIsEmojiPickerOpen(false)}
+            onEmojiSelected={(emoji) => {
+              if (service.currentReactingComment) {
+                service.handleReactComment(emoji.emoji, post.id, service.currentReactingComment.commentId!);
+              } else if (service.currentReactingItem) {
+                service.handleReact(emoji.emoji, post.id);
+              }
+            }}
+            emojiSize={28}
+          />
+        </View>
+      </Modal>
 
-      <PostMenu
-        visible={service.menuVisible}
-        onClose={() => service.setMenuVisible(false)}
-        onDelete={() => service.handleDelete(post.id)}
-        onEdit={() => service.handleEdit(post)}
-        onReport={service.handleReport}
-        isOwner={isOwner}
-        anchorPosition={service.menuPosition}
-      />
+      {service.menuVisible && (
+        <PostMenu
+          visible={service.menuVisible}
+          onClose={() => service.setMenuVisible(false)}
+          onDelete={() => service.handleDelete(post.id)}
+          onEdit={() => service.handleEdit(post)}
+          onReport={service.handleReport}
+          isOwner={isOwner}
+          anchorPosition={service.menuPosition}
+        />
+      )}
 
-      <ReportPost
-        visible={service.reportVisible}
-        postId={post.id}
-        onClose={() => service.setReportVisible(false)}
-        onReportSubmitted={service.handleReportSubmitted}
-      />
+      {service.reportVisible && (
+        <ReportPost
+          visible={service.reportVisible}
+          postId={post.id}
+          onClose={() => service.setReportVisible(false)}
+          onReportSubmitted={service.handleReportSubmitted}
+        />
+      )}
 
-      {service.mediaViewerVisible && (
-        <MediaViewer
-          visible={service.mediaViewerVisible}
-          mediaItems={sortedMedia}
-          startIndex={service.mediaViewerIndex}
-          onClose={service.handleCloseViewer}
-          post={currentPost}
-          getApiBaseImage={getApiBaseImage}
-          onNavigateNext={() => service.handleNavigateNextPost(posts, post.id)}
-          onNavigatePrev={() => service.handleNavigatePrevPost(posts, post.id)}
-          onReact={(emoji) => service.handleReact(emoji, post.id)}
-          onDeleteReaction={() => service.deletePostReaction(post.id)}
-          onRepost={onRepostPress}
-          onShare={() => openModal('share', { post: currentPost })}
-          onBookmark={handleBookmark}
-          onCommentPress={() => {
-            service.handleCloseViewer();
-            service.setShowComments(true);
-          }}
-          onDoubleTap={() => service.handleReact("❤️", post.id)}
-          currentReactingItem={service.currentReactingItem}
-          setCurrentReactingItem={service.setCurrentReactingItem}
-          setIsEmojiPickerOpen={service.setIsEmojiPickerOpen}
-          onCommentSubmit={async (content) => onCommentSubmit(post.id, content)}
-          getGroupedReactions={(p) => service.getGroupedReactions(p as any)}
-          handleReactComment={(emoji) => {
-            if (service.currentReactingComment) {
-              service.handleReactComment(emoji, post.id, service.currentReactingComment.commentId!);
-            }
-          }}
-          deleteCommentReaction={(emoji) => {
-            if (service.currentReactingComment) {
-              service.deleteCommentReaction(service.currentReactingComment.commentId!, emoji);
-            }
-          }}
+      {tagSelectorVisible && (
+        <ContextTagSelector
+          visible={tagSelectorVisible}
+          onClose={() => setTagSelectorVisible(false)}
+          onConfirm={handleRepostWithContext}
+        />
+      )}
+
+      {bookmarkGalleryVisible && (
+        <BookmarkGallery
+          visible={bookmarkGalleryVisible}
+          onClose={() => setBookmarkGalleryVisible(false)}
+          initialBookmark={newBookmark as any}
         />
       )}
 
@@ -546,9 +653,8 @@ export default function PostListItem({
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
   container: {
-    backgroundColor: 'white',
   },
   head: {
     flexDirection: 'row',
@@ -586,7 +692,7 @@ const styles = StyleSheet.create({
   username: {
     fontWeight: 'bold',
     fontSize: 14,
-    alignSelf: 'flex-start'
+    alignSelf: 'flex-start',
   },
   nameCaption: {
     width: '84%'
@@ -600,7 +706,6 @@ const styles = StyleSheet.create({
   locationPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 132, 255, 0.05)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 10,
@@ -609,14 +714,12 @@ const styles = StyleSheet.create({
   },
   locationName: {
     fontSize: 11,
-    color: '#0084ff',
     fontWeight: '600',
   },
   caption: {
     padding: 0,
     margin: 0,
     fontSize: 14,
-    color: "#333",
     minWidth: "90%",
     flexShrink: 1,
     flexWrap: "wrap",
@@ -630,7 +733,6 @@ const styles = StyleSheet.create({
   },
   mediaContainer: {
     marginTop: 8,
-    overflow: 'hidden',
   },
   singleMedia: {
     aspectRatio: 16 / 9,
@@ -675,7 +777,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderRadius: 15,
-    borderColor: '#e8eaed',
     paddingHorizontal: 6,
     paddingVertical: 4,
     backgroundColor: 'transparent',
@@ -690,7 +791,6 @@ const styles = StyleSheet.create({
   reactionCount: {
     fontSize: 12,
     marginLeft: 4,
-    color: '#65676B',
   },
   reactionCountMine: {
     color: '#10b981',
@@ -703,7 +803,6 @@ const styles = StyleSheet.create({
   },
   addReactionText: {
     fontSize: 12,
-    color: '#65676B',
     fontStyle: 'italic',
   },
   actionBar: {
@@ -721,7 +820,6 @@ const styles = StyleSheet.create({
   actionCount: {
     marginLeft: 5,
     fontSize: 12,
-    color: '#65676B',
   },
   commentsBackdrop: {
     flex: 1,
@@ -733,7 +831,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     bottom: 0,
     height: '66%',
-    backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 10,
@@ -761,7 +858,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: '#ccc',
   },
   commentsList: {
   },
@@ -773,23 +869,19 @@ const styles = StyleSheet.create({
 
   commentInputWrapper: {
     width: '100%',
-    backgroundColor: 'white',
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
   },
   commentInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 15,
-    backgroundColor: 'white',
     width: '100%',
   },
   commentInput: {
     flex: 1,
     alignSelf: "center",
     borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: 20,
     padding: 6,
     paddingHorizontal: 10,
@@ -832,7 +924,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 10,
     paddingBottom: 0,
-    backgroundColor: '#f9f9f9',
   },
   repostText: {
     marginLeft: 5,

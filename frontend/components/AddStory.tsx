@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlobalStyles } from '@/styles/GlobalStyles';
+import { createShadow, createTextShadow } from '@/utils/styles';
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -55,6 +56,7 @@ import * as ExpoFileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
 import VideoTrimmer from './Shared/VideoTrimmer';
 import { MediaCompressor } from '@/utils/mediaCompressor';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 const { width, height } = Dimensions.get('window');
 const RECORDING_LIMIT_MS = 10000;
@@ -90,6 +92,7 @@ interface AddStoryProps {
 }
 
 const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated }) => {
+  const { colors, activeScheme } = useAppTheme();
   const { showToast } = useToastStore();
   const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
@@ -909,8 +912,8 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
               )}
 
 
-              <SafeAreaView style={styles.previewOverlay} pointerEvents="box-none">
-                <View style={styles.topControls}>
+              <SafeAreaView style={[styles.previewOverlay, { pointerEvents: Platform.OS === 'web' ? 'none' : 'box-none' }]}>
+                <View style={[styles.topControls, { pointerEvents: 'auto' }]}>
                   <TouchableOpacity onPress={() => setMedia(null)} style={styles.iconButton}>
                     <Ionicons name="chevron-back" size={30} color="white" />
                   </TouchableOpacity>
@@ -948,7 +951,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                   </MotiView>
                 )}
 
-                <View style={styles.previewBottom}>
+                <View style={[styles.previewBottom, { pointerEvents: 'auto' }]}>
                   <TouchableOpacity style={styles.saveDraft} onPress={handleSave}>
                     <Ionicons name="download-outline" size={24} color="white" />
                     <Text style={styles.previewBottomText}>Save</Text>
@@ -972,7 +975,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
               </SafeAreaView>
 
               {/* RENDER STICKERS - Move to top of hierarchy for best touch interception */}
-              <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+              <View style={[StyleSheet.absoluteFill, { pointerEvents: Platform.OS === 'web' ? 'none' : 'box-none' }]}>
                 <AnimatePresence>
                   {stickers.filter(s => (s.type as string) !== 'background').map((sticker) => (
                     <MotiView
@@ -983,9 +986,9 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                       transition={{ type: 'spring', damping: 15 }}
                       style={[
                         { position: 'absolute' },
-                        sticker.type === 'text' && { left: 0, right: 0 }
+                        sticker.type === 'text' && { left: 0, right: 0 },
+                        { pointerEvents: Platform.OS === 'web' ? 'auto' : 'box-none' }
                       ]}
-                      pointerEvents="box-none"
                     >
                       <DraggableSticker
                         sticker={sticker}
@@ -1169,14 +1172,14 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               style={styles.feelingInputContainer}
             >
-              <BlurView intensity={90} tint="dark" style={styles.feelingInputContent}>
-                <Text style={feelingText ? styles.feelingInputTitle : [styles.feelingInputTitle, { opacity: 0 }]}>How are you feeling?</Text>
-                <View style={styles.feelingInputRow}>
+              <BlurView intensity={90} tint={activeScheme as any} style={[styles.feelingInputContent, { backgroundColor: colors.surface }]}>
+                <Text style={feelingText ? [styles.feelingInputTitle, { color: colors.text }] : [styles.feelingInputTitle, { opacity: 0 }]}>How are you feeling?</Text>
+                <View style={[styles.feelingInputRow, { backgroundColor: colors.muted }]}>
                   <Text style={styles.feelingEmojiPreview}>{tempEmoji}</Text>
                   <TextInput
-                    style={styles.feelingTextInput}
+                    style={[styles.feelingTextInput, { color: colors.text }]}
                     placeholder="e.g. happy, thinking, eating..."
-                    placeholderTextColor="#666"
+                    placeholderTextColor={colors.textSecondary}
                     value={feelingText}
                     onChangeText={setFeelingText}
                     autoFocus
@@ -1185,15 +1188,15 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                   />
                 </View>
                 <View style={styles.feelingInputButtons}>
-                  <TouchableOpacity
-                    style={styles.feelingCancelButton}
-                    onPress={() => {
-                      setShowFeelingInput(false);
-                      setFeelingText('');
-                    }}
-                  >
-                    <Text style={styles.feelingCancelText}>Cancel</Text>
-                  </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.feelingCancelButton, { backgroundColor: colors.muted }]}
+                      onPress={() => {
+                        setShowFeelingInput(false);
+                        setFeelingText('');
+                      }}
+                    >
+                      <Text style={[styles.feelingCancelText, { color: colors.text }]}>Cancel</Text>
+                    </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.feelingDoneButton}
                     onPress={handleFinishFeeling}
@@ -1341,9 +1344,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 12,
     fontWeight: 'bold',
-    textShadowColor: 'black',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    ...createTextShadow({ color: 'black', width: 0, height: 1, radius: 2 }),
   },
   modeSelector: {
     flexDirection: 'row',
@@ -1426,9 +1427,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 5,
+    ...createTextShadow({ color: 'rgba(0,0,0,0.5)', width: 1, height: 1, radius: 5 }),
   },
   stickerControls: {
     position: 'absolute',
@@ -1596,11 +1595,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 8,
+    ...createShadow({ color: '#000', width: 0, height: 4, opacity: 0.4, radius: 8, elevation: 8 }),
   },
   sliderKnobInner: {
     width: 10,
@@ -1761,7 +1756,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   feelingInputTitle: {
-    color: 'white',
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 25,
@@ -1769,7 +1763,6 @@ const styles = StyleSheet.create({
   feelingInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
     borderRadius: 20,
     paddingHorizontal: 20,
     paddingVertical: 15,
@@ -1782,7 +1775,6 @@ const styles = StyleSheet.create({
   },
   feelingTextInput: {
     flex: 1,
-    color: 'white',
     fontSize: 24,
     fontWeight: 'bold',
   },
@@ -1795,11 +1787,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 15,
     borderRadius: 15,
-    backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center',
   },
   feelingCancelText: {
-    color: 'white',
     fontWeight: '600',
   },
   feelingDoneButton: {

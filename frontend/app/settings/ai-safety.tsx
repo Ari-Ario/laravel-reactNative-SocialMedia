@@ -19,13 +19,18 @@ import { getMyCompliance } from '@/services/ModerationService';
 import { fetchFullSettings, updatePreferences } from '@/services/SettingService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import Colors from '@/constants/Colors';
+import { BackButton } from '@/components/ui/IconButton';
 import { createShadow } from '@/utils/styles';
 import * as Haptics from 'expo-haptics';
 import GlobalStyles from '@/styles/GlobalStyles';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 const isWeb = Platform.OS === 'web';
 
 export default function AiSafetyScreen() {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
     const insets = useSafeAreaInsets();
     const [compliance, setCompliance] = useState<any>(null);
     const [preferences, setPreferences] = useState<any>(null);
@@ -93,9 +98,19 @@ export default function AiSafetyScreen() {
             <Switch
                 value={!!value}
                 onValueChange={onToggle}
-                trackColor={{ false: '#e5e5e5', true: color + '80' }}
+                trackColor={{ false: colors.border, true: color + '80' }}
                 thumbColor={value ? color : '#fff'}
             />
+        </View>
+    );
+
+    const StatutoryItem = ({ label, value, icon, color }: any) => (
+        <View style={styles.statItem}>
+            <View style={[styles.statIconContainer, { backgroundColor: color + '15' }]}>
+                <Ionicons name={icon} size={20} color={color} />
+            </View>
+            <Text style={styles.statValue}>{value}</Text>
+            <Text style={styles.statLabel}>{label}</Text>
         </View>
     );
 
@@ -104,12 +119,10 @@ export default function AiSafetyScreen() {
             <StatusBar barStyle="dark-content" />
 
             <LinearGradient
-                colors={['#fff', '#f8f9fa']}
+                colors={[colors.surface, colors.background]}
                 style={[styles.header, { paddingTop: insets.top + 10 }]}
             >
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color="#000" />
-                </TouchableOpacity>
+                <BackButton onPress={() => router.back()} />
                 <View style={styles.headerCenter}>
                     <Text style={styles.headerTitle}>AI Safety & Trust</Text>
                     <View style={styles.headerUnderline} />
@@ -128,7 +141,7 @@ export default function AiSafetyScreen() {
                 <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                     <MotiView from={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={styles.scoreCircleContainer}>
                         <LinearGradient
-                            colors={[getStatusColor(compliance?.trust_score ?? 1) + '20', '#fff']}
+                            colors={[getStatusColor(compliance?.trust_score ?? 1) + '20', colors.background]}
                             style={styles.scoreCircleGradient}
                         >
                             <View style={[styles.scoreCircle, { borderColor: getStatusColor(compliance?.trust_score ?? 1) }]}>
@@ -142,9 +155,9 @@ export default function AiSafetyScreen() {
                     </MotiView>
 
                     <View style={styles.statsGrid}>
-                        <StatItem label="Violations" value={compliance?.violation_count ?? 0} icon="alert-circle" color="#F44336" />
-                        <StatItem label="Integrity" value={((compliance?.reporting_integrity ?? 1) * 100).toFixed(0) + '%'} icon="shield-checkmark" color="#4CAF50" />
-                        <StatItem label="False Reports" value={compliance?.false_report_count ?? 0} icon="flag" color="#FF9800" />
+                        <StatutoryItem label="Violations" value={compliance?.violation_count ?? 0} icon="alert-circle" color="#F44336" />
+                        <StatutoryItem label="Integrity" value={((compliance?.reporting_integrity ?? 1) * 100).toFixed(0) + '%'} icon="shield-checkmark" color="#4CAF50" />
+                        <StatutoryItem label="False Reports" value={compliance?.false_report_count ?? 0} icon="flag" color="#FF9800" />
                     </View>
 
                     <Text style={styles.sectionTitle}>Safety Controls</Text>
@@ -193,34 +206,26 @@ export default function AiSafetyScreen() {
     );
 }
 
-const StatItem = ({ label, value, icon, color }: any) => (
-    <View style={styles.statItem}>
-        <View style={[styles.statIconContainer, { backgroundColor: color + '15' }]}>
-            <Ionicons name={icon} size={20} color={color} />
-        </View>
-        <Text style={styles.statValue}>{value}</Text>
-        <Text style={styles.statLabel}>{label}</Text>
-    </View>
-);
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF' },
+function getStyles(colors: any, activeScheme: string) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 20,
         paddingBottom: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
+        borderBottomWidth:1,
+        borderBottomColor: colors.border,
     },
     headerCenter: { alignItems: 'center' },
-    headerTitle: { fontSize: 18, fontWeight: '800', color: '#1a1a1a' },
-    headerUnderline: { width: 30, height: 3, backgroundColor: '#0084ff', borderRadius: 2, marginTop: 4 },
-    backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F5F5F7', justifyContent: 'center', alignItems: 'center' },
-    refreshButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F5F5F7', justifyContent: 'center', alignItems: 'center' },
+    headerTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
+    headerUnderline: { width: 30, height: 3, backgroundColor: colors.tint, borderRadius: 2, marginTop: 4 },
+    backButton: { padding: 4 },
+    refreshButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface, justifyContent: 'center', alignItems: 'center' },
     loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    loaderText: { marginTop: 12, color: '#666', fontSize: 14 },
+    loaderText: { marginTop: 12, color: colors.textSecondary, fontSize: 14 },
     scrollContent: { paddingHorizontal: 20, paddingBottom: 50 },
     scoreCircleContainer: { alignItems: 'center', marginVertical: 20 },
     scoreCircleGradient: { padding: 30, borderRadius: 100, alignItems: 'center' },
@@ -231,42 +236,43 @@ const styles = StyleSheet.create({
         borderWidth: 6, 
         justifyContent: 'center', 
         alignItems: 'center', 
-        backgroundColor: '#fff',
+        backgroundColor: colors.surface,
         ...createShadow({ opacity: 0.1, radius: 10 })
     },
-    scorePercent: { fontSize: 36, fontWeight: '900', color: '#1a1a1a' },
-    scoreLabel: { fontSize: 11, color: 'rgba(0,0,0,0.4)', fontWeight: '700', textTransform: 'uppercase' },
+    scorePercent: { fontSize: 36, fontWeight: '900', color: colors.text },
+    scoreLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: '700', textTransform: 'uppercase' },
     statusBadge: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, marginTop: -15, ...createShadow({ opacity: 0.2, radius: 5 }) },
     statusText: { color: '#fff', fontSize: 12, fontWeight: '900' },
     statsGrid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25, gap: 10 },
-    statItem: { flex: 1, alignItems: 'center', backgroundColor: '#F8F9FA', padding: 16, borderRadius: 20, borderWidth: 1, borderColor: '#e5e5e5' },
+    statItem: { flex: 1, alignItems: 'center', backgroundColor: colors.surface, padding: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.border },
     statIconContainer: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
-    statValue: { fontSize: 18, fontWeight: '800', color: '#1a1a1a' },
-    statLabel: { fontSize: 10, color: '#666', fontWeight: '700', textTransform: 'uppercase', marginTop: 2 },
-    sectionTitle: { fontSize: 13, fontWeight: '800', color: '#0084ff', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 15, marginLeft: 5 },
+    statValue: { fontSize: 18, fontWeight: '800', color: colors.text },
+    statLabel: { fontSize: 10, color: colors.textSecondary, fontWeight: '700', textTransform: 'uppercase', marginTop: 2 },
+    sectionTitle: { fontSize: 13, fontWeight: '800', color: colors.tint, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 15, marginLeft: 5 },
     toggleCard: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        backgroundColor: '#fff',
+        backgroundColor: colors.surface,
         padding: 18,
         borderRadius: 20,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: '#e5e5e5',
+        borderColor: colors.border,
         ...createShadow({ opacity: 0.05, radius: 8 }),
     },
     toggleInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 },
     iconContainer: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
     textContainer: { flex: 1 },
-    toggleLabel: { fontSize: 15, fontWeight: '700', color: '#1a1a1a' },
-    toggleDescription: { fontSize: 11, color: '#666', marginTop: 2, lineHeight: 14 },
-    infoBox: { backgroundColor: '#F8F9FA', padding: 20, borderRadius: 24, borderWidth: 1, borderColor: '#e5e5e5', marginTop: 10 },
+    toggleLabel: { fontSize: 15, fontWeight: '700', color: colors.text },
+    toggleDescription: { fontSize: 11, color: colors.textSecondary, marginTop: 2, lineHeight: 14 },
+    infoBox: { backgroundColor: colors.surface, padding: 20, borderRadius: 24, borderWidth: 1, borderColor: colors.border, marginTop: 10 },
     infoTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
-    infoTitle: { color: '#1a1a1a', fontSize: 16, fontWeight: '800' },
-    infoSubtitle: { color: '#0084ff', fontSize: 13, fontWeight: '700', marginBottom: 12 },
-    infoText: { color: '#666', fontSize: 13, lineHeight: 20, marginBottom: 15 },
-    divider: { height: 1, backgroundColor: '#e5e5e5', marginVertical: 15 },
+    infoTitle: { color: colors.text, fontSize: 16, fontWeight: '800' },
+    infoSubtitle: { color: colors.tint, fontSize: 13, fontWeight: '700', marginBottom: 12 },
+    infoText: { color: colors.textSecondary, fontSize: 13, lineHeight: 20, marginBottom: 15 },
+    divider: { height: 1, backgroundColor: colors.border, marginVertical: 15 },
     tipRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-    tipText: { color: '#1a1a1a', fontSize: 13, marginLeft: 10, fontWeight: '500' },
+    tipText: { color: colors.text, fontSize: 13, marginLeft: 10, fontWeight: '500' },
 });
+}

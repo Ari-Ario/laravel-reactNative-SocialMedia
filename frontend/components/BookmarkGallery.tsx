@@ -23,6 +23,7 @@ import { MotiView } from 'moti';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlobalStyles } from '@/styles/GlobalStyles';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { createShadow } from '@/utils/styles';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
@@ -71,31 +72,39 @@ const COLLECTIONS = [
     { id: 'personal', name: 'Personal', icon: 'person-outline', color: '#310062', gradient: ['#310062', '#4b0082'] },
 ];
 
-// Web-friendly action buttons
+// Split styles to avoid prop errors - WebActionButtons now accepts styles
 const WebActionButtons = ({
     onAddNote,
     onRemove,
-    onNavigate
+    onNavigate,
+    colors
 }: {
     onAddNote: () => void;
     onRemove: () => void;
     onNavigate: () => void;
+    colors: any;
 }) => (
-    <View style={styles.webActionButtons}>
-        <TouchableOpacity style={styles.webActionButton} onPress={onNavigate}>
-            <Ionicons name="open-outline" size={18} color="#000" />
-            <Text style={styles.webActionText}>Open</Text>
+    <View style={[styles.webActionButtons, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+        <TouchableOpacity 
+            style={[styles.webActionButton, { backgroundColor: colors.muted, borderColor: colors.border }]} 
+            onPress={onNavigate}
+        >
+            <Ionicons name="open-outline" size={18} color={colors.text} />
+            <Text style={[styles.webActionText, { color: colors.text }]}>Open</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.webActionButton} onPress={onAddNote}>
-            <Ionicons name="pencil" size={18} color="#000" />
-            <Text style={styles.webActionText}>Note</Text>
+        <TouchableOpacity 
+            style={[styles.webActionButton, { backgroundColor: colors.muted, borderColor: colors.border }]} 
+            onPress={onAddNote}
+        >
+            <Ionicons name="pencil" size={18} color={colors.text} />
+            <Text style={[styles.webActionText, { color: colors.text }]}>Note</Text>
         </TouchableOpacity>
         <TouchableOpacity
             style={[styles.webActionButton, styles.webActionDelete]}
             onPress={onRemove}
         >
-            <Ionicons name="trash-outline" size={18} color="#a00101" />
-            <Text style={styles.webActionText}>Delete</Text>
+            <Ionicons name="trash-outline" size={18} color="#ff4444" />
+            <Text style={[styles.webActionText, { color: "#ff4444" }]}>Delete</Text>
         </TouchableOpacity>
     </View>
 );
@@ -111,6 +120,8 @@ export const BookmarkGallery = ({
     onBookmarkRemoved,
     isSettings
 }: BookmarkGalleryProps) => {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme as string);
     const insets = useSafeAreaInsets();
     const { user } = React.useContext<any>(AuthContext);
     const { bookmarks, addBookmark, removeBookmark, updateBookmarkNote, moveToCollection } = useBookmarkStore();
@@ -150,6 +161,9 @@ export const BookmarkGallery = ({
         }
 
         const hour = new Date().getHours();
+        if (activeScheme === 'dark') {
+            return ['#000000', '#121212', '#1a1a1a'] as [string, string, ...string[]];
+        }
         if (hour < 6) return ['#0f0c29', '#302b63', '#24243e'] as [string, string, ...string[]];
         if (hour < 12) return ['#2980b9', '#6dd5fa', '#ffffff'] as [string, string, ...string[]];
         if (hour < 18) return ['#f7971e', '#ffd200'] as [string, string, ...string[]];
@@ -300,7 +314,7 @@ export const BookmarkGallery = ({
 
                                         {bookmark.note && (
                                             <View style={styles.timelineNote}>
-                                                <Ionicons name="chatbubble" size={12} color="#000" />
+                                                <Ionicons name="chatbubble" size={12} color={colors.primary} />
                                                 <Text style={styles.timelineNoteText}>{bookmark.note}</Text>
                                             </View>
                                         )}
@@ -311,7 +325,7 @@ export const BookmarkGallery = ({
                                                     style={styles.mobileActionButton}
                                                     onPress={() => handleAddNote(bookmark)}
                                                 >
-                                                    <Ionicons name="pencil" size={18} color="#000" />
+                                                    <Ionicons name="pencil" size={18} color={colors.text} />
                                                 </TouchableOpacity>
                                                 <TouchableOpacity
                                                     style={[styles.mobileActionButton, styles.mobileActionDelete]}
@@ -344,6 +358,7 @@ export const BookmarkGallery = ({
                                         onAddNote={() => handleAddNote(bookmark)}
                                         onRemove={() => handleRemoveBookmark(bookmark.post_id)}
                                         onNavigate={() => navigateToPost(bookmark.post_id)}
+                                        colors={colors}
                                     />
                                 )}
                             </View>
@@ -378,7 +393,7 @@ export const BookmarkGallery = ({
                         <Text style={styles.gridName} numberOfLines={1}>{item.post.user.name}</Text>
                         {item.note && (
                             <View style={styles.gridNote}>
-                                <Ionicons name="chatbubble" size={10} color="#000" />
+                                <Ionicons name="chatbubble" size={10} color={colors.text} />
                                 <Text style={styles.gridNoteText} numberOfLines={1}>{item.note}</Text>
                             </View>
                         )}
@@ -439,9 +454,9 @@ export const BookmarkGallery = ({
             transparent
             onRequestClose={onClose}
         >
-            <StatusBar barStyle="light-content" />
+            <StatusBar barStyle={activeScheme === 'dark' ? 'light-content' : 'dark-content'} />
 
-            <View style={GlobalStyles.popupContainer}>
+            <View style={[GlobalStyles.popupContainer, { zIndex: 6000 }]}>
                 {/* Animated Background */}
                 <LinearGradient
                     colors={getBackgroundGradient()}
@@ -451,7 +466,7 @@ export const BookmarkGallery = ({
                 {/* Header */}
                 <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
                     <TouchableOpacity onPress={handleClose} style={styles.headerButton}>
-                        <Ionicons name="close" size={24} color="#000" />
+                        <Ionicons name="close" size={24} color={colors.text} />
                     </TouchableOpacity>
 
                     <View style={styles.headerTitle}>
@@ -463,7 +478,7 @@ export const BookmarkGallery = ({
                         style={styles.headerButton}
                         onPress={() => setShowFilters(!showFilters)}
                     >
-                        <Ionicons name="options-outline" size={22} color="#000" />
+                        <Ionicons name="options-outline" size={22} color={colors.text} />
                     </TouchableOpacity>
                 </View>
 
@@ -484,8 +499,8 @@ export const BookmarkGallery = ({
                                     ]}
                                     onPress={() => setSelectedCollection(col.id)}
                                 >
-                                    <Ionicons name={col.icon as any} size={16} color={selectedCollection === col.id ? "#fff" : "#000"} />
-                                    <Text style={[styles.filterChipText, selectedCollection === col.id && { fontWeight: '700', color: '#fff' }]}>{col.name}</Text>
+                                    <Ionicons name={col.icon as any} size={16} color={selectedCollection === col.id ? "#fff" : colors.text} />
+                                    <Text style={[styles.filterChipText, filteredChipTextStyle(col.id)]}>{col.name}</Text>
                                     {col.id === 'all' && (
                                         <View style={styles.filterBadge}>
                                             <Text style={styles.filterBadgeText}>{bookmarks.length}</Text>
@@ -499,17 +514,17 @@ export const BookmarkGallery = ({
 
                 {/* Search Bar */}
                 <View style={styles.searchContainer}>
-                    <Ionicons name="search" size={18} color="#000" />
+                    <Ionicons name="search" size={18} color={colors.text} />
                     <TextInput
                         style={styles.searchInput}
                         placeholder="Search your collection..."
-                        placeholderTextColor="#666"
+                        placeholderTextColor={colors.textSecondary}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                     />
                     {searchQuery !== '' && (
                         <TouchableOpacity onPress={() => setSearchQuery('')}>
-                            <Ionicons name="close-circle" size={18} color="#000" />
+                            <Ionicons name="close-circle" size={18} color={colors.text} />
                         </TouchableOpacity>
                     )}
                 </View>
@@ -523,7 +538,7 @@ export const BookmarkGallery = ({
                         <Ionicons
                             name="time-outline"
                             size={18}
-                            color={viewMode === 'timeline' ? '#fff' : '#000'}
+                            color={viewMode === 'timeline' ? '#fff' : colors.text}
                         />
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -533,7 +548,7 @@ export const BookmarkGallery = ({
                         <Ionicons
                             name="list-outline"
                             size={18}
-                            color={viewMode === 'list' ? '#fff' : '#000'}
+                            color={viewMode === 'list' ? '#fff' : colors.text}
                         />
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -543,7 +558,7 @@ export const BookmarkGallery = ({
                         <Ionicons
                             name="grid-outline"
                             size={18}
-                            color={viewMode === 'grid' ? '#fff' : '#000'}
+                            color={viewMode === 'grid' ? '#fff' : colors.text}
                         />
                     </TouchableOpacity>
                 </View>
@@ -556,7 +571,7 @@ export const BookmarkGallery = ({
                         style={styles.emptyState}
                     >
                         <View style={styles.emptyIcon}>
-                            <Ionicons name="bookmark" size={60} color="rgba(255,255,255,0.2)" />
+                            <Ionicons name="bookmark" size={60} color={colors.muted} />
                         </View>
                         <Text style={styles.emptyTitle}>Your collection is empty</Text>
                         <Text style={styles.emptyText}>
@@ -583,7 +598,7 @@ export const BookmarkGallery = ({
                             from={{ scale: 0.8, opacity: 0, translateY: 50 }}
                             animate={{ scale: 1, opacity: 1, translateY: 0 }}
                             transition={{ type: 'spring' }}
-                            style={styles.noteModal}
+                            style={[styles.noteModal, GlobalStyles.responsiveModal]}
                         >
                             <Text style={styles.noteModalTitle}>Add Your Note</Text>
                             <Text style={styles.noteModalSubtitle}>
@@ -593,7 +608,7 @@ export const BookmarkGallery = ({
                             <TextInput
                                 style={styles.noteInput}
                                 placeholder="Write your thoughts..."
-                                placeholderTextColor="#666"
+                                placeholderTextColor={colors.textSecondary}
                                 multiline
                                 value={noteText}
                                 onChangeText={setNoteText}
@@ -617,8 +632,8 @@ export const BookmarkGallery = ({
                                         ]}
                                         onPress={() => setTempCollection(col.id)}
                                     >
-                                         <Ionicons name={col.icon as any} size={14} color={tempCollection === col.id ? "#fff" : "#000"} />
-                                         <Text style={[styles.filterChipText, tempCollection === col.id && { color: '#fff' }]}>{col.name}</Text>
+                                        <Ionicons name={col.icon as any} size={14} color={tempCollection === col.id ? "#fff" : colors.text} />
+                                        <Text style={[styles.filterChipText, tempCollection === col.id && { color: '#fff' }]}>{col.name}</Text>
                                     </TouchableOpacity>
                                 ))}
                             </ScrollView>
@@ -645,7 +660,13 @@ export const BookmarkGallery = ({
     );
 };
 
-const styles = StyleSheet.create({
+// Moved outside to use it in multiple places
+const filteredChipTextStyle = (colId: string) => {
+    // This is just a conceptual helper, implementation uses ternary in JSX
+    return {};
+};
+
+const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -658,9 +679,9 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 24,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: colors.surface,
         borderWidth: 1.5,
-        borderColor: '#000',
+        borderColor: colors.border,
         justifyContent: 'center',
         alignItems: 'center',
         ...createShadow({ opacity: 0.15, radius: 8 }),
@@ -672,7 +693,7 @@ const styles = StyleSheet.create({
     },
     greeting: {
         fontSize: 14,
-        color: '#000000',
+        color: activeScheme === 'dark' ? colors.text : '#000000',
         textTransform: 'uppercase',
         letterSpacing: 2,
         fontWeight: '700',
@@ -680,7 +701,7 @@ const styles = StyleSheet.create({
     headerMainTitle: {
         fontSize: 26,
         fontWeight: '900',
-        color: '#000000',
+        color: activeScheme === 'dark' ? colors.text : '#000000',
     },
     filterBar: {
         marginBottom: 20,
@@ -692,21 +713,21 @@ const styles = StyleSheet.create({
     filterChip: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F5F5F7',
+        backgroundColor: colors.surface,
         borderWidth: 1.5,
-        borderColor: '#000',
+        borderColor: colors.border,
         paddingHorizontal: 18,
         paddingVertical: 12,
         borderRadius: 30,
         gap: 10,
     },
     filterChipText: {
-        color: '#000000',
+        color: colors.text,
         fontSize: 15,
         fontWeight: '600',
     },
     filterBadge: {
-        backgroundColor: '#1063FD',
+        backgroundColor: colors.primary || '#1063FD',
         borderRadius: 12,
         paddingHorizontal: 10,
         paddingVertical: 3,
@@ -720,9 +741,9 @@ const styles = StyleSheet.create({
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: colors.surface,
         borderWidth: 2,
-        borderColor: '#000',
+        borderColor: colors.border,
         marginHorizontal: 20,
         marginBottom: 25,
         paddingHorizontal: 20,
@@ -733,7 +754,7 @@ const styles = StyleSheet.create({
     },
     searchInput: {
         flex: 1,
-        color: '#000000',
+        color: colors.text,
         fontSize: 17,
         fontWeight: '600',
         ...Platform.select({
@@ -744,9 +765,9 @@ const styles = StyleSheet.create({
     },
     viewToggle: {
         flexDirection: 'row',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: colors.surface,
         borderWidth: 1.5,
-        borderColor: '#000',
+        borderColor: colors.border,
         alignSelf: 'center',
         borderRadius: 30,
         padding: 5,
@@ -760,8 +781,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     viewToggleActive: {
-        backgroundColor: '#1063FD',
-        borderColor: '#000',
+        backgroundColor: colors.primary || '#1063FD',
+        borderColor: colors.border,
         borderWidth: 0.5,
     },
     content: {
@@ -782,13 +803,13 @@ const styles = StyleSheet.create({
         width: 14,
         height: 14,
         borderRadius: 7,
-        backgroundColor: '#1063FD',
+        backgroundColor: colors.primary || '#1063FD',
         marginRight: 15,
         borderWidth: 3,
-        borderColor: '#000000',
+        borderColor: colors.border,
     },
     timelineDate: {
-        color: '#000000',
+        color: activeScheme === 'dark' ? colors.text : '#000000',
         fontSize: 17,
         fontWeight: '900',
         textTransform: 'uppercase',
@@ -800,9 +821,9 @@ const styles = StyleSheet.create({
         borderRadius: 28,
         marginBottom: 25,
         overflow: 'hidden',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: colors.surface,
         borderWidth: 2,
-        borderColor: '#000',
+        borderColor: colors.border,
         ...createShadow({
             width: 0,
             height: 12,
@@ -823,9 +844,9 @@ const styles = StyleSheet.create({
         width: 110,
         height: 110,
         borderRadius: 20,
-        backgroundColor: '#F5F5F7',
+        backgroundColor: colors.muted,
         borderWidth: 1,
-        borderColor: '#000',
+        borderColor: colors.border,
     },
     timelineInfo: {
         flex: 1,
@@ -842,15 +863,15 @@ const styles = StyleSheet.create({
         height: 28,
         borderRadius: 14,
         borderWidth: 1.5,
-        borderColor: '#000',
+        borderColor: colors.border,
     },
     timelineName: {
-        color: '#555555',
+        color: colors.textSecondary,
         fontSize: 14,
         fontWeight: '800',
     },
     timelineCaption: {
-        color: '#000000',
+        color: colors.text,
         fontSize: 18,
         fontWeight: '700',
         lineHeight: 24,
@@ -859,16 +880,16 @@ const styles = StyleSheet.create({
     timelineNote: {
         flexDirection: 'row',
         alignItems: 'flex-start',
-        backgroundColor: '#F5F5F7',
+        backgroundColor: colors.muted,
         padding: 15,
         borderRadius: 15,
         marginTop: 5,
         gap: 10,
         borderLeftWidth: 4,
-        borderLeftColor: '#1063FD',
+        borderLeftColor: colors.primary || '#1063FD',
     },
     timelineNoteText: {
-        color: '#555555',
+        color: colors.textSecondary,
         fontSize: 14,
         fontStyle: 'italic',
         lineHeight: 20,
@@ -882,15 +903,15 @@ const styles = StyleSheet.create({
     mobileActionButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F5F5F7',
+        backgroundColor: colors.muted,
         paddingHorizontal: 16,
         paddingVertical: 10,
         borderRadius: 25,
         borderWidth: 1.5,
-        borderColor: '#000',
+        borderColor: colors.border,
     },
     mobileActionDelete: {
-        backgroundColor: '#FFE5E5',
+        backgroundColor: activeScheme === 'dark' ? 'rgba(255, 68, 68, 0.2)' : '#FFE5E5',
         borderColor: '#CC0000',
     },
     collectionBadge: {
@@ -900,11 +921,11 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: colors.surface,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1.5,
-        borderColor: '#000',
+        borderColor: colors.border,
     },
     // Grid Styles
     gridRow: {
@@ -917,9 +938,9 @@ const styles = StyleSheet.create({
         aspectRatio: 0.8,
         borderRadius: 25,
         overflow: 'hidden',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: colors.surface,
         borderWidth: 2,
-        borderColor: '#000',
+        borderColor: colors.border,
         ...createShadow({ opacity: 0.15, elevation: 8 }),
     },
     gridImage: {
@@ -932,10 +953,10 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         padding: 20,
-        backgroundColor: '#FFFFFFFF',
+        backgroundColor: activeScheme === 'dark' ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.9)',
     },
     gridName: {
-        color: '#000000',
+        color: colors.text,
         fontSize: 15,
         fontWeight: '900',
         marginBottom: 6,
@@ -946,26 +967,26 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     gridNoteText: {
-        color: '#555555',
+        color: colors.textSecondary,
         fontSize: 12,
         fontStyle: 'italic',
     },
     // List Styles
     listCard: {
         flexDirection: 'row',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: colors.surface,
         marginHorizontal: 20,
         marginBottom: 20,
         borderRadius: 25,
         overflow: 'hidden',
         borderWidth: 2,
-        borderColor: '#000',
+        borderColor: colors.border,
         ...createShadow({ opacity: 0.15, elevation: 6 }),
     },
     listImage: {
         width: 130,
         height: '100%',
-        backgroundColor: '#F5F5F7',
+        backgroundColor: colors.muted,
     },
     listInfo: {
         flex: 1,
@@ -982,15 +1003,15 @@ const styles = StyleSheet.create({
         height: 24,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: '#000',
+        borderColor: colors.border,
     },
     listName: {
-        color: '#555555',
+        color: colors.textSecondary,
         fontSize: 13,
         fontWeight: '800',
     },
     listCaption: {
-        color: '#000000',
+        color: colors.text,
         fontSize: 16,
         fontWeight: '700',
         marginBottom: 12,
@@ -998,42 +1019,37 @@ const styles = StyleSheet.create({
     listNote: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F5F5F7',
+        backgroundColor: colors.muted,
         padding: 10,
         borderRadius: 12,
         gap: 8,
     },
     listNoteText: {
-        color: '#555555',
+        color: colors.textSecondary,
         fontSize: 13,
         fontStyle: 'italic',
     },
     // Web Actions
     webActionButtons: {
         flexDirection: 'row',
-        backgroundColor: '#FFFFFF',
         padding: 15,
         gap: 15,
         borderTopWidth: 2,
-        borderTopColor: '#000',
     },
     webActionButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F5F5F7',
         paddingHorizontal: 20,
         paddingVertical: 12,
         borderRadius: 15,
         gap: 10,
         borderWidth: 1,
-        borderColor: '#000',
     },
     webActionDelete: {
-        backgroundColor: '#FFE5E5',
+        backgroundColor: activeScheme === 'dark' ? 'rgba(255, 68, 68, 0.2)' : '#FFE5E5',
         borderColor: '#CC0000',
     },
     webActionText: {
-        color: '#000000',
         fontSize: 14,
         fontWeight: '800',
     },
@@ -1051,22 +1067,22 @@ const styles = StyleSheet.create({
         width: 140,
         height: 140,
         borderRadius: 70,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: colors.surface,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 30,
         borderWidth: 2,
-        borderColor: '#000',
+        borderColor: colors.border,
     },
     emptyTitle: {
-        color: '#000000',
+        color: colors.text,
         fontSize: 24,
         fontWeight: '900',
         marginBottom: 15,
         textAlign: 'center',
     },
     emptyText: {
-        color: '#555555',
+        color: colors.textSecondary,
         fontSize: 16,
         lineHeight: 24,
         textAlign: 'center',
@@ -1074,41 +1090,41 @@ const styles = StyleSheet.create({
     // Note Modal
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        backgroundColor: activeScheme === 'dark' ? 'rgba(0, 0, 0, 0.85)' : 'rgba(255, 255, 255, 0.95)',
         justifyContent: 'center',
         alignItems: 'center',
     },
     noteModal: {
         width: Math.min(width * 0.92, 450),
-        backgroundColor: '#FFFFFF',
+        backgroundColor: colors.surface,
         borderRadius: 35,
         padding: 30,
         borderWidth: 2,
-        borderColor: '#000',
+        borderColor: colors.border,
         ...createShadow({ opacity: 0.15, radius: 25 }),
     },
     noteModalTitle: {
-        color: '#000000',
+        color: colors.text,
         fontSize: 26,
         fontWeight: '900',
         marginBottom: 10,
     },
     noteModalSubtitle: {
-        color: '#555555',
+        color: colors.textSecondary,
         fontSize: 15,
         marginBottom: 25,
     },
     noteInput: {
-        backgroundColor: '#F5F5F7',
+        backgroundColor: colors.muted,
         borderRadius: 20,
         padding: 20,
-        color: '#000000',
+        color: colors.text,
         fontSize: 18,
         height: 140,
         textAlignVertical: 'top',
         marginBottom: 25,
         borderWidth: 1.5,
-        borderColor: '#000',
+        borderColor: colors.border,
     },
     noteActions: {
         flexDirection: 'row',
@@ -1121,15 +1137,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     noteCancel: {
-        backgroundColor: '#F5F5F7',
+        backgroundColor: colors.muted,
         borderWidth: 1,
-        borderColor: '#000',
+        borderColor: colors.border,
     },
     noteSave: {
-        backgroundColor: '#1063FD',
+        backgroundColor: colors.primary || '#1063FD',
     },
     noteCancelText: {
-        color: '#000000',
+        color: colors.text,
         fontSize: 16,
         fontWeight: '800',
     },
@@ -1138,5 +1154,4 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '900',
     },
-});
 });

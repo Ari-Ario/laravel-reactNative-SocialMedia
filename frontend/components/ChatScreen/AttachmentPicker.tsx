@@ -11,6 +11,7 @@ import {
 import { MotiView } from 'moti';
 import { Ionicons } from '@expo/vector-icons';
 import { createShadow } from '@/utils/styles';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 export interface AttachmentPickerProps {
     isVisible: boolean;
@@ -18,8 +19,8 @@ export interface AttachmentPickerProps {
     onSelectAction: (action: string) => void;
 }
 
-const ActionBtn: React.FC<{ icon: string; label: string; color: string; onPress: () => void }> = ({
-    icon, label, color, onPress,
+const ActionBtn: React.FC<{ icon: string; label: string; color: string; onPress: () => void; styles: any }> = ({
+    icon, label, color, onPress, styles,
 }) => (
     <TouchableOpacity
         style={styles.actionBtn}
@@ -44,6 +45,9 @@ const AttachmentPicker: React.FC<AttachmentPickerProps> = ({
     onClose,
     onSelectAction,
 }) => {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
+
     if (!isVisible) return null;
 
     return (
@@ -60,19 +64,19 @@ const AttachmentPicker: React.FC<AttachmentPickerProps> = ({
             >
                 <View style={styles.handle} />
                 <View style={styles.grid}>
-                    <ActionBtn icon="document-text" label="Document" color="#7F66FF" onPress={() => onSelectAction('document')} />
-                    <ActionBtn icon="camera" label="Camera" color="#FF4567" onPress={() => onSelectAction('camera')} />
-                    <ActionBtn icon="images" label="Gallery" color="#BF59CF" onPress={() => onSelectAction('gallery')} />
-                    <ActionBtn icon="location" label="Location" color="#02B558" onPress={() => onSelectAction('location')} />
-                    <ActionBtn icon="person" label="Contact" color="#009DE2" onPress={() => onSelectAction('contact')} />
-                    <ActionBtn icon="bar-chart" label="Poll" color="#00A884" onPress={() => onSelectAction('poll')} />
+                    <ActionBtn icon="document-text" label="Document" color="#7F66FF" onPress={() => onSelectAction('document')} styles={styles} />
+                    <ActionBtn icon="camera" label="Camera" color="#FF4567" onPress={() => onSelectAction('camera')} styles={styles} />
+                    <ActionBtn icon="images" label="Gallery" color="#BF59CF" onPress={() => onSelectAction('gallery')} styles={styles} />
+                    <ActionBtn icon="location" label="Location" color="#02B558" onPress={() => onSelectAction('location')} styles={styles} />
+                    <ActionBtn icon="person" label="Contact" color="#009DE2" onPress={() => onSelectAction('contact')} styles={styles} />
+                    <ActionBtn icon="bar-chart" label="Poll" color="#00A884" onPress={() => onSelectAction('poll')} styles={styles} />
                 </View>
             </MotiView>
         </View>
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     container: {
         position: 'absolute',
         left: 0,
@@ -87,7 +91,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'transparent',
     },
     sheet: {
-        backgroundColor: '#fff',
+        backgroundColor: colors.card,
         borderTopLeftRadius: 28,
         borderTopRightRadius: 28,
         paddingHorizontal: 16,
@@ -98,7 +102,7 @@ const styles = StyleSheet.create({
     handle: {
         width: 38,
         height: 4,
-        backgroundColor: '#E0E0E0',
+        backgroundColor: colors.border,
         borderRadius: 2,
         alignSelf: 'center',
         marginBottom: 24,
@@ -132,7 +136,7 @@ const styles = StyleSheet.create({
     actionLabel: {
         fontSize: 12,
         fontWeight: '500',
-        color: '#4B4B4B',
+        color: colors.textSecondary,
         textAlign: 'center',
     },
 });

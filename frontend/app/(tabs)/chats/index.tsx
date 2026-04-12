@@ -18,6 +18,7 @@ import { usePostStore } from '@/stores/postStore';
 import EnhancedChatRow from '@/components/ChatScreen/EnhancedChatRow';
 import { useProfileView } from "@/context/ProfileViewContext";
 import { Ionicons } from '@expo/vector-icons';
+import { useAppTheme } from "@/hooks/useAppTheme";
 import CollaborationService, { CollaborationSpace, CollaborativeActivity } from '@/services/ChatScreen/CollaborationService';
 import * as Haptics from 'expo-haptics';
 import { getToken } from "@/services/TokenService";
@@ -125,6 +126,8 @@ const getSpaceTypeColor = (type: string): string => {
 };
 
 const ChatPage = () => {
+  const { colors, activeScheme } = useAppTheme();
+  const styles = getStyles(colors, activeScheme);
   const notificationService = NotificationService.getInstance();
   const searchService = SearchService.getInstance();
   const realTimeService = RealTimeService.getInstance();
@@ -333,7 +336,6 @@ const ChatPage = () => {
       ]);
     } catch (error) {
       console.error('Error loading data:', error);
-      Alert.alert('Error', 'Failed to load conversations');
     } finally {
       setLoading(false);
     }
@@ -681,20 +683,20 @@ const ChatPage = () => {
   const archivedCount = useMemo(() => spaces.filter(s => s.spaceData?.my_permissions?.is_archived).length, [spaces]);
 
   const SpaceTabsToolbar = () => (
-    <View style={styles.tabsWrapper}>
+    <View style={[styles.tabsWrapper, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.tabsContainer}
       >
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'all' && styles.activeTab]}
+          style={[styles.tab, activeTab === 'all' && [styles.activeTab, { backgroundColor: colors.tint }]]}
           onPress={() => {
             setActiveTab('all');
             if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           }}
         >
-          <Text style={[styles.tabText, activeTab === 'all' && styles.activeTabText]}>All</Text>
+          <Text style={[styles.tabText, activeTab === 'all' ? styles.activeTabText : { color: colors.textSecondary }]}>All</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -1340,10 +1342,11 @@ const ChatPage = () => {
   );
 };
 
-const styles = StyleSheet.create({
+function getStyles(colors: any, activeScheme: string) {
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F0F2F5',
+    backgroundColor: colors.background,
   },
   activitiesButton: {
     flexDirection: 'row',
@@ -1355,7 +1358,7 @@ const styles = StyleSheet.create({
   activitiesButtonText: {
     marginLeft: 8,
     fontSize: 16,
-    color: '#007AFF',
+    color: colors.tint,
     fontWeight: '600',
   },
   loading: {
@@ -1381,26 +1384,24 @@ const styles = StyleSheet.create({
   aiSuggestionContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0F7FF',
+    backgroundColor: activeScheme === 'dark' ? colors.surface : '#F0F7FF',
     marginHorizontal: 16,
     marginTop: 8,
     marginBottom: 8,
     padding: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#D1E8FF',
+    borderColor: activeScheme === 'dark' ? colors.border : '#D1E8FF',
   },
   aiSuggestionText: {
     flex: 1,
     marginLeft: 8,
     marginRight: 8,
     fontSize: 14,
-    color: '#1A73E8',
+    color: activeScheme === 'dark' ? colors.tint : '#1A73E8',
   },
   tabsWrapper: {
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#E9EDEF',
     paddingVertical: 10,
   },
   tabsContainer: {
@@ -1412,17 +1413,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#F0F2F5',
+    backgroundColor: activeScheme === 'dark' ? colors.muted : '#F0F2F5',
     flexDirection: 'row',
     alignItems: 'center',
   },
   activeTab: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.tint,
   },
   tabText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#667781',
+    color: colors.textSecondary,
   },
   activeTabText: {
     color: '#fff',
@@ -1453,41 +1454,40 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F0F2F5',
+    backgroundColor: activeScheme === 'dark' ? colors.muted : '#F0F2F5',
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
   },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: colors.text,
+    height: '100%',
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: activeScheme === 'dark' ? colors.muted : '#f5f5f5',
     marginHorizontal: 16,
     marginBottom: 8,
     borderRadius: 12,
     paddingHorizontal: 12,
     height: 44,
   },
-  searchingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginBottom: 8,
-  },
-  searchingText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#666',
-  },
   searchIcon: {
     marginRight: 8,
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#333',
-    height: '100%',
+  searchingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 8,
+  },
+  searchingText: {
+    fontSize: 14,
+    color: colors.textSecondary,
   },
   closeButton: {
     padding: 4,
@@ -1495,12 +1495,12 @@ const styles = StyleSheet.create({
 
   // Search Section Header
   searchSectionHeader: {
-    backgroundColor: '#f8f9ff',
+    backgroundColor: activeScheme === 'dark' ? colors.surface : '#f8f9ff',
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e7ff',
+    borderBottomColor: colors.border,
   },
   searchSectionHeaderContent: {
     flexDirection: 'row',
@@ -1510,34 +1510,33 @@ const styles = StyleSheet.create({
   searchSectionHeaderText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#007AFF',
+    color: colors.tint,
     marginLeft: 8,
     flex: 1,
   },
   clearSearchButton: {
     paddingHorizontal: 12,
     paddingVertical: 4,
-    backgroundColor: '#e0e7ff',
+    backgroundColor: activeScheme === 'dark' ? colors.muted : '#e0e7ff',
     borderRadius: 12,
   },
   clearSearchText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#007AFF',
+    color: colors.tint,
   },
   searchSectionCount: {
     fontSize: 12,
-    color: '#666',
+    color: colors.textSecondary,
   },
 
   // Search Result Item
   searchResultItem: {
-    backgroundColor: '#fff',
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
   searchResultItemEven: {
-    backgroundColor: '#fafafa',
+    backgroundColor: colors.surface,
   },
   searchResultContent: {
     flexDirection: 'row',
@@ -1557,12 +1556,12 @@ const styles = StyleSheet.create({
   searchResultTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginBottom: 4,
   },
   searchResultDescription: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     marginBottom: 6,
   },
   searchResultMeta: {
@@ -1605,39 +1604,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 6,
     paddingHorizontal: 12,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.surface,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: colors.border,
   },
   primaryAction: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: colors.tint,
+    borderColor: colors.tint,
   },
   actionButtonText: {
     marginLeft: 6,
     fontSize: 14,
     fontWeight: '600',
-    color: '#007AFF',
+    color: colors.tint,
   },
   spaceTypeSelector: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     marginHorizontal: 16,
     marginBottom: 16,
     padding: 16,
     borderRadius: 16,
-    ...createShadow({
-      width: 0,
-      height: 2,
-      opacity: 0.1,
-      radius: 8,
-      elevation: 4,
-    }),
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   spaceTypeTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginBottom: 16,
   },
   spaceTypeGrid: {
@@ -1686,28 +1680,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#F0F2F5',
+    backgroundColor: activeScheme === 'dark' ? colors.surface : '#F0F2F5',
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   sectionHeaderText: {
     fontSize: 13,
-    fontWeight: '500',
-    color: '#667781',
+    fontWeight: '600',
+    color: colors.textSecondary,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   sectionCount: {
     fontSize: 13,
-    color: '#999',
-    backgroundColor: '#f0f0f0',
+    color: colors.textSecondary,
+    backgroundColor: colors.muted,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
   },
   separator: {
     height: 1,
-    backgroundColor: '#E9EDEF',
+    backgroundColor: colors.border,
     marginLeft: 72,
   },
   emptyContainer: {
@@ -1720,18 +1714,18 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#333',
+    color: colors.text,
     marginTop: 24,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 24,
   },
   emptyButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.tint,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
@@ -1749,7 +1743,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   searchResultsContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '80%',
@@ -1760,18 +1754,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: colors.border,
   },
   searchResultsTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
   },
   searchResultsList: {
     maxHeight: 400,
   },
   nameInputModal: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 24,
     width: '90%',
@@ -1780,11 +1774,11 @@ const styles = StyleSheet.create({
   nameInput: {
     fontSize: 16,
     padding: 12,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.muted,
     borderRadius: 8,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: colors.border,
   },
   modalOverlay: {
     flex: 1,
@@ -1793,7 +1787,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 24,
     width: '90%',
@@ -1802,17 +1796,17 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginBottom: 16,
   },
   modalInput: {
     fontSize: 16,
     padding: 12,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.muted,
     borderRadius: 8,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: colors.border,
   },
   modalButtons: {
     flexDirection: 'row',
@@ -1832,7 +1826,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
   },
   modalCancelButtonText: {
-    color: '#333',
+    color: colors.text,
   },
   modalConfirmButton: {
     backgroundColor: '#007AFF',
@@ -1846,40 +1840,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: colors.border,
   },
   modalHeaderTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
   },
   modalHeaderCloseButton: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
   },
   addSpaceRow: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F2F5',
+    borderBottomColor: colors.border,
   },
   addSpaceIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#E7F3FF',
+    backgroundColor: activeScheme === 'dark' ? colors.muted : '#E7F3FF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   addSpaceText: {
     fontSize: 16,
-    color: '#007AFF',
+    color: colors.tint,
     fontWeight: '600',
   },
 });
+}
 
 export default ChatPage;

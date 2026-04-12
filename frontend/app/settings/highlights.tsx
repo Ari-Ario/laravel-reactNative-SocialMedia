@@ -15,15 +15,19 @@ import { MotiView, AnimatePresence } from 'moti';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BackButton } from '@/components/ui/IconButton';
 import AuthContext from '@/context/AuthContext';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import MessageBubble from '@/components/ChatScreen/MessageBubble';
 import { createShadow } from '@/utils/styles';
 import GlobalStyles from '@/styles/GlobalStyles';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 const { width } = Dimensions.get('window');
 
 const ChatHighlightsScreen = () => {
+  const { colors, activeScheme } = useAppTheme();
+  const styles = getStyles(colors, activeScheme);
   const insets = useSafeAreaInsets();
   const { user } = useContext(AuthContext);
   const collaborationService = CollaborationService.getInstance();
@@ -147,11 +151,11 @@ const ChatHighlightsScreen = () => {
           onPress={() => handleJumpToSpace(item)}
         >
           <LinearGradient
-            colors={['#1063FD15', '#1063FD05']}
+            colors={[colors.tint + '15', colors.tint + '05']}
             style={styles.jumpGradient}
           >
             <Text style={styles.jumpText}>Jump to Conversation</Text>
-            <Ionicons name="arrow-forward" size={14} color="#1063FD" />
+            <Ionicons name="arrow-forward" size={14} color={colors.tint} />
           </LinearGradient>
         </TouchableOpacity>
       </MotiView>
@@ -172,12 +176,10 @@ const ChatHighlightsScreen = () => {
       <StatusBar barStyle="dark-content" />
       
       <LinearGradient
-        colors={['#fff', '#f8f9fa']}
+        colors={[colors.surface, colors.background]}
         style={[styles.header, { paddingTop: insets.top + 10 }]}
       >
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
-        </TouchableOpacity>
+        <BackButton onPress={() => router.back()} />
 
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Chat Highlights</Text>
@@ -204,7 +206,7 @@ const ChatHighlightsScreen = () => {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <View style={styles.emptyIcon}>
-                <Ionicons name="flash-outline" size={48} color="rgba(0,0,0,0.1)" />
+                <Ionicons name="flash-outline" size={48} color={colors.textSecondary + '40'} />
               </View>
               <Text style={styles.emptyTitle}>No highlights yet</Text>
               <Text style={styles.emptySubtitle}>
@@ -231,8 +233,9 @@ const ChatHighlightsScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
+function getStyles(colors: any, activeScheme: string) {
+  return StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -240,14 +243,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
+    borderBottomColor: colors.border,
   },
   headerCenter: { alignItems: 'center' },
-  headerTitle: { fontSize: 20, fontWeight: '800', color: '#1a1a1a' },
+  headerTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
   headerUnderline: {
     width: 30,
     height: 3,
-    backgroundColor: '#FFD700',
+    backgroundColor: colors.tint,
     borderRadius: 2,
     marginTop: 4,
   },
@@ -255,18 +258,18 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F5F5F7',
+    backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
   },
   listContent: { paddingHorizontal: 16, paddingTop: 16 },
   highlightWrapper: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 24,
     marginBottom: 20,
     padding: 12,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.05)',
+    borderColor: colors.border,
     ...createShadow({ opacity: 0.1, radius: 10 }),
   },
   badgeContainer: {
@@ -280,7 +283,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.02)',
+    backgroundColor: colors.background,
     borderWidth: 1,
   },
   engagementLabel: {
@@ -293,12 +296,12 @@ const styles = StyleSheet.create({
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: 'rgba(0,0,0,0.2)',
+    backgroundColor: colors.textSecondary + '40',
     marginHorizontal: 8,
   },
   statText: {
     fontSize: 11,
-    color: 'rgba(0,0,0,0.4)',
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   messageBubbleWrapper: {
@@ -318,7 +321,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   jumpText: {
-    color: '#1063FD',
+    color: colors.tint,
     fontWeight: '700',
     fontSize: 14,
   },
@@ -329,7 +332,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 12,
-    color: 'rgba(0,0,0,0.5)',
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   footerLoader: {
@@ -345,28 +348,28 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#F5F5F7',
+    backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
   },
-  emptyTitle: { fontSize: 18, fontWeight: '800', color: '#1a1a1a', marginBottom: 8 },
-  emptySubtitle: { fontSize: 13, color: 'rgba(0,0,0,0.4)', textAlign: 'center', lineHeight: 20 },
+  emptyTitle: { fontSize: 18, fontWeight: '800', color: colors.text, marginBottom: 8 },
+  emptySubtitle: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
   infoBanner: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 215, 0, 0.08)',
+    backgroundColor: activeScheme === 'dark' ? 'rgba(255, 215, 0, 0.05)' : 'rgba(255, 215, 0, 0.08)',
     borderRadius: 20,
     padding: 16,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.2)',
+    borderColor: colors.border,
     alignItems: 'center',
   },
   infoIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -378,14 +381,16 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#1a1a1a',
+    color: colors.text,
     marginBottom: 2,
   },
   infoText: {
     fontSize: 12,
-    color: 'rgba(0,0,0,0.6)',
+    color: colors.textSecondary,
     lineHeight: 16,
   },
 });
+
+}
 
 export default ChatHighlightsScreen;

@@ -428,11 +428,11 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                                     translateY: openUpward
                                         ? scaleAnim.interpolate({ inputRange: [0.88, 1], outputRange: [10, 0] })
                                         : scaleAnim.interpolate({ inputRange: [0.88, 1], outputRange: [-10, 0] })
-                                },
+                                }
                             ],
+                            pointerEvents: Platform.OS === 'web' ? 'auto' : 'box-none'
                         },
                     ]}
-                    pointerEvents="box-none"
                 >
                     <TouchableWithoutFeedback>
                         <View>

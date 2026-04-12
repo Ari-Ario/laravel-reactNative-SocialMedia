@@ -22,6 +22,9 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlobalStyles } from '@/styles/GlobalStyles';
 import { createShadow } from '@/utils/styles';
+import Colors from '@/constants/Colors';
+import { useAppTheme } from '@/hooks/useAppTheme';
+import { BackButton } from '@/components/ui/IconButton';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
 import AuthContext from '@/context/AuthContext';
@@ -41,24 +44,30 @@ const COLLECTIONS = [
     { id: 'favorites', name: 'Favorites', icon: 'heart-outline', color: '#cc0000', gradient: ['#cc0000', '#ff3333'] },
 ];
 
-const WebActionButtons = ({ onAddNote, onRemove, onNavigate }: any) => (
+const WebActionButtons = ({ onAddNote, onRemove, onNavigate }: any) => {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
+    return (
     <View style={styles.webActionButtons}>
         <TouchableOpacity style={styles.webActionButton} onPress={onNavigate}>
-            <Ionicons name="open-outline" size={18} color="#000" />
+            <Ionicons name="open-outline" size={18} color={colors.text} />
             <Text style={styles.webActionText}>Open</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.webActionButton} onPress={onAddNote}>
-            <Ionicons name="pencil" size={18} color="#000" />
+            <Ionicons name="pencil" size={18} color={colors.text} />
             <Text style={styles.webActionText}>Note</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.webActionButton, styles.webActionDelete]} onPress={onRemove}>
-            <Ionicons name="trash-outline" size={18} color="#a00101" />
+            <Ionicons name="trash-outline" size={18} color={colors.error} />
             <Text style={styles.webActionText}>Delete</Text>
         </TouchableOpacity>
     </View>
-);
+    );
+};
 
 export default function BookmarksScreen() {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
     const insets = useSafeAreaInsets();
     const params = useLocalSearchParams();
     const { bookmarks, removeBookmark, updateBookmarkNote, moveToCollection } = useBookmarkStore();
@@ -182,14 +191,14 @@ export default function BookmarksScreen() {
                                         <Text style={styles.timelineCaption} numberOfLines={2}>{bookmark.post.caption || 'No caption'}</Text>
                                         {bookmark.note && (
                                             <View style={styles.timelineNote}>
-                                                <Ionicons name="chatbubble" size={12} color="#000" />
+                                                <Ionicons name="chatbubble" size={12} color={colors.tint} />
                                                 <Text style={styles.timelineNoteText}>{bookmark.note}</Text>
                                             </View>
                                         )}
                                         {!isWeb && (
                                             <View style={styles.mobileActionButtons}>
-                                                <TouchableOpacity style={styles.mobileActionButton} onPress={() => handleAddNote(bookmark)}><Ionicons name="pencil" size={18} color="#000" /></TouchableOpacity>
-                                                <TouchableOpacity style={[styles.mobileActionButton, styles.mobileActionDelete]} onPress={() => handleRemoveBookmark(bookmark.post_id)}><Ionicons name="trash-outline" size={18} color="#a00101" /></TouchableOpacity>
+                                                <TouchableOpacity style={styles.mobileActionButton} onPress={() => handleAddNote(bookmark)}><Ionicons name="pencil" size={18} color={colors.text} /></TouchableOpacity>
+                                                <TouchableOpacity style={[styles.mobileActionButton, styles.mobileActionDelete]} onPress={() => handleRemoveBookmark(bookmark.post_id)}><Ionicons name="trash-outline" size={18} color={colors.error} /></TouchableOpacity>
                                             </View>
                                         )}
                                     </View>
@@ -206,23 +215,23 @@ export default function BookmarksScreen() {
 
     return (
         <View style={GlobalStyles.popupContainer}>
-            <StatusBar barStyle="light-content" />
+            <StatusBar barStyle={activeScheme === 'dark' ? 'light-content' : 'dark-content'} />
 
             <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}><Ionicons name="arrow-back" size={24} color="#000" /></TouchableOpacity>
+                <BackButton onPress={() => router.back()} />
                 <View style={styles.headerTitle}>
                     <Text style={styles.greeting}>{getTimeBasedGreeting()},</Text>
                     <Text style={styles.headerMainTitle}>Your Collection</Text>
                 </View>
-                <TouchableOpacity style={styles.headerButton} onPress={() => setShowFilters(!showFilters)}><Ionicons name="options-outline" size={22} color="#000" /></TouchableOpacity>
+                <TouchableOpacity style={styles.headerButton} onPress={() => setShowFilters(!showFilters)}><Ionicons name="options-outline" size={22} color={colors.text} /></TouchableOpacity>
             </View>
 
             {showFilters && (
                 <MotiView from={{ opacity: 0, translateY: -20 }} animate={{ opacity: 1, translateY: 0 }} style={styles.filterBar}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         {COLLECTIONS.map((col) => (
-                            <TouchableOpacity key={col.id} style={[styles.filterChip, selectedCollection === col.id && { backgroundColor: col.color, borderColor: '#000', borderWidth: 1 }]} onPress={() => setSelectedCollection(col.id)}>
-                                <Ionicons name={col.icon as any} size={14} color={selectedCollection === col.id ? "#fff" : "#000"} />
+                            <TouchableOpacity key={col.id} style={[styles.filterChip, selectedCollection === col.id && { backgroundColor: col.color, borderColor: colors.text, borderWidth: 1 }]} onPress={() => setSelectedCollection(col.id)}>
+                                <Ionicons name={col.icon as any} size={14} color={selectedCollection === col.id ? "#fff" : colors.text} />
                                 <Text style={[styles.filterChipText, selectedCollection === col.id && { color: '#fff', fontWeight: '700' }]}>{col.name}</Text>
                             </TouchableOpacity>
                         ))}
@@ -231,14 +240,14 @@ export default function BookmarksScreen() {
             )}
 
             <View style={styles.searchContainer}>
-                <Ionicons name="search" size={18} color="#000" />
-                <TextInput style={styles.searchInput} placeholder="Search your collection..." placeholderTextColor="#666" value={searchQuery} onChangeText={setSearchQuery} />
+                <Ionicons name="search" size={18} color={colors.textSecondary} />
+                <TextInput style={styles.searchInput} placeholder="Search your collection..." placeholderTextColor={colors.textSecondary + '80'} value={searchQuery} onChangeText={setSearchQuery} />
             </View>
 
             <View style={styles.content}>{renderTimelineView()}</View>
 
             {showNoteModal && (
-                <View style={styles.modalOverlay}>
+                <View style={[styles.modalOverlay, { backgroundColor: activeScheme === 'dark' ? 'rgba(0,0,0,0.9)' : 'rgba(255,255,255,0.95)' }]}>
                     <MotiView from={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={styles.noteModal}>
                         <Text style={styles.noteModalTitle}>Save to Collection</Text>
                         
@@ -247,10 +256,10 @@ export default function BookmarksScreen() {
                                 {COLLECTIONS.filter(c => c.id !== 'all').map((col) => (
                                     <TouchableOpacity 
                                         key={col.id} 
-                                        style={[styles.modalTag, tempCollection === col.id && { backgroundColor: col.color, borderColor: '#000' }]} 
+                                        style={[styles.modalTag, tempCollection === col.id && { backgroundColor: col.color, borderColor: colors.text }]} 
                                         onPress={() => setTempCollection(col.id)}
                                     >
-                                        <Ionicons name={col.icon as any} size={14} color={tempCollection === col.id ? "#fff" : "#000"} />
+                                        <Ionicons name={col.icon as any} size={14} color={tempCollection === col.id ? "#fff" : colors.text} />
                                         <Text style={[styles.modalTagText, tempCollection === col.id && { color: '#fff', fontWeight: '700' }]}>{col.name}</Text>
                                     </TouchableOpacity>
                                 ))}
@@ -277,7 +286,8 @@ export default function BookmarksScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+function getStyles(colors: any, activeScheme: string) {
+  return StyleSheet.create({
     header: { 
         flexDirection: 'row', 
         alignItems: 'center', 
@@ -286,13 +296,14 @@ const styles = StyleSheet.create({
         paddingBottom: 25,
         zIndex: 10
     },
+    backButton: { padding: 4 },
     headerButton: { 
-        width: 48, 
-        height: 48, 
-        borderRadius: 24, 
-        backgroundColor: '#FFFFFF', 
+        width: 44, 
+        height: 44, 
+        borderRadius: 22, 
+        backgroundColor: colors.surface, 
         borderWidth: 1.5,
-        borderColor: '#000',
+        borderColor: colors.border,
         justifyContent: 'center', 
         alignItems: 'center',
         ...createShadow({ opacity: 0.15, radius: 8 })
@@ -300,7 +311,7 @@ const styles = StyleSheet.create({
     headerTitle: { alignItems: 'center', flex: 1 },
     greeting: { 
         fontSize: 14, 
-        color: '#000000', 
+        color: colors.text, 
         textTransform: 'uppercase', 
         letterSpacing: 2,
         fontWeight: '700'
@@ -308,28 +319,28 @@ const styles = StyleSheet.create({
     headerMainTitle: { 
         fontSize: 26, 
         fontWeight: '900', 
-        color: '#000000' 
+        color: colors.text 
     },
     filterBar: { paddingHorizontal: 20, marginBottom: 20 },
     filterChip: { 
         flexDirection: 'row', 
         alignItems: 'center', 
-        backgroundColor: '#F5F5F7', 
+        backgroundColor: colors.surface, 
         borderWidth: 1.5,
-        borderColor: '#000',
+        borderColor: colors.border,
         paddingHorizontal: 18, 
         paddingVertical: 12, 
         borderRadius: 30, 
         marginRight: 10, 
         gap: 10 
     },
-    filterChipText: { color: '#000000', fontSize: 15, fontWeight: '600' },
+    filterChipText: { color: colors.text, fontSize: 15, fontWeight: '600' },
     searchContainer: { 
         flexDirection: 'row', 
         alignItems: 'center', 
-        backgroundColor: '#FFFFFF', 
+        backgroundColor: colors.surface, 
         borderWidth: 2,
-        borderColor: '#000',
+        borderColor: colors.border,
         marginHorizontal: 20, 
         marginBottom: 25, 
         paddingHorizontal: 20, 
@@ -338,7 +349,7 @@ const styles = StyleSheet.create({
         gap: 12,
         ...createShadow({ opacity: 0.15, height: 6 })
     },
-    searchInput: { flex: 1, color: '#000000', fontSize: 17, fontWeight: '600' },
+    searchInput: { flex: 1, color: colors.text, fontSize: 17, fontWeight: '600' },
     content: { flex: 1 },
     timelineSection: { marginBottom: 35 },
     timelineHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, paddingHorizontal: 25 },
@@ -346,13 +357,13 @@ const styles = StyleSheet.create({
         width: 14, 
         height: 14, 
         borderRadius: 7, 
-        backgroundColor: '#1063FD', 
+        backgroundColor: colors.tint, 
         marginRight: 15,
         borderWidth: 3,
-        borderColor: '#000000'
+        borderColor: colors.text
     },
     timelineDate: { 
-        color: '#000000', 
+        color: colors.text, 
         fontSize: 17, 
         fontWeight: '900',
         textTransform: 'uppercase',
@@ -364,9 +375,9 @@ const styles = StyleSheet.create({
         borderRadius: 28, 
         marginBottom: 25, 
         overflow: 'hidden', 
-        backgroundColor: '#FFFFFF', 
+        backgroundColor: colors.surface, 
         borderWidth: 2, 
-        borderColor: '#000',
+        borderColor: colors.border,
         ...createShadow({
             width: 0,
             height: 12,
@@ -381,9 +392,9 @@ const styles = StyleSheet.create({
         width: 110, 
         height: 110, 
         borderRadius: 20,
-        backgroundColor: '#F5F5F7',
+        backgroundColor: colors.background,
         borderWidth: 1,
-        borderColor: '#000'
+        borderColor: colors.border
     },
     timelineInfo: { flex: 1, justifyContent: 'center' },
     timelineRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 12 },
@@ -392,11 +403,11 @@ const styles = StyleSheet.create({
         height: 28, 
         borderRadius: 14,
         borderWidth: 1.5,
-        borderColor: '#000'
+        borderColor: colors.border
     },
-    timelineName: { color: '#555555', fontSize: 14, fontWeight: '800' },
+    timelineName: { color: colors.textSecondary, fontSize: 14, fontWeight: '800' },
     timelineCaption: { 
-        color: '#000000', 
+        color: colors.text, 
         fontSize: 18, 
         fontWeight: '700', 
         lineHeight: 24, 
@@ -405,16 +416,16 @@ const styles = StyleSheet.create({
     timelineNote: { 
         flexDirection: 'row', 
         alignItems: 'flex-start', 
-        backgroundColor: '#F5F5F7', 
+        backgroundColor: colors.background, 
         padding: 15, 
         borderRadius: 15, 
         marginTop: 5,
         gap: 10,
         borderLeftWidth: 4,
-        borderLeftColor: '#1063FD'
+        borderLeftColor: colors.tint
     },
     timelineNoteText: { 
-        color: '#555555', 
+        color: colors.textSecondary, 
         fontSize: 14, 
         fontStyle: 'italic',
         lineHeight: 20,
@@ -426,32 +437,32 @@ const styles = StyleSheet.create({
         height: 44, 
         alignItems: 'center', 
         justifyContent: 'center', 
-        backgroundColor: '#F5F5F7', 
+        backgroundColor: colors.background, 
         borderRadius: 22,
         borderWidth: 1.5,
-        borderColor: '#000'
+        borderColor: colors.border
     },
     mobileActionDelete: { 
-        backgroundColor: '#FFE5E5',
-        borderColor: '#CC0000'
+        backgroundColor: activeScheme === 'dark' ? '#330000' : '#FFE5E5',
+        borderColor: colors.error
     },
     webActionButtons: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 15, gap: 12 },
     webActionButton: { 
         flexDirection: 'row', 
         alignItems: 'center', 
-        backgroundColor: '#F5F5F7', 
+        backgroundColor: colors.background, 
         paddingHorizontal: 20, 
         paddingVertical: 12, 
         borderRadius: 15, 
         gap: 10,
         borderWidth: 1,
-        borderColor: '#000'
+        borderColor: colors.border
     },
     webActionDelete: { 
-        backgroundColor: '#FFE5E5',
-        borderColor: '#CC0000'
+        backgroundColor: activeScheme === 'dark' ? '#330000' : '#FFE5E5',
+        borderColor: colors.error
     },
-    webActionText: { color: '#000000', fontSize: 14, fontWeight: '800' },
+    webActionText: { color: colors.text, fontSize: 14, fontWeight: '800' },
     modalOverlay: { 
         ...StyleSheet.absoluteFillObject, 
         backgroundColor: 'rgba(255, 255, 255, 0.95)', 
@@ -460,16 +471,16 @@ const styles = StyleSheet.create({
         zIndex: 1000 
     },
     noteModal: { 
-        backgroundColor: '#FFFFFF', 
+        backgroundColor: colors.surface, 
         borderRadius: 35, 
         padding: 30, 
         width: '92%', 
         maxWidth: 450,
         borderWidth: 2,
-        borderColor: '#000',
+        borderColor: colors.border,
         ...createShadow({ opacity: 0.15, radius: 25 })
     },
-    noteModalTitle: { fontSize: 26, fontWeight: '900', color: '#000000', marginBottom: 20 },
+    noteModalTitle: { fontSize: 26, fontWeight: '900', color: colors.text, marginBottom: 20 },
     collectionSelection: { marginBottom: 25 },
     modalTag: { 
         flexDirection: 'row', 
@@ -478,28 +489,29 @@ const styles = StyleSheet.create({
         paddingVertical: 10, 
         borderRadius: 25, 
         borderWidth: 1.5, 
-        borderColor: '#000', 
+        borderColor: colors.border, 
         marginRight: 10, 
         gap: 8,
-        backgroundColor: '#F5F5F7'
+        backgroundColor: colors.background
     },
-    modalTagText: { fontSize: 13, color: '#555555', fontWeight: '600' },
+    modalTagText: { fontSize: 13, color: colors.textSecondary, fontWeight: '600' },
     noteInput: { 
-        backgroundColor: '#F5F5F7', 
+        backgroundColor: colors.background, 
         borderRadius: 20, 
         padding: 20, 
-        color: '#000000', 
+        color: colors.text, 
         fontSize: 18,
         minHeight: 120, 
         marginBottom: 25,
         borderWidth: 1.5,
-        borderColor: '#000'
+        borderColor: colors.border
     },
     noteActions: { flexDirection: 'row', gap: 15 },
     noteButton: { flex: 1, paddingVertical: 16, borderRadius: 20, alignItems: 'center' },
-    noteCancel: { backgroundColor: '#F5F5F7', borderWidth: 1, borderColor: '#000' },
-    noteSave: { backgroundColor: '#1063FD' },
-    noteCancelText: { color: '#000000', fontWeight: '800', fontSize: 16 },
+    noteCancel: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border },
+    noteSave: { backgroundColor: colors.tint },
+    noteCancelText: { color: colors.text, fontWeight: '800', fontSize: 16 },
     noteSaveText: { color: '#fff', fontWeight: '900', fontSize: 16 },
     timelineList: { paddingBottom: 100 },
 });
+}

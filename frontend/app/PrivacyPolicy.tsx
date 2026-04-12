@@ -3,12 +3,13 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-
+import { BackButton } from '@/components/ui/IconButton';
+import { createShadow } from '../utils/styles';
 const { width, height } = Dimensions.get('window');
 
 // Performance optimized creative background elements (static)
 const DecorativeSymbols = () => (
-  <View style={StyleSheet.absoluteFill} pointerEvents="none">
+  <View style={[StyleSheet.absoluteFill, ...createPointerEvents('none')]}>
     <Text style={[styles.bgSymbol, { top: '10%', left: '5%', opacity: 0.03, fontSize: 120 }]}>𒀀</Text>
     <Text style={[styles.bgSymbol, { top: '40%', right: '-10%', opacity: 0.04, fontSize: 180 }]}>𐎀</Text>
     <Text style={[styles.bgSymbol, { bottom: '15%', left: '10%', opacity: 0.03, fontSize: 150 }]}>𑀅</Text>
@@ -22,19 +23,17 @@ const PrivacyPolicy = () => {
   return (
     <SafeAreaView style={styles.container}>
       <DecorativeSymbols />
-      
+
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={28} color="#000" />
-        </TouchableOpacity>
+        <BackButton onPress={() => router.back()} />
         <Text style={styles.headerTitle}>Privacy Policy</Text>
-        <View style={{ width: 40 }} /> 
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.contentCard}>
           <Text style={styles.lastUpdated}>Last Updated: April 2026</Text>
-          
+
           <Text style={styles.sectionTitle}>1. Data We Collect</Text>
           <Text style={styles.paragraph}>
             At zmzir, your creative expression is paramount. We collect information you provide directly:
@@ -115,11 +114,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 24,
     // Shadow for premium feel
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 3,
+    ...createShadow({ color: '#000', width: 0, height: 4, opacity: 0.05, radius: 12, elevation: 3 }),
   },
   lastUpdated: {
     fontSize: 12,

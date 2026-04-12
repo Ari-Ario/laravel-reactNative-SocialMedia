@@ -25,12 +25,14 @@ import { getAdminReports, resolveReport, assignReport, getMyAssignedReports } fr
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createShadow } from '@/utils/styles';
 import { router, useLocalSearchParams } from 'expo-router';
+import { BackButton } from '@/components/ui/IconButton';
 import { useToastStore } from '@/stores/toastStore';
 import AuthContext from '@/context/AuthContext';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { Avatar } from '@/components/ui/Avatar';
 import StoryViewer from '@/components/StoryViewer';
 import ProfilePreview from '@/components/ProfilePreview';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 const { width, height } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -85,22 +87,24 @@ const TABS: TabType[] = [
     { id: 'profiles', label: 'Profiles', icon: 'person-circle', count: 0, type: 'profile' },
 ];
 
-const SEVERITY_CONFIG = {
-    low: { color: '#4CAF50', bg: '#4CAF5020', icon: 'shield-checkmark', label: 'Low' },
-    medium: { color: '#FF9800', bg: '#FF980020', icon: 'warning', label: 'Medium' },
-    high: { color: '#F44336', bg: '#F4433620', icon: 'alert-circle', label: 'High' },
-    critical: { color: '#9C27B0', bg: '#9C27B020', icon: 'skull', label: 'Critical' },
-};
+const getSeverityConfig = (colors: any) => ({
+    low: { color: colors.success, bg: colors.success + '26', icon: 'shield-checkmark', label: 'Low' },
+    medium: { color: colors.warning, bg: colors.warning + '26', icon: 'warning', label: 'Medium' },
+    high: { color: colors.error, bg: colors.error + '26', icon: 'alert-circle', label: 'High' },
+    critical: { color: colors.tint, bg: colors.tint + '26', icon: 'skull', label: 'Critical' },
+});
 
-const STATUS_CONFIG = {
-    pending: { color: '#FF9800', bg: '#FF980020', label: 'Pending', icon: 'time' },
-    reviewing: { color: '#2196F3', bg: '#2196F320', label: 'In Review', icon: 'eye' },
-    in_review: { color: '#2196F3', bg: '#2196F320', label: 'In Review', icon: 'eye' },
-    resolved: { color: '#4CAF50', bg: '#4CAF5020', label: 'Resolved', icon: 'checkmark-circle' },
-    dismissed: { color: '#9E9E9E', bg: '#9E9E9E20', label: 'Dismissed', icon: 'close-circle' },
-};
+const getStatusConfig = (colors: any) => ({
+    pending: { color: colors.warning, bg: colors.warning + '26', label: 'Pending', icon: 'time' },
+    reviewing: { color: colors.tint, bg: colors.tint + '26', label: 'In Review', icon: 'eye' },
+    in_review: { color: colors.tint, bg: colors.tint + '26', label: 'In Review', icon: 'eye' },
+    resolved: { color: colors.success, bg: colors.success + '26', label: 'Resolved', icon: 'checkmark-circle' },
+    dismissed: { color: colors.textSecondary, bg: colors.textSecondary + '26', label: 'Dismissed', icon: 'close-circle' },
+});
 
 function ModerationPanel() {
+    const { colors, activeScheme } = useAppTheme();
+const styles = getStyles(colors, activeScheme);
     const insets = useSafeAreaInsets();
     const { user } = React.useContext(AuthContext);
     const { showToast } = useToastStore();
@@ -178,8 +182,8 @@ function ModerationPanel() {
         }
 
         // Sort: by type first if in My Cases, then by severity and date
-        const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
-        const typeOrder = { post: 0, story: 1, space: 2, comment: 3, profile: 4 };
+        const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 } as any;
+        const typeOrder = { post: 0, story: 1, space: 2, comment: 3, profile: 4 } as any;
 
         return filtered.sort((a, b) => {
             if (activeMainTab === 'my') {
@@ -300,10 +304,10 @@ function ModerationPanel() {
         const target = report.target_data;
         if (!target) {
             return (
-                <View style={[styles.targetContentCard, { borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.2)' }]}>
+                <View style={[styles.targetContentCard, { borderStyle: 'dashed', borderColor: colors.border }]}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Ionicons name="trash-outline" size={20} color="rgba(255,255,255,0.4)" />
-                        <Text style={[styles.targetCaption, { color: 'rgba(255,255,255,0.4)' }]}>Content not available or deleted</Text>
+                        <Ionicons name="trash-outline" size={20} color={colors.textSecondary} />
+                        <Text style={[styles.targetCaption, { color: colors.textSecondary }]}>Content not available or deleted</Text>
                     </View>
                 </View>
             );
@@ -329,7 +333,7 @@ function ModerationPanel() {
                                     style={styles.viewButton}
                                     onPress={() => handleNavigateToTarget(report)}
                                 >
-                                    <Ionicons name="eye" size={16} color="#fff" />
+                                    <Ionicons name="eye" size={16} color={colors.surface} />
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -343,7 +347,7 @@ function ModerationPanel() {
                                 />
                                 {target.media.length > 1 && (
                                     <View style={styles.mediaCountBadge}>
-                                        <Ionicons name="images" size={14} color="#fff" />
+                                        <Ionicons name="images" size={14} color={colors.surface} />
                                         <Text style={styles.mediaCountText}>+{target.media.length - 1}</Text>
                                     </View>
                                 )}
@@ -352,18 +356,18 @@ function ModerationPanel() {
 
                         <View style={styles.targetTextContent}>
                             {(target.content || target.caption) ? (
-                                <Text style={[styles.targetCaption, { color: '#fff' }]} numberOfLines={10}>
+                                <Text style={[styles.targetCaption, { color: colors.text }]} numberOfLines={10}>
                                     {target.content || target.caption}
                                 </Text>
                             ) : null}
                             
                             <View style={styles.targetStats}>
                                 <View style={styles.statItem}>
-                                    <Ionicons name="heart-outline" size={12} color="rgba(255,255,255,0.6)" />
+                                    <Ionicons name="heart-outline" size={12} color={colors.textSecondary} />
                                     <Text style={styles.statText}>{target.reactions_count || 0}</Text>
                                 </View>
                                 <View style={styles.statItem}>
-                                    <Ionicons name="chatbubble-outline" size={12} color="rgba(255,255,255,0.6)" />
+                                    <Ionicons name="chatbubble-outline" size={12} color={colors.textSecondary} />
                                     <Text style={styles.statText}>{target.comments_count || 0}</Text>
                                 </View>
                                 <Text style={styles.targetDate}>
@@ -386,14 +390,14 @@ function ModerationPanel() {
                                 </View>
                             </View>
                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <View style={[styles.typeTag, { backgroundColor: '#2196F340' }]}>
-                                    <Text style={[styles.typeTagText, { color: '#2196F3' }]}>COMMENT</Text>
+                                <View style={[styles.typeTag, { backgroundColor: colors.info + '26' }]}>
+                                    <Text style={[styles.typeTagText, { color: colors.info }]}>COMMENT</Text>
                                 </View>
                                 <TouchableOpacity 
                                     style={styles.viewButton}
                                     onPress={() => handleNavigateToTarget(report)}
                                 >
-                                    <Ionicons name="eye" size={16} color="#fff" />
+                                    <Ionicons name="eye" size={16} color={colors.surface} />
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -432,21 +436,21 @@ function ModerationPanel() {
                                 <Text style={styles.targetHandle}>@{target.username}</Text>
                                 <View style={{ alignSelf: 'flex-start', marginTop: 4 }}>
                                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                        <View style={[styles.typeTag, { backgroundColor: '#9C27B040' }]}>
-                                            <Text style={[styles.typeTagText, { color: '#9C27B0' }]}>PROFILE</Text>
+                                        <View style={[styles.typeTag, { backgroundColor: colors.tint + '15' }]}>
+                                            <Text style={[styles.typeTagText, { color: colors.tint }]}>PROFILE</Text>
                                         </View>
                                         <TouchableOpacity 
                                             style={styles.viewButton}
                                             onPress={() => handleNavigateToTarget(report)}
                                         >
-                                            <Ionicons name="eye" size={16} color="#fff" />
+                                            <Ionicons name="eye" size={16} color={colors.surface} />
                                         </TouchableOpacity>
                                     </View>
                                 </View>
                             </View>
                         </View>
                         
-                        <View style={[styles.targetStats, { marginTop: 15, justifyContent: 'space-around', backgroundColor: 'rgba(255,255,255,0.03)', padding: 10, borderRadius: 12 }]}>
+                        <View style={[styles.targetStats, { marginTop: 15, justifyContent: 'space-around', backgroundColor: colors.surface, padding: 10, borderRadius: 12 }]}>
                             <View style={{ alignItems: 'center' }}>
                                 <Text style={styles.statNumber}>{target.followers_count || 0}</Text>
                                 <Text style={styles.statLabel}>Followers</Text>
@@ -472,7 +476,7 @@ function ModerationPanel() {
                                 <View>
                                     <Text style={styles.targetUsername}>{target.user?.name || 'User'}</Text>
                                     <View style={styles.storyMeta}>
-                                        <Ionicons name="time-outline" size={10} color="rgba(255,255,255,0.4)" />
+                                        <Ionicons name="time-outline" size={10} color={colors.textSecondary} />
                                         <Text style={styles.targetDate}>
                                             {target.expires_at ? `Expires ${new Date(target.expires_at).toLocaleTimeString()}` : 'Story'}
                                         </Text>
@@ -480,14 +484,14 @@ function ModerationPanel() {
                                 </View>
                             </View>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <View style={[styles.typeTag, { backgroundColor: '#FF980040' }]}>
-                                    <Text style={[styles.typeTagText, { color: '#FF9800' }]}>STORY</Text>
+                                <View style={[styles.typeTag, { backgroundColor: colors.warning + '26' }]}>
+                                    <Text style={[styles.typeTagText, { color: colors.warning }]}>STORY</Text>
                                 </View>
                                 <TouchableOpacity 
                                     style={styles.viewButton}
                                     onPress={() => handleNavigateToTarget(report)}
                                 >
-                                    <Ionicons name="eye" size={16} color="#fff" />
+                                    <Ionicons name="eye" size={16} color={colors.surface} />
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -514,7 +518,7 @@ function ModerationPanel() {
                         <View style={styles.contentHeader}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                                 <View style={styles.spaceIconContainer}>
-                                    <Ionicons name="mic" size={20} color="#fff" />
+                                    <Ionicons name="mic" size={20} color={colors.surface} />
                                 </View>
                                 <View>
                                     <Text style={styles.targetUsername}>{target.title || 'Live Space'}</Text>
@@ -522,14 +526,14 @@ function ModerationPanel() {
                                 </View>
                             </View>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <View style={[styles.typeTag, { backgroundColor: '#4CAF5040' }]}>
-                                    <Text style={[styles.typeTagText, { color: '#4CAF50' }]}>SPACE</Text>
+                                <View style={[styles.typeTag, { backgroundColor: colors.success + '26' }]}>
+                                    <Text style={[styles.typeTagText, { color: colors.success }]}>SPACE</Text>
                                 </View>
                                 <TouchableOpacity 
                                     style={styles.viewButton}
                                     onPress={() => handleNavigateToTarget(report)}
                                 >
-                                    <Ionicons name="eye" size={16} color="#fff" />
+                                    <Ionicons name="eye" size={16} color={colors.surface} />
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -540,9 +544,9 @@ function ModerationPanel() {
                                 <Text style={styles.statText}>{target.participants_count || 0} listening</Text>
                             </View>
                             {target.is_live && (
-                                <View style={[styles.liveBadge, { backgroundColor: '#F4433620' }]}>
-                                    <View style={[styles.liveDot, { backgroundColor: '#F44336' }]} />
-                                    <Text style={[styles.liveText, { color: '#F44336' }]}>LIVE</Text>
+                                <View style={[styles.liveBadge, { backgroundColor: colors.error + '26' }]}>
+                                    <View style={[styles.liveDot, { backgroundColor: colors.error }]} />
+                                    <Text style={[styles.liveText, { color: colors.error }]}>LIVE</Text>
                                 </View>
                             )}
                         </View>
@@ -564,7 +568,7 @@ function ModerationPanel() {
         if (!check) return null;
 
         const confidence = check.ai_confidence || check.malicious_intent_score || 0;
-        const color = confidence > 0.7 ? '#F44336' : confidence > 0.4 ? '#FF9800' : '#4CAF50';
+        const color = confidence > 0.7 ? colors.error : confidence > 0.4 ? colors.warning : colors.success;
 
         return (
             <View style={styles.aiSection}>
@@ -587,15 +591,15 @@ function ModerationPanel() {
                 </View>
                 <View style={styles.aiTags}>
                     {(check.malicious_intent_score > 0.7 || check.ai_confidence > 0.7) && (
-                        <View style={[styles.aiTag, { backgroundColor: 'rgba(244, 67, 54, 0.15)', borderColor: 'rgba(244, 67, 54, 0.3)', borderWidth: 1 }]}>
-                            <Ionicons name="warning" size={10} color="#F44336" />
-                            <Text style={[styles.aiTagText, { color: '#F44336', fontWeight: '800' }]}>High Risk</Text>
+                        <View style={[styles.aiTag, { backgroundColor: colors.error + '26', borderColor: colors.error + '4D', borderWidth: 1 }]}>
+                            <Ionicons name="warning" size={10} color={colors.error} />
+                            <Text style={[styles.aiTagText, { color: colors.error, fontWeight: '800' }]}>High Risk</Text>
                         </View>
                     )}
                     {check.fact_score < 0.3 && check.fact_score !== undefined && (
-                        <View style={[styles.aiTag, { backgroundColor: 'rgba(255, 152, 0, 0.15)', borderColor: 'rgba(255, 152, 0, 0.3)', borderWidth: 1 }]}>
-                            <Ionicons name="help-circle" size={10} color="#FF9800" />
-                            <Text style={[styles.aiTagText, { color: '#FF9800', fontWeight: '800' }]}>Unverified</Text>
+                        <View style={[styles.aiTag, { backgroundColor: colors.warning + '26', borderColor: colors.warning + '4D', borderWidth: 1 }]}>
+                            <Ionicons name="help-circle" size={10} color={colors.warning} />
+                            <Text style={[styles.aiTagText, { color: colors.warning, fontWeight: '800' }]}>Unverified</Text>
                         </View>
                     )}
                 </View>
@@ -604,6 +608,8 @@ function ModerationPanel() {
     };
 
     const ReportCard = ({ report, index }: { report: Report; index: number }) => {
+        const SEVERITY_CONFIG = getSeverityConfig(colors);
+        const STATUS_CONFIG = getStatusConfig(colors);
         const severity = SEVERITY_CONFIG[report.severity as keyof typeof SEVERITY_CONFIG] || SEVERITY_CONFIG.low;
         const status = STATUS_CONFIG[report.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.pending;
         const isAssigned = assignedReports.has(report.report_id);
@@ -621,7 +627,7 @@ function ModerationPanel() {
                     style={styles.cardTouchable}
                 >
                     <LinearGradient
-                        colors={['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.04)']}
+                        colors={activeScheme === 'dark' ? ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.04)'] : [colors.background, colors.background]}
                         style={styles.cardGradient}
                     >
                         {/* Card Header */}
@@ -647,7 +653,7 @@ function ModerationPanel() {
 
                         {/* Target Type Icon */}
                         <View style={styles.typeIconContainer}>
-                            {getTargetIcon(report.target_type, 20, '#fff')}
+                            {getTargetIcon(report.target_type, 20, colors.surface)}
                             <Text style={styles.typeText}>
                                 {report.target_type.toUpperCase()} #{report.target_id}
                             </Text>
@@ -659,13 +665,13 @@ function ModerationPanel() {
                         {/* Report Details */}
                         <View style={styles.reportDetails}>
                             <View style={styles.categoryContainer}>
-                                <Ionicons name="flag" size={12} color="#FF9800" />
+                                <Ionicons name="flag" size={12} color={colors.warning} />
                                 <Text style={styles.categoryText}>
                                     {report.category.replace(/_/g, ' ')}
                                 </Text>
                                 {report.subcategory && (
                                     <>
-                                        <Ionicons name="chevron-forward" size={10} color="#666" />
+                                        <Ionicons name="chevron-forward" size={10} color={colors.textSecondary} />
                                         <Text style={styles.subcategoryText}>
                                             {report.subcategory.replace(/_/g, ' ')}
                                         </Text>
@@ -697,7 +703,7 @@ function ModerationPanel() {
                                         style={styles.assignButton}
                                         onPress={() => handleAssign(report.report_id)}
                                     >
-                                        <Ionicons name="hand-right" size={16} color="#fff" />
+                                        <Ionicons name="hand-right" size={16} color={colors.surface} />
                                         <Text style={styles.assignButtonText}>Take Report</Text>
                                     </TouchableOpacity>
                                 ) : (
@@ -705,7 +711,7 @@ function ModerationPanel() {
                                         <Ionicons
                                             name={isAssigned ? "checkmark-done-circle" : "person"}
                                             size={14}
-                                            color={isAssigned ? "#4CAF50" : "#1DA1F2"}
+                                            color={isAssigned ? colors.success : colors.tint}
                                         />
                                         <Text style={[styles.moderatorName, isAssigned && styles.moderatorNameMine]}>
                                             {isAssigned ? "Yours" : `Moderator: ${report.assigned_to?.name}`}
@@ -740,9 +746,10 @@ function ModerationPanel() {
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
+            <StatusBar barStyle={activeScheme === 'dark' ? 'light-content' : 'dark-content'} />
             {/* Header */}
             <View style={styles.header}>
-                <TouchableOpacity 
+                <BackButton 
                     onPress={() => {
                         if (returnTo) {
                             router.replace(returnTo as any);
@@ -750,10 +757,7 @@ function ModerationPanel() {
                             router.back();
                         }
                     }} 
-                    style={styles.backButton}
-                >
-                    <Ionicons name="arrow-back" size={24} color="#fff" />
-                </TouchableOpacity>
+                />
                 <View>
                     <Text style={styles.headerTitle}>Moderation Panel</Text>
                     <Text style={styles.headerSubtitle}>
@@ -761,7 +765,7 @@ function ModerationPanel() {
                     </Text>
                 </View>
                 <TouchableOpacity onPress={fetchReports} style={styles.refreshButton}>
-                    <Ionicons name="refresh" size={22} color="#fff" />
+                    <Ionicons name="refresh" size={22} color={colors.text} />
                 </TouchableOpacity>
             </View>
 
@@ -769,21 +773,21 @@ function ModerationPanel() {
             <View style={styles.stickyHeader}>
                 {/* Search Bar */}
                 <View style={styles.searchContainer}>
-                    <Ionicons name="search" size={18} color="rgba(255,255,255,0.5)" />
+                    <Ionicons name="search" size={18} color={colors.textSecondary} />
                     <TextInput
                         style={styles.searchInput}
                         placeholder="Search reports by ID, category, or reporter..."
-                        placeholderTextColor="rgba(255,255,255,0.5)"
+                        placeholderTextColor={colors.textSecondary + '60'}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                     />
                     {searchQuery !== '' && (
                         <TouchableOpacity onPress={() => setSearchQuery('')}>
-                            <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.5)" />
+                            <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
                         </TouchableOpacity>
                     )}
                     <TouchableOpacity onPress={() => setShowFilters(!showFilters)}>
-                        <Ionicons name="options-outline" size={18} color="rgba(255,255,255,0.5)" />
+                        <Ionicons name="options-outline" size={18} color={colors.textSecondary} />
                     </TouchableOpacity>
                 </View>
 
@@ -795,7 +799,7 @@ function ModerationPanel() {
                         style={styles.filterBar}
                     >
                         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                            {Object.entries(SEVERITY_CONFIG).map(([key, config]) => (
+                            {Object.entries(getSeverityConfig(colors)).map(([key, config]) => (
                                 <TouchableOpacity
                                     key={key}
                                     style={[
@@ -818,7 +822,7 @@ function ModerationPanel() {
                         style={[styles.mainToggleBtn, activeMainTab === 'all' && styles.mainToggleBtnActive]}
                         onPress={() => setActiveMainTab('all')}
                     >
-                        <Ionicons name="apps" size={14} color={activeMainTab === 'all' ? '#fff' : 'rgba(255,255,255,0.4)'} />
+                        <Ionicons name="apps" size={14} color={activeMainTab === 'all' ? colors.surface : colors.surface + '66'} />
                         <Text style={[styles.mainToggleText, activeMainTab === 'all' && styles.mainToggleTextActive]}>
                             All Reports ({tabsWithCounts.find(t => t.id === 'all')?.count || 0})
                         </Text>
@@ -827,7 +831,7 @@ function ModerationPanel() {
                         style={[styles.mainToggleBtn, activeMainTab === 'my' && styles.mainToggleBtnActive]}
                         onPress={() => setActiveMainTab('my')}
                     >
-                        <Ionicons name="person" size={14} color={activeMainTab === 'my' ? '#fff' : 'rgba(255,255,255,0.4)'} />
+                        <Ionicons name="person" size={14} color={activeMainTab === 'my' ? colors.surface : colors.surface + '66'} />
                         <Text style={[styles.mainToggleText, activeMainTab === 'my' && styles.mainToggleTextActive]}>
                             My Cases ({tabsWithCounts.find(t => t.id === 'my')?.count || 0})
                         </Text>
@@ -853,7 +857,7 @@ function ModerationPanel() {
                             <Ionicons
                                 name={tab.icon as any}
                                 size={16}
-                                color={activeTypeTab === tab.id ? '#fff' : 'rgba(255,255,255,0.6)'}
+                                color={activeTypeTab === tab.id ? colors.surface : colors.surface + '99'}
                             />
                             <Text style={[
                                 styles.typeTabText,
@@ -874,7 +878,7 @@ function ModerationPanel() {
             {/* Reports List */}
             {loading ? (
                 <View style={styles.loaderContainer}>
-                    <ActivityIndicator size="large" color="#fff" />
+                    <ActivityIndicator size="large" color={colors.tint} />
                     <Text style={styles.loaderText}>Loading reports...</Text>
                 </View>
             ) : (
@@ -890,7 +894,7 @@ function ModerationPanel() {
                                 setRefreshing(true);
                                 fetchReports();
                             }}
-                            tintColor="#fff"
+                            tintColor={colors.tint}
                         />
                     }
                     ListEmptyComponent={
@@ -900,7 +904,7 @@ function ModerationPanel() {
                             style={styles.emptyContainer}
                         >
                             <View style={styles.emptyIcon}>
-                                <Ionicons name="shield-checkmark" size={60} color="rgba(255,255,255,0.2)" />
+                                <Ionicons name="shield-checkmark" size={60} color={colors.border} />
                             </View>
                             <Text style={styles.emptyTitle}>All Clear</Text>
                             <Text style={styles.emptyText}>
@@ -938,13 +942,13 @@ function ModerationPanel() {
                                             style={[styles.viewButton, { width: 36, height: 36, borderRadius: 18 }]}
                                             onPress={() => handleNavigateToTarget(selectedReport)}
                                         >
-                                            <Ionicons name="eye" size={20} color="#fff" />
+                                            <Ionicons name="eye" size={20} color={colors.surface} />
                                         </TouchableOpacity>
                                         <TouchableOpacity
                                             style={styles.closeButton}
                                             onPress={() => setSelectedReport(null)}
                                         >
-                                            <Ionicons name="close" size={24} color="#fff" />
+                                            <Ionicons name="close" size={24} color={colors.text} />
                                         </TouchableOpacity>
                                     </View>
                                 </View>
@@ -988,13 +992,13 @@ function ModerationPanel() {
                                     <Text style={styles.modalSectionTitle}>Report Reason</Text>
                                     <View style={styles.modalDescriptionCard}>
                                         <View style={styles.modalCategoryRow}>
-                                            <Ionicons name="flag" size={16} color="#FF9800" />
+                                            <Ionicons name="flag" size={16} color={colors.warning} />
                                             <Text style={styles.modalCategory}>
                                                 {selectedReport.category.replace(/_/g, ' ')}
                                             </Text>
                                             {selectedReport.subcategory && (
                                                 <>
-                                                    <Ionicons name="chevron-forward" size={14} color="#666" />
+                                                    <Ionicons name="chevron-forward" size={14} color={colors.textSecondary} />
                                                     <Text style={styles.modalSubcategory}>
                                                         {selectedReport.subcategory.replace(/_/g, ' ')}
                                                     </Text>
@@ -1019,7 +1023,7 @@ function ModerationPanel() {
                                                                         styles.modalScoreFill,
                                                                         {
                                                                             width: `${(selectedReport.check.malicious_intent_score || 0) * 100}%`,
-                                                                            backgroundColor: '#F44336'
+                                                                            backgroundColor: colors.error
                                                                         }
                                                                     ]}
                                                                 />
@@ -1039,7 +1043,7 @@ function ModerationPanel() {
                                                                         styles.modalScoreFill,
                                                                         {
                                                                             width: `${(selectedReport.check.fact_score || 0) * 100}%`,
-                                                                            backgroundColor: '#4CAF50'
+                                                                            backgroundColor: colors.success
                                                                         }
                                                                     ]}
                                                                 />
@@ -1066,7 +1070,7 @@ function ModerationPanel() {
                                     <TextInput
                                         style={styles.modalNotesInput}
                                         placeholder="Add internal notes about this decision..."
-                                        placeholderTextColor="#666"
+                                        placeholderTextColor={colors.textSecondary + '66'}
                                         multiline
                                         value={resolutionNotes}
                                         onChangeText={setResolutionNotes}
@@ -1075,10 +1079,10 @@ function ModerationPanel() {
                                     {/* Action Buttons Section */}
                                     <Text style={styles.modalSectionTitle}>Take Action</Text>
                                     <View style={styles.actionDescriptions}>
-                                        <Text style={styles.actionDescText}><Text style={{fontWeight:'700', color:'#999'}}>Dismiss:</Text> Close without action. No penalty for target.</Text>
-                                        <Text style={styles.actionDescText}><Text style={{fontWeight:'700', color:'#FF9800'}}>Warn:</Text> Send a formal warning to the user.</Text>
-                                        <Text style={styles.actionDescText}><Text style={{fontWeight:'700', color:'#F44336'}}>Suspend:</Text> Temporary 24h ban from all features.</Text>
-                                        <Text style={styles.actionDescText}><Text style={{fontWeight:'700', color:'#fff'}}>Ban:</Text> Permanent removal from the platform.</Text>
+                                        <Text style={styles.actionDescText}><Text style={{fontWeight:'700', color:colors.textSecondary}}>Dismiss:</Text> Close without action. No penalty for target.</Text>
+                                        <Text style={styles.actionDescText}><Text style={{fontWeight:'700', color:colors.warning}}>Warn:</Text> Send a formal warning to the user.</Text>
+                                        <Text style={styles.actionDescText}><Text style={{fontWeight:'700', color:colors.error}}>Suspend:</Text> Temporary 24h ban from all features.</Text>
+                                        <Text style={styles.actionDescText}><Text style={{fontWeight:'700', color:colors.text}}>Ban:</Text> Permanent removal from the platform.</Text>
                                     </View>
 
                                     <View style={styles.modalActions}>
@@ -1087,7 +1091,7 @@ function ModerationPanel() {
                                             onPress={() => handleResolve('dismiss')}
                                             disabled={isResolving}
                                         >
-                                            <Ionicons name="close-circle" size={20} color="#999" />
+                                            <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
                                             <Text style={styles.modalActionDismissText}>Dismiss</Text>
                                         </TouchableOpacity>
 
@@ -1096,8 +1100,8 @@ function ModerationPanel() {
                                             onPress={() => handleResolve('warn')}
                                             disabled={isResolving}
                                         >
-                                            <Ionicons name="warning" size={20} color="#FF9800" />
-                                            <Text style={[styles.modalActionText, { color: '#FF9800' }]}>Warn</Text>
+                                            <Ionicons name="warning" size={20} color={colors.warning} />
+                                            <Text style={[styles.modalActionText, { color: colors.warning }]}>Warn</Text>
                                         </TouchableOpacity>
 
                                         <TouchableOpacity
@@ -1105,17 +1109,17 @@ function ModerationPanel() {
                                             onPress={() => handleResolve('suspend')}
                                             disabled={isResolving}
                                         >
-                                            <Ionicons name="timer" size={20} color="#F44336" />
-                                            <Text style={[styles.modalActionText, { color: '#F44336' }]}>Suspend</Text>
+                                            <Ionicons name="timer" size={20} color={colors.error} />
+                                            <Text style={[styles.modalActionText, { color: colors.error }]}>Suspend</Text>
                                         </TouchableOpacity>
 
                                         <TouchableOpacity
-                                            style={[styles.modalActionButton, { backgroundColor: '#000', borderColor: '#FF453A', borderWidth: 1 }]}
+                                            style={[styles.modalActionButton, { backgroundColor: colors.background, borderColor: colors.error, borderWidth: 1 }]}
                                             onPress={() => handleResolve('ban')}
                                             disabled={isResolving}
                                         >
-                                            <Ionicons name="skull" size={20} color="#FF453A" />
-                                            <Text style={[styles.modalActionText, { color: '#FF453A' }]}>Ban</Text>
+                                            <Ionicons name="skull" size={20} color={colors.error} />
+                                            <Text style={[styles.modalActionText, { color: colors.error }]}>Ban</Text>
                                         </TouchableOpacity>
                                     </View>
                                 </ScrollView>
@@ -1138,10 +1142,11 @@ function ModerationPanel() {
         </View>
     );
 }
-const styles = StyleSheet.create({
+function getStyles(colors: any, activeScheme: string) {
+  return StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#0a0a0a',
+        backgroundColor: colors.background,
     },
     header: {
         flexDirection: 'row',
@@ -1150,38 +1155,38 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingVertical: 16,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.1)',
+        borderBottomColor: colors.border,
     },
     backButton: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: colors.surface,
         justifyContent: 'center',
         alignItems: 'center',
     },
     headerTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#fff',
+        color: colors.text,
     },
     headerSubtitle: {
         fontSize: 12,
-        color: 'rgba(255,255,255,0.5)',
+        color: colors.textSecondary,
         marginTop: 2,
     },
     refreshButton: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: colors.surface,
         justifyContent: 'center',
         alignItems: 'center',
     },
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: colors.surface,
         marginHorizontal: 20,
         marginTop: 16,
         marginBottom: 12,
@@ -1189,10 +1194,12 @@ const styles = StyleSheet.create({
         paddingVertical: Platform.OS === 'ios' ? 12 : 8,
         borderRadius: 30,
         gap: 8,
+        borderWidth: 1,
+        borderColor: colors.border,
     },
     searchInput: {
         flex: 1,
-        color: '#fff',
+        color: colors.text,
         fontSize: 14,
     },
     filterBar: {
@@ -1202,35 +1209,37 @@ const styles = StyleSheet.create({
     filterChip: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.05)',
+        backgroundColor: colors.surface,
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 20,
         marginRight: 8,
         gap: 4,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderColor: colors.border,
     },
     filterChipActive: {
-        backgroundColor: 'rgba(29, 161, 242, 0.15)',
-        borderColor: '#1DA1F2',
+        backgroundColor: colors.tint + '15',
+        borderColor: colors.tint,
     },
     filterChipText: {
         fontSize: 12,
         fontWeight: '500',
-        color: 'rgba(255,255,255,0.6)',
+        color: colors.textSecondary,
     },
     filterChipTextActive: {
-        color: '#1DA1F2',
+        color: colors.tint,
     },
     mainToggleContainer: {
         flexDirection: 'row',
-        backgroundColor: 'rgba(255,255,255,0.05)',
+        backgroundColor: colors.surface,
         marginHorizontal: 20,
         marginBottom: 12,
         borderRadius: 25,
         padding: 4,
         height: 48,
+        borderWidth: 1,
+        borderColor: colors.border,
     },
     mainToggleBtn: {
         flex: 1,
@@ -1242,17 +1251,17 @@ const styles = StyleSheet.create({
         height: '100%',
     },
     mainToggleBtnActive: {
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: colors.background,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderColor: colors.border,
     },
     mainToggleText: {
         fontSize: 13,
-        color: 'rgba(255,255,255,0.4)',
+        color: colors.textSecondary,
         fontWeight: '500',
     },
     mainToggleTextActive: {
-        color: '#fff',
+        color: colors.tint,
         fontWeight: '700',
     },
     typeTabsScroll: {
@@ -1268,26 +1277,31 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         borderRadius: 18,
         marginRight: 8,
-        backgroundColor: 'rgba(255,255,255,0.05)',
+        backgroundColor: colors.surface,
         gap: 6,
+        borderWidth: 1,
+        borderColor: colors.border,
     },
     typeTabActive: {
-        backgroundColor: '#1DA1F2',
+        backgroundColor: colors.tint,
+        borderColor: colors.tint,
     },
     typeTabText: {
         fontSize: 13,
-        color: 'rgba(255,255,255,0.6)',
+        color: colors.textSecondary,
         fontWeight: '600',
     },
     typeTabTextActive: {
-        color: '#fff',
+        color: colors.surface,
     },
 
     stickyHeader: {
-        backgroundColor: '#000', // Solid background to prevent cards showing through
+        backgroundColor: colors.background,
         paddingBottom: 8,
         zIndex: 10,
-        elevation: 10, // For Android
+        elevation: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
     },
     typeTabsContainer: {
         paddingHorizontal: 20,
@@ -1299,12 +1313,12 @@ const styles = StyleSheet.create({
         paddingTop: 8,
     },
     reportCard: {
-        backgroundColor: '#161616',
+        backgroundColor: colors.surface,
         borderRadius: 20,
         padding: 16,
         marginBottom: 16,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.05)',
+        borderColor: colors.border,
     },
     reportHeader: {
         flexDirection: 'row',
@@ -1324,11 +1338,11 @@ const styles = StyleSheet.create({
     },
     reportId: {
         fontSize: 10,
-        color: 'rgba(255,255,255,0.3)',
+        color: colors.textSecondary,
         fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     },
     reasonBadge: {
-        backgroundColor: 'rgba(255,152,0,0.1)',
+        backgroundColor: colors.warning + '15',
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 6,
@@ -1336,23 +1350,23 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     reasonText: {
-        color: '#FF9800',
+        color: colors.warning,
         fontSize: 11,
         fontWeight: '600',
     },
     targetContentCard: {
-        backgroundColor: 'rgba(255,255,255,0.03)',
+        backgroundColor: colors.background,
         borderRadius: 16,
         padding: 12,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.03)',
+        borderColor: colors.border,
     },
     targetMediaContainer: {
         marginBottom: 12,
         borderRadius: 12,
         overflow: 'hidden',
-        backgroundColor: '#000',
+        backgroundColor: colors.surface,
     },
     targetMedia: {
         width: '100%',
@@ -1369,7 +1383,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
     },
     mediaCountText: {
-        color: '#fff',
+        color: colors.surface,
         fontSize: 12,
         fontWeight: '700',
     },
@@ -1377,7 +1391,7 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     targetCaption: {
-        color: '#fff',
+        color: colors.text,
         fontSize: 14,
         lineHeight: 20,
     },
@@ -1393,7 +1407,7 @@ const styles = StyleSheet.create({
     },
     statText: {
         fontSize: 11,
-        color: 'rgba(255,255,255,0.4)',
+        color: colors.textSecondary,
     },
     commentAuthor: {
         flexDirection: 'row',
@@ -1409,11 +1423,11 @@ const styles = StyleSheet.create({
     targetUsername: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#fff',
+        color: colors.text,
     },
     replyingTo: {
         fontSize: 11,
-        color: 'rgba(255,255,255,0.4)',
+        color: colors.textSecondary,
     },
     commentBody: {
         paddingLeft: 42,
@@ -1422,11 +1436,11 @@ const styles = StyleSheet.create({
         marginTop: 10,
         paddingTop: 10,
         borderTopWidth: 1,
-        borderTopColor: 'rgba(255,255,255,0.05)',
+        borderTopColor: colors.border,
     },
     targetContext: {
         fontSize: 12,
-        color: 'rgba(255,255,255,0.4)',
+        color: colors.textSecondary,
         fontStyle: 'italic',
     },
     profileHeader: {
@@ -1446,11 +1460,11 @@ const styles = StyleSheet.create({
     targetUsernameLarge: {
         fontSize: 18,
         fontWeight: '800',
-        color: '#fff',
+        color: colors.text,
     },
     targetHandle: {
         fontSize: 13,
-        color: 'rgba(255,255,255,0.5)',
+        color: colors.textSecondary,
     },
     profileBadges: {
         flexDirection: 'row',
@@ -1459,19 +1473,19 @@ const styles = StyleSheet.create({
         marginTop: 4,
     },
     adminBadge: {
-        backgroundColor: 'rgba(244,67,54,0.1)',
+        backgroundColor: colors.error + '10',
         paddingHorizontal: 6,
         paddingVertical: 2,
         borderRadius: 4,
     },
     adminBadgeText: {
-        color: '#F44336',
+        color: colors.error,
         fontSize: 10,
         fontWeight: '700',
     },
     targetBio: {
         fontSize: 13,
-        color: 'rgba(255,255,255,0.7)',
+        color: colors.text,
         lineHeight: 18,
         marginBottom: 12,
     },
@@ -1485,12 +1499,12 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     profileStatValue: {
-        color: '#fff',
+        color: colors.text,
         fontSize: 13,
         fontWeight: '700',
     },
     profileStatLabel: {
-        color: 'rgba(255,255,255,0.4)',
+        color: colors.textSecondary,
         fontSize: 12,
     },
     storyPreview: {
@@ -1503,11 +1517,11 @@ const styles = StyleSheet.create({
         width: 28,
         height: 28,
         borderRadius: 14,
-        backgroundColor: 'rgba(255,255,255,0.15)',
+        backgroundColor: colors.surface,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderColor: colors.border,
     },
     storyImage: {
         width: '100%',
@@ -1528,20 +1542,20 @@ const styles = StyleSheet.create({
     spaceTitle: {
         fontSize: 18,
         fontWeight: '800',
-        color: '#fff',
+        color: colors.text,
         flex: 1,
     },
     liveBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F44336',
+        backgroundColor: colors.error,
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 6,
         gap: 4,
     },
     liveText: {
-        color: '#fff',
+        color: colors.surface,
         fontSize: 10,
         fontWeight: '800',
     },
@@ -1558,7 +1572,7 @@ const styles = StyleSheet.create({
     },
     hostName: {
         fontSize: 13,
-        color: 'rgba(255,255,255,0.6)',
+        color: colors.textSecondary,
     },
     spaceStats: {
         flexDirection: 'row',
@@ -1572,7 +1586,7 @@ const styles = StyleSheet.create({
         marginTop: 12,
         paddingTop: 12,
         borderTopWidth: 1,
-        borderTopColor: 'rgba(255,255,255,0.05)',
+        borderTopColor: colors.border,
     },
     reporterInfo: {
         flexDirection: 'row',
@@ -1586,11 +1600,11 @@ const styles = StyleSheet.create({
     },
     reporterName: {
         fontSize: 11,
-        color: 'rgba(255,255,255,0.5)',
+        color: colors.textSecondary,
     },
     reportDate: {
         fontSize: 10,
-        color: 'rgba(255,255,255,0.3)',
+        color: colors.textSecondary,
     },
     actionSection: {
         flexDirection: 'row',
@@ -1599,39 +1613,42 @@ const styles = StyleSheet.create({
         marginTop: 16,
         paddingTop: 12,
         borderTopWidth: 1,
-        borderTopColor: 'rgba(255,255,255,0.05)',
+        borderTopColor: colors.border,
     },
     assignButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#1DA1F2',
+        backgroundColor: colors.tint,
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 20,
         gap: 6,
     },
     assignButtonText: {
-        color: '#fff',
+        color: colors.surface,
         fontSize: 12,
         fontWeight: '600',
     },
     moderatorBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(29, 161, 242, 0.1)',
+        backgroundColor: colors.surface,
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 10,
         gap: 4,
+        borderWidth: 1,
+        borderColor: colors.border,
     },
     loaderContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: colors.background,
     },
     loaderText: {
         marginTop: 12,
-        color: 'rgba(255,255,255,0.5)',
+        color: colors.textSecondary,
         fontSize: 14,
     },
     emptyContainer: {
@@ -1644,36 +1661,37 @@ const styles = StyleSheet.create({
         width: 100,
         height: 100,
         borderRadius: 50,
-        backgroundColor: 'rgba(255,255,255,0.05)',
+        backgroundColor: colors.surface,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 20,
+        borderWidth: 1,
+        borderColor: colors.border,
     },
     emptyTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#fff',
+        color: colors.text,
         marginBottom: 8,
     },
     emptyText: {
         fontSize: 14,
-        color: 'rgba(255,255,255,0.5)',
+        color: colors.textSecondary,
     },
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.85)',
+        backgroundColor: 'rgba(0,0,0,0.6)',
         justifyContent: 'center',
         alignItems: 'center',
-        // padding: 20,
     },
     modalContainer: {
-        backgroundColor: '#1a1a2e',
+        backgroundColor: colors.background,
         borderRadius: 30,
         width: '100%',
         maxHeight: '85%',
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderColor: colors.border,
         ...Platform.select({
             web: {
                 maxWidth: 1440,
@@ -1687,20 +1705,22 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 20,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.1)',
+        borderBottomColor: colors.border,
     },
     modalTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#fff',
+        color: colors.text,
     },
     closeButton: {
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: colors.surface,
         justifyContent: 'center',
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: colors.border,
     },
     modalIdRow: {
         flexDirection: 'row',
@@ -1708,11 +1728,13 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: 20,
         paddingVertical: 12,
-        backgroundColor: 'rgba(255,255,255,0.03)',
+        backgroundColor: colors.surface,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
     },
     modalId: {
         fontSize: 12,
-        color: 'rgba(255,255,255,0.5)',
+        color: colors.textSecondary,
         fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     },
     modalStatusBadge: {
@@ -1726,37 +1748,36 @@ const styles = StyleSheet.create({
     },
     modalDate: {
         fontSize: 12,
-        color: 'rgba(255,255,255,0.4)',
+        color: colors.textSecondary,
     },
     modalSectionTitle: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#fff',
+        fontSize: 13,
+        fontWeight: '800',
+        color: colors.textSecondary,
         marginTop: 20,
-        marginBottom: 12,
+        marginBottom: 10,
         marginHorizontal: 20,
         textTransform: 'uppercase',
-        letterSpacing: 1,
-        opacity: 0.6,
+        letterSpacing: 1.5,
     },
     modalContentCard: {
-        backgroundColor: 'rgba(255,255,255,0.05)',
+        backgroundColor: colors.surface,
         borderRadius: 16,
         marginHorizontal: 20,
         padding: 12,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderColor: colors.border,
     },
     modalReporterCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.05)',
+        backgroundColor: colors.surface,
         borderRadius: 16,
         marginHorizontal: 20,
         padding: 12,
         gap: 12,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderColor: colors.border,
     },
     modalReporterAvatar: {
         width: 44,
@@ -1766,20 +1787,20 @@ const styles = StyleSheet.create({
     modalReporterName: {
         fontSize: 15,
         fontWeight: '600',
-        color: '#fff',
+        color: colors.text,
     },
     modalReporterDate: {
         fontSize: 12,
-        color: 'rgba(255,255,255,0.4)',
+        color: colors.textSecondary,
         marginTop: 2,
     },
     modalDescriptionCard: {
-        backgroundColor: 'rgba(255,255,255,0.05)',
+        backgroundColor: colors.surface,
         borderRadius: 16,
         marginHorizontal: 20,
         padding: 16,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderColor: colors.border,
     },
     modalCategoryRow: {
         flexDirection: 'row',
@@ -1789,25 +1810,25 @@ const styles = StyleSheet.create({
     },
     modalCategory: {
         fontSize: 14,
-        color: '#FF9800',
-        fontWeight: '600',
+        color: colors.warning,
+        fontWeight: '700',
     },
     modalSubcategory: {
         fontSize: 14,
-        color: 'rgba(255,255,255,0.6)',
+        color: colors.textSecondary,
     },
     modalDescription: {
         fontSize: 15,
-        color: 'rgba(255,255,255,0.8)',
+        color: colors.text,
         lineHeight: 22,
     },
     modalAiCard: {
-        backgroundColor: 'rgba(29,161,242,0.08)',
+        backgroundColor: colors.tint + '10',
         borderRadius: 16,
         marginHorizontal: 20,
         padding: 16,
         borderWidth: 1,
-        borderColor: 'rgba(29,161,242,0.2)',
+        borderColor: colors.border,
     },
     modalScoreGrid: {
         gap: 16,
@@ -1817,7 +1838,7 @@ const styles = StyleSheet.create({
     },
     modalScoreLabel: {
         fontSize: 12,
-        color: 'rgba(255,255,255,0.6)',
+        color: colors.textSecondary,
         fontWeight: '500',
     },
     modalScoreBarContainer: {
@@ -1828,7 +1849,7 @@ const styles = StyleSheet.create({
     modalScoreBar: {
         flex: 1,
         height: 8,
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: colors.border,
         borderRadius: 4,
         overflow: 'hidden',
     },
@@ -1839,52 +1860,52 @@ const styles = StyleSheet.create({
     modalScoreValue: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#fff',
+        color: colors.text,
         width: 45,
     },
     modalAiRecommendation: {
         marginTop: 16,
         paddingTop: 16,
         borderTopWidth: 1,
-        borderTopColor: 'rgba(255,255,255,0.1)',
+        borderTopColor: colors.border,
         alignItems: 'center',
     },
     modalAiRecommendationLabel: {
         fontSize: 11,
-        color: 'rgba(255,255,255,0.5)',
+        color: colors.textSecondary,
         marginBottom: 4,
         textTransform: 'uppercase',
     },
     modalAiRecommendationValue: {
         fontSize: 16,
         fontWeight: '800',
-        color: '#1DA1F2',
+        color: colors.tint,
     },
     modalNotesInput: {
-        backgroundColor: 'rgba(255,255,255,0.05)',
+        backgroundColor: colors.surface,
         borderRadius: 16,
         marginHorizontal: 20,
         padding: 16,
-        color: '#fff',
+        color: colors.text,
         fontSize: 15,
         minHeight: 100,
         textAlignVertical: 'top',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderColor: colors.border,
         marginBottom: 20,
     },
     modalActionText: {
         fontSize: 13,
         fontWeight: '700',
-        color: '#fff',
+        color: colors.surface,
     },
     modalActions: {
         flexDirection: 'row',
         padding: 20,
         gap: 8,
-        backgroundColor: 'rgba(0,0,0,0.2)',
+        backgroundColor: colors.surface,
         borderTopWidth: 1,
-        borderTopColor: 'rgba(255,255,255,0.1)',
+        borderTopColor: colors.border,
     },
     modalActionButton: {
         flex: 1,
@@ -1897,39 +1918,39 @@ const styles = StyleSheet.create({
         borderWidth: 1,
     },
     modalActionDismiss: {
-        borderColor: 'rgba(255,255,255,0.2)',
-        backgroundColor: 'rgba(255,255,255,0.05)',
+        borderColor: colors.border,
+        backgroundColor: colors.background,
     },
     modalActionDismissText: {
-        color: '#fff',
+        color: colors.textSecondary,
         fontSize: 13,
         fontWeight: '600',
     },
     modalActionWarn: {
-        borderColor: '#FF9800',
-        backgroundColor: 'rgba(255,152,0,0.1)',
+        borderColor: colors.warning,
+        backgroundColor: colors.warning + '10',
     },
     modalActionSuspend: {
-        borderColor: '#F44336',
-        backgroundColor: 'rgba(244,67,54,0.1)',
+        borderColor: colors.error,
+        backgroundColor: colors.error + '10',
     },
     modalActionBan: {
-        borderColor: '#000',
-        backgroundColor: 'rgba(0,0,0,0.3)',
+        borderColor: colors.text,
+        backgroundColor: colors.text + '20',
     },
     actionDescriptions: {
         marginHorizontal: 20,
         marginBottom: 16,
-        backgroundColor: 'rgba(255,255,255,0.03)',
+        backgroundColor: colors.surface,
         padding: 12,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.05)',
+        borderColor: colors.border,
         gap: 6,
     },
     actionDescText: {
         fontSize: 12,
-        color: 'rgba(255,255,255,0.5)',
+        color: colors.textSecondary,
         lineHeight: 18,
     },
     // Card styles
@@ -1991,15 +2012,15 @@ const styles = StyleSheet.create({
     categoryText: {
         fontSize: 13,
         fontWeight: '600',
-        color: '#FF9800',
+        color: colors.warning,
     },
     subcategoryText: {
         fontSize: 12,
-        color: 'rgba(255,255,255,0.5)',
+        color: colors.textSecondary,
     },
     reportDescription: {
         fontSize: 14,
-        color: '#fff',
+        color: colors.text,
         lineHeight: 20,
         marginBottom: 12,
     },
@@ -2017,13 +2038,13 @@ const styles = StyleSheet.create({
     },
     aiScoreLabel: {
         fontSize: 12,
-        color: 'rgba(255,255,255,0.5)',
+        color: colors.textSecondary,
         width: 80,
     },
     aiScoreBar: {
         flex: 1,
         height: 4,
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: colors.border,
         borderRadius: 2,
     },
     aiScoreFill: {
@@ -2033,7 +2054,7 @@ const styles = StyleSheet.create({
     aiScoreValue: {
         fontSize: 12,
         fontWeight: '700',
-        color: '#fff',
+        color: colors.text,
         width: 35,
     },
     aiTags: {
@@ -2067,7 +2088,7 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
     },
     reviewButtonText: {
-        color: '#1DA1F2',
+        color: colors.tint,
         fontSize: 13,
         fontWeight: '700',
     },
@@ -2082,11 +2103,11 @@ const styles = StyleSheet.create({
     },
     moderatorName: {
         fontSize: 10,
-        color: '#1DA1F2',
+        color: colors.tint,
         fontWeight: '600',
     },
     moderatorNameMine: {
-        color: '#4CAF50',
+        color: colors.success,
         fontSize: 12,
         fontWeight: '600',
     },
@@ -2111,7 +2132,7 @@ const styles = StyleSheet.create({
         height: 32,
         borderRadius: 16,
         borderWidth: 2,
-        borderColor: '#1DA1F2',
+        borderColor: colors.tint,
     },
     targetMetaText: {
         fontSize: 12,
@@ -2147,12 +2168,12 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         borderStyle: 'dashed',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderColor: colors.border,
         gap: 10,
     },
     emptyTargetText: {
         fontSize: 12,
-        color: 'rgba(255,255,255,0.3)',
+        color: colors.textSecondary,
     },
     tabBadge: {
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -2162,7 +2183,7 @@ const styles = StyleSheet.create({
         marginLeft: 6,
     },
     tabBadgeText: {
-        color: '#fff',
+        color: colors.surface,
         fontSize: 10,
         fontWeight: '700',
     },
@@ -2175,17 +2196,17 @@ const styles = StyleSheet.create({
         marginTop: 12,
         paddingTop: 12,
         borderTopWidth: 1,
-        borderTopColor: 'rgba(255,255,255,0.05)',
+        borderTopColor: colors.border,
     },
     contextLabel: {
         fontSize: 10,
         fontWeight: '700',
-        color: 'rgba(255,255,255,0.4)',
+        color: colors.textSecondary,
         marginBottom: 8,
     },
     contextPreview: {
         flexDirection: 'row',
-        backgroundColor: 'rgba(255,255,255,0.03)',
+        backgroundColor: colors.surface,
         padding: 8,
         borderRadius: 8,
         gap: 10,
@@ -2211,7 +2232,7 @@ const styles = StyleSheet.create({
     contextText: {
         flex: 1,
         fontSize: 12,
-        color: 'rgba(255,255,255,0.6)',
+        color: colors.textSecondary,
         fontStyle: 'italic',
     },
     targetAvatar: {
@@ -2221,20 +2242,20 @@ const styles = StyleSheet.create({
     },
     targetDate: {
         fontSize: 10,
-        color: 'rgba(255,255,255,0.4)',
+        color: colors.textSecondary,
     },
     statNumber: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#fff',
+        color: colors.text,
     },
     statLabel: {
         fontSize: 10,
-        color: 'rgba(255,255,255,0.5)',
+        color: colors.textSecondary,
         textTransform: 'uppercase',
     },
     typeTag: {
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: colors.surface,
         paddingHorizontal: 8,
         paddingVertical: 3,
         borderRadius: 6,
@@ -2242,9 +2263,10 @@ const styles = StyleSheet.create({
     typeTagText: {
         fontSize: 10,
         fontWeight: '800',
-        color: 'rgba(255,255,255,0.6)',
+        color: colors.textSecondary,
         letterSpacing: 0.5,
     },
 });
+}
 
 export default ModerationPanel;

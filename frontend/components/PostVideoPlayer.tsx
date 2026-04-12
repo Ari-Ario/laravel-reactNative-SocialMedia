@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet, Dimensions } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 
 interface PostVideoPlayerProps {
@@ -10,7 +10,10 @@ interface PostVideoPlayerProps {
   isMuted?: boolean;
   volume?: number;
   onVolumeChange?: (volume: number) => void;
+  poster?: string;
 }
+
+const isMobileWeb = Platform.OS === 'web' && Dimensions.get('window').width < 768;
 
 export const PostVideoPlayer = React.forwardRef<any, PostVideoPlayerProps>(({ 
   uri, 
@@ -18,17 +21,19 @@ export const PostVideoPlayer = React.forwardRef<any, PostVideoPlayerProps>(({
   contentFit = 'cover',
   shouldPlay = true,
   isMuted = true,
-  volume = 1
+  volume = 1,
+  poster
 }, ref) => {
   const player = useVideoPlayer(uri, (p) => {
     p.loop = true;
-    p.muted = isMuted;
+    // On mobile web, autoplay REQUIRES muted state
+    p.muted = isMobileWeb ? true : isMuted;
     p.volume = volume;
     if (shouldPlay) p.play();
   });
 
   React.useEffect(() => {
-    player.muted = isMuted;
+    player.muted = isMobileWeb ? true : isMuted;
   }, [player, isMuted]);
 
   React.useEffect(() => {
@@ -49,6 +54,9 @@ export const PostVideoPlayer = React.forwardRef<any, PostVideoPlayerProps>(({
       style={style}
       contentFit={contentFit}
       nativeControls={false}
+      allowsVideoFrameAnalysis={false}
+      // @ts-ignore - expo-video uses this for web poster
+      posterSource={poster ? { uri: poster } : undefined}
     />
   );
 });

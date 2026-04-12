@@ -34,6 +34,8 @@ import SpacesPanel from '@/components/Notifications/SpacesPanel';
 import ActivitiesPanel from '@/components/Notifications/ActivitiesPanel';
 import PushNotificationService from "@/services/PushNotificationService";
 import { useIsFocused } from "@react-navigation/native";
+import { useAppTheme } from "@/hooks/useAppTheme";
+import { Colors } from "@/constants/Colors";
 
 type StoryGroup = {
     user: {
@@ -47,6 +49,8 @@ type StoryGroup = {
 };
 
 const HomePage = () => {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
     const isFocused = useIsFocused();
     const { user, setUser } = useContext(AuthContext);
     const router = useRouter();
@@ -56,6 +60,7 @@ const HomePage = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
     const [addStoryVisible, setAddStoryVisible] = useState(false);
+    const [viewablePostId, setViewablePostId] = useState<number | null>(null);
 
     // Stores
     const { storyGroups, fetchStories: fetchStoriesFromStore, initializeRealtime: initStoryRealtime } = useStoryStore();
@@ -196,9 +201,9 @@ const HomePage = () => {
                     // ✅ GUARD: If this is a 'left' or 'deleted' update, don't show the "New Space" notification
                     // We check both data.update_type and data.changes.update_type for robustness
                     if (
-                        data.update_type === 'left' || 
-                        data.changes?.update_type === 'left' || 
-                        data.type === 'space-deleted' || 
+                        data.update_type === 'left' ||
+                        data.changes?.update_type === 'left' ||
+                        data.type === 'space-deleted' ||
                         data.update_type === 'deleted'
                     ) {
                         console.log('🔇 Suppressing notification for space leave/delete:', data.update_type || data.type);
@@ -286,6 +291,18 @@ const HomePage = () => {
         setProfilePreviewVisible(true);
     };
 
+    const viewabilityConfig = useRef({
+        itemVisiblePercentThreshold: 100, // User requested 100% visible
+    }).current;
+
+    const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+        if (viewableItems && viewableItems.length > 0) {
+            setViewablePostId(viewableItems[0].item.id);
+        } else {
+            setViewablePostId(null);
+        }
+    }).current;
+
     // Instagram-style Story Separation
     const { myStoryGroup, otherStoryGroups } = useMemo(() => {
         if (!user?.id) return { myStoryGroup: null, otherStoryGroups: storyGroups };
@@ -310,14 +327,14 @@ const HomePage = () => {
 
     if ((loading && !refreshing) || !user) {
         return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" />
+            <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+                <ActivityIndicator size="large" color={colors.tint} />
             </View>
         );
     }
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
             {/* Modals and Panels */}
             {activeNotificationType === 'regular' || activeNotificationType === 'all' ? (
                 <NotificationPanel
@@ -368,17 +385,17 @@ const HomePage = () => {
             ) : null}
 
             {isFollowersPanelVisible && (
-              <FollowersPanel
-                visible={isFollowersPanelVisible}
-                onClose={() => setIsFollowersPanelVisible(false)}
-                anchorPosition={followersAnchor}
-              />
+                <FollowersPanel
+                    visible={isFollowersPanelVisible}
+                    onClose={() => setIsFollowersPanelVisible(false)}
+                    anchorPosition={followersAnchor}
+                />
             )}
 
             {/* Header */}
-            <View style={styles.header}>
+            <View style={[styles.header, { backgroundColor: colors.background }]}>
                 <View style={styles.headerContent}>
-                    <Text style={styles.headerTitle}>Home</Text>
+                    <Text style={[styles.headerTitle, { color: colors.text }]}>Home</Text>
                     <View style={styles.headerIcons}>
                         <TouchableOpacity
                             ref={callsIconRef}
@@ -437,7 +454,7 @@ const HomePage = () => {
                             style={styles.notificationIconContainer}
                             onPress={handleFollowersPress}
                         >
-                            <Ionicons name="people-outline" size={24} color="#000" />
+                            <Ionicons name="people-outline" size={24} color={colors.text} />
                             {unreadFollowerCount > 0 && (
                                 <View style={[styles.badge, styles.followerBadge]}>
                                     <Text style={styles.badgeText}>{unreadFollowerCount > 99 ? '99+' : unreadFollowerCount}</Text>
@@ -451,7 +468,7 @@ const HomePage = () => {
                                 style={styles.notificationIconContainer}
                                 onPress={() => router.push('/chatbotTraining')}
                             >
-                                <FontAwesome name="server" size={24} color="#000" />
+                                <FontAwesome name="server" size={24} color={colors.text} />
                                 {unreadChatbotTrainingCount > 0 && (
                                     <View style={[styles.badge, styles.regularBadge]}>
                                         <Text style={styles.badgeText}>{unreadChatbotTrainingCount > 99 ? '99+' : unreadChatbotTrainingCount}</Text>
@@ -465,7 +482,7 @@ const HomePage = () => {
                             style={styles.notificationIconContainer}
                             onPress={() => handleIconPress(regularIconRef, 'regular', setNotificationPanelVisible)}
                         >
-                            <Ionicons name="notifications-outline" size={24} color="#000" />
+                            <Ionicons name="notifications-outline" size={24} color={colors.text} />
                             {unreadCount > 0 && (
                                 <View style={[styles.badge, styles.regularBadge]}>
                                     <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
@@ -476,8 +493,8 @@ const HomePage = () => {
                 </View>
             </View>
 
-            <View style={styles.headerScrollContainer}>
-                <View style={styles.header}>
+            <View style={[styles.headerScrollContainer, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+                <View style={[styles.header, { backgroundColor: colors.surface }]}>
                     <View style={styles.storiesContainer}>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 10 }}>
                             <View style={styles.storyItem}>
@@ -495,20 +512,21 @@ const HomePage = () => {
                                         <View style={[
                                             styles.storyBorder,
                                             !myStoryGroup && { borderColor: 'transparent' },
-                                            myStoryGroup?.all_viewed && styles.viewedStoryBorder
+                                            myStoryGroup?.all_viewed && styles.viewedStoryBorder,
+                                            myStoryGroup && !myStoryGroup.all_viewed && { borderColor: colors.tint }
                                         ]}>
                                             <Avatar user={user} size={60} style={styles.storyImage} />
                                         </View>
                                     </TouchableOpacity>
                                     <TouchableOpacity
-                                        style={styles.addStoryIcon}
+                                        style={[styles.addStoryIcon, { borderColor: colors.background, backgroundColor: '#1063FD' }]}
                                         onPress={() => setAddStoryVisible(true)}
                                         activeOpacity={0.7}
                                     >
                                         <Ionicons name="add" size={16} color="white" />
                                     </TouchableOpacity>
                                 </View>
-                                <Text style={styles.storyUsername} numberOfLines={1}>Your Story</Text>
+                                <Text style={[styles.storyUsername, { color: colors.textSecondary }]} numberOfLines={1}>Your Story</Text>
                             </View>
 
                             {otherStoryGroups.map(group => (
@@ -517,11 +535,14 @@ const HomePage = () => {
                                     style={styles.storyItem}
                                     onPress={() => router.push({ pathname: '/story/[id]', params: { id: group.latest_story.id } })}
                                 >
-                                    <View style={[styles.storyBorder, group.all_viewed && styles.viewedStoryBorder]}>
+                                    <View style={[
+                                        styles.storyBorder,
+                                        group.all_viewed ? { borderColor: colors.border } : { borderColor: colors.tint }
+                                    ]}>
                                         <Avatar user={group.user} size={60} style={styles.storyImage} />
-                                        {!group.all_viewed && <View style={styles.unseenBadge} />}
+                                        {!group.all_viewed && <View style={[styles.unseenBadge, { borderColor: colors.background, backgroundColor: colors.tint }]} />}
                                     </View>
-                                    <Text style={styles.storyUsername} numberOfLines={1}>{group.user.name}</Text>
+                                    <Text style={[styles.storyUsername, { color: colors.textSecondary }]} numberOfLines={1}>{group.user.name}</Text>
                                 </TouchableOpacity>
                             ))}
                         </ScrollView>
@@ -541,8 +562,9 @@ const HomePage = () => {
                             onRepost={handleRepost}
                             onShare={sharePost}
                             onBookmark={bookmarkPost}
-                            shouldPlay={isFocused}
+                            shouldPlay={isFocused && viewablePostId === item.id}
                         />
+                        <View style={{ height: 1.5, backgroundColor: colors.border, opacity: 0.5 }} />
                     </View>
                 )}
                 contentContainerStyle={styles.listContent}
@@ -550,6 +572,8 @@ const HomePage = () => {
                 onRefresh={handleRefresh}
                 refreshing={refreshing}
                 keyExtractor={(item) => item.id.toString()}
+                onViewableItemsChanged={onViewableItemsChanged}
+                viewabilityConfig={viewabilityConfig}
             />
 
             <FloatingActionButton onPress={() => {
@@ -565,12 +589,6 @@ const HomePage = () => {
                 }}
             />
 
-            <ProfilePreview
-                userId={profileViewUserId}
-                visible={profilePreviewVisible}
-                onClose={() => setProfilePreviewVisible(false)}
-            />
-
             <AddStory
                 visible={addStoryVisible}
                 onClose={() => setAddStoryVisible(false)}
@@ -580,218 +598,205 @@ const HomePage = () => {
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        position: 'relative',
-        backgroundColor: '#fff',
-        width: '100%',
-        // maxWidth: 1024,
-        alignSelf: 'center',
-    },
-    headerScrollContainer: {
-        position: 'sticky',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 10,
-        backgroundColor: '#f8f8f8',
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
-    },
+function getStyles(colors: any, activeScheme: string) {
+    return StyleSheet.create({
+        container: {
+            flex: 1,
+            position: 'relative',
+            width: '100%',
+            alignSelf: 'center',
+        },
+        headerScrollContainer: {
+            position: 'sticky',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 10,
+            borderBottomWidth: 1,
+        },
 
-    header: {
-        width: '100%',
-        // maxWidth: 500,
-        alignSelf: 'center',
-        padding: 5,
-    },
-    photoContainer: {
-        position: 'relative',
-        marginBottom: 0,
-        display: 'flex',
-    },
-    profilePhoto: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        width: 60,
-        height: 60,
-        borderRadius: 60,
-        backgroundColor: '#e1e1e1',
-    },
-    userName: {
-        paddingLeft: 10,
-    },
-    initials: {
-        fontSize: 40,
-        fontWeight: 'bold',
-        color: '#555',
-    },
-    initialsContainer: {
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    addIconContainer: {
-        position: 'absolute',
-        right: 0,
-        bottom: 0,
-        backgroundColor: '#25D366',
-        borderRadius: 20,
-        padding: 5,
-    },
-    listContent: {
-        gap: 10,
-        paddingBottom: 20,
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
+        header: {
+            width: '100%',
+            // maxWidth: 500,
+            alignSelf: 'center',
+            padding: 5,
+        },
+        photoContainer: {
+            position: 'relative',
+            marginBottom: 0,
+            display: 'flex',
+        },
+        profilePhoto: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            width: 60,
+            height: 60,
+            borderRadius: 60,
+        },
+        userName: {
+            paddingLeft: 10,
+        },
+        initials: {
+            fontSize: 40,
+            fontWeight: 'bold',
+        },
+        initialsContainer: {
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        addIconContainer: {
+            position: 'absolute',
+            right: 0,
+            bottom: 0,
+            backgroundColor: '#25D366',
+            borderRadius: 20,
+            padding: 5,
+        },
+        listContent: {
+            gap: 10,
+            paddingBottom: 20,
+        },
+        loadingContainer: {
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
 
-    postContainer: {
-        marginBottom: 15,
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
-    },
-    storiesContainer: {
-        // paddingVertical: 10,
-        // borderBottomWidth: 1,
-        // borderBottomColor: '#eee',
-    },
-    myStoryCircle: {
-        width: 70,
-        height: 70,
-        borderRadius: 35,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#f5f5f5',
-        position: 'relative',
-    },
-    storyItem: {
-        alignItems: 'center',
-        marginHorizontal: 8,
-    },
-    storyBorder: {
-        width: 70,
-        height: 70,
-        borderRadius: 35,
-        borderWidth: 2,
-        borderColor: '#3897f0',
-        justifyContent: 'center',
-        alignItems: 'center',
-        position: 'relative',
-    },
-    viewedStoryBorder: {
-        borderColor: '#999',
-    },
-    storyImage: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-    },
-    storyUsername: {
-        marginTop: 5,
-        fontSize: 12,
-        maxWidth: 70,
-        textAlign: 'center',
-    },
-    addStoryIcon: {
-        position: 'absolute',
-        bottom: 0,
-        right: 0,
-        backgroundColor: '#3897f0',
-        borderRadius: 12,
-        width: 24,
-        height: 24,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 2,
-        borderColor: 'white',
-    },
-    unseenBadge: {
-        position: 'absolute',
-        top: -2,
-        right: -2,
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-        backgroundColor: '#3897f0',
-        borderWidth: 2,
-        borderColor: 'white',
-    },
+        postContainer: {
+            marginBottom: 15,
+        },
+        storiesContainer: {
+            // paddingVertical: 10,
+            // borderBottomWidth: 1,
+            // borderBottomColor: '#eee',
+        },
+        myStoryCircle: {
+            width: 70,
+            height: 70,
+            borderRadius: 35,
+            justifyContent: 'center',
+            alignItems: 'center',
+            position: 'relative',
+        },
+        storyItem: {
+            alignItems: 'center',
+            marginHorizontal: 8,
+        },
+        storyBorder: {
+            width: 70,
+            height: 70,
+            borderRadius: 35,
+            borderWidth: 2,
+            justifyContent: 'center',
+            alignItems: 'center',
+            position: 'relative',
+        },
+        viewedStoryBorder: {
+        },
+        storyImage: {
+            width: 60,
+            height: 60,
+            borderRadius: 30,
+        },
+        storyUsername: {
+            marginTop: 5,
+            fontSize: 12,
+            maxWidth: 70,
+            textAlign: 'center',
+        },
+        addStoryIcon: {
+            position: 'absolute',
+            bottom: 0,
+            right: 0,
+            borderRadius: 12,
+            width: 24,
+            height: 24,
+            justifyContent: 'center',
+            alignItems: 'center',
+            borderWidth: 2,
+        },
+        unseenBadge: {
+            position: 'absolute',
+            top: -2,
+            right: -2,
+            width: 12,
+            height: 12,
+            borderRadius: 6,
+            borderWidth: 2,
+        },
 
 
-    headerContent: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-    },
-    headerTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-    },
-    headerIcons: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    notificationBell: {
-        marginLeft: 15,
-        position: 'relative',
-    },
-    notificationIconContainer: {
-        position: 'relative',
-        marginLeft: 12,
-    },
-    badge: {
-        position: 'absolute',
-        top: -4,
-        right: -6,
-        minWidth: 18,
-        height: 18,
-        borderRadius: 9,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 3,
-    },
-    callBadge: {
-        backgroundColor: '#4CD964',
-    },
-    messageBadge: {
-        backgroundColor: '#007AFF',
-    },
-    spaceBadge: {
-        backgroundColor: '#5856D6',
-    },
-    activityBadge: {
-        backgroundColor: '#FF2D55',
-    },
-    regularBadge: {
-        backgroundColor: '#FF9500',
-    },
-    followerBadge: {
-        backgroundColor: '#FF3B30',
-    },
-    badgeText: {
-        color: '#fff',
-        fontSize: 10,
-        fontWeight: '600',
-    },
+        headerContent: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingHorizontal: 16,
+        },
+        headerTitle: {
+            fontSize: 24,
+            fontWeight: 'bold',
+        },
+        headerIcons: {
+            flexDirection: 'row',
+            alignItems: 'center',
+        },
+        notificationBell: {
+            marginLeft: 15,
+            position: 'relative',
+        },
+        notificationIconContainer: {
+            position: 'relative',
+            marginLeft: 12,
+        },
+        badge: {
+            position: 'absolute',
+            top: -4,
+            right: -6,
+            minWidth: 18,
+            height: 18,
+            borderRadius: 9,
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 3,
+        },
+        callBadge: {
+            backgroundColor: '#4CD964',
+        },
+        messageBadge: {
+            backgroundColor: '#007AFF',
+        },
+        spaceBadge: {
+            backgroundColor: '#5856D6',
+        },
+        activityBadge: {
+            backgroundColor: '#FF2D55',
+        },
+        regularBadge: {
+            backgroundColor: '#FF9500',
+        },
+        followerBadge: {
+            backgroundColor: '#FF3B30',
+        },
+        badgeText: {
+            color: '#fff',
+            fontSize: 10,
+            fontWeight: '600',
+        },
 
-    // Add to your styles
-    testButton: {
-        backgroundColor: '#007AFF',
-        padding: 10,
-        borderRadius: 5,
-        margin: 10,
-        alignItems: 'center'
-    },
-    testButtonText: {
-        color: 'white',
-        fontWeight: 'bold'
-    }
-});
+        // Add to your styles
+        testButton: {
+            backgroundColor: '#007AFF',
+            padding: 10,
+            borderRadius: 5,
+            margin: 10,
+            alignItems: 'center'
+        },
+        testButtonText: {
+            color: 'white',
+            fontWeight: 'bold'
+        },
+    });
+}
 
 export default HomePage;

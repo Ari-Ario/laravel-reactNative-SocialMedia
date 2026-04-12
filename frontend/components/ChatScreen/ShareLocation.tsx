@@ -19,9 +19,10 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import { MotiView } from 'moti';
+import { MotiView, AnimatePresence } from 'moti';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 // Dynamic imports for platform-specific map implementations
 let MapView: any;
@@ -31,7 +32,6 @@ let LoadScript: any;
 if (Platform.OS === 'web') {
     // Web-specific imports
     try {
-        // We'll use a dynamic import pattern for web
         const { GoogleMap, LoadScript: GoogleLoadScript, MarkerF } = require('@react-google-maps/api');
         MapView = GoogleMap;
         Marker = MarkerF;
@@ -82,7 +82,14 @@ interface Place {
     icon?: string;
 }
 
-// Predefined places near user (will be populated with real data)
+interface Region {
+    latitude: number;
+    longitude: number;
+    latitudeDelta: number;
+    longitudeDelta: number;
+}
+
+// Predefined places near user
 const NEARBY_PLACE_TYPES = [
     { icon: 'cafe', types: 'cafe', name: 'Coffee Shops' },
     { icon: 'restaurant', types: 'restaurant', name: 'Restaurants' },
@@ -109,9 +116,10 @@ export const ShareLocation: React.FC<ShareLocationProps> = ({
     onClose,
     onShareLocation,
     onShareLiveLocation,
-    googlePlacesApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY', // Replace with your key or use env
+    googlePlacesApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY',
 }) => {
     const insets = useSafeAreaInsets();
+    const { colors, activeScheme } = useAppTheme();
 
     // Location state
     const [location, setLocation] = useState<Location.LocationObject | null>(null);
@@ -209,99 +217,26 @@ export const ShareLocation: React.FC<ShareLocationProps> = ({
         }
     }, []);
 
-    // Fetch nearby places using Google Places API (or fallback)
-    const fetchNearbyPlaces = async (lat: number, lng: number, type?: string) => {
-        if (!googlePlacesApiKey || googlePlacesApiKey === 'YOUR_API_KEY') {
-            // Demo data when no API key
-            const demoPlaces: Place[] = [
-                {
-                    id: '1',
-                    name: 'Central Park',
-                    address: 'New York, NY',
-                    latitude: lat + 0.01,
-                    longitude: lng + 0.01,
-                    distance: '0.5 km',
-                },
-                {
-                    id: '2',
-                    name: 'Starbucks',
-                    address: '123 Main St',
-                    latitude: lat - 0.005,
-                    longitude: lng + 0.008,
-                    distance: '0.8 km',
-                },
-                {
-                    id: '3',
-                    name: 'Whole Foods Market',
-                    address: '456 Oak Ave',
-                    latitude: lat + 0.015,
-                    longitude: lng - 0.01,
-                    distance: '1.2 km',
-                },
-                {
-                    id: '4',
-                    name: 'Planet Fitness',
-                    address: '789 Pine Rd',
-                    latitude: lat - 0.02,
-                    longitude: lng - 0.015,
-                    distance: '1.8 km',
-                },
-                {
-                    id: '5',
-                    name: 'Walgreens',
-                    address: '321 Elm St',
-                    latitude: lat + 0.025,
-                    longitude: lng + 0.02,
-                    distance: '2.1 km',
-                },
-            ];
-            setNearbyPlaces(demoPlaces);
-            return;
+    // Calculate distance between two coordinates
+    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): string => {
+        const R = 6371;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distance = R * c;
+
+        if (distance < 1) {
+            return `${Math.round(distance * 1000)} m`;
         }
-
-        setLoadingNearby(true);
-        try {
-            // Google nearbysearch requires at least one of: type, keyword, or name.
-            // When multiple types are separated by '|', use 'keyword' instead of 'type'.
-            const searchParam = type 
-                ? (type.includes('|') ? `&keyword=${encodeURIComponent(type)}` : `&type=${type}`)
-                : `&keyword=point of interest`; // Broad default for 'All' tab
-
-            const response = await fetch(
-                `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=1500${searchParam}&key=${googlePlacesApiKey}`
-            );
-            const data = await response.json();
-
-            if (data.results) {
-                const places: Place[] = data.results.slice(0, 10).map((place: any) => ({
-                    id: place.place_id,
-                    name: place.name,
-                    address: place.vicinity,
-                    latitude: place.geometry.location.lat,
-                    longitude: place.geometry.location.lng,
-                    icon: place.icon,
-                    distance: calculateDistance(
-                        lat,
-                        lng,
-                        place.geometry.location.lat,
-                        place.geometry.location.lng
-                    ),
-                }));
-                setNearbyPlaces(places);
-            } else {
-                fetchOSMNearby(lat, lng, type);
-            }
-        } catch (error) {
-            console.error('Error fetching nearby places:', error);
-            fetchOSMNearby(lat, lng, type);
-        } finally {
-            setLoadingNearby(false);
-        }
+        return `${distance.toFixed(1)} km`;
     };
 
     const fetchOSMNearby = async (lat: number, lng: number, type?: string) => {
         try {
-            // Nominatim doesn't support '|' and needs broader terms for 'All'
             let query = type || 'point of interest';
             if (type && type.includes('|')) {
                 if (type === 'shopping_mall|store') query = 'shop';
@@ -337,91 +272,67 @@ export const ShareLocation: React.FC<ShareLocationProps> = ({
         }
     };
 
-    // Calculate distance between two coordinates
-    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): string => {
-        const R = 6371;
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a =
-            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        const distance = R * c;
-
-        if (distance < 1) {
-            return `${Math.round(distance * 1000)} m`;
+    // Fetch nearby places
+    const fetchNearbyPlaces = async (lat: number, lng: number, type?: string) => {
+        if (!googlePlacesApiKey || googlePlacesApiKey === 'YOUR_API_KEY') {
+            const demoPlaces: Place[] = [
+                { id: '1', name: 'Central Park', address: 'New York, NY', latitude: lat + 0.01, longitude: lng + 0.01, distance: '0.5 km' },
+                { id: '2', name: 'Starbucks', address: '123 Main St', latitude: lat - 0.005, longitude: lng + 0.008, distance: '0.8 km' },
+                { id: '3', name: 'Whole Foods Market', address: '456 Oak Ave', latitude: lat + 0.015, longitude: lng - 0.01, distance: '1.2 km' },
+            ];
+            setNearbyPlaces(demoPlaces);
+            return;
         }
-        return `${distance.toFixed(1)} km`;
+
+        setLoadingNearby(true);
+        try {
+            const searchParam = type 
+                ? (type.includes('|') ? `&keyword=${encodeURIComponent(type)}` : `&type=${type}`)
+                : `&keyword=point of interest`;
+
+            const response = await fetch(
+                `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=1500${searchParam}&key=${googlePlacesApiKey}`
+            );
+            const data = await response.json();
+
+            if (data.results) {
+                const places: Place[] = data.results.slice(0, 10).map((place: any) => ({
+                    id: place.place_id,
+                    name: place.name,
+                    address: place.vicinity,
+                    latitude: place.geometry.location.lat,
+                    longitude: place.geometry.location.lng,
+                    icon: place.icon,
+                    distance: calculateDistance(lat, lng, place.geometry.location.lat, place.geometry.location.lng),
+                }));
+                setNearbyPlaces(places);
+            } else {
+                fetchOSMNearby(lat, lng, type);
+            }
+        } catch (error) {
+            fetchOSMNearby(lat, lng, type);
+        } finally {
+            setLoadingNearby(false);
+        }
     };
 
     // Helper to get a descriptive name from Google Places if reverse geocode is generic
     const getNearbyPlaceName = async (lat: number, lng: number): Promise<string | null> => {
         if (!googlePlacesApiKey || googlePlacesApiKey === 'YOUR_API_KEY') return null;
-
         try {
             const response = await fetch(
                 `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=500&key=${googlePlacesApiKey}`
             );
             const data = await response.json();
-
             if (data.results && data.results.length > 0) {
-                // Filter for "real" places (avoiding generic ones if possible)
                 const candidates = data.results.filter((p: any) => 
-                    !p.types.includes('locality') && 
-                    !p.types.includes('political') &&
-                    !p.types.includes('route')
+                    !p.types.includes('locality') && !p.types.includes('political') && !p.types.includes('route')
                 );
-                
-                if (candidates.length > 0) {
-                    return candidates[0].name;
-                }
-                
-                return data.results[0].name;
+                return candidates.length > 0 ? candidates[0].name : data.results[0].name;
             }
-        } catch (error) {
-            console.error('Error fetching nearby place name:', error);
-        }
+        } catch (error) {}
         return null;
     };
-
-    // Start live location sharing
-    const startLiveLocation = useCallback(async () => {
-        if (!location && locationStatus !== 'granted') return;
-
-        try {
-            const subscription = await Location.watchPositionAsync(
-                {
-                    accuracy: Location.Accuracy.Balanced,
-                    timeInterval: 5000,
-                    distanceInterval: 10,
-                },
-                (newLocation) => {
-                    setLocation(newLocation);
-                }
-            );
-
-            locationSubscription.current = subscription;
-
-            if (onShareLiveLocation && selectedLocation) {
-                onShareLiveLocation({
-                    ...selectedLocation,
-                    isLive: true,
-                    liveDuration: selectedDuration,
-                }, selectedDuration);
-            }
-
-            setTimeout(() => {
-                stopLiveLocation();
-            }, selectedDuration * 60 * 1000);
-
-            setShowLiveOptions(false);
-            onClose();
-        } catch (error) {
-            console.error('Live location error:', error);
-            Alert.alert('Error', 'Could not start live location sharing.');
-        }
-    }, [location, locationStatus, selectedLocation, selectedDuration, onShareLiveLocation]);
 
     const stopLiveLocation = useCallback(() => {
         if (locationSubscription.current) {
@@ -430,71 +341,49 @@ export const ShareLocation: React.FC<ShareLocationProps> = ({
         }
     }, []);
 
-    // Handle place selection from search or nearby
+    // Start live location sharing
+    const startLiveLocation = useCallback(async () => {
+        if (!location && locationStatus !== 'granted') return;
+        try {
+            const subscription = await Location.watchPositionAsync(
+                { accuracy: Location.Accuracy.Balanced, timeInterval: 5000, distanceInterval: 10 },
+                (newLocation) => { setLocation(newLocation); }
+            );
+            locationSubscription.current = subscription;
+            if (onShareLiveLocation && selectedLocation) {
+                onShareLiveLocation({ ...selectedLocation, isLive: true, liveDuration: selectedDuration }, selectedDuration);
+            }
+            setTimeout(() => { stopLiveLocation(); }, selectedDuration * 60 * 1000);
+            setShowLiveOptions(false);
+            onClose();
+        } catch (error) {
+            Alert.alert('Error', 'Could not start live location sharing.');
+        }
+    }, [location, locationStatus, selectedLocation, selectedDuration, onShareLiveLocation, stopLiveLocation, onClose]);
+
     const handlePlaceSelect = (place: any) => {
         const lat = place.geometry?.location?.lat() || place.geometry?.location?.lat || place.latitude;
         const lng = place.geometry?.location?.lng() || place.geometry?.location?.lng || place.longitude;
-
         setSelectedLocation({
             latitude: lat,
             longitude: lng,
             name: place.name || place.structured_formatting?.main_text,
             address: place.description || place.address,
         });
-
         if (mapRef.current) {
             if (Platform.OS === 'web') {
                 mapRef.current.panTo({ lat, lng });
                 mapRef.current.setZoom(16);
             } else {
-                mapRef.current?.animateToRegion({
-                    latitude: lat,
-                    longitude: lng,
-                    latitudeDelta: 0.01,
-                    longitudeDelta: 0.01,
-                }, 1000);
+                mapRef.current?.animateToRegion({ latitude: lat, longitude: lng, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 1000);
             }
         }
-
         setSearchFocused(false);
-        if (Platform.OS === 'ios') {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        }
+        if (Platform.OS === 'ios') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     };
 
-    // Handle current location button
-    const handleCurrentLocation = () => {
-        if (location) {
-            const { latitude, longitude } = location.coords;
-
-            if (Platform.OS === 'web' && mapRef.current) {
-                mapRef.current.panTo({ lat: latitude, lng: longitude });
-                mapRef.current.setZoom(16);
-            } else {
-                mapRef.current?.animateToRegion({
-                    latitude,
-                    longitude,
-                    latitudeDelta: 0.01,
-                    longitudeDelta: 0.01,
-                }, 1000);
-            }
-
-            // For current location, try to get a better name than "Current Location"
-            getNearbyPlaceName(latitude, longitude).then(nearbyName => {
-                setSelectedLocation({
-                    latitude,
-                    longitude,
-                    name: nearbyName || 'Current Location',
-                    address: address,
-                });
-            });
-        }
-    };
-
-    // Handle map press to select custom location
     const handleMapPress = async (e: any) => {
         let latitude, longitude;
-
         if (Platform.OS === 'web') {
             latitude = e.latLng.lat();
             longitude = e.latLng.lng();
@@ -502,71 +391,34 @@ export const ShareLocation: React.FC<ShareLocationProps> = ({
             latitude = e.nativeEvent.coordinate.latitude;
             longitude = e.nativeEvent.coordinate.longitude;
         }
-
-        setSelectedLocation({
-            latitude,
-            longitude,
-        });
-
+        setSelectedLocation({ latitude, longitude });
         try {
-            const [addressResult] = await Location.reverseGeocodeAsync({
-                latitude,
-                longitude,
-            });
-
+            const [addressResult] = await Location.reverseGeocodeAsync({ latitude, longitude });
             if (addressResult) {
-                const formattedAddress = [
-                    addressResult.name,
-                    addressResult.street,
-                    addressResult.city,
-                    addressResult.region,
-                    addressResult.country,
-                ].filter(Boolean).join(', ');
-
-                // Check if the reverse geocode name is just a number or generic
+                const formattedAddress = [addressResult.name, addressResult.street, addressResult.city, addressResult.region, addressResult.country].filter(Boolean).join(', ');
                 const isGenericName = !addressResult.name || /^[0-9-]+$/.test(addressResult.name);
-                
                 let resolvedName = addressResult.name;
                 if (isGenericName) {
                     const nearbyName = await getNearbyPlaceName(latitude, longitude);
-                    if (nearbyName) {
-                        resolvedName = nearbyName;
-                    }
+                    if (nearbyName) resolvedName = nearbyName;
                 }
-
-                setSelectedLocation(prev => ({
-                    ...prev!,
-                    name: resolvedName || undefined,
-                    address: formattedAddress,
-                }));
+                setSelectedLocation(prev => ({ ...prev!, name: resolvedName || undefined, address: formattedAddress }));
             }
-        } catch (error) {
-            console.error('Reverse geocode error:', error);
-        }
-
-        if (Platform.OS === 'ios') {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        }
+        } catch (error) {}
+        if (Platform.OS === 'ios') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     };
 
-    // Handle share button
     const handleShare = () => {
         if (selectedLocation) {
             if (showLiveOptions) {
                 startLiveLocation();
             } else {
-                onShareLocation({
-                    ...selectedLocation,
-                    name: selectedLocation.name || 'Selected Location',
-                    address: selectedLocation.address,
-                    isLive: false,
-                });
+                onShareLocation({ ...selectedLocation, name: selectedLocation.name || 'Selected Location', address: selectedLocation.address, isLive: false });
                 onClose();
             }
         }
     };
 
-    // Initialize on mount
     useEffect(() => {
         if (visible) {
             requestLocationPermission();
@@ -575,74 +427,39 @@ export const ShareLocation: React.FC<ShareLocationProps> = ({
             setShowLiveOptions(false);
             setSelectedPlaceType(null);
         }
+        return () => { stopLiveLocation(); };
+    }, [visible, requestLocationPermission, stopLiveLocation]);
 
-        return () => {
-            stopLiveLocation();
-        };
-    }, [visible]);
-
-    // Render permission request UI
     const renderPermissionRequest = () => (
-        <MotiView
-            from={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            style={styles.permissionContainer}
-        >
-            <View style={styles.permissionIcon}>
-                <Ionicons name="location-outline" size={48} color="#007AFF" />
+        <MotiView from={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={styles.permissionContainer}>
+            <View style={[styles.permissionIcon, { backgroundColor: colors.tint + '20' }]}>
+                <Ionicons name="location-outline" size={48} color={colors.tint} />
             </View>
-            <Text style={styles.permissionTitle}>Share Your Location</Text>
-            <Text style={styles.permissionText}>
+            <Text style={[styles.permissionTitle, { color: colors.text }]}>Share Your Location</Text>
+            <Text style={[styles.permissionText, { color: colors.textSecondary }]}>
                 Allow access to your location to share where you are, find nearby places, and get directions.
             </Text>
             <View style={styles.permissionOptions}>
-                <TouchableOpacity
-                    style={[styles.permissionButton, styles.allowOnceButton]}
-                    onPress={async () => {
-                        await requestLocationPermission();
-                        if (Platform.OS === 'ios') {
-                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                        }
-                    }}
-                >
-                    <Text style={styles.allowOnceText}>Allow Once</Text>
+                <TouchableOpacity style={[styles.permissionButton, styles.allowOnceButton, { backgroundColor: colors.muted }]} onPress={() => requestLocationPermission()}>
+                    <Text style={[styles.allowOnceText, { color: colors.text }]}>Allow Once</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.permissionButton, styles.allowAlwaysButton]}
-                    onPress={async () => {
-                        await requestLocationPermission();
-                        if (Platform.OS === 'ios') {
-                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                        }
-                    }}
-                >
+                <TouchableOpacity style={[styles.permissionButton, styles.allowAlwaysButton, { backgroundColor: colors.tint }]} onPress={() => requestLocationPermission()}>
                     <Text style={styles.allowAlwaysText}>While Using App</Text>
                 </TouchableOpacity>
             </View>
-            <TouchableOpacity
-                style={styles.notNowButton}
-                onPress={() => {
-                    setLocationStatus('denied');
-                    if (Platform.OS === 'ios') {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    }
-                }}
-            >
-                <Text style={styles.notNowText}>Not Now</Text>
+            <TouchableOpacity style={styles.notNowButton} onPress={() => setLocationStatus('denied')}>
+                <Text style={[styles.notNowText, { color: colors.tint }]}>Not Now</Text>
             </TouchableOpacity>
         </MotiView>
     );
 
-    // Render map based on platform
     const renderMap = () => {
         if (!MapView) {
             return (
-                <View style={[styles.map, styles.fallbackContainer]}>
-                    <Ionicons name="map-outline" size={64} color="#8E8E93" />
-                    <Text style={styles.fallbackText}>
-                        {Platform.OS === 'web'
-                            ? 'Loading Google Maps... Please ensure API key is configured.'
-                            : 'Maps not available. Please rebuild the app with npx expo run:android'}
+                <View style={[styles.map, styles.fallbackContainer, { backgroundColor: colors.muted }]}>
+                    <Ionicons name="map-outline" size={64} color={colors.textSecondary} />
+                    <Text style={[styles.fallbackText, { color: colors.textSecondary }]}>
+                        {Platform.OS === 'web' ? 'Loading Google Maps...' : 'Maps not available.'}
                     </Text>
                 </View>
             );
@@ -650,47 +467,29 @@ export const ShareLocation: React.FC<ShareLocationProps> = ({
 
         if (Platform.OS === 'web' && googlePlacesApiKey && googlePlacesApiKey !== 'YOUR_API_KEY') {
             return (
-                <LoadScript
-                    googleMapsApiKey={googlePlacesApiKey}
-                    libraries={googleMapsLibraries}
-                    onLoad={() => setMapLoaded(true)}
-                >
+                <LoadScript googleMapsApiKey={googlePlacesApiKey} libraries={googleMapsLibraries} onLoad={() => setMapLoaded(true)}>
                     {!mapLoaded && (
-                        <View style={[styles.map, styles.fallbackContainer]}>
-                            <ActivityIndicator size="large" color="#007AFF" />
-                            <Text style={styles.loadingText}>Loading Map...</Text>
+                        <View style={[styles.map, styles.fallbackContainer, { backgroundColor: colors.muted }]}>
+                            <ActivityIndicator size="large" color={colors.tint} />
+                            <Text style={[styles.loadingText, { color: colors.text }]}>Loading Map...</Text>
                         </View>
                     )}
                     <MapView
                         mapContainerStyle={webMapContainerStyle}
-                        center={selectedLocation ? selectedLocation : region}
+                        center={selectedLocation ? { lat: selectedLocation.latitude, lng: selectedLocation.longitude } : { lat: region.latitude, lng: region.longitude }}
                         zoom={15}
                         onClick={handleMapPress}
-                        onLoad={(map: any) => {
-                            mapRef.current = map;
-                            setMapLoaded(true);
-                        }}
-                        options={{
-                            streetViewControl: false,
-                            mapTypeControl: false,
-                            fullscreenControl: false,
-                        }}
+                        onLoad={(map: any) => { mapRef.current = map; setMapLoaded(true); }}
+                        options={{ disableDefaultUI: true, mapTypeControl: false, styles: activeScheme === 'dark' ? darkMapStyle : [] }}
                     >
                         {selectedLocation && (
-                            <Marker
-                                position={{
-                                    lat: selectedLocation.latitude,
-                                    lng: selectedLocation.longitude,
-                                }}
-                                title={selectedLocation.name || 'Selected Location'}
-                            />
+                            <Marker position={{ lat: selectedLocation.latitude, lng: selectedLocation.longitude }} title={selectedLocation.name || 'Selected Location'} />
                         )}
                     </MapView>
                 </LoadScript>
             );
         }
 
-        // Native map implementation
         return (
             <MapView
                 ref={mapRef}
@@ -700,34 +499,16 @@ export const ShareLocation: React.FC<ShareLocationProps> = ({
                 onPress={handleMapPress}
                 showsUserLocation={locationStatus === 'granted'}
                 showsMyLocationButton={false}
-                showsCompass={true}
-                showsScale={true}
-                loadingEnabled={true}
+                customMapStyle={activeScheme === 'dark' ? darkMapStyle : []}
             >
                 {selectedLocation && (
-                    <Marker
-                        coordinate={{
-                            latitude: selectedLocation.latitude,
-                            longitude: selectedLocation.longitude,
-                        }}
-                        title={selectedLocation.name || 'Selected Location'}
-                        description={selectedLocation.address}
-                    >
+                    <Marker coordinate={{ latitude: selectedLocation.latitude, longitude: selectedLocation.longitude }}>
                         <View style={styles.markerContainer}>
-                            <MotiView
-                                from={{ scale: 0.8, opacity: 0.5 }}
-                                animate={{ scale: 2, opacity: 0 }}
-                                transition={{
-                                    type: 'timing',
-                                    duration: 1500,
-                                    loop: true,
-                                }}
-                                style={styles.pulseRing}
-                            />
-                            <View style={styles.markerBubble}>
-                                <Ionicons name="location" size={24} color="#007AFF" />
+                            <MotiView from={{ scale: 0.8, opacity: 0.5 }} animate={{ scale: 2, opacity: 0 }} transition={{ type: 'timing', duration: 1500, loop: true }} style={[styles.pulseRing, { backgroundColor: colors.tint + '40' }]} />
+                            <View style={[styles.markerBubble, { backgroundColor: colors.surface, borderColor: colors.tint }]}>
+                                <Ionicons name="location" size={24} color={colors.tint} />
                             </View>
-                            <View style={styles.markerArrow} />
+                            <View style={[styles.markerArrow, { borderTopColor: colors.tint }]} />
                         </View>
                     </Marker>
                 )}
@@ -736,628 +517,179 @@ export const ShareLocation: React.FC<ShareLocationProps> = ({
     };
 
     return (
-        <Modal
-            visible={visible}
-            animationType="slide"
-            presentationStyle="fullScreen"
-            onRequestClose={onClose}
-        >
-            <StatusBar barStyle="light-content" />
-            <SafeAreaView style={styles.container}>
+        <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
+            <StatusBar barStyle={activeScheme === 'dark' ? 'light-content' : 'dark-content'} />
+            <SafeAreaView style={[styles.container, { backgroundColor: colors.surface }]}>
                 {/* Header */}
-                <View style={[styles.header, { paddingTop: insets.top > 0 ? 0 : 16 }]}>
+                <View style={[styles.header, { paddingTop: insets.top > 0 ? 0 : 16, borderBottomColor: colors.border + '40' }]}>
                     <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                        <Ionicons name="arrow-back" size={24} color="#007AFF" />
+                        <Ionicons name="arrow-back" size={24} color={colors.tint} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Share Location</Text>
-                    <TouchableOpacity
-                        onPress={handleShare}
-                        disabled={!selectedLocation}
-                        style={[
-                            styles.shareButton,
-                            !selectedLocation && styles.shareButtonDisabled,
-                        ]}
-                    >
-                        <Text
-                            style={[
-                                styles.shareButtonText,
-                                !selectedLocation && styles.shareButtonTextDisabled,
-                            ]}
-                        >
-                            Share
-                        </Text>
+                    <Text style={[styles.headerTitle, { color: colors.text }]}>Share Location</Text>
+                    <TouchableOpacity onPress={handleShare} disabled={!selectedLocation} style={[styles.shareButton, !selectedLocation && styles.shareButtonDisabled]}>
+                        <Text style={[styles.shareButtonText, { color: selectedLocation ? colors.tint : colors.textSecondary }]}>Share</Text>
                     </TouchableOpacity>
                 </View>
 
                 {/* Search Bar */}
-                <View style={styles.searchContainer}>
-                    <Ionicons name="search" size={20} color="#8E8E93" style={styles.searchIcon} />
+                <View style={[styles.searchContainer, { borderBottomColor: colors.border + '20' }]}>
+                    <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
                     <GooglePlacesAutocomplete
                         ref={searchRef}
                         placeholder="Search for a place"
                         onPress={handlePlaceSelect}
-                        query={{
-                            key: googlePlacesApiKey,
-                            language: 'en',
-                            ...(location && {
-                                location: `${location.coords.latitude},${location.coords.longitude}`,
-                                radius: 50000,
-                            }),
-                        }}
+                        query={{ key: googlePlacesApiKey, language: 'en', ...(location && { location: `${location.coords.latitude},${location.coords.longitude}`, radius: 50000 }) }}
                         styles={{
                             container: styles.autocompleteContainer,
-                            textInput: styles.searchInput,
-                            listView: styles.searchResults,
-                            row: styles.searchResultRow,
-                            separator: styles.searchSeparator,
-                            description: styles.searchDescription,
+                            textInput: [styles.searchInput, { backgroundColor: colors.muted, color: colors.text }],
+                            listView: [styles.searchResults, { backgroundColor: colors.surface }],
+                            row: [styles.searchResultRow, { backgroundColor: colors.surface }],
+                            separator: [styles.searchSeparator, { backgroundColor: colors.border + '20' }],
+                            description: [styles.searchDescription, { color: colors.text }],
                         }}
                         enablePoweredByContainer={false}
                         fetchDetails={true}
-                        keepResultsAfterBlur={false}
-                        textInputProps={{
-                            placeholderTextColor: '#8E8E93',
-                            returnKeyType: 'search',
-                            onFocus: () => setSearchFocused(true),
-                            onBlur: () => setSearchFocused(false),
-                        }}
+                        textInputProps={{ placeholderTextColor: colors.textSecondary }}
                     />
-                    {locationStatus === 'granted' && (
-                        <TouchableOpacity onPress={handleCurrentLocation} style={styles.currentLocationButton}>
-                            <Ionicons name="locate" size={24} color="#007AFF" />
-                        </TouchableOpacity>
-                    )}
                 </View>
 
-                {/* Main Content */}
-                {loading ? (
-                    <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="large" color="#007AFF" />
-                        <Text style={styles.loadingText}>Getting your location...</Text>
-                    </View>
-                ) : locationStatus === 'pending' ? (
-                    renderPermissionRequest()
-                ) : (
-                    <View style={styles.contentContainer}>
-                        {/* Map */}
-                        {renderMap()}
+                {/* Content Area */}
+                <View style={styles.contentContainer}>
+                    {locationStatus === 'denied' || locationStatus === 'pending' ? renderPermissionRequest() : renderMap()}
+                    
+                    {/* Live Location Toggle */}
+                    <TouchableOpacity style={styles.liveToggle} onPress={() => setShowLiveOptions(!showLiveOptions)}>
+                        <BlurView intensity={80} tint={activeScheme as any} style={[styles.liveToggleContent, { borderColor: colors.border + '40' }]}>
+                            <Ionicons name="radio-outline" size={20} color={showLiveOptions ? '#FF3B30' : colors.text} />
+                            <Text style={[styles.liveToggleText, { color: colors.text }, showLiveOptions && { color: '#FF3B30' }]}>Live Location</Text>
+                        </BlurView>
+                    </TouchableOpacity>
 
-                        {/* Live Location Toggle */}
-                        {onShareLiveLocation && locationStatus === 'granted' && (
-                            <TouchableOpacity
-                                style={styles.liveToggle}
-                                onPress={() => {
-                                    setShowLiveOptions(!showLiveOptions);
-                                    if (Platform.OS === 'ios') {
-                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                    }
-                                }}
-                            >
-                                <BlurView intensity={80} tint="dark" style={styles.liveToggleContent}>
-                                    <Ionicons
-                                        name={showLiveOptions ? 'radio-button-on' : 'radio-button-off'}
-                                        size={20}
-                                        color={showLiveOptions ? '#FF3B30' : '#fff'}
-                                    />
-                                    <Text style={[styles.liveToggleText, showLiveOptions && styles.liveToggleActive]}>
-                                        Share Live Location
-                                    </Text>
-                                    <Ionicons
-                                        name={showLiveOptions ? 'chevron-up' : 'chevron-down'}
-                                        size={20}
-                                        color="#fff"
-                                    />
-                                </BlurView>
-                            </TouchableOpacity>
-                        )}
-
-                        {/* Live Duration Options */}
+                    {/* Live Duration Options */}
+                    <AnimatePresence>
                         {showLiveOptions && (
-                            <MotiView
-                                from={{ opacity: 0, translateY: 20 }}
-                                animate={{ opacity: 1, translateY: 0 }}
-                                style={styles.liveOptions}
-                            >
-                                <BlurView intensity={80} tint="dark" style={styles.liveOptionsContent}>
-                                    <Text style={styles.liveOptionsTitle}>Share live location for:</Text>
+                            <MotiView from={{ opacity: 0, translateY: -20 }} animate={{ opacity: 1, translateY: 0 }} exit={{ opacity: 0, translateY: -20 }} style={styles.liveOptions}>
+                                <BlurView intensity={90} tint={activeScheme as any} style={[styles.liveOptionsContent, { borderColor: colors.border + '40' }]}>
+                                    <Text style={[styles.liveOptionsTitle, { color: colors.textSecondary }]}>Share your live location for:</Text>
                                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                                        {LIVE_DURATIONS.map((duration) => (
-                                            <TouchableOpacity
-                                                key={duration}
-                                                style={[
-                                                    styles.durationOption,
-                                                    selectedDuration === duration && styles.durationOptionSelected,
-                                                ]}
-                                                onPress={() => setSelectedDuration(duration)}
-                                            >
-                                                <Text
-                                                    style={[
-                                                        styles.durationText,
-                                                        selectedDuration === duration && styles.durationTextSelected,
-                                                    ]}
-                                                >
-                                                    {duration < 60 ? `${duration} min` : `${duration / 60} hr`}
-                                                </Text>
+                                        {LIVE_DURATIONS.map(dur => (
+                                            <TouchableOpacity key={dur} style={[styles.durationOption, { backgroundColor: colors.muted }, selectedDuration === dur && { backgroundColor: colors.tint }]} onPress={() => setSelectedDuration(dur)}>
+                                                <Text style={[styles.durationText, { color: colors.text }, selectedDuration === dur && { color: '#fff' }]}>{dur < 60 ? `${dur}m` : `${dur / 60}h`}</Text>
                                             </TouchableOpacity>
                                         ))}
                                     </ScrollView>
                                 </BlurView>
                             </MotiView>
                         )}
+                    </AnimatePresence>
 
-                        {/* Bottom Panel */}
-                        <KeyboardAvoidingView
-                            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                            keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-                            style={styles.bottomPanel}
-                        >
-                            <BlurView intensity={80} tint="dark" style={styles.bottomPanelContent}>
-                                {/* Place Types Filter */}
-                                <ScrollView
-                                    horizontal
-                                    showsHorizontalScrollIndicator={false}
-                                    style={styles.placeTypesScroll}
-                                >
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.placeTypeChip,
-                                            !selectedPlaceType && styles.placeTypeChipSelected,
-                                        ]}
-                                        onPress={() => {
-                                            setSelectedPlaceType(null);
-                                            if (location) {
-                                                fetchNearbyPlaces(location.coords.latitude, location.coords.longitude);
-                                            }
-                                        }}
-                                    >
-                                        <Ionicons name="apps" size={16} color="#fff" />
-                                        <Text style={styles.placeTypeChipText}>All</Text>
+                    {/* Bottom Places List */}
+                    <View style={styles.bottomPanel}>
+                        <BlurView intensity={90} tint={activeScheme as any} style={[styles.bottomPanelContent, { borderTopColor: colors.border + '20', backgroundColor: colors.surface + '80' }]}>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.placeTypesScroll}>
+                                {NEARBY_PLACE_TYPES.map(type => (
+                                    <TouchableOpacity key={type.name} style={[styles.placeTypeChip, { backgroundColor: colors.muted }, selectedPlaceType === type.types && { backgroundColor: colors.tint }]} onPress={() => { setSelectedPlaceType(type.types); fetchNearbyPlaces(region.latitude, region.longitude, type.types); }}>
+                                        <Ionicons name={type.icon as any} size={16} color={selectedPlaceType === type.types ? '#fff' : colors.text} />
+                                        <Text style={[styles.placeTypeChipText, { color: colors.text }, selectedPlaceType === type.types && { color: '#fff' }]}>{type.name}</Text>
                                     </TouchableOpacity>
+                                ))}
+                            </ScrollView>
 
-                                    {NEARBY_PLACE_TYPES.map((type) => (
-                                        <TouchableOpacity
-                                            key={type.types}
-                                            style={[
-                                                styles.placeTypeChip,
-                                                selectedPlaceType === type.types && styles.placeTypeChipSelected,
-                                            ]}
-                                            onPress={() => {
-                                                setSelectedPlaceType(type.types);
-                                                if (location) {
-                                                    fetchNearbyPlaces(
-                                                        location.coords.latitude,
-                                                        location.coords.longitude,
-                                                        type.types
-                                                    );
-                                                }
-                                            }}
-                                        >
-                                            <Ionicons name={type.icon as any} size={16} color="#fff" />
-                                            <Text style={styles.placeTypeChipText}>{type.name}</Text>
+                            {loadingNearby ? (
+                                <View style={styles.nearbyLoading}><ActivityIndicator color={colors.tint} /><Text style={[styles.nearbyLoadingText, { color: colors.textSecondary }]}>Finding nearby places...</Text></View>
+                            ) : (
+                                <FlatList
+                                    data={nearbyPlaces}
+                                    keyExtractor={item => item.id}
+                                    renderItem={({ item }) => (
+                                        <TouchableOpacity style={[styles.nearbyPlace, { borderBottomColor: colors.border + '20' }]} onPress={() => handlePlaceSelect(item)}>
+                                            <View style={[styles.placeIcon, { backgroundColor: colors.tint + '10' }]}><Ionicons name="location-outline" size={20} color={colors.tint} /></View>
+                                            <View style={styles.placeInfo}><Text style={[styles.placeName, { color: colors.text }]}>{item.name}</Text><Text style={[styles.placeAddress, { color: colors.textSecondary }]} numberOfLines={1}>{item.address}</Text></View>
+                                            <Text style={[styles.placeDistance, { color: colors.textSecondary }]}>{item.distance}</Text>
                                         </TouchableOpacity>
-                                    ))}
-                                </ScrollView>
-
-                                {/* Nearby Places */}
-                                {loadingNearby ? (
-                                    <View style={styles.nearbyLoading}>
-                                        <ActivityIndicator size="small" color="#fff" />
-                                        <Text style={styles.nearbyLoadingText}>Finding nearby places...</Text>
-                                    </View>
-                                ) : (
-                                    <FlatList
-                                        data={nearbyPlaces}
-                                        keyExtractor={(item) => item.id}
-                                        showsVerticalScrollIndicator={false}
-                                        renderItem={({ item }) => (
-                                            <TouchableOpacity
-                                                style={styles.nearbyPlace}
-                                                onPress={() => handlePlaceSelect(item)}
-                                            >
-                                                <View style={styles.placeIcon}>
-                                                    <Ionicons name="location-outline" size={24} color="#007AFF" />
-                                                </View>
-                                                <View style={styles.placeInfo}>
-                                                    <Text style={styles.placeName} numberOfLines={1}>
-                                                        {item.name}
-                                                    </Text>
-                                                    <Text style={styles.placeAddress} numberOfLines={1}>
-                                                        {item.address}
-                                                    </Text>
-                                                </View>
-                                                {item.distance && (
-                                                    <Text style={styles.placeDistance}>{item.distance}</Text>
-                                                )}
-                                            </TouchableOpacity>
-                                        )}
-                                        ListEmptyComponent={
-                                            <View style={styles.emptyContainer}>
-                                                <Ionicons name="map-outline" size={48} color="rgba(255,255,255,0.3)" />
-                                                <Text style={styles.emptyText}>No places found nearby</Text>
-                                            </View>
-                                        }
-                                    />
-                                )}
-                            </BlurView>
-                        </KeyboardAvoidingView>
+                                    )}
+                                    ListEmptyComponent={<View style={styles.emptyContainer}><Text style={[styles.emptyText, { color: colors.textSecondary }]}>No nearby places found</Text></View>}
+                                />
+                            )}
+                        </BlurView>
                     </View>
-                )}
+                </View>
             </SafeAreaView>
         </Modal>
     );
 };
 
-interface Region {
-    latitude: number;
-    longitude: number;
-    latitudeDelta: number;
-    longitudeDelta: number;
-}
+const darkMapStyle = [
+  { "elementType": "geometry", "stylers": [{ "color": "#212121" }] },
+  { "elementType": "labels.icon", "stylers": [{ "visibility": "off" }] },
+  { "elementType": "labels.text.fill", "stylers": [{ "color": "#757575" }] },
+  { "elementType": "labels.text.stroke", "stylers": [{ "color": "#212121" }] },
+  { "featureType": "administrative", "elementType": "geometry", "stylers": [{ "color": "#757575" }] },
+  { "featureType": "poi", "elementType": "geometry", "stylers": [{ "color": "#181818" }] },
+  { "featureType": "road", "elementType": "geometry.fill", "stylers": [{ "color": "#2c2c2c" }] },
+  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#0f0f0f" }] }
+];
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#000',
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        backgroundColor: '#000',
-        borderBottomWidth: 1,
-        borderBottomColor: '#1c1c1e',
-        zIndex: 10,
-    },
-    closeButton: {
-        padding: 8,
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#fff',
-    },
-    shareButton: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        backgroundColor: '#007AFF',
-        borderRadius: 20,
-    },
-    shareButtonDisabled: {
-        backgroundColor: '#1c1c1e',
-    },
-    shareButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    shareButtonTextDisabled: {
-        color: '#8E8E93',
-    },
-    searchContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        backgroundColor: '#000',
-        zIndex: 20,
-    },
-    searchIcon: {
-        marginRight: 8,
-    },
-    autocompleteContainer: {
-        flex: 1,
-        backgroundColor: 'transparent',
-    },
-    searchInput: {
-        height: 44,
-        backgroundColor: '#1c1c1e',
-        borderRadius: 22,
-        paddingHorizontal: 16,
-        fontSize: 16,
-        color: '#fff',
-    },
-    searchResults: {
-        backgroundColor: '#1c1c1e',
-        borderRadius: 12,
-        marginTop: 8,
-        overflow: 'hidden',
-    },
-    searchResultRow: {
-        padding: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: '#2c2c2e',
-    },
-    searchSeparator: {
-        height: 0,
-    },
-    searchDescription: {
-        color: '#fff',
-        fontSize: 14,
-    },
-    currentLocationButton: {
-        marginLeft: 8,
-        padding: 10,
-        backgroundColor: '#1c1c1e',
-        borderRadius: 22,
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    loadingText: {
-        marginTop: 12,
-        color: '#8E8E93',
-        fontSize: 16,
-    },
-    permissionContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 32,
-    },
-    permissionIcon: {
-        width: 96,
-        height: 96,
-        borderRadius: 48,
-        backgroundColor: '#1c1c1e',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 24,
-    },
-    permissionTitle: {
-        fontSize: 24,
-        fontWeight: '600',
-        color: '#fff',
-        marginBottom: 12,
-    },
-    permissionText: {
-        fontSize: 16,
-        color: '#8E8E93',
-        textAlign: 'center',
-        marginBottom: 32,
-        lineHeight: 22,
-    },
-    permissionOptions: {
-        flexDirection: 'row',
-        gap: 12,
-        marginBottom: 16,
-    },
-    permissionButton: {
-        flex: 1,
-        paddingVertical: 14,
-        borderRadius: 12,
-        alignItems: 'center',
-    },
-    allowOnceButton: {
-        backgroundColor: '#1c1c1e',
-    },
-    allowAlwaysButton: {
-        backgroundColor: '#007AFF',
-    },
-    allowOnceText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '500',
-    },
-    allowAlwaysText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    notNowButton: {
-        paddingVertical: 12,
-    },
-    notNowText: {
-        color: '#8E8E93',
-        fontSize: 16,
-    },
-    contentContainer: {
-        flex: 1,
-        position: 'relative',
-    },
-    map: {
-        width: width,
-        height: height,
-    },
-    markerContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    pulseRing: {
-        position: 'absolute',
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(0,122,255,0.3)',
-    },
-    markerBubble: {
-        backgroundColor: '#fff',
-        padding: 8,
-        borderRadius: 24,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-        elevation: 5,
-        borderWidth: 2,
-        borderColor: '#007AFF',
-    },
-    markerArrow: {
-        width: 0,
-        height: 0,
-        backgroundColor: 'transparent',
-        borderStyle: 'solid',
-        borderLeftWidth: 6,
-        borderRightWidth: 6,
-        borderTopWidth: 8,
-        borderLeftColor: 'transparent',
-        borderRightColor: 'transparent',
-        borderTopColor: '#007AFF',
-        marginTop: -1,
-    },
-    fallbackContainer: {
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 40,
-        backgroundColor: '#1c1c1e',
-    },
-    fallbackText: {
-        color: '#8E8E93',
-        textAlign: 'center',
-        marginTop: 20,
-        fontSize: 14,
-    },
-    liveToggle: {
-        position: 'absolute',
-        top: 16,
-        right: 16,
-        zIndex: 30,
-    },
-    liveToggleContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 24,
-        gap: 8,
-        overflow: 'hidden',
-    },
-    liveToggleText: {
-        color: '#fff',
-        fontSize: 14,
-        fontWeight: '500',
-    },
-    liveToggleActive: {
-        color: '#FF3B30',
-    },
-    liveOptions: {
-        position: 'absolute',
-        top: 80,
-        right: 16,
-        left: 16,
-        zIndex: 25,
-    },
-    liveOptionsContent: {
-        padding: 16,
-        borderRadius: 16,
-        overflow: 'hidden',
-    },
-    liveOptionsTitle: {
-        color: '#fff',
-        fontSize: 14,
-        fontWeight: '500',
-        marginBottom: 12,
-        opacity: 0.8,
-    },
-    durationOption: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        borderRadius: 20,
-        marginRight: 8,
-    },
-    durationOptionSelected: {
-        backgroundColor: '#007AFF',
-    },
-    durationText: {
-        color: '#fff',
-        fontSize: 14,
-        fontWeight: '500',
-    },
-    durationTextSelected: {
-        color: '#fff',
-    },
-    bottomPanel: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        maxHeight: height * 0.4,
-    },
-    bottomPanelContent: {
-        padding: 16,
-        paddingBottom: Platform.OS === 'ios' ? 34 : 16,
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        overflow: 'hidden',
-    },
-    placeTypesScroll: {
-        flexDirection: 'row',
-        marginBottom: 16,
-    },
-    placeTypeChip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 20,
-        marginRight: 8,
-        gap: 6,
-    },
-    placeTypeChipSelected: {
-        backgroundColor: '#007AFF',
-    },
-    placeTypeChipText: {
-        color: '#fff',
-        fontSize: 14,
-        fontWeight: '500',
-    },
-    nearbyLoading: {
-        padding: 32,
-        alignItems: 'center',
-    },
-    nearbyLoadingText: {
-        color: '#8E8E93',
-        marginTop: 12,
-        fontSize: 14,
-    },
-    nearbyPlace: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.1)',
-    },
-    placeIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(0,122,255,0.1)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 12,
-    },
-    placeInfo: {
-        flex: 1,
-    },
-    placeName: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '500',
-        marginBottom: 4,
-    },
-    placeAddress: {
-        color: '#8E8E93',
-        fontSize: 14,
-    },
-    placeDistance: {
-        color: '#8E8E93',
-        fontSize: 14,
-        marginLeft: 12,
-    },
-    emptyContainer: {
-        alignItems: 'center',
-        padding: 32,
-    },
-    emptyText: {
-        color: '#8E8E93',
-        fontSize: 14,
-        marginTop: 12,
-    },
+    container: { flex: 1 },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
+    headerTitle: { fontSize: 18, fontWeight: '700' },
+    closeButton: { padding: 4 },
+    shareButton: { paddingHorizontal: 16, paddingVertical: 8 },
+    shareButtonDisabled: { opacity: 0.5 },
+    shareButtonText: { fontSize: 16, fontWeight: '600' },
+    searchContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, zIndex: 100 },
+    searchIcon: { marginRight: 8 },
+    autocompleteContainer: { flex: 1 },
+    searchInput: { height: 44, borderRadius: 22, paddingHorizontal: 16, fontSize: 16 },
+    searchResults: { position: 'absolute', top: 50, left: 0, right: 0, zIndex: 1000, elevation: 5, borderRadius: 12, overflow: 'hidden' },
+    searchResultRow: { padding: 13, height: 44, flexDirection: 'row' },
+    searchSeparator: { height: 1 },
+    searchDescription: { fontSize: 14 },
+    contentContainer: { flex: 1, position: 'relative' },
+    map: { width: width, height: height },
+    markerContainer: { alignItems: 'center', justifyContent: 'center' },
+    pulseRing: { position: 'absolute', width: 40, height: 40, borderRadius: 20 },
+    markerBubble: { padding: 8, borderRadius: 24, borderWidth: 2 },
+    markerArrow: { width: 0, height: 0, borderStyle: 'solid', borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 8, borderLeftColor: 'transparent', borderRightColor: 'transparent', marginTop: -1 },
+    fallbackContainer: { justifyContent: 'center', alignItems: 'center', padding: 40 },
+    fallbackText: { textAlign: 'center', marginTop: 20, fontSize: 14 },
+    loadingText: { marginTop: 16, fontSize: 14 },
+    liveToggle: { position: 'absolute', top: 16, right: 16, zIndex: 30 },
+    liveToggleContent: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24, borderWidth: 1 },
+    liveToggleText: { fontSize: 14, fontWeight: '500' },
+    liveOptions: { position: 'absolute', top: 80, right: 16, left: 16, zIndex: 25 },
+    liveOptionsContent: { padding: 16, borderRadius: 16, borderWidth: 1 },
+    liveOptionsTitle: { fontSize: 14, fontWeight: '500', marginBottom: 12 },
+    durationOption: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, marginRight: 8 },
+    durationText: { fontSize: 14, fontWeight: '500' },
+    bottomPanel: { position: 'absolute', bottom: 0, left: 0, right: 0, maxHeight: height * 0.4 },
+    bottomPanelContent: { padding: 16, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 1 },
+    placeTypesScroll: { flexDirection: 'row', marginBottom: 16 },
+    placeTypeChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, marginRight: 8, gap: 6 },
+    placeTypeChipText: { fontSize: 14, fontWeight: '500' },
+    nearbyLoading: { padding: 32, alignItems: 'center' },
+    nearbyLoadingText: { marginTop: 12, fontSize: 14 },
+    nearbyPlace: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1 },
+    placeIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+    placeInfo: { flex: 1 },
+    placeName: { fontSize: 16, fontWeight: '500', marginBottom: 4 },
+    placeAddress: { fontSize: 14 },
+    placeDistance: { fontSize: 14, marginLeft: 12 },
+    emptyContainer: { alignItems: 'center', padding: 32 },
+    emptyText: { fontSize: 14 },
+    permissionContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+    permissionIcon: { width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
+    permissionTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 12, textAlign: 'center' },
+    permissionText: { fontSize: 16, textAlign: 'center', marginBottom: 32, lineHeight: 22 },
+    permissionOptions: { width: '100%', gap: 12, marginBottom: 16 },
+    permissionButton: { paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
+    allowOnceButton: {},
+    allowAlwaysButton: {},
+    allowOnceText: { fontSize: 16, fontWeight: '600' },
+    allowAlwaysText: { fontSize: 16, fontWeight: '600', color: '#fff' },
+    notNowButton: { paddingVertical: 12 },
+    notNowText: { fontSize: 16 },
 });
 
 export default ShareLocation;

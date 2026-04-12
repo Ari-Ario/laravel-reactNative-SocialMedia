@@ -12,6 +12,7 @@ import { useToastStore } from '@/stores/toastStore';
 import { useProfileView } from '@/context/ProfileViewContext';
 import { useModal } from '@/context/ModalContext';
 import { createShadow } from '@/utils/styles';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 const { width } = Dimensions.get('window');
 
@@ -39,6 +40,9 @@ export const CuratorCircle = ({ reposters, postId, postContent, post }: CuratorC
   const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
   const [showGallery, setShowGallery] = useState(false);
   const [sendingTo, setSendingTo] = useState<number | null>(null);
+
+  const { colors, activeScheme } = useAppTheme();
+  const styles = getStyles(colors, activeScheme);
 
   if (!reposters || reposters.length === 0) return null;
 
@@ -246,11 +250,11 @@ export const CuratorCircle = ({ reposters, postId, postContent, post }: CuratorC
         animationType="slide"
         onRequestClose={() => setShowGallery(false)}
       >
-        <BlurView intensity={90} tint="dark" style={styles.galleryOverlay}>
+        <BlurView intensity={90} tint={activeScheme as any} style={styles.galleryOverlay}>
           <View style={styles.galleryHeader}>
-            <Text style={styles.galleryTitle}>Who Shared This</Text>
+            <Text style={[styles.galleryTitle, { color: colors.text }]}>Who Shared This</Text>
             <TouchableOpacity onPress={() => setShowGallery(false)}>
-              <Ionicons name="close" size={28} color="#fff" />
+              <Ionicons name="close" size={28} color={colors.text} />
             </TouchableOpacity>
           </View>
 
@@ -275,19 +279,19 @@ export const CuratorCircle = ({ reposters, postId, postContent, post }: CuratorC
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
   circleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 6,
-    backgroundColor: 'rgba(0, 132, 255, 0.03)',
+    backgroundColor: colors.tint + '10',
     borderRadius: 16,
     marginHorizontal: 12,
     marginTop: 8,
     marginBottom: 4,
     borderWidth: 1,
-    borderColor: 'rgba(0, 132, 255, 0.1)',
+    borderColor: colors.tint + '20',
     overflow: 'hidden',
     position: 'relative',
   },
@@ -301,7 +305,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 100, height: 100,
     borderRadius: 50,
-    backgroundColor: 'rgba(0, 132, 255, 0.1)',
+    backgroundColor: colors.tint + '15',
   },
   avatarStack: {
     flexDirection: 'row',
@@ -311,23 +315,23 @@ const styles = StyleSheet.create({
   avatarWrapper: {
     borderRadius: 20,
     borderWidth: 2,
-    borderColor: '#fff',
-    ...createShadow({ width: 0, height: 2, opacity: 0.2, radius: 4, elevation: 3 }),
+    borderColor: colors.surface,
+    ...createShadow({ width: 0, height: 2, opacity: activeScheme === 'dark' ? 0.3 : 0.2, radius: 4, elevation: 3 }),
   },
   stackAvatar: {
     width: 36, height: 36, borderRadius: 18,
   },
   avatarPlaceholderSmall: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarInitialsSmall: {
-    fontSize: 12, fontWeight: '600', color: '#666',
+    fontSize: 12, fontWeight: '600', color: colors.textSecondary,
   },
   moreBadge: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: '#0084ff',
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -335,9 +339,9 @@ const styles = StyleSheet.create({
     fontSize: 12, fontWeight: '700', color: '#fff',
   },
   textContainer: { flex: 1 },
-  circleText: { fontSize: 13, color: '#444' },
-  boldText: { fontWeight: '700', color: '#1a1a1a' },
-  circleSubtext: { fontSize: 11, color: '#666', marginTop: 2 },
+  circleText: { fontSize: 13, color: colors.textSecondary },
+  boldText: { fontWeight: '700', color: colors.text },
+  circleSubtext: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
   chevronContainer: { marginLeft: 8 },
   galleryOverlay: { flex: 1, paddingTop: 50 },
   galleryHeader: {
@@ -348,17 +352,19 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   galleryTitle: {
-    fontSize: 24, fontWeight: '700', color: '#fff',
+    fontSize: 24, fontWeight: '700',
   },
   galleryList: {
     paddingHorizontal: 16,
     paddingBottom: 100,
   },
   galleryCard: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     marginBottom: 12,
-    ...createShadow({ width: 0, height: 4, opacity: 0.2, radius: 8, elevation: 5 }),
+    ...createShadow({ width: 0, height: 4, opacity: activeScheme === 'dark' ? 0.4 : 0.2, radius: 8, elevation: 5 }),
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   cardTouchable: { padding: 16 },
   cardHeader: {
@@ -370,33 +376,33 @@ const styles = StyleSheet.create({
     width: 44, height: 44, borderRadius: 22, marginRight: 12,
   },
   avatarPlaceholder: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarInitials: {
-    fontSize: 16, fontWeight: '600', color: '#666',
+    fontSize: 16, fontWeight: '600', color: colors.textSecondary,
   },
   cardInfo: { flex: 1 },
-  cardName: { fontSize: 15, fontWeight: '700', color: '#1a1a1a' },
-  cardTime: { fontSize: 11, color: '#666', marginTop: 2 },
+  cardName: { fontSize: 15, fontWeight: '700', color: colors.text },
+  cardTime: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
   tagPill: {
     paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, marginRight: 8,
   },
   tagText: { fontSize: 11, fontWeight: '600' },
   messageButton: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(0, 132, 255, 0.1)',
+    backgroundColor: colors.primary + '15',
     justifyContent: 'center',
     alignItems: 'center',
   },
   noteContainer: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
     borderRadius: 12, padding: 12, position: 'relative',
   },
   quoteMark: { position: 'absolute', top: 4, left: 8 },
-  quoteText: { fontSize: 24, color: '#999', fontWeight: '700' },
-  noteText: { fontSize: 13, color: '#333', marginLeft: 12, lineHeight: 18 },
+  quoteText: { fontSize: 24, color: colors.textSecondary, fontWeight: '700' },
+  noteText: { fontSize: 13, color: colors.text, marginLeft: 12, lineHeight: 18 },
   previewBar: {
     position: 'absolute',
     bottom: 0, left: 0, right: 0,

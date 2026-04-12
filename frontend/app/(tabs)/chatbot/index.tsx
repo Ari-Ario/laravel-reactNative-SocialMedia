@@ -1,4 +1,5 @@
 import { useState, useEffect, useContext, useRef } from 'react';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import {
   View,
   Text,
@@ -17,6 +18,7 @@ import getApiBase from '@/services/getApiBase';
 import axios from '@/services/axios';
 
 export default function ChatbotScreen() {
+  const { colors, activeScheme } = useAppTheme();
   const { user } = useContext(AuthContext);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -107,13 +109,13 @@ export default function ChatbotScreen() {
       <Animated.View
         style={[
           styles.messageBubble,
-          isUser ? styles.userBubble : styles.botBubble,
-          isAI && styles.aiBubble,
+          isUser ? [styles.userBubble, { backgroundColor: colors.tint }] : [styles.botBubble, { backgroundColor: colors.surface, borderColor: colors.border }],
+          isAI && [styles.aiBubble, { backgroundColor: activeScheme === 'dark' ? colors.muted : '#E6F7FF', borderColor: colors.tint }],
           isError && styles.errorBubble,
         ]}
       >
-        {isAI && <Text style={styles.aiTag}>AI</Text>}
-        <Text style={[styles.messageText, isError && { color: '#fff' }]}>{item.text}</Text>
+        {isAI && <Text style={[styles.aiTag, { color: colors.tint }]}>AI</Text>}
+        <Text style={[styles.messageText, { color: isUser || isError ? '#fff' : colors.text }]}>{item.text}</Text>
       </Animated.View>
     );
   };
@@ -135,9 +137,9 @@ export default function ChatbotScreen() {
 
       {isTyping && (
         <View style={{ padding: 15, alignItems: 'flex-start' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f0f0', padding: 12, borderRadius: 18 }}>
-            <ActivityIndicator size="small" color="#007AFF" />
-            <Text style={{ marginLeft: 10, color: '#555' }}>AI is thinking (up to 30s on laptop)</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.muted, padding: 12, borderRadius: 18 }}>
+            <ActivityIndicator size="small" color={colors.tint} />
+            <Text style={{ marginLeft: 10, color: colors.textSecondary }}>AI is thinking...</Text>
           </View>
         </View>
       )}
@@ -147,18 +149,20 @@ export default function ChatbotScreen() {
           value={input}
           onChangeText={setInput}
           placeholder="Ask me anything..."
-          style={[styles.input]}
+          placeholderTextColor={colors.textSecondary + '80'}
+          style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.surface }]}
           multiline
           numberOfLines={1}
           textAlignVertical="top"
           blurOnSubmit={false}
+          keyboardAppearance={activeScheme}
           onContentSizeChange={(e) => {
             setInputHeight(e.nativeEvent.contentSize.height);
             // keep the list scrolled to end when typing
             setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
           }}
         />
-        <TouchableOpacity onPress={handleSend} style={styles.sendButton} disabled={isTyping}>
+        <TouchableOpacity onPress={handleSend} style={[styles.sendButton, { backgroundColor: colors.tint }]} disabled={isTyping}>
           <Text style={styles.sendButtonText}>{isTyping ? '...' : 'Send'}</Text>
         </TouchableOpacity>
       </View>
@@ -167,24 +171,20 @@ export default function ChatbotScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9f9f9' },
+  container: { flex: 1 },
   chatContainer: { padding: 16, paddingBottom: 100 },
   messageBubble: {
     maxWidth: '80%',
     padding: 12,
     marginVertical: 6,
     borderRadius: 18,
-    elevation: 1,
   },
   userBubble: {
-    backgroundColor: '#DCF8C6',
     alignSelf: 'flex-end',
   },
   botBubble: {
-    backgroundColor: '#fff',
     alignSelf: 'flex-start',
     borderWidth: 1,
-    borderColor: '#eee',
   },
   aiBubble: {
     backgroundColor: '#E6F7FF',
@@ -211,8 +211,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 12,
     borderTopWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: 'white',
     alignItems: 'center',
     ...(Platform.OS === 'ios' && {
       bottom: 80

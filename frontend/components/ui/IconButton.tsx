@@ -1,5 +1,6 @@
 // components/ui/IconButton.tsx
 import React, { memo, useCallback, useMemo } from 'react';
+import { Color } from 'expo-router';
 import {
     TouchableOpacity,
     Text,
@@ -14,6 +15,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useColorScheme } from 'react-native';
+import { Colors } from '@/constants/Colors';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { createShadow } from '@/utils/styles';
 
 // Types for better IDE support and type safety
@@ -326,16 +330,22 @@ export const CloseButton = memo((props: Partial<IconButtonProps>) => (
     />
 ));
 
-export const BackButton = memo((props: Partial<IconButtonProps>) => (
-    <IconButton
-        icon="arrow-back"
-        variant="ghost"
-        size="md"
-        accessibilityLabel="Go back"
-        hapticFeedback="light"
-        {...props}
-    />
-));
+export const BackButton = memo((props: Partial<IconButtonProps>) => {
+    const { colors } = useAppTheme();
+    
+    return (
+        <IconButton
+            icon="chevron-back"
+            variant="ghost"
+            customIconSize={28}
+            iconColor={colors.text}
+            accessibilityLabel="Go back"
+            hapticFeedback="light"
+            style={[props.style, { padding: 4 }]}
+            {...props}
+        />
+    );
+});
 
 export const MoreButton = memo((props: Partial<IconButtonProps>) => (
     <IconButton

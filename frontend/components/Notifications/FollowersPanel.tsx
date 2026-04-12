@@ -11,6 +11,7 @@ import { useProfileView } from '@/context/ProfileViewContext';
 import axios from "@/services/axios";
 import { getToken } from "@/services/TokenService";
 import getApiBase from "@/services/getApiBase";
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 const API_BASE = getApiBase();
 
@@ -21,6 +22,7 @@ type FollowersPanelProps = {
 };
 
 const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProps) => {
+  const { colors, activeScheme } = useAppTheme();
   const {
     followerNotifications,
     unreadFollowerCount,
@@ -125,7 +127,12 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
 
     return (
       <TouchableOpacity
-        style={[styles.followerItem, !item.isRead && styles.unreadFollower]}
+        style={[
+          styles.followerItem, 
+          { borderBottomColor: colors.border },
+          !item.isRead && styles.unreadFollower,
+          !item.isRead && { backgroundColor: colors.primary + '10', borderLeftColor: colors.primary }
+        ]}
         onPress={() => {
           if (!item.isRead) {
             markAsRead(item.id);
@@ -152,7 +159,7 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
               uri: item.avatar ? `${getApiBaseImage()}/storage/${item.avatar}` : undefined
             }}
             defaultSource={require('@/assets/images/favicon.png')}
-            style={styles.avatar}
+            style={[styles.avatar, { borderColor: colors.surface, backgroundColor: colors.muted }]}
           />
         </TouchableOpacity>
 
@@ -162,14 +169,14 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
               <Ionicons
                 name={item.type === 'new_follower' ? 'person-add-outline' : 'person-remove-outline'}
                 size={18}
-                color={item.type === 'new_follower' ? '#5856D6' : '#FF3B30'}
+                color={item.type === 'new_follower' ? colors.primary : '#FF3B30'}
               />
-              <Text style={styles.followerTitle}>{item.title}</Text>
-              <Text style={styles.followerTime}>
-                {formatTimeAgo(item.createdAt)}
-              </Text>
-            </View>
-            <Text style={styles.followerMessage}>{item.message}</Text>
+                <Text style={[styles.followerTitle, { color: colors.text }]}>{item.title}</Text>
+                <Text style={[styles.followerTime, { color: colors.textSecondary }]}>
+                  {formatTimeAgo(item.createdAt)}
+                </Text>
+              </View>
+              <Text style={[styles.followerMessage, { color: colors.textSecondary }]}>{item.message}</Text>
           </View>
         </View>
 
@@ -177,12 +184,13 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
         {item.type === 'new_follower' && (
           <View style={styles.buttonContainer}>
             {isChecking ? (
-              <ActivityIndicator size="small" color="#007AFF" style={styles.followButton} />
+              <ActivityIndicator size="small" color={colors.tint} style={styles.followButton} />
             ) : (
               <TouchableOpacity
                 style={[
                   styles.followButton,
-                  isFollowing && styles.followingButton
+                  { backgroundColor: colors.tint },
+                  isFollowing && [styles.followingButton, { backgroundColor: colors.muted }]
                 ]}
                 onPress={() => handleFollowBack(item)}
                 disabled={isLoading}
@@ -195,7 +203,8 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
                 ) : (
                   <Text style={[
                     styles.followButtonText,
-                    isFollowing && styles.followingButtonText
+                    { color: '#fff' },
+                    isFollowing && [styles.followingButtonText, { color: colors.text }]
                   ]}>
                     {isFollowing ? 'Following' : 'Follow Back'}
                   </Text>
@@ -207,9 +216,9 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
 
         <TouchableOpacity
           onPress={() => removeNotification(item.id)}
-          style={styles.deleteButton}
+          style={[styles.deleteButton, { backgroundColor: colors.muted }]}
         >
-          <Ionicons name="close" size={16} color="#999" />
+          <Ionicons name="close" size={16} color={colors.textSecondary} />
         </TouchableOpacity>
       </TouchableOpacity>
     );
@@ -241,10 +250,13 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
         style={styles.backdrop}
         activeOpacity={1}
         onPress={onClose}
-      />
+      >
+        {Platform.OS === 'web' && <View style={[StyleSheet.absoluteFill, { backgroundColor: 'transparent', backdropFilter: 'blur(4px)' }]} />}
+      </TouchableOpacity>
       <View
         style={[
           styles.panelContainer,
+          { backgroundColor: colors.surface, borderColor: colors.border },
           anchorPosition ? {
             top: anchorPosition.top + 15,
             left: anchorPosition.left,
@@ -257,6 +269,7 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
           <View
             style={[
               styles.pointer,
+              { backgroundColor: colors.surface, borderColor: colors.border },
               anchorPosition.right !== undefined
                 ? { right: anchorPosition.arrowOffset }
                 : { left: anchorPosition.arrowOffset }
@@ -265,8 +278,8 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
         )}
 
         <View style={styles.contentWrapper}>
-          <View style={styles.panelHeader}>
-            <Text style={styles.panelTitle}>
+          <View style={[styles.panelHeader, { borderBottomColor: colors.border, backgroundColor: colors.surface }]}>
+            <Text style={[styles.panelTitle, { color: colors.text }]}>
               Followers {followerNotifications.length > 0 ? `(${followerNotifications.length})` : ''}
             </Text>
             <TouchableOpacity
@@ -274,18 +287,18 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
                 markAllFollowerNotificationsAsRead();
                 onClose();
               }}
-              style={styles.closeButton}
+              style={[styles.closeButton, { backgroundColor: colors.muted }]}
             >
-              <Ionicons name="close" size={20} color="#666" />
+              <Ionicons name="close" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
           <View style={styles.listContainer}>
             {followerNotifications.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Ionicons name="person-add-outline" size={48} color="#ccc" />
-                <Text style={styles.emptyText}>No follower notifications</Text>
-                <Text style={styles.emptySubtext}>
+              <View style={[styles.emptyState, { backgroundColor: colors.surface }]}>
+                <Ionicons name="person-add-outline" size={48} color={colors.textSecondary + '40'} />
+                <Text style={[styles.emptyText, { color: colors.text }]}>No follower notifications</Text>
+                <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
                   New follower notifications will appear here in real-time
                 </Text>
               </View>
@@ -297,6 +310,7 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={styles.followersList}
                 showsVerticalScrollIndicator={false}
+                indicatorStyle={activeScheme === 'dark' ? 'white' : 'black'}
               />
             )}
           </View>
@@ -309,13 +323,11 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'transparent',
   },
   panelContainer: {
     position: 'absolute',
     width: Platform.OS === 'web' ? 400 : 320,
     maxHeight: 500,
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     ...createShadow({
       width: 0,
@@ -325,7 +337,6 @@ const styles = StyleSheet.create({
       elevation: 8,
     }),
     borderWidth: 1,
-    borderColor: '#efefef',
     zIndex: 1000,
   },
   defaultPosition: {
@@ -343,11 +354,9 @@ const styles = StyleSheet.create({
     top: -10,
     width: 20,
     height: 20,
-    backgroundColor: '#ffffff',
     transform: [{ rotate: '45deg' }],
     borderTopWidth: 1,
     borderLeftWidth: 1,
-    borderColor: '#efefef',
     zIndex: -1,
   },
   panelHeader: {
@@ -357,24 +366,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    backgroundColor: '#fff',
     flexShrink: 0,
     zIndex: 10,
   },
   panelTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1a1a1a',
   },
   closeButton: {
     padding: 4,
     borderRadius: 20,
-    backgroundColor: '#f5f5f5',
   },
   listContainer: {
     flex: 1,
-    backgroundColor: '#fff',
     zIndex: 1,
     overflow: 'hidden',
   },
@@ -388,13 +392,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f5f5f5',
     minHeight: 80,
   },
   unreadFollower: {
-    backgroundColor: '#f8faff',
     borderLeftWidth: 3,
-    borderLeftColor: '#5856D6',
   },
   followerContent: {
     flex: 1,
@@ -415,17 +416,14 @@ const styles = StyleSheet.create({
   followerTitle: {
     fontWeight: '600',
     fontSize: 15,
-    color: '#1a1a1a',
     flex: 1,
   },
   followerMessage: {
     fontSize: 13,
-    color: '#666',
     lineHeight: 18,
   },
   followerTime: {
     fontSize: 11,
-    color: '#999',
     marginLeft: 8,
   },
   buttonContainer: {
@@ -440,7 +438,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   followingButton: {
-    backgroundColor: '#f0f0f0',
   },
   followButtonText: {
     color: 'white',
@@ -448,13 +445,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   followingButtonText: {
-    color: '#1a1a1a',
   },
   deleteButton: {
     padding: 6,
     marginLeft: 8,
     borderRadius: 16,
-    backgroundColor: '#f5f5f5',
     width: 28,
     height: 28,
     justifyContent: 'center',
@@ -469,13 +464,11 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     marginTop: 16,
-    color: '#666',
     fontSize: 18,
     fontWeight: '600',
   },
   emptySubtext: {
     marginTop: 8,
-    color: '#999',
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
@@ -488,9 +481,7 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     marginRight: 12,
-    backgroundColor: '#f0f0f0',
     borderWidth: 2,
-    borderColor: '#fff',
   },
 });
 

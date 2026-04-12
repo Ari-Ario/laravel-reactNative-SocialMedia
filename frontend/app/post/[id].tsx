@@ -28,6 +28,7 @@ import { useModal } from '@/context/ModalContext';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { Ionicons } from '@expo/vector-icons';
+import { BackButton } from '@/components/ui/IconButton';
 import AuthContext from '@/context/AuthContext';
 import EmojiPicker from 'rn-emoji-keyboard';
 import { VideoView, useVideoPlayer } from 'expo-video';
@@ -39,6 +40,7 @@ import ReportPost from '@/components/ReportPost';
 import { useReportedContentStore } from '@/stores/reportedContentStore';
 import { deleteReportByTarget } from '@/services/ReportService';
 import { useToastStore } from '@/stores/toastStore';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 const VideoCarouselItem = ({ uri, index, service, styles }: { uri: string, index: number, service: any, styles: any }) => {
   const player = useVideoPlayer(uri);
@@ -80,6 +82,8 @@ const ImageCarouselItem = ({ uri, index, service, styles }: { uri: string, index
 };
 
 const PostDetailScreen = () => {
+  const { colors, activeScheme } = useAppTheme();
+  const styles = getStyles(colors, activeScheme as string);
   const { id, highlightCommentId, returnTo } = useLocalSearchParams();
   const { posts, addPost, updatePost } = usePostStore();
   const { bookmarks, removeBookmark } = useBookmarkStore();
@@ -392,7 +396,7 @@ const PostDetailScreen = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#000" />
+        <ActivityIndicator size="large" color={colors.text} />
         <Text style={styles.loadingText}>Loading post...</Text>
       </View>
     );
@@ -401,10 +405,9 @@ const PostDetailScreen = () => {
   if (!post) {
     return (
       <View style={styles.errorContainer}>
-        <Ionicons name="alert-circle-outline" size={48} color="#999" />
+        <Ionicons name="alert-circle-outline" size={48} color={colors.textSecondary} />
         <Text style={styles.errorText}>Post not found</Text>
-        <TouchableOpacity
-          style={styles.backButton}
+        <BackButton
           onPress={() => {
             if (returnTo) {
               router.replace(returnTo as any);
@@ -412,16 +415,14 @@ const PostDetailScreen = () => {
               router.back();
             }
           }}
-        >
-          <Text style={styles.backButtonText}>Go Back</Text>
-        </TouchableOpacity>
+        />
       </View>
     );
   }
 
   const interpolatedBackgroundColor = highlightAnimation.interpolate({
     inputRange: [0, 1],
-    outputRange: ['transparent', '#e6f3ff']
+    outputRange: ['transparent', activeScheme === 'dark' ? 'rgba(52, 152, 219, 0.2)' : '#e6f3ff']
   });
 
   const groupedReactions = getGroupedReactions();
@@ -435,9 +436,8 @@ const PostDetailScreen = () => {
     >
       <View style={styles.webWrapper}>
         {/* Header with Back Button - Premium Blur Header */}
-        <BlurView intensity={80} tint="light" style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
+        <BlurView intensity={80} tint={activeScheme as any} style={styles.header}>
+          <BackButton
             onPress={() => {
               if (returnTo) {
                 router.replace(returnTo as any);
@@ -445,10 +445,7 @@ const PostDetailScreen = () => {
                 router.back();
               }
             }}
-          >
-            <Ionicons name="chevron-back" size={24} color="#000" />
-            <Text style={styles.backButtonText}>Back</Text>
-          </TouchableOpacity>
+          />
           <Text style={styles.headerTitle}>Post</Text>
           <View style={styles.headerSpacer}>
             {post && isReported('post', post.id) && (
@@ -463,7 +460,7 @@ const PostDetailScreen = () => {
               onPress={handleSharePost}
               style={styles.headerIcon}
             >
-              <Ionicons name="share-outline" size={22} color="#000" />
+              <Ionicons name="share-outline" size={22} color={colors.text} />
             </TouchableOpacity>
           </View>
         </BlurView>
@@ -493,7 +490,7 @@ const PostDetailScreen = () => {
               <Text style={styles.userName}>{post.user?.name}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.moreButton} onPress={handleOpenMenu}>
-              <Ionicons name="ellipsis-horizontal" size={20} color="#000" />
+              <Ionicons name="ellipsis-horizontal" size={20} color={colors.text} />
             </TouchableOpacity>
           </View>
 
@@ -588,7 +585,7 @@ const PostDetailScreen = () => {
                   <Ionicons
                     name={userHasReacted ? "heart" : "heart-outline"}
                     size={28}
-                    color={userHasReacted ? "#ff3040" : "#000"}
+                    color={userHasReacted ? "#ff3040" : colors.text}
                   />
                 </TouchableOpacity>
               )}
@@ -604,7 +601,7 @@ const PostDetailScreen = () => {
                   }, 100);
                 }}
               >
-                <Ionicons name="chatbubble-outline" size={26} color="#000" />
+                <Ionicons name="chatbubble-outline" size={26} color={colors.text} />
                 {(post.comments_count ?? 0) > 0 && (
                   <View style={styles.commentCountBadge}>
                     <Text style={styles.commentCountText}>{post.comments_count}</Text>
@@ -613,7 +610,7 @@ const PostDetailScreen = () => {
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.actionButton} onPress={handleSharePost}>
-                <Ionicons name="paper-plane-outline" size={26} color="#000" />
+                <Ionicons name="paper-plane-outline" size={26} color={colors.text} />
               </TouchableOpacity>
 
               {/* Post Reactions */}
@@ -651,7 +648,7 @@ const PostDetailScreen = () => {
                           setIsEmojiPickerOpen(true);
                         }}
                       >
-                        <Ionicons name="add" size={16} color="#666" />
+                        <Ionicons name="add" size={16} color={colors.textSecondary} />
                       </TouchableOpacity>
                     </View>
                   </ScrollView>
@@ -659,7 +656,7 @@ const PostDetailScreen = () => {
               )}
             </View>
             <TouchableOpacity style={styles.actionButton} onPress={handleBookmarkPost}>
-              <Ionicons name="bookmark-outline" size={26} color="#000" />
+              <Ionicons name="bookmark-outline" size={26} color={colors.text} />
             </TouchableOpacity>
           </View>
 
@@ -675,7 +672,7 @@ const PostDetailScreen = () => {
               <Ionicons
                 name={showComments ? "chevron-up" : "chevron-down"}
                 size={20}
-                color="#666"
+                color={colors.textSecondary}
               />
             </TouchableOpacity>
 
@@ -717,6 +714,7 @@ const PostDetailScreen = () => {
           <TextInput
             style={styles.commentInput}
             placeholder="Add a comment..."
+            placeholderTextColor={colors.textSecondary}
             value={commentText}
             onChangeText={setCommentText}
             multiline
@@ -825,17 +823,17 @@ const PostDetailScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     alignItems: 'center', // Center on web
   },
   webWrapper: {
     width: '100%',
     // maxWidth: Platform.OS === 'web' ? '80%' : '100%',
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -845,8 +843,8 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 50 : 12,
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
-    backgroundColor: 'rgba(255,255,255,0.7)',
+    borderBottomColor: colors.border,
+    backgroundColor: activeScheme === 'dark' ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)',
     zIndex: 10,
   },
   headerIcon: {
@@ -859,12 +857,13 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     fontSize: 16,
-    color: '#000',
+    color: colors.text,
     fontWeight: '500',
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: '700',
+    color: colors.text,
     letterSpacing: -0.4,
   },
   headerSpacer: {
@@ -879,23 +878,23 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
   },
   loadingText: {
     marginTop: 10,
-    color: '#666',
+    color: colors.textSecondary,
     fontSize: 16,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     padding: 20,
   },
   errorText: {
     marginTop: 10,
-    color: '#666',
+    color: colors.textSecondary,
     fontSize: 16,
     marginBottom: 20,
   },
@@ -905,7 +904,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
+    borderBottomColor: colors.border,
   },
   userInfo: {
     flexDirection: 'row',
@@ -920,6 +919,7 @@ const styles = StyleSheet.create({
   userName: {
     fontWeight: '600',
     fontSize: 14,
+    color: colors.text,
   },
   moreButton: {
     padding: 4,
@@ -927,7 +927,7 @@ const styles = StyleSheet.create({
   postMedia: {
     width: '100%',
     height: 400,
-    backgroundColor: '#fafafa',
+    backgroundColor: colors.muted,
   },
   premiumMediaContainer: {
     width: '100%',
@@ -983,7 +983,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
+    borderBottomColor: colors.border,
   },
   leftActions: {
     flexDirection: 'row',
@@ -997,7 +997,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#dbdbdb',
+    borderBottomColor: colors.border,
   },
   reactionsList: {
     flexDirection: 'row',
@@ -1009,14 +1009,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderRadius: 15,
-    borderColor: '#e8eaed',
+    borderColor: colors.border,
     paddingHorizontal: 8,
     paddingVertical: 4,
     backgroundColor: 'transparent',
   },
   reactionItemMine: {
-    borderColor: '#10b981',
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderColor: colors.primary,
+    backgroundColor: activeScheme === 'dark' ? 'rgba(52, 152, 219, 0.2)' : 'rgba(52, 152, 219, 0.1)',
   },
   reactionEmoji: {
     fontSize: 14,
@@ -1024,52 +1024,53 @@ const styles = StyleSheet.create({
   reactionCount: {
     fontSize: 12,
     marginLeft: 4,
-    color: '#65676B',
+    color: colors.textSecondary,
   },
   reactionCountMine: {
-    color: '#10b981',
+    color: colors.primary,
     fontWeight: '600',
   },
   addReactionButton: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: colors.muted,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#e8eaed',
+    borderColor: colors.border,
   },
   postStats: {
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#dbdbdb',
+    borderBottomColor: colors.border,
   },
   likesCount: {
     fontWeight: '600',
     fontSize: 14,
     marginBottom: 4,
+    color: colors.text,
   },
   timestamp: {
-    color: '#8e8e8e',
+    color: colors.textSecondary,
     fontSize: 12,
     textTransform: 'uppercase',
   },
   postContent: {
     padding: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
+    borderBottomColor: colors.border,
   },
   contentText: {
     fontSize: 15,
     lineHeight: 20,
-    color: '#000',
+    color: colors.text,
   },
   additionalContent: {
     fontSize: 14,
     lineHeight: 18,
     marginTop: 8,
-    color: '#262626',
+    color: colors.textSecondary,
   },
   commentsSection: {
     paddingBottom: 80,
@@ -1078,7 +1079,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
     padding: 12,
-    color: '#8e8e8e',
+    color: colors.textSecondary,
   },
   highlightContainer: {
     borderRadius: 8,
@@ -1090,8 +1091,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     borderTopWidth: 1,
-    borderTopColor: '#dbdbdb',
-    backgroundColor: '#fff',
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
   },
   currentUserAvatar: {
     width: 32,
@@ -1102,13 +1103,15 @@ const styles = StyleSheet.create({
   commentInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#dbdbdb',
+    borderColor: colors.border,
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 14,
+    color: colors.text,
     maxHeight: 80,
     marginRight: 8,
+    backgroundColor: colors.surface,
   },
   postButton: {
     paddingHorizontal: 16,
@@ -1118,12 +1121,12 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   postButtonText: {
-    color: '#0095f6',
+    color: colors.tint,
     fontWeight: '600',
     fontSize: 14,
   },
   postButtonTextDisabled: {
-    color: '#b2dffc',
+    color: colors.muted,
   },
   emojiPicker: {
     borderRadius: 10,
@@ -1141,13 +1144,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#dbdbdb',
+    borderBottomColor: colors.border,
   },
   commentCountBadge: {
     position: 'absolute',
     right: -6,
     top: -3,
-    backgroundColor: '#FF3B30',
+    backgroundColor: colors.error || '#FF3B30',
     borderRadius: 10,
     minWidth: 18,
     height: 18,

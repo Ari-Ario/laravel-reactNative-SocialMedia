@@ -29,6 +29,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Avatar from '@/components/Image/Avatar';
 import { useRouter } from 'expo-router';
 import { safeHaptics } from '@/utils/haptics';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { GlobalStyles } from '@/styles/GlobalStyles';
 import AddStory from '@/components/AddStory';
 import CreatePost from '@/components/CreatePost';
@@ -47,7 +48,7 @@ interface PollVotersModalProps {
 }
 
 // BarItem component remains the same...
-const BarItem: React.FC<{ option: any; color: string; maxVotes: number; progress: SharedValue<number>; totalVotes: number }> = ({ option, color, maxVotes, progress, totalVotes }) => {
+const BarItem: React.FC<{ option: any; color: string; maxVotes: number; progress: SharedValue<number>; totalVotes: number; styles: any }> = ({ option, color, maxVotes, progress, totalVotes, styles }) => {
     const percentage = totalVotes > 0 ? (option.voteCount / totalVotes) * 100 : 0;
     const animatedBarStyle = useAnimatedStyle(() => ({
         width: `${interpolate(progress.value, [0, 1], [0, (option.voteCount / maxVotes) * 100], Extrapolate.CLAMP)}%`,
@@ -72,9 +73,10 @@ const PollVotersModal: React.FC<PollVotersModalProps> = ({
     visible,
     onClose,
     poll,
-    currentUserId,
     spaceId,
 }) => {
+    const { colors: themeColors, activeScheme } = useAppTheme();
+    const styles = getStyles(themeColors, activeScheme);
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'voters' | 'bars' | 'grid'>('voters');
     const [expandedOption, setExpandedOption] = useState<string | null>(null);
@@ -191,7 +193,15 @@ const PollVotersModal: React.FC<PollVotersModalProps> = ({
             <ScrollView style={styles.chartScroll} contentContainerStyle={styles.chartContent} showsVerticalScrollIndicator={false}>
                 <Text style={styles.chartTitle}>Vote Distribution</Text>
                 {optionsWithVoters.map((option: any, idx: number) => (
-                    <BarItem key={option.id} option={option} color={colors[idx % colors.length]} maxVotes={maxVotes} progress={barProgress} totalVotes={totalVotes} />
+                    <BarItem
+                        key={option.id}
+                        option={option}
+                        color={colors[idx % colors.length]}
+                        maxVotes={maxVotes}
+                        progress={barProgress}
+                        totalVotes={totalVotes}
+                        styles={styles}
+                    />
                 ))}
                 <View style={styles.totalContainer}><Text style={styles.totalText}>Total votes: {totalVotes}</Text></View>
             </ScrollView>
@@ -303,7 +313,7 @@ const PollVotersModal: React.FC<PollVotersModalProps> = ({
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
@@ -311,7 +321,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     modalContent: {
-        backgroundColor: '#f4f4f5',
+        backgroundColor: activeScheme === 'dark' ? colors.background : '#f4f4f5',
         borderRadius: 24,
         width: '92%',
         maxHeight: '85%',
@@ -343,14 +353,14 @@ const styles = StyleSheet.create({
     },
     questionContainer: {
         padding: 20,
-        backgroundColor: '#fff',
+        backgroundColor: activeScheme === 'dark' ? colors.surface : '#fff',
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        borderBottomColor: colors.border,
     },
     questionText: {
         fontSize: 18,
         fontWeight: '700',
-        color: '#1f2937',
+        color: colors.text,
         textAlign: 'center',
         lineHeight: 24,
     },
@@ -358,7 +368,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         padding: 8,
         gap: 8,
-        backgroundColor: '#e5e7eb',
+        backgroundColor: activeScheme === 'dark' ? colors.muted : '#e5e7eb',
         marginHorizontal: 20,
         marginTop: 20,
         marginBottom: 8,
@@ -375,23 +385,23 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     activeTab: {
-        backgroundColor: '#fff',
+        backgroundColor: colors.card,
         ...createShadow({ width: 0, height: 2, radius: 8, opacity: 0.1 }),
     },
     tabText: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#6b7280',
+        color: colors.textSecondary,
     },
     activeTabText: {
-        color: '#2563eb',
+        color: colors.tint,
     },
     scrollContent: {
         padding: 16,
         paddingHorizontal: 20,
     },
     optionCard: {
-        backgroundColor: '#fff',
+        backgroundColor: colors.card,
         borderRadius: 16,
         marginBottom: 16,
         padding: 16,
@@ -419,7 +429,7 @@ const styles = StyleSheet.create({
     optionText: {
         fontSize: 16,
         fontWeight: '500',
-        color: '#333',
+        color: colors.text,
         marginBottom: 4,
     },
     optionMeta: {
@@ -441,7 +451,7 @@ const styles = StyleSheet.create({
     },
     voterPreview: {
         fontSize: 12,
-        color: '#666',
+        color: colors.textSecondary,
         flex: 1,
     },
     votersList: {
@@ -456,11 +466,11 @@ const styles = StyleSheet.create({
     voterName: {
         marginLeft: 10,
         fontSize: 14,
-        color: '#333',
+        color: colors.text,
     },
     noVoters: {
         fontSize: 14,
-        color: '#999',
+        color: colors.textSecondary,
         fontStyle: 'italic',
         textAlign: 'center',
         paddingVertical: 12,
@@ -469,12 +479,12 @@ const styles = StyleSheet.create({
         marginTop: 10,
         alignItems: 'center',
         paddingVertical: 8,
-        backgroundColor: '#f8fafc',
+        backgroundColor: colors.muted,
         borderRadius: 12,
     },
     viewMoreText: {
         fontSize: 13,
-        color: '#2563eb',
+        color: colors.tint,
         fontWeight: '600',
     },
     chartScroll: {
@@ -482,7 +492,7 @@ const styles = StyleSheet.create({
     },
     chartContent: {
         padding: 20,
-        backgroundColor: '#fff',
+        backgroundColor: colors.card,
         margin: 20,
         borderRadius: 16,
         ...createShadow({ width: 0, height: 2, radius: 8, opacity: 0.08 }),
@@ -490,7 +500,7 @@ const styles = StyleSheet.create({
     chartTitle: {
         fontSize: 18,
         fontWeight: '800',
-        color: '#1f2937',
+        color: colors.text,
         marginBottom: 20,
         textAlign: 'center',
     },
@@ -502,12 +512,12 @@ const styles = StyleSheet.create({
     barLabel: {
         width: 80,
         fontSize: 14,
-        color: '#333',
+        color: colors.text,
     },
     barContainer: {
         flex: 1,
         height: 24,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: colors.muted,
         borderRadius: 12,
         marginHorizontal: 8,
         overflow: 'hidden',
@@ -525,23 +535,23 @@ const styles = StyleSheet.create({
     barVotes: {
         fontSize: 12,
         fontWeight: '600',
-        color: '#333',
+        color: colors.text,
         marginRight: 4,
     },
     barPercent: {
         fontSize: 11,
-        color: '#666',
+        color: colors.textSecondary,
     },
     totalContainer: {
         marginTop: 16,
         paddingTop: 16,
         borderTopWidth: 1,
-        borderTopColor: '#f0f0f0',
+        borderTopColor: colors.border,
     },
     totalText: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#333',
+        color: colors.text,
         textAlign: 'center',
     },
     gridScroll: {
@@ -573,7 +583,7 @@ const styles = StyleSheet.create({
     emptyGridText: {
         marginTop: 12,
         fontSize: 16,
-        color: '#9ca3af',
+        color: colors.textSecondary,
         fontWeight: '500',
     },
     gridLegend: {
@@ -581,7 +591,7 @@ const styles = StyleSheet.create({
         flexWrap: 'wrap',
         paddingHorizontal: 20,
         paddingBottom: 20,
-        backgroundColor: '#fff',
+        backgroundColor: colors.card,
         marginHorizontal: 20,
         marginBottom: 20,
         borderRadius: 16,
@@ -604,7 +614,7 @@ const styles = StyleSheet.create({
     legendText: {
         fontSize: 13,
         fontWeight: '500',
-        color: '#4b5563',
+        color: colors.textSecondary,
         flex: 1,
     },
 });

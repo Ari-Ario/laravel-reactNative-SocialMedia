@@ -1,6 +1,6 @@
 // services/PostListService.tsx
 import { useState, useRef, useCallback } from 'react';
-import { Alert, Platform, NativeSyntheticEvent, NativeTouchEvent, Dimensions } from 'react-native';
+import { Platform, Alert, NativeSyntheticEvent, NativeTouchEvent, Dimensions } from 'react-native';
 import {
   deletePost,
   reactToPost,
@@ -582,7 +582,14 @@ export const usePostListService = (user: any) => {
 
   // Sort media for display
   const sortMedia = (media: any[]) => {
-    return media?.sort((a, b) => (a.type === 'video' ? -1 : 1)) || [];
+    if (!media) return { visualMedia: [], extraMedia: [] };
+    
+    const visualMedia = media.filter(m => m.type === 'image' || m.type === 'video')
+      .sort((a, b) => (a.type === 'video' ? -1 : 1));
+      
+    const extraMedia = media.filter(m => m.type !== 'image' && m.type !== 'video');
+    
+    return { visualMedia, extraMedia };
   };
 
   // Check if user is owner

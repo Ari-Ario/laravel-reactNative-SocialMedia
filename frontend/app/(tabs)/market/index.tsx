@@ -15,11 +15,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MotiView } from 'moti';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useToastStore } from '@/stores/toastStore';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 const { width } = Dimensions.get('window');
 const isMobile = width < 768;
 
 const MarketScreen = () => {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
     const insets = useSafeAreaInsets();
     const { showToast } = useToastStore();
 
@@ -36,23 +39,23 @@ const MarketScreen = () => {
     };
 
     return (
-        <View style={styles.container}>
-            <StatusBar barStyle="dark-content" />
-            
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+            <StatusBar barStyle={activeScheme === 'dark' ? 'light-content' : 'dark-content'} />
+
             {/* Header */}
-            <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
-                <Text style={styles.headerTitle}>Nexus Market</Text>
+            <View style={[styles.header, { paddingTop: insets.top + 20, backgroundColor: colors.background }]}>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>Nexus Market</Text>
                 <View style={styles.versionBadge}>
                     <Text style={styles.versionText}>v2.0 Beta Coming</Text>
                 </View>
             </View>
 
-            <ScrollView 
+            <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
                 {/* Main Hero Card */}
-                <MotiView 
+                <MotiView
                     from={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ type: 'timing', duration: 800 }}
@@ -68,7 +71,7 @@ const MarketScreen = () => {
                         </View>
                         <Text style={styles.heroTitle}>The Future of Social Commerce</Text>
                         <Text style={styles.heroSubtitle}>We're building a revolutionary marketplace experience. Stay tuned for Version 2.</Text>
-                        
+
                         <TouchableOpacity style={styles.notifyBtn} onPress={handleNotifyMe} activeOpacity={0.8}>
                             <Text style={styles.notifyBtnText}>Notify Me on Launch</Text>
                             <Ionicons name="notifications-outline" size={18} color="#1a1a1a" />
@@ -80,7 +83,7 @@ const MarketScreen = () => {
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Upcoming Features</Text>
                     {upcomingFeatures.map((feature, index) => (
-                        <MotiView 
+                        <MotiView
                             key={index}
                             from={{ opacity: 0, translateX: -20 }}
                             animate={{ opacity: 1, translateX: 0 }}
@@ -109,10 +112,11 @@ const MarketScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff' },
+function getStyles(colors: any, activeScheme: string) {
+  return StyleSheet.create({
+    container: { flex: 1 },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 20 },
-    headerTitle: { fontSize: 24, fontWeight: '800', color: '#1a1a1a', letterSpacing: -0.5 },
+    headerTitle: { fontSize: 24, fontWeight: '800', letterSpacing: -0.5 },
     versionBadge: { backgroundColor: 'rgba(0,132,255,0.1)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
     versionText: { color: '#0084ff', fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
     scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
@@ -126,15 +130,28 @@ const styles = StyleSheet.create({
     notifyBtn: { backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 14, gap: 8 },
     notifyBtnText: { color: '#1a1a1a', fontSize: 15, fontWeight: '700' },
     section: { marginTop: 8 },
-    sectionTitle: { fontSize: 18, fontWeight: '800', color: '#1a1a1a', marginBottom: 16, paddingLeft: 4 },
-    featureCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 16, borderRadius: 20, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.04)', width: isMobile ? '98%' : '100%', alignSelf: 'center', ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10 }, android: { elevation: 2 } }) },
-    iconContainer: { width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(0,132,255,0.05)', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
+    sectionTitle: { fontSize: 18, fontWeight: '800', color: colors.text, marginBottom: 16, paddingLeft: 4 },
+    featureCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.surface,
+        padding: 16,
+        borderRadius: 20,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: colors.border,
+        width: isMobile ? '98%' : '100%',
+        alignSelf: 'center',
+        ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10 }, android: { elevation: 2 } })
+    },
+    iconContainer: { width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(0,132,255,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
     featureText: { flex: 1 },
-    featureTitle: { fontSize: 16, fontWeight: '700', color: '#1a1a1a', marginBottom: 2 },
-    featureDesc: { fontSize: 13, color: 'rgba(0,0,0,0.4)', lineHeight: 18 },
+    featureTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 2 },
+    featureDesc: { fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
     footer: { marginTop: 40, alignItems: 'center', paddingBottom: 20 },
-    footerText: { fontSize: 12, fontWeight: '600', color: 'rgba(0,0,0,0.2)', marginBottom: 4 },
-    copyright: { fontSize: 11, fontWeight: '500', color: 'rgba(0,0,0,0.15)' },
+    footerText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, opacity: 0.5, marginBottom: 4 },
+    copyright: { fontSize: 11, fontWeight: '500', color: colors.textSecondary, opacity: 0.3 },
 });
+}
 
 export default MarketScreen;

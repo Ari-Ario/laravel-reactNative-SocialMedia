@@ -19,6 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect, useRef, useContext, useCallback, useMemo } from 'react';
 import { fetchProfile, followUser } from '@/services/UserService';
 import { Ionicons } from '@expo/vector-icons';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MotiView, AnimatePresence } from 'moti';
 import PostListItem from './PostListItem';
@@ -62,11 +63,24 @@ interface MediaItem {
   type: string;
 }
 
+interface AboutItem {
+  label: string;
+  value: any;
+  icon: string;
+  onPress?: () => void;
+  isLink?: boolean;
+  isEmail?: boolean;
+  isPhone?: boolean;
+  private?: boolean;
+}
+
 const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
   const isWeb = Platform.OS === 'web';
   const { openModal } = useModal();
   const { profilePreviewVisible, setProfilePreviewVisible } = useProfileView();
   const { showToast } = useToastStore();
+  const { colors, activeScheme } = useAppTheme();
+  const styles = getStyles(colors, activeScheme);
   const { user } = useContext(AuthContext);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -82,6 +96,19 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [postsLastPage, setPostsLastPage] = useState(1);
   const [photoModalVisible, setPhotoModalVisible] = useState(false);
+  const [viewablePostId, setViewablePostId] = useState<number | null>(null);
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 100, // Ensuring 100% visibility for autoplay on mobile browsers
+  }).current;
+
+  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+    if (viewableItems && viewableItems.length > 0) {
+      setViewablePostId(viewableItems[0].item.id);
+    } else {
+      setViewablePostId(null);
+    }
+  }).current;
 
   const headerAnim = useRef(new Animated.Value(0)).current;
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -206,7 +233,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
       fetchProfileData(1, true);
       Animated.spring(headerAnim, {
         toValue: 1,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
         tension: 50,
         friction: 7,
       }).start();
@@ -322,11 +349,11 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
       transition={{ type: 'spring', delay: 100 }}
       style={styles.statCard}
     >
-      <View style={styles.statIconContainer}>
-        <Ionicons name={icon as any} size={20} color="#666" />
+      <View style={[styles.statIconContainer, { backgroundColor: colors.muted }]}>
+        <Ionicons name={icon as any} size={20} color={colors.textSecondary} />
       </View>
-      <Text style={styles.statNumber}>{formatNumber(value)}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={[styles.statNumber, { color: colors.text }]}>{formatNumber(value)}</Text>
+      <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{label}</Text>
     </MotiView>
   );
 
@@ -336,11 +363,11 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
     if (isRestricted) {
       return (
         <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} style={styles.privateContainer}>
-          <View style={styles.privateIconCircle}>
-            <Ionicons name="lock-closed" size={32} color="#666" />
+          <View style={[styles.privateIconCircle, { backgroundColor: colors.muted }]}>
+            <Ionicons name="lock-closed" size={32} color={colors.textSecondary} />
           </View>
-          <Text style={styles.privateTitle}>This Account is Private</Text>
-          <Text style={styles.privateSubtitle}>Follow this account to see their full profile and media uploads.</Text>
+          <Text style={[styles.privateTitle, { color: colors.text }]}>This Account is Private</Text>
+          <Text style={[styles.privateSubtitle, { color: colors.textSecondary }]}>Follow this account to see their full profile and media uploads.</Text>
         </MotiView>
       );
     }
@@ -407,8 +434,8 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
     if (!sections.some(s => s.show)) {
       return (
         <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} style={styles.emptyAbout}>
-          <Ionicons name="person-outline" size={48} color="#ccc" />
-          <Text style={styles.emptyAboutText}>No additional information provided</Text>
+        <Ionicons name="person-outline" size={48} color={colors.textSecondary + '40'} />
+        <Text style={[styles.emptyAboutText, { color: colors.textSecondary }]}>No additional information provided</Text>
         </MotiView>
       );
     }
@@ -424,11 +451,11 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
             style={styles.aboutSection}
           >
             <View style={styles.sectionHeader}>
-              <Ionicons name={section.icon as any} size={18} color="#3897f0" />
-              <Text style={styles.sectionTitleText}>{section.title}</Text>
+              <Ionicons name={section.icon as any} size={18} color={colors.tint} />
+              <Text style={[styles.sectionTitleText, { color: colors.text }]}>{section.title}</Text>
             </View>
 
-            {section.items.filter(i => i.value).map((item, iIndex) => (
+            {(section.items as AboutItem[]).filter(i => i.value).map((item, iIndex) => (
               <TouchableOpacity
                 key={item.label}
                 disabled={!item.onPress && !item.isLink && !item.isEmail && !item.isPhone}
@@ -454,20 +481,20 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
                 }}
                 style={styles.aboutItem}
               >
-                <View style={[styles.aboutIconCircle, { backgroundColor: '#f1f1f1' }]}>
-                  <Ionicons name={item.icon as any} size={16} color="#555" />
+                <View style={[styles.aboutIconCircle, { backgroundColor: colors.muted }]}>
+                  <Ionicons name={item.icon as any} size={16} color={colors.textSecondary} />
                 </View>
                 <View style={styles.aboutContent}>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={styles.aboutLabel}>{item.label}</Text>
+                    <Text style={[styles.aboutLabel, { color: colors.textSecondary }]}>{item.label}</Text>
                     {String(user?.id) === String(userId) && item.private && (
-                      <View style={styles.privateBadge}>
+                      <View style={[styles.privateBadge, { backgroundColor: colors.muted }]}>
                         <Ionicons name="lock-closed" size={10} color="#FF9800" />
-                        <Text style={styles.privateBadgeText}>Hidden</Text>
+                        <Text style={[styles.privateBadgeText, { color: '#FF9800' }]}>Hidden</Text>
                       </View>
                     )}
                   </View>
-                  <Text style={[styles.aboutText, (item.isLink || item.isEmail || item.isPhone) && styles.linkText]}>
+                  <Text style={[styles.aboutText, { color: colors.text }, (item.isLink || item.isEmail || item.isPhone) && styles.linkText]}>
                     {item.value}
                   </Text>
                 </View>
@@ -479,11 +506,11 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
                 {Object.entries(profile.social_links).map(([platform, url]) => (
                   <TouchableOpacity
                     key={platform}
-                    style={styles.socialBadge}
+                    style={[styles.socialBadge, { backgroundColor: colors.muted }]}
                     onPress={() => handleLinkPress(url as string)}
                   >
-                    <Ionicons name={getSocialIcon(platform) as any} size={16} color="#666" />
-                    <Text style={styles.socialBadgeText}>{platform}</Text>
+                    <Ionicons name={getSocialIcon(platform) as any} size={16} color={colors.textSecondary} />
+                    <Text style={[styles.socialBadgeText, { color: colors.text }]}>{platform}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -523,14 +550,14 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
 
       <View style={styles.userInfo}>
         <View style={styles.nameRow}>
-          <Text style={styles.name}>{profile.name} {profile.last_name}</Text>
+          <Text style={[styles.name, { color: colors.text }]}>{profile.name} {profile.last_name}</Text>
           {profile.is_private && (
-            <Ionicons name="lock-closed" size={16} color="#666" style={{ marginLeft: 6 }} />
+            <Ionicons name="lock-closed" size={16} color={colors.textSecondary} style={{ marginLeft: 6 }} />
           )}
         </View>
         <View style={styles.usernameRow}>
-          {profile.username && <Text style={styles.username}>@{profile.username}</Text>}
-          <Text style={styles.joinedDate}> • Joined {new Date(profile.created_at).getFullYear()}</Text>
+          {profile.username && <Text style={[styles.username, { color: colors.tint }]}>@{profile.username}</Text>}
+          <Text style={[styles.joinedDate, { color: colors.textSecondary }]}> • Joined {new Date(profile.created_at).getFullYear()}</Text>
         </View>
       </View>
 
@@ -542,23 +569,23 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
           activeOpacity={0.8}
         >
           <LinearGradient
-            colors={isFollowing ? ['#efefef', '#e0e0e0'] : ['#3897f0', '#005ed3']}
+            colors={isFollowing ? (activeScheme === 'dark' ? ['#333', '#222'] : ['#efefef', '#e0e0e0']) : ['#3897f0', '#005ed3']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.followButtonGradient}
           >
             {followLoading ? (
-              <ActivityIndicator size="small" color={isFollowing ? '#000' : '#fff'} />
+              <ActivityIndicator size="small" color={isFollowing ? colors.text : '#fff'} />
             ) : (
               <>
                 <Ionicons
                   name={isFollowing ? "checkmark-circle" : "person-add"}
                   size={18}
-                  color={isFollowing ? '#000' : '#fff'}
+                  color={isFollowing ? colors.text : '#fff'}
                 />
                 <Text style={[
                   styles.followButtonLabel,
-                  isFollowing && { color: '#000' }
+                  { color: isFollowing ? colors.text : '#fff' }
                 ]}>
                   {isFollowing ? 'Following' : 'Follow'}
                 </Text>
@@ -582,14 +609,18 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
             <Ionicons
               name={tab.icon as any}
               size={18}
-              color={activeTab === tab.id ? '#3897f0' : '#666'}
+              color={activeTab === tab.id ? colors.tint : colors.textSecondary}
             />
-            <Text style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}>
+            <Text style={[
+              styles.tabText, 
+              { color: activeTab === tab.id ? colors.tint : colors.textSecondary },
+              activeTab === tab.id && styles.tabTextActive
+            ]}>
               {tab.label}
             </Text>
             {activeTab === tab.id && (
               <MotiView
-                style={styles.tabIndicator}
+                style={[styles.tabIndicator, { backgroundColor: colors.tint }]}
                 transition={{ type: 'timing', duration: 200 }}
               />
             )}
@@ -603,15 +634,15 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
     if (activeTab === 'posts' && uniqueUserPosts.length > 0 && hasMorePosts) {
       return (
         <View style={styles.footerLoader}>
-          <ActivityIndicator size="small" color="#3897f0" />
-          <Text style={styles.footerText}>Loading more posts...</Text>
+          <ActivityIndicator size="small" color={colors.tint} />
+          <Text style={[styles.footerText, { color: colors.textSecondary }]}>Loading more posts...</Text>
         </View>
       );
     }
     if (activeTab === 'posts' && uniqueUserPosts.length > 0 && !hasMorePosts) {
       return (
         <View style={styles.footerEnd}>
-          <Text style={styles.footerEndText}>End of posts</Text>
+          <Text style={[styles.footerEndText, { color: colors.textSecondary }]}>End of posts</Text>
         </View>
       );
     }
@@ -626,8 +657,8 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
           animate={{ opacity: 1 }}
           style={styles.emptyState}
         >
-          <Ionicons name="grid-outline" size={48} color="#ccc" />
-          <Text style={styles.emptyStateText}>No posts yet</Text>
+          <Ionicons name="grid-outline" size={48} color={colors.textSecondary + '40'} />
+          <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>No posts yet</Text>
         </MotiView>
       );
     }
@@ -639,8 +670,8 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
           animate={{ opacity: 1 }}
           style={styles.emptyState}
         >
-          <Ionicons name={isRestricted ? "lock-closed-outline" : "images-outline"} size={48} color="#ccc" />
-          <Text style={styles.emptyStateText}>
+          <Ionicons name={isRestricted ? "lock-closed-outline" : "images-outline"} size={48} color={colors.textSecondary + '40'} />
+          <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
             {isRestricted ? "This account is private" : "No media uploads found in posts"}
           </Text>
         </MotiView>
@@ -666,10 +697,9 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
       animationType="slide"
       onRequestClose={() => setProfilePreviewVisible(false)}
     >
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        <LinearGradient
-          colors={['#ffffff', '#f8f9fa']}
-          style={styles.header}
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+        <View
+          style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}
         >
           <View style={styles.headerTop}>
             <TouchableOpacity
@@ -677,10 +707,10 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
               onPress={() => setProfilePreviewVisible(false)}
               activeOpacity={0.7}
             >
-              <Ionicons name="arrow-back" size={24} color="#000" />
+              <Ionicons name="chevron-back" size={24} color={colors.text} />
             </TouchableOpacity>
 
-            <Text style={styles.headerTitle} numberOfLines={1}>
+            <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
               {profile.name}
             </Text>
 
@@ -711,12 +741,12 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
               </TouchableOpacity>
             )}
           </View>
-        </LinearGradient>
+        </View>
 
         {loading && activeTab === 'posts' ? (
-          <View style={styles.loaderContainer}>
-            <ActivityIndicator size="large" color="#3897f0" />
-            <Text style={styles.loaderText}>Loading profile...</Text>
+          <View style={[styles.loaderContainer, { backgroundColor: colors.background }]}>
+            <ActivityIndicator size="large" color={colors.tint} />
+            <Text style={[styles.loaderText, { color: colors.textSecondary }]}>Loading profile...</Text>
           </View>
         ) : (
           <Animated.FlatList
@@ -756,10 +786,14 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
                   onShare={() => { }}
                   onBookmark={() => { }}
                   onReactComment={() => { }}
-                  shouldPlay={visible}
+                  shouldPlay={visible && viewablePostId === postItem.id}
                 />
               );
             }}
+            onRefresh={handleRefresh}
+            refreshing={refreshing}
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig}
             ListHeaderComponent={renderProfileHeader}
             ListFooterComponent={
               <>
@@ -772,8 +806,8 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={handleRefresh}
-                tintColor="#3897f0"
-                colors={['#3897f0']}
+                tintColor={colors.tint}
+                colors={[colors.tint]}
               />
             }
             onEndReached={handleLoadMore}
@@ -785,7 +819,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
             showsVerticalScrollIndicator={false}
             onScroll={Animated.event(
               [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-              { useNativeDriver: true }
+              { useNativeDriver: Platform.OS !== 'web' }
             )}
             style={{ opacity: headerAnim }}
             removeClippedSubviews={Platform.OS === 'ios'}
@@ -855,17 +889,15 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
   },
   header: {
     paddingHorizontal: 20,
     paddingTop: Platform.OS === 'ios' ? 8 : 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   headerTop: {
     flexDirection: 'row',
@@ -882,7 +914,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
     maxWidth: width * 0.5,
   },
   loaderContainer: {
@@ -893,7 +924,6 @@ const styles = StyleSheet.create({
   loaderText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#666',
   },
   scrollContent: {
     paddingBottom: 40,
@@ -934,7 +964,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#f5f5f5',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 6,
@@ -942,11 +971,9 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1a1a1a',
   },
   statLabel: {
     fontSize: 12,
-    color: '#666',
     marginTop: 2,
   },
   userInfo: {
@@ -961,7 +988,6 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1a1a1a',
   },
   usernameRow: {
     flexDirection: 'row',
@@ -970,7 +996,6 @@ const styles = StyleSheet.create({
   },
   username: {
     fontSize: 14,
-    color: '#666',
   },
   joinedDate: {
     fontSize: 13,
@@ -1011,7 +1036,6 @@ const styles = StyleSheet.create({
   tabsContainer: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
     marginBottom: 16,
   },
   tab: {
@@ -1029,10 +1053,8 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#666',
   },
   tabTextActive: {
-    color: '#3897f0',
     fontWeight: '600',
   },
   tabIndicator: {
@@ -1041,7 +1063,6 @@ const styles = StyleSheet.create({
     left: '30%',
     right: '30%',
     height: 2,
-    backgroundColor: '#3897f0',
     borderRadius: 1,
   },
   headerContainer: {
@@ -1065,18 +1086,15 @@ const styles = StyleSheet.create({
   aboutLabel: {
     fontSize: 11,
     fontWeight: '500',
-    color: '#999',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 4,
   },
   aboutText: {
     fontSize: 15,
-    color: '#1a1a1a',
     lineHeight: 22,
   },
   linkText: {
-    color: '#3897f0',
     textDecorationLine: 'underline',
   },
   emptyAbout: {
@@ -1086,7 +1104,6 @@ const styles = StyleSheet.create({
   emptyAboutText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#999',
   },
   socialLinks: {
     flexDirection: 'row',
@@ -1105,7 +1122,6 @@ const styles = StyleSheet.create({
   },
   socialLinkText: {
     fontSize: 13,
-    color: '#666',
   },
   emptyState: {
     alignItems: 'center',
@@ -1114,7 +1130,6 @@ const styles = StyleSheet.create({
   emptyStateText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#999',
   },
   mediaItem: {
     flex: 1 / 3,
@@ -1124,7 +1139,6 @@ const styles = StyleSheet.create({
   mediaThumbnail: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#f0f0f0',
   },
   videoOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -1166,7 +1180,6 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 12,
-    color: '#666',
   },
   footerEnd: {
     alignItems: 'center',
@@ -1174,17 +1187,14 @@ const styles = StyleSheet.create({
   },
   footerEndText: {
     fontSize: 12,
-    color: '#999',
   },
   // Enhanced About Styles
   aboutSection: {
-    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
-    ...createShadow({ opacity: 0.05, radius: 10 }),
+    ...createShadow({ opacity: 0.1, radius: 10 }),
     borderWidth: 1,
-    borderColor: '#f0f0f0',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -1195,7 +1205,6 @@ const styles = StyleSheet.create({
   sectionTitleText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#3897f0',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -1214,23 +1223,19 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#f5f5f5',
   },
   socialBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#eee',
     gap: 6,
   },
   socialBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#444',
     textTransform: 'capitalize',
   },
   // Private Account Guard
@@ -1243,22 +1248,18 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#f8f9fa',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#eee',
   },
   privateTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1a1a1a',
     marginBottom: 8,
   },
   privateSubtitle: {
     fontSize: 14,
-    color: '#666',
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -1275,7 +1276,6 @@ const styles = StyleSheet.create({
   privateBadgeText: {
     fontSize: 9,
     fontWeight: '800',
-    color: '#FF9800',
     textTransform: 'uppercase',
   },
 });

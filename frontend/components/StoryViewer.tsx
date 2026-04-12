@@ -1,9 +1,10 @@
-import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions, Animated, ActivityIndicator, TextInput, ScrollView, Platform, Keyboard, Modal, Alert } from 'react-native';
+import { Platform, View, Text, StyleSheet, TouchableOpacity, Image, Dimensions, Animated, ActivityIndicator, TextInput, ScrollView, Keyboard, Modal, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlobalStyles } from '@/styles/GlobalStyles';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState, useMemo, useContext } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { markStoryAsViewed, fetchUserStories, deleteStory } from '@/services/StoryService';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import PusherService from '@/services/PusherService';
@@ -35,6 +36,7 @@ import { useCollaborationStore } from '@/stores/collaborationStore';
 import ReportPost from './ReportPost';
 import { useToastStore } from '@/stores/toastStore';
 import { useReportedContentStore } from '@/stores/reportedContentStore';
+import { createShadow, createTextShadow } from '@/utils/styles';
 
 const { width, height } = Dimensions.get('window');
 const STORY_DURATION = 10000; // 10 seconds
@@ -68,6 +70,7 @@ interface StoryViewerProps {
 
 const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }: StoryViewerProps) => {
   const { showToast } = useToastStore();
+  const { colors, activeScheme } = useAppTheme();
   const insets = useSafeAreaInsets();
   const { storyGroups, setStoriesForUser } = useStoryStore();
   const stories = useMemo(() => {
@@ -133,7 +136,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
     if (stories.length > 0 && !hasInitialized.current) {
       const initialIndex = stories.findIndex((story: any) => story.id === initialStoryId);
       const firstUnviewedIndex = stories.findIndex((story: any) => !story.viewed);
-      
+
       setCurrentStoryIndex(prev => {
         // 1. Resume from the first story they haven't seen (highest priority for "Resume" behavior)
         if (firstUnviewedIndex !== -1) {
@@ -146,7 +149,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
           hasInitialized.current = true;
           return initialIndex;
         }
-        
+
         // 3. Fallback: start at the oldest
         hasInitialized.current = true;
         return 0;
@@ -240,12 +243,12 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
   // Handle story progression with pause support
   useEffect(() => {
     // Determine if we should be paused
-    const shouldBePaused = loading || 
-      stories.length === 0 || 
-      paused || 
-      showLocationPopup || 
-      showShareModal || 
-      showReactions || 
+    const shouldBePaused = loading ||
+      stories.length === 0 ||
+      paused ||
+      showLocationPopup ||
+      showShareModal ||
+      showReactions ||
       isLongPressing ||
       showInfo ||
       isTyping;
@@ -340,7 +343,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
       if (spaceId) {
         const baseUrl = getApiBaseImage();
         const shareUrl = `${baseUrl}/story/${currentStory.id}`;
-        
+
         const metadata = {
           story_id: currentStory.id,
           creator_name: currentStory.user.name || 'Anonymous',
@@ -395,7 +398,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
         setIsSendingReply(true);
         console.log('🗑️ Deleting story via API:', currentStory.id);
         await deleteStory(currentStory.id);
-        
+
         console.log('✅ Story deleted successfully');
         safeHaptics.success();
 
@@ -407,7 +410,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
         // will broadcast 'story-deleted' and storyStore will handle it globally!
         // But if we want it to be instant for the owner, we can call it:
         // useStoryStore.getState().handleStoryDeleted({ storyId, userId: user!.id });
-        
+
         setTimeout(() => {
           if (stories.length > 1) {
             if (currentStoryIndex < stories.length - 1) {
@@ -440,8 +443,8 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
         'Are you sure you want to delete this story?',
         [
           { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Delete', 
+          {
+            text: 'Delete',
             style: 'destructive',
             onPress: performDelete
           }
@@ -500,9 +503,9 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
 
   if (loading || !currentStory) {
     return (
-      <View style={styles.container}>
-        <BlurView intensity={90} style={StyleSheet.absoluteFill} />
-        <ActivityIndicator size="large" color="#FF9F0A" />
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <BlurView intensity={90} tint={activeScheme === 'dark' ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+        <ActivityIndicator size="large" color={colors.tint} />
       </View>
     );
   }
@@ -521,9 +524,9 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                 exiting={FadeOut.duration(300)}
                 style={styles.deleteStatus}
               >
-                <BlurView intensity={80} tint="dark" style={styles.deleteStatusContent}>
+                <BlurView intensity={80} tint={activeScheme === 'dark' ? 'dark' : 'light'} style={styles.deleteStatusContent}>
                   <Ionicons name="checkmark-circle" size={20} color="#4CD964" />
-                  <Text style={styles.deleteStatusText}>{deleteStatus.message}</Text>
+                  <Text style={[styles.deleteStatusText, { color: colors.text }]}>{deleteStatus.message}</Text>
                 </BlurView>
               </AnimatedComponent.View>
             )}
@@ -550,7 +553,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                     styles.progressBar,
                     {
                       width: `${index < currentStoryIndex ? 100 : 0}%`,
-                      backgroundColor: index < currentStoryIndex ? '#FF9F0A' : 'rgba(255,255,255,0.3)'
+                      backgroundColor: index < currentStoryIndex ? colors.tint : (activeScheme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)')
                     }
                   ]} />
                 )}
@@ -608,10 +611,10 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                       setShowReportModal(true);
                     }
                   }} style={styles.headerButton}>
-                    <Ionicons 
-                      name={useReportedContentStore.getState().isReported('story', currentStory.id) ? "flag" : "flag-outline"} 
-                      size={22} 
-                      color={useReportedContentStore.getState().isReported('story', currentStory.id) ? "#ff4444" : "white"} 
+                    <Ionicons
+                      name={useReportedContentStore.getState().isReported('story', currentStory.id) ? "flag" : "flag-outline"}
+                      size={22}
+                      color={useReportedContentStore.getState().isReported('story', currentStory.id) ? "#ff4444" : "white"}
                     />
                   </TouchableOpacity>
                 )}
@@ -700,14 +703,14 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                         {sticker.text}
                       </Text>
                     )}
-                    
+
                     {sticker.location && (
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         onPress={() => handleLocationPress(sticker.location)}
                         activeOpacity={0.7}
                       >
                         <BlurView intensity={80} tint="dark" style={styles.integratedLocationSticker}>
-                          <Ionicons name="location" size={14} color="#0084ff" />
+                          <Ionicons name="location" size={14} color={colors.tint} />
                           <Text style={styles.integratedLocationStickerText}>{sticker.location.name}</Text>
                         </BlurView>
                       </TouchableOpacity>
@@ -740,7 +743,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
               )}
 
               {showVolumeSlider && (
-                <AnimatedComponent.View 
+                <AnimatedComponent.View
                   style={[styles.volumeSliderContainer, animatedVolumeStyle]}
                 >
                   <BlurView intensity={80} style={styles.volumeSlider}>
@@ -769,7 +772,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                   >
                     <Ionicons name="trash-outline" size={24} color="#FF3B30" />
                   </TouchableOpacity>
-                  
+
                   <TouchableOpacity
                     style={styles.shareButton}
                     onPress={() => setShowShareModal(true)}
@@ -781,7 +784,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                 <View style={styles.replyContainer}>
                   <TextInput
                     ref={replyInputRef}
-                    style={styles.replyInput}
+                    style={[styles.replyInput, { color: '#fff' }]}
                     placeholder="Send message..."
                     placeholderTextColor="rgba(255,255,255,0.6)"
                     value={replyText}
@@ -800,15 +803,16 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                     <TouchableOpacity
                       style={[
                         styles.sendButton,
+                        { backgroundColor: colors.tint },
                         !replyText.trim() && styles.sendButtonDisabled
                       ]}
                       onPress={handleSendReply}
                       disabled={!replyText.trim() || isSendingReply}
                     >
                       {isSendingReply ? (
-                        <ActivityIndicator size="small" color="white" />
+                        <ActivityIndicator size="small" color="#fff" />
                       ) : (
-                        <Ionicons name="send" size={20} color="white" />
+                        <Ionicons name="send" size={20} color="#fff" />
                       )}
                     </TouchableOpacity>
                   </AnimatedComponent.View>
@@ -828,7 +832,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
 
           {/* Reactions Panel */}
           <Modal visible={showReactions} transparent animationType="none">
-            <BlurView intensity={90} style={styles.modalOverlay}>
+            <BlurView intensity={90} tint={activeScheme === 'dark' ? 'dark' : 'light'} style={styles.modalOverlay}>
               <AnimatedComponent.View
                 style={[
                   styles.reactionsPanel,
@@ -837,12 +841,12 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                 ]}
               >
                 <View style={styles.reactionsHeader}>
-                  <Text style={styles.reactionsTitle}>React to story</Text>
+                  <Text style={[styles.reactionsTitle, { color: colors.text }]}>React to story</Text>
                   <TouchableOpacity onPress={() => {
                     reactionPanelY.value = withSpring(height);
                     setTimeout(() => setShowReactions(false), 200);
                   }}>
-                    <Ionicons name="close" size={24} color="white" />
+                    <Ionicons name="close" size={24} color={colors.text} />
                   </TouchableOpacity>
                 </View>
 
@@ -850,7 +854,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                   {['❤️', '😂', '😮', '😢', '👏', '🔥'].map((emoji) => (
                     <TouchableOpacity
                       key={emoji}
-                      style={styles.reactionEmoji}
+                      style={[styles.reactionEmoji, { backgroundColor: colors.muted }]}
                       onPress={() => {
                         reactionPanelY.value = withSpring(height);
                         setTimeout(() => setShowReactions(false), 200);
@@ -867,57 +871,56 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
 
           {/* Info Modal */}
           <Modal visible={showInfo} transparent animationType="fade">
-            <BlurView intensity={90} style={styles.modalOverlay}>
+            <BlurView intensity={90} tint={activeScheme === 'dark' ? 'dark' : 'light'} style={styles.modalOverlay}>
               <AnimatedComponent.View
                 entering={SlideInDown.springify()}
                 exiting={SlideOutDown.springify()}
                 style={styles.infoModal}
               >
-                <LinearGradient
-                  colors={['#1a1a1a', '#2a2a2a']}
-                  style={styles.infoContent}
+                <View
+                  style={[styles.infoContent, { backgroundColor: colors.surface }]}
                 >
                   <View style={styles.infoHeader}>
-                    <Text style={styles.infoTitle}>Story Info</Text>
+                    <Text style={[styles.infoTitle, { color: colors.text }]}>Story Info</Text>
                     <TouchableOpacity onPress={() => setShowInfo(false)}>
-                      <Ionicons name="close" size={24} color="white" />
+                      <Ionicons name="close" size={24} color={colors.text} />
                     </TouchableOpacity>
                   </View>
 
-                  <View style={styles.infoItem}>
-                    <Ionicons name="calendar-outline" size={20} color="#FF9F0A" />
-                    <Text style={styles.infoLabel}>Posted:</Text>
-                    <Text style={styles.infoValue}>{new Date(currentStory.created_at).toLocaleString()}</Text>
+                  <View style={[styles.infoItem, { borderBottomColor: colors.border }]}>
+                    <Ionicons name="calendar-outline" size={20} color={colors.tint} />
+                    <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Posted:</Text>
+                    <Text style={[styles.infoValue, { color: colors.text }]}>{new Date(currentStory.created_at).toLocaleString()}</Text>
                   </View>
 
-                  <View style={styles.infoItem}>
-                    <Ionicons name="eye-outline" size={20} color="#FF9F0A" />
-                    <Text style={styles.infoLabel}>Views:</Text>
-                    <Text style={styles.infoValue}>{currentStory.views_count || 0}</Text>
+                  <View style={[styles.infoItem, { borderBottomColor: colors.border }]}>
+                    <Ionicons name="eye-outline" size={20} color={colors.tint} />
+                    <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Views:</Text>
+                    <Text style={[styles.infoValue, { color: colors.text }]}>{currentStory.views_count || 0}</Text>
                   </View>
 
-                  <View style={styles.infoItem}>
-                    <Ionicons name={currentStory.type === 'video' ? "videocam-outline" : "image-outline"} size={20} color="#FF9F0A" />
-                    <Text style={styles.infoLabel}>Type:</Text>
-                    <Text style={styles.infoValue}>{currentStory.type === 'video' ? 'Video' : 'Photo'}</Text>
+                  <View style={[styles.infoItem, { borderBottomColor: colors.border }]}>
+                    <Ionicons name={currentStory.type === 'video' ? "videocam-outline" : "image-outline"} size={20} color={colors.tint} />
+                    <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Type:</Text>
+                    <Text style={[styles.infoValue, { color: colors.text }]}>{currentStory.type === 'video' ? 'Video' : 'Photo'}</Text>
                   </View>
 
                   {currentStory.caption && (
-                    <View style={styles.infoItem}>
-                      <Ionicons name="chatbubble-outline" size={20} color="#FF9F0A" />
-                      <Text style={styles.infoLabel}>Caption:</Text>
-                      <Text style={styles.infoValue} numberOfLines={2}>{currentStory.caption}</Text>
+                    <View style={[styles.infoItem, { borderBottomColor: colors.border }]}>
+                      <Ionicons name="chatbubble-outline" size={20} color={colors.tint} />
+                      <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Caption:</Text>
+                      <Text style={[styles.infoValue, { color: colors.text }]} numberOfLines={2}>{currentStory.caption}</Text>
                     </View>
                   )}
 
                   {storyLocation && (
-                    <View style={styles.infoItem}>
-                      <Ionicons name="location-outline" size={20} color="#FF9F0A" />
-                      <Text style={styles.infoLabel}>Location:</Text>
-                      <Text style={styles.infoValue}>{storyLocation.name}</Text>
+                    <View style={[styles.infoItem, { borderBottomWidth: 0 }]}>
+                      <Ionicons name="location-outline" size={20} color={colors.tint} />
+                      <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Location:</Text>
+                      <Text style={[styles.infoValue, { color: colors.text }]}>{storyLocation.name}</Text>
                     </View>
                   )}
-                </LinearGradient>
+                </View>
               </AnimatedComponent.View>
             </BlurView>
           </Modal>
@@ -973,7 +976,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginRight: 12,
     borderWidth: 2,
-    borderColor: '#FF9F0A',
   },
   username: {
     color: 'white',
@@ -1023,7 +1025,6 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: '100%',
-    backgroundColor: '#FF9F0A',
     borderRadius: 2,
   },
   storyMedia: {
@@ -1035,10 +1036,8 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   stickerText: {
-    fontWeight: 'bold',
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 5,
+    fontWeight: '700',
+    ...createTextShadow({ color: 'rgba(0,0,0,0.5)', width: 1, height: 1, radius: 5 }),
   },
   captionContainer: {
     position: 'absolute',
@@ -1114,7 +1113,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FF9F0A',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1168,7 +1166,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(30,30,30,0.95)',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
@@ -1188,7 +1185,6 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: 'rgba(255,255,255,0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
@@ -1220,16 +1216,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
   },
   infoLabel: {
-    color: 'rgba(255,255,255,0.6)',
     fontSize: 14,
     marginLeft: 12,
     width: 80,
   },
   infoValue: {
-    color: 'white',
     fontSize: 14,
     fontWeight: '500',
     flex: 1,

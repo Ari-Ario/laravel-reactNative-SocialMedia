@@ -25,6 +25,7 @@ let DateTimePicker: any = null;
 import { useRouter } from 'expo-router';
 import Avatar from '@/components/Image/Avatar';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 export interface PollOption {
     id: string;
@@ -94,6 +95,9 @@ const PollComponent: React.FC<PollComponentProps> = ({
     editPoll,
     isEditing = false,
 }) => {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
+
     const [question, setQuestion] = useState('');
     const [options, setOptions] = useState<string[]>(['', '']);
     const [pollType, setPollType] = useState<'single' | 'multiple' | 'ranked' | 'weighted'>('single');
@@ -126,7 +130,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
     // Determine user permissions based on role and poll data
     const isCreator = editPoll?.createdBy?.id === currentUserId;
     const isModerator = currentUserRole === 'owner' || currentUserRole === 'moderator';
-    const hasVotes = (editPoll?.total_votes || 0) > 0;
+    const hasVotes = (editPoll?.totalVotes || 0) > 0;
 
     // Permission matrix:
     // | User Role        | Can Edit | Can Close | Can Forward | Can Delete (this space) | Can Delete (all spaces) |
@@ -936,7 +940,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -945,7 +949,7 @@ const styles = StyleSheet.create({
         padding: 20,
     },
     modalContent: {
-        backgroundColor: '#fff',
+        backgroundColor: colors.card,
         borderRadius: 16,
         width: '100%',
         maxWidth: 600,
@@ -957,12 +961,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        borderBottomColor: colors.border,
     },
     modalTitle: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#333',
+        color: colors.text,
     },
     stepIndicator: {
         flexDirection: 'row',
@@ -976,12 +980,12 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: activeScheme === 'dark' ? colors.muted : '#f0f0f0',
         justifyContent: 'center',
         alignItems: 'center',
     },
     stepDotActive: {
-        backgroundColor: '#007AFF',
+        backgroundColor: colors.tint,
     },
     stepDotCompleted: {
         backgroundColor: '#4CAF50',
@@ -989,7 +993,7 @@ const styles = StyleSheet.create({
     stepDotText: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#666',
+        color: colors.textSecondary,
     },
     scrollContent: {
         padding: 16,
@@ -1000,16 +1004,17 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#333',
+        color: colors.text,
         marginBottom: 8,
     },
     questionInput: {
         fontSize: 16,
         padding: 12,
-        backgroundColor: '#f8f8f8',
+        backgroundColor: colors.muted,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#e0e0e0',
+        borderColor: colors.border,
+        color: colors.text,
         minHeight: 80,
         textAlignVertical: 'top',
     },
@@ -1023,7 +1028,7 @@ const styles = StyleSheet.create({
         width: 24,
         height: 24,
         borderRadius: 12,
-        backgroundColor: '#007AFF',
+        backgroundColor: colors.tint,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -1036,20 +1041,21 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 16,
         padding: 10,
-        backgroundColor: '#f8f8f8',
+        backgroundColor: colors.muted,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#e0e0e0',
+        borderColor: colors.border,
+        color: colors.text,
     },
     addOptionButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         padding: 12,
-        backgroundColor: '#007AFF10',
+        backgroundColor: colors.tint + '10',
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#007AFF',
+        borderColor: colors.tint,
         borderStyle: 'dashed',
         marginTop: 8,
     },
@@ -1057,7 +1063,7 @@ const styles = StyleSheet.create({
         marginLeft: 8,
         fontSize: 14,
         fontWeight: '600',
-        color: '#007AFF',
+        color: colors.tint,
     },
     settingRow: {
         flexDirection: 'row',
@@ -1065,11 +1071,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 12,
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        borderBottomColor: colors.border,
     },
     settingLabel: {
         fontSize: 15,
-        color: '#333',
+        color: colors.text,
         flex: 1,
     },
     typeSelector: {
@@ -1081,14 +1087,14 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 16,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: colors.muted,
     },
     typeButtonActive: {
-        backgroundColor: '#007AFF',
+        backgroundColor: colors.tint,
     },
     typeButtonText: {
         fontSize: 12,
-        color: '#666',
+        color: colors.textSecondary,
     },
     typeButtonTextActive: {
         color: '#fff',
@@ -1103,14 +1109,14 @@ const styles = StyleSheet.create({
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 12,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: colors.muted,
     },
     resultsButtonActive: {
-        backgroundColor: '#007AFF',
+        backgroundColor: colors.tint,
     },
     resultsButtonText: {
         fontSize: 11,
-        color: '#666',
+        color: colors.textSecondary,
     },
     resultsButtonTextActive: {
         color: '#fff',
@@ -1119,71 +1125,73 @@ const styles = StyleSheet.create({
         width: 80,
         fontSize: 15,
         padding: 8,
-        backgroundColor: '#f8f8f8',
+        backgroundColor: colors.muted,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#e0e0e0',
+        borderColor: colors.border,
+        color: colors.text,
         textAlign: 'center',
     },
     tagsInput: {
         flex: 1,
         fontSize: 15,
         padding: 8,
-        backgroundColor: '#f8f8f8',
+        backgroundColor: colors.muted,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#e0e0e0',
+        borderColor: colors.border,
+        color: colors.text,
     },
     datePickerButton: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
         padding: 12,
-        backgroundColor: '#f8f8f8',
+        backgroundColor: colors.muted,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#e0e0e0',
+        borderColor: colors.border,
     },
     datePickerText: {
         fontSize: 15,
-        color: '#333',
+        color: colors.text,
     },
     forwardButton: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
         padding: 12,
-        backgroundColor: '#f8f8f8',
+        backgroundColor: colors.muted,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#e0e0e0',
+        borderColor: colors.border,
     },
     forwardButtonText: {
         fontSize: 15,
-        color: '#007AFF',
+        color: colors.tint,
         fontWeight: '500',
     },
     previewContainer: {
         marginTop: 16,
         padding: 12,
-        backgroundColor: '#f8f8f8',
+        backgroundColor: colors.muted,
         borderRadius: 8,
     },
     previewTitle: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#666',
+        color: colors.textSecondary,
         marginBottom: 8,
     },
     pollPreview: {
-        backgroundColor: '#fff',
+        backgroundColor: colors.card,
         borderRadius: 8,
         padding: 12,
     },
     previewQuestion: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#333',
+        color: colors.text,
         marginBottom: 8,
     },
     previewOption: {
@@ -1191,14 +1199,14 @@ const styles = StyleSheet.create({
     },
     previewOptionText: {
         fontSize: 14,
-        color: '#666',
+        color: colors.textSecondary,
     },
     modalFooter: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         padding: 16,
         borderTopWidth: 1,
-        borderTopColor: '#f0f0f0',
+        borderTopColor: colors.border,
         gap: 12,
     },
     footerButton: {
@@ -1211,20 +1219,20 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     cancelButton: {
-        backgroundColor: '#f0f0f0',
+        backgroundColor: colors.muted,
     },
     cancelButtonText: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#666',
+        color: colors.textSecondary,
     },
     nextButton: {
-        backgroundColor: '#007AFF',
+        backgroundColor: colors.tint,
     },
     nextButtonText: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#fff',
+        color: activeScheme === 'dark' ? '#000' : '#fff',
     },
     createButton: {
         backgroundColor: '#4CAF50',
@@ -1238,7 +1246,7 @@ const styles = StyleSheet.create({
         color: '#fff',
     },
     forwardModalContent: {
-        backgroundColor: '#fff',
+        backgroundColor: colors.card,
         borderRadius: 16,
         width: '90%',
         maxWidth: 500,
@@ -1250,19 +1258,19 @@ const styles = StyleSheet.create({
     },
     placeholderText: {
         textAlign: 'center',
-        color: '#999',
+        color: colors.textSecondary,
         padding: 20,
     },
     doneButton: {
         padding: 16,
         alignItems: 'center',
         borderTopWidth: 1,
-        borderTopColor: '#f0f0f0',
+        borderTopColor: colors.border,
     },
     doneButtonText: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#007AFF',
+        color: colors.tint,
     },
     loadingContainer: {
         padding: 20,
@@ -1270,15 +1278,16 @@ const styles = StyleSheet.create({
     },
     loadingText: {
         marginTop: 10,
-        color: '#666',
+        color: colors.textSecondary,
     },
     searchInput: {
         fontSize: 16,
         padding: 12,
-        backgroundColor: '#f8f8f8',
+        backgroundColor: colors.muted,
         borderRadius: 8,
         marginHorizontal: 16,
         marginBottom: 16,
+        color: colors.text,
     },
     spacesListSearch: {
         maxHeight: 300,
@@ -1288,10 +1297,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 12,
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        borderBottomColor: colors.border,
     },
     spaceItemSelected: {
-        backgroundColor: '#007AFF10',
+        backgroundColor: colors.tint + '10',
     },
     spaceInfo: {
         flex: 1,
@@ -1300,17 +1309,17 @@ const styles = StyleSheet.create({
     spaceTitle: {
         fontSize: 16,
         fontWeight: '500',
-        color: '#333',
+        color: colors.text,
     },
     spaceType: {
         fontSize: 12,
-        color: '#999',
+        color: colors.textSecondary,
         marginTop: 2,
     },
     emptyText: {
         textAlign: 'center',
         padding: 20,
-        color: '#999',
+        color: colors.textSecondary,
     },
     modalButtons: {
         flexDirection: 'row',
@@ -1324,10 +1333,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     modalButtonCancel: {
-        backgroundColor: '#f0f0f0',
+        backgroundColor: colors.muted,
     },
     modalButtonConfirm: {
-        backgroundColor: '#007AFF',
+        backgroundColor: colors.tint,
     },
     modalButtonDisabled: {
         opacity: 0.5,
@@ -1335,12 +1344,12 @@ const styles = StyleSheet.create({
     modalButtonTextCancel: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#666',
+        color: colors.textSecondary,
     },
     modalButtonTextConfirm: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#fff',
+        color: activeScheme === 'dark' ? '#000' : '#fff',
     },
 });
 

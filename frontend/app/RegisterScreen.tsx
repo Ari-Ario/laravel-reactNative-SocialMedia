@@ -17,8 +17,10 @@ import { Link, router } from 'expo-router';
 import { setToken } from "@/services/TokenService"; // Add this import
 import AuthContext from "@/context/AuthContext";
 import { useContext } from "react";
+import { useAppTheme } from "@/hooks/useAppTheme";
 
 const RegisterUser: React.FC = () => {
+    const { colors } = useAppTheme();
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -101,17 +103,17 @@ const RegisterUser: React.FC = () => {
     }
 
     return (
-        <SafeAreaView style={styles.wrapper}>
+        <SafeAreaView style={[styles.wrapper, { backgroundColor: colors.background }]}>
             <View>
                 <Link href={'/'} asChild>
                     <TouchableOpacity style={styles.button}>
-                        <Text style={styles.buttonText}>◀ Back to Homescreen</Text>
+                        <Text style={[styles.buttonText, { color: colors.tint }]}>◀ Back to Homescreen</Text>
                     </TouchableOpacity>
                 </Link>
             </View>
 
             <View style={styles.container}>
-                <Text style={styles.title}>Create Account</Text>
+                <Text style={[styles.title, { color: colors.text }]}>Create Account</Text>
 
                 <FormTextField
                     label="Name:"
@@ -151,14 +153,14 @@ const RegisterUser: React.FC = () => {
                 />
 
                 {errors.general && (
-                    <Text style={styles.errorText}>{errors.general}</Text>
+                    <Text style={[styles.errorText, { color: colors.error }]}>{errors.general}</Text>
                 )}
 
                 <View style={styles.loginLink}>
-                    <Text>Already have an account? </Text>
+                    <Text style={{ color: colors.textSecondary }}>Already have an account? </Text>
                     <Link href="/LoginScreen" asChild>
                         <TouchableOpacity>
-                            <Text style={styles.linkText}>Login</Text>
+                            <Text style={[styles.linkText, { color: colors.tint }]}>Login</Text>
                         </TouchableOpacity>
                     </Link>
                 </View>
@@ -170,7 +172,6 @@ const RegisterUser: React.FC = () => {
 
 const styles = StyleSheet.create({
     wrapper: {
-        backgroundColor: "#fff",
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',

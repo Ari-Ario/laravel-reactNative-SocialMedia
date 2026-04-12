@@ -18,10 +18,12 @@ import { MotiView, AnimatePresence } from 'moti';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BackButton } from '@/components/ui/IconButton';
 import * as Haptics from 'expo-haptics';
 import { fetchFullSettings, updateFullSettings } from '@/services/SettingService';
 import GlobalStyles from '@/styles/GlobalStyles';
 import { createShadow } from '@/utils/styles';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -58,9 +60,11 @@ interface Device {
 }
 
 const DeviceCard = ({ device, index, onLogout }: { device: Device; index: number; onLogout: (token: string) => void }) => {
-    const [isHovered, setIsHovered] = useState(false);
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
     const scaleAnim = useRef(new Animated.Value(1)).current;
     const [showDetails, setShowDetails] = useState(false);
+    const [isHovered, setIsHovered] = useState(false);
 
     const handlePressIn = () => {
         Animated.spring(scaleAnim, { toValue: 0.98, useNativeDriver: true, friction: 5 }).start();
@@ -98,7 +102,7 @@ const DeviceCard = ({ device, index, onLogout }: { device: Device; index: number
                 onMouseLeave={() => setIsHovered(false)}
             >
                 <LinearGradient
-                    colors={device.isCurrent ? ['#1063FD', '#0050CC'] : isHovered ? ['#f8f9fa', '#fff'] : ['#fff', '#fff']}
+                    colors={device.isCurrent ? [colors.tint, colors.tint + 'CC'] : isHovered ? [colors.muted, colors.surface] : [colors.surface, colors.surface]}
                     style={[styles.deviceCard, device.isCurrent && styles.currentDevice]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
@@ -106,13 +110,13 @@ const DeviceCard = ({ device, index, onLogout }: { device: Device; index: number
                     <View style={styles.deviceRow}>
                         <View style={[styles.deviceIconContainer, device.isCurrent && styles.deviceIconCurrent]}>
                             <LinearGradient
-                                colors={device.isCurrent ? ['#fff', '#f0f0f0'] : ['#1063FD', '#0050CC']}
+                                colors={device.isCurrent ? [colors.surface, colors.surface] : [colors.tint, colors.tint + 'CC']}
                                 style={styles.deviceIconGradient}
                             >
                                 <Ionicons
                                     name={getDeviceIcon()}
                                     size={24}
-                                    color={device.isCurrent ? '#1063FD' : '#fff'}
+                                    color={device.isCurrent ? colors.tint : colors.surface}
                                 />
                             </LinearGradient>
                         </View>
@@ -124,7 +128,7 @@ const DeviceCard = ({ device, index, onLogout }: { device: Device; index: number
                                 </Text>
                                 {device.isCurrent && (
                                     <View style={styles.currentBadge}>
-                                        <Ionicons name="checkmark-circle" size={12} color="#fff" />
+                                        <Ionicons name="checkmark-circle" size={12} color={colors.surface} />
                                         <Text style={styles.currentBadgeText}>Current</Text>
                                     </View>
                                 )}
@@ -132,14 +136,14 @@ const DeviceCard = ({ device, index, onLogout }: { device: Device; index: number
 
                             <View style={styles.deviceMetaRow}>
                                 <View style={styles.metaItem}>
-                                    <Ionicons name="location-outline" size={12} color={device.isCurrent ? 'rgba(255,255,255,0.7)' : '#666'} />
+                                    <Ionicons name="location-outline" size={12} color={device.isCurrent ? colors.surface + 'B3' : colors.textSecondary} />
                                     <Text style={[styles.metaText, device.isCurrent && styles.metaTextLight]}>
                                         {device.location || 'Unknown Location'}
                                     </Text>
                                 </View>
                                 <View style={styles.metaDot} />
                                 <View style={styles.metaItem}>
-                                    <Ionicons name="time-outline" size={12} color={device.isCurrent ? 'rgba(255,255,255,0.7)' : '#666'} />
+                                    <Ionicons name="time-outline" size={12} color={device.isCurrent ? colors.surface + 'B3' : colors.textSecondary} />
                                     <Text style={[styles.metaText, device.isCurrent && styles.metaTextLight]}>
                                         {device.lastSeen}
                                     </Text>
@@ -155,13 +159,13 @@ const DeviceCard = ({ device, index, onLogout }: { device: Device; index: number
                                         style={styles.deviceDetails}
                                     >
                                         <View style={styles.detailRow}>
-                                            <Ionicons name="hardware-chip-outline" size={14} color={device.isCurrent ? 'rgba(255,255,255,0.6)' : '#666'} />
+                                            <Ionicons name="hardware-chip-outline" size={14} color={device.isCurrent ? colors.surface + '99' : colors.textSecondary} />
                                             <Text style={[styles.detailText, device.isCurrent && styles.metaTextLight]}>
                                                 Type: {device.os}
                                             </Text>
                                         </View>
                                         <View style={styles.detailRow}>
-                                            <Ionicons name={getBrowserIcon()} size={14} color={device.isCurrent ? 'rgba(255,255,255,0.6)' : '#666'} />
+                                            <Ionicons name={getBrowserIcon()} size={14} color={device.isCurrent ? colors.surface + '99' : colors.textSecondary} />
                                             <Text style={[styles.detailText, device.isCurrent && styles.metaTextLight]}>
                                                 {device.browser || 'Native App'}
                                             </Text>
@@ -174,7 +178,7 @@ const DeviceCard = ({ device, index, onLogout }: { device: Device; index: number
                         <Ionicons
                             name={showDetails ? "chevron-up" : "chevron-down"}
                             size={18}
-                            color={device.isCurrent ? 'rgba(255,255,255,0.6)' : '#999'}
+                            color={device.isCurrent ? colors.surface + '99' : colors.border}
                         />
                     </View>
 
@@ -184,10 +188,10 @@ const DeviceCard = ({ device, index, onLogout }: { device: Device; index: number
                             onPress={() => onLogout(device.token)}
                         >
                             <LinearGradient
-                                colors={['#FF3B30', '#CC2F26']}
+                                colors={[colors.error, colors.error + 'CC']}
                                 style={styles.logoutGradient}
                             >
-                                <Ionicons name="log-out-outline" size={16} color="#fff" />
+                                <Ionicons name="log-out-outline" size={16} color={colors.surface} />
                                 <Text style={styles.logoutText}>Log Out This Device</Text>
                             </LinearGradient>
                         </TouchableOpacity>
@@ -199,6 +203,8 @@ const DeviceCard = ({ device, index, onLogout }: { device: Device; index: number
 };
 
 export default function LinkedDevicesScreen() {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
     const insets = useSafeAreaInsets();
     const scrollY = useRef(new Animated.Value(0)).current;
     const [devices, setDevices] = useState<Device[]>([]);
@@ -319,12 +325,10 @@ export default function LinkedDevicesScreen() {
             <StatusBar barStyle="dark-content" />
 
             <LinearGradient
-                colors={['#fff', '#f8f9fa']}
+                colors={[colors.surface, colors.background]}
                 style={[styles.header, { paddingTop: insets.top + 10 }]}
             >
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color="#000" />
-                </TouchableOpacity>
+                <BackButton onPress={() => router.back()} />
 
                 <View style={styles.headerCenter}>
                     <Text style={styles.headerTitle}>Active Sessions</Text>
@@ -332,7 +336,7 @@ export default function LinkedDevicesScreen() {
                 </View>
 
                 <TouchableOpacity onPress={handleLogoutAllOthers} style={styles.logoutAllHeader}>
-                    <Ionicons name="exit-outline" size={20} color="#FF3B30" />
+                    <Ionicons name="exit-outline" size={20} color={colors.error} />
                 </TouchableOpacity>
             </LinearGradient>
 
@@ -348,13 +352,13 @@ export default function LinkedDevicesScreen() {
                 <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }}>
                     {/* Security Banner */}
                     <LinearGradient
-                        colors={['#34C75915', '#34C75908']}
+                        colors={[colors.success + '15', colors.success + '08']}
                         style={styles.securityBanner}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                     >
                         <View style={styles.securityIcon}>
-                            <Ionicons name="shield-checkmark" size={28} color="#34C759" />
+                            <Ionicons name="shield-checkmark" size={28} color={colors.success} />
                         </View>
                         <View style={styles.bannerText}>
                             <Text style={styles.bannerTitle}>Account Security</Text>
@@ -367,7 +371,7 @@ export default function LinkedDevicesScreen() {
 
                     {loading ? (
                         <View style={styles.loaderContainer}>
-                            <ActivityIndicator size="large" color="#1063FD" />
+                            <ActivityIndicator size="large" color={colors.tint} />
                             <Text style={styles.loaderText}>Scanning connected devices...</Text>
                         </View>
                     ) : (
@@ -392,13 +396,13 @@ export default function LinkedDevicesScreen() {
 
                             {/* Devices List */}
                             <View style={styles.sectionTitleRow}>
-                                <Ionicons name="hardware-chip" size={14} color="#1063FD" />
+                                <Ionicons name="hardware-chip" size={14} color={colors.tint} />
                                 <Text style={styles.sectionTitle}>Authorized Devices</Text>
                             </View>
 
                             {devices.length === 0 ? (
                                 <View style={styles.emptyState}>
-                                    <Ionicons name="phone-portrait-outline" size={48} color="#ccc" />
+                                    <Ionicons name="phone-portrait-outline" size={48} color={colors.border} />
                                     <Text style={styles.emptyText}>No other linked devices found.</Text>
                                 </View>
                             ) : (
@@ -419,10 +423,10 @@ export default function LinkedDevicesScreen() {
                                     onPress={handleLogoutAllOthers}
                                 >
                                     <LinearGradient
-                                        colors={['#FFF0F0', '#FFE5E5']}
+                                        colors={[colors.error + '15', colors.error + '08']}
                                         style={styles.logoutAllGradient}
                                     >
-                                        <Ionicons name="log-out-outline" size={22} color="#FF3B30" />
+                                        <Ionicons name="log-out-outline" size={22} color={colors.error} />
                                         <Text style={styles.logoutAllText}>Log Out All Other Sessions</Text>
                                     </LinearGradient>
                                 </TouchableOpacity>
@@ -435,13 +439,13 @@ export default function LinkedDevicesScreen() {
                         <Text style={styles.tipsTitle}>🔒 Security Tips</Text>
                         <View style={styles.tipItem}>
                             <View style={styles.tipIcon}>
-                                <Ionicons name="key" size={14} color="#1063FD" />
+                                <Ionicons name="key" size={14} color={colors.tint} />
                             </View>
                             <Text style={styles.tipText}>Change your password regularly</Text>
                         </View>
                         <View style={styles.tipItem}>
                             <View style={styles.tipIcon}>
-                                <Ionicons name="shield-half" size={14} color="#1063FD" />
+                                <Ionicons name="shield-half" size={14} color={colors.tint} />
                             </View>
                             <Text style={styles.tipText}>Revoke access to devices you no longer use</Text>
                         </View>
@@ -452,67 +456,69 @@ export default function LinkedDevicesScreen() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF' },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingBottom: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
-    },
-    headerCenter: { alignItems: 'center' },
-    headerTitle: { fontSize: 20, fontWeight: '800', color: '#1a1a1a' },
-    headerUnderline: { width: 40, height: 3, backgroundColor: '#1063FD', borderRadius: 2, marginTop: 4 },
-    backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F5F5F7', justifyContent: 'center', alignItems: 'center' },
-    logoutAllHeader: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF0F0', justifyContent: 'center', alignItems: 'center' },
-    scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
-    securityBanner: { flexDirection: 'row', alignItems: 'center', padding: 20, borderRadius: 24, marginTop: 10, marginBottom: 20, borderWidth: 1, borderColor: '#34C759', ...createShadow({ opacity: 0.05, radius: 8 }) },
-    securityIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#34C75920', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
-    bannerText: { flex: 1 },
-    bannerTitle: { fontSize: 16, fontWeight: '800', color: '#1E4620' },
-    bannerDescription: { fontSize: 12, color: '#1E4620', opacity: 0.7, marginTop: 2, lineHeight: 16 },
-    loaderContainer: { paddingVertical: 50, alignItems: 'center' },
-    loaderText: { marginTop: 12, color: '#666', fontSize: 14 },
-    statsContainer: { flexDirection: 'row', gap: 12, marginBottom: 24 },
-    statCard: { flex: 1, backgroundColor: '#fff', borderRadius: 16, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: '#e5e5e5', ...createShadow({ opacity: 0.05, radius: 8 }) },
-    statNumber: { fontSize: 22, fontWeight: '800', color: '#1a1a1a' },
-    statLabel: { fontSize: 11, color: '#666', marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
-    sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 15, marginLeft: 5 },
-    sectionTitle: { fontSize: 13, fontWeight: '800', color: '#1063FD', textTransform: 'uppercase', letterSpacing: 1.5 },
-    deviceCard: { borderRadius: 20, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#e5e5e5', ...createShadow({ opacity: 0.05, radius: 8 }) },
-    currentDevice: { borderColor: '#1063FD', borderWidth: 2 },
-    deviceRow: { flexDirection: 'row', alignItems: 'flex-start' },
-    deviceIconContainer: { width: 48, height: 48, borderRadius: 16, overflow: 'hidden', marginRight: 15 },
-    deviceIconCurrent: { backgroundColor: '#fff' },
-    deviceIconGradient: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
-    deviceInfo: { flex: 1 },
-    nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-    deviceName: { fontSize: 16, fontWeight: '700', color: '#000' },
-    deviceNameCurrent: { color: '#1063FD' },
-    currentBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1063FD', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, gap: 3 },
-    currentBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
-    deviceMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
-    metaItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-    metaText: { fontSize: 11, color: '#666' },
-    metaTextLight: { color: 'rgba(0,0,0,0.5)' },
-    metaDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#ccc' },
-    deviceDetails: { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.05)' },
-    detailRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
-    detailText: { fontSize: 11, color: '#666' },
-    logoutButton: { marginTop: 12, borderRadius: 12, overflow: 'hidden' },
-    logoutGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, gap: 6 },
-    logoutText: { color: '#fff', fontSize: 13, fontWeight: '700' },
-    logoutAllCard: { borderRadius: 16, overflow: 'hidden', marginTop: 20 },
-    logoutAllGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, gap: 8 },
-    logoutAllText: { color: '#FF3B30', fontSize: 15, fontWeight: '800' },
-    tipsSection: { marginTop: 30, padding: 20, backgroundColor: '#F8F9FA', borderRadius: 20, borderWidth: 1, borderColor: '#e5e5e5' },
-    tipsTitle: { fontSize: 14, fontWeight: '700', color: '#1a1a1a', marginBottom: 12 },
-    tipItem: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
-    tipIcon: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' },
-    tipText: { fontSize: 13, color: '#666', flex: 1 },
-    emptyState: { alignItems: 'center', paddingVertical: 40 },
-    emptyText: { marginTop: 12, color: '#999', fontSize: 14 },
-});
+function getStyles(colors: any, activeScheme: string) {
+    return StyleSheet.create({
+        container: { flex: 1, backgroundColor: colors.background },
+        header: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: 20,
+            paddingBottom: 16,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
+        },
+        headerCenter: { alignItems: 'center' },
+        headerTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
+        headerUnderline: { width: 40, height: 3, backgroundColor: colors.tint, borderRadius: 2, marginTop: 4 },
+        backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface, justifyContent: 'center', alignItems: 'center' },
+        logoutAllHeader: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.error + '15', justifyContent: 'center', alignItems: 'center' },
+        scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
+        securityBanner: { flexDirection: 'row', alignItems: 'center', padding: 20, borderRadius: 24, marginTop: 10, marginBottom: 20, borderWidth: 1, borderColor: colors.success + '40', ...createShadow({ opacity: 0.05, radius: 8 }) },
+        securityIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.success + '20', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+        bannerText: { flex: 1 },
+        bannerTitle: { fontSize: 16, fontWeight: '800', color: colors.text },
+        bannerDescription: { fontSize: 12, color: colors.textSecondary, opacity: 0.7, marginTop: 2, lineHeight: 16 },
+        loaderContainer: { paddingVertical: 50, alignItems: 'center' },
+        loaderText: { marginTop: 12, color: colors.textSecondary, fontSize: 14 },
+        statsContainer: { flexDirection: 'row', gap: 12, marginBottom: 24 },
+        statCard: { flex: 1, backgroundColor: colors.surface, borderRadius: 16, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: colors.border, ...createShadow({ opacity: 0.05, radius: 8 }) },
+        statNumber: { fontSize: 22, fontWeight: '800', color: colors.text },
+        statLabel: { fontSize: 11, color: colors.textSecondary, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
+        sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 15, marginLeft: 5 },
+        sectionTitle: { fontSize: 13, fontWeight: '800', color: colors.tint, textTransform: 'uppercase', letterSpacing: 1.5 },
+        deviceCard: { borderRadius: 20, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: colors.border, ...createShadow({ opacity: 0.05, radius: 8 }) },
+        currentDevice: { borderColor: colors.tint, borderWidth: 2 },
+        deviceRow: { flexDirection: 'row', alignItems: 'flex-start' },
+        deviceIconContainer: { width: 48, height: 48, borderRadius: 16, overflow: 'hidden', marginRight: 15 },
+        deviceIconCurrent: { backgroundColor: colors.surface },
+        deviceIconGradient: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
+        deviceInfo: { flex: 1 },
+        nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+        deviceName: { fontSize: 16, fontWeight: '700', color: colors.text },
+        deviceNameCurrent: { color: colors.surface },
+        currentBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface + '33', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, gap: 3 },
+        currentBadgeText: { color: colors.surface, fontSize: 9, fontWeight: '800' },
+        deviceMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+        metaItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+        metaText: { fontSize: 11, color: colors.textSecondary },
+        metaTextLight: { color: colors.surface + 'CC' },
+        metaDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: colors.border },
+        deviceDetails: { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.border },
+        detailRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+        detailText: { fontSize: 11, color: colors.textSecondary },
+        logoutButton: { marginTop: 12, borderRadius: 12, overflow: 'hidden' },
+        logoutGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, gap: 6 },
+        logoutText: { color: colors.surface, fontSize: 13, fontWeight: '700' },
+        logoutAllCard: { borderRadius: 16, overflow: 'hidden', marginTop: 20 },
+        logoutAllGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, gap: 8 },
+        logoutAllText: { color: colors.error, fontSize: 15, fontWeight: '800' },
+        tipsSection: { marginTop: 30, padding: 20, backgroundColor: colors.surface, borderRadius: 20, borderWidth: 1, borderColor: colors.border },
+        tipsTitle: { fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: 12 },
+        tipItem: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+        tipIcon: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' },
+        tipText: { fontSize: 13, color: colors.textSecondary, flex: 1 },
+        emptyState: { alignItems: 'center', paddingVertical: 40 },
+        emptyText: { marginTop: 12, color: colors.textSecondary, fontSize: 14 },
+    });
+}

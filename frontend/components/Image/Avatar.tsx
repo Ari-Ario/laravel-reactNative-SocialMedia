@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import getApiBaseImage from '@/services/getApiBaseImage';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 interface AvatarProps {
   source?: string | null;
@@ -27,7 +28,9 @@ const Avatar: React.FC<AvatarProps> = ({
   onPress,
   showStatus = true,
 }) => {
+  const { colors, activeScheme } = useAppTheme();
   const [imgError, setImgError] = useState(false);
+  const styles = getStyles(colors, activeScheme);
 
   // Resolve URI: relative paths become full API storage URLs
   const resolveUri = (src: string) => {
@@ -60,7 +63,7 @@ const Avatar: React.FC<AvatarProps> = ({
   const renderAvatar = () => {
     if (source === 'system_admin_shield') {
       return (
-        <View style={[styles.initialsContainer, { width: size, height: size, borderRadius: size / 2, backgroundColor: '#FF3B30', borderColor: '#FF3B30', borderWidth: 0 }]}>
+        <View style={[styles.initialsContainer, { width: size, height: size, borderRadius: size / 2, backgroundColor: colors.error, borderColor: colors.error, borderWidth: 0 }]}>
           <Ionicons name="shield-checkmark" size={size * 0.6} color="white" />
         </View>
       );
@@ -74,17 +77,16 @@ const Avatar: React.FC<AvatarProps> = ({
         />
       );
     }
-    // Initials fallback – premium purple gradient
+    // Initials fallback – use theme colors or gradient
     return (
-      <LinearGradient 
-        colors={['#667eea', '#764ba2']}
+      <View 
         style={[
           styles.initialsContainer,
-          { width: size, height: size, borderRadius: size / 2, borderColor: 'transparent' },
+          { width: size, height: size, borderRadius: size / 2, backgroundColor: colors.muted },
         ]}
       >
-        <Text style={[styles.initials, { fontSize: size * 0.38, color: '#fff' }]}>{initials}</Text>
-      </LinearGradient>
+        <Text style={[styles.initials, { fontSize: size * 0.38, color: colors.tint }]}>{initials}</Text>
+      </View>
     );
   };
 
@@ -110,29 +112,29 @@ const Avatar: React.FC<AvatarProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+function getStyles(colors: any, activeScheme: string) {
+  return StyleSheet.create({
   container: {
     position: 'relative',
   },
   initialsContainer: {
-    backgroundColor: '#007AFF20',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#007AFF40',
+    borderColor: colors.border,
   },
   initials: {
-    color: '#007AFF',
     fontWeight: '700',
   },
   statusIndicator: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#4CAF50',
-    borderColor: '#fff',
+    backgroundColor: '#34C759',
+    borderColor: colors.background,
     borderWidth: 2,
   },
 });
+}
 
 export default Avatar;

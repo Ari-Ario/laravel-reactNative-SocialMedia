@@ -23,6 +23,7 @@ import { useToastStore } from '@/stores/toastStore';
 import { createShadow } from '@/utils/styles';
 import AuthContext from '@/context/AuthContext';
 import { useReportedContentStore } from '@/stores/reportedContentStore';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 // Professional, education-focused reporting categories
 const REPORT_CATEGORIES = {
@@ -281,12 +282,12 @@ const REPORT_CATEGORIES = {
     ],
 };
 
-const SEVERITY_COLORS = {
-    low: '#4CAF50',
-    medium: '#FF9800',
-    high: '#F44336',
-    critical: '#9C27B0',
-};
+const getSeverityColors = (colors: any) => ({
+    low: colors.success,
+    medium: colors.warning,
+    high: colors.error,
+    critical: '#9C27B0', // Keep specific for critical if no theme match
+});
 
 const ACTION_ICONS = {
     review_and_flag: 'flag-outline',
@@ -320,6 +321,8 @@ export default function ReportPost({
     onReportSubmitted,
 }: ReportPostProps) {
     const insets = useSafeAreaInsets();
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
     const { showToast } = useToastStore();
     const { user } = React.useContext(AuthContext);
 
@@ -448,15 +451,15 @@ export default function ReportPost({
             keyboardShouldPersistTaps="handled"
         >
             <View style={styles.header}>
-                <BlurView intensity={20} tint="light" style={styles.iconCircle}>
+                <BlurView intensity={20} tint={activeScheme === 'dark' ? 'dark' : 'light'} style={[styles.iconCircle, { backgroundColor: colors.muted }]}>
                     <MaterialIcons
                         name={type === 'user' || type === 'profile' ? 'person' : type === 'comment' ? 'comment' : 'article'}
                         size={32}
-                        color="#fff"
+                        color={colors.tint}
                     />
                 </BlurView>
-                <Text style={styles.headerTitle}>Information Integrity</Text>
-                <Text style={styles.headerSubtitle}>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>Information Integrity</Text>
+                <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
                     Select the area that best describes the issue. Use 'Scientific Accuracy' for factual biology or science claims.
                 </Text>
             </View>
@@ -471,10 +474,10 @@ export default function ReportPost({
                     <View style={styles.categoryInfo}>
                         <Text style={styles.categoryEmoji}>{category.icon}</Text>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.categoryLabel}>{category.title}</Text>
-                            <Text style={styles.categoryDesc}>{category.description}</Text>
+                            <Text style={[styles.categoryLabel, { color: colors.text }]}>{category.title}</Text>
+                            <Text style={[styles.categoryDesc, { color: colors.textSecondary }]}>{category.description}</Text>
                         </View>
-                        <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.3)" />
+                        <Ionicons name="chevron-forward" size={18} color={colors.border} />
                     </View>
                 </TouchableOpacity>
             ))}
@@ -494,13 +497,13 @@ export default function ReportPost({
                     setIsUpdate(false); // Reset update status if they go back to categories
                 }}
             >
-                <Ionicons name="arrow-back" size={20} color="#fff" />
-                <Text style={styles.backText}>Back to Categories</Text>
+                <Ionicons name="arrow-back" size={20} color={colors.text} />
+                <Text style={[styles.backText, { color: colors.textSecondary }]}>Back to Categories</Text>
             </TouchableOpacity>
 
             <View style={styles.detailsHeader}>
-                <Text style={styles.selectedTitle}>{selectedCategory.title}</Text>
-                <Text style={styles.detailsSubtitle}>Specify the exact nature of the violation</Text>
+                <Text style={[styles.selectedTitle, { color: colors.text }]}>{selectedCategory.title}</Text>
+                <Text style={[styles.detailsSubtitle, { color: colors.textSecondary }]}>Specify the exact nature of the violation</Text>
             </View>
 
             <View style={styles.subcategoryGrid}>
@@ -515,7 +518,7 @@ export default function ReportPost({
                     >
                         <Text style={[
                             styles.subOptionText,
-                            selectedSubcategory === sub.id && styles.subOptionTextActive
+                            { color: selectedSubcategory === sub.id ? '#fff' : colors.text }
                         ]}>
                             {sub.label}
                         </Text>
@@ -524,28 +527,28 @@ export default function ReportPost({
             </View>
 
             <View style={styles.inputSection}>
-                <Text style={styles.inputLabel}>Additional Context</Text>
+                <Text style={[styles.inputLabel, { color: colors.text }]}>Additional Context</Text>
                 <TextInput
-                    style={styles.textArea}
+                    style={[styles.textArea, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
                     placeholder="Provide details to assist the AI verification..."
-                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    placeholderTextColor={colors.textSecondary}
                     multiline
                     value={description}
                     onChangeText={setDescription}
                 />
             </View>
 
-            <View style={styles.urgentSection}>
+            <View style={[styles.urgentSection, { backgroundColor: colors.muted }]}>
                 <View style={styles.urgentTextContainer}>
                     <Text style={styles.urgentLabel}>Urgent Review Required</Text>
-                    <Text style={styles.urgentDesc}>Flag this for immediate human intervention if physical safety is at risk.</Text>
+                    <Text style={[styles.urgentDesc, { color: colors.textSecondary }]}>Flag this for immediate human intervention if physical safety is at risk.</Text>
                 </View>
                 <Switch 
                     value={isUrgent}
                     onValueChange={setIsUrgent}
-                    trackColor={{ false: 'rgba(255,255,255,0.1)', true: 'rgba(244, 67, 54, 0.4)' }}
-                    thumbColor={isUrgent ? '#F44336' : '#f4f3f4'}
-                    ios_backgroundColor="rgba(255,255,255,0.1)"
+                    trackColor={{ false: colors.border, true: colors.error + '60' }}
+                    thumbColor={isUrgent ? colors.error : colors.muted}
+                    ios_backgroundColor={colors.border}
                 />
             </View>
 
@@ -562,18 +565,18 @@ export default function ReportPost({
 
     const renderAiAnalysisStep = () => (
         <View style={styles.aiStepContainer}>
-            <ActivityIndicator size="large" color="#4CAF50" />
-            <Text style={styles.aiStatusText}>Pure AI Analysis in Progress...</Text>
-            <Text style={styles.aiStepSub}>Distinguishing scientific context from malicious intent</Text>
+            <ActivityIndicator size="large" color={colors.success} />
+            <Text style={[styles.aiStatusText, { color: colors.text }]}>Pure AI Analysis in Progress...</Text>
+            <Text style={[styles.aiStepSub, { color: colors.textSecondary }]}>Distinguishing scientific context from malicious intent</Text>
             
             <View style={styles.aiProcessingList}>
                 <View style={[styles.aiBullet, { opacity: 0.8 }]}>
-                    <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
+                    <Ionicons name="checkmark-circle" size={16} color={colors.success} />
                     <Text style={styles.aiBulletText}>Cross-referencing scientific databases</Text>
                 </View>
                 <View style={[styles.aiBullet, { opacity: 0.6 }]}>
-                    <ActivityIndicator size="small" color="#fff" style={{ transform: [{ scale: 0.6 }] }} />
-                    <Text style={styles.aiBulletText}>Analyzing reporting bias and targeting patterns</Text>
+                    <ActivityIndicator size="small" color={colors.text} style={{ transform: [{ scale: 0.6 }] }} />
+                    <Text style={[styles.aiBulletText, { color: colors.text }]}>Analyzing reporting bias and targeting patterns</Text>
                 </View>
             </View>
         </View>
@@ -581,30 +584,30 @@ export default function ReportPost({
 
     const renderSubmittedStep = () => (
         <View style={styles.submittedContainer}>
-            <Ionicons name="checkmark-done-circle" size={80} color="#4CAF50" />
-            <Text style={styles.submittedTitle}>Report Authenticated</Text>
-            <Text style={styles.submittedText}>
+            <Ionicons name="checkmark-done-circle" size={80} color={colors.success} />
+            <Text style={[styles.submittedTitle, { color: colors.text }]}>Report Authenticated</Text>
+            <Text style={[styles.submittedText, { color: colors.textSecondary }]}>
                 Your report has been analyzed by our Pure AI moderation engine.
             </Text>
 
             {aiSignature && (
-                <BlurView intensity={30} tint="light" style={styles.aiAnalysisCard}>
+                <BlurView intensity={30} tint={activeScheme === 'dark' ? 'dark' : 'light'} style={[styles.aiAnalysisCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
                     <Text style={styles.signatureTitle}>AI Moderate Signature</Text>
                     <View style={styles.statRow}>
-                        <Text style={styles.statLabel}>Science Accuracy</Text>
-                        <Text style={styles.statValue}>{(aiSignature.fact_score * 100).toFixed(1)}%</Text>
+                        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Science Accuracy</Text>
+                        <Text style={[styles.statValue, { color: colors.text }]}>{(aiSignature.fact_score * 100).toFixed(1)}%</Text>
                     </View>
                     <View style={styles.statRow}>
-                        <Text style={styles.statLabel}>Malicious Intent</Text>
-                        <Text style={[styles.statValue, { color: aiSignature.malicious_intent_score > 0.5 ? '#FF453A' : '#4CAF50' }]}>
+                        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Malicious Intent</Text>
+                        <Text style={[styles.statValue, { color: aiSignature.malicious_intent_score > 0.5 ? colors.error : colors.success }]}>
                             {(aiSignature.malicious_intent_score * 100).toFixed(1)}%
                         </Text>
                     </View>
                 </BlurView>
             )}
 
-            <TouchableOpacity style={styles.finalButton} onPress={handleClose}>
-                <Text style={styles.finalButtonText}>Return to Platform</Text>
+            <TouchableOpacity style={[styles.finalButton, { backgroundColor: colors.tint }]} onPress={handleClose}>
+                <Text style={[styles.finalButtonText, { color: '#fff' }]}>Return to Platform</Text>
             </TouchableOpacity>
         </View>
     );
@@ -630,9 +633,9 @@ export default function ReportPost({
                         <View style={styles.dragIndicator} />
                         
                         <View style={styles.topNav}>
-                            <Text style={styles.modalTitle}>Trust Center</Text>
-                            <TouchableOpacity onPress={handleClose} style={styles.closeBtn}>
-                                <Ionicons name="close" size={24} color="#fff" />
+                            <Text style={[styles.modalTitle, { color: colors.text }]}>Trust Center</Text>
+                            <TouchableOpacity onPress={handleClose} style={[styles.closeBtn, { backgroundColor: colors.muted, borderRadius: 20 }]}>
+                                <Ionicons name="close" size={24} color={colors.text} />
                             </TouchableOpacity>
                         </View>
 
@@ -647,7 +650,7 @@ export default function ReportPost({
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     overlay: {
         flex: 1,
         justifyContent: 'flex-end',
@@ -657,11 +660,12 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     container: {
-        backgroundColor: 'rgba(28, 28, 30, 0.95)',
         borderTopLeftRadius: 36,
         borderTopRightRadius: 36,
         padding: 24,
         maxHeight: '92%',
+        zIndex: 6000,
+        backgroundColor: colors.surface,
         ...createShadow({
             width: 0,
             height: -10,
@@ -673,7 +677,7 @@ const styles = StyleSheet.create({
     dragIndicator: {
         width: 40,
         height: 5,
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        backgroundColor: colors.border,
         borderRadius: 3,
         alignSelf: 'center',
         marginBottom: 16,
@@ -687,7 +691,7 @@ const styles = StyleSheet.create({
     modalTitle: {
         fontSize: 18,
         fontWeight: '700',
-        color: '#fff',
+        color: colors.text,
         letterSpacing: 0.5,
     },
     closeBtn: {
@@ -709,23 +713,23 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 24,
         fontWeight: '800',
-        color: '#fff',
+        color: colors.text,
         marginBottom: 8,
     },
     headerSubtitle: {
         fontSize: 14,
-        color: 'rgba(255,255,255,0.5)',
+        color: colors.textSecondary,
         textAlign: 'center',
         lineHeight: 20,
         paddingHorizontal: 10,
     },
     categoryCard: {
-        backgroundColor: 'rgba(255,255,255,0.05)',
+        backgroundColor: colors.background,
         borderRadius: 20,
         padding: 16,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderColor: colors.border,
     },
     categoryInfo: {
         flexDirection: 'row',
@@ -738,12 +742,12 @@ const styles = StyleSheet.create({
     categoryLabel: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#fff',
+        color: colors.text,
         marginBottom: 2,
     },
     categoryDesc: {
         fontSize: 13,
-        color: 'rgba(255,255,255,0.4)',
+        color: colors.textSecondary,
     },
     backButton: {
         flexDirection: 'row',
@@ -752,7 +756,7 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     backText: {
-        color: 'rgba(255,255,255,0.6)',
+        color: colors.textSecondary,
         fontSize: 14,
     },
     detailsHeader: {
@@ -761,12 +765,12 @@ const styles = StyleSheet.create({
     selectedTitle: {
         fontSize: 22,
         fontWeight: '800',
-        color: '#fff',
+        color: colors.text,
         marginBottom: 4,
     },
     detailsSubtitle: {
         fontSize: 14,
-        color: 'rgba(255,255,255,0.5)',
+        color: colors.textSecondary,
     },
     subcategoryGrid: {
         flexDirection: 'row',
@@ -775,19 +779,19 @@ const styles = StyleSheet.create({
         marginBottom: 32,
     },
     subOption: {
-        backgroundColor: 'rgba(255,255,255,0.05)',
+        backgroundColor: colors.background,
         paddingHorizontal: 14,
         paddingVertical: 10,
         borderRadius: 14,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderColor: colors.border,
     },
     subOptionActive: {
-        backgroundColor: '#4CAF50',
-        borderColor: '#4CAF50',
+        backgroundColor: colors.success,
+        borderColor: colors.success,
     },
     subOptionText: {
-        color: '#fff',
+        color: colors.text,
         fontSize: 13,
         fontWeight: '500',
     },
@@ -800,22 +804,22 @@ const styles = StyleSheet.create({
     inputLabel: {
         fontSize: 14,
         fontWeight: '600',
-        color: 'rgba(255,255,255,0.7)',
+        color: colors.text,
         marginBottom: 12,
     },
     textArea: {
-        backgroundColor: 'rgba(255,255,255,0.05)',
+        backgroundColor: colors.background,
         borderRadius: 20,
         padding: 16,
-        color: '#fff',
+        color: colors.text,
         fontSize: 15,
         minHeight: 120,
         textAlignVertical: 'top',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderColor: colors.border,
     },
     submitButton: {
-        backgroundColor: '#4CAF50',
+        backgroundColor: colors.success,
         borderRadius: 20,
         padding: 18,
         flexDirection: 'row',
@@ -831,7 +835,7 @@ const styles = StyleSheet.create({
         }),
     },
     submitButtonDisabled: {
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: colors.border,
         opacity: 0.5,
     },
     submitButtonText: {
@@ -846,13 +850,13 @@ const styles = StyleSheet.create({
     aiStatusText: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#fff',
+        color: colors.text,
         marginTop: 24,
         marginBottom: 8,
     },
     aiStepSub: {
         fontSize: 14,
-        color: 'rgba(255,255,255,0.4)',
+        color: colors.textSecondary,
         textAlign: 'center',
         marginBottom: 32,
     },
@@ -865,7 +869,7 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     aiBulletText: {
-        color: '#fff',
+        color: colors.text,
         fontSize: 13,
     },
     submittedContainer: {
@@ -875,31 +879,31 @@ const styles = StyleSheet.create({
     submittedTitle: {
         fontSize: 24,
         fontWeight: '800',
-        color: '#fff',
+        color: colors.text,
         marginTop: 20,
         marginBottom: 12,
     },
     submittedText: {
         fontSize: 15,
-        color: 'rgba(255,255,255,0.5)',
+        color: colors.textSecondary,
         textAlign: 'center',
         marginBottom: 32,
         lineHeight: 22,
     },
     aiAnalysisCard: {
         width: '100%',
-        backgroundColor: 'rgba(255,255,255,0.05)',
+        backgroundColor: colors.background,
         borderRadius: 24,
         padding: 20,
         marginBottom: 32,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderColor: colors.border,
         overflow: 'hidden',
     },
     signatureTitle: {
         fontSize: 12,
         fontWeight: '800',
-        color: '#4CAF50',
+        color: colors.success,
         textTransform: 'uppercase',
         letterSpacing: 2,
         marginBottom: 16,
@@ -911,23 +915,23 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
     },
     statLabel: {
-        color: 'rgba(255,255,255,0.6)',
+        color: colors.textSecondary,
         fontSize: 14,
     },
     statValue: {
-        color: '#fff',
+        color: colors.text,
         fontSize: 14,
         fontWeight: '700',
     },
     finalButton: {
-        backgroundColor: '#fff',
+        backgroundColor: colors.tint,
         width: '100%',
         padding: 18,
         borderRadius: 20,
         alignItems: 'center',
     },
     finalButtonText: {
-        color: '#1C1C1E',
+        color: '#fff',
         fontSize: 16,
         fontWeight: '700',
     },
@@ -935,12 +939,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        backgroundColor: 'rgba(244, 67, 54, 0.05)',
+        backgroundColor: colors.error + '10',
         padding: 16,
         borderRadius: 20,
         marginBottom: 32,
         borderWidth: 1,
-        borderColor: 'rgba(244, 67, 54, 0.1)',
+        borderColor: colors.error + '20',
         gap: 12,
     },
     urgentTextContainer: {
@@ -949,12 +953,12 @@ const styles = StyleSheet.create({
     urgentLabel: {
         fontSize: 15,
         fontWeight: '700',
-        color: '#F44336',
+        color: colors.error,
         marginBottom: 2,
     },
     urgentDesc: {
         fontSize: 12,
-        color: 'rgba(255,255,255,0.4)',
+        color: colors.textSecondary,
         lineHeight: 16,
     },
 });

@@ -195,10 +195,10 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
   return (
     <>
       <Animated.View
-        pointerEvents={visible ? 'auto' : 'none'}
         style={[
           styles.aiPanel,
-          { transform: [{ translateY: slideAnim }] }
+          { transform: [{ translateY: slideAnim }] },
+          { pointerEvents: visible ? 'auto' : 'none' }
         ]}
       >
         {/* Header */}

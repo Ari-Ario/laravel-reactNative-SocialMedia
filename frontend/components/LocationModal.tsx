@@ -27,6 +27,7 @@ import { useModal } from '@/context/ModalContext';
 import * as Clipboard from 'expo-clipboard';
 import { GlobalStyles } from '@/styles/GlobalStyles';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 const { width, height } = Dimensions.get('window');
 const LIBRARIES: any = ['places'];
@@ -82,6 +83,7 @@ const LocationModal: React.FC<LocationModalProps> = ({
   const insets = useSafeAreaInsets();
   const { openModal } = useModal();
   const { toggleFavorite, isFavorite } = useSavedLocationsStore();
+  const { colors, activeScheme } = useAppTheme();
 
   const [mapLoaded, setMapLoaded] = useState(false);
   const [copied, setCopied] = useState<'coordinates' | 'address' | null>(null);
@@ -137,12 +139,12 @@ const LocationModal: React.FC<LocationModalProps> = ({
           toValue: 1,
           tension: 50,
           friction: 7,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
         Animated.timing(opacityAnim, {
           toValue: 1,
           duration: 300,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
       ]).start();
 
@@ -193,12 +195,12 @@ const LocationModal: React.FC<LocationModalProps> = ({
       Animated.timing(scaleAnim, {
         toValue: 0.9,
         duration: 200,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
       Animated.timing(opacityAnim, {
         toValue: 0,
         duration: 200,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
     ]).start(() => {
       onClose();
@@ -244,11 +246,6 @@ const LocationModal: React.FC<LocationModalProps> = ({
       calculateDistance(userLocation.lat, userLocation.lng, lat, lng);
     }
   }, [userLocation, lat, lng, directionsMode, calculateDistance]);
-
-  useEffect(() => {
-    // No longer needed as `saved` is derived from store
-  }, [isSaved]);
-
 
   const handleOpenInMaps = useCallback(() => {
     let url;
@@ -317,15 +314,12 @@ const LocationModal: React.FC<LocationModalProps> = ({
     }
   }, [userLocation, handleOpenInMaps]);
 
-  const formatAddress = () => {
-    if (location.address) return location.address;
-    return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-  };
-
   if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0 && !location.name)) {
     console.warn('📍 LocationModal: Invalid coordinates', { lat, lng });
     return null;
   }
+
+  const mapStyle = activeScheme === 'dark' ? darkMapStyle : lightMapStyle;
 
   return (
     <Modal
@@ -335,12 +329,11 @@ const LocationModal: React.FC<LocationModalProps> = ({
       onRequestClose={handleDismiss}
       statusBarTranslucent={Platform.OS === 'android'}
     >
-      {Platform.OS !== 'web' && (
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      )}
+      <StatusBar theme={activeScheme === 'dark' ? 'light' : 'dark'} translucent backgroundColor="transparent" />
+      
       <BlurView
         intensity={90}
-        tint="dark"
+        tint={activeScheme as any}
         style={[styles.overlay, StyleSheet.absoluteFill]}
       >
         <Pressable
@@ -355,16 +348,19 @@ const LocationModal: React.FC<LocationModalProps> = ({
               transform: [{ scale: scaleAnim }],
               opacity: opacityAnim,
               paddingTop: insets.top,
-              backgroundColor: '#1c1c1e', // Ensure contrast
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
             },
           ]}
         >
           {/* Premium Glass Header */}
           <LinearGradient
-            colors={['rgba(40, 40, 45, 0.95)', 'rgba(28, 28, 30, 0.98)']}
+            colors={activeScheme === 'dark' 
+                ? ['rgba(40, 40, 45, 0.95)', 'rgba(28, 28, 30, 0.98)']
+                : ['rgba(255, 255, 255, 0.95)', 'rgba(245, 245, 247, 0.98)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={styles.header}
+            style={[styles.header, { borderBottomColor: colors.border + '20' }]}
           >
             <View style={styles.headerInfo}>
               <View style={styles.iconContainer}>
@@ -379,12 +375,12 @@ const LocationModal: React.FC<LocationModalProps> = ({
               </View>
 
               <View style={styles.headerText}>
-                <Text style={styles.title} numberOfLines={1}>
+                <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
                   {location.name || 'Location Pin'}
                 </Text>
                 {location.address && (
                   <TouchableOpacity onPress={handleCopyAddress} activeOpacity={0.7}>
-                    <Text style={styles.headerAddress} numberOfLines={1}>
+                    <Text style={[styles.headerAddress, { color: colors.textSecondary }]} numberOfLines={1}>
                       {location.address}
                     </Text>
                   </TouchableOpacity>
@@ -393,8 +389,8 @@ const LocationModal: React.FC<LocationModalProps> = ({
             </View>
 
             <TouchableOpacity onPress={handleDismiss} style={styles.closeButton}>
-              <BlurView intensity={40} tint="light" style={styles.closeButtonBlur}>
-                <Ionicons name="close" size={20} color="white" />
+              <BlurView intensity={40} tint={activeScheme === 'dark' ? 'light' : 'dark'} style={styles.closeButtonBlur}>
+                <Ionicons name="close" size={20} color={activeScheme === 'dark' ? 'white' : 'black'} />
               </BlurView>
             </TouchableOpacity>
           </LinearGradient>
@@ -412,7 +408,7 @@ const LocationModal: React.FC<LocationModalProps> = ({
                   options={{
                     disableDefaultUI: true,
                     zoomControl: true,
-                    styles: darkMapStyle,
+                    styles: mapStyle,
                     gestureHandling: 'greedy',
                   }}
                 >
@@ -438,12 +434,8 @@ const LocationModal: React.FC<LocationModalProps> = ({
                     latitudeDelta: 0.005,
                     longitudeDelta: 0.005,
                   }}
-                  onMapReady={() => {
-                    console.log('📍 LocationModal: Map Ready');
-                    setMapLoaded(true);
-                  }}
-                  // provider="google" - Removing explicit Google provider to allow default fallback on Simulator
-                  customMapStyle={darkMapStyle}
+                  onMapReady={() => setMapLoaded(true)}
+                  customMapStyle={mapStyle}
                   showsUserLocation={locationStatus === 'granted'}
                   showsMyLocationButton={false}
                   loadingEnabled={true}
@@ -477,9 +469,9 @@ const LocationModal: React.FC<LocationModalProps> = ({
                 exit={{ opacity: 0 }}
                 style={styles.loaderOverlay}
               >
-                <BlurView intensity={80} tint="dark" style={styles.loaderContent}>
+                <BlurView intensity={80} tint={activeScheme as any} style={styles.loaderContent}>
                   <ActivityIndicator size="large" color="#0084ff" />
-                  <Text style={styles.loaderText}>Loading map...</Text>
+                  <Text style={[styles.loaderText, { color: colors.text }]}>Loading map...</Text>
                 </BlurView>
               </MotiView>
             )}
@@ -491,56 +483,56 @@ const LocationModal: React.FC<LocationModalProps> = ({
                 animate={{ opacity: 1, translateY: 0 }}
                 style={styles.distanceBadge}
               >
-                <BlurView intensity={80} tint="dark" style={styles.distanceBadgeBlur}>
+                <BlurView intensity={80} tint={activeScheme as any} style={styles.distanceBadgeBlur}>
                   <View style={styles.distanceRow}>
                     <Ionicons name="location-outline" size={14} color="#0084ff" />
-                    <Text style={styles.distanceText}>{distance}</Text>
+                    <Text style={[styles.distanceText, { color: colors.text }]}>{distance}</Text>
                   </View>
                   <View style={styles.distanceRow}>
                     <Ionicons name="time-outline" size={14} color="#0084ff" />
-                    <Text style={styles.distanceText}>{travelTime}</Text>
+                    <Text style={[styles.distanceText, { color: colors.text }]}>{travelTime}</Text>
                   </View>
                 </BlurView>
               </MotiView>
             )}
 
-            {/* Quick Actions Strip - Moved to Top */}
+            {/* Quick Actions Strip */}
             <View style={styles.quickActions}>
               <TouchableOpacity style={styles.quickAction} onPress={handleCopyAddress}>
-                <BlurView intensity={60} tint="dark" style={styles.quickActionBlur}>
+                <BlurView intensity={60} tint={activeScheme as any} style={[styles.quickActionBlur, { borderColor: colors.border + '20' }]}>
                   <Ionicons
                     name={copied === 'address' ? 'checkmark' : 'document-text-outline'}
                     size={18}
-                    color={copied === 'address' ? '#4CAF50' : 'white'}
+                    color={copied === 'address' ? '#4CAF50' : colors.text}
                   />
-                  <Text style={styles.quickActionText}>
+                  <Text style={[styles.quickActionText, { color: colors.text }]}>
                     {copied === 'address' ? 'Copied!' : 'Address'}
                   </Text>
                 </BlurView>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.quickAction} onPress={handleShare}>
-                <BlurView intensity={60} tint="dark" style={styles.quickActionBlur}>
-                  <Ionicons name="share-outline" size={18} color="white" />
-                  <Text style={styles.quickActionText}>Share</Text>
+                <BlurView intensity={60} tint={activeScheme as any} style={[styles.quickActionBlur, { borderColor: colors.border + '20' }]}>
+                  <Ionicons name="share-outline" size={18} color={colors.text} />
+                  <Text style={[styles.quickActionText, { color: colors.text }]}>Share</Text>
                 </BlurView>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.quickAction} onPress={handleSaveLocation}>
-                <BlurView intensity={60} tint="dark" style={styles.quickActionBlur}>
+                <BlurView intensity={60} tint={activeScheme as any} style={[styles.quickActionBlur, { borderColor: colors.border + '20' }]}>
                   <Ionicons
                     name={saved ? 'heart' : 'heart-outline'}
                     size={18}
-                    color={saved ? '#FF3B30' : 'white'}
+                    color={saved ? '#FF3B30' : colors.text}
                   />
-                  <Text style={styles.quickActionText}>{saved ? 'Saved' : 'Save'}</Text>
+                  <Text style={[styles.quickActionText, { color: colors.text }]}>{saved ? 'Saved' : 'Save'}</Text>
                 </BlurView>
               </TouchableOpacity>
             </View>
 
             {/* Travel Mode Selector */}
             <View style={styles.travelModeSelector}>
-              <BlurView intensity={80} tint="dark" style={styles.travelModeBlur}>
+              <BlurView intensity={80} tint={activeScheme as any} style={[styles.travelModeBlur, { borderColor: colors.border + '20' }]}>
                 <TouchableOpacity
                   style={[styles.travelModeButton, directionsMode === 'drive' && styles.travelModeActive]}
                   onPress={() => setDirectionsMode('drive')}
@@ -548,7 +540,7 @@ const LocationModal: React.FC<LocationModalProps> = ({
                   <Ionicons
                     name="car-outline"
                     size={18}
-                    color={directionsMode === 'drive' ? '#0084ff' : 'white'}
+                    color={directionsMode === 'drive' ? '#0084ff' : colors.text}
                   />
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -558,7 +550,7 @@ const LocationModal: React.FC<LocationModalProps> = ({
                   <Ionicons
                     name="walk-outline"
                     size={18}
-                    color={directionsMode === 'walk' ? '#0084ff' : 'white'}
+                    color={directionsMode === 'walk' ? '#0084ff' : colors.text}
                   />
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -568,7 +560,7 @@ const LocationModal: React.FC<LocationModalProps> = ({
                   <Ionicons
                     name="bus-outline"
                     size={18}
-                    color={directionsMode === 'transit' ? '#0084ff' : 'white'}
+                    color={directionsMode === 'transit' ? '#0084ff' : colors.text}
                   />
                 </TouchableOpacity>
               </BlurView>
@@ -577,15 +569,15 @@ const LocationModal: React.FC<LocationModalProps> = ({
 
           {/* Premium Footer with Gradient */}
           <LinearGradient
-            colors={['rgba(28, 28, 30, 0.95)', '#1c1c1e']}
-            style={styles.footer}
+            colors={activeScheme === 'dark' ? ['rgba(28, 28, 30, 0.95)', '#1c1c1e'] : ['rgba(255, 255, 255, 0.95)', '#f5f5f7']}
+            style={[styles.footer, { borderTopColor: colors.border + '15' }]}
           >
             <TouchableOpacity style={styles.favButton} onPress={handleSaveLocation}>
-              <BlurView intensity={40} tint="light" style={styles.favButtonBlur}>
+              <BlurView intensity={40} tint={activeScheme === 'dark' ? 'light' : 'dark'} style={styles.favButtonBlur}>
                 <Ionicons
                   name={saved ? 'heart' : 'heart-outline'}
                   size={24}
-                  color={saved ? '#FF3B30' : 'white'}
+                  color={saved ? '#FF3B30' : (activeScheme === 'dark' ? 'white' : 'black')}
                 />
               </BlurView>
             </TouchableOpacity>
@@ -608,7 +600,7 @@ const LocationModal: React.FC<LocationModalProps> = ({
   );
 };
 
-// Enhanced dark map style with more depth
+// Enhanced dark map style
 const darkMapStyle = [
   { "elementType": "geometry", "stylers": [{ "color": "#212121" }] },
   { "elementType": "labels.icon", "stylers": [{ "visibility": "off" }] },
@@ -623,6 +615,23 @@ const darkMapStyle = [
   { "featureType": "transit", "elementType": "geometry", "stylers": [{ "color": "#2f2f2f" }] },
   { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#0f0f0f" }] },
   { "featureType": "water", "elementType": "labels.text.fill", "stylers": [{ "color": "#3d3d3d" }] }
+];
+
+// Modern light map style
+const lightMapStyle = [
+    { "elementType": "geometry", "stylers": [{ "color": "#f5f5f5" }] },
+    { "elementType": "labels.icon", "stylers": [{ "visibility": "off" }] },
+    { "elementType": "labels.text.fill", "stylers": [{ "color": "#616161" }] },
+    { "elementType": "labels.text.stroke", "stylers": [{ "color": "#f5f5f5" }] },
+    { "featureType": "administrative", "elementType": "geometry", "stylers": [{ "color": "#bdbdbd" }] },
+    { "featureType": "poi", "elementType": "geometry", "stylers": [{ "color": "#eeeeee" }] },
+    { "featureType": "poi", "elementType": "labels.text.fill", "stylers": [{ "color": "#757575" }] },
+    { "featureType": "road", "elementType": "geometry.fill", "stylers": [{ "color": "#ffffff" }] },
+    { "featureType": "road", "elementType": "geometry.stroke", "stylers": [{ "color": "#e0e0e0" }] },
+    { "featureType": "road", "elementType": "labels.text.fill", "stylers": [{ "color": "#9e9e9e" }] },
+    { "featureType": "transit", "elementType": "geometry", "stylers": [{ "color": "#eeeeee" }] },
+    { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#e0e0e0" }] },
+    { "featureType": "water", "elementType": "labels.text.fill", "stylers": [{ "color": "#9e9e9e" }] }
 ];
 
 const styles = StyleSheet.create({
@@ -640,11 +649,9 @@ const styles = StyleSheet.create({
   container: {
     width: Math.min(width * 0.95, 600),
     height: Math.min(height * 0.85, 800),
-    backgroundColor: '#1c1c1e',
     borderRadius: 32,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 20 },
     shadowOpacity: 0.6,
@@ -658,7 +665,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
   },
   headerInfo: {
     flexDirection: 'row',
@@ -687,7 +693,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
     letterSpacing: 0.5,
@@ -706,7 +711,6 @@ const styles = StyleSheet.create({
   },
   mapContainer: {
     flex: 1,
-    backgroundColor: '#000',
     position: 'relative',
   },
   map: {
@@ -750,7 +754,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   loaderText: {
-    color: 'white',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -775,7 +778,6 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   distanceText: {
-    color: 'white',
     fontSize: 12,
     fontWeight: '500',
   },
@@ -792,7 +794,6 @@ const styles = StyleSheet.create({
     gap: 4,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
   },
   travelModeButton: {
     width: 36,
@@ -805,14 +806,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,132,255,0.2)',
   },
   headerAddress: {
-    color: 'rgba(255,255,255,0.5)',
     fontSize: 12,
     marginTop: 2,
     fontWeight: '400',
   },
   quickActions: {
     position: 'absolute',
-    top: '90%', // Moved to top, below distance badge
+    top: '90%',
     left: '10%',
     right: '10%',
     flexDirection: 'row',
@@ -822,7 +822,7 @@ const styles = StyleSheet.create({
   },
   quickAction: {
     flex: 1,
-    maxWidth: 80, // Slightly smaller to fit 4 buttons
+    maxWidth: 80,
   },
   quickActionBlur: {
     flexDirection: 'row',
@@ -834,10 +834,8 @@ const styles = StyleSheet.create({
     gap: 6,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
   },
   quickActionText: {
-    color: 'white',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -847,7 +845,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.05)',
   },
   directionsButton: {
     flex: 1,

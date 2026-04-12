@@ -11,12 +11,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   Dimensions,
+  Pressable,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { MotiView, AnimatePresence } from 'moti';
 import EmojiPicker from 'rn-emoji-keyboard';
 import { createShadow } from '@/utils/styles';
+import { GlobalStyles } from '@/styles/GlobalStyles';
 
 const { width } = Dimensions.get('window');
 
@@ -71,6 +73,10 @@ export const ContextTagSelector = ({ visible, onClose, onConfirm }: ContextTagSe
       onRequestClose={handleClose}
     >
       <BlurView intensity={90} tint="dark" style={styles.backdrop}>
+        <Pressable 
+          style={StyleSheet.absoluteFill} 
+          onPress={handleClose} 
+        />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.container}
@@ -79,18 +85,11 @@ export const ContextTagSelector = ({ visible, onClose, onConfirm }: ContextTagSe
             from={{ opacity: 0, translateY: 100 }}
             animate={{ opacity: 1, translateY: 0 }}
             transition={{ type: 'spring', damping: 15 }}
-            style={styles.sheet}
+            style={[styles.sheet, GlobalStyles.responsiveModal]}
           >
             {/* Handle Bar */}
             <View style={styles.handleContainer}>
               <View style={styles.handle} />
-            </View>
-
-            {/* Header */}
-            <View style={styles.header}>
-              <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-                <Ionicons name="close" size={24} color="#fff" />
-              </TouchableOpacity>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} style={styles.mainContent}>
@@ -191,6 +190,7 @@ const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
     justifyContent: 'flex-end',
+    zIndex: 6000,
   },
   container: {
     width: '100%',
@@ -200,6 +200,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     padding: 20,
+    zIndex: 6000,
     paddingBottom: Platform.OS === 'ios' ? 40 : 20,
     ...createShadow({
       width: 0,

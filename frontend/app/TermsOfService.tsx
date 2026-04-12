@@ -3,12 +3,14 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { BackButton } from '@/components/ui/IconButton';
+import { createShadow } from '../utils/styles';
 
 const { width, height } = Dimensions.get('window');
 
 // Performance optimized creative background elements (static)
 const DecorativeSymbols = () => (
-  <View style={StyleSheet.absoluteFill} pointerEvents="none">
+  <View style={[StyleSheet.absoluteFill, ...createPointerEvents('none')]}>
     <Text style={[styles.bgSymbol, { top: '15%', right: '5%', opacity: 0.03, fontSize: 130 }]}>𒀀</Text>
     <Text style={[styles.bgSymbol, { top: '50%', left: '-10%', opacity: 0.04, fontSize: 200 }]}>𐌰</Text>
     <Text style={[styles.bgSymbol, { bottom: '20%', right: '15%', opacity: 0.03, fontSize: 140 }]}>ᚠ</Text>
@@ -22,19 +24,17 @@ const TermsOfService = () => {
   return (
     <SafeAreaView style={styles.container}>
       <DecorativeSymbols />
-      
+
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={28} color="#000" />
-        </TouchableOpacity>
+        <BackButton onPress={() => router.back()} />
         <Text style={styles.headerTitle}>Terms of Service</Text>
-        <View style={{ width: 40 }} /> 
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.contentCard}>
           <Text style={styles.lastUpdated}>Last Updated: April 2026</Text>
-          
+
           <Text style={styles.sectionTitle}>1. Acceptance of Terms</Text>
           <Text style={styles.paragraph}>
             By entering the zmzir universe, you agree to these terms. zmzir is a platform dedicated to creative exploration, real-time collaboration, and artistic social interaction.
@@ -111,11 +111,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.85)',
     borderRadius: 24,
     padding: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 3,
+    ...createShadow({ color: '#000', width: 0, height: 4, opacity: 0.05, radius: 12, elevation: 3 }),
   },
   lastUpdated: {
     fontSize: 12,

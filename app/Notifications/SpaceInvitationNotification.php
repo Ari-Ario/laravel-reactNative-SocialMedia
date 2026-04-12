@@ -15,14 +15,18 @@ class SpaceInvitationNotification extends Notification implements ShouldQueue
 
     public $space;
     public $inviter;
+    public $user;
+    public $message;
 
     /**
      * Create a new notification instance.
      */
-    public function __construct($space, $inviter)
+    public function __construct($space, $inviter, $user = null, $message = null)
     {
         $this->space = $space;
         $this->inviter = $inviter;
+        $this->user = $user;
+        $this->message = $message;
     }
 
     /**
