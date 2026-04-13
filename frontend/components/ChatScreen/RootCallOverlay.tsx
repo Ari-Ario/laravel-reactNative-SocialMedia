@@ -118,6 +118,7 @@ export const RootCallOverlay: React.FC = () => {
             spaceType={activeCall.spaceType as any}
             isMinimized={isMinimized}
             onToggleMinimize={isMinimized ? maximizeCall : minimizeCall}
+            type={activeCall.type as any}
           />
 
           {isMinimized && (

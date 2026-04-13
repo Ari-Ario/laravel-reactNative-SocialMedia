@@ -20,6 +20,7 @@ import { useRef } from 'react';
 import { useCollaborationStore } from '@/stores/collaborationStore';
 import { useProfileView } from '@/context/ProfileViewContext';
 import { blockUser, unblockUser } from '@/services/UserService';
+import { useCall } from '@/context/CallContext';
 
 interface EnhancedChatRowProps {
   id: string;
@@ -68,6 +69,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
   const [menuPosition, setMenuPosition] = useState<AnchorPosition>();
   const [showInviteModal, setShowInviteModal] = useState(false);
   const { setProfilePreviewVisible, setProfileViewUserId } = useProfileView();
+  const { startCall } = useCall();
 
   // Optimistic UI state
   const [localIsMuted, setLocalIsMuted] = useState(spaceData?.my_permissions?.is_muted || false);
@@ -132,8 +134,16 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       // Start the call in the space
       const callData = await collaborationService.startCall(spaceId, 'video');
 
+      // Set global context so overlay pops open instantly
+      startCall({
+        spaceId: spaceId,
+        spaceType: 'direct',
+        type: 'video',
+        callId: callData.call?.id
+      });
+
       // Navigate to space with call active
-      router.push(`/(spaces)/${spaceId}?call=${callData.call?.id || 'active'}&type=video`);
+      router.push(`/(spaces)/${spaceId}?call=${callData.call?.id || 'active'}&type=video&tab=meeting`);
       setShowContactMenu(false);
     } catch (error: any) {
       console.error('Error starting video call:', error);
@@ -152,8 +162,16 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       // Start audio call in the space
       const callData = await collaborationService.startCall(spaceId, 'audio');
 
+      // Set global context so overlay pops open instantly
+      startCall({
+        spaceId: spaceId,
+        spaceType: 'direct',
+        type: 'audio',
+        callId: callData.call?.id
+      });
+
       // Navigate to the space
-      router.push(`/(spaces)/${spaceId}?call=${callData.call?.id || 'active'}&type=audio`);
+      router.push(`/(spaces)/${spaceId}?call=${callData.call?.id || 'active'}&type=audio&tab=meeting`);
       setShowContactMenu(false);
     } catch (error) {
       console.error('Error starting voice call:', error);

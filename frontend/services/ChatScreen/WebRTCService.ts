@@ -80,9 +80,11 @@ class WebRTCService {
       { urls: 'stun:stun2.l.google.com:19302' },
       { urls: 'stun:stun3.l.google.com:19302' },
       { urls: 'stun:stun4.l.google.com:19302' },
-      // Metered.ca TURN with TCP fallback
+      // Metered.ca TURN (UDP priority, TCP fallback)
       {
         urls: [
+          'turn:relay.metered.ca:80',
+          'turn:relay.metered.ca:443',
           'turn:relay.metered.ca:80?transport=tcp',
           'turn:relay.metered.ca:443?transport=tcp',
           'turns:relay.metered.ca:443?transport=tcp'
@@ -93,6 +95,8 @@ class WebRTCService {
       // OpenRelay Fallback
       {
         urls: [
+          'turn:openrelay.metered.ca:80',
+          'turn:openrelay.metered.ca:443',
           'turn:openrelay.metered.ca:80?transport=tcp',
           'turn:openrelay.metered.ca:443?transport=tcp',
           'turns:openrelay.metered.ca:443?transport=tcp'
@@ -168,10 +172,10 @@ class WebRTCService {
   // The encoder is also capped post-ICE via applyBitrateLimit() so bursts
   // don't saturate the link even on WiFi.
   private static readonly VIDEO_CONSTRAINTS = {
-    // Used for initial getUserMedia — conservative enough for 4G CGNAT
-    medium: { width: { ideal: 640 }, height: { ideal: 480 } },
+    // Used for initial getUserMedia — low fr minimizes encoding load
+    medium: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24, max: 30 } },
     // Used on ICE restart retry — minimal to maximise reconnect success
-    low:    { width: { ideal: 320 }, height: { ideal: 240 } },
+    low:    { width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 15, max: 20 } },
   };
 
   // Max encoder bitrate applied via RTCRtpSender.setParameters() after ICE connects.
@@ -263,9 +267,14 @@ class WebRTCService {
         if (!sender.track || !sender.getParameters) continue;
         const kind = sender.track.kind as 'video' | 'audio';
         
-        const capBps = kind === 'video'
+        // Mesh Scaling: Divide upload bandwidth by number of peers
+        const activePeersCount = Math.max(1, this.peerConnections.size);
+        const baselineCap = kind === 'video'
           ? (isDesktopWeb ? WebRTCService.BITRATE_CAPS.video.web : WebRTCService.BITRATE_CAPS.video.native)
           : (isDesktopWeb ? WebRTCService.BITRATE_CAPS.audio.web : WebRTCService.BITRATE_CAPS.audio.native);
+        
+        // Scale down directly to save weak Wi-Fi upload links
+        const capBps = kind === 'video' ? Math.floor(baselineCap / activePeersCount) : baselineCap;
 
         const params = sender.getParameters();
         if (!params.encodings || params.encodings.length === 0) {
@@ -275,20 +284,17 @@ class WebRTCService {
           enc.maxBitrate = capBps;
         });
 
-        // Optimization: Jitter Buffer / Degradation Preference for mobile
         if (this.isMobileNetwork || isMobile) {
           if (kind === 'audio') {
-             // For audio, we prioritize fluidity/framerate-equivalence (no drops)
              (params as any).degradationPreference = 'maintain-framerate';
           } else {
-             // For video on mobile, we prioritize resolution over framerate to avoid pixelation
              (params as any).degradationPreference = 'maintain-resolution';
           }
         }
 
         await sender.setParameters(params);
+        console.log(`📞 Bitrate cap applied for peer ${peerId} (type: ${kind}, cap: ${Math.floor(capBps / 1000)}kbps scaled by 1/${activePeersCount})`);
       }
-      console.log(`📞 Bitrate caps applied for peer ${peerId} (video: ${isDesktopWeb ? '1200' : '500'}kbps, audio: ${isDesktopWeb ? '64' : '32'}kbps)`);
     } catch (e) {
       // Non-fatal: if setParameters is unsupported (old react-native-webrtc), call continues
       console.warn(`⚠️ Could not apply bitrate caps for peer ${peerId}:`, e);
@@ -714,13 +720,7 @@ class WebRTCService {
     const peerConnection = new RTC_PeerConnection(pcConfig);
     this.peerConnections.set(peerId, peerConnection);
 
-    // Watchdog for ICE establishment
-    let iceWatchdog: NodeJS.Timeout | null = setTimeout(() => {
-      if (peerConnection.iceConnectionState === 'checking' || peerConnection.iceConnectionState === 'new') {
-        console.warn(`⚠️ ICE watchdog triggered for ${peerId} (stuck in ${peerConnection.iceConnectionState}) — forcing TURN relay fallback`);
-        this.retryWithFallbackServers(peerId);
-      }
-    }, 10000);
+    // Removed 10s ICE watchdog to let native webRTC naturally recover on slow mobile data 
 
     peerConnection.onicecandidate = (event: any) => {
       if (event.candidate && this.spaceId && this.callId) {
@@ -768,17 +768,10 @@ class WebRTCService {
       console.log(`📞 ICE connection state with ${peerId}:`, state);
 
       if (state === 'connected' || state === 'completed') {
-        if (iceWatchdog) {
-          clearTimeout(iceWatchdog);
-          iceWatchdog = null;
-        }
         iceFailRetryCount = 0;
         console.log(`✅ ICE connected for ${peerId} - media should flow`);
         // Apply bitrate caps immediately after ICE connects.
         this.applyBitrateLimit(peerConnection, peerId);
-        
-        // Start monitoring media flow health
-        this.startConnectionHealthCheck(peerId, peerConnection);
       }
 
       // Restart on 'failed' or 'disconnected' because mobile networks
@@ -1137,51 +1130,7 @@ class WebRTCService {
   }
 
   private startConnectionHealthCheck(peerId: string, peerConnection: any) {
-    if (this.connectionHealthTimers.has(peerId)) {
-      clearInterval(this.connectionHealthTimers.get(peerId));
-    }
-
-    let lastBytesReceived = 0;
-    let stallCount = 0;
-
-    const interval = setInterval(async () => {
-      try {
-        if (peerConnection.connectionState === 'closed') {
-          clearInterval(interval);
-          return;
-        }
-
-        const stats = await peerConnection.getStats();
-        let currentBytes = 0;
-        
-        stats.forEach((report: any) => {
-          if (report.type === 'inbound-rtp' && report.kind === 'video') {
-            currentBytes = report.bytesReceived || 0;
-          }
-        });
-
-        if (currentBytes > 0 && currentBytes === lastBytesReceived) {
-          stallCount++;
-          if (stallCount >= 5) { // 10s stalled
-            console.warn(`⚠️ Media flow stalled for ${peerId} — forcing recovery restart`);
-            clearInterval(interval);
-            
-            if (this.isMobileNetwork && (this.retryCount.get(peerId) || 0) >= 2) {
-               this.fallbackToAudioOnly(peerId);
-            }
-            
-            this.retryWithFallbackServers(peerId);
-          }
-        } else {
-          stallCount = 0;
-        }
-        lastBytesReceived = currentBytes;
-      } catch (e) {
-        console.warn(`⚠️ Health check failed for ${peerId}:`, e);
-      }
-    }, 2000);
-
-    this.connectionHealthTimers.set(peerId, interval);
+    // Removed to allow native browser engine to handle stalling via RTCP NACKs seamlessly instead of constantly destroying the connection.
   }
 
   private async retryWithFallbackServers(peerId: string) {
@@ -1200,24 +1149,9 @@ class WebRTCService {
 
     await new Promise(resolve => setTimeout(resolve, backoff));
 
-    // Fallback Policies:
-    // Attempt 1-2: Normal Relay
-    // Attempt 3: Forced Relay (Only TURN)
-    // Attempt 4: STUN Only (Last resort if TURN is blocked)
-    
+    // Use standard parallel ICE gathering instead of forcing single protocols
     let currentIceConfig = { ...this.iceServers };
-    
-    if (attempts === 3) {
-      console.log(`🔄 Attempt 3: Forcing RELAY-ONLY policy for ${peerId}`);
-      currentIceConfig.iceTransportPolicy = 'relay';
-    } else if (attempts === 4) {
-      console.log(`🔄 Attempt 4: Falling back to STUN-ONLY (Last Resort) for ${peerId}`);
-      currentIceConfig = {
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-        iceCandidatePoolSize: 10,
-        iceTransportPolicy: 'all' as RTCIceTransportPolicy
-      };
-    }
+
 
     const oldConnection = this.peerConnections.get(peerId);
     if (oldConnection) {

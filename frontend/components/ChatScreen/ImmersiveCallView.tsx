@@ -101,6 +101,7 @@ interface ImmersiveCallViewProps {
   spaceType?: 'direct' | 'group' | 'protected' | 'channel';
   isMinimized?: boolean;
   onToggleMinimize?: () => void;
+  type?: 'audio' | 'video';
 }
 
 // ─── Stable video elements for PiP (prevents re-render flicker) ─────────────
@@ -315,12 +316,13 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
   spaceType = 'group',
   isMinimized = false,
   onToggleMinimize,
+  type,
 }) => {
   const insets = useSafeAreaInsets();
-  const { endCall: globalEndCall } = useCall();
+  const { endCall: globalEndCall, activeCall } = useCall();
   const router = useRouter();
   const params = useLocalSearchParams();
-  const initialCallType = (params.type as string) || 'video';
+  const initialCallType = type || activeCall?.type || (params.type as string) || 'video';
   // ─── Callee joining: joining=1 means we're answering, not starting
   const isJoiningExisting = params.joining === '1';
   const existingCallId = (params.call as string) || null;
