@@ -24,7 +24,7 @@ export const uploadProfilePhoto = async (uri: string) => {
     };
   }
 
-  formData.append('profile_photo', file);
+  formData.append('profile_photo', file as any);
 
   const response = await axios.post(`${API_BASE}/profile/photo`, formData, {
     headers: {

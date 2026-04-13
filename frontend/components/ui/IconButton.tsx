@@ -1,6 +1,5 @@
 // components/ui/IconButton.tsx
 import React, { memo, useCallback, useMemo } from 'react';
-import { Color } from 'expo-router';
 import {
     TouchableOpacity,
     Text,
@@ -10,6 +9,7 @@ import {
     GestureResponderEvent,
     Platform,
     Insets,
+    StyleProp,
     ViewStyle,
     TextStyle,
 } from 'react-native';
@@ -103,9 +103,9 @@ export interface IconButtonProps {
     debounceMs?: number; // Debounce rapid presses
 
     // Styling overrides
-    style?: ViewStyle;
-    textStyle?: TextStyle;
-    containerStyle?: ViewStyle;
+    style?: StyleProp<ViewStyle>;
+    textStyle?: StyleProp<TextStyle>;
+    containerStyle?: StyleProp<ViewStyle>;
 
     // Test ID
     testID?: string;

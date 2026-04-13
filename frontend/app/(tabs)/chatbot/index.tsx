@@ -17,10 +17,17 @@ import AuthContext from '@/context/AuthContext';
 import getApiBase from '@/services/getApiBase';
 import axios from '@/services/axios';
 
+interface Message {
+  id: number;
+  text: string;
+  sender: 'user' | 'bot';
+  type: 'text' | 'ai' | 'error';
+}
+
 export default function ChatbotScreen() {
   const { colors, activeScheme } = useAppTheme();
   const { user } = useContext(AuthContext);
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [inputHeight, setInputHeight] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
@@ -100,7 +107,7 @@ export default function ChatbotScreen() {
     }
   };
 
-  const renderItem = ({ item }) => {
+  const renderItem = ({ item }: { item: Message }) => {
     const isUser = item.sender === 'user';
     const isAI = item.type === 'ai';
     const isError = item.type === 'error';

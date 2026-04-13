@@ -17,7 +17,7 @@ export const GlobalStyles = StyleSheet.create({
         ...Platform.select({
             web: {
                 width: '100%',
-                minHeight: 700,
+                minHeight: width < 768 ? '100vh' as any : 700,
                 maxWidth: 1440,
                 height: '100%',
                 alignSelf: 'center',

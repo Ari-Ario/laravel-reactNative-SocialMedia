@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { View, Text, Image, StyleSheet, StyleProp, ViewStyle, TextStyle } from 'react-native';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import getApiBaseImage from '@/services/getApiBaseImage';
 
@@ -13,8 +13,8 @@ interface UserData {
 interface AvatarProps {
     user: UserData | null | undefined;
     size?: number;
-    style?: ViewStyle;
-    textStyle?: TextStyle;
+    style?: StyleProp<ViewStyle>;
+    textStyle?: StyleProp<TextStyle>;
     showBorder?: boolean;
 }
 

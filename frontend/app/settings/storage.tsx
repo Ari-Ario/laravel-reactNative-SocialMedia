@@ -75,11 +75,9 @@ const StorageOption = ({
             <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={handlePress}
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
             >
                 <LinearGradient
-                    colors={isSelected ? [color + '15', color + '05'] : isHovered ? [colors.muted, colors.surface] : [colors.surface, colors.surface]}
+                    colors={isSelected ? [color + '15', color + '05'] : [colors.surface, colors.surface]}
                     style={[styles.optionCard, isSelected && { borderColor: color, borderWidth: 2 }]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}

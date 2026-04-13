@@ -405,8 +405,8 @@ class SpaceController extends Controller
         // Format for frontend
         $formattedSpaces = $spaces->map(function($space) use ($participations, $otherParticipations) {
             $participation = $participations->get($space->id);
-            $settings = is_string($space->settings) ? json_decode($space->settings, true) : $space->settings;
-            $permissions = $participation ? (is_string($participation->permissions) ? json_decode($participation->permissions, true) : $participation->permissions) : null;
+            $settings = (array) $space->settings;
+            $permissions = $participation ? (array) $participation->permissions : null;
             
             return [
                 'id' => $space->id,
@@ -683,7 +683,7 @@ public function updateContentState(Request $request, $id)
                 $role = 'participant';
                 $canWrite = $space->space_type !== 'channel';
                 
-                $settings = is_string($space->settings) ? json_decode($space->settings, true) : $space->settings;
+                $settings = (array) $space->settings;
                 $isDirectChat = in_array($space->space_type, ['direct', 'chat']) && ($settings['is_direct'] ?? false);
                 
                 if ($isDirectChat || $space->space_type === 'direct') {
@@ -1415,37 +1415,49 @@ public function endCall(Request $request, $id)
      */
     public function getMedia(Request $request, $id)
     {
-        $space = CollaborationSpace::findOrFail($id);
-        $user = auth()->user();
+        try {
+            $space = CollaborationSpace::findOrFail($id);
+            $user = auth()->user();
 
-        // Ensure user is a participant
-        $isParticipant = $space->participations()->where('user_id', $user->id)->exists();
-        if (!$isParticipant) {
-            return response()->json(['message' => 'Access denied'], 403);
+            // Ensure user is a participant
+            $isParticipant = $space->participations()->where('user_id', $user->id)->exists();
+            if (!$isParticipant) {
+                return response()->json(['message' => 'Access denied'], 403);
+            }
+
+            // Using indexed model_type/model_id instead of JSON metadata for stability and speed
+            $mediaItems = \App\Models\Media::where('model_type', CollaborationSpace::class)
+                ->where('model_id', $space->id)
+                ->with('user:id,name,profile_photo')
+                ->orderBy('created_at', 'desc')
+                ->paginate(10);
+
+            $items = $mediaItems->getCollection()->map(function ($m) {
+                return [
+                    'id'         => $m->id,
+                    'file_name'  => $m->original_name, // Corrected from file_name
+                    'mime_type'  => $m->mime_type,
+                    'file_size'  => $m->size,          // Corrected from file_size
+                    'type'       => $m->type,          // Native enum column
+                    'url'        => Storage::url($m->file_path),
+                    'uploader'   => $m->user ? ['id' => $m->user->id, 'name' => $m->user->name] : null,
+                    'created_at' => $m->created_at->toISOString(),
+                ];
+            });
+
+            return response()->json([
+                'media' => $items,
+                'pagination' => [
+                    'current_page' => $mediaItems->currentPage(),
+                    'last_page' => $mediaItems->lastPage(),
+                    'has_more' => $mediaItems->hasMorePages(),
+                    'total' => $mediaItems->total()
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Space Media Fetch Error: ' . $e->getMessage());
+            return response()->json(['message' => 'Server Error', 'error' => $e->getMessage()], 500);
         }
-
-        $mediaItems = \App\Models\Media::where(function ($q) use ($space) {
-                $q->whereJsonContains('metadata->space_id', $space->id)
-                  ->orWhereJsonContains('metadata->space_id', (string) $space->id);
-            })
-            ->with('user:id,name,profile_photo')
-            ->orderBy('created_at', 'desc')
-            ->paginate(50);
-
-        $items = $mediaItems->map(function ($m) {
-            return [
-                'id'         => $m->id,
-                'file_name'  => $m->file_name,
-                'mime_type'  => $m->mime_type,
-                'file_size'  => $m->file_size,
-                'type'       => $m->metadata['type'] ?? 'document',
-                'url'        => Storage::url($m->file_path),
-                'uploader'   => $m->user ? ['id' => $m->user->id, 'name' => $m->user->name] : null,
-                'created_at' => $m->created_at->toISOString(),
-            ];
-        });
-
-        return response()->json(['media' => $items]);
     }
 
     /**
@@ -2505,8 +2517,6 @@ public function endCall(Request $request, $id)
      */
     public function search(Request $request)
     {
-        // Log::info('Search request received', $request->all());
-        
         try {
             $request->validate([
                 'query' => 'required|string|min:1|max:100',
@@ -2515,7 +2525,6 @@ public function endCall(Request $request, $id)
                 'limit' => 'sometimes|integer|min:1|max:100',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
-            // Log::error('Search validation failed', $e->errors());
             return response()->json([
                 'error' => 'Validation failed',
                 'errors' => $e->errors()
@@ -2527,135 +2536,26 @@ public function endCall(Request $request, $id)
         $limit = $request->input('limit', 20);
         $userId = auth()->id();
 
-        // Log::info('Searching for', [
-        //     'query' => $query,
-        //     'types' => $types,
-        //     'user_id' => $userId
-        // ]);
-
         $results = [];
 
-        // Search spaces
         if (in_array('spaces', $types)) {
-            try {
-                $spaces = CollaborationSpace::where(function($q) use ($query, $userId) {
-                        $q->where('title', 'like', "%{$query}%")
-                          ->orWhere('description', 'like', "%{$query}%");
-                    })
-                    ->where(function($q) use ($userId) {
-                        $q->where('creator_id', $userId)
-                          ->orWhereHas('participations', function($q) use ($userId) {
-                              $q->where('user_id', $userId);
-                          });
-                    })
-                    ->with('creator')
-                    ->limit($limit)
-                    ->get();
-
-                foreach ($spaces as $space) {
-                    $results[] = [
-                        'id' => $space->id,
-                        'type' => 'space',
-                        'title' => $space->title,
-                        'description' => $space->description,
-                        'avatar' => $space->creator?->profile_photo,
-                        'timestamp' => $space->updated_at,
-                        'relevance' => $this->calculateRelevance($space->title, $query),
-                        'data' => [
-                            'id' => $space->id,
-                            'title' => $space->title,
-                            'space_type' => $space->space_type,
-                            'creator' => $space->creator,
-                        ],
-                    ];
-                }
-                
-                // Log::info('Found spaces', ['count' => $spaces->count()]);
-            } catch (\Exception $e) {
-                Log::error('Error searching spaces', ['error' => $e->getMessage()]);
-            }
+            $results = array_merge($results, $this->handleSpacesSearch($query, $userId, $limit));
         }
 
-        // Search contacts (users)
         if (in_array('contacts', $types)) {
-            try {
-                $contacts = User::where('id', '!=', $userId)
-                    ->where('is_private', '!=', 1)
-                    ->where(function($q) use ($query) {
-                        $q->where('name', 'like', "%{$query}%")
-                          ->orWhere('username', 'like', "%{$query}%")
-                          ->orWhere('email', 'like', "%{$query}%");
-                    })
-                    ->limit($limit)
-                    ->get();
-
-                $followedIds = auth()->user()->following()->pluck('following_id')->toArray();
-
-                foreach ($contacts as $contact) {
-                    $results[] = [
-                        'id' => $contact->id,
-                        'type' => 'contact',
-                        'title' => $contact->name,
-                        'description' => $contact->username ? "@{$contact->username}" : $contact->email,
-                        'avatar' => $contact->profile_photo,
-                        'timestamp' => null,
-                        'relevance' => $this->calculateRelevance($contact->name, $query),
-                        'data' => [
-                            'id' => $contact->id,
-                            'name' => $contact->name,
-                            'username' => $contact->username,
-                            'email' => $contact->email,
-                            'profile_photo' => $contact->profile_photo,
-                            'is_following' => in_array($contact->id, $followedIds),
-                        ],
-                    ];
-                }
-                
-                Log::info('Found contacts', ['count' => $contacts->count()]);
-            } catch (\Exception $e) {
-                Log::error('Error searching contacts', ['error' => $e->getMessage()]);
-            }
+            $results = array_merge($results, $this->handleContactsSearch($query, $userId, $limit));
         }
 
-        // Search chats (Users I have a direct space with)
         if (in_array('chats', $types)) {
-            try {
-                $chats = User::whereHas('spaces', function($q) use ($userId) {
-                        $q->where('space_type', 'direct')
-                          ->whereHas('participations', function($q) use ($userId) {
-                              $q->where('user_id', $userId);
-                          });
-                    })
-                    ->where('id', '!=', $userId)
-                    ->where(function($q) use ($query) {
-                        $q->where('name', 'like', "%{$query}%")
-                          ->orWhere('username', 'like', "%{$query}%");
-                    })
-                    ->limit($limit)
-                    ->get();
+            $results = array_merge($results, $this->handleChatsSearch($query, $userId, $limit));
+        }
 
-                foreach ($chats as $chat) {
-                    $results[] = [
-                        'id' => $chat->id,
-                        'type' => 'chat',
-                        'title' => $chat->name,
-                        'description' => "Chat with @{$chat->username}",
-                        'avatar' => $chat->profile_photo,
-                        'timestamp' => null,
-                        'relevance' => $this->calculateRelevance($chat->name, $query),
-                        'data' => [
-                            'id' => $chat->id,
-                            'name' => $chat->name,
-                            'username' => $chat->username,
-                            'profile_photo' => $chat->profile_photo,
-                        ],
-                    ];
-                }
-                
-                Log::info('Found chats', ['count' => $chats->count()]);
-            } catch (\Exception $e) {
-                Log::error('Error searching chats', ['error' => $e->getMessage()]);
-            }
+        if (in_array('messages', $types)) {
+            $results = array_merge($results, $this->handleMessagesSearch($query, $userId, $limit));
+        }
+
+        if (in_array('posts', $types)) {
+            $results = array_merge($results, $this->handlePostsSearch($query, $userId, $limit));
         }
 
         // Sort by relevance
@@ -2666,16 +2566,203 @@ public function endCall(Request $request, $id)
         // Limit results
         $results = array_slice($results, 0, $limit);
 
-        Log::info('Search completed', [
-            'total_results' => count($results),
-            'query' => $query
-        ]);
-
         return response()->json([
             'results' => $results,
             'query' => $query,
             'total' => count($results),
         ]);
+    }
+
+    private function handleSpacesSearch($query, $userId, $limit)
+    {
+        try {
+            $spaces = CollaborationSpace::where(function($q) use ($query) {
+                    $q->where('title', 'like', "%{$query}%")
+                      ->orWhere('description', 'like', "%{$query}%");
+                })
+                ->where(function($q) use ($userId) {
+                    $q->where('creator_id', $userId)
+                      ->orWhereHas('participations', function($q) use ($userId) {
+                          $q->where('user_id', $userId);
+                      });
+                })
+                ->with('creator')
+                ->limit($limit)
+                ->get();
+
+            return $spaces->map(function($space) use ($query) {
+                return [
+                    'id' => $space->id,
+                    'type' => 'space',
+                    'title' => $space->title,
+                    'description' => $space->description,
+                    'avatar' => $space->creator?->profile_photo,
+                    'timestamp' => $space->updated_at,
+                    'relevance' => $this->calculateRelevance($space->title, $query),
+                    'data' => [
+                        'id' => $space->id,
+                        'title' => $space->title,
+                        'space_type' => $space->space_type,
+                        'creator' => $space->creator,
+                    ],
+                ];
+            })->toArray();
+        } catch (\Exception $e) {
+            Log::error('Error searching spaces: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    private function handleContactsSearch($query, $userId, $limit)
+    {
+        try {
+            $contacts = User::where('id', '!=', $userId)
+                ->where('is_private', '!=', 1)
+                ->where(function($q) use ($query) {
+                    $q->where('name', 'like', "%{$query}%")
+                      ->orWhere('username', 'like', "%{$query}%")
+                      ->orWhere('email', 'like', "%{$query}%");
+                })
+                ->limit($limit)
+                ->get();
+
+            $followedIds = auth()->user()->following()->pluck('following_id')->toArray();
+
+            return $contacts->map(function($contact) use ($query, $followedIds) {
+                return [
+                    'id' => $contact->id,
+                    'type' => 'contact',
+                    'title' => $contact->name,
+                    'description' => $contact->username ? "@{$contact->username}" : $contact->email,
+                    'avatar' => $contact->profile_photo,
+                    'timestamp' => null,
+                    'relevance' => $this->calculateRelevance($contact->name, $query),
+                    'data' => [
+                        'id' => $contact->id,
+                        'name' => $contact->name,
+                        'username' => $contact->username,
+                        'email' => $contact->email,
+                        'profile_photo' => $contact->profile_photo,
+                        'is_following' => in_array($contact->id, $followedIds),
+                    ],
+                ];
+            })->toArray();
+        } catch (\Exception $e) {
+            Log::error('Error searching contacts: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    private function handleChatsSearch($query, $userId, $limit)
+    {
+        try {
+            $chats = User::whereHas('spaces', function($q) use ($userId) {
+                    $q->where('space_type', 'direct')
+                      ->whereHas('participations', function($q) use ($userId) {
+                          $q->where('user_id', $userId);
+                      });
+                })
+                ->where('id', '!=', $userId)
+                ->where(function($q) use ($query) {
+                    $q->where('name', 'like', "%{$query}%")
+                      ->orWhere('username', 'like', "%{$query}%");
+                })
+                ->limit($limit)
+                ->get();
+
+            return $chats->map(function($chat) use ($query) {
+                return [
+                    'id' => $chat->id,
+                    'type' => 'chat',
+                    'title' => $chat->name,
+                    'description' => "Chat with @{$chat->username}",
+                    'avatar' => $chat->profile_photo,
+                    'timestamp' => null,
+                    'relevance' => $this->calculateRelevance($chat->name, $query),
+                    'data' => [
+                        'id' => $chat->id,
+                        'name' => $chat->name,
+                        'username' => $chat->username,
+                        'profile_photo' => $chat->profile_photo,
+                    ],
+                ];
+            })->toArray();
+        } catch (\Exception $e) {
+            Log::error('Error searching chats: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    private function handleMessagesSearch($query, $userId, $limit)
+    {
+        try {
+            // Search messages in spaces where user is participant
+            $messages = Message::where('content', 'like', "%{$query}%")
+                ->whereHas('conversation.collaborationSpace', function($q) use ($userId) {
+                    $q->whereHas('participations', function($sq) use ($userId) {
+                        $sq->where('user_id', $userId);
+                    });
+                })
+                ->with(['user', 'conversation.collaborationSpace'])
+                ->orderBy('created_at', 'desc')
+                ->limit($limit)
+                ->get();
+
+            return $messages->map(function($message) use ($query) {
+                $space = $message->conversation->collaborationSpace;
+                return [
+                    'id' => $message->id,
+                    'type' => 'message',
+                    'title' => $message->user?->name ?? 'User',
+                    'description' => $message->content,
+                    'avatar' => $message->user?->profile_photo,
+                    'timestamp' => $message->created_at,
+                    'relevance' => $this->calculateRelevance($message->content, $query),
+                    'data' => [
+                        'id' => $message->id,
+                        'content' => $message->content,
+                        'user' => $message->user,
+                        'space_id' => $space?->id,
+                        'space_title' => $space?->title,
+                    ],
+                ];
+            })->toArray();
+        } catch (\Exception $e) {
+            Log::error('Error searching messages: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    private function handlePostsSearch($query, $userId, $limit)
+    {
+        try {
+            $posts = Post::where('caption', 'like', "%{$query}%")
+                ->with(['user', 'media'])
+                ->orderBy('created_at', 'desc')
+                ->limit($limit)
+                ->get();
+
+            return $posts->map(function($post) use ($query) {
+                return [
+                    'id' => $post->id,
+                    'type' => 'post',
+                    'title' => $post->user?->name ?? 'Post',
+                    'description' => $post->caption,
+                    'avatar' => $post->user?->profile_photo,
+                    'timestamp' => $post->created_at,
+                    'relevance' => $this->calculateRelevance($post->caption, $query),
+                    'data' => [
+                        'id' => $post->id,
+                        'caption' => $post->caption,
+                        'user' => $post->user,
+                        'media' => $post->media,
+                    ],
+                ];
+            })->toArray();
+        } catch (\Exception $e) {
+            Log::error('Error searching posts: ' . $e->getMessage());
+            return [];
+        }
     }
 
     private function calculateRelevance($text, $query)

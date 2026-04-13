@@ -224,9 +224,7 @@ export const reactToComment = async (
   postId: number,
   commentId: number,
   emoji: string
-): Promise<{
-  comment(postId: number, commentId: number, comment: any): unknown; reaction: Reaction
-}> => {
+): Promise<{ reaction: Reaction; [key: string]: any }> => {
   const token = await getToken();
   const API_BASE = getApiBase();
 

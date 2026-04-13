@@ -16,6 +16,7 @@ import {
     Image,
     RefreshControl,
     Animated,
+    StatusBar,
 } from 'react-native';
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -108,6 +109,8 @@ const styles = getStyles(colors, activeScheme);
     const insets = useSafeAreaInsets();
     const { user } = React.useContext(AuthContext);
     const { showToast } = useToastStore();
+    const STATUS_CONFIG = useMemo(() => getStatusConfig(colors), [colors]);
+    const SEVERITY_CONFIG = useMemo(() => getSeverityConfig(colors), [colors]);
 
     const { returnTo } = useLocalSearchParams();
     const [reports, setReports] = useState<Report[]>([]);
@@ -390,8 +393,8 @@ const styles = getStyles(colors, activeScheme);
                                 </View>
                             </View>
                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <View style={[styles.typeTag, { backgroundColor: colors.info + '26' }]}>
-                                    <Text style={[styles.typeTagText, { color: colors.info }]}>COMMENT</Text>
+                                <View style={[styles.typeTag, { backgroundColor: colors.tint + '26' }]}>
+                                    <Text style={[styles.typeTagText, { color: colors.tint }]}>COMMENT</Text>
                                 </View>
                                 <TouchableOpacity 
                                     style={styles.viewButton}
@@ -608,8 +611,6 @@ const styles = getStyles(colors, activeScheme);
     };
 
     const ReportCard = ({ report, index }: { report: Report; index: number }) => {
-        const SEVERITY_CONFIG = getSeverityConfig(colors);
-        const STATUS_CONFIG = getStatusConfig(colors);
         const severity = SEVERITY_CONFIG[report.severity as keyof typeof SEVERITY_CONFIG] || SEVERITY_CONFIG.low;
         const status = STATUS_CONFIG[report.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.pending;
         const isAssigned = assignedReports.has(report.report_id);

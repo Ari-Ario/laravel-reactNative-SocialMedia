@@ -18,4 +18,9 @@ class Conversation extends Model
     {
         return $this->belongsToMany(User::class, 'conversation_user');
     }
+
+    public function collaborationSpace()
+    {
+        return $this->hasOne(CollaborationSpace::class, 'linked_conversation_id');
+    }
 }

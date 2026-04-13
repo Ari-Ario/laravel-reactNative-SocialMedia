@@ -98,11 +98,9 @@ const DeviceCard = ({ device, index, onLogout }: { device: Device; index: number
                 onPress={() => setShowDetails(!showDetails)}
                 onPressIn={handlePressIn}
                 onPressOut={handlePressOut}
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
             >
                 <LinearGradient
-                    colors={device.isCurrent ? [colors.tint, colors.tint + 'CC'] : isHovered ? [colors.muted, colors.surface] : [colors.surface, colors.surface]}
+                    colors={device.isCurrent ? [colors.tint, colors.tint + 'CC'] : [colors.surface, colors.surface]}
                     style={[styles.deviceCard, device.isCurrent && styles.currentDevice]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}

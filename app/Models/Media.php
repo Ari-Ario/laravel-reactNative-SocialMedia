@@ -30,6 +30,11 @@ class Media extends Model
         return $this->morphTo();
     }
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function getFullPathAttribute()
     {
         return storage_path('app/public/' . $this->file_path);

@@ -10,11 +10,12 @@ import {
     Animated,
     FlatList,
     Image,
+    TextInput,
+    ScrollView,
+    useWindowDimensions,
     Platform,
     Alert,
     StatusBar,
-    TextInput,
-    ScrollView,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -77,23 +78,25 @@ const WebActionButtons = ({
     onAddNote,
     onRemove,
     onNavigate,
-    colors
+    colors,
+    styles
 }: {
     onAddNote: () => void;
     onRemove: () => void;
     onNavigate: () => void;
     colors: any;
+    styles: any;
 }) => (
     <View style={[styles.webActionButtons, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
-        <TouchableOpacity 
-            style={[styles.webActionButton, { backgroundColor: colors.muted, borderColor: colors.border }]} 
+        <TouchableOpacity
+            style={[styles.webActionButton, { backgroundColor: colors.muted, borderColor: colors.border }]}
             onPress={onNavigate}
         >
             <Ionicons name="open-outline" size={18} color={colors.text} />
             <Text style={[styles.webActionText, { color: colors.text }]}>Open</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
-            style={[styles.webActionButton, { backgroundColor: colors.muted, borderColor: colors.border }]} 
+        <TouchableOpacity
+            style={[styles.webActionButton, { backgroundColor: colors.muted, borderColor: colors.border }]}
             onPress={onAddNote}
         >
             <Ionicons name="pencil" size={18} color={colors.text} />
@@ -109,8 +112,6 @@ const WebActionButtons = ({
     </View>
 );
 
-// Mobile swipeable row using the component you provided
-const SwipeableRow = React.lazy(() => import('./SwipeableRow'));
 
 export const BookmarkGallery = ({
     visible,
@@ -120,11 +121,14 @@ export const BookmarkGallery = ({
     onBookmarkRemoved,
     isSettings
 }: BookmarkGalleryProps) => {
+    const { width, height } = useWindowDimensions();
     const { colors, activeScheme } = useAppTheme();
-    const styles = getStyles(colors, activeScheme as string);
     const insets = useSafeAreaInsets();
     const { user } = React.useContext<any>(AuthContext);
     const { bookmarks, addBookmark, removeBookmark, updateBookmarkNote, moveToCollection } = useBookmarkStore();
+
+    // Use memoized styles to prevent unnecessary re-renders
+    const styles = React.useMemo(() => getStyles(colors, activeScheme as string, width, height), [colors, activeScheme, width, height]);
 
     const [selectedCollection, setSelectedCollection] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
@@ -139,11 +143,15 @@ export const BookmarkGallery = ({
     const scrollY = useRef(new Animated.Value(0)).current;
     const rotateAnim = useRef(new Animated.Value(0)).current;
 
+    // Track the last successfully automated note bookmark to prevent infinite loops
+    const lastPromptedId = useRef<number | null>(null);
+
     useEffect(() => {
-        if (visible && initialBookmark) {
+        if (visible && initialBookmark && lastPromptedId.current !== initialBookmark.id) {
+            lastPromptedId.current = initialBookmark.id;
             handleAddNote(initialBookmark);
         }
-    }, [visible, initialBookmark]);
+    }, [visible, initialBookmark?.id]);
 
     // Get time-based greeting
     const getTimeBasedGreeting = () => {
@@ -288,7 +296,7 @@ export const BookmarkGallery = ({
                                     onLongPress={() => setSelectedBookmarks([bookmark.post_id])}
                                 >
                                     {/* Media Thumbnail */}
-                                    {bookmark.post.media?.[0] && (
+                                    {bookmark.post?.media?.[0] && (
                                         <Image
                                             source={{ uri: `${getApiBaseImage()}/storage/${bookmark.post.media[0].file_path}` }}
                                             style={styles.timelineThumb}
@@ -314,7 +322,7 @@ export const BookmarkGallery = ({
 
                                         {bookmark.note && (
                                             <View style={styles.timelineNote}>
-                                                <Ionicons name="chatbubble" size={12} color={colors.primary} />
+                                                <Ionicons name="chatbubble" size={12} color={colors.tint} />
                                                 <Text style={styles.timelineNoteText}>{bookmark.note}</Text>
                                             </View>
                                         )}
@@ -359,6 +367,7 @@ export const BookmarkGallery = ({
                                         onRemove={() => handleRemoveBookmark(bookmark.post_id)}
                                         onNavigate={() => navigateToPost(bookmark.post_id)}
                                         colors={colors}
+                                        styles={styles}
                                     />
                                 )}
                             </View>
@@ -383,7 +392,7 @@ export const BookmarkGallery = ({
                     onPress={() => navigateToPost(item.post_id)}
                     onLongPress={() => setSelectedBookmarks([item.post_id])}
                 >
-                    {item.post.media?.[0] && (
+                    {item.post?.media?.[0] && (
                         <Image
                             source={{ uri: `${getApiBaseImage()}/storage/${item.post.media[0].file_path}` }}
                             style={styles.gridImage}
@@ -437,7 +446,7 @@ export const BookmarkGallery = ({
                         </Text>
                         {item.note && (
                             <View style={styles.listNote}>
-                                <Ionicons name="chatbubble" size={12} color="#666" />
+                                <Ionicons name="chatbubble" size={12} color={colors.textSecondary} />
                                 <Text style={styles.listNoteText}>{item.note}</Text>
                             </View>
                         )}
@@ -446,6 +455,11 @@ export const BookmarkGallery = ({
             )}
         />
     );
+
+    // Common helper for collection name text style (moved inside to access result of getStyles properly if needed, but keeping it simple)
+    const filteredChipTextStyle = (colId: string) => {
+        return selectedCollection === colId ? { color: '#fff' } : { color: colors.text };
+    };
 
     return (
         <Modal
@@ -456,7 +470,7 @@ export const BookmarkGallery = ({
         >
             <StatusBar barStyle={activeScheme === 'dark' ? 'light-content' : 'dark-content'} />
 
-            <View style={[GlobalStyles.popupContainer, { zIndex: 6000 }]}>
+            <View style={[GlobalStyles.popupContainer as any, { zIndex: 6000 }]}>
                 {/* Animated Background */}
                 <LinearGradient
                     colors={getBackgroundGradient()}
@@ -586,7 +600,7 @@ export const BookmarkGallery = ({
                     </View>
                 )}
 
-                {/* Note Modal */}
+                {/* Note Modal - Restored as Modal per user request, but kept loop prevention logic */}
                 <Modal
                     visible={showNoteModal}
                     transparent
@@ -598,7 +612,7 @@ export const BookmarkGallery = ({
                             from={{ scale: 0.8, opacity: 0, translateY: 50 }}
                             animate={{ scale: 1, opacity: 1, translateY: 0 }}
                             transition={{ type: 'spring' }}
-                            style={[styles.noteModal, GlobalStyles.responsiveModal]}
+                            style={[styles.noteModal, GlobalStyles.responsiveModal as any]}
                         >
                             <Text style={styles.noteModalTitle}>Add Your Note</Text>
                             <Text style={styles.noteModalSubtitle}>
@@ -666,7 +680,7 @@ const filteredChipTextStyle = (colId: string) => {
     return {};
 };
 
-const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
+const getStyles = (colors: any, activeScheme: string, width: number, height: number) => StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',

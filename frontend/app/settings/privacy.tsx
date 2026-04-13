@@ -75,11 +75,9 @@ const PrivacyToggle = ({
         <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
             <TouchableOpacity
                 activeOpacity={0.7}
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
             >
                 <LinearGradient
-                    colors={isHovered ? ['#f8f9fa', '#fff'] : ['#fff', '#fff']}
+                    colors={['#fff', '#fff']}
                     style={styles.toggleCard}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}

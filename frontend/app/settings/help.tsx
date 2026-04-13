@@ -391,7 +391,9 @@ function getStyles(colors: any, activeScheme: string) {
         fontSize: 15,
         fontWeight: '500',
         color: colors.text,
-        outlineStyle: 'none',
+        ...Platform.select({
+            web: { outlineStyle: 'none' } as any
+        }),
     },
     searchResultText: {
         color: 'rgba(255,255,255,0.8)',

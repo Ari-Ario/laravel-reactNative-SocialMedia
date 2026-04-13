@@ -160,8 +160,27 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
             input.onchange = async (event: any) => {
                 const file = event.target?.files?.[0];
                 if (file) {
-                    setSpacePhoto(URL.createObjectURL(file));
-                    setSpacePhotoFile(file);
+                    setIsUploadingPhoto(true);
+                    try {
+                        const uri = URL.createObjectURL(file);
+                        // Aggressive compression like settings/index.tsx
+                        const compressedUri = await MediaCompressor.compressImage(uri, {
+                            maxWidth: 200,
+                            quality: 0.5
+                        });
+                        setSpacePhoto(compressedUri);
+                        
+                        const response = await fetch(compressedUri);
+                        const blob = await response.blob();
+                        const compressedFile = new File([blob], file.name, { type: 'image/jpeg' });
+                        setSpacePhotoFile(compressedFile);
+                    } catch (err) {
+                        console.error('Web compression failed:', err);
+                        setSpacePhoto(URL.createObjectURL(file));
+                        setSpacePhotoFile(file);
+                    } finally {
+                        setIsUploadingPhoto(false);
+                    }
                 }
             };
             input.click();
@@ -181,7 +200,20 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
                 quality: 0.85,
             });
             if (!result.canceled && result.assets?.[0]) {
-                setSpacePhoto(result.assets[0].uri);
+                setIsUploadingPhoto(true);
+                try {
+                    // Aggressive compression like settings/index.tsx
+                    const compressedUri = await MediaCompressor.compressImage(result.assets[0].uri, {
+                        maxWidth: 200,
+                        quality: 0.5
+                    });
+                    setSpacePhoto(compressedUri);
+                } catch (err) {
+                    console.error('Compression failed:', err);
+                    setSpacePhoto(result.assets[0].uri);
+                } finally {
+                    setIsUploadingPhoto(false);
+                }
             }
         } catch (err) {
             console.error('Gallery pick error:', err);
@@ -411,7 +443,7 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
                     <View style={styles.stepContainer}>
                         {/* Form Fields for Details Step */}
                         <View style={styles.detailsTopContainer}>
-                            <TouchableOpacity style={styles.photoPicker} onPress={handlePickPhoto}>
+                            <TouchableOpacity style={styles.photoPicker} onPress={handlePickPhoto} disabled={isUploadingPhoto}>
                                 {spacePhoto ? (
                                     <Image source={{ uri: spacePhoto }} style={styles.photoPreview} />
                                 ) : (
@@ -419,9 +451,15 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
                                         <Ionicons name="camera" size={30} color={colors.tint} />
                                     </View>
                                 )}
-                                <View style={[styles.photoEditBadge, { backgroundColor: colors.tint, borderColor: colors.background }]}>
-                                    <Ionicons name="add" size={14} color="#fff" />
-                                </View>
+                                {isUploadingPhoto ? (
+                                    <View style={[styles.photoEditBadge, { backgroundColor: 'rgba(0,0,0,0.5)', borderColor: 'transparent' }]}>
+                                        <ActivityIndicator size="small" color="#fff" />
+                                    </View>
+                                ) : (
+                                    <View style={[styles.photoEditBadge, { backgroundColor: colors.tint, borderColor: colors.background }]}>
+                                        <Ionicons name="add" size={14} color="#fff" />
+                                    </View>
+                                )}
                             </TouchableOpacity>
 
                             <View style={styles.nameInputContainer}>

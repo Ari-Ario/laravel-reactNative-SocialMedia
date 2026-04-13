@@ -30,11 +30,36 @@ import { Toast } from '@/components/Shared/Toast';
 import { useToastStore } from '@/stores/toastStore';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
+const createShadow = ({ opacity, radius }: { opacity: number; radius: number }) => ({
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: opacity,
+  shadowRadius: radius,
+  elevation: radius / 2,
+});
+
+interface TrainingRule {
+    id: number;
+    trigger: string;
+    response: string;
+    category: string;
+    is_active: boolean;
+    needs_review?: boolean;
+    keywords?: string[];
+}
+
 const { width } = Dimensions.get('window');
 const isMobile = width < 768;
 
 // Memoized Training Item to prevent re-renders on every keystroke
-const TrainingItem = memo(({ item, editingItem, onEditChange, onUpdate, onDelete, index }: any) => {
+const TrainingItem = memo(({ item, editingItem, onEditChange, onUpdate, onDelete, index }: { 
+    item: TrainingRule; 
+    editingItem: any; 
+    onEditChange: (id: number, field: string, value: any) => void;
+    onUpdate: (id: number) => void;
+    onDelete: (id: number) => void;
+    index: number;
+}) => {
     const { colors, activeScheme } = useAppTheme();
     const styles = getStyles(colors, activeScheme);
     return (
@@ -112,8 +137,8 @@ const ChatbotTrainingScreen = () => {
     const [trainings, setTrainings] = useState<any[]>([]);
     const [categories, setCategories] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [newTraining, setNewTraining] = useState<any>({ trigger: '', response: '', category: '', keywords: [] });
-    const [editingItems, setEditingItems] = useState<any>({});
+    const [newTraining, setNewTraining] = useState<Partial<TrainingRule>>({ trigger: '', response: '', category: '', keywords: [] });
+    const [editingItems, setEditingItems] = useState<Record<number, Partial<TrainingRule>>>({});
     const [needsReviewCount, setNeedsReviewCount] = useState(0);
     const API_BASE = getApiBase();
 
@@ -153,8 +178,8 @@ const ChatbotTrainingScreen = () => {
             });
             setTrainings(data.data);
 
-            const initialEditingState = {};
-            data.data.forEach(item => {
+            const initialEditingState: Record<number, Partial<TrainingRule>> = {};
+            data.data.forEach((item: TrainingRule) => {
                 initialEditingState[item.id] = {
                     trigger: item.trigger,
                     response: item.response,
@@ -196,7 +221,10 @@ const ChatbotTrainingScreen = () => {
     };
 
     const handleAddTraining = async () => {
-        if (!newTraining.trigger.trim() || !newTraining.response.trim()) {
+        const trigger = newTraining.trigger?.trim();
+        const response = newTraining.response?.trim();
+
+        if (!trigger || !response) {
             showToast('Please provide both trigger and response.', 'error');
             return;
         }
@@ -231,7 +259,7 @@ const ChatbotTrainingScreen = () => {
                 ));
                 showToast('Wisdom updated successfully!', 'success');
             }
-        } catch (error) {
+        } catch (error: any) {
             showToast(error.response?.data?.message || 'Update failed', 'error');
             fetchTrainings();
         }
@@ -250,7 +278,7 @@ const ChatbotTrainingScreen = () => {
                 });
                 showToast('Rule deleted successfully', 'success');
                 fetchTrainings();
-            } catch (error) {
+            } catch (error: any) {
                 showToast(error.response?.data?.message || 'Failed to delete rule', 'error');
                 fetchTrainings();
             }

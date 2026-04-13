@@ -288,6 +288,7 @@ class PostController extends Controller
             $followers = User::whereIn('id', $followerIds)->get();
 
             foreach ($followers as $follower) {
+                /** @var User $follower */
                 $follower->notify(new PostDeleted(
                     $postId,
                     $postCaption,
