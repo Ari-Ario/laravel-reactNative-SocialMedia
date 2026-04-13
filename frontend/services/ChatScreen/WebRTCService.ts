@@ -76,10 +76,7 @@ class WebRTCService {
   private iceServers = {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun2.l.google.com:19302' },
-      { urls: 'stun:stun3.l.google.com:19302' },
-      { urls: 'stun:stun4.l.google.com:19302' },
+      // Reduced redundant Google STUNs to prevent massive UDP timeouts on strict 5G networks
       // Metered.ca TURN (UDP priority, TCP fallback)
       {
         urls: [
@@ -714,6 +711,7 @@ class WebRTCService {
 
     const pcConfig = {
       ...this.iceServers,
+      iceTransportPolicy: 'all' as RTCIceTransportPolicy,
       sdpSemantics: 'unified-plan',
     };
 
