@@ -143,14 +143,12 @@ const ChatbotTrainingScreen = () => {
     const API_BASE = getApiBase();
 
     const handleBack = useCallback(() => {
-        if (from === 'settings') {
+        if (router.canGoBack()) {
             router.back();
-        } else if (from === 'notifications') {
-            router.replace('/');
         } else {
-            router.back();
+            router.replace('/');
         }
-    }, [from]);
+    }, []);
 
     useEffect(() => {
         const hasNewTraining = notifications.some(n =>
@@ -176,17 +174,20 @@ const ChatbotTrainingScreen = () => {
             const { data } = await axios.get(`${API_BASE}/chatbot-training`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setTrainings(data.data);
+            const trainingsData = data?.data || [];
+            setTrainings(trainingsData);
 
             const initialEditingState: Record<number, Partial<TrainingRule>> = {};
-            data.data.forEach((item: TrainingRule) => {
+            if (Array.isArray(trainingsData)) {
+                trainingsData.forEach((item: TrainingRule) => {
                 initialEditingState[item.id] = {
                     trigger: item.trigger,
                     response: item.response,
                     category: item.category,
                     is_active: item.is_active
                 };
-            });
+                });
+            }
             setEditingItems(initialEditingState);
         } catch (error) {
             showToast('Failed to load trainings', 'error');
@@ -429,7 +430,7 @@ function getStyles(colors: any, activeScheme: string) {
     actionRow: { flexDirection: 'row', gap: 12, marginTop: 8 },
     actionBtn: { flex: 1.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12, gap: 6 },
     saveBtn: { backgroundColor: colors.tint },
-    approveBtn: { backgroundColor: colors.text },
+    approveBtn: { backgroundColor: colors.tint },
     deleteBtn: { flex: 1, backgroundColor: colors.error + '10', borderWidth: 1, borderColor: colors.error + '30' },
     actionBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   });

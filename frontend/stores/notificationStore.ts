@@ -89,7 +89,7 @@ export const getNotificationIcon = (type: string): string => {
     case NOTIFICATION_TYPES.POST_DELETED: return 'trash-outline';
     case NOTIFICATION_TYPES.NEW_FOLLOWER: return 'person-add-outline';
     case NOTIFICATION_TYPES.CHATBOT_TRAINING: return 'school-outline';
-    case NOTIFICATION_TYPES.VIOLATION_REPORTED: return 'shield-alert-outline';
+    case NOTIFICATION_TYPES.VIOLATION_REPORTED: return 'alert-outline';
     case NOTIFICATION_TYPES.MODERATION_ACTION: return 'notifications-outline';
     default: return 'notifications-outline';
   }
@@ -206,10 +206,9 @@ interface NotificationStore {
   getRegularNotifications: () => Notification[];
   getUnreadFollowerCount: () => number;
 
-  getCalls: () => Notification[];
-  getMessages: () => Notification[];
-  getSpaces: () => Notification[];
   getActivities: () => Notification[];
+  getChatbotNotifications: () => Notification[];
+  getAdminNotifications: () => Notification[];
   reset: () => void;
 }
 
@@ -265,6 +264,7 @@ const isChatbotTrainingNotification = (type: string): boolean => {
   return [
     NOTIFICATION_TYPES.CHATBOT_TRAINING,
     'chatbot-training-needed',
+    'training_needed',
   ].includes(type);
 };
 
@@ -313,17 +313,17 @@ export const useNotificationStore = create<NotificationStore>()(
           return;
         }
 
-        const rawAvatar = notificationData.avatar || 
-                          notificationData.profile_photo || 
-                          notificationData.data?.profile_photo ||
-                          notificationData.user_avatar ||
-                          notificationData.inviter_avatar ||
-                          (notificationData.user && typeof notificationData.user === 'object' ? (notificationData.user.profile_photo || notificationData.user.avatar) : null) ||
-                          (notificationData.follower && typeof notificationData.follower === 'object' ? (notificationData.follower.profile_photo || notificationData.follower.avatar) : null) ||
-                          (notificationData.post?.user && typeof notificationData.post.user === 'object' ? notificationData.post.user.profile_photo : null) ||
-                          (notificationData.reaction?.user && typeof notificationData.reaction.user === 'object' ? notificationData.reaction.user.profile_photo : null) ||
-                          (notificationData.message?.user && typeof notificationData.message.user === 'object' ? notificationData.message.user.profile_photo : null) || 
-                          (notificationData.call?.user && typeof notificationData.call.user === 'object' ? notificationData.call.user.profile_photo : null);
+        const rawAvatar = notificationData.avatar ||
+          notificationData.profile_photo ||
+          notificationData.data?.profile_photo ||
+          notificationData.user_avatar ||
+          notificationData.inviter_avatar ||
+          (notificationData.user && typeof notificationData.user === 'object' ? (notificationData.user.profile_photo || notificationData.user.avatar) : null) ||
+          (notificationData.follower && typeof notificationData.follower === 'object' ? (notificationData.follower.profile_photo || notificationData.follower.avatar) : null) ||
+          (notificationData.post?.user && typeof notificationData.post.user === 'object' ? notificationData.post.user.profile_photo : null) ||
+          (notificationData.reaction?.user && typeof notificationData.reaction.user === 'object' ? notificationData.reaction.user.profile_photo : null) ||
+          (notificationData.message?.user && typeof notificationData.message.user === 'object' ? notificationData.message.user.profile_photo : null) ||
+          (notificationData.call?.user && typeof notificationData.call.user === 'object' ? notificationData.call.user.profile_photo : null);
 
         const avatar = (typeof rawAvatar === 'string' && rawAvatar.trim().length > 0) ? rawAvatar : undefined;
 
@@ -356,23 +356,23 @@ export const useNotificationStore = create<NotificationStore>()(
           const isDuplicate = targetArray.some(notif => {
             if (notif.id === newNotification.id) return true;
 
-            const isSameSpaceInv = notif.type === 'space_invitation' && 
-                                 newNotification.type === 'space_invitation' && 
-                                 String(notif.spaceId) === String(newNotification.spaceId);
+            const isSameSpaceInv = notif.type === 'space_invitation' &&
+              newNotification.type === 'space_invitation' &&
+              String(notif.spaceId) === String(newNotification.spaceId);
 
             // Stricter check: avoid matching if both are undefined
             const isSameMetadata = notif.type === newNotification.type &&
-                                 (notif.postId || newNotification.postId ? notif.postId === newNotification.postId : true) &&
-                                 (notif.messageId || newNotification.messageId ? notif.messageId === newNotification.messageId : true) &&
-                                 (notif.spaceId || newNotification.spaceId ? notif.spaceId === newNotification.spaceId : true) &&
-                                 (notif.commentId || newNotification.commentId ? notif.commentId === newNotification.commentId : true);
-            
+              (notif.postId || newNotification.postId ? notif.postId === newNotification.postId : true) &&
+              (notif.messageId || newNotification.messageId ? notif.messageId === newNotification.messageId : true) &&
+              (notif.spaceId || newNotification.spaceId ? notif.spaceId === newNotification.spaceId : true) &&
+              (notif.commentId || newNotification.commentId ? notif.commentId === newNotification.commentId : true);
+
             // Reduce aggressive 60s window to 3s to only catch actual double-fires / networking echoes
             // legitimate sequential messages from users should be permitted to ping sequentially!
             const withinWindow = Math.abs(new Date(notif.createdAt).getTime() - newNotification.createdAt.getTime()) < 3000;
 
-            return (isSameSpaceInv && Math.abs(new Date(notif.createdAt).getTime() - newNotification.createdAt.getTime()) < 60000) || 
-                   (isSameMetadata && withinWindow && (notif.messageId || notif.postId || notif.spaceId)); // Require at least one valid ID if not an invite
+            return (isSameSpaceInv && Math.abs(new Date(notif.createdAt).getTime() - newNotification.createdAt.getTime()) < 60000) ||
+              (isSameMetadata && withinWindow && (notif.messageId || notif.postId || notif.spaceId)); // Require at least one valid ID if not an invite
           });
 
           if (isDuplicate) {
@@ -389,7 +389,7 @@ export const useNotificationStore = create<NotificationStore>()(
             PostId: ${newNotification.postId}
             isFollower: ${isFollower}, isCall: ${isCall}, isMessage: ${isMessage}, isSpace: ${isSpace}, isActivity: ${isActivity}, isRegular: ${isRegular}
           `);
-          
+
           // Trigger the toast globally
           get().setCurrentToastNotification(newNotification);
 
@@ -405,9 +405,9 @@ export const useNotificationStore = create<NotificationStore>()(
               notifications: newNotifications,
               unreadCount: newNotifications.filter(n => !n.isRead && !isCallNotification(n.type) && !isMessageNotification(n.type) && !isSpaceNotification(n.type) && !isActivityNotification(n.type) && !isChatbotTrainingNotification(n.type)).length,
               unreadCallCount: newNotifications.filter(n => !n.isRead && isCallNotification(n.type)).length,
-              unreadMessageCount: newNotifications.filter(n => 
-                !n.isRead && 
-                isMessageNotification(n.type) && 
+              unreadMessageCount: newNotifications.filter(n =>
+                !n.isRead &&
+                isMessageNotification(n.type) &&
                 !(n.data?.is_system || n.data?.call_log || n.message?.toLowerCase().includes('call') || n.message?.toLowerCase().includes('joined') || n.message?.toLowerCase().includes('left') || n.message?.toLowerCase().includes('created') || n.message?.toLowerCase().includes('updated')) &&
                 !(n.userId && state.currentUserId && n.userId === state.currentUserId)
               ).length,
@@ -461,6 +461,22 @@ export const useNotificationStore = create<NotificationStore>()(
         // console.log('✨ Getting activity notifications:', filtered.length);
         return filtered;
       },
+      getChatbotNotifications: () => {
+        const { notifications, currentUserId } = get();
+        const filtered = notifications.filter(n =>
+          isChatbotTrainingNotification(n.type) &&
+          !(n.userId && currentUserId && n.userId == currentUserId)
+        );
+        return filtered;
+      },
+      getAdminNotifications: () => {
+        const { notifications, currentUserId } = get();
+        const filtered = notifications.filter(n =>
+          (n.type === NOTIFICATION_TYPES.MODERATION_ACTION || n.type === NOTIFICATION_TYPES.VIOLATION_REPORTED) &&
+          !(n.userId && currentUserId && n.userId == currentUserId)
+        );
+        return filtered;
+      },
 
       getRegularNotifications: () => {
         const { notifications, currentUserId } = get();
@@ -471,6 +487,8 @@ export const useNotificationStore = create<NotificationStore>()(
           !isSpaceNotification(n.type) &&
           !isActivityNotification(n.type) &&
           !isChatbotTrainingNotification(n.type) &&
+          n.type !== NOTIFICATION_TYPES.MODERATION_ACTION &&
+          n.type !== NOTIFICATION_TYPES.VIOLATION_REPORTED &&
           !(n.userId && currentUserId && n.userId == currentUserId)
         );
         // console.log('🔔 Getting regular notifications:', filtered.length);
@@ -502,9 +520,9 @@ export const useNotificationStore = create<NotificationStore>()(
             // Calculate all counts
             const newUnreadCount = updatedNotifications.filter(n => !n.isRead && !isCallNotification(n.type) && !isMessageNotification(n.type) && !isSpaceNotification(n.type) && !isActivityNotification(n.type) && !isChatbotTrainingNotification(n.type)).length;
             const newUnreadCallCount = updatedNotifications.filter(n => !n.isRead && isCallNotification(n.type)).length;
-            const newUnreadMessageCount = updatedNotifications.filter(n => 
-              !n.isRead && 
-              isMessageNotification(n.type) && 
+            const newUnreadMessageCount = updatedNotifications.filter(n =>
+              !n.isRead &&
+              isMessageNotification(n.type) &&
               !(n.data?.is_system || n.data?.call_log || n.message?.toLowerCase().includes('call') || n.message?.toLowerCase().includes('joined') || n.message?.toLowerCase().includes('left') || n.message?.toLowerCase().includes('created') || n.message?.toLowerCase().includes('updated')) &&
               !(n.userId && state.currentUserId && n.userId === state.currentUserId)
             ).length;
@@ -594,9 +612,9 @@ export const useNotificationStore = create<NotificationStore>()(
           // Recalculate all counts
           const newUnreadCount = updatedNotifications.filter(n => !n.isRead && !isCallNotification(n.type) && !isMessageNotification(n.type) && !isSpaceNotification(n.type) && !isActivityNotification(n.type) && !isChatbotTrainingNotification(n.type)).length;
           const newUnreadCallCount = updatedNotifications.filter(n => !n.isRead && isCallNotification(n.type)).length;
-          const newUnreadMessageCount = updatedNotifications.filter(n => 
-            !n.isRead && 
-            isMessageNotification(n.type) && 
+          const newUnreadMessageCount = updatedNotifications.filter(n =>
+            !n.isRead &&
+            isMessageNotification(n.type) &&
             !(n.data?.is_system || n.data?.call_log || n.message?.toLowerCase().includes('call') || n.message?.toLowerCase().includes('joined') || n.message?.toLowerCase().includes('left') || n.message?.toLowerCase().includes('created') || n.message?.toLowerCase().includes('updated')) &&
             !(n.userId && state.currentUserId && n.userId === state.currentUserId)
           ).length;
@@ -625,9 +643,9 @@ export const useNotificationStore = create<NotificationStore>()(
           // Recalculate all counts
           const newUnreadCount = newNotifications.filter(n => !n.isRead && !isCallNotification(n.type) && !isMessageNotification(n.type) && !isSpaceNotification(n.type) && !isActivityNotification(n.type) && !isChatbotTrainingNotification(n.type)).length;
           const newUnreadCallCount = newNotifications.filter(n => !n.isRead && isCallNotification(n.type)).length;
-          const newUnreadMessageCount = newNotifications.filter(n => 
-            !n.isRead && 
-            isMessageNotification(n.type) && 
+          const newUnreadMessageCount = newNotifications.filter(n =>
+            !n.isRead &&
+            isMessageNotification(n.type) &&
             !(n.data?.is_system || n.data?.call_log || n.message?.toLowerCase().includes('call') || n.message?.toLowerCase().includes('joined') || n.message?.toLowerCase().includes('left') || n.message?.toLowerCase().includes('created') || n.message?.toLowerCase().includes('updated')) &&
             !(n.userId && state.currentUserId && n.userId === state.currentUserId)
           ).length;
@@ -678,9 +696,9 @@ export const useNotificationStore = create<NotificationStore>()(
             // Calculate all counts
             const newUnreadCount = newNotifications.filter(n => !n.isRead && !isCallNotification(n.type) && !isMessageNotification(n.type) && !isSpaceNotification(n.type) && !isActivityNotification(n.type) && !isChatbotTrainingNotification(n.type)).length;
             const newUnreadCallCount = newNotifications.filter(n => !n.isRead && isCallNotification(n.type)).length;
-            const newUnreadMessageCount = newNotifications.filter(n => 
-              !n.isRead && 
-              isMessageNotification(n.type) && 
+            const newUnreadMessageCount = newNotifications.filter(n =>
+              !n.isRead &&
+              isMessageNotification(n.type) &&
               !(n.data?.is_system || n.data?.call_log || n.message?.toLowerCase().includes('call') || n.message?.toLowerCase().includes('joined') || n.message?.toLowerCase().includes('left') || n.message?.toLowerCase().includes('created') || n.message?.toLowerCase().includes('updated')) &&
               !(n.userId && state.currentUserId && n.userId === state.currentUserId)
             ).length;
@@ -721,8 +739,8 @@ export const useNotificationStore = create<NotificationStore>()(
         get().disconnectRealtime();
         get().clearAll();
         set({
-            isConnected: false,
-            currentUserId: null
+          isConnected: false,
+          currentUserId: null
         });
         console.log('🧹 NotificationStore reset complete');
       },
@@ -742,16 +760,16 @@ export const useNotificationStore = create<NotificationStore>()(
           PusherService.subscribeToUserNotifications(userId, (notificationData) => {
             console.log('🔔 PUSHER EVENT RECEIVED → ADDING TO STORE:', notificationData);
             get().addNotification(notificationData);
-            
+
             // ✅ Bridge to CollaborationStore if it's a space event
             if (notificationData.spaceId || notificationData.space_id) {
-                require('@/stores/collaborationStore').useCollaborationStore.getState().handleSpaceEvent({
-                 type: notificationData.type || 'new_message',
-                 data: {
-                   ...notificationData,
-                   space_id: (notificationData.space_id || notificationData.spaceId)?.toString()
-                 }
-               });
+              require('@/stores/collaborationStore').useCollaborationStore.getState().handleSpaceEvent({
+                type: notificationData.type || 'new_message',
+                data: {
+                  ...notificationData,
+                  space_id: (notificationData.space_id || notificationData.spaceId)?.toString()
+                }
+              });
             }
           });
 
@@ -1111,7 +1129,7 @@ export const useNotificationStore = create<NotificationStore>()(
             ...notif,
             createdAt: new Date(notif.createdAt)
           }));
-          
+
           // RECALCULATE SPECIFIC BADGE COUNTS ON STARTUP
           state.unreadCallCount = state.notifications.filter(n => !n.isRead && isCallNotification(n.type)).length;
           state.unreadMessageCount = state.notifications.filter(n => !n.isRead && isMessageNotification(n.type)).length;

@@ -109,10 +109,8 @@ export const PostVideoPlayer = React.forwardRef<any, PostVideoPlayerProps>(({
 
   return (
     <View style={[style, styles.container]}>
-      <Pressable 
-        onPress={togglePlayback} 
+      <View 
         style={StyleSheet.absoluteFill}
-        disabled={!isMobilePlatform}
       >
         <VideoView
           player={player}
@@ -124,7 +122,7 @@ export const PostVideoPlayer = React.forwardRef<any, PostVideoPlayerProps>(({
           posterSource={poster ? { uri: poster } : undefined}
         />
 
-        {/* Play/Pause Overlay for Mobile */}
+        {/* Play/Pause Overlay for Mobile - Now non-interactive to let parent handle open */}
         {isMobilePlatform && !isUserPlaying && (
           <View style={styles.overlay}>
              <View style={styles.playIconContainer}>
@@ -135,7 +133,7 @@ export const PostVideoPlayer = React.forwardRef<any, PostVideoPlayerProps>(({
              )}
           </View>
         )}
-      </Pressable>
+      </View>
     </View>
   );
 });

@@ -64,6 +64,7 @@ class SpaceService
 
             // 6. Delete directory
             Storage::disk('public')->deleteDirectory("spaces/{$id}");
+            Storage::disk('public')->deleteDirectory("space_audio/{$id}");
 
             // 7. Delete Polls
             $polls = Poll::where('space_id', $id)->get();

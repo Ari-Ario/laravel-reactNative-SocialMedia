@@ -24,6 +24,7 @@ import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import getApiBase from '@/services/getApiBase';
 import { getToken } from '@/services/TokenService';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import Avatar from '@/components/Image/Avatar';
 
 type Step = 'CONTACTS' | 'DETAILS';
 type PrivacyTier = 'general' | 'protected' | 'channel';
@@ -119,15 +120,11 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
                     activeOpacity={0.7}
                 >
                     <View style={styles.contactAvatarContainer}>
-                        {item.avatar ? (
-                            <Image source={{ uri: item.avatar }} style={styles.contactAvatar} />
-                        ) : (
-                            <View style={[styles.contactAvatar, styles.contactAvatarFallback]}>
-                                <Text style={styles.contactAvatarText}>
-                                    {item.name.charAt(0).toUpperCase()}
-                                </Text>
-                            </View>
-                        )}
+                        <Avatar
+                            source={item.avatar || null}
+                            name={item.name}
+                            size={44}
+                        />
                         {isSelected && (
                             <View style={[styles.contactSelectedBadge, { borderColor: colors.background }]}>
                                 <Ionicons name="checkmark" size={14} color="#fff" />

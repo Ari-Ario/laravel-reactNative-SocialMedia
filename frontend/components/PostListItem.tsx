@@ -197,11 +197,6 @@ export default function PostListItem({
   const isMobilePlatform = isNativeMobile || isMobileWeb;
 
   const onMediaPress = (index: number) => {
-    const item = visualMedia[index];
-    if (isMobilePlatform && item.type === 'video') {
-      // On mobile, video handles its own play/pause toggle via internal Pressable
-      return;
-    }
     service.openMediaViewer(index);
   };
 
@@ -308,7 +303,6 @@ export default function PostListItem({
               {visualMedia.length === 1 ? (
                 <TouchableOpacity
                   onPress={() => onMediaPress(0)}
-                  disabled={isMobilePlatform && visualMedia[0].type === 'video'}
                 >
                   {visualMedia[0].type === 'video' ? (
                     <PostVideoPlayer
@@ -334,7 +328,6 @@ export default function PostListItem({
                       key={`${media.id}-${index}`}
                       onPress={() => onMediaPress(index)}
                       style={styles.multiMediaItem}
-                      disabled={isMobilePlatform && media.type === 'video'}
                     >
                       {media.type === 'video' ? (
                         <PostVideoPlayer

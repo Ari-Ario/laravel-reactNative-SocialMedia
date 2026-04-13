@@ -62,7 +62,7 @@ export default function AiSafetyScreen() {
             const oldVal = preferences[field];
             setPreferences((prev: any) => ({ ...prev, [field]: value }));
             await updatePreferences({ [field]: value });
-            
+
             if (!isWeb) {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }
@@ -164,7 +164,7 @@ export default function AiSafetyScreen() {
                     <SafetyToggle
                         label="Content Filters"
                         description="Automatically filter sensitive or offensive content from your feed."
-                        icon="shield-alert-outline"
+                        icon="alert-outline"
                         value={preferences?.content_filters}
                         onToggle={(val: boolean) => handleTogglePreference('content_filters', val)}
                         color="#1063FD"
@@ -184,12 +184,12 @@ export default function AiSafetyScreen() {
                             <Text style={styles.infoTitle}>About Your Trust Score</Text>
                         </View>
                         <Text style={styles.infoText}>
-                            Your trust score is calculated based on your content history and reporting accuracy. 
+                            Your trust score is calculated based on your content history and reporting accuracy.
                             A high score ensures your reports are prioritized and gives you a "Verified Contributor" standing.
                         </Text>
-                        
+
                         <View style={styles.divider} />
-                        
+
                         <Text style={styles.infoSubtitle}>How to maintain a high score:</Text>
                         <View style={styles.tipRow}>
                             <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
@@ -208,71 +208,71 @@ export default function AiSafetyScreen() {
 
 
 function getStyles(colors: any, activeScheme: string) {
-  return StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingBottom: 16,
-        borderBottomWidth:1,
-        borderBottomColor: colors.border,
-    },
-    headerCenter: { alignItems: 'center' },
-    headerTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
-    headerUnderline: { width: 30, height: 3, backgroundColor: colors.tint, borderRadius: 2, marginTop: 4 },
-    backButton: { padding: 4 },
-    refreshButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface, justifyContent: 'center', alignItems: 'center' },
-    loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    loaderText: { marginTop: 12, color: colors.textSecondary, fontSize: 14 },
-    scrollContent: { paddingHorizontal: 20, paddingBottom: 50 },
-    scoreCircleContainer: { alignItems: 'center', marginVertical: 20 },
-    scoreCircleGradient: { padding: 30, borderRadius: 100, alignItems: 'center' },
-    scoreCircle: { 
-        width: 140, 
-        height: 140, 
-        borderRadius: 70, 
-        borderWidth: 6, 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        backgroundColor: colors.surface,
-        ...createShadow({ opacity: 0.1, radius: 10 })
-    },
-    scorePercent: { fontSize: 36, fontWeight: '900', color: colors.text },
-    scoreLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: '700', textTransform: 'uppercase' },
-    statusBadge: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, marginTop: -15, ...createShadow({ opacity: 0.2, radius: 5 }) },
-    statusText: { color: '#fff', fontSize: 12, fontWeight: '900' },
-    statsGrid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25, gap: 10 },
-    statItem: { flex: 1, alignItems: 'center', backgroundColor: colors.surface, padding: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.border },
-    statIconContainer: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
-    statValue: { fontSize: 18, fontWeight: '800', color: colors.text },
-    statLabel: { fontSize: 10, color: colors.textSecondary, fontWeight: '700', textTransform: 'uppercase', marginTop: 2 },
-    sectionTitle: { fontSize: 13, fontWeight: '800', color: colors.tint, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 15, marginLeft: 5 },
-    toggleCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: colors.surface,
-        padding: 18,
-        borderRadius: 20,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: colors.border,
-        ...createShadow({ opacity: 0.05, radius: 8 }),
-    },
-    toggleInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 },
-    iconContainer: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-    textContainer: { flex: 1 },
-    toggleLabel: { fontSize: 15, fontWeight: '700', color: colors.text },
-    toggleDescription: { fontSize: 11, color: colors.textSecondary, marginTop: 2, lineHeight: 14 },
-    infoBox: { backgroundColor: colors.surface, padding: 20, borderRadius: 24, borderWidth: 1, borderColor: colors.border, marginTop: 10 },
-    infoTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
-    infoTitle: { color: colors.text, fontSize: 16, fontWeight: '800' },
-    infoSubtitle: { color: colors.tint, fontSize: 13, fontWeight: '700', marginBottom: 12 },
-    infoText: { color: colors.textSecondary, fontSize: 13, lineHeight: 20, marginBottom: 15 },
-    divider: { height: 1, backgroundColor: colors.border, marginVertical: 15 },
-    tipRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-    tipText: { color: colors.text, fontSize: 13, marginLeft: 10, fontWeight: '500' },
-});
+    return StyleSheet.create({
+        container: { flex: 1, backgroundColor: colors.background },
+        header: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: 20,
+            paddingBottom: 16,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
+        },
+        headerCenter: { alignItems: 'center' },
+        headerTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
+        headerUnderline: { width: 30, height: 3, backgroundColor: colors.tint, borderRadius: 2, marginTop: 4 },
+        backButton: { padding: 4 },
+        refreshButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface, justifyContent: 'center', alignItems: 'center' },
+        loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+        loaderText: { marginTop: 12, color: colors.textSecondary, fontSize: 14 },
+        scrollContent: { paddingHorizontal: 20, paddingBottom: 50 },
+        scoreCircleContainer: { alignItems: 'center', marginVertical: 20 },
+        scoreCircleGradient: { padding: 30, borderRadius: 100, alignItems: 'center' },
+        scoreCircle: {
+            width: 140,
+            height: 140,
+            borderRadius: 70,
+            borderWidth: 6,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: colors.surface,
+            ...createShadow({ opacity: 0.1, radius: 10 })
+        },
+        scorePercent: { fontSize: 36, fontWeight: '900', color: colors.text },
+        scoreLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: '700', textTransform: 'uppercase' },
+        statusBadge: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, marginTop: -15, ...createShadow({ opacity: 0.2, radius: 5 }) },
+        statusText: { color: '#fff', fontSize: 12, fontWeight: '900' },
+        statsGrid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25, gap: 10 },
+        statItem: { flex: 1, alignItems: 'center', backgroundColor: colors.surface, padding: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.border },
+        statIconContainer: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+        statValue: { fontSize: 18, fontWeight: '800', color: colors.text },
+        statLabel: { fontSize: 10, color: colors.textSecondary, fontWeight: '700', textTransform: 'uppercase', marginTop: 2 },
+        sectionTitle: { fontSize: 13, fontWeight: '800', color: colors.tint, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 15, marginLeft: 5 },
+        toggleCard: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backgroundColor: colors.surface,
+            padding: 18,
+            borderRadius: 20,
+            marginBottom: 12,
+            borderWidth: 1,
+            borderColor: colors.border,
+            ...createShadow({ opacity: 0.05, radius: 8 }),
+        },
+        toggleInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 },
+        iconContainer: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+        textContainer: { flex: 1 },
+        toggleLabel: { fontSize: 15, fontWeight: '700', color: colors.text },
+        toggleDescription: { fontSize: 11, color: colors.textSecondary, marginTop: 2, lineHeight: 14 },
+        infoBox: { backgroundColor: colors.surface, padding: 20, borderRadius: 24, borderWidth: 1, borderColor: colors.border, marginTop: 10 },
+        infoTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+        infoTitle: { color: colors.text, fontSize: 16, fontWeight: '800' },
+        infoSubtitle: { color: colors.tint, fontSize: 13, fontWeight: '700', marginBottom: 12 },
+        infoText: { color: colors.textSecondary, fontSize: 13, lineHeight: 20, marginBottom: 15 },
+        divider: { height: 1, backgroundColor: colors.border, marginVertical: 15 },
+        tipRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+        tipText: { color: colors.text, fontSize: 13, marginLeft: 10, fontWeight: '500' },
+    });
 }

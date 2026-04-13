@@ -1,3 +1,4 @@
+import { DeviceEventEmitter } from 'react-native';
 import axios from "@/services/axios";
 import { getToken } from "./TokenService";
 import getApiBase from "./getApiBase";
@@ -5,6 +6,7 @@ import getApiBase from "./getApiBase";
 const API_BASE = getApiBase();
 
 export async function fetchUserProfile(userId: string) {
+// ... existing fetchUserProfile code ...
   const token = await getToken();
   const response = await axios.get(`${API_BASE}/users/${userId}`, {
     headers: {
@@ -17,6 +19,7 @@ export async function fetchUserProfile(userId: string) {
 
 //Functions handling every profile
 export const fetchProfile = async (userId: string, page: number = 1) => {
+// ... existing fetchProfile code ...
   try {
     const response = await axios.get(`${API_BASE}/profiles/${userId}?page=${page}`);
     return response.data;
@@ -32,6 +35,13 @@ export const followUser = async (userId: string, action: 'follow' | 'unfollow') 
     const response = await axios.post(`${API_BASE}/profiles/${userId}/follow`, {
       action
     });
+    
+    // Emit global event for state sync across components
+    DeviceEventEmitter.emit('user-follow-updated', { 
+        userId, 
+        isFollowing: action === 'follow' 
+    });
+    
     return response.data;
   } catch (error) {
     console.error('Error following user:', error);

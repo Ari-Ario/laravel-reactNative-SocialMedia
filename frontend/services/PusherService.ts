@@ -130,7 +130,7 @@ class PusherService {
                         console.error(`❌ Auth failed with status ${response.status}:`, text);
                         // HTTP errors usually aren't transient network issues, but might be 502/504
                         if (response.status !== 502 && response.status !== 504) {
-                           throw new Error(`Auth failed: ${response.status} - ${text}`);
+                          throw new Error(`Auth failed: ${response.status} - ${text}`);
                         }
                       } else {
                         const data = await response.json();
@@ -142,12 +142,12 @@ class PusherService {
                       console.error(`⚠️ Auth loop attempt ${i + 1}/${retries} failed for ${channel.name}:`, error);
                       // If this was the last attempt, fail permanently
                       if (i === retries - 1) {
-                         console.error(`❌ Channel authorization permanently failed: ${channel.name}`, error);
-                         if (Platform.OS === 'android' && apiUrl.includes('localhost')) {
-                           console.warn('⚠️ Android detected using localhost. Try 10.0.2.2 instead.');
-                         }
-                         callback(error, null);
-                         return; // Exit
+                        console.error(`❌ Channel authorization permanently failed: ${channel.name}`, error);
+                        if (Platform.OS === 'android' && apiUrl.includes('localhost')) {
+                          console.warn('⚠️ Android detected using localhost. Try 10.0.2.2 instead.');
+                        }
+                        callback(error, null);
+                        return; // Exit
                       }
                       // Otherwise wait and retry
                       await new Promise(resolve => setTimeout(resolve, delayMs));
@@ -222,7 +222,7 @@ class PusherService {
 
   private handleReconnection() {
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-    
+
     if (this.connectionAttempts >= this.maxReconnectAttempts) {
       console.error('❌ Pusher: Max reconnection attempts reached');
       return;
@@ -231,9 +231,9 @@ class PusherService {
     this.connectionAttempts++;
     // Exponential backoff: 1s, 2s, 4s, 8s, 16s... capped at 30s
     const delay = Math.min(1000 * Math.pow(2, this.connectionAttempts - 1), 30000);
-    
+
     console.log(`🔄 Pusher: Reconnecting in ${delay}ms (attempt ${this.connectionAttempts}/${this.maxReconnectAttempts})`);
-    
+
     this.reconnectTimer = setTimeout(() => {
       if (!this.isInitialized && this.pusher) {
         console.log('🔄 Pusher: Attempting to connect...');
@@ -566,14 +566,14 @@ class PusherService {
 
         // ✅ PROACTIVE CALL DETECTION: If this looks like a call, flag it
         const msgText = (notification.message || '').toLowerCase();
-        const looksLikeCall = notifType === 'incoming_call' || notifType === 'call_started' || 
-                             msgText.includes('started a video call') || msgText.includes('started an audio call') ||
-                             msgText.includes('is calling you');
+        const looksLikeCall = notifType === 'incoming_call' || notifType === 'call_started' ||
+          msgText.includes('started a video call') || msgText.includes('started an audio call') ||
+          msgText.includes('is calling you');
 
         if (looksLikeCall) {
           notification.isCall = true;
           notification.type = 'call_started';
-          
+
           // Trigger the modal bridge
           try {
             const CollaborationService = require('@/services/ChatScreen/CollaborationService').default;
@@ -587,7 +587,7 @@ class PusherService {
               callType: msgText.includes('audio') ? 'audio' : 'video',
               spaceType: 'direct', // Defaulting for notification-based calls
             });
-          } catch (e) {}
+          } catch (e) { }
         }
 
         // Construct message if missing (common for Laravel notifications with raw data)
@@ -710,7 +710,7 @@ class PusherService {
               callType: msgText.includes('audio') ? 'audio' : 'video',
               spaceType: data.space_type || 'direct',
             });
-          } catch (e) {}
+          } catch (e) { }
         }
       });
 

@@ -144,7 +144,7 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
       } else if (item.type === 'post_deleted' || item.type === NOTIFICATION_TYPES.CALL_ENDED) {
         // Do nothing on toast click
       } else if (['training_needed', NOTIFICATION_TYPES.CHATBOT_TRAINING].includes(item.type)) {
-        router.replace({ pathname: '/chatbotTraining', params: { highlightChatbotTraining: 'true' } });
+        router.push({ pathname: '/chatbotTraining', params: { highlightChatbotTraining: 'true', from: 'notifications' } });
       } else if (['post', NOTIFICATION_TYPES.POST_UPDATED, 'reaction'].includes(item.type) && item.postId) {
         const postData = await fetchPostById(Number(item.postId));
         if (postData?.data) addPost(postData.data);

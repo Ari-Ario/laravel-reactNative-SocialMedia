@@ -93,7 +93,7 @@ const HomePage = () => {
         }
     }, [user?.id]);
 
-    const [activeNotificationType, setActiveNotificationType] = useState<"all" | "regular" | "spaces" | "calls" | "messages" | "activities" | null>(null);
+    const [activeNotificationType, setActiveNotificationType] = useState<"all" | "regular" | "spaces" | "calls" | "messages" | "activities" | "chatbot" | null>(null);
 
     // Refs for notification icons
     const callsIconRef = useRef<any>(null);
@@ -128,7 +128,7 @@ const HomePage = () => {
 
     const handleIconPress = (
         ref: React.RefObject<any>,
-        type: "all" | "regular" | "spaces" | "calls" | "messages" | "activities",
+        type: "all" | "regular" | "spaces" | "calls" | "messages" | "activities" | "chatbot",
         visibleSetter: (v: boolean) => void
     ) => {
         if (ref.current) {
@@ -336,7 +336,7 @@ const HomePage = () => {
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
             {/* Modals and Panels */}
-            {activeNotificationType === 'regular' || activeNotificationType === 'all' ? (
+            {activeNotificationType === 'regular' || activeNotificationType === 'all' || activeNotificationType === 'chatbot' ? (
                 <NotificationPanel
                     visible={isNotificationPanelVisible}
                     onClose={() => {
@@ -466,7 +466,7 @@ const HomePage = () => {
                             <TouchableOpacity
                                 ref={chatbotIconRef}
                                 style={styles.notificationIconContainer}
-                                onPress={() => router.push('/chatbotTraining')}
+                                onPress={() => handleIconPress(chatbotIconRef, 'chatbot', setNotificationPanelVisible)}
                             >
                                 <FontAwesome name="server" size={24} color={colors.text} />
                                 {unreadChatbotTrainingCount > 0 && (
@@ -655,7 +655,7 @@ function getStyles(colors: any, activeScheme: string) {
         },
         listContent: {
             gap: 10,
-            paddingBottom: 20,
+            paddingBottom: 60,
         },
         loadingContainer: {
             flex: 1,

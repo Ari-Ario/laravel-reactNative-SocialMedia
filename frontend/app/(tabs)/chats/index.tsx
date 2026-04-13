@@ -4,14 +4,14 @@ import {
   View, StyleSheet, ActivityIndicator, SectionList,
   TextInput, TouchableOpacity, Text, Modal, Alert,
   RefreshControl, Animated, ScrollView,
-  Platform
+  Platform, Image
 } from "react-native";
 import OfflineService from '@/services/ChatScreen/OfflineServiceChat';
 import RealTimeService from '@/services/ChatScreen/RealTimeServiceChat';
 import NotificationService from '@/services/ChatScreen/NotificationServiceChat';
 import SearchService, { SearchResult } from '@/services/ChatScreen/SearchServiceChat';
 import PusherService from '@/services/PusherService';
-
+import getApiBaseImage from "@/services/getApiBaseImage";
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import AuthContext from "@/context/AuthContext";
 import { usePostStore } from '@/stores/postStore';
@@ -813,7 +813,8 @@ const ChatPage = () => {
 
     try {
       console.log('Searching for:', query);
-      const results = await searchService.searchAll(query, user.id);
+      const response = await searchService.searchAll(query, user.id);
+      const results = response.results || [];
       console.log('Search results:', results.length);
       setSearchResults(results);
 
@@ -918,11 +919,18 @@ const ChatPage = () => {
             styles.searchResultIcon,
             { backgroundColor: `${getSearchColor(item.searchType || '')}15` }
           ]}>
-            <Ionicons
-              name={getSearchIcon(item.searchType || '') as any}
-              size={20}
-              color={getSearchColor(item.searchType || '')}
-            />
+            {item.avatar ? (
+              <Image
+                source={{ uri: `${getApiBaseImage()}/storage/${item.avatar}` }}
+                style={[styles.searchResultIcon, { marginRight: 0 }]}
+              />
+            ) : (
+              <Ionicons
+                name={getSearchIcon(item.searchType || '') as any}
+                size={20}
+                color={getSearchColor(item.searchType || '')}
+              />
+            )}
           </View>
 
           <View style={styles.searchResultText}>
@@ -1344,536 +1352,536 @@ const ChatPage = () => {
 
 function getStyles(colors: any, activeScheme: string) {
   return StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  activitiesButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  activitiesButtonText: {
-    marginLeft: 8,
-    fontSize: 16,
-    color: colors.tint,
-    fontWeight: '600',
-  },
-  loading: {
-    marginTop: 50,
-  },
-  badgeContainer: {
-    backgroundColor: '#FF3B30',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
-    position: 'absolute',
-    top: -8,
-    right: -10,
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  aiSuggestionContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: activeScheme === 'dark' ? colors.surface : '#F0F7FF',
-    marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 8,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: activeScheme === 'dark' ? colors.border : '#D1E8FF',
-  },
-  aiSuggestionText: {
-    flex: 1,
-    marginLeft: 8,
-    marginRight: 8,
-    fontSize: 14,
-    color: activeScheme === 'dark' ? colors.tint : '#1A73E8',
-  },
-  tabsWrapper: {
-    borderBottomWidth: 1,
-    paddingVertical: 10,
-  },
-  tabsContainer: {
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    gap: 8,
-  },
-  tab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: activeScheme === 'dark' ? colors.muted : '#F0F2F5',
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  activeTab: {
-    backgroundColor: colors.tint,
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  activeTabText: {
-    color: '#fff',
-  },
-  tabContentWithIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  tabIcon: {
-    marginRight: 4,
-  },
-  tabBadge: {
-    marginLeft: 6,
-    backgroundColor: '#007AFF',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
-  },
-  tabBadgeText: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  addTabButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: activeScheme === 'dark' ? colors.muted : '#F0F2F5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: colors.text,
-    height: '100%',
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: activeScheme === 'dark' ? colors.muted : '#f5f5f5',
-    marginHorizontal: 16,
-    marginBottom: 8,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 44,
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    gap: 8,
-  },
-  searchingText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  closeButton: {
-    padding: 4,
-  },
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    activitiesButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginHorizontal: 16,
+      marginTop: 12,
+      marginBottom: 8,
+    },
+    activitiesButtonText: {
+      marginLeft: 8,
+      fontSize: 16,
+      color: colors.tint,
+      fontWeight: '600',
+    },
+    loading: {
+      marginTop: 50,
+    },
+    badgeContainer: {
+      backgroundColor: '#FF3B30',
+      borderRadius: 10,
+      minWidth: 20,
+      height: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 4,
+      position: 'absolute',
+      top: -8,
+      right: -10,
+    },
+    badgeText: {
+      color: '#fff',
+      fontSize: 10,
+      fontWeight: '700',
+    },
+    aiSuggestionContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: activeScheme === 'dark' ? colors.surface : '#F0F7FF',
+      marginHorizontal: 16,
+      marginTop: 8,
+      marginBottom: 8,
+      padding: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: activeScheme === 'dark' ? colors.border : '#D1E8FF',
+    },
+    aiSuggestionText: {
+      flex: 1,
+      marginLeft: 8,
+      marginRight: 8,
+      fontSize: 14,
+      color: activeScheme === 'dark' ? colors.tint : '#1A73E8',
+    },
+    tabsWrapper: {
+      borderBottomWidth: 1,
+      paddingVertical: 10,
+    },
+    tabsContainer: {
+      paddingHorizontal: 16,
+      alignItems: 'center',
+      gap: 8,
+    },
+    tab: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 20,
+      backgroundColor: activeScheme === 'dark' ? colors.muted : '#F0F2F5',
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    activeTab: {
+      backgroundColor: colors.tint,
+    },
+    tabText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    activeTabText: {
+      color: '#fff',
+    },
+    tabContentWithIcon: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    tabIcon: {
+      marginRight: 4,
+    },
+    tabBadge: {
+      marginLeft: 6,
+      backgroundColor: '#007AFF',
+      borderRadius: 10,
+      minWidth: 20,
+      height: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 4,
+    },
+    tabBadgeText: {
+      color: '#fff',
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    addTabButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: activeScheme === 'dark' ? colors.muted : '#F0F2F5',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginLeft: 8,
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: 16,
+      color: colors.text,
+      height: '100%',
+    },
+    searchContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: activeScheme === 'dark' ? colors.muted : '#f5f5f5',
+      marginHorizontal: 16,
+      marginBottom: 8,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      height: 44,
+    },
+    searchIcon: {
+      marginRight: 8,
+    },
+    searchingContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 12,
+      gap: 8,
+    },
+    searchingText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    closeButton: {
+      padding: 4,
+    },
 
-  // Search Section Header
-  searchSectionHeader: {
-    backgroundColor: activeScheme === 'dark' ? colors.surface : '#f8f9ff',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  searchSectionHeaderContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  searchSectionHeaderText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.tint,
-    marginLeft: 8,
-    flex: 1,
-  },
-  clearSearchButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    backgroundColor: activeScheme === 'dark' ? colors.muted : '#e0e7ff',
-    borderRadius: 12,
-  },
-  clearSearchText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.tint,
-  },
-  searchSectionCount: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
+    // Search Section Header
+    searchSectionHeader: {
+      backgroundColor: activeScheme === 'dark' ? colors.surface : '#f8f9ff',
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    searchSectionHeaderContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 4,
+    },
+    searchSectionHeaderText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.tint,
+      marginLeft: 8,
+      flex: 1,
+    },
+    clearSearchButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+      backgroundColor: activeScheme === 'dark' ? colors.muted : '#e0e7ff',
+      borderRadius: 12,
+    },
+    clearSearchText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.tint,
+    },
+    searchSectionCount: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
 
-  // Search Result Item
-  searchResultItem: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  searchResultItemEven: {
-    backgroundColor: colors.surface,
-  },
-  searchResultContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  searchResultIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  searchResultText: {
-    flex: 1,
-  },
-  searchResultTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  searchResultDescription: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 6,
-  },
-  searchResultMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  searchResultType: {
-    fontSize: 12,
-    color: '#999',
-    marginRight: 8,
-    textTransform: 'capitalize',
-  },
-  relevanceBadge: {
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  relevanceText: {
-    fontSize: 11,
-    color: '#666',
-    fontWeight: '500',
-  },
-  searchSeparator: {
-    height: 1,
-    backgroundColor: '#f0f0f0',
-    marginLeft: 68,
-  },
+    // Search Result Item
+    searchResultItem: {
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+    },
+    searchResultItemEven: {
+      backgroundColor: colors.surface,
+    },
+    searchResultContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    searchResultIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 12,
+    },
+    searchResultText: {
+      flex: 1,
+    },
+    searchResultTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    searchResultDescription: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginBottom: 6,
+    },
+    searchResultMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    searchResultType: {
+      fontSize: 12,
+      color: '#999',
+      marginRight: 8,
+      textTransform: 'capitalize',
+    },
+    relevanceBadge: {
+      backgroundColor: '#f0f0f0',
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 10,
+    },
+    relevanceText: {
+      fontSize: 11,
+      color: '#666',
+      fontWeight: '500',
+    },
+    searchSeparator: {
+      height: 1,
+      backgroundColor: '#f0f0f0',
+      marginLeft: 68,
+    },
 
-  actionRow: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    gap: 8,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: colors.surface,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  primaryAction: {
-    backgroundColor: colors.tint,
-    borderColor: colors.tint,
-  },
-  actionButtonText: {
-    marginLeft: 6,
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.tint,
-  },
-  spaceTypeSelector: {
-    backgroundColor: colors.surface,
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  spaceTypeTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 16,
-  },
-  spaceTypeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  spaceTypeOption: {
-    width: '30%',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  spaceTypeIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  spaceTypeLabel: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
-  },
-  cancelButton: {
-    marginTop: 8,
-    padding: 12,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    color: '#007AFF',
-    fontWeight: '600',
-  },
-  // loading: {
-  //   marginTop: 100,
-  // },
-  list: {
-    flex: 1,
-  },
-  listContent: {
-    paddingBottom: 20,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: activeScheme === 'dark' ? colors.surface : '#F0F2F5',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  sectionHeaderText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  sectionCount: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    backgroundColor: colors.muted,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  separator: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginLeft: 72,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: 60,
-    paddingHorizontal: 32,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-    marginTop: 24,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  emptyButton: {
-    backgroundColor: colors.tint,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  emptyButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+    actionRow: {
+      flexDirection: 'row',
+      marginHorizontal: 16,
+      marginBottom: 16,
+      gap: 8,
+    },
+    actionButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      backgroundColor: colors.surface,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    primaryAction: {
+      backgroundColor: colors.tint,
+      borderColor: colors.tint,
+    },
+    actionButtonText: {
+      marginLeft: 6,
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.tint,
+    },
+    spaceTypeSelector: {
+      backgroundColor: colors.surface,
+      marginHorizontal: 16,
+      marginBottom: 16,
+      padding: 16,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    spaceTypeTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 16,
+    },
+    spaceTypeGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 12,
+    },
+    spaceTypeOption: {
+      width: '30%',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    spaceTypeIcon: {
+      width: 56,
+      height: 56,
+      borderRadius: 16,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    spaceTypeLabel: {
+      fontSize: 12,
+      color: '#666',
+      textAlign: 'center',
+    },
+    cancelButton: {
+      marginTop: 8,
+      padding: 12,
+      alignItems: 'center',
+    },
+    cancelButtonText: {
+      fontSize: 16,
+      color: '#007AFF',
+      fontWeight: '600',
+    },
+    // loading: {
+    //   marginTop: 100,
+    // },
+    list: {
+      flex: 1,
+    },
+    listContent: {
+      paddingBottom: 60,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: activeScheme === 'dark' ? colors.surface : '#F0F2F5',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+    },
+    sectionHeaderText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      letterSpacing: 0.5,
+      textTransform: 'uppercase',
+    },
+    sectionCount: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      backgroundColor: colors.muted,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 10,
+    },
+    separator: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginLeft: 72,
+    },
+    emptyContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingTop: 60,
+      paddingHorizontal: 32,
+    },
+    emptyTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
+      marginTop: 24,
+      marginBottom: 8,
+    },
+    emptySubtitle: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginBottom: 24,
+    },
+    emptyButton: {
+      backgroundColor: colors.tint,
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      borderRadius: 12,
+    },
+    emptyButtonText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '600',
+    },
 
-  // Old modal styles (kept for reference but not used in new design)
-  searchResultsModal: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  searchResultsContainer: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '80%',
-  },
-  searchResultsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  searchResultsTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  searchResultsList: {
-    maxHeight: 400,
-  },
-  nameInputModal: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 24,
-    width: '90%',
-    maxWidth: 400,
-  },
-  nameInput: {
-    fontSize: 16,
-    padding: 12,
-    backgroundColor: colors.muted,
-    borderRadius: 8,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 24,
-    width: '90%',
-    maxWidth: 400,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 16,
-  },
-  modalInput: {
-    fontSize: 16,
-    padding: 12,
-    backgroundColor: colors.muted,
-    borderRadius: 8,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-  },
-  modalButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  modalButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  modalCancelButton: {
-    backgroundColor: '#f0f0f0',
-  },
-  modalCancelButtonText: {
-    color: colors.text,
-  },
-  modalConfirmButton: {
-    backgroundColor: '#007AFF',
-  },
-  modalConfirmButtonText: {
-    color: '#fff',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  modalHeaderTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  modalHeaderCloseButton: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  addSpaceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  addSpaceIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: activeScheme === 'dark' ? colors.muted : '#E7F3FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  addSpaceText: {
-    fontSize: 16,
-    color: colors.tint,
-    fontWeight: '600',
-  },
-});
+    // Old modal styles (kept for reference but not used in new design)
+    searchResultsModal: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'flex-end',
+    },
+    searchResultsContainer: {
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      maxHeight: '80%',
+    },
+    searchResultsHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    searchResultsTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    searchResultsList: {
+      maxHeight: 400,
+    },
+    nameInputModal: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 24,
+      width: '90%',
+      maxWidth: 400,
+    },
+    nameInput: {
+      fontSize: 16,
+      padding: 12,
+      backgroundColor: colors.muted,
+      borderRadius: 8,
+      marginBottom: 24,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalContent: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 24,
+      width: '90%',
+      maxWidth: 400,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 16,
+    },
+    modalInput: {
+      fontSize: 16,
+      padding: 12,
+      backgroundColor: colors.muted,
+      borderRadius: 8,
+      marginBottom: 24,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    modalButtons: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      gap: 12,
+    },
+    modalButton: {
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: 8,
+    },
+    modalButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    modalCancelButton: {
+      backgroundColor: '#f0f0f0',
+    },
+    modalCancelButtonText: {
+      color: colors.text,
+    },
+    modalConfirmButton: {
+      backgroundColor: '#007AFF',
+    },
+    modalConfirmButtonText: {
+      color: '#fff',
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    modalHeaderTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    modalHeaderCloseButton: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    addSpaceRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    addSpaceIconContainer: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: activeScheme === 'dark' ? colors.muted : '#E7F3FF',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 12,
+    },
+    addSpaceText: {
+      fontSize: 16,
+      color: colors.tint,
+      fontWeight: '600',
+    },
+  });
 }
 
 export default ChatPage;

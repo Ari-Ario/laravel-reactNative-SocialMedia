@@ -1985,6 +1985,7 @@ END:VCALENDAR`;
   async updateSpace(spaceId: string, data: {
     title?: string;
     description?: string;
+    space_type?: string;
     settings?: any;
     ai_personality?: string;
     ai_capabilities?: string[];

@@ -18,6 +18,8 @@ import {
     Animated,
     StatusBar,
     KeyboardAvoidingView,
+    DeviceEventEmitter,
+    FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -106,6 +108,11 @@ export default function TellFriendScreen() {
     const [socialFriends, setSocialFriends] = useState<any[]>([]);
     const [customMessage, setCustomMessage] = useState(SHARE_MESSAGE);
 
+    // Pagination states
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+
     const scrollY = useRef(new Animated.Value(0)).current;
     const confettiAnim = useRef(new Animated.Value(0)).current;
 
@@ -115,6 +122,17 @@ export default function TellFriendScreen() {
             loadContacts();
         }
     }, [activeTab]);
+
+    // Real-time follow status sync
+    useEffect(() => {
+        const subscription = DeviceEventEmitter.addListener('user-follow-updated', ({ userId, isFollowing }) => {
+            console.log('🔄 Syncing follow status in search:', userId, isFollowing);
+            setSearchResults(prev => prev.map(item => 
+                item.user_id.toString() === userId.toString() ? { ...item, is_following: isFollowing } : item
+            ));
+        });
+        return () => subscription.remove();
+    }, []);
 
     const loadContacts = async () => {
         try {
@@ -263,38 +281,69 @@ export default function TellFriendScreen() {
     };
 
     // Debounced global search — same pattern as chats/index.tsx
-    const handleSearchUser = async (query: string) => {
+    const handleSearchUser = async (query: string, pageNum: number = 1, append: boolean = false) => {
         if (query.length < 2) {
             setSearchResults([]);
             setSearching(false);
+            setPage(1);
+            setHasMore(true);
             return;
         }
-        setSearching(true);
+
+        if (append) {
+            setLoadingMore(true);
+        } else {
+            setSearching(true);
+            setPage(1);
+        }
+
         try {
-            const results = await searchService.searchAll(query, user?.id || '');
+            const response = await searchService.searchAll(query, user?.id || '', 50, pageNum, ['contacts']);
+            const results = response.results || [];
+            
             // Filter out current user and map to a flat list
-            setSearchResults(
-                results
-                    .filter(r => r.data?.id?.toString() !== user?.id?.toString())
-                    .map(r => ({
-                        id: r.data?.id || r.id,
-                        name: r.title,
-                        username: r.data?.username || r.description || '',
-                        profile_photo: r.avatar || r.data?.profile_photo || '',
-                        user_id: r.data?.id?.toString() || r.id,
-                        is_following: r.data?.is_following || false,
-                    }))
-            );
+            const formattedResults = results
+                .filter((r: any) => (r.data?.id?.toString() || r.id?.toString()) !== user?.id?.toString())
+                .map((r: any) => ({
+                    id: r.data?.id || r.id,
+                    name: r.title,
+                    username: r.data?.username || r.description || '',
+                    profile_photo: r.avatar || r.data?.profile_photo || '',
+                    user_id: (r.data?.id || r.id).toString(),
+                    is_following: r.data?.is_following || false,
+                }));
+
+            if (append) {
+                setSearchResults(prev => {
+                    const existingIds = new Set(prev.map(item => item.id.toString()));
+                    const uniqueNew = formattedResults.filter((item: any) => !existingIds.has(item.id.toString()));
+                    return [...prev, ...uniqueNew];
+                });
+            } else {
+                setSearchResults(formattedResults);
+            }
+
+            setHasMore(response.has_more);
+            setPage(pageNum);
         } catch (error) {
-            setSearchResults([]);
+            console.error('Search error:', error);
+            if (!append) setSearchResults([]);
         } finally {
             setSearching(false);
+            setLoadingMore(false);
         }
+    };
+
+    const handleLoadMore = () => {
+        if (loadingMore || !hasMore || !searchQuery) return;
+        handleSearchUser(searchQuery, page + 1, true);
     };
 
     const debouncedSearch = (query: string) => {
         if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-        searchTimerRef.current = setTimeout(() => { handleSearchUser(query); }, 300);
+        searchTimerRef.current = setTimeout(() => { 
+            handleSearchUser(query); 
+        }, 300);
     };
 
 
@@ -421,17 +470,18 @@ export default function TellFriendScreen() {
     const SearchResultCard = ({ result }: { result: any }) => {
         const { colors } = useAppTheme();
         const styles = getStyles(colors, activeScheme);
-        const [isFollowing, setIsFollowing] = useState(result.is_following || false);
-        const [loading, setLoading] = useState(false);
-// ... existing logic ...
+        const [localLoading, setLocalLoading] = useState(false);
+
         const handleOpenProfile = () => {
-            setProfileViewUserId(result.id?.toString() || result.user_id?.toString());
+            setProfileViewUserId(result.user_id?.toString());
             setProfilePreviewVisible(true);
         };
 
         const initials = (result.name || '?').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
         const avatarColors = ['#1063FD', '#4CAF50', '#FF9800', '#9C27B0', '#F44336', '#00BCD4'];
         const avatarColor = avatarColors[(result.name?.charCodeAt(0) || 0) % avatarColors.length];
+
+        const isFollowing = result.is_following;
 
         return (
             <MotiView from={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={styles.searchResultCard}>
@@ -454,26 +504,26 @@ export default function TellFriendScreen() {
                 <TouchableOpacity
                     style={[styles.followButton, isFollowing && styles.unfollowButton]}
                     onPress={async () => {
-                        if (loading) return;
-                        setLoading(true);
+                        if (localLoading) return;
+                        setLocalLoading(true);
                         const action = isFollowing ? 'unfollow' : 'follow';
                         try {
-                            await followUser(result.id, action);
-                            setIsFollowing(!isFollowing);
+                            await followUser(result.user_id, action);
+                            // Local update state is handled by DeviceEventEmitter listener in parent
                             if (!isWeb) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                         } catch (error) {
                             Alert.alert('Error', `Could not ${action} user`);
                         } finally {
-                            setLoading(false);
+                            setLocalLoading(false);
                         }
                     }}
-                    disabled={loading}
+                    disabled={localLoading}
                 >
                     <LinearGradient 
                         colors={isFollowing ? ['#ff4b2b', '#ff416c'] : [colors.tint, colors.tint + 'CC']} 
                         style={styles.followButtonGradient}
                     >
-                        {loading ? (
+                        {localLoading ? (
                             <ActivityIndicator size="small" color="#fff" />
                         ) : (
                             <Text style={styles.followButtonText}>{isFollowing ? 'Unfollow' : 'Follow'}</Text>
@@ -516,149 +566,174 @@ export default function TellFriendScreen() {
                 </ScrollView>
             </View>
 
-            {/* Content */}
-            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                {activeTab === 'contacts' && (
-                    <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }}>
-                        {loadingContacts ? (
-                            <ActivityIndicator size="large" color={colors.tint} style={{ marginTop: 40 }} />
-                        ) : (
-                            <>
-                                {socialFriends.length > 0 && (
-                                    <View style={{ marginBottom: 25 }}>
-                                        <View style={styles.sectionHeader}>
-                                            <Ionicons name="sparkles" size={18} color="#FF9800" />
-                                            <Text style={styles.sectionTitle}>Found on Social Media</Text>
+            {activeTab !== 'search' ? (
+                <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+                    {activeTab === 'contacts' && (
+                        <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }}>
+                            {loadingContacts ? (
+                                <ActivityIndicator size="large" color={colors.tint} style={{ marginTop: 40 }} />
+                            ) : (
+                                <>
+                                    {socialFriends.length > 0 && (
+                                        <View style={{ marginBottom: 25 }}>
+                                            <View style={styles.sectionHeader}>
+                                                <Ionicons name="sparkles" size={18} color="#FF9800" />
+                                                <Text style={styles.sectionTitle}>Found on Social Media</Text>
+                                            </View>
+                                            {socialFriends.map(friend => (
+                                                <SearchResultCard key={`social-${friend.id}`} result={{
+                                                    ...friend,
+                                                    user_id: friend.id.toString(),
+                                                    is_following: false
+                                                }} />
+                                            ))}
                                         </View>
-                                        {socialFriends.map(friend => (
-                                            <SearchResultCard key={`social-${friend.id}`} result={{
-                                                ...friend,
-                                                user_id: friend.id.toString(),
-                                                is_following: false // They are discoveries, so initially not followed
-                                            }} />
-                                        ))}
-                                    </View>
-                                )}
+                                    )}
 
-                                <View style={styles.sectionHeader}>
-                                    <Ionicons name="phone-portrait-outline" size={18} color="#4CAF50" />
-                                    <Text style={styles.sectionTitle}>Phone Contacts</Text>
+                                    <View style={styles.sectionHeader}>
+                                        <Ionicons name="phone-portrait-outline" size={18} color="#4CAF50" />
+                                        <Text style={styles.sectionTitle}>Phone Contacts</Text>
+                                    </View>
+
+                                    {contacts.length === 0 ? (
+                                        <View style={styles.emptyContainer}>
+                                            <Ionicons name="people" size={60} color={colors.border} />
+                                            <Text style={styles.emptyTitle}>
+                                                {isWeb && !('contacts' in navigator) ? 'Not Available on this Browser' : 'No contacts found'}
+                                            </Text>
+                                            <Text style={styles.emptyText}>
+                                                {isWeb && !('contacts' in navigator) 
+                                                    ? 'Your browser does not support contact selection. Try the Social or Invite tabs.' 
+                                                    : 'Select contacts from your phone to invite them to Zmzir.'}
+                                            </Text>
+                                            {( !isWeb || ('contacts' in navigator) ) && (
+                                                <TouchableOpacity style={styles.allowButton} onPress={loadContacts}>
+                                                    <Text style={styles.allowButtonText}>
+                                                        {isWeb ? 'Select Contacts' : 'Allow Access'}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            )}
+                                        </View>
+                                    ) : (
+                                        contacts.map(contact => <ContactCard key={contact.id} contact={contact} />)
+                                    )}
+                                </>
+                            )}
+                        </MotiView>
+                    )}
+
+                    {activeTab === 'social' && (
+                        <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} style={styles.socialGrid}>
+                            {SOCIAL_PLATFORMS.map(platform => <SocialButton key={platform.platform} platform={platform} />)}
+                        </MotiView>
+                    )}
+
+                    {activeTab === 'invite' && (
+                        <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }}>
+                            <View style={styles.inviteForm}>
+                                <Text style={styles.sectionTitle}>Direct Branded Invitation</Text>
+                                <View style={styles.inputWrapper}>
+                                    <Ionicons name="mail-outline" size={20} color={colors.tint} style={styles.inputIcon} />
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="friend@example.com"
+                                        placeholderTextColor={colors.textSecondary + '60'}
+                                        value={inviteEmail}
+                                        onChangeText={setInviteEmail}
+                                        keyboardType="email-address"
+                                        autoCapitalize="none"
+                                    />
                                 </View>
 
-                                {contacts.length === 0 ? (
-                                    <View style={styles.emptyContainer}>
-                                        <Ionicons name="people" size={60} color={colors.border} />
-                                        <Text style={styles.emptyTitle}>
-                                            {isWeb && !('contacts' in navigator) ? 'Not Available on this Browser' : 'No contacts found'}
-                                        </Text>
-                                        <Text style={styles.emptyText}>
-                                            {isWeb && !('contacts' in navigator) 
-                                                ? 'Your browser does not support contact selection. Try the Social or Invite tabs.' 
-                                                : 'Select contacts from your phone to invite them to Zmzir.'}
-                                        </Text>
-                                        {( !isWeb || ('contacts' in navigator) ) && (
-                                            <TouchableOpacity style={styles.allowButton} onPress={loadContacts}>
-                                                <Text style={styles.allowButtonText}>
-                                                    {isWeb ? 'Select Contacts' : 'Allow Access'}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        )}
-                                    </View>
-                                ) : (
-                                    contacts.map(contact => <ContactCard key={contact.id} contact={contact} />)
-                                )}
-                            </>
-                        )}
-                    </MotiView>
-                )}
-
-                {activeTab === 'social' && (
-                    <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} style={styles.socialGrid}>
-                        {SOCIAL_PLATFORMS.map(platform => <SocialButton key={platform.platform} platform={platform} />)}
-                    </MotiView>
-                )}
-
-                {activeTab === 'search' && (
-                    <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }}>
-                        <View style={styles.inputWrapper}>
-                            <Ionicons name="search-outline" size={20} color={colors.tint} style={styles.inputIcon} />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Search by name, username or email..."
-                                placeholderTextColor={colors.textSecondary + '60'}
-                                value={searchQuery}
-                                onChangeText={(t) => {
-                                    setSearchQuery(t);
-                                    debouncedSearch(t);
-                                }}
-                                returnKeyType="search"
-                                autoCapitalize="none"
-                                autoCorrect={false}
-                            />
-                            {!!searchQuery && (
-                                <TouchableOpacity
-                                    onPress={() => {
-                                        setSearchQuery('');
-                                        setSearchResults([]);
-                                        if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-                                    }}
-                                >
-                                    <Ionicons name="close-circle" size={18} color={colors.textSecondary + '66'} />
+                                <TouchableOpacity style={[styles.primaryButton, sendingInvite && { opacity: 0.7 }]} onPress={handleSendInvite} disabled={sendingInvite}>
+                                    <LinearGradient colors={[colors.tint, colors.tint + 'CC']} style={styles.primaryButtonGradient}>
+                                        {sendingInvite ? <ActivityIndicator color={colors.surface} /> : <><Ionicons name="paper-plane" size={18} color={colors.surface} /><Text style={styles.primaryButtonText}>Send Invite via SMTP</Text></>}
+                                    </LinearGradient>
                                 </TouchableOpacity>
-                            )}
-                        </View>
-                        {searching && (
-                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 8 }}>
-                                <ActivityIndicator size="small" color={colors.tint} />
-                                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>Searching...</Text>
-                            </View>
-                        )}
-                        {!searching && searchQuery.length >= 2 && searchResults.length === 0 && (
-                            <View style={styles.emptyContainer}>
-                                <Ionicons name="person-add-outline" size={48} color={colors.border} />
-                                <Text style={styles.emptyTitle}>No users found</Text>
-                                <Text style={styles.emptyText}>
-                                    Try a different name or invite them via the Invite tab.
-                                </Text>
-                            </View>
-                        )}
-                        <View style={{ marginTop: 12 }}>
-                            {searchResults.map(res => <SearchResultCard key={res.id} result={res} />)}
-                        </View>
-                    </MotiView>
-                )}
 
-                {activeTab === 'invite' && (
-                    <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }}>
-                        <View style={styles.inviteForm}>
-                            <Text style={styles.sectionTitle}>Direct Branded Invitation</Text>
+                                <View style={styles.editorContainer}>
+                                    <Text style={styles.invitePreviewLabel}>Invitation Message Preview:</Text>
+                                    <TextInput style={styles.messageEditor} multiline value={customMessage} onChangeText={setCustomMessage} placeholderTextColor={colors.textSecondary + '4D'} />
+                                </View>
+                            </View>
+                        </MotiView>
+                    )}
+                </ScrollView>
+            ) : (
+                <View style={{ flex: 1, paddingHorizontal: 20 }}>
+                    <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} style={{ flex: 1 }}>
+                        <View style={styles.searchHeaderSticky}>
                             <View style={styles.inputWrapper}>
-                                <Ionicons name="mail-outline" size={20} color={colors.tint} style={styles.inputIcon} />
+                                <Ionicons name="search-outline" size={20} color={colors.tint} style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="friend@example.com"
+                                    placeholder="Search by name, username or email..."
                                     placeholderTextColor={colors.textSecondary + '60'}
-                                    value={inviteEmail}
-                                    onChangeText={setInviteEmail}
-                                    keyboardType="email-address"
+                                    value={searchQuery}
+                                    onChangeText={(t) => {
+                                        setSearchQuery(t);
+                                        debouncedSearch(t);
+                                    }}
+                                    returnKeyType="search"
                                     autoCapitalize="none"
+                                    autoCorrect={false}
                                 />
+                                {!!searchQuery && (
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            setSearchQuery('');
+                                            setSearchResults([]);
+                                            setPage(1);
+                                            setHasMore(true);
+                                            if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+                                        }}
+                                    >
+                                        <Ionicons name="close-circle" size={18} color={colors.textSecondary + '66'} />
+                                    </TouchableOpacity>
+                                )}
                             </View>
-
-                            <TouchableOpacity style={[styles.primaryButton, sendingInvite && { opacity: 0.7 }]} onPress={handleSendInvite} disabled={sendingInvite}>
-                                <LinearGradient colors={[colors.tint, colors.tint + 'CC']} style={styles.primaryButtonGradient}>
-                                    {sendingInvite ? <ActivityIndicator color={colors.surface} /> : <><Ionicons name="paper-plane" size={18} color={colors.surface} /><Text style={styles.primaryButtonText}>Send Invite via SMTP</Text></>}
-                                </LinearGradient>
-                            </TouchableOpacity>
-
-                            <View style={styles.editorContainer}>
-                                <Text style={styles.invitePreviewLabel}>Invitation Message Preview:</Text>
-                                <TextInput style={styles.messageEditor} multiline value={customMessage} onChangeText={setCustomMessage} placeholderTextColor={colors.textSecondary + '4D'} />
-                            </View>
+                            {searching && (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 8, paddingHorizontal: 5 }}>
+                                    <ActivityIndicator size="small" color={colors.tint} />
+                                    <Text style={{ color: colors.textSecondary, fontSize: 12 }}>Searching...</Text>
+                                </View>
+                            )}
                         </View>
+
+                        <FlatList
+                            data={searchResults}
+                            keyExtractor={(item) => item.id.toString()}
+                            renderItem={({ item }) => <SearchResultCard result={item} />}
+                            scrollEnabled={true}
+                            onEndReached={handleLoadMore}
+                            onEndReachedThreshold={0.5}
+                            ListEmptyComponent={() => {
+                                if (!searching && searchQuery.length >= 2 && searchResults.length === 0) {
+                                    return (
+                                        <View style={styles.emptyContainer}>
+                                            <Ionicons name="person-add-outline" size={48} color={colors.border} />
+                                            <Text style={styles.emptyTitle}>No users found</Text>
+                                            <Text style={styles.emptyText}>
+                                                Try a different name or invite them via the Invite tab.
+                                            </Text>
+                                        </View>
+                                    );
+                                }
+                                return null;
+                            }}
+                            ListFooterComponent={() => (
+                                loadingMore ? (
+                                    <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                                        <ActivityIndicator color={colors.tint} />
+                                        <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 10 }}>Loading more...</Text>
+                                    </View>
+                                ) : null
+                            )}
+                            contentContainerStyle={{ paddingBottom: 100 }}
+                        />
                     </MotiView>
-                )}
-            </ScrollView>
+                </View>
+            )}
 
             {/* Confetti Animation */}
             <Animated.View 

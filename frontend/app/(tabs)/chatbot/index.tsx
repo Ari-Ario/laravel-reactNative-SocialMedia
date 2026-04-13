@@ -32,7 +32,7 @@ export default function ChatbotScreen() {
   const [inputHeight, setInputHeight] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
   const conversationId = useRef(null);
-  const flatListRef = useRef(null);
+  const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
     setMessages([
@@ -48,11 +48,11 @@ export default function ChatbotScreen() {
   const handleSend = async () => {
     if (!input.trim()) return;
 
-    const userMessage = {
+    const userMessage: Message = {
       id: Date.now(),
       text: input,
       sender: 'user',
-      type: 'text' as const,
+      type: 'text',
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -78,11 +78,11 @@ export default function ChatbotScreen() {
       const data = response.data;
       conversationId.current = data.conversation_id;
 
-      const botReply = {
+      const botReply: Message = {
         id: Date.now() + 1,
         text: data.response || "No response",
-        sender: 'bot' as const,
-        type: data.response?.includes('powered by AI') || data.response?.includes('*') ? 'ai' : 'text',
+        sender: 'bot',
+        type: (data.response?.includes('powered by AI') || data.response?.includes('*')) ? 'ai' : 'text',
       };
 
       setMessages(prev => [...prev, botReply]);
@@ -219,12 +219,8 @@ const styles = StyleSheet.create({
     padding: 12,
     borderTopWidth: 1,
     alignItems: 'center',
-    ...(Platform.OS === 'ios' && {
-      bottom: 80
-    }),
-    ...(Platform.OS === 'web' && {
-      bottom: 60,
-    }),
+    marginBottom: Platform.OS === 'ios' ? 80 : 70, // Offset for floating tab bar
+    // backgroundColor: colors.background,
   },
   input: {
     flex: 1,

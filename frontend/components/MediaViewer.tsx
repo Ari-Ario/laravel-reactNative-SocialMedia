@@ -9,6 +9,7 @@ import {
   TouchableWithoutFeedback,
   TouchableOpacity,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { VideoView, useVideoPlayer } from 'expo-video';
@@ -113,7 +114,9 @@ const MediaItemDisplay: React.FC<{
   index: number;
   currentIndex: number;
   getApiBaseImage: () => string;
-}> = ({ media, index, currentIndex, getApiBaseImage }) => {
+  width: number;
+  height: number;
+}> = ({ media, index, currentIndex, getApiBaseImage, width, height }) => {
   const rawPath = media.file_path || media.url || '';
   const isFullUrl = rawPath.startsWith('http') || rawPath.startsWith('data:') || rawPath.startsWith('file:');
 
@@ -140,6 +143,16 @@ const MediaItemDisplay: React.FC<{
     }
   );
 
+  const [isPlaying, setIsPlaying] = useState(isFocused);
+
+  // Sync state with player
+  useEffect(() => {
+    const subscription = player.addListener('playingChange', (event) => {
+      setIsPlaying(event.isPlaying);
+    });
+    return () => subscription.remove();
+  }, [player]);
+
   // Sync play/pause with focus state
   useEffect(() => {
     if (media.type === 'video') {
@@ -155,22 +168,42 @@ const MediaItemDisplay: React.FC<{
 
   if (media.type === 'video') {
     return (
-      <VideoView
-        player={player}
-        style={[styles.mediaContent, isWhiteboard && { backgroundColor: '#fff' }]}
-        contentFit="contain"
-        nativeControls={isMobileWeb ? true : false} // Support native controls on mobile web
-        allowsVideoFrameAnalysis={false}
-        // @ts-ignore
-        posterSource={posterUri ? { uri: posterUri } : undefined}
-      />
+      <View style={[styles.mediaContent, { width, height }, isWhiteboard && { backgroundColor: '#fff' }]}>
+        <VideoView
+          player={player}
+          style={styles.innerMedia}
+          contentFit="contain"
+          nativeControls={false} 
+          allowsVideoFrameAnalysis={false}
+          // @ts-ignore
+          posterSource={posterUri ? { uri: posterUri } : undefined}
+        />
+        {/* Interaction Overlay for Video */}
+        <TouchableOpacity 
+          style={styles.videoOverlay} 
+          activeOpacity={1}
+          onPress={() => {
+            if (player.playing) {
+              player.pause();
+            } else {
+              player.play();
+            }
+          }}
+        >
+          {!isPlaying && (
+            <View style={styles.playIconOverlay}>
+              <Ionicons name="play" size={50} color="white" />
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
     );
   }
 
   return (
     <Image
       source={{ uri }}
-      style={[styles.mediaContent, isWhiteboard && { backgroundColor: '#fff' }]}
+      style={[styles.innerMedia, { width, height }, isWhiteboard && { backgroundColor: '#fff' }]}
       resizeMode="contain"
     />
   );
@@ -206,6 +239,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   isBookmarked,
 }) => {
   const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [showFullCaption, setShowFullCaption] = useState(false);
   const translateX = useSharedValue(-width * startIndex);
@@ -213,6 +247,11 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   const currentIndexShared = useSharedValue(startIndex); // Shared value for gestures
   const overlayOpacity = useSharedValue(0.7);
   const bgOpacity = useSharedValue(1);
+
+  // Handle Dimension changes
+  useEffect(() => {
+    translateX.value = -width * currentIndex;
+  }, [width, currentIndex]);
 
   const { colors } = useAppTheme();
   const { user } = React.useContext(AuthContext);
@@ -348,12 +387,14 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
           <GestureDetector gesture={panGesture}>
             <Animated.View style={[styles.modalContainer, containerStyle]}>
               {mediaItems.map((media, index) => (
-                <View key={`${post?.id}-${media.id}-${index}`} style={[styles.mediaItem, { left: width * index }]}>
+                <View key={`${post?.id}-${media.id}-${index}`} style={[styles.mediaItem, { width, height, left: width * index }]}>
                   <MediaItemDisplay
                     media={media}
                     index={index}
                     currentIndex={currentIndex}
                     getApiBaseImage={getApiBaseImage}
+                    width={width}
+                    height={height}
                   />
                 </View>
               ))}
@@ -505,11 +546,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   mediaContent: {
-    width: '100%',
-    height: '100%',
+    flex: 1,
     backgroundColor: 'black',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  innerMedia: {
+    width: '100%',
+    height: '100%',
+    maxWidth: '100%',
+    maxHeight: '100%',
   },
   captionContainer: {
     position: 'absolute',
@@ -579,5 +625,21 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: 'rgba(0,0,0,0.5)',
     width: '100%',
+  },
+  videoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  playIconOverlay: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
 });

@@ -45,7 +45,7 @@ interface SpaceSettingsModalProps {
     onParticipantRemoved?: (participantId: number) => void;
 }
 
-type SettingsTab = 'info' | 'media' | 'activity';
+type SettingsTab = 'info' | 'media' | 'evolution';
 
 const createShadow = ({ color = '#000', width = 0, height = 2, opacity = 0.1, radius = 4, elevation = 3 }: any) => Platform.select({
     ios: {
@@ -71,7 +71,7 @@ const getStyles = (colors: any, activeScheme: 'light' | 'dark', isWeb: boolean, 
         backgroundColor: colors.background,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
-        maxHeight: '92%',
+        height: '92%',
         width: '100%',
         maxWidth: 1440,
         paddingBottom: Platform.OS === 'ios' ? 40 : 20,
@@ -1309,7 +1309,7 @@ const SpaceSettingsModal: React.FC<SpaceSettingsModalProps> = ({
                             <Ionicons name="flash" size={24} color={colors.tint} />
                             <Text style={dynamicStyles.energyTitle}>Space Activity</Text>
                         </View>
-                        
+
                         <View style={dynamicStyles.energyMeterContainer}>
                             <View style={[dynamicStyles.energyMeterFill, { width: `${energyPercentage}%` }]} />
                         </View>
@@ -1323,16 +1323,16 @@ const SpaceSettingsModal: React.FC<SpaceSettingsModalProps> = ({
                             <Text style={[dynamicStyles.inputLabel, { marginBottom: 12 }]}>Top Contributors</Text>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={dynamicStyles.contributorList}>
                                 {participants.slice(0, 5).map((p, i) => (
-                                    <TouchableOpacity 
-                                        key={p.user_id || i} 
+                                    <TouchableOpacity
+                                        key={p.user_id || i}
                                         style={dynamicStyles.contributorItem}
                                         onPress={() => handleProfilePress(p.user_id)}
                                     >
                                         <View style={dynamicStyles.avatarWrapper}>
                                             {p.user?.profile_photo ? (
-                                                <Image 
-                                                    source={{ uri: resolveProfilePhoto(p.user.profile_photo) }} 
-                                                    style={dynamicStyles.contributorAvatar} 
+                                                <Image
+                                                    source={{ uri: resolveProfilePhoto(p.user.profile_photo) }}
+                                                    style={dynamicStyles.contributorAvatar}
                                                 />
                                             ) : (
                                                 <View style={[dynamicStyles.contributorAvatar, { backgroundColor: colors.tint + '20', justifyContent: 'center', alignItems: 'center' }]}>
@@ -1373,7 +1373,7 @@ const SpaceSettingsModal: React.FC<SpaceSettingsModalProps> = ({
                             </View>
                         </TouchableOpacity>
 
-                        {isOwner && (
+                        {isOwner && space?.space_type !== 'direct' && (
                             <View style={{ padding: 16 }}>
                                 <Text style={[dynamicStyles.inputLabel, { marginBottom: 12 }]}>Who can join?</Text>
                                 <View style={dynamicStyles.privacySwitcher}>
@@ -1411,10 +1411,25 @@ const SpaceSettingsModal: React.FC<SpaceSettingsModalProps> = ({
                             <TouchableOpacity
                                 style={dynamicStyles.dangerButton}
                                 onPress={() => {
-                                    Alert.alert(
-                                        'Delete Space',
-                                        'Permanently delete this space and all its history?',
-                                        [
+                                    const title = 'Delete Space Forever';
+                                    const message = 'The space will be deleted forever for all participants with all messages and belongings. Proceed?';
+
+                                    if (Platform.OS === 'web') {
+                                        if (window.confirm(`${title}\n\n${message}`)) {
+                                            (async () => {
+                                                try {
+                                                    await collaborationService.deleteSpace(space.id);
+                                                    onClose();
+                                                    router.replace('/(tabs)/chats');
+                                                    Alert.alert('Success', 'Space deleted forever.');
+                                                } catch (err) {
+                                                    console.error('Delete error', err);
+                                                    Alert.alert('Error', 'Failed to delete space');
+                                                }
+                                            })();
+                                        }
+                                    } else {
+                                        Alert.alert(title, message, [
                                             { text: 'Cancel', style: 'cancel' },
                                             {
                                                 text: 'Delete',
@@ -1423,15 +1438,16 @@ const SpaceSettingsModal: React.FC<SpaceSettingsModalProps> = ({
                                                     try {
                                                         await collaborationService.deleteSpace(space.id);
                                                         onClose();
-                                                        router.back();
+                                                        router.replace('/(tabs)/chats');
+                                                        Alert.alert('Success', 'Space deleted forever.');
                                                     } catch (err) {
                                                         console.error('Delete error', err);
-                                                        Alert.alert('Error', 'Could not delete space');
+                                                        Alert.alert('Error', 'Failed to delete space');
                                                     }
                                                 },
                                             },
-                                        ]
-                                    );
+                                        ]);
+                                    }
                                 }}
                             >
                                 <Ionicons name="trash-outline" size={20} color="#FF3B30" />
@@ -1522,7 +1538,7 @@ const SpaceSettingsModal: React.FC<SpaceSettingsModalProps> = ({
 
                     {/* Tab Bar Restored */}
                     <View style={dynamicStyles.tabBar}>
-                        {(['info', 'media', 'activity'] as SettingsTab[]).map((tab) => (
+                        {(['info', 'media', 'evolution'] as SettingsTab[]).map((tab) => (
                             <TouchableOpacity
                                 key={tab}
                                 style={[
@@ -1532,7 +1548,7 @@ const SpaceSettingsModal: React.FC<SpaceSettingsModalProps> = ({
                                 onPress={() => setActiveTab(tab)}
                             >
                                 <Ionicons
-                                    name={tab === 'info' ? 'information-circle-outline' : tab === 'media' ? 'images-outline' : 'stats-chart-outline'}
+                                    name={tab === 'info' ? 'information-circle-outline' : tab === 'media' ? 'images-outline' : 'analytics-outline'}
                                     size={18}
                                     color={activeTab === tab ? colors.tint : colors.textSecondary}
                                 />
@@ -1540,7 +1556,7 @@ const SpaceSettingsModal: React.FC<SpaceSettingsModalProps> = ({
                                     dynamicStyles.tabText,
                                     activeTab === tab && dynamicStyles.tabTextActive
                                 ]}>
-                                    {tab === 'info' ? 'Info' : tab === 'media' ? 'Media' : 'Activity'}
+                                    {tab === 'info' ? 'Info' : tab === 'media' ? 'Media' : 'Evolution'}
                                 </Text>
                             </TouchableOpacity>
                         ))}
@@ -1550,7 +1566,7 @@ const SpaceSettingsModal: React.FC<SpaceSettingsModalProps> = ({
                     <View style={dynamicStyles.tabContentContainer}>
                         {activeTab === 'info' && renderInfoTab()}
                         {activeTab === 'media' && renderMediaTab()}
-                        {activeTab === 'activity' && renderActivityTab()}
+                        {activeTab === 'evolution' && renderActivityTab()}
                     </View>
 
                     {/* Save Button (only on Info tab) */}

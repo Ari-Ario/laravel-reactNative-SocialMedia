@@ -49,10 +49,10 @@ const isWeb = Platform.OS === 'web';
 const SettingsItem = ({ name, icon, color, onPress, badge, rightElement }: any) => {
   const { colors, activeScheme } = useAppTheme();
   return (
-    <TouchableOpacity 
-      style={[styles.item, { backgroundColor: colors.card, borderColor: activeScheme === 'dark' ? colors.border : '#000' }]} 
-      onPress={onPress} 
-      activeOpacity={0.7} 
+    <TouchableOpacity
+      style={[styles.item, { backgroundColor: colors.card, borderColor: activeScheme === 'dark' ? colors.border : '#000' }]}
+      onPress={onPress}
+      activeOpacity={0.7}
       disabled={!!rightElement}
     >
       <View style={[styles.iconContainer, { backgroundColor: color + '20', borderColor: activeScheme === 'dark' ? colors.border : 'rgba(0,0,0,0.05)' }]}>
@@ -75,7 +75,7 @@ const Page = () => {
   const { user, setUser } = useContext(AuthContext);
   const { unreadModerationCount } = useNotificationStore();
   const { bookmarks } = useBookmarkStore();
-  
+
   const [activeTab, setActiveTab] = useState<'settings' | 'stats'>('settings');
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const [themeMenuPosition, setThemeMenuPosition] = useState<AnchorPosition | undefined>(undefined);
@@ -283,7 +283,7 @@ const Page = () => {
         const result = await webCameraRef.current.takePictureAsync();
         if (result && result.uri) {
           setIsCameraVisible(false);
-          
+
           // Aggressive compression for profile photo (~20KB target)
           const compressedUri = await MediaCompressor.compressImage(result.uri, {
             maxWidth: 200,
@@ -329,12 +329,12 @@ const Page = () => {
       {
         title: 'Notifications',
         items: [
-          { 
-            name: 'Web Push (Offline)', 
-            icon: 'notifications-outline', 
-            color: '#FF2D55', 
+          {
+            name: 'Web Push (Offline)',
+            icon: 'notifications-outline',
+            color: '#FF2D55',
             rightElement: (
-              <Switch 
+              <Switch
                 value={pushEnabled}
                 onValueChange={handlePushToggle}
                 trackColor={{ false: '#eee', true: '#30D158' }}
@@ -371,11 +371,11 @@ const Page = () => {
     ];
 
     if (user?.ai_admin) {
-      sections[2].items.splice(2, 0, { 
-        name: 'Chatbot Training', 
-        icon: 'chatbubbles-outline', 
-        color: '#0084ff', 
-        onPress: () => router.push({ pathname: '/chatbotTraining', params: { from: 'settings' } }) 
+      sections[2].items.splice(2, 0, {
+        name: 'Chatbot Training',
+        icon: 'chatbubbles-outline',
+        color: '#0084ff',
+        onPress: () => router.push({ pathname: '/chatbotTraining', params: { from: 'settings' } })
       });
     }
 
@@ -394,7 +394,7 @@ const Page = () => {
   return (
     <View style={[styles.mainContainer, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={activeScheme === 'dark' ? 'light-content' : 'dark-content'} />
-      
+
       <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 60 : 40 }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Settings & Stats</Text>
         <View ref={themeIconRef}>
@@ -412,16 +412,16 @@ const Page = () => {
       />
 
       <View style={[styles.tabBar, { backgroundColor: colors.muted }]}>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'settings' && { backgroundColor: colors.tint }]} 
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'settings' && { backgroundColor: colors.tint }]}
           onPress={() => setActiveTab('settings')}
         >
           <Text style={[styles.tabText, activeTab === 'settings' ? { color: '#fff' } : { color: colors.textSecondary }]}>
             Profile & Security
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'stats' && { backgroundColor: colors.tint }]} 
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'stats' && { backgroundColor: colors.tint }]}
           onPress={() => setActiveTab('stats')}
         >
           <Text style={[styles.tabText, activeTab === 'stats' ? { color: '#fff' } : { color: colors.textSecondary }]}>
@@ -463,16 +463,16 @@ const Page = () => {
                   facing="front"
                 >
                   <View style={styles.cameraOverlay}>
-                    <TouchableOpacity 
-                      onPress={() => setIsCameraVisible(false)} 
+                    <TouchableOpacity
+                      onPress={() => setIsCameraVisible(false)}
                       style={styles.closeCameraButton}
                     >
                       <Ionicons name="close" size={30} color="white" />
                     </TouchableOpacity>
 
                     <View style={styles.cameraBottomControls}>
-                      <TouchableOpacity 
-                        onPress={handleWebCapture} 
+                      <TouchableOpacity
+                        onPress={handleWebCapture}
                         style={styles.captureButton}
                         disabled={saving}
                       >
@@ -524,7 +524,7 @@ const Page = () => {
                 <View key={section.title} style={styles.section}>
                   <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{section.title}</Text>
                   {section.items.map((item: any) => (
-                    <SettingsItem 
+                    <SettingsItem
                       key={item.name}
                       name={item.name}
                       icon={item.icon}
@@ -565,7 +565,7 @@ const Page = () => {
                   <Text style={[styles.statLabel, { color: colors.textSecondary }]}>App Influence</Text>
                 </View>
               </View>
-              
+
               <View style={[styles.aiInsightsCard, { backgroundColor: colors.tint + '10', borderLeftColor: colors.tint }]}>
                 <Text style={[styles.insightTitle, { color: colors.tint }]}>AI Engagement Trends</Text>
                 <Text style={[styles.insightText, { color: colors.textSecondary }]}>Your activity suggests a high interest in creative communities. Your content interactions are 100% compliant.</Text>
@@ -592,7 +592,7 @@ const styles = StyleSheet.create({
   activeTab: { backgroundColor: '#0084ff' },
   tabText: { color: 'rgba(0,0,0,0.4)', fontWeight: '600', fontSize: 13 },
   activeTabText: { color: '#fff' },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 80 },
   profileCard: { backgroundColor: 'rgba(0,0,0,0.02)', borderRadius: 24, padding: 24, alignItems: 'center', marginBottom: 24 },
   photoWrapper: { position: 'relative', marginBottom: 16 },
   profilePhoto: { width: 100, height: 100, borderRadius: 50, borderWidth: 2, borderColor: '#0084ff', justifyContent: 'center', alignItems: 'center' },

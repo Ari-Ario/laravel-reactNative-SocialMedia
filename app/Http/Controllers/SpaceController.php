@@ -2534,28 +2534,29 @@ public function endCall(Request $request, $id)
         $query = $request->input('query');
         $types = $request->input('types', ['spaces', 'chats', 'contacts', 'messages', 'posts']);
         $limit = $request->input('limit', 20);
+        $page = $request->input('page', 1);
         $userId = auth()->id();
 
         $results = [];
 
         if (in_array('spaces', $types)) {
-            $results = array_merge($results, $this->handleSpacesSearch($query, $userId, $limit));
+            $results = array_merge($results, $this->handleSpacesSearch($query, $userId, $limit, $page));
         }
 
         if (in_array('contacts', $types)) {
-            $results = array_merge($results, $this->handleContactsSearch($query, $userId, $limit));
+            $results = array_merge($results, $this->handleContactsSearch($query, $userId, $limit, $page));
         }
 
         if (in_array('chats', $types)) {
-            $results = array_merge($results, $this->handleChatsSearch($query, $userId, $limit));
+            $results = array_merge($results, $this->handleChatsSearch($query, $userId, $limit, $page));
         }
 
         if (in_array('messages', $types)) {
-            $results = array_merge($results, $this->handleMessagesSearch($query, $userId, $limit));
+            $results = array_merge($results, $this->handleMessagesSearch($query, $userId, $limit, $page));
         }
 
         if (in_array('posts', $types)) {
-            $results = array_merge($results, $this->handlePostsSearch($query, $userId, $limit));
+            $results = array_merge($results, $this->handlePostsSearch($query, $userId, $limit, $page));
         }
 
         // Sort by relevance
@@ -2569,11 +2570,13 @@ public function endCall(Request $request, $id)
         return response()->json([
             'results' => $results,
             'query' => $query,
+            'current_page' => (int) $page,
             'total' => count($results),
+            'has_more' => count($results) >= $limit
         ]);
     }
 
-    private function handleSpacesSearch($query, $userId, $limit)
+    private function handleSpacesSearch($query, $userId, $limit, $page = 1)
     {
         try {
             $spaces = CollaborationSpace::where(function($q) use ($query) {
@@ -2587,6 +2590,7 @@ public function endCall(Request $request, $id)
                       });
                 })
                 ->with('creator')
+                ->skip(($page - 1) * $limit)
                 ->limit($limit)
                 ->get();
 
@@ -2613,7 +2617,7 @@ public function endCall(Request $request, $id)
         }
     }
 
-    private function handleContactsSearch($query, $userId, $limit)
+    private function handleContactsSearch($query, $userId, $limit, $page = 1)
     {
         try {
             $contacts = User::where('id', '!=', $userId)
@@ -2623,6 +2627,7 @@ public function endCall(Request $request, $id)
                       ->orWhere('username', 'like', "%{$query}%")
                       ->orWhere('email', 'like', "%{$query}%");
                 })
+                ->skip(($page - 1) * $limit)
                 ->limit($limit)
                 ->get();
 
@@ -2653,7 +2658,7 @@ public function endCall(Request $request, $id)
         }
     }
 
-    private function handleChatsSearch($query, $userId, $limit)
+    private function handleChatsSearch($query, $userId, $limit, $page = 1)
     {
         try {
             $chats = User::whereHas('spaces', function($q) use ($userId) {
@@ -2667,6 +2672,7 @@ public function endCall(Request $request, $id)
                     $q->where('name', 'like', "%{$query}%")
                       ->orWhere('username', 'like', "%{$query}%");
                 })
+                ->skip(($page - 1) * $limit)
                 ->limit($limit)
                 ->get();
 
@@ -2693,7 +2699,7 @@ public function endCall(Request $request, $id)
         }
     }
 
-    private function handleMessagesSearch($query, $userId, $limit)
+    private function handleMessagesSearch($query, $userId, $limit, $page = 1)
     {
         try {
             // Search messages in spaces where user is participant
@@ -2705,6 +2711,7 @@ public function endCall(Request $request, $id)
                 })
                 ->with(['user', 'conversation.collaborationSpace'])
                 ->orderBy('created_at', 'desc')
+                ->skip(($page - 1) * $limit)
                 ->limit($limit)
                 ->get();
 
@@ -2733,12 +2740,13 @@ public function endCall(Request $request, $id)
         }
     }
 
-    private function handlePostsSearch($query, $userId, $limit)
+    private function handlePostsSearch($query, $userId, $limit, $page = 1)
     {
         try {
             $posts = Post::where('caption', 'like', "%{$query}%")
                 ->with(['user', 'media'])
                 ->orderBy('created_at', 'desc')
+                ->skip(($page - 1) * $limit)
                 ->limit($limit)
                 ->get();
 

@@ -1796,7 +1796,6 @@ const SpaceDetailScreen = () => {
         currentUserRole={space?.my_role || 'participant'}
         onSpaceUpdated={(updatedSpace) => {
           setSpace(updatedSpace);
-          setShowSettingsModal(false);
         }}
         onParticipantRoleChanged={(participantId, newRole) => {
           setParticipants(prev =>

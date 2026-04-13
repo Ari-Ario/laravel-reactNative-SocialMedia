@@ -63,8 +63,8 @@ class SearchService {
     }));
   }
 
-  async searchAll(query: string, userId: string): Promise<SearchResult[]> {
-    if (!query.trim()) return [];
+  async searchAll(query: string, userId: string, limit: number = 50, page: number = 1, types: string[] = ['spaces', 'chats', 'contacts']): Promise<any> {
+    if (!query.trim()) return { results: [] };
 
     const token = await getToken();
     const API_BASE = getApiBase();
@@ -73,29 +73,37 @@ class SearchService {
       query,
       userId,
       apiBase: API_BASE,
-      hasToken: !!token
+      hasToken: !!token,
+      limit,
+      page
     });
 
     try {
       const response = await axios.post('/search', {
         query,
         user_id: userId,
-        types: ['spaces', 'chats', 'contacts'],
-        limit: 20,
+        types,
+        limit,
+        page
       });
 
       console.log('Search response status:', response.status);
       const data = response.data;
       console.log('Search results:', data);
 
-      return data.results || [];
+      return data;
 
     } catch (error) {
       console.error('Search API error:', error);
 
       // Fallback to local search
       console.log('Falling back to local search...');
-      return this.fallbackLocalSearch(query, userId);
+      const localResults = await this.fallbackLocalSearch(query, userId);
+      return {
+        results: localResults,
+        current_page: 1,
+        has_more: false
+      };
     }
   }
 

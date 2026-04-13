@@ -1,5 +1,5 @@
 // components/Notifications/NotificationPanel.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import {
     View,
     Text,
@@ -26,11 +26,12 @@ import { fetchPostById } from '@/services/PostService';
 import { fetchProfile } from '@/services/UserService';
 import PushNotificationService from '@/services/PushNotificationService';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import AuthContext from '@/context/AuthContext';
 
 interface NotificationPanelProps {
     visible: boolean;
     onClose: () => void;
-    initialType?: 'all' | 'calls' | 'messages' | 'spaces' | 'activities' | 'regular' | 'admin';
+    initialType?: 'all' | 'calls' | 'messages' | 'spaces' | 'activities' | 'regular' | 'admin' | 'chatbot';
     anchorPosition?: { top: number; left?: number; right?: number; arrowOffset?: number };
 }
 
@@ -41,6 +42,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
     anchorPosition,
 }) => {
     const { colors, activeScheme } = useAppTheme();
+    const { user } = useContext(AuthContext);
     const {
         getRegularNotifications,
         markAsRead,
@@ -49,12 +51,15 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         getMessages,
         getSpaces,
         getActivities,
+        getChatbotNotifications,
+        getAdminNotifications,
+        unreadChatbotTrainingCount,
     } = useNotificationStore();
 
     const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
     const { addPost } = usePostStore();
 
-    const [activeFilter, setActiveFilter] = useState<'all' | 'calls' | 'messages' | 'spaces' | 'activities' | 'regular' | 'admin'>(initialType);
+    const [activeFilter, setActiveFilter] = useState<'all' | 'calls' | 'messages' | 'spaces' | 'activities' | 'regular' | 'admin' | 'chatbot'>(initialType);
     const [pushEnabled, setPushEnabled] = useState(true);
 
     const handlePushToggle = async (value: boolean) => {
@@ -85,8 +90,10 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 return getActivities();
             case 'regular':
                 return getRegularNotifications();
+            case 'chatbot':
+                return getChatbotNotifications();
             case 'admin':
-                return getRegularNotifications().filter(n => n.type === NOTIFICATION_TYPES.MODERATION_ACTION);
+                return getAdminNotifications();
             case 'all':
             default:
                 const allNotifications = [
@@ -95,6 +102,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                     ...getMessages(),
                     ...getSpaces(),
                     ...getActivities(),
+                    ...(user?.ai_admin ? getChatbotNotifications() : []),
+                    ...getAdminNotifications(),
                 ];
                 return allNotifications.sort((a, b) =>
                     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -235,9 +244,9 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 const spaceId = resolveSpaceId();
                 const activityId = item.data?.activity?.id || item.data?.activity_id;
                 if (spaceId) {
-                    router.push({ 
-                        pathname: '/(spaces)/[id]', 
-                        params: { id: spaceId, tab: 'calendar', activity: activityId ? activityId.toString() : undefined } 
+                    router.push({
+                        pathname: '/(spaces)/[id]',
+                        params: { id: spaceId, tab: 'calendar', activity: activityId ? activityId.toString() : undefined }
                     });
                     onClose();
                     return;
@@ -281,10 +290,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             }
 
             if (['training_needed', NOTIFICATION_TYPES.CHATBOT_TRAINING].includes(item.type)) {
-                router.replace({
-                    pathname: '/chatbotTraining',
-                    params: { highlightChatbotTraining: 'true' },
-                });
+                router.push({ pathname: '/chatbotTraining', params: { highlightChatbotTraining: 'true', from: 'notifications' } });
                 onClose();
                 return;
             }
@@ -354,7 +360,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         return (
             <TouchableOpacity
                 style={[
-                    styles.notificationItem, 
+                    styles.notificationItem,
                     { borderBottomColor: colors.border },
                     !item.isRead && styles.unreadNotification,
                     !item.isRead && { backgroundColor: colors.primary + '10', borderLeftColor: colors.primary }
@@ -368,11 +374,11 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                         handleAvatarPress(item);
                     }}
                 >
-                    <Avatar 
-                        source={item.avatar} 
-                        name={item.title} 
-                        size={48} 
-                        showStatus={false} 
+                    <Avatar
+                        source={item.avatar}
+                        name={item.title}
+                        size={48}
+                        showStatus={false}
                     />
                 </TouchableOpacity>
 
@@ -508,6 +514,18 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                     </View>
                 )}
             </TouchableOpacity>
+
+            {!!user?.ai_admin && (
+                <TouchableOpacity style={[styles.filterTab, { backgroundColor: colors.muted }, activeFilter === 'chatbot' && styles.activeFilterTab]} onPress={() => setActiveFilter('chatbot')}>
+                    <Ionicons name="school" size={16} color={activeFilter === 'chatbot' ? colors.tint : colors.textSecondary} />
+                    <Text style={[styles.filterTabText, { color: colors.textSecondary }, activeFilter === 'chatbot' && { color: colors.tint, fontWeight: '600' }]}>AI Training</Text>
+                    {unreadChatbotTrainingCount > 0 && (
+                        <View style={[styles.filterBadge, { backgroundColor: colors.tint, borderColor: colors.surface }]}>
+                            <Text style={styles.filterBadgeText}>{unreadChatbotTrainingCount}</Text>
+                        </View>
+                    )}
+                </TouchableOpacity>
+            )}
 
             <TouchableOpacity style={[styles.filterTab, { backgroundColor: colors.muted }, activeFilter === 'admin' && styles.activeFilterTab]} onPress={() => setActiveFilter('admin')}>
                 <Ionicons name="shield-checkmark" size={16} color={activeFilter === 'admin' ? '#FF3B30' : colors.textSecondary} />
