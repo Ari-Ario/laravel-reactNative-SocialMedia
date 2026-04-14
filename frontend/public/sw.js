@@ -23,12 +23,14 @@ self.addEventListener('push', (event) => {
   try {
     data = event.data ? event.data.json() : {};
   } catch (e) {
-    // If not JSON, try text
     data = { title: event.data ? event.data.text() : 'New Notification' };
   }
 
+  // Extract nested Laravel WebPush data
   const payloadData = data.data || {};
-  const isCall = data.type === 'call' || data.type === 'incoming_call' || payloadData.type === 'call' || payloadData.type === 'incoming_call';
+  const type = payloadData.type || data.type || 'default';
+  const isCall = type === 'call' || type === 'incoming_call';
+  
   const title = data.title || payloadData.title || (isCall ? '📞 Incoming Call' : 'New Notification');
   const body = data.body || data.message || payloadData.body || payloadData.message || '';
   const spaceId = payloadData.spaceId || data.spaceId;
@@ -38,7 +40,7 @@ self.addEventListener('push', (event) => {
     icon: '/favicon.png',
     badge: '/favicon.png',
     data: {
-      type: payloadData.type || data.type,
+      type,
       spaceId,
       postId: payloadData.postId || data.postId,
       userId: payloadData.userId || data.userId,
@@ -46,19 +48,20 @@ self.addEventListener('push', (event) => {
         ? `/${spaceId}?tab=chat&joining=1&call=${payloadData.callId || data.callId || ''}`
         : (spaceId ? `/${spaceId}` : '/'),
     },
-    // Call notifications: require explicit interaction and vibrate
+    // Interaction settings
     ...(isCall ? {
       requireInteraction: true,
       vibrate: [500, 200, 500, 200, 500],
-      tag: `call-${spaceId}`,   // deduplicate: one popup per call
+      tag: `call-${spaceId}`, // One banner per call session
       renotify: true,
       actions: [
         { action: 'accept', title: '✅ Accept' },
         { action: 'decline', title: '❌ Decline' },
       ],
     } : {
-      vibrate: [200, 100, 200],
-      tag: `notif-${Date.now()}`,
+      vibrate: [200, 100],
+      tag: type === 'message' && spaceId ? `msg-${spaceId}` : `notif-${Date.now()}`,
+      renotify: true,
     }),
   };
 

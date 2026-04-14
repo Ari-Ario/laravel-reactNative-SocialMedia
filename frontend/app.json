@@ -44,6 +44,8 @@
       "shortName": "zmzir",
       "lang": "en",
       "description": "Zmzir - Collaborative Spaces & Real-time Communication",
+      "themeColor": "#ffffff",
+      "backgroundColor": "#ffffff",
       "build": {
         "babel": {
           "include": [

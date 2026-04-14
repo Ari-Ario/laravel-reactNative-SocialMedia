@@ -6,7 +6,7 @@
         
         {{-- PWA and Mobile Icons --}}
         <link rel="manifest" href="/manifest.json">
-        <link rel="apple-touch-icon" href="/favicon.png">
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
         <link rel="icon" type="image/png" href="/favicon.png">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="default">

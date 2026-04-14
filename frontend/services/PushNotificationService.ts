@@ -141,7 +141,7 @@ class PushNotificationService {
       }
 
       // Register and wait for service worker
-      await navigator.serviceWorker.register('/expo-service-worker.js');
+      await navigator.serviceWorker.register('/sw.js');
       const registration = await navigator.serviceWorker.ready;
 
       // Get existing or create new subscription
