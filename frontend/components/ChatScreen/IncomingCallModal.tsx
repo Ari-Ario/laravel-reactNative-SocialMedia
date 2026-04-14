@@ -72,7 +72,7 @@ export const IncomingCallModal: React.FC = () => {
         try {
           if (player) {
             player.loop = true;
-            await player.play();
+            await player.play().catch(e => console.warn('Ringtone autoplay blocked by browser:', e));
             console.log("🔔 Zen ringtone playing");
           }
         } catch (e: any) {
@@ -185,7 +185,7 @@ export const IncomingCallModal: React.FC = () => {
       onTouchStart={() => {
         if (Platform.OS === 'web' && player && !player.playing) {
           try {
-            player.play();
+            player.play().catch(e => console.warn('End call tone blocked:', e));
           } catch (e) {
             console.warn("Audio unlock failed:", e);
           }

@@ -55,20 +55,20 @@ const VoiceMessagePlayer: React.FC<VoiceMessagePlayerProps> = ({
     const togglePlay = () => {
         if (status.playbackState === 'finished') {
             player.seekTo(0);
-            player.play();
+            player.play().catch(e => console.warn('Voice play blocked:', e));
         } else if (status.playing) {
             player.pause();
         } else {
             // ✅ IMPROVED Web Resumption: 
             // In some Chrome versions, a simple .play() might fail if the context was suspended.
             // We explicitly trigger play and check if we need to 'prime' it.
-            player.play();
+            player.play().catch(e => console.warn('Voice play blocked:', e));
 
             // Safety check for Chrome: if after a short delay it's still not playing, try again
             if (Platform.OS === 'web') {
                 setTimeout(() => {
                     if (!player.playing) {
-                        player.play();
+                        player.play().catch(e => console.warn('Voice play blocked:', e));
                     }
                 }, 50);
             }

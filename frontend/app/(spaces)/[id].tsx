@@ -871,7 +871,7 @@ const SpaceDetailScreen = () => {
       
       startCall({
         spaceId: id as string,
-        spaceType: 'group',
+        spaceType: space?.space_type === 'direct' ? 'direct' : 'group',
         type,
         callId: call.id
       });

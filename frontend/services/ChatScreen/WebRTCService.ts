@@ -76,31 +76,9 @@ class WebRTCService {
   private iceServers = {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
-      // Reduced redundant Google STUNs to prevent massive UDP timeouts on strict 5G networks
-      // Metered.ca TURN (UDP priority, TCP fallback)
-      {
-        urls: [
-          'turn:relay.metered.ca:80',
-          'turn:relay.metered.ca:443',
-          'turn:relay.metered.ca:80?transport=tcp',
-          'turn:relay.metered.ca:443?transport=tcp',
-          'turns:relay.metered.ca:443?transport=tcp'
-        ],
-        username: 'e29e254c0f8dd6a79e02e27f',
-        credential: 'yv2vWAMF9ctoJoLv',
-      },
-      // OpenRelay Fallback
-      {
-        urls: [
-          'turn:openrelay.metered.ca:80',
-          'turn:openrelay.metered.ca:443',
-          'turn:openrelay.metered.ca:80?transport=tcp',
-          'turn:openrelay.metered.ca:443?transport=tcp',
-          'turns:openrelay.metered.ca:443?transport=tcp'
-        ],
-        username: 'openrelayproject',
-        credential: 'openrelayproject',
-      },
+      // Private Dedicated Coturn Server (Unlimited Bandwidth via DigitalOcean)
+      { urls: 'turn:159.89.101.120:3478', username: 'ari_admin', credential: 'zmzir_secure_relay_2026' },
+      { urls: 'turn:159.89.101.120:3478?transport=tcp', username: 'ari_admin', credential: 'zmzir_secure_relay_2026' },
     ],
     iceCandidatePoolSize: 10,
     iceTransportPolicy: 'all' as RTCIceTransportPolicy,
@@ -122,23 +100,25 @@ class WebRTCService {
       if (nav.connection) {
         const conn = nav.connection;
         this.isMobileNetwork = ['cellular', '4g', '3g', '2g'].includes(conn.effectiveType) || conn.saveData === true;
-        
-        conn.addEventListener('change', () => {
-          const oldType = this.isMobileNetwork;
-          const newIsMobile = ['cellular', '4g', '3g', '2g'].includes(conn.effectiveType);
-          
-          if (oldType !== newIsMobile) {
-            console.log(`🔄 Network handover detected: ${oldType ? 'Mobile' : 'WiFi'} → ${newIsMobile ? 'Mobile' : 'WiFi'}`);
-            this.isMobileNetwork = newIsMobile;
-            
-            // Restart all peer connections to negotiate optimized paths for the new interface
-            this.peerConnections.forEach((_, peerId) => {
-              this.retryWithFallbackServers(peerId);
-            });
-          } else {
-            this.applyBitrateToAllPeers();
-          }
-        });
+
+        if (typeof conn.addEventListener === 'function') {
+          conn.addEventListener('change', () => {
+            const oldType = this.isMobileNetwork;
+            const newIsMobile = ['cellular', '4g', '3g', '2g'].includes(conn.effectiveType);
+
+            if (oldType !== newIsMobile) {
+              console.log(`🔄 Network handover detected: ${oldType ? 'Mobile' : 'WiFi'} → ${newIsMobile ? 'Mobile' : 'WiFi'}`);
+              this.isMobileNetwork = newIsMobile;
+
+              // Restart all peer connections to negotiate optimized paths for the new interface
+              this.peerConnections.forEach((_, peerId) => {
+                this.retryWithFallbackServers(peerId);
+              });
+            } else {
+              this.applyBitrateToAllPeers();
+            }
+          });
+        }
       } else if (/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
         // Safari / iOS Fallback
         this.isMobileNetwork = true;
@@ -146,7 +126,7 @@ class WebRTCService {
     } else {
       // Native (iOS/Android) — assume potentially mobile if not on WiFi would be ideal
       // but react-native-netinfo would be needed. For now assume conservative.
-      this.isMobileNetwork = true; 
+      this.isMobileNetwork = true;
     }
     console.log(`📞 Mobile network detection completed: ${this.isMobileNetwork}`);
   }
@@ -172,14 +152,14 @@ class WebRTCService {
     // Used for initial getUserMedia — low fr minimizes encoding load
     medium: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24, max: 30 } },
     // Used on ICE restart retry — minimal to maximise reconnect success
-    low:    { width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 15, max: 20 } },
+    low: { width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 15, max: 20 } },
   };
 
   // Max encoder bitrate applied via RTCRtpSender.setParameters() after ICE connects.
   // This is a soft ceiling — the encoder stays below this under normal conditions.
   private static readonly BITRATE_CAPS = {
     video: { web: 1200_000, native: 300_000 }, // bps — native/mobile down to 300k for 4G stability
-    audio: { web:   64_000, native:  32_000 }, // bps — Opus is very efficient
+    audio: { web: 64_000, native: 32_000 }, // bps — Opus is very efficient
   };
 
   async getLocalStream(
@@ -188,7 +168,7 @@ class WebRTCService {
     qualityProfile: 'medium' | 'low' | 'auto' = 'auto'
   ): Promise<MediaStream | null> {
     // Determine profile if 'auto'
-    const actualProfile = qualityProfile === 'auto' 
+    const actualProfile = qualityProfile === 'auto'
       ? (this.isMobileNetwork ? 'low' : 'medium')
       : qualityProfile;
 
@@ -263,13 +243,13 @@ class WebRTCService {
       for (const sender of senders) {
         if (!sender.track || !sender.getParameters) continue;
         const kind = sender.track.kind as 'video' | 'audio';
-        
+
         // Mesh Scaling: Divide upload bandwidth by number of peers
         const activePeersCount = Math.max(1, this.peerConnections.size);
         const baselineCap = kind === 'video'
           ? (isDesktopWeb ? WebRTCService.BITRATE_CAPS.video.web : WebRTCService.BITRATE_CAPS.video.native)
           : (isDesktopWeb ? WebRTCService.BITRATE_CAPS.audio.web : WebRTCService.BITRATE_CAPS.audio.native);
-        
+
         // Scale down directly to save weak Wi-Fi upload links
         const capBps = kind === 'video' ? Math.floor(baselineCap / activePeersCount) : baselineCap;
 
@@ -283,9 +263,9 @@ class WebRTCService {
 
         if (this.isMobileNetwork || isMobile) {
           if (kind === 'audio') {
-             (params as any).degradationPreference = 'maintain-framerate';
+            (params as any).degradationPreference = 'maintain-framerate';
           } else {
-             (params as any).degradationPreference = 'maintain-resolution';
+            (params as any).degradationPreference = 'maintain-resolution';
           }
         }
 
@@ -602,8 +582,8 @@ class WebRTCService {
 
       // ✅ Check signaling state before applying remote offer
       if (peerConnection.signalingState !== 'stable' && peerConnection.signalingState !== 'have-local-offer') {
-          console.warn(`⚠️ Signaling state is ${peerConnection.signalingState}, cannot handle offer from ${fromId}.`);
-          return;
+        console.warn(`⚠️ Signaling state is ${peerConnection.signalingState}, cannot handle offer from ${fromId}.`);
+        return;
       }
 
       await peerConnection.setRemoteDescription(offerDescription);
@@ -707,11 +687,9 @@ class WebRTCService {
       return this.peerConnections.get(peerId)!;
     }
 
-    console.log(`📞 Creating new peer connection for ${peerId}`);
-
     const pcConfig = {
       ...this.iceServers,
-      iceTransportPolicy: 'all' as RTCIceTransportPolicy,
+      iceTransportPolicy: this.isMobileNetwork ? 'relay' : 'all',
       sdpSemantics: 'unified-plan',
     };
 
@@ -730,7 +708,6 @@ class WebRTCService {
 
     peerConnection.ontrack = (event: any) => {
       const stream = event.streams && event.streams[0];
-      console.log(`📞 [ontrack] Received remote stream from ${peerId}. Tracks:`, stream?.getTracks().map((t: any) => `${t.kind}:${t.enabled}`));
       if (this.onRemoteStreamCallback && stream) {
         this.onRemoteStreamCallback(peerId, stream);
       }
@@ -739,7 +716,6 @@ class WebRTCService {
     // ✅ Add onaddstream for better legacy/native compatibility
     (peerConnection as any).onaddstream = (event: any) => {
       const stream = event.stream;
-      console.log(`📞 [onaddstream] Received remote stream from ${peerId}. Tracks:`, stream?.getTracks().map((t: any) => `${t.kind}:${t.enabled}`));
       if (this.onRemoteStreamCallback && stream) {
         this.onRemoteStreamCallback(peerId, stream);
       }
@@ -811,10 +787,10 @@ class WebRTCService {
       if (error.errorCode === 701) {
         iceErrorLogged = true;
       }
-      
+
       const isStun = error.url?.startsWith('stun:');
       const serverType = isStun ? 'STUN' : 'TURN';
-      
+
       console.warn(
         `⚠️ ${serverType} server error ${error.errorCode} for peer ${peerId}:`,
         error.errorText || 'Unknown error. Check TURN credentials if using 4G/5G.'
@@ -904,9 +880,9 @@ class WebRTCService {
   async startScreenShare(): Promise<void> {
     try {
       console.log('📞 Starting screen share on platform:', Platform.OS);
-      
+
       let screenStream: MediaStream | null = null;
-      
+
       if (Platform.OS === 'web') {
         const isMobileWeb = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
           navigator.userAgent.toLowerCase()
@@ -939,18 +915,18 @@ class WebRTCService {
           });
         }
       }
-      
+
       if (!screenStream) {
         throw new Error('Failed to get screen stream');
       }
-      
+
       this.screenStream = screenStream;
       const videoTrack = screenStream.getVideoTracks()[0];
-      
+
       if (!videoTrack) {
         throw new Error('No video track in screen stream');
       }
-      
+
       // Important: Swap the track in our local UI stream so the sharer sees what they are sharing!
       if (this.localStream) {
         const currentLocalTrack = this.localStream.getVideoTracks()[0];
@@ -960,7 +936,7 @@ class WebRTCService {
           this.localStream.addTrack(videoTrack);
         }
       }
-      
+
       // Replace video track for all peer connections
       this.peerConnections.forEach((connection) => {
         const sender = (connection as any).getSenders().find((s: any) => s.track?.kind === 'video');
@@ -968,23 +944,23 @@ class WebRTCService {
           sender.replaceTrack(videoTrack).catch((e: any) => console.error('Error replacing track:', e));
         }
       });
-      
+
       // Notify backend about screen share
       if (this.spaceId && this.spaceId !== 'null' && this.callId && this.callId !== 'null') {
         await CollaborationService.getInstance().toggleCallScreenShare(this.spaceId, this.callId, true);
       }
-      
+
       // Handle track end event (user stops sharing via system UI)
       videoTrack.onended = () => {
         console.log('📞 Screen share track ended');
         this.stopScreenShare();
       };
-      
+
       console.log('📞 Screen share started successfully');
-      
+
     } catch (error: any) {
       console.error('Error starting screen share:', error);
-      
+
       // Provide user-friendly error messages
       if (Platform.OS === 'android') {
         const { Alert } = require('react-native');
@@ -1003,14 +979,14 @@ class WebRTCService {
       } else if (Platform.OS === 'web') {
         alert(error.message || 'Screen sharing failed.');
       }
-      
+
       throw error;
     }
   }
 
   async stopScreenShare(): Promise<void> {
     console.log('📞 Stopping screen share');
-    
+
     // Stop and clean up screen stream first
     if (this.screenStream) {
       this.screenStream.getTracks().forEach(track => {
@@ -1026,10 +1002,10 @@ class WebRTCService {
       if (currentVideoTrack) {
         this.localStream.removeTrack(currentVideoTrack);
       }
-      
+
       // Push the camera back to our UI
       this.localStream.addTrack(this.originalCameraTrack);
-      
+
       // Push the camera back to network streams
       this.peerConnections.forEach((connection) => {
         const sender = (connection as any).getSenders().find((s: any) => s.track?.kind === 'video');
@@ -1037,10 +1013,10 @@ class WebRTCService {
           sender.replaceTrack(this.originalCameraTrack).catch((e: any) => console.error('Error restoring track:', e));
         }
       });
-      
+
       this.originalCameraTrack = null;
     }
-    
+
     // Notify backend
     if (this.spaceId && this.spaceId !== 'null' && this.callId && this.callId !== 'null') {
       try {
@@ -1049,10 +1025,10 @@ class WebRTCService {
         console.error('Error stopping screen share:', error);
       }
     }
-    
+
     console.log('📞 Screen share stopped');
   }
-  
+
   async toggleHandRaise(isRaised: boolean) {
     if (this.spaceId && this.callId) {
       await this.sendSignal(0, isRaised ? 'hand-raised' : 'hand-lowered', { user_id: this.userId });
@@ -1120,7 +1096,7 @@ class WebRTCService {
     this.spaceId = null;
     this.callId = null;
     this.knownParticipants.clear();
-    
+
     // Clear health timers
     this.connectionHealthTimers.forEach(timer => clearInterval(timer));
     this.connectionHealthTimers.clear();
@@ -1160,56 +1136,56 @@ class WebRTCService {
     // Recreate 
     const targetUserId = parseInt(peerId, 10);
     if (targetUserId) {
-        const newConnection = new RTC_PeerConnection(currentIceConfig);
-        this.peerConnections.set(peerId, newConnection);
-        
-        newConnection.onicecandidate = (event: any) => {
-            if (event.candidate && this.spaceId && this.callId) {
-                this.sendSignal(targetUserId, 'ice-candidate', { candidate: event.candidate });
-            }
-        };
+      const newConnection = new RTC_PeerConnection(currentIceConfig);
+      this.peerConnections.set(peerId, newConnection);
 
-        newConnection.ontrack = (event: any) => {
-            const stream = event.streams && event.streams[0];
-            if (this.onRemoteStreamCallback && stream) {
-                this.onRemoteStreamCallback(peerId, stream);
-            }
-        };
-        
-        // Native compatibility
-        (newConnection as any).onaddstream = (event: any) => {
-          if (this.onRemoteStreamCallback && event.stream) {
-            this.onRemoteStreamCallback(peerId, event.stream);
-          }
-        };
-
-        if (this.localStream) {
-            this.localStream.getTracks().forEach(track => {
-              if (newConnection && newConnection.addTrack) {
-                newConnection.addTrack(track, this.localStream!);
-              }
-            });
+      newConnection.onicecandidate = (event: any) => {
+        if (event.candidate && this.spaceId && this.callId) {
+          this.sendSignal(targetUserId, 'ice-candidate', { candidate: event.candidate });
         }
+      };
 
-        try {
-          // Native bridge check: ensures the PC still exists in native before calling
-          if (!newConnection) return;
-          
-          const offer = await newConnection.createOffer();
-          if (!offer) throw new Error('Failed to create offer');
-          
-          await newConnection.setLocalDescription(offer);
-          this.sendSignal(targetUserId, 'offer', { offer });
-          
-          // Restart health tracking for new connection
-          this.startConnectionHealthCheck(peerId, newConnection);
-        } catch (e) {
-          console.error(`❌ Fallback offer creation failed for ${peerId}:`, e);
-          // If offer fails, wait and try one last time with simple STUN
-          if (attempts < 4) {
-             setTimeout(() => this.retryWithFallbackServers(peerId), 5000);
-          }
+      newConnection.ontrack = (event: any) => {
+        const stream = event.streams && event.streams[0];
+        if (this.onRemoteStreamCallback && stream) {
+          this.onRemoteStreamCallback(peerId, stream);
         }
+      };
+
+      // Native compatibility
+      (newConnection as any).onaddstream = (event: any) => {
+        if (this.onRemoteStreamCallback && event.stream) {
+          this.onRemoteStreamCallback(peerId, event.stream);
+        }
+      };
+
+      if (this.localStream) {
+        this.localStream.getTracks().forEach(track => {
+          if (newConnection && newConnection.addTrack) {
+            newConnection.addTrack(track, this.localStream!);
+          }
+        });
+      }
+
+      try {
+        // Native bridge check: ensures the PC still exists in native before calling
+        if (!newConnection) return;
+
+        const offer = await newConnection.createOffer();
+        if (!offer) throw new Error('Failed to create offer');
+
+        await newConnection.setLocalDescription(offer);
+        this.sendSignal(targetUserId, 'offer', { offer });
+
+        // Restart health tracking for new connection
+        this.startConnectionHealthCheck(peerId, newConnection);
+      } catch (e) {
+        console.error(`❌ Fallback offer creation failed for ${peerId}:`, e);
+        // If offer fails, wait and try one last time with simple STUN
+        if (attempts < 4) {
+          setTimeout(() => this.retryWithFallbackServers(peerId), 5000);
+        }
+      }
     }
   }
 
@@ -1222,24 +1198,24 @@ class WebRTCService {
 
   private async fallbackToAudioOnly(peerId: string): Promise<void> {
     console.log(`🎙️ Bandwidth CRITICAL: Falling back to audio-only for ${peerId}`);
-    
+
     const pc = this.peerConnections.get(peerId);
     if (!pc) return;
 
     const videoSender = pc.getSenders?.().find((s: any) => s.track?.kind === 'video');
     if (videoSender) {
-        // We "disable" video by removing the track but keeping the sender active 
-        // to avoid renegotiation if possible, or we can just disable the local track.
-        if (this.localStream) {
-            const track = this.localStream.getVideoTracks()[0];
-            if (track) track.enabled = false;
-        }
+      // We "disable" video by removing the track but keeping the sender active 
+      // to avoid renegotiation if possible, or we can just disable the local track.
+      if (this.localStream) {
+        const track = this.localStream.getVideoTracks()[0];
+        if (track) track.enabled = false;
+      }
     }
 
     if (this.onVideoStateChangedCallback) {
       this.onVideoStateChangedCallback(peerId, false);
     }
-    
+
     // Alert the user via CollaborationService/UI if needed (handled in UI via callback)
   }
 
