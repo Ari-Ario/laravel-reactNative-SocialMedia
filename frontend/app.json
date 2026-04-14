@@ -39,6 +39,11 @@
       "bundler": "metro",
       "output": "single",
       "favicon": "./assets/images/favicon.png",
+      "display": "standalone",
+      "name": "zmzir",
+      "shortName": "zmzir",
+      "lang": "en",
+      "description": "Zmzir - Collaborative Spaces & Real-time Communication",
       "build": {
         "babel": {
           "include": [
@@ -54,7 +59,7 @@
       },
       "config": {
         "notification": {
-          "vapidPublicKey": "BNuVz7Dzn0_p_K9O9XvXe0QXvzYZrIf9AA9AQolJogOXKwMKABVa0787jV9k-G_ugoob_zGO1PcJa-K85jIsKmw"
+          "vapidPublicKey": "BGDRWyVl2S0O2cBPciHEo-EoGCSlzMsQMqNuXu5dIzbSO_addMdqwnSL-N4o5vV-Tg150hCwiOfeFIyNIH0Esho"
         }
       }
     },
