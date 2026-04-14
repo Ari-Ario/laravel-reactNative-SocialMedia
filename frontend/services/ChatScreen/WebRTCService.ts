@@ -76,9 +76,16 @@ class WebRTCService {
   private iceServers = {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
-      // Private Dedicated Coturn Server (Unlimited Bandwidth via DigitalOcean)
-      { urls: 'turn:159.89.101.120:3478', username: 'ari_admin', credential: 'zmzir_secure_relay_2026' },
-      { urls: 'turn:159.89.101.120:3478?transport=tcp', username: 'ari_admin', credential: 'zmzir_secure_relay_2026' },
+      { 
+        urls: process.env.EXPO_PUBLIC_TURN_SERVER_URL || 'turn:159.89.101.120:3478', 
+        username: process.env.EXPO_PUBLIC_TURN_SERVER_USERNAME || 'ari_admin', 
+        credential: process.env.EXPO_PUBLIC_TURN_SERVER_PASSWORD || 'zmzir_secure_relay_2026' 
+      },
+      { 
+        urls: (process.env.EXPO_PUBLIC_TURN_SERVER_URL || 'turn:159.89.101.120:3478') + '?transport=tcp', 
+        username: process.env.EXPO_PUBLIC_TURN_SERVER_USERNAME || 'ari_admin', 
+        credential: process.env.EXPO_PUBLIC_TURN_SERVER_PASSWORD || 'zmzir_secure_relay_2026' 
+      },
     ],
     iceCandidatePoolSize: 10,
     iceTransportPolicy: 'all' as RTCIceTransportPolicy,
