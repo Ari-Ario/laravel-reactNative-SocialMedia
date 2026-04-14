@@ -42,8 +42,8 @@ self.addEventListener('push', (event) => {
       postId: data.data?.postId || data.postId,
       userId: data.data?.userId || data.userId,
       url: isCall && spaceId
-        ? `/(spaces)/${spaceId}?tab=meeting`
-        : (spaceId ? `/(spaces)/${spaceId}` : '/'),
+        ? `/${spaceId}?tab=chat&joining=1&call=${data.data?.callId || data.callId || ''}`
+        : (spaceId ? `/${spaceId}` : '/'),
     },
     // Call notifications: require explicit interaction and vibrate
     ...(isCall ? {
