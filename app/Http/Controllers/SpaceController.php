@@ -991,6 +991,16 @@ public function startCall(Request $request, $id)
             if ($participantId != $authUser->id) {
                 // Individual direct notification on user's private channel
                 broadcast(new CallStarted($space, $call, $authUser, $participantId))->toOthers();
+                
+                // Actually trigger Mobile Push Notification to Apple/Android devices
+                $targetUser = \App\Models\User::find($participantId);
+                if ($targetUser) {
+                    try {
+                        $targetUser->notify(new IncomingCallNotification($space, $call, $authUser));
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::error('Firebase/VAPID Push Failed for user ' . $participantId . ': ' . $e->getMessage());
+                    }
+                }
             }
         }
 
