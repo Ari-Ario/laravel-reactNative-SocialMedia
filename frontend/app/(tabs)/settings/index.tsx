@@ -95,11 +95,12 @@ const Page = () => {
   }, [editNameMode]);
 
   const handlePushToggle = async (value: boolean) => {
-    setPushEnabled(value);
     if (value) {
-      await PushNotificationService.initialize();
+      const granted = await PushNotificationService.requestPermission();
+      setPushEnabled(granted);
     } else {
       await PushNotificationService.unregister();
+      setPushEnabled(false);
     }
   };
 

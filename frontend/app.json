@@ -46,6 +46,9 @@
       "description": "Zmzir - Collaborative Spaces & Real-time Communication",
       "themeColor": "#ffffff",
       "backgroundColor": "#ffffff",
+      "id": "/",
+      "startUrl": "/",
+      "scope": "/",
       "build": {
         "babel": {
           "include": [

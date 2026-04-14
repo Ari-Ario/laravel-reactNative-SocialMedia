@@ -63,11 +63,12 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
     const [pushEnabled, setPushEnabled] = useState(true);
 
     const handlePushToggle = async (value: boolean) => {
-        setPushEnabled(value);
         if (value) {
-            await PushNotificationService.initialize();
+            const granted = await PushNotificationService.requestPermission();
+            setPushEnabled(granted);
         } else {
             await PushNotificationService.unregister();
+            setPushEnabled(false);
         }
     };
 

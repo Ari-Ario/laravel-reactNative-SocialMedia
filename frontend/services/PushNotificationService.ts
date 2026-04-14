@@ -33,23 +33,65 @@ class PushNotificationService {
   }
 
   /**
-   * Initialize the notification service
+   * Initialize the notification service.
+   * On web/iOS, we only check for existing registration to avoid blocking permission errors.
    */
   public async initialize() {
     if (this.isInitialized) return;
 
     try {
-      const token = await this.registerForPushNotificationsAsync();
-      
-      if (token) {
-        await this.registerTokenWithBackend(token);
+      if (Platform.OS === 'web') {
+        // Just register the worker so it's ready, but don't prompt for permission yet
+        if ('serviceWorker' in navigator) {
+          await navigator.serviceWorker.register('/sw.js');
+          const registration = await navigator.serviceWorker.ready;
+          
+          // Check if we already have a subscription
+          const subscription = await registration.pushManager.getSubscription();
+          if (subscription) {
+            this.cachedWebEndpoint = subscription.endpoint;
+            await this.registerTokenWithBackend(JSON.stringify(subscription.toJSON()));
+          }
+        }
+      } else {
+        const token = await this.registerForPushNotificationsAsync();
+        if (token) {
+          await this.registerTokenWithBackend(token);
+        }
       }
 
       this.setupNotificationListeners();
       this.isInitialized = true;
-      console.log('✅ PushNotificationService initialized successfully');
+      console.log('✅ PushNotificationService initialized');
     } catch (error) {
       console.error('Failed to initialize PushNotificationService:', error);
+    }
+  }
+
+  /**
+   * Public method to request permission and subscribe.
+   * MUST be called from a user gesture (e.g., button click) for iOS compatibility.
+   */
+  public async requestPermission(): Promise<boolean> {
+    try {
+      if (Platform.OS === 'web') {
+        const token = await this.subscribeWebPushAsync();
+        if (token) {
+          await this.registerTokenWithBackend(token);
+          return true;
+        }
+        return false;
+      } else {
+        const token = await this.registerForPushNotificationsAsync();
+        if (token) {
+          await this.registerTokenWithBackend(token);
+          return true;
+        }
+        return false;
+      }
+    } catch (error) {
+      console.error('Error requesting notification permission:', error);
+      return false;
     }
   }
 
@@ -65,14 +107,11 @@ class PushNotificationService {
    * Register for push notifications and return the token
    */
   private async registerForPushNotificationsAsync(): Promise<string | null> {
-    // === WEB PATH: Use direct VAPID browser subscription, skip Expo token server entirely ===
-    // This eliminates the CORS error from exp.host. We send the raw Web Push subscription
-    // to our own Laravel backend, which then uses VAPID to send notifications directly.
+    // Legacy support for initialize() calling this
     if (Platform.OS === 'web') {
       return await this.subscribeWebPushAsync();
     }
 
-    // === NATIVE PATH (iOS / Android) ===
     if (!Device.isDevice) {
       console.log('Must use physical device for Push Notifications');
       return null;
@@ -104,7 +143,6 @@ class PushNotificationService {
       const response = await Notifications.getExpoPushTokenAsync({
         projectId: 'c240eb93-f893-4faf-bb24-46b6f670501d',
       });
-      console.log('✅ Expo Push Token acquired:', response.data);
       return response.data;
     } catch (err) {
       console.error('Error getting Expo push token:', err);
@@ -114,7 +152,6 @@ class PushNotificationService {
 
   /**
    * Web-only: Subscribe via browser Push API using VAPID keys.
-   * Returns a JSON string of the PushSubscription that our backend can send to.
    */
   private async subscribeWebPushAsync(): Promise<string | null> {
     if (
@@ -128,39 +165,28 @@ class PushNotificationService {
 
     const vapidPublicKey = process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY;
     if (!vapidPublicKey) {
-      console.warn('EXPO_PUBLIC_VAPID_PUBLIC_KEY is not defined in .env');
+      console.warn('EXPO_PUBLIC_VAPID_PUBLIC_KEY is not defined');
       return null;
     }
 
     try {
-      // Request notification permission first
+      // Trigger the prompt (User Gesture required on iOS)
       const permResult = await Notification.requestPermission();
-      if (permResult !== 'granted') {
-        console.warn('Web push permission denied by user.');
-        return null;
-      }
+      if (permResult !== 'granted') return null;
 
-      // Register and wait for service worker
       await navigator.serviceWorker.register('/sw.js');
       const registration = await navigator.serviceWorker.ready;
 
-      // Get existing or create new subscription
       let subscription = await registration.pushManager.getSubscription();
       
       if (!subscription) {
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: this.urlBase64ToUint8Array(vapidPublicKey) as any,
+          applicationServerKey: this.urlBase64ToUint8Array(vapidPublicKey),
         });
-        console.log('✅ New Web Push subscription created');
-      } else {
-        console.log('ℹ️ Reusing existing Web Push subscription');
       }
 
-      // Cache the endpoint to detect if the subscription changed
       this.cachedWebEndpoint = subscription.endpoint;
-
-      // Return as JSON string — our backend receives this as device_token
       return JSON.stringify(subscription.toJSON());
     } catch (error) {
       console.error('Web Push subscription failed:', error);
