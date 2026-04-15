@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use App\Notifications\SpaceInvitationNotification;
+use App\Notifications\SpaceMessageNotification;
 use App\Services\SpaceService;
 
 use App\Events\SpaceCreated;
@@ -1626,9 +1627,10 @@ public function endCall(Request $request, $id)
                 // 1. Real-time broadcast for chat list snippet updates
                 broadcast(new SpaceMessageSent($space->id, $userIds, $message))->toOthers();
 
-                // 2. Persistent Database Notification for offline/header fetch
+
+                // 2. Persistent Push Notification for mobile (Expo) and web
                 $targetUsers = User::whereIn('id', $userIds)->get();
-                Notification::send($targetUsers, new MessageSent($message, $space->id, $user));
+                Notification::send($targetUsers, new SpaceMessageNotification($message, $space->id, $user, $space->title));
             }
         } catch (\Exception $e) {
             Log::error('Failed to broadcast/notify message:', [

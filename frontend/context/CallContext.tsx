@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import { Platform, Animated, Dimensions, Vibration } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useGlobalSearchParams } from 'expo-router';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -54,6 +54,7 @@ export const useCall = () => {
 
 export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const router = useRouter();
+  const globalParams = useGlobalSearchParams();
   const [activeCall, setActiveCall] = useState<ActiveCall | null>(null);
   const [isMinimized, setIsMinimized] = useState(false);
   const [callPosition, setCallPosition] = useState({ x: SCREEN_WIDTH - 170, y: SCREEN_HEIGHT - 300 });
@@ -106,6 +107,27 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateCallPosition = useCallback((x: number, y: number) => {
     setCallPosition({ x, y });
   }, []);
+
+  // ─── URL Sync / Recovery ────────────────────────────────────────────────
+  // This effect ensures that if the app re-renders or "refreshes" during navigation,
+  // we can reconstruct the activeCall state from the URL parameters.
+  useEffect(() => {
+    const callId = globalParams.call as string;
+    const spaceId = globalParams.id as string;
+    const callType = globalParams.type as 'audio' | 'video';
+
+    // If we have call params but NO active call state in memory (e.g. after refresh)
+    if (callId && spaceId && !activeCall) {
+      console.log('🔄 Call recovery: restoring activeCall from URL params', { callId, spaceId });
+      setActiveCall({
+        spaceId: spaceId,
+        callId: callId,
+        type: callType || 'video',
+        spaceType: (globalParams.spaceType as string) || 'group',
+      });
+      setIsMinimized(false);
+    }
+  }, [globalParams.call, globalParams.id, globalParams.type, activeCall]);
 
 
   // Stop vibration when ringing clears

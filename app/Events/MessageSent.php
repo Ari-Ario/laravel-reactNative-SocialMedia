@@ -14,8 +14,9 @@ use NotificationChannels\WebPush\WebPushChannel;
 use NotificationChannels\WebPush\WebPushMessage;
 use NotificationChannels\Expo\ExpoChannel;
 use NotificationChannels\Expo\ExpoMessage;
+use Illuminate\Notifications\Notification;
 
-class MessageSent extends LaravelNotification implements ShouldBroadcast
+class MessageSent extends Notification implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 

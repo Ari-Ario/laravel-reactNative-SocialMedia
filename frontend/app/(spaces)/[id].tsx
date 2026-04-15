@@ -876,10 +876,14 @@ const SpaceDetailScreen = () => {
         callId: call.id
       });
       
-      // ✅ Close the call menu dropdown
+      // ✅ Update URL with call info so a refresh/navigation doesn't lose the call state
       setShowCallMenu(false);
       setActiveTab('meeting');
-      router.setParams({ tab: 'meeting', type });
+      router.setParams({ 
+        tab: 'meeting', 
+        type,
+        call: call.id,
+      });
     } catch (error) {
       console.error('Error starting call:', error);
       Alert.alert('Error', 'Failed to start call');
