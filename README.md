@@ -21,8 +21,12 @@ php artisan reverb:start --debug
 or deepclean:
 php artisan optimize:clear && php artisan event:clear && composer dump-autoload
 
-## for notification and HTTPS requests
-npx expo start --tunnel
+## for notification and HTTPS requests (Web Push)
+- **PHP Requirements**: `php-gmp` or `php-bcmath` (Required for VAPID payload encryption)
+- **Commands**: 
+  ```bash
+  npx expo start --tunnel
+  ```
 
 
 CHROME_PATH=$(which google-chrome || which google-chrome-stable) npx expo start

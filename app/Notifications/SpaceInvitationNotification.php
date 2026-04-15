@@ -95,7 +95,7 @@ class SpaceInvitationNotification extends Notification implements ShouldQueue
     {
         return (new WebPushMessage)
             ->title('New Space Invitation')
-            ->icon($this->inviter->profile_photo ? "/storage/{$this->inviter->profile_photo}" : '/favicon.png')
+            ->icon('/favicon.png')
             ->body("{$this->inviter->name} invited you to join \"{$this->space->title}\"")
             ->data($this->toArray($notifiable));
     }

@@ -114,7 +114,7 @@ class MessageRepliedNotification extends Notification implements ShouldQueue
     {
         return (new WebPushMessage)
             ->title('New Reply')
-            ->icon($this->replier->profile_photo ?? '/favicon.ico')
+            ->icon('/favicon.png')
             ->body($this->toArray($notifiable)['message'] ?? 'Someone replied to you')
             ->data($this->toArray($notifiable));
     }

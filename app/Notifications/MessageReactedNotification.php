@@ -111,7 +111,7 @@ class MessageReactedNotification extends Notification implements ShouldQueue
     {
         return (new WebPushMessage)
             ->title('New Reaction')
-            ->icon($this->reactor->profile_photo ? "/storage/{$this->reactor->profile_photo}" : '/favicon.png')
+            ->icon('/favicon.png')
             ->body($this->toArray($notifiable)['message'] ?? 'Someone reacted to your message')
             ->data($this->toArray($notifiable));
     }

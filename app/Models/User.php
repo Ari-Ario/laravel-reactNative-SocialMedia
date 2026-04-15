@@ -202,23 +202,6 @@ class User extends Authenticatable
     }
 
     /**
-     * Route notifications for the WebPush channel (VAPID).
-     * 
-     * @return array
-     */
-    public function routeNotificationForWebPush()
-    {
-        if (!$this->device_tokens) {
-            return [];
-        }
-
-        // Return tokens that are JSON strings (our VAPID fallback format)
-        return collect($this->device_tokens)
-            ->pluck('token')
-            ->filter(fn($token) => is_string($token) && str_starts_with($token, '{'))
-            ->toArray();
-    }
-    /**
      * Get the user's preferences.
      */
     public function preferences()
