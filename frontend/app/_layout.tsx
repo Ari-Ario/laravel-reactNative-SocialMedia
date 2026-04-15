@@ -3,6 +3,7 @@ import 'react-native-gesture-handler'; // MUST BE FIRST IMPORT
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { useRouter, Redirect, Stack } from 'expo-router';
+import Head from 'expo-router/head';
 import * as SplashScreen from 'expo-splash-screen';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -80,6 +81,12 @@ export default function RootLayout() {
             // without waiting for the (tabs) layout to mount.
             const PusherService = require('@/services/PusherService').default;
             PusherService.initialize(token);
+
+            // ✅ INITIALIZE PUSH NOTIFICATIONS: Ensure Service Worker and VAPID
+            // are ready at the root level for deep-linking and background support.
+            const PushNotificationService = require('@/services/PushNotificationService').default;
+            PushNotificationService.initialize();
+
           }
         }
         // else {
@@ -259,7 +266,12 @@ export default function RootLayout() {
       }}
     >
       <SafeAreaProvider>
+        <Head>
+          <link rel="manifest" href="/manifest.json" />
+          <meta name="theme-color" content="#007AFF" />
+        </Head>
         <AuthContext.Provider value={{ user, setUser, logout }}>
+
           <CallProvider>
             {/* Bridge: wires CollaborationService → CallContext for incoming calls */}
             <IncomingCallBridge />
