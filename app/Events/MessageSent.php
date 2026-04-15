@@ -10,7 +10,10 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Notifications\Notification as LaravelNotification;
+use NotificationChannels\WebPush\WebPushChannel;
+use NotificationChannels\WebPush\WebPushMessage;
+use NotificationChannels\Expo\ExpoChannel;
+use NotificationChannels\Expo\ExpoMessage;
 
 class MessageSent extends LaravelNotification implements ShouldBroadcast
 {
@@ -35,7 +38,7 @@ class MessageSent extends LaravelNotification implements ShouldBroadcast
      */
     public function via($notifiable)
     {
-        return ['database'];
+        return ['database', WebPushChannel::class, ExpoChannel::class];
     }
 
     /**
@@ -61,6 +64,7 @@ class MessageSent extends LaravelNotification implements ShouldBroadcast
         return [
             'type' => 'new_message',
             'title' => 'New Message',
+            'userName' => $this->user?->name ?? 'System',
             'message' => (($this->user?->name ?? 'System')) . ': ' . $displayText,
             'messageId' => $this->message['id'] ?? null,
             'spaceId' => $this->spaceId,
@@ -71,6 +75,36 @@ class MessageSent extends LaravelNotification implements ShouldBroadcast
             'message_type' => $type,
             'file_path' => $this->message['file_path'] ?? null,
         ];
+    }
+
+    /**
+     * Web Push (VAPID): shows a persistent banner for messages.
+     */
+    public function toWebPush($notifiable, $notification): WebPushMessage
+    {
+        $data = $this->toArray($notifiable);
+        
+        return (new WebPushMessage)
+            ->title('💬 ' . ($this->user->name ?? 'New Message'))
+            ->icon('/logo.svg')
+            ->body($data['message'])
+            ->data($data)
+            ->options(['TTL' => 1000]);
+    }
+
+    /**
+     * Expo Push (native mobile).
+     */
+    public function toExpoPush($notifiable): ExpoMessage
+    {
+        $data = $this->toArray($notifiable);
+        
+        return ExpoMessage::create()
+            ->title('💬 ' . ($this->user->name ?? 'New Message'))
+            ->body($data['message'])
+            ->playSound()
+            ->channelId('default')
+            ->data($data);
     }
 
     /**

@@ -1435,8 +1435,12 @@ const SpaceDetailScreen = () => {
           onPress={() => {
             if (params.returnTo) {
               router.replace(params.returnTo as any);
-            } else {
+            } else if (router.canGoBack()) {
               router.back();
+            } else {
+              // ✅ Fallback: If entered from "outside" (notification/deep-link)
+              // and no returnTo is provided, always go to chat history.
+              router.replace('/(tabs)/chats');
             }
           }}
           style={user?.is_guest ? { opacity: 0 } : undefined}

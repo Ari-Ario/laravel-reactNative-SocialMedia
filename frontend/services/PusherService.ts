@@ -566,9 +566,9 @@ class PusherService {
 
         // ✅ PROACTIVE CALL DETECTION: If this looks like a call, flag it
         const msgText = (notification.message || '').toLowerCase();
-        const looksLikeCall = notifType === 'incoming_call' || notifType === 'call_started' ||
+        const looksLikeCall = notifType === 'incoming_call' || notifType === 'call_started' || notifType === 'call' ||
           msgText.includes('started a video call') || msgText.includes('started an audio call') ||
-          msgText.includes('is calling you');
+          msgText.includes('is calling you') || msgText.includes('is calling in');
 
         if (looksLikeCall) {
           notification.isCall = true;

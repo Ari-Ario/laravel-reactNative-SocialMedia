@@ -32,7 +32,7 @@ export const IncomingCallModal: React.FC = () => {
   const { incomingCall, isRinging, acceptIncomingCall, rejectIncomingCall, messageIncomingCall } = useCall();
 
   // ─── Animations ────────────────────────────────────────────────────────────
-  const slideAnim = useRef(new Animated.Value(height)).current;
+  const slideAnim = useRef(new Animated.Value(height + 300)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const ring1Scale = useRef(new Animated.Value(1)).current;
   const ring1Alpha = useRef(new Animated.Value(0.6)).current;
@@ -99,13 +99,13 @@ export const IncomingCallModal: React.FC = () => {
       triggerZenHaptic();
       hapticInterval = setInterval(triggerZenHaptic, 3000); // Pulse every 3s (harmonic interval)
 
-      // 4. Slide in UI
+      // 4. Slide in UI (Premium Pop-up from bottom)
       Animated.spring(slideAnim, {
         toValue: 0,
         useNativeDriver: Platform.OS !== 'web',
-        damping: 18,
-        mass: 0.9,
-        stiffness: 120,
+        damping: 15, // Slightly less damping for more 'pop'
+        mass: 0.8,
+        stiffness: 150, // Increased stiffness for faster pop-up
       }).start();
 
       // 5. Pulsing accept-button scale
@@ -160,12 +160,13 @@ export const IncomingCallModal: React.FC = () => {
         player.pause();
       }
       
-      // Slide out
+      // Slide out (Popping back down)
       Animated.spring(slideAnim, {
-        toValue: height + 200,
+        toValue: height + 350,
         useNativeDriver: Platform.OS !== 'web',
-        damping: 20,
-        mass: 1,
+        damping: 25,
+        mass: 1.2,
+        stiffness: 100,
       }).start();
     }
   }, [incomingCall, isRinging, player]);
@@ -234,7 +235,7 @@ export const IncomingCallModal: React.FC = () => {
           </View>
 
           <Text style={styles.callerName} numberOfLines={1}>
-            {incomingCall.callerName}
+            {incomingCall.callerName || (incomingCall as any).userName || 'Someone'}
           </Text>
           <View style={styles.callTypeBadge}>
             <Ionicons

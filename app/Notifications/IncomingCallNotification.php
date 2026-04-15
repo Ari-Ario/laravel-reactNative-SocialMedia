@@ -37,8 +37,10 @@ class IncomingCallNotification extends Notification implements ShouldQueue
     public function toArray(object $notifiable): array
     {
         return [
-            'type'          => 'call',
+            'type'          => 'incoming_call',
             'title'         => '📞 Incoming Call',
+            'userName'      => $this->caller->name,
+            'callerName'    => $this->caller->name,
             'message'       => "{$this->caller->name} is calling in \"{$this->space->title}\"",
             'body'          => "{$this->caller->name} is calling in \"{$this->space->title}\"",
             'userId'        => $this->caller->id,
@@ -69,7 +71,7 @@ class IncomingCallNotification extends Notification implements ShouldQueue
     {
         return (new WebPushMessage)
             ->title('📞 Incoming Call')
-            ->icon('/favicon.png')
+            ->icon('/logo.svg')
             ->body("{$this->caller->name} is calling in \"{$this->space->title}\"")
             ->data($this->toArray($notifiable))
             ->action('Accept', 'accept')

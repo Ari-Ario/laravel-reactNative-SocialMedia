@@ -75,12 +75,11 @@ export default function RootLayout() {
               profile_photo: userData.profile_photo || null,
             });
             
-            // Guarantee that guests re-subscribe to WebSockets if they refresh the Space directly,
-            // since they completely bypass the NotificationStore bootloader in /(tabs) layout!
-            if (userData.is_guest) {
-                const PusherService = require('@/services/PusherService').default;
-                PusherService.initialize(token);
-            }
+            // ✅ INITIALIZE REAL-TIME: Ensure Reverb/Pusher is ready as soon as we have a token.
+            // This ensures that deep-linking to spaces or notifications works immediately
+            // without waiting for the (tabs) layout to mount.
+            const PusherService = require('@/services/PusherService').default;
+            PusherService.initialize(token);
           }
         }
         // else {
@@ -193,16 +192,10 @@ export default function RootLayout() {
       }
 
       if (user.email_verified_at) {
-        // ✅ STRICT REDIRECT ON RELOAD: If this is the initial mount (reload/restart),
-        // and we are NOT on a tab or root, force redirect to tabs home.
-        // This solves the web refresh issue where subscriptions break.
+        // ✅ RELOAD LOGIC: Allow users to stay on their current deep-linked path (e.g. spaces)
+        // while ensuring that we still guide them to tabs if they land on auth screens.
         if (isInitialLoad.current) {
           isInitialLoad.current = false;
-          if (!pathname?.startsWith('/(tabs)') && pathname !== '/(tabs)' && pathname !== '/') {
-            console.log("🔄 Initial load/reload detected outside tabs, redirecting to home:", pathname);
-            router.replace('/(tabs)');
-            return;
-          }
         }
 
         // If fully verified, redirect away from root, login, register, and verification screens
