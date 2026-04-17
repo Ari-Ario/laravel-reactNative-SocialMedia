@@ -59,6 +59,12 @@ export const PostActionButtons = ({
   const { user } = React.useContext(AuthContext);
   const reactionsToShow = getGroupedReactions(post, Number(user?.id) || undefined);
 
+  // Unified color logic based on isDark prop
+  const activeColor = '#10b981';
+  const primaryColor = isDark ? '#fff' : colors.text;
+  const secondaryColor = isDark ? 'rgba(255,255,255,0.7)' : colors.textSecondary;
+  const reactionBorder = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)';
+
   return (
     <View style={[styles.actionBar, compact && styles.compactActionBar]}>
       {/* Comment button */}
@@ -70,15 +76,13 @@ export const PostActionButtons = ({
           name="chatbubble-outline"
           size={compact ? 20 : 24}
           color={
-            !post.comments || post.comments.length === 0
-              ? colors.textSecondary
-              : post.comments.some(comment => String(comment.user_id) === String(user?.id))
-                ? '#10b981'
-                : colors.text
+            post.comments?.some(comment => String(comment.user_id) === String(user?.id))
+              ? activeColor
+              : primaryColor
           }
         />
         {post.comments_count > 0 && (
-          <Text style={[styles.actionCount, { color: colors.textSecondary }]}>{post.comments_count}</Text>
+          <Text style={[styles.actionCount, { color: secondaryColor }]}>{post.comments_count}</Text>
         )}
       </TouchableOpacity>
 
@@ -90,13 +94,13 @@ export const PostActionButtons = ({
         <Feather
           name="repeat"
           size={compact ? 20 : 24}
-          color={post.is_reposted ? '#10b981' : colors.text}
+          color={post.is_reposted ? activeColor : primaryColor}
           strokeWidth={2}
         />
         {(post.reposts_count ?? 0) > 0 && (
           <Text style={[
             styles.actionCount,
-            { color: colors.textSecondary },
+            { color: secondaryColor },
             post.is_reposted && styles.activeActionCount
           ]}>
             {post.reposts_count}
@@ -112,7 +116,7 @@ export const PostActionButtons = ({
         <Feather 
           name="send" 
           size={24} 
-          color={colors.text}
+          color={primaryColor}
           strokeWidth={2}
         />
       </TouchableOpacity>
@@ -133,7 +137,8 @@ export const PostActionButtons = ({
                 style={[
                   styles.reactionItem,
                   compact && styles.compactReactionItem,
-                  isMyReaction && styles.reactionItemMine
+                  isMyReaction ? styles.reactionItemMine : { borderColor: reactionBorder },
+                  isDark && !isMyReaction && { backgroundColor: 'rgba(255,255,255,0.1)' }
                 ]}
               >
                 <TouchableOpacity
@@ -148,7 +153,7 @@ export const PostActionButtons = ({
                 {reaction.count > 0 && (
                   <Text style={[
                     styles.reactionCount,
-                    { color: colors.textSecondary },
+                    { color: secondaryColor },
                     compact && styles.compactReactionCount,
                     isMyReaction && styles.reactionCountMine
                   ]}>
@@ -170,9 +175,11 @@ export const PostActionButtons = ({
                   const { removeReportedItem } = useReportedContentStore.getState();
                   await deleteReportByTarget('post', post.id);
                   removeReportedItem('post', post.id);
+                  // @ts-ignore
                   useToastStore.getState().showToast('Report removed successfully', 'success');
                 } catch (error) {
                   console.error('Failed to delete report:', error);
+                  // @ts-ignore
                   useToastStore.getState().showToast('Failed to remove report', 'error');
                 }
               }}
@@ -192,7 +199,7 @@ export const PostActionButtons = ({
             <Ionicons 
               name={isBookmarked ? "bookmark" : "bookmark-outline"} 
               size={24} 
-              color={isBookmarked ? "#10b981" : colors.text} 
+              color={isBookmarked ? activeColor : primaryColor} 
             />
           </TouchableOpacity>
       </View>

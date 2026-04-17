@@ -1040,14 +1040,14 @@ public function startCall(Request $request, $id)
     public function callSignal(Request $request, $id)
     {
         $request->validate([
-            'type' => 'required|in:offer,answer,ice-candidate,call-active,hand-raised,hand-lowered,leave',
-
+            'type' => 'required|in:offer,answer,ice-candidate,call-active,hand-raised,hand-lowered,leave,call-rejected',
             'target_user_id' => 'required|integer',
             'call_id' => 'required|string',
             'offer' => 'sometimes|array',
             'answer' => 'sometimes|array',
             'candidate' => 'sometimes|array',
             'user_id' => 'sometimes|integer',
+            'is_viewer' => 'sometimes|boolean',
         ]);
     
     $space = CollaborationSpace::findOrFail($id);
@@ -1069,7 +1069,7 @@ public function startCall(Request $request, $id)
             $user,
             $request->target_user_id,
             $request->type,
-            $request->only(['offer', 'answer', 'candidate']),
+            $request->except(['type', 'target_user_id', 'call_id']),
             $request->call_id
         ))->toOthers();
     }
@@ -1218,7 +1218,20 @@ public function joinCall(Request $request, $id)
         // Broadcast join signal on signaling channel
         $authUser = auth()->user();
         if ($authUser instanceof User) {
-            broadcast(new WebRTCSignal($space, $authUser, 0, 'call-active', ['user_id' => $userId], $call->id))->toOthers();
+            // Check if user is a viewer
+            $myParticipation = \App\Models\SpaceParticipation::where('space_id', $space->id)
+                ->where('user_id', $userId)
+                ->first();
+            $isViewer = !($myParticipation && in_array($myParticipation->role, ['owner', 'moderator']));
+
+            broadcast(new WebRTCSignal(
+                $space, 
+                $authUser, 
+                0, 
+                'call-active', 
+                ['user_id' => $userId, 'is_viewer' => $isViewer], 
+                $call->id
+            ))->toOthers();
         }
 
         return response()->json([

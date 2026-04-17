@@ -189,6 +189,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
   const [isMuted, setIsMuted] = useState(false);
   const [hasVideo, setHasVideo] = useState(true);
   const [handRaised, setHandRaised] = useState(false);
+  const [isSharingScreen, setIsSharingScreen] = useState(false);
   const [showPromotionInvite, setShowPromotionInvite] = useState(false);
   const [activeCallId, setActiveCallId] = useState<string | null>(null);
   const [showParticipantList, setShowParticipantList] = useState(false);
@@ -208,27 +209,52 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
     }
   }, [callStatus]);
 
-  // ✅ Automated 'Tune In' logic
+  // ✅ Lifecycle and Resource Management
   useEffect(() => {
-    const isAutostartRequested = contextActiveCall?.autostart;
-
-    if (isAutostartRequested && callStatus === 'waiting' && !hasAutoStarted.current) {
-      if (!currentSpace) return;
-
-      hasAutoStarted.current = true;
-      console.log(`📡 [ChannelCallView] Automated entry triggered via context (Role: ${isAdmin ? 'Admin' : 'Audience'})`);
-
-      const timer = setTimeout(() => {
-        if (isAdmin) {
-          handleStartBroadcast();
-        } else {
-          handleTuneIn();
+    const init = async () => {
+      if (spaceId && currentUserId) {
+        // 1. Clean up previous session if any (Crucial for Singleton)
+        await webRTCService.terminate();
+        await webRTCService.initialize(currentUserId);
+        
+        // 2. Pre-populate participants list from space metadata for immediate UI feedback
+        if (currentSpace?.participations) {
+          const initialParticipants = currentSpace.participations
+            .filter((p: any) => {
+               const pId = p.user_id || p.user?.id;
+               return pId && String(pId) !== String(currentUserId);
+            })
+            .map((p: any) => ({
+              id: (p.user_id || p.user?.id).toString(),
+              user_id: p.user_id || p.user?.id,
+              name: p.user?.name || 'Broadcaster',
+              avatar: p.user?.profile_photo,
+              role: p.role || 'moderator',
+              hasVideo: false,
+              isMuted: true
+            }));
+          setParticipants(initialParticipants);
         }
-      }, 300);
 
-      return () => clearTimeout(timer);
-    }
-  }, [contextActiveCall?.autostart, callStatus, isAdmin, currentSpace]);
+        // 3. Automated Entry
+        const call = await findActiveCall();
+        if (call && !hasAutoStarted.current) {
+          if (isAdmin) {
+            handleStartBroadcast();
+          } else {
+            handleTuneIn();
+          }
+          hasAutoStarted.current = true;
+        }
+      }
+    };
+    init();
+
+    return () => {
+      // ✅ Terminate WebRTC and release hardware resources on unmount
+      webRTCService.terminate();
+    };
+  }, [spaceId, currentUserId, currentSpace?.id]);
 
   // Discovery logic
   const findActiveCall = useCallback(async () => {
@@ -236,6 +262,12 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
       const response = await collaborationService.joinWebRTCCall(spaceId);
       if (response.call) {
         setActiveCallId(response.call.id);
+        
+        // ✅ Sync existing participants to trigger initial signaling
+        if (response.call.participants) {
+          webRTCService.syncParticipants(response.call.participants);
+        }
+        
         return response.call;
       }
     } catch (e) {
@@ -288,15 +320,31 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
 
   const setupSignaling = useCallback(() => {
     webRTCService.onRemoteStream((userId, stream) => {
+      // ✅ Resolve actual name, avatar, and role from space participations
+      const participation = currentSpace?.participations?.find((p: any) => 
+        (p.user_id?.toString() === userId) || (p.user?.id?.toString() === userId)
+      );
+      const userName = participation?.user?.name || 'Broadcaster';
+      const userAvatar = participation?.user?.profile_photo;
+      const userRole = participation?.role || 'moderator';
+
       setParticipants(prev => {
         const existing = prev.find(p => p.id === userId);
-        if (existing) return prev.map(p => p.id === userId ? { ...p, stream, hasVideo: true } : p);
+        if (existing) return prev.map(p => p.id === userId ? { 
+          ...p, 
+          stream, 
+          hasVideo: true, 
+          name: userName,
+          avatar: userAvatar,
+          role: userRole
+        } : p);
 
         return [...prev, {
           id: userId,
           user_id: parseInt(userId, 10),
-          name: 'Broadcaster',
-          role: 'moderator',
+          name: userName,
+          avatar: userAvatar,
+          role: userRole,
           stream,
           isMuted: false,
           hasVideo: true,
@@ -319,13 +367,19 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
 
       setParticipants(prev => {
         const existing = prev.find(p => p.id === userId);
-        if (existing) return prev.map(p => p.id === userId ? { ...p, handRaised: isRaised, name: userName } : p);
+        if (existing) return prev.map(p => p.id === userId ? { 
+          ...p, 
+          handRaised: isRaised, 
+          name: userName,
+          avatar: participation?.user?.profile_photo
+        } : p);
 
         return [...prev, {
           id: userId,
           user_id: parseInt(userId, 10),
           name: userName,
-          role: 'participant',
+          avatar: participation?.user?.profile_photo,
+          role: participation?.role || 'participant',
           isMuted: true,
           hasVideo: false,
           isSharingScreen: false,
@@ -357,7 +411,23 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
     webRTCService.onCallEnded(() => {
       handleLeaveCall();
     });
-  }, [isAdmin, webRTCService]);
+
+    webRTCService.onMuteStateChanged((userId, isMuted) => {
+      setParticipants(prev => prev.map(p => p.id === userId ? { ...p, isMuted } : p));
+    });
+
+    webRTCService.onVideoStateChanged((userId, hasVideo) => {
+      setParticipants(prev => prev.map(p => p.id === userId ? { ...p, hasVideo } : p));
+    });
+
+    webRTCService.onScreenShareStarted((userId) => {
+      setParticipants(prev => prev.map(p => p.id === userId ? { ...p, isSharingScreen: true } : p));
+    });
+
+    webRTCService.onScreenShareEnded((userId) => {
+      setParticipants(prev => prev.map(p => p.id === userId ? { ...p, isSharingScreen: false } : p));
+    });
+  }, [isAdmin, webRTCService, currentSpace]);
 
   const handleRequestSpeak = async () => {
     const newState = !handRaised;
@@ -369,6 +439,45 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
   const handlePromote = async (userId: string) => {
     await webRTCService.promoteParticipant(Number(userId));
     setParticipants(prev => prev.map(p => p.id === userId ? { ...p, role: 'moderator', handRaised: false } : p));
+  };
+
+  const handleToggleScreenShare = async () => {
+    try {
+      if (isSharingScreen) {
+        await webRTCService.stopScreenShare();
+        setIsSharingScreen(false);
+      } else {
+        await webRTCService.startScreenShare();
+        setIsSharingScreen(true);
+      }
+      if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => { });
+    } catch (e) {
+      console.error('Screen share error:', e);
+      setIsSharingScreen(false);
+    }
+  };
+
+  const handleFlipCamera = async () => {
+    try {
+      if (Platform.OS === 'web') {
+        // Simple front/back toggle for web
+        const stream = await webRTCService.getLocalStream(true, true);
+        if (stream) {
+          const videoTrack = stream.getVideoTracks()[0];
+          await webRTCService.replaceVideoTrack(videoTrack);
+        }
+      } else {
+        // Native camera flip
+        const webrtc = require('react-native-webrtc');
+        const videoTrack = localStream?.getVideoTracks()[0];
+        if (videoTrack && (videoTrack as any)._switchCamera) {
+          (videoTrack as any)._switchCamera();
+        }
+      }
+      if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => { });
+    } catch (e) {
+      console.error('Camera flip error:', e);
+    }
   };
 
   const handleLeaveCall = async () => {
@@ -544,8 +653,8 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
             )}
             scrollEventThrottle={16}
           >
-            {/* Featured Broadcaster (Admin) */}
-            {isAdmin && isJoined && (
+            {/* Featured Broadcaster Tile (Host or Self) */}
+            {(isAdmin && isJoined) || participants.some(p => p.stream && p.role === 'moderator') ? (
               <MotiView
                 from={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -561,20 +670,44 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
                     <Text style={styles.featuredText}>HOST</Text>
                   </LinearGradient>
                 </View>
-                <VideoTile
-                  isLocal
-                  stream={localStream}
-                  name={user?.name}
-                  avatar={user?.profile_photo}
-                  hasVideo={hasVideo}
-                  isMuted={isMuted}
-                />
+
+                {isAdmin && isJoined ? (
+                  <VideoTile
+                    isLocal
+                    stream={localStream}
+                    name={user?.name}
+                    avatar={user?.profile_photo}
+                    hasVideo={hasVideo}
+                    isMuted={isMuted}
+                  />
+                ) : (
+                  (() => {
+                    const host = participants.find(p => p.stream && p.role === 'moderator');
+                    return host ? (
+                      <VideoTile
+                        participant={host}
+                        stream={host.stream}
+                        name={host.name}
+                        avatar={host.avatar}
+                        hasVideo={host.hasVideo}
+                        isMuted={host.isMuted}
+                      />
+                    ) : null;
+                  })()
+                )}
               </MotiView>
-            )}
+            ) : null}
 
             {/* Remote Participants Grid */}
             <View style={styles.participantsGrid}>
-              {participants.map((p, index) => (
+              {participants
+                .filter(p => {
+                  // If we are showing someone in the featured tile, hide them from the grid
+                  if (isAdmin && isJoined) return true; // Featured is local, so all remote are in grid
+                  const featuredHostId = participants.find(p => p.stream && p.role === 'moderator')?.id;
+                  return p.id !== featuredHostId;
+                })
+                .map((p, index) => (
                 <MotiView
                   key={p.id}
                   from={{ opacity: 0, scale: 0.9, translateY: 20 }}
@@ -663,8 +796,19 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
                       <Ionicons name={hasVideo ? "videocam" : "videocam-off"} size={22} color="#fff" />
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.controlBtn} onPress={() => { }}>
-                      <Ionicons name="options-outline" size={22} color="#fff" />
+                    <TouchableOpacity
+                      style={[styles.controlBtn, isSharingScreen && styles.controlBtnActive]}
+                      onPress={handleToggleScreenShare}
+                    >
+                      <Ionicons name={isSharingScreen ? "stop-circle" : "desktop"} size={22} color="#fff" />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.controlBtn} onPress={handleFlipCamera}>
+                      <Ionicons name="camera-reverse" size={22} color="#fff" />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.controlBtn} onPress={() => setShowParticipantList(true)}>
+                      <Ionicons name="people-outline" size={22} color="#fff" />
                     </TouchableOpacity>
                   </View>
                 ) : (

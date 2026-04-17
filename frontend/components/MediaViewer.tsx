@@ -29,6 +29,7 @@ import * as FileSystem from 'expo-file-system';
 import { Alert, Share as RNShare } from 'react-native';
 import AuthContext from '@/context/AuthContext';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // Static constants removed - now using reactive hooks in components
 const SWIPE_THRESHOLD = 50;
@@ -423,22 +424,6 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
             </Animated.View>
           </GestureDetector>
 
-          {/* Caption overlay */}
-          {post?.caption && (
-            <Animated.View style={[styles.captionContainer, overlayStyle]}>
-              <TouchableOpacity
-                onPress={() => setShowFullCaption(!showFullCaption)}
-                activeOpacity={0.8}
-              >
-                <Text
-                  style={styles.captionText}
-                  numberOfLines={showFullCaption ? undefined : 1}
-                >
-                  {post.caption.substring(0, 30)}
-                </Text>
-              </TouchableOpacity>
-            </Animated.View>
-          )}
 
           {/* Media counter */}
           {mediaItems.length > 1 && (
@@ -447,25 +432,50 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
             </Text>
           )}
 
-          {/* Actions & Reactions */}
+          {/* Consolidated Bottom Overlay: Caption + Actions */}
           {post && (
-            <Animated.View style={[styles.bottomActions, overlayStyle]}>
-              <PostActionButtons
-                post={post}
-                onReact={onReact}
-                onDeleteReaction={onDeleteReaction}
-                onRepost={onRepost}
-                onShare={onShare}
-                onBookmark={onBookmark}
-                onCommentPress={onCommentPress}
-                currentReactingItem={currentReactingItem}
-                setCurrentReactingItem={setCurrentReactingItem}
-                setIsEmojiPickerOpen={setIsEmojiPickerOpen}
-                getGroupedReactions={getGroupedReactions}
-                compact={true}
-                isDark={true}
-                isBookmarked={isBookmarked}
+            <Animated.View style={[
+              styles.bottomActions, 
+              overlayStyle,
+              { paddingBottom: Math.max(insets.bottom, 16) }
+            ]}>
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.8)', '#000']}
+                style={StyleSheet.absoluteFill}
               />
+              <View style={styles.bottomContent}>
+                {post.caption && (
+                  <TouchableOpacity
+                    onPress={() => setShowFullCaption(!showFullCaption)}
+                    activeOpacity={0.8}
+                    style={styles.captionWrapper}
+                  >
+                    <Text
+                      style={styles.captionText}
+                      numberOfLines={showFullCaption ? undefined : 2}
+                    >
+                      {post.caption}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                <PostActionButtons
+                  post={post}
+                  onReact={onReact}
+                  onDeleteReaction={onDeleteReaction}
+                  onRepost={onRepost}
+                  onShare={onShare}
+                  onBookmark={onBookmark}
+                  onCommentPress={onCommentPress}
+                  currentReactingItem={currentReactingItem}
+                  setCurrentReactingItem={setCurrentReactingItem}
+                  setIsEmojiPickerOpen={setIsEmojiPickerOpen}
+                  getGroupedReactions={getGroupedReactions}
+                  compact={true}
+                  isDark={true}
+                  isBookmarked={isBookmarked}
+                />
+              </View>
             </Animated.View>
           )}
 
@@ -578,14 +588,6 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
     maxHeight: '100%',
   },
-  captionContainer: {
-    position: 'absolute',
-    bottom: 40,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    padding: 16,
-  },
   captionText: {
     color: 'white',
     fontSize: 16,
@@ -643,9 +645,19 @@ const styles = StyleSheet.create({
     right: 10,
   },
   bottomActions: {
-    padding: 16,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     width: '100%',
+    zIndex: 2000,
+  },
+  bottomContent: {
+    padding: 16,
+    zIndex: 2001,
+  },
+  captionWrapper: {
+    marginBottom: 12,
   },
   videoOverlay: {
     ...StyleSheet.absoluteFillObject,

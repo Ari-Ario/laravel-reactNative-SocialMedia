@@ -70,22 +70,11 @@ class WebRTCService {
       { urls: 'stun:stun2.l.google.com:19302' },
       { urls: 'stun:stun3.l.google.com:19302' },
       { urls: 'stun:stun4.l.google.com:19302' },
-      // ✅ TURN SERVERS - CRITICAL FOR MOBILE NETWORKS (carrier-grade NAT)
-      // NOTE: Replace with private TURN server credentials in production
-      { 
-        urls: 'turn:openrelay.metered.ca:80',
-        username: 'openrelayproject',
-        credential: 'openrelayproject'
-      },
-      { 
-        urls: 'turn:openrelay.metered.ca:443',
-        username: 'openrelayproject',
-        credential: 'openrelayproject'
-      },
-      { 
-        urls: 'turn:openrelay.metered.ca:3478',
-        username: 'openrelayproject',
-        credential: 'openrelayproject'
+      // ✅ Private Coturn Server for 4G/5G - CRITICAL for carrier-grade NAT
+      {
+        urls: process.env.EXPO_PUBLIC_TURN_SERVER_URL,
+        username: process.env.EXPO_PUBLIC_TURN_SERVER_USERNAME,
+        credential: process.env.EXPO_PUBLIC_TURN_SERVER_PASSWORD
       }
     ],
     iceCandidatePoolSize: 10,
@@ -106,7 +95,35 @@ class WebRTCService {
   async initialize(userId: number) {
     this.userId = userId;
     this.isTerminating = false;
+    // Reset signaling lock to allow joining different spaces in the same session
+    this.isSubscribed = false; 
     console.log('📞 WebRTCService initialized for user:', userId, 'Platform:', Platform.OS);
+  }
+
+  public async terminate() {
+    this.isTerminating = true;
+    console.log('📞 Terminating WebRTCService...');
+
+    // Stop all local tracks
+    if (this.localStream) {
+      this.localStream.getTracks().forEach(track => {
+        track.stop();
+        console.log(`📞 Stopped local track: ${track.kind}`);
+      });
+      this.localStream = null;
+    }
+
+    // Close all peer connections
+    this.peerConnections.forEach((pc, id) => {
+      pc.close();
+      console.log(`📞 Closed peer connection: ${id}`);
+    });
+    this.peerConnections.clear();
+    this.knownParticipants.clear();
+    this.pendingOffers = [];
+    this.isSubscribed = false;
+
+    console.log('📞 WebRTCService terminated successfully');
   }
 
   async getLocalStream(videoEnabled: boolean = true, audioEnabled: boolean = true): Promise<MediaStream | null> {
@@ -253,10 +270,11 @@ class WebRTCService {
 
         console.log(`📞 WebRTC signal: ${type} from ${fromId} (target: ${data.target_user_id})`);
 
-        if (fromId === this.userId) return;
+        // Use loose comparison to handle string/number mismatches from Pusher
+        if (fromId == this.userId) return;
 
         // Check if signal is for us (or broadcast target 0)
-        if (data.target_user_id && data.target_user_id !== 0 && data.target_user_id !== this.userId) {
+        if (data.target_user_id && data.target_user_id != 0 && data.target_user_id != this.userId) {
           return;
         }
 
@@ -337,13 +355,16 @@ class WebRTCService {
       return;
     }
 
-    // Reliability: Handshake tie-breaker. Higher User ID offers to Lower User ID.
-    // NOTE: Broadcasters ALWAYS offer to Viewers (since Viewers never initiate).
-    if (joinedUserIsViewer || this.userId! > joinedUserId) {
+    // Reliability: Handshake tie-breaker.
+    // RULE 1: Broadcasters ALWAYS offer to Viewers.
+    // RULE 2: If both are Broadcasters, Higher User ID offers to Lower User ID.
+    const shouldOffer = joinedUserIsViewer || (this.userId! > joinedUserId && !this.isViewer);
+
+    if (shouldOffer) {
       console.log(`📞 Role-Aware Signaling: Offering to ${joinedUserId} (IsViewer: ${joinedUserIsViewer})`);
       setTimeout(() => this.createOffer(joinedUserId), 1000);
     } else {
-      console.log(`📞 Role-Aware Signaling: Waiting for offer from High-ID Broadcaster ${joinedUserId}`);
+      console.log(`📞 Role-Aware Signaling: Waiting for offer from ${joinedUserIsViewer ? 'Broadcaster' : 'High-ID Broadcaster'} ${joinedUserId}`);
     }
 
     if (!this.knownParticipants.has(joinedUserId)) {
@@ -366,7 +387,7 @@ class WebRTCService {
   async notifyCallActive() {
     if (!this.spaceId) return;
     console.log(`📞 Broadcasting call active signal (As Viewer: ${this.isViewer})...`);
-    await this.sendSignal(0, 'call-active', { 
+    await this.sendSignal(0, 'call-active', {
       user_id: this.userId,
       is_viewer: this.isViewer
     });
@@ -374,8 +395,8 @@ class WebRTCService {
 
   async createOffer(targetUserId: number) {
     if (this.isTerminating) return;
-    if (!this.spaceId || !this.localStream || !this.callId) {
-      console.warn('Cannot create offer: missing stream or call metadata');
+    if (!this.spaceId || !this.callId) {
+      console.warn('Cannot create offer: missing call metadata');
       return;
     }
 
@@ -384,16 +405,18 @@ class WebRTCService {
 
       const peerConnection = this.createPeerConnection(targetUserId.toString());
 
-      // Add all tracks from local stream
-      const senders = peerConnection.getSenders();
-      this.localStream.getTracks().forEach(track => {
-        const alreadyAdded = senders.some((s: any) => s.track === track);
-        if (!alreadyAdded) {
-          peerConnection.addTrack(track, this.localStream!);
-        } else {
-          console.log(`ℹ️ Track ${track.kind} already added to peer ${targetUserId}`);
-        }
-      });
+      // Add local tracks if available
+      if (this.localStream) {
+        const senders = peerConnection.getSenders();
+        this.localStream.getTracks().forEach(track => {
+          const alreadyAdded = senders.some((s: any) => s.track === track);
+          if (!alreadyAdded) {
+            peerConnection.addTrack(track, this.localStream!);
+          } else {
+            console.log(`ℹ️ Track ${track.kind} already added to peer ${targetUserId}`);
+          }
+        });
+      }
 
       const offer = await peerConnection.createOffer({
         offerToReceiveAudio: true,
@@ -401,10 +424,10 @@ class WebRTCService {
       });
 
       await peerConnection.setLocalDescription(offer);
-      
+
       // ✅ Aggressive Thinning for outbound signal
       const thinnedSDP = this.normalizeSDP(offer.sdp!);
-      await this.sendSignal(targetUserId, 'offer', { 
+      await this.sendSignal(targetUserId, 'offer', {
         offer: {
           type: offer.type,
           sdp: thinnedSDP
@@ -424,37 +447,35 @@ class WebRTCService {
       this.pendingOffers.push(data);
       return;
     }
-    if (!this.localStream) {
-      console.warn('Cannot handle offer: localStream not ready yet — queuing offer');
-      this.pendingOffers.push(data);
-      // Attempt to acquire stream immediately so we can process queued offers
-      this.getLocalStream(true, true).then(stream => {
-        if (stream) {
-          console.log('📞 Stream acquired — processing queued offers:', this.pendingOffers.length);
-          const queued = [...this.pendingOffers];
-          this.pendingOffers = [];
-          queued.forEach(o => this.handleOffer(o));
-        }
-      }).catch(e => console.error('Failed to acquire stream for queued offer:', e));
-      return;
-    }
-
     const fromId = data.from_user_id.toString();
     try {
       console.log(`📞 Handling WebRTC offer from user ${fromId}`);
 
       const peerConnection = this.createPeerConnection(fromId);
 
-      // Add local tracks to response
-      const senders = peerConnection.getSenders();
-      this.localStream.getTracks().forEach(track => {
-        const alreadyAdded = senders.some((s: any) => s.track === track);
-        if (!alreadyAdded) {
-          peerConnection.addTrack(track, this.localStream!);
-        } else {
-          console.log(`ℹ️ Track ${track.kind} already added to peer ${fromId}`);
-        }
-      });
+      // Add local tracks if available
+      if (this.localStream) {
+        const senders = peerConnection.getSenders();
+        this.localStream.getTracks().forEach(track => {
+          const alreadyAdded = senders.some((s: any) => s.track === track);
+          if (!alreadyAdded) {
+            peerConnection.addTrack(track, this.localStream!);
+          }
+        });
+      }
+
+      // Add local tracks if available
+      if (this.localStream) {
+        const senders = peerConnection.getSenders();
+        this.localStream.getTracks().forEach(track => {
+          const alreadyAdded = senders.some((s: any) => s.track === track);
+          if (!alreadyAdded) {
+            peerConnection.addTrack(track, this.localStream!);
+          } else {
+            console.log(`ℹ️ Track ${track.kind} already added to peer ${fromId}`);
+          }
+        });
+      }
 
       // ✅ Normalize remote SDP to avoid parsing errors
       const normalizedSDP = this.normalizeSDP(data.offer.sdp);
@@ -465,8 +486,8 @@ class WebRTCService {
 
       // ✅ Check signaling state before applying remote offer
       if (peerConnection.signalingState !== 'stable' && peerConnection.signalingState !== 'have-local-offer') {
-          console.warn(`⚠️ Signaling state is ${peerConnection.signalingState}, cannot handle offer from ${fromId}.`);
-          return;
+        console.warn(`⚠️ Signaling state is ${peerConnection.signalingState}, cannot handle offer from ${fromId}.`);
+        return;
       }
 
       await peerConnection.setRemoteDescription(offerDescription);
@@ -476,7 +497,7 @@ class WebRTCService {
 
       // ✅ Aggressive Thinning for outbound signal
       const thinnedSDP = this.normalizeSDP(answer.sdp!);
-      await this.sendSignal(parseInt(fromId), 'answer', { 
+      await this.sendSignal(parseInt(fromId), 'answer', {
         answer: {
           type: answer.type,
           sdp: thinnedSDP
@@ -763,9 +784,9 @@ class WebRTCService {
   async startScreenShare(): Promise<void> {
     try {
       console.log('📞 Starting screen share on platform:', Platform.OS);
-      
+
       let screenStream: MediaStream | null = null;
-      
+
       if (Platform.OS === 'web') {
         screenStream = await (media_Devices as any).getDisplayMedia({
           video: true,
@@ -791,18 +812,18 @@ class WebRTCService {
           });
         }
       }
-      
+
       if (!screenStream) {
         throw new Error('Failed to get screen stream');
       }
-      
+
       this.screenStream = screenStream;
       const videoTrack = screenStream.getVideoTracks()[0];
-      
+
       if (!videoTrack) {
         throw new Error('No video track in screen stream');
       }
-      
+
       // Replace video track for all peer connections
       this.peerConnections.forEach((connection) => {
         const sender = (connection as any).getSenders().find((s: any) => s.track?.kind === 'video');
@@ -810,23 +831,23 @@ class WebRTCService {
           sender.replaceTrack(videoTrack).catch((e: any) => console.error('Error replacing track:', e));
         }
       });
-      
+
       // Notify backend about screen share
       if (this.spaceId && this.spaceId !== 'null' && this.callId && this.callId !== 'null') {
         await CollaborationService.getInstance().toggleCallScreenShare(this.spaceId, this.callId, true);
       }
-      
+
       // Handle track end event (user stops sharing via system UI)
       videoTrack.onended = () => {
         console.log('📞 Screen share track ended');
         this.stopScreenShare();
       };
-      
+
       console.log('📞 Screen share started successfully');
-      
+
     } catch (error) {
       console.error('Error starting screen share:', error);
-      
+
       // Provide user-friendly error messages
       if (Platform.OS === 'android') {
         const { Alert } = require('react-native');
@@ -843,18 +864,18 @@ class WebRTCService {
           [{ text: 'OK' }]
         );
       }
-      
+
       throw error;
     }
   }
 
   async stopScreenShare(): Promise<void> {
     console.log('📞 Stopping screen share');
-    
+
     // Restore original video track
     if (this.localStream) {
       const videoTrack = this.localStream.getVideoTracks()[0];
-      
+
       if (videoTrack) {
         this.peerConnections.forEach((connection) => {
           const sender = (connection as any).getSenders().find((s: any) => s.track?.kind === 'video');
@@ -864,7 +885,7 @@ class WebRTCService {
         });
       }
     }
-    
+
     // Notify backend
     if (this.spaceId && this.spaceId !== 'null' && this.callId && this.callId !== 'null') {
       try {
@@ -873,7 +894,7 @@ class WebRTCService {
         console.error('Error stopping screen share:', error);
       }
     }
-    
+
     // Stop and clean up screen stream
     if (this.screenStream) {
       this.screenStream.getTracks().forEach(track => {
@@ -881,10 +902,10 @@ class WebRTCService {
       });
       this.screenStream = null;
     }
-    
+
     console.log('📞 Screen share stopped');
   }
-  
+
   async toggleHandRaise(isRaised: boolean) {
     if (this.spaceId && this.callId) {
       await this.sendSignal(0, isRaised ? 'hand-raised' : 'hand-lowered', { user_id: this.userId });
@@ -953,21 +974,21 @@ class WebRTCService {
     this.peerConnections.forEach((connection) => {
       try {
         if (connection.close) connection.close();
-      } catch (e) {}
+      } catch (e) { }
     });
     this.peerConnections.clear();
 
     // 4. Stop Local Tracks
     if (this.localStream) {
       this.localStream.getTracks().forEach(track => {
-        try { track.stop(); } catch (e) {}
+        try { track.stop(); } catch (e) { }
       });
       this.localStream = null;
     }
 
     if (this.screenStream) {
       this.screenStream.getTracks().forEach(track => {
-        try { track.stop(); } catch (e) {}
+        try { track.stop(); } catch (e) { }
       });
       this.screenStream = null;
     }
@@ -984,7 +1005,7 @@ class WebRTCService {
     this.isViewer = false;
     this.isInitiator = false;
     this.knownParticipants.clear();
-    
+
     console.log('✅ WebRTC: Cleanup complete.');
   }
 
@@ -1001,7 +1022,7 @@ class WebRTCService {
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
         // Force TURN relay
-        { 
+        {
           urls: 'turn:openrelay.metered.ca:80',
           username: 'openrelayproject',
           credential: 'openrelayproject'
@@ -1019,38 +1040,38 @@ class WebRTCService {
     // Recreate offer logic for this peer
     const targetUserId = parseInt(peerId, 10);
     if (targetUserId) {
-        // Create new connection with forced relay policy
-        const newConnection = new RTC_PeerConnection(fallbackIceServers);
-        this.peerConnections.set(peerId, newConnection);
-        
-        // standard setup
-        newConnection.onicecandidate = (event: any) => {
-            if (event.candidate && this.spaceId && this.callId) {
-                this.sendSignal(targetUserId, 'ice-candidate', { candidate: event.candidate });
-            }
-        };
+      // Create new connection with forced relay policy
+      const newConnection = new RTC_PeerConnection(fallbackIceServers);
+      this.peerConnections.set(peerId, newConnection);
 
-        newConnection.ontrack = (event: any) => {
-            if (this.onRemoteStreamCallback && event.streams?.[0]) {
-                this.onRemoteStreamCallback(peerId, event.streams[0]);
-            }
-        };
-
-        if (this.localStream) {
-            this.localStream.getTracks().forEach(track => newConnection.addTrack(track, this.localStream!));
+      // standard setup
+      newConnection.onicecandidate = (event: any) => {
+        if (event.candidate && this.spaceId && this.callId) {
+          this.sendSignal(targetUserId, 'ice-candidate', { candidate: event.candidate });
         }
+      };
 
-        const offer = await newConnection.createOffer();
-        await newConnection.setLocalDescription(offer);
-        
-        // ✅ Aggressive Thinning for outbound signal
-        const thinnedSDP = this.normalizeSDP(offer.sdp!);
-        await this.sendSignal(targetUserId, 'offer', { 
-          offer: {
-            type: offer.type,
-            sdp: thinnedSDP
-          }
-        });
+      newConnection.ontrack = (event: any) => {
+        if (this.onRemoteStreamCallback && event.streams?.[0]) {
+          this.onRemoteStreamCallback(peerId, event.streams[0]);
+        }
+      };
+
+      if (this.localStream) {
+        this.localStream.getTracks().forEach(track => newConnection.addTrack(track, this.localStream!));
+      }
+
+      const offer = await newConnection.createOffer();
+      await newConnection.setLocalDescription(offer);
+
+      // ✅ Aggressive Thinning for outbound signal
+      const thinnedSDP = this.normalizeSDP(offer.sdp!);
+      await this.sendSignal(targetUserId, 'offer', {
+        offer: {
+          type: offer.type,
+          sdp: thinnedSDP
+        }
+      });
     }
   }
 
@@ -1062,8 +1083,8 @@ class WebRTCService {
     if (!this.spaceId || !this.callId) return;
     console.log(`📡 Promoting audience member ${targetUserId} to speakers`);
     await this.sendSignal(targetUserId, 'promoted', {
-       target_user_id: targetUserId,
-       action: 'promote'
+      target_user_id: targetUserId,
+      action: 'promote'
     });
   }
 
@@ -1076,15 +1097,15 @@ class WebRTCService {
   private normalizeSDP(sdp: string): string {
     if (!sdp) return sdp;
     let lines = sdp.split('\r\n');
-    
+
     // ✅ Aggressive Thinning: Remove extmap lines to save critical signaling space (~3KB-4KB)
     // This prevents Pusher 10KB payload limit errors on mobile networks.
     lines = lines.filter(line => !line.startsWith('a=extmap:'));
-    
+
     // Remove non-essential attributes
-    lines = lines.filter(line => 
-      !line.startsWith('a=msid-semantic:') && 
-      !line.startsWith('a=rid:') && 
+    lines = lines.filter(line =>
+      !line.startsWith('a=msid-semantic:') &&
+      !line.startsWith('a=rid:') &&
       !line.startsWith('a=simulcast:')
     );
     return lines.join('\r\n') + '\r\n';

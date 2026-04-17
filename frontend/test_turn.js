@@ -2,10 +2,7 @@ const { RTCPeerConnection } = require('wrtc');
 
 const config = {
   iceServers: [
-    { urls: 'turn:relay.metered.ca:80', username: 'e29e254c0f8dd6a79e02e27f', credential: 'yv2vWAMF9ctoJoLv' },
-    { urls: 'turns:relay.metered.ca:443?transport=tcp', username: 'e29e254c0f8dd6a79e02e27f', credential: 'yv2vWAMF9ctoJoLv' },
-    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turns:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+    { urls: 'turn:159.89.101.120:3478', username: 'ari_admin', credential: 'zmzir_secure_relay_2026' },
   ],
   iceTransportPolicy: 'relay'
 };
