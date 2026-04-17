@@ -64,6 +64,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [incomingCall, setIncomingCallState] = useState<IncomingCall | null>(null);
   const [isRinging, setIsRinging] = useState(false);
   const vibrationActive = useRef(false);
+  const lastEndedAtRef = useRef<number>(0);
 
   // ─── Ringing helpers (declared early so startCall can reference them) ───────
   const stopRinging = useCallback(() => {
@@ -93,6 +94,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [stopRinging]);
 
   const endCall = useCallback(() => {
+    lastEndedAtRef.current = Date.now();
     setActiveCall(null);
     setIsMinimized(false);
   }, []);
@@ -198,6 +200,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [incomingCall, rejectIncomingCall, router]);
 
   // ─── URL Sync / Recovery / Notification Trigger ──────────────────────────
+  const handledJoinIdRef = useRef<string | null>(null);
 
   const urlSyncDeps = [
     globalParams.call,
@@ -244,11 +247,24 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return; 
     }
 
-
-
     // 2. Handle "Call Recovery" / Joining Intent
+    // ✅ IDEMPOTENT GUARD: Prevent re-joining the same callId from URL if we already handled it.
+    // This stops the Ghost Re-call race condition when ending a call.
     if (callId && spaceId && !activeCall && globalParams.joining === '1') {
+      // Suppression Window: Ignore joins within 2s of a deliberate endCall()
+      if (Date.now() - lastEndedAtRef.current < 2000) {
+          console.log('🔄 Suppression: Call recently ended, ignoring recovery trigger');
+          return;
+      }
+
+      if (handledJoinIdRef.current === callId) {
+        console.log('🔄 Suppression: callId already handled in this session, ignoring URL params');
+        return;
+      }
+
       console.log('🔄 Call recovery: restoring activeCall from URL params', { callId, spaceId });
+      handledJoinIdRef.current = callId;
+
       setActiveCall({
         spaceId,
         callId,
@@ -257,6 +273,19 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
         autostart: globalParams.autostart === 'true'
       });
       setIsMinimized(false);
+
+      // ✅ CONSUME INTENT: Clear the joining parameters from the URL so they don't re-trigger.
+      // This is crucial for preventing "Ghost Re-joins" when a call is later ended.
+      router.setParams({
+        joining: undefined,
+        autostart: undefined,
+        call: undefined,
+      });
+    }
+
+    // Reset handledJoinIdRef if params cleared (allowing future re-joins to DIFFERENT calls)
+    if (!callId && handledJoinIdRef.current) {
+        handledJoinIdRef.current = null;
     }
   }, urlSyncDeps);
 

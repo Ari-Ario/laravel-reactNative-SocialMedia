@@ -1,0 +1,28 @@
+// Simulation of the fix
+import React, { useRef, useEffect } from 'react';
+
+// Mocking useGlobalSearchParams behavior
+function useCallRecovery(globalParams, activeCall, setActiveCall) {
+  const handledJoinIdRef = useRef(null);
+
+  useEffect(() => {
+    const callId = globalParams.call;
+    const joining = globalParams.joining === '1';
+
+    if (joining && callId && !activeCall) {
+      if (handledJoinIdRef.current === callId) {
+        console.log('Suppressing duplicate join for:', callId);
+        return;
+      }
+      
+      console.log('Triggering join for:', callId);
+      handledJoinIdRef.current = callId;
+      setActiveCall({ callId });
+    }
+    
+    // Reset if we move away from that call param entirely
+    if (!callId && handledJoinIdRef.current) {
+        handledJoinIdRef.current = null;
+    }
+  }, [globalParams.call, globalParams.joining, activeCall]);
+}

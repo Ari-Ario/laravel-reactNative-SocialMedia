@@ -1040,7 +1040,7 @@ public function startCall(Request $request, $id)
     public function callSignal(Request $request, $id)
     {
         $request->validate([
-            'type' => 'required|in:offer,answer,ice-candidate,call-active,hand-raised,hand-lowered',
+            'type' => 'required|in:offer,answer,ice-candidate,call-active,hand-raised,hand-lowered,leave',
 
             'target_user_id' => 'required|integer',
             'call_id' => 'required|string',

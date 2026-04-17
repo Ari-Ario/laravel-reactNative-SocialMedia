@@ -13,6 +13,7 @@ import {
   StatusBar,
   VirtualizedList,
   PanResponder,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
@@ -44,31 +45,47 @@ if (Platform.OS !== 'web') {
   RTCView = require('react-native-webrtc').RTCView;
 }
 
-const { width, height } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
-const isMobileWeb = isWeb &&
-  typeof window !== 'undefined' &&
-  window.innerWidth <= 768;
+const { width: SCREEN_WIDTH_STATIC } = Dimensions.get('window');
+const isMobileWeb = isWeb && SCREEN_WIDTH_STATIC <= 768;
 
-// Optimized grid calculation - reflects Teams (Web) and WhatsApp (Mobile) styles
-const getGridConfig = (participantCount: number) => {
-  if (isMobileWeb) {
+// Orientation-aware grid calculation - reflects Teams (Web) and WhatsApp (Mobile) styles
+const getGridConfig = (participantCount: number, width: number, height: number, isWeb: boolean) => {
+  const isLandscape = width > height;
+  const isMobileSize = width <= 768;
+
+  if (isMobileSize) {
     // Mobile-first layout (WhatsApp style)
-    if (participantCount === 1) return { cols: 1, itemWidth: '100%', itemHeight: '100%' };
-    if (participantCount === 2) return { cols: 1, itemWidth: '100%', itemHeight: '50%' };
-    if (participantCount <= 4) return { cols: 2, itemWidth: '50%', itemHeight: '50%' };
-    if (participantCount <= 6) return { cols: 2, itemWidth: '50%', itemHeight: '33.33%' };
-    return { cols: 2, itemWidth: '50%', itemHeight: '25%' };
+    if (isLandscape) {
+      // Landscape Optimization for Mobile
+      if (participantCount === 1) return { cols: 1, itemWidth: '100%', itemHeight: '100%' };
+      if (participantCount === 2) return { cols: 2, itemWidth: '50%', itemHeight: '100%' };
+      if (participantCount <= 4) return { cols: 2, itemWidth: '50%', itemHeight: '50%' };
+      if (participantCount <= 6) return { cols: 3, itemWidth: '33.33%', itemHeight: '50%' };
+      return { cols: 4, itemWidth: '25%', itemHeight: '50%' };
+    } else {
+      // Portrait Priority (Default Mobile)
+      if (participantCount === 1) return { cols: 1, itemWidth: '100%', itemHeight: '100%' };
+      if (participantCount === 2) return { cols: 1, itemWidth: '100%', itemHeight: '50%' };
+      if (participantCount <= 4) return { cols: 2, itemWidth: '50%', itemHeight: '50%' };
+      if (participantCount <= 6) return { cols: 2, itemWidth: '50%', itemHeight: '33.33%' };
+      return { cols: 2, itemWidth: '50%', itemHeight: '25%' };
+    }
   }
 
   if (isWeb) {
     // Desktop Web: Dynamic Hub (Teams Style) - Balanced and Centered
-    if (participantCount === 1) return { cols: 1, itemWidth: '94%', itemHeight: '94%' };
-    if (participantCount === 2) return { cols: 2, itemWidth: '47%', itemHeight: '85%' };
-    if (participantCount <= 4) return { cols: 2, itemWidth: '47%', itemHeight: '44%' };
-    if (participantCount <= 6) return { cols: 3, itemWidth: '31%', itemHeight: '44%' };
-    if (participantCount <= 9) return { cols: 3, itemWidth: '31%', itemHeight: '30%' };
-    return { cols: 4, itemWidth: '23%', itemHeight: '23%' };
+    if (isLandscape) {
+      if (participantCount === 1) return { cols: 1, itemWidth: '94%', itemHeight: '94%' };
+      if (participantCount === 2) return { cols: 2, itemWidth: '47%', itemHeight: '85%' };
+      if (participantCount <= 4) return { cols: 2, itemWidth: '47%', itemHeight: '44%' };
+      if (participantCount <= 6) return { cols: 3, itemWidth: '31%', itemHeight: '44%' };
+      if (participantCount <= 9) return { cols: 3, itemWidth: '31%', itemHeight: '30%' };
+      return { cols: 4, itemWidth: '23%', itemHeight: '23%' };
+    } else {
+      // Vertical Web view (Side panel style)
+      return { cols: 1, itemWidth: '94%', itemHeight: `${90 / participantCount}%` };
+    }
   } else {
     // Native App: Portrait Priority
     if (participantCount === 1) return { cols: 1, itemWidth: '100%', itemHeight: '100%' };
@@ -263,17 +280,17 @@ const VideoTile = React.memo(({
       {autoplayFailed && (
         <TouchableOpacity
           activeOpacity={0.9}
-          style={[StyleSheet.absoluteFill, { 
-            zIndex: 100, 
-            backgroundColor: 'rgba(0,0,0,0.8)', 
-            justifyContent: 'center', 
-            alignItems: 'center' 
+          style={[StyleSheet.absoluteFill, {
+            zIndex: 100,
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            justifyContent: 'center',
+            alignItems: 'center'
           }]}
           onPress={handleManualPlay}
         >
-          <View style={{ 
-            padding: 24, 
-            backgroundColor: 'rgba(255,255,255,0.15)', 
+          <View style={{
+            padding: 24,
+            backgroundColor: 'rgba(255,255,255,0.15)',
             borderRadius: 50,
             borderWidth: 1,
             borderColor: 'rgba(255,255,255,0.3)',
@@ -318,6 +335,11 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
   onToggleMinimize,
   type,
 }) => {
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isLandscape = windowWidth > windowHeight;
+  // Mobile view is strictly smaller screens OR landscape mobile
+  const isMobileView = isWeb && (windowWidth <= 768 || (windowWidth <= 932 && isLandscape));
+
   const insets = useSafeAreaInsets();
   const { endCall: globalEndCall, activeCall } = useCall();
   const router = useRouter();
@@ -357,16 +379,14 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
   // Initialized to bottom-right corner: will be set properly on first render
   const PIP_W_DEFAULT = 120;
   const PIP_H_DEFAULT = 160;
-  const SCREEN_W = typeof window !== 'undefined' ? window.innerWidth : Dimensions.get('window').width;
-  const SCREEN_H = typeof window !== 'undefined' ? window.innerHeight : Dimensions.get('window').height;
   const CONTROLS_H = 130; // height of bottom controls bar
 
   // Start at bottom-right corner
-  const pipLeft = useRef(new Animated.Value(SCREEN_W - PIP_W_DEFAULT - 16)).current;
-  const pipTop = useRef(new Animated.Value(SCREEN_H - PIP_H_DEFAULT - CONTROLS_H - 16)).current;
+  const pipLeft = useRef(new Animated.Value(windowWidth - PIP_W_DEFAULT - 16)).current;
+  const pipTop = useRef(new Animated.Value(windowHeight - PIP_H_DEFAULT - CONTROLS_H - 16)).current;
 
   // Track last committed position for incremental dragging
-  const pipLastPos = useRef({ x: SCREEN_W - PIP_W_DEFAULT - 16, y: SCREEN_H - PIP_H_DEFAULT - CONTROLS_H - 16 });
+  const pipLastPos = useRef({ x: windowWidth - PIP_W_DEFAULT - 16, y: windowHeight - PIP_H_DEFAULT - CONTROLS_H - 16 });
 
   const pipPanResponder = useRef(
     PanResponder.create({
@@ -388,8 +408,8 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
         pipLeft.flattenOffset();
         pipTop.flattenOffset();
         // Clamp within screen bounds
-        const newX = Math.max(0, Math.min(pipLastPos.current.x + gs.dx, SCREEN_W - PIP_W_DEFAULT));
-        const newY = Math.max(0, Math.min(pipLastPos.current.y + gs.dy, SCREEN_H - PIP_H_DEFAULT - CONTROLS_H));
+        const newX = Math.max(0, Math.min(pipLastPos.current.x + gs.dx, windowWidth - PIP_W_DEFAULT));
+        const newY = Math.max(0, Math.min(pipLastPos.current.y + gs.dy, windowHeight - PIP_H_DEFAULT - CONTROLS_H));
         pipLastPos.current = { x: newX, y: newY };
         Animated.spring(pipLeft, { toValue: newX, useNativeDriver: false, friction: 7 }).start();
         Animated.spring(pipTop, { toValue: newY, useNativeDriver: false, friction: 7 }).start();
@@ -411,11 +431,13 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
   const isInitialized = useRef(false);
   const isTerminating = useRef(false);
 
+  // Hooks and dimension logic moved to top
+
   // Memoized grid config
   const gridConfig = useMemo(() => {
     const totalParticipants = participants.length + 1; // +1 for local
-    return getGridConfig(totalParticipants);
-  }, [participants.length]);
+    return getGridConfig(totalParticipants, windowWidth, windowHeight, isWeb);
+  }, [participants.length, windowWidth, windowHeight]);
 
   // Memoized participant list including local
   const allParticipants = useMemo(() => {
@@ -517,7 +539,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
       cleanup();
       // ✔️ Clear global activeCall so RootCallOverlay unmounts
       globalEndCall();
-      
+
       // Navigate based on space type
       if (spaceType === 'direct') {
         // For direct calls, we usually just close the overlay
@@ -744,12 +766,16 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
 
   // Lobby & Presence Subscription
   useEffect(() => {
+    if (isTerminating.current) return;
     if (callStatus === 'waiting' || callStatus === 'connecting' || callStatus === 'connected') {
       console.log(`🔌 Subscribing to lobby presence for discovery: ${spaceId} (status: ${callStatus})`);
 
       collaborationService.subscribeToSpace(spaceId, 'immersive-call-lobby', {
         onCallStarted: (data: any) => {
-          if (isTerminating.current) return;
+          if (isTerminating.current) {
+            console.log('📡 Suppressing lobby event: termination in progress');
+            return;
+          }
           console.log('📡 Call started event received in lobby:', data);
           if (data.call?.id) {
             setCallId(data.call.id);
@@ -765,6 +791,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
           globalEndCall();
         },
         onParticipantUpdate: (data: any) => {
+          if (isTerminating.current) return;
           if (data.participants) {
             const participantList = data.participants.map((p: any) => ({
               id: p.user_id?.toString() || p.id?.toString(),
@@ -821,21 +848,21 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
 
     return () => clearInterval(interval);
   }, [callStatus]);
-  
+
   // ✅ Screen Share View Synchronization
   useEffect(() => {
     if (callStatus !== 'connected') return;
 
     // Find if anyone is sharing screen
     const sharingUser = allParticipants.find(p => p.isSharingScreen);
-    
+
     if (sharingUser) {
       // Someone is sharing - switch to speaker view
       if (selectedView !== 'speaker') {
         setPreviousView(selectedView);
         setSelectedView('speaker');
       }
-      
+
       // Feature the sharing user as the primary speaker
       if (activeSpeaker !== sharingUser.id) {
         setActiveSpeaker(sharingUser.id);
@@ -934,25 +961,25 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
       // 🛑 1. Immediate hard-stop for UI state
       isTerminating.current = true;
       setCallStatus('ended');
-      
+
       // 🛑 2. Deactivate local hardware IMMEDIATELY to free camera/mic
       if (localStream) {
         localStream.getTracks().forEach(track => {
           try { track.stop(); } catch (e) { }
         });
       }
-      
+
       // 🔌 3. Signal to others that we are leaving
       collaborationService.unsubscribeFromSpace(spaceId, 'immersive-call-lobby');
-      
+
       if (callId && spaceId) {
-          // Notify backend (aggressive release of space resource)
-          collaborationService.endCall(spaceId, callId).catch(() => {});
+        // Notify backend (aggressive release of space resource)
+        collaborationService.endCall(spaceId, callId).catch(() => { });
       }
 
       // 🧹 4. Full technical cleanup
       cleanup();
-      
+
     } catch (error) {
       console.error('⚠️ Critical error during endCall:', error);
     } finally {
@@ -961,9 +988,12 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
       globalEndCall();
 
       if (spaceType !== 'direct') {
-        router.push(`/(spaces)/${spaceId}?tab=chat`);
+        router.push({
+          pathname: `/(spaces)/${spaceId}`,
+          params: { tab: 'chat', joining: undefined, autostart: undefined, call: undefined }
+        } as any);
       } else {
-        router.setParams({ tab: 'chat', type: undefined, call: undefined });
+        router.setParams({ tab: 'chat', type: undefined, call: undefined, joining: undefined, autostart: undefined });
       }
     }
   }, [callId, spaceId, spaceType, cleanup, globalEndCall, router, collaborationService, localStream]);
@@ -1016,7 +1046,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
   }, [gridConfig, activeSpeaker, handRaised]);
 
   // ── WhatsApp-style PiP Layout ──────────────────────────────────────────────
-  // Activated for: isMobileWeb (responsive browser) OR native mobile (!isWeb)
+  // Activated for: isMobileView (responsive browser) OR native mobile (!isWeb)
   // ONLY when exactly 1 remote participant exists (1-on-1 call).
   // Uses stable sub-components (PiPRemoteVideo, PiPLocalVideo) to prevent flicker.
   const renderPiPLayout = useCallback(() => {
@@ -1096,8 +1126,8 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
                 height: PIP_H,
                 borderRadius: PIP_BORDER,
                 position: 'absolute',
-                left: (SCREEN_W - PIP_W) / 2,
-                top: (SCREEN_H - PIP_H) / 2,
+                left: (windowWidth - PIP_W) / 2,
+                top: (windowHeight - PIP_H) / 2,
               }
               : {
                 // Draggable position from top/left (no right/bottom conflict)
@@ -1315,7 +1345,6 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
           {[
             { icon: "share-social", label: "Share Screen", onPress: toggleScreenShare, color: isSharingScreen ? "#007AFF" : "#fff" },
             { icon: "hand-left", label: handRaised ? "Lower Hand" : "Raise Hand", onPress: toggleHandRaise, color: handRaised ? "#FFCC00" : "#fff" },
-            { icon: "refresh", label: "Reconnect Connection", onPress: () => webRTCService.reconnectAll(), color: "#4CAF50" },
             ...(!isWeb ? [{ icon: "camera-reverse", label: "Flip Camera", onPress: flipCamera, color: "#fff" }] : []),
           ].map((item, idx) => (
 
@@ -1333,8 +1362,8 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
 
   if (isMinimized) return renderMinimizedUI();
 
-  const controlSize = isMobileWeb ? 48 : 56;
-  const buttonSize = isMobileWeb ? 52 : 64;
+  const controlSize = (isMobileView || isLandscape) ? 44 : 56;
+  const buttonSize = (isMobileView || isLandscape) ? 50 : 64;
 
   return (
     <Animated.View
@@ -1342,15 +1371,24 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
         styles.container,
         {
           opacity: fadeAnim,
-          paddingTop: isMobileWeb ? insets.top : 0,
-          paddingBottom: isMobileWeb ? insets.bottom : 0
+          paddingTop: isMobileView ? insets.top : 0,
+          paddingBottom: isMobileView ? insets.bottom : 0,
+          width: isWeb ? '100vw' : '100%',
+          height: isWeb ? '100vh' : '100%',
+          ...(isWeb ? { minWidth: '100vw', minHeight: '100vh' } : {}),
         }
       ]}
       onTouchStart={handleUserInteraction}
     >
       <StatusBar barStyle="light-content" />
 
-      <Animated.View style={[styles.header, { opacity: controlsOpacity, top: isMobileWeb ? insets.top + 10 : 0 }]}>
+      <Animated.View style={[
+        styles.header,
+        {
+          opacity: controlsOpacity,
+          top: isMobileView ? insets.top + (isLandscape ? 5 : 10) : 0
+        }
+      ]}>
         <TouchableOpacity
           onPress={() => onToggleMinimize ? onToggleMinimize() : router.back()}
           style={styles.backButton}
@@ -1405,10 +1443,13 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
         </View>
       </Animated.View>
 
-      <View style={styles.content}>
+      <View style={[
+        styles.content,
+        isWeb ? { width: '100vw' } : {}
+      ]}>
         {callStatus === 'ended' ? null : (callStatus === 'waiting' ? waitingRoom : (
           // ── PiP Mode: mobile web OR native mobile, exactly 1 remote participant ──
-          (isMobileWeb || !isWeb) && participants.length === 1 ? (
+          (isMobileView || !isWeb) && participants.length === 1 ? (
             renderPiPLayout()
           ) : selectedView === 'grid' ? (
             <ScrollView
@@ -1457,14 +1498,25 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
         ))}
       </View>
 
-      <Animated.View style={[styles.controlsContainer, { opacity: controlsOpacity, bottom: isMobileWeb ? insets.bottom + 10 : 0 }]}>
+      <Animated.View
+        style={[
+          styles.controlsContainer,
+          {
+            opacity: controlsOpacity,
+            bottom: isMobileView ? (isLandscape ? 10 : insets.bottom + 10) : 20,
+            transform: [{
+              translateY: interpolate(controlsOpacity.valueOf() as any, [0, 1], [100, 0])
+            }]
+          }
+        ]}
+      >
         <View style={[styles.controlsBlur, { backgroundColor: 'transparent' }]}>
           <View style={styles.controlsRow}>
             <TouchableOpacity
               style={[
                 styles.controlButton,
                 isMuted && styles.controlButtonActive,
-                { marginHorizontal: isMobileWeb ? 8 : 15 }
+                { marginHorizontal: isMobileView ? 8 : 15 }
               ]}
               onPress={toggleMute}
             >
@@ -1472,7 +1524,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
                 colors={isMuted ? ['#FF6B6B', '#FF5252'] : ['rgba(255, 255, 255, 0.08)', 'rgba(255,255,255,0.05)']}
                 style={[styles.controlGradient, { width: controlSize, height: controlSize, borderRadius: controlSize / 2 }]}
               >
-                <Ionicons name={isMuted ? "mic-off" : "mic"} size={isMobileWeb ? 22 : 24} color="#fff" />
+                <Ionicons name={isMuted ? "mic-off" : "mic"} size={isMobileView ? 22 : 24} color="#fff" />
               </LinearGradient>
               <Text style={styles.controlLabel}>{isMuted ? 'Unmute' : 'Mute'}</Text>
             </TouchableOpacity>
@@ -1481,7 +1533,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
               style={[
                 styles.controlButton,
                 !hasVideo && styles.controlButtonActive,
-                { marginHorizontal: isMobileWeb ? 8 : 15 }
+                { marginHorizontal: isMobileView ? 8 : 15 }
               ]}
               onPress={toggleVideo}
             >
@@ -1489,7 +1541,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
                 colors={!hasVideo ? ['#FF6B6B', '#FF5252'] : ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
                 style={[styles.controlGradient, { width: controlSize, height: controlSize, borderRadius: controlSize / 2 }]}
               >
-                <Ionicons name={hasVideo ? "videocam" : "videocam-off"} size={isMobileWeb ? 22 : 24} color="#fff" />
+                <Ionicons name={hasVideo ? "videocam" : "videocam-off"} size={isMobileView ? 22 : 24} color="#fff" />
               </LinearGradient>
               <Text style={styles.controlLabel}>{hasVideo ? 'Video' : 'Off'}</Text>
             </TouchableOpacity>
@@ -1498,7 +1550,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
               style={[
                 styles.controlButton,
                 styles.endCallButton,
-                { marginHorizontal: isMobileWeb ? 12 : 25 }
+                { marginHorizontal: isMobileView ? 12 : 25 }
               ]}
               onPress={endCall}
             >
@@ -1527,11 +1579,6 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 50 : 16,
     width: '100%',
     height: '100%',
-    // Restored flex behavior for visibility
-    ...(Platform.OS === 'web' && !isMobileWeb ? {
-      width: '100vw',
-      height: '100vh',
-    } as any : {})
   },
   header: {
     position: 'absolute',
@@ -1568,10 +1615,6 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     backgroundColor: '#000',
-    // Removed destructive centering on root content View
-    ...(Platform.OS === 'web' && !isMobileWeb ? {
-      width: '100vw',
-    } as any : {})
   },
   waitingContainer: {
     flex: 1,

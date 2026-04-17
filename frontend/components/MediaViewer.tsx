@@ -30,7 +30,7 @@ import { Alert, Share as RNShare } from 'react-native';
 import AuthContext from '@/context/AuthContext';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
-const { width, height } = Dimensions.get('window');
+// Static constants removed - now using reactive hooks in components
 const SWIPE_THRESHOLD = 50;
 const ANIMATION_CONFIG = { duration: 300 };
 
@@ -106,7 +106,7 @@ interface MediaViewerProps {
   deleteCommentReaction: (emoji: string) => void;
   isBookmarked?: boolean;
 }
-const isMobileWeb = Platform.OS === 'web' && Dimensions.get('window').width < 768;
+// isMobileWeb replaced by reactive isMobileWebVal in components
 
 // Internal component to handle individual media rendering and its hooks correctly
 const MediaItemDisplay: React.FC<{
@@ -138,7 +138,8 @@ const MediaItemDisplay: React.FC<{
     (p) => {
       p.loop = true;
       // On mobile web, default to muted for the 'photo-like' experience
-      p.muted = isMobileWeb ? true : false;
+      const isMobileWebVal = Platform.OS === 'web' && width < 768;
+      p.muted = isMobileWebVal ? true : false;
       if (isFocused) p.play();
     }
   );
@@ -374,7 +375,15 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   if (!visible || mediaItems.length === 0) return null;
 
   return (
-    <GestureHandlerRootView style={StyleSheet.absoluteFill}>
+    <GestureHandlerRootView style={[
+      StyleSheet.absoluteFill,
+      Platform.OS === 'web' && {
+        position: 'fixed' as any,
+        width: '100vw' as any,
+        height: '100vh' as any,
+        zIndex: 999999,
+      }
+    ]}>
       <Modal
         visible={visible}
         transparent
@@ -383,7 +392,20 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
         statusBarTranslucent
         onRequestClose={handleClose}
       >
-        <Animated.View style={[StyleSheet.absoluteFill, bgStyle, { backgroundColor: '#000', zIndex: 1000 }]}>
+        <Animated.View style={[
+          StyleSheet.absoluteFill, 
+          bgStyle, 
+          { backgroundColor: '#000', zIndex: 1000 },
+          Platform.OS === 'web' && {
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw' as any,
+            height: '100vh' as any,
+            minWidth: '100vw' as any,
+            minHeight: '100vh' as any,
+          }
+        ]}>
           <GestureDetector gesture={panGesture}>
             <Animated.View style={[styles.modalContainer, containerStyle]}>
               {mediaItems.map((media, index) => (
@@ -539,7 +561,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   mediaItem: {
-    width,
     height: '100%',
     position: 'absolute',
     justifyContent: 'center',

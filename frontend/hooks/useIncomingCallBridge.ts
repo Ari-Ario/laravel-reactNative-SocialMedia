@@ -17,9 +17,16 @@ export function useIncomingCallBridge() {
   const { user } = useContext(AuthContext);
   const { activeCall, setIncomingCall } = useCall();
 
-  // Keep a ref to the latest activeCall so the stable listener can read it
+  // Keep a ref to the latest activeCall and track teardown timing for cooldowns
   const activeCallRef = useRef(activeCall);
+  const lastEndedAtRef = useRef<number>(0);
+
   useEffect(() => {
+    if (!activeCall && activeCallRef.current) {
+      // Transition from active -> ended
+      lastEndedAtRef.current = Date.now();
+      console.log('📞 [Bridge] Call ended, cooldown started');
+    }
     activeCallRef.current = activeCall;
   }, [activeCall]);
 
@@ -49,6 +56,13 @@ export function useIncomingCallBridge() {
       // Guard: ignore if already in a call
       if (activeCallRef.current) {
         console.log('📞 [Bridge] Already in a call — ignoring incoming');
+        return;
+      }
+
+      // Guard: suppression cooldown (prevent ghost pops immediately after leaving)
+      const COOLDOWN_MS = 5000;
+      if (Date.now() - lastEndedAtRef.current < COOLDOWN_MS) {
+        console.log('📞 [Bridge] Suppressing incoming call due to recent teardown (Cooldown active)');
         return;
       }
 

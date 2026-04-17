@@ -45,11 +45,9 @@ class WebRTCService {
   private pusherService = PusherService;
   private isSubscribed = false;
   private isInitiator = false;
-  private signalingTimeout: any = null;
-  private localStreamPromise: Promise<MediaStream | null> | null = null;
-  private offerInProgress = new Set<number>();
-  private isTerminating = false;
   private isViewer = false;
+  private isTerminating = false;
+  private signalingTimeout: any = null;
 
   // Callbacks
   private onRemoteStreamCallback: ((userId: string, stream: MediaStream) => void) | null = null;
@@ -58,11 +56,10 @@ class WebRTCService {
   private onParticipantLeftCallback: ((userId: string) => void) | null = null;
   private onScreenShareStartedCallback: ((userId: string) => void) | null = null;
   private onScreenShareEndedCallback: ((userId: string) => void) | null = null;
-  private handRaisedCallback: ((userId: string, isRaised: boolean) => void) | null = null;
-  private promotedCallback: (() => void) | null = null;
   private onMuteStateChangedCallback: ((userId: string, isMuted: boolean) => void) | null = null;
   private onVideoStateChangedCallback: ((userId: string, hasVideo: boolean) => void) | null = null;
   private onHandRaisedCallback: ((userId: string, isRaised: boolean) => void) | null = null;
+  private onPromotedCallback: (() => void) | null = null;
 
   private knownParticipants = new Set<number>();
 
@@ -73,6 +70,8 @@ class WebRTCService {
       { urls: 'stun:stun2.l.google.com:19302' },
       { urls: 'stun:stun3.l.google.com:19302' },
       { urls: 'stun:stun4.l.google.com:19302' },
+      // ✅ TURN SERVERS - CRITICAL FOR MOBILE NETWORKS (carrier-grade NAT)
+      // NOTE: Replace with private TURN server credentials in production
       { 
         urls: 'turn:openrelay.metered.ca:80',
         username: 'openrelayproject',
@@ -90,6 +89,8 @@ class WebRTCService {
       }
     ],
     iceCandidatePoolSize: 10,
+    // ✅ 'all' allows both STUN and TURN simultaneously (correct setting)
+    // Do NOT use 'relay' here — that forces TURN-only and will fail if TURN is unreachable
     iceTransportPolicy: 'all' as RTCIceTransportPolicy,
   };
 
@@ -104,78 +105,75 @@ class WebRTCService {
 
   async initialize(userId: number) {
     this.userId = userId;
-    this.isViewer = false; // Reset to default
+    this.isTerminating = false;
     console.log('📞 WebRTCService initialized for user:', userId, 'Platform:', Platform.OS);
   }
 
   async getLocalStream(videoEnabled: boolean = true, audioEnabled: boolean = true): Promise<MediaStream | null> {
     if (this.localStream) {
-      this.localStream.getVideoTracks().forEach(track => { track.enabled = videoEnabled; });
-      this.localStream.getAudioTracks().forEach(track => { track.enabled = audioEnabled; });
+      this.localStream.getVideoTracks().forEach(track => {
+        track.enabled = videoEnabled;
+      });
+      this.localStream.getAudioTracks().forEach(track => {
+        track.enabled = audioEnabled;
+      });
       return this.localStream;
     }
 
-    if (this.localStreamPromise) {
-      console.log('📞 MediaStream acquisition already in progress, waiting...');
-      return this.localStreamPromise;
-    }
+    try {
+      console.log('📞 Acquiring MediaStream for Platform:', Platform.OS);
 
-    this.localStreamPromise = (async () => {
-      try {
-        console.log('📞 Acquiring MediaStream for Platform:', Platform.OS);
-
-        let stream: MediaStream;
-        if (Platform.OS !== 'web') {
-          const sourceInfos: any = await media_Devices.enumerateDevices();
-          let videoSourceId;
-          for (let i = 0; i < sourceInfos.length; i++) {
-            const sourceInfo = sourceInfos[i];
-            if (sourceInfo.kind === "videoinput" && sourceInfo.facing === "front") {
-              videoSourceId = sourceInfo.deviceId;
-            }
-          }
-
-          try {
-            stream = await media_Devices.getUserMedia({
-              video: videoEnabled ? {
-                width: { ideal: 1280 },
-                height: { ideal: 720 },
-                facingMode: 'user',
-                ...(videoSourceId ? { optional: [{ sourceId: videoSourceId }] } : {})
-              } : false,
-              audio: audioEnabled,
-            });
-          } catch (videoError) {
-            console.warn('⚠️ Video acquisition failed, falling back to audio only:', videoError);
-            stream = await media_Devices.getUserMedia({ video: false, audio: audioEnabled });
-          }
-        } else {
-          try {
-            stream = await media_Devices.getUserMedia({
-              video: videoEnabled ? {
-                width: { ideal: 1280 },
-                height: { ideal: 720 },
-                facingMode: 'user',
-              } : false,
-              audio: audioEnabled,
-            });
-          } catch (videoError) {
-            console.warn('⚠️ Web video acquisition failed, falling back to audio only:', videoError);
-            stream = await media_Devices.getUserMedia({ video: false, audio: audioEnabled });
+      if (Platform.OS !== 'web') {
+        const sourceInfos: any = await media_Devices.enumerateDevices();
+        let videoSourceId;
+        for (let i = 0; i < sourceInfos.length; i++) {
+          const sourceInfo = sourceInfos[i];
+          if (sourceInfo.kind === "videoinput" && sourceInfo.facing === "front") {
+            videoSourceId = sourceInfo.deviceId;
           }
         }
 
-        this.localStream = stream;
-        return stream;
-      } catch (error) {
-        console.error('CRITICAL: Media acquisition failed entirely:', error);
-        return null;
-      } finally {
-        this.localStreamPromise = null;
+        try {
+          this.localStream = await media_Devices.getUserMedia({
+            video: videoEnabled ? {
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+              facingMode: 'user',
+              ...(videoSourceId ? { optional: [{ sourceId: videoSourceId }] } : {})
+            } : false,
+            audio: audioEnabled,
+          });
+        } catch (videoError) {
+          console.warn('⚠️ Video acquisition failed, falling back to audio only:', videoError);
+          this.localStream = await media_Devices.getUserMedia({
+            video: false,
+            audio: audioEnabled,
+          });
+        }
+      } else {
+        try {
+          this.localStream = await media_Devices.getUserMedia({
+            video: videoEnabled ? {
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+              facingMode: 'user',
+            } : false,
+            audio: audioEnabled,
+          });
+        } catch (videoError) {
+          console.warn('⚠️ Web video acquisition failed, falling back to audio only:', videoError);
+          this.localStream = await media_Devices.getUserMedia({
+            video: false,
+            audio: audioEnabled,
+          });
+        }
       }
-    })();
 
-    return this.localStreamPromise;
+      return this.localStream;
+    } catch (error) {
+      console.error('CRITICAL: Media acquisition failed entirely:', error);
+      throw error;
+    }
   }
 
   async getScreenStream(): Promise<MediaStream | null> {
@@ -186,6 +184,8 @@ class WebRTCService {
           audio: true,
         });
       } else {
+        // Native react-native-webrtc screen share
+        // Note: For iOS, this often requires a Broadcast Extension
         this.screenStream = await media_Devices.getDisplayMedia({
           video: true
         });
@@ -202,10 +202,11 @@ class WebRTCService {
     this.callId = callId;
     this.isInitiator = isInitiator;
     this.isViewer = isViewer;
+    this.isTerminating = false;
 
-    console.log(`📞 Joining call ${callId} (Space: ${spaceId}), isInitiator: ${isInitiator}, isViewer: ${isViewer}`);
+    console.log(`📞 Joining call ${callId} in space ${spaceId}, isInitiator: ${isInitiator}, isViewer: ${isViewer}, platform: ${Platform.OS}`);
 
-    if (Platform.OS === 'web' && !isViewer) {
+    if (Platform.OS === 'web') {
       try {
         await this.getLocalStream(true, true);
       } catch (error) {
@@ -213,17 +214,15 @@ class WebRTCService {
       }
     }
 
-    this.isTerminating = false; // Reset termination flag on join
     this.setupSignalingListeners();
 
-    if (!isInitiator && !isViewer) {
+    if (!isInitiator) {
       console.log('📞 Not initiator, waiting for WebRTC offers...');
-    } else if (isViewer) {
-      console.log('📞 Joined as AUDIENCE (Receiver Only)');
     }
   }
 
   private pendingCandidates: Map<string, any[]> = new Map();
+  // ✅ Queue offers that arrive before localStream is ready (Android timing issue)
   private pendingOffers: any[] = [];
 
   private setupSignalingListeners() {
@@ -248,6 +247,7 @@ class WebRTCService {
 
     CollaborationService.getInstance().subscribeToSpace(this.spaceId, 'webrtc-service', {
       onWebRTCSignal: async (data: any) => {
+        if (this.isTerminating) return;
         const fromId = data.from_user_id;
         const type = data.type;
 
@@ -255,6 +255,7 @@ class WebRTCService {
 
         if (fromId === this.userId) return;
 
+        // Check if signal is for us (or broadcast target 0)
         if (data.target_user_id && data.target_user_id !== 0 && data.target_user_id !== this.userId) {
           return;
         }
@@ -271,22 +272,32 @@ class WebRTCService {
             break;
           case 'call-active':
             const joinedId = parseInt(data.user_id?.toString() || fromId?.toString() || '0', 10);
-            console.log(`👤 Participant joined call: ${joinedId}`);
-            this.handleNewParticipant(joinedId);
+            const joinedIsViewer = !!data.is_viewer;
+            console.log(`👤 Participant joined call: ${joinedId} (Viewer: ${joinedIsViewer})`);
+            this.handleNewParticipant(joinedId, joinedIsViewer);
             break;
           case 'hand-raised':
+            if (this.onHandRaisedCallback) this.onHandRaisedCallback(fromId.toString(), true);
+            break;
           case 'hand-lowered':
-            this.handRaisedCallback?.(fromId.toString(), type === 'hand-raised');
-            break;
-
-          case 'promoted':
-            if (this.isViewer) {
-              this.promotedCallback?.();
-            }
-            break;
-
-          case 'call-ended':
             if (this.onHandRaisedCallback) this.onHandRaisedCallback(fromId.toString(), false);
+            break;
+          case 'promoted':
+            if (fromId === this.userId?.toString()) return;
+            console.log(`📡 YOU HAVE BEEN PROMOTED BY HOST!`);
+            this.isViewer = false;
+            if (this.onPromotedCallback) this.onPromotedCallback();
+            break;
+          case 'call-cancelled':
+            console.log('📞 Call cancelled by initiator');
+            if (this.onCallEndedCallback) this.onCallEndedCallback();
+            break;
+          case 'call-rejected':
+            console.log('📞 Call rejected by target');
+            if (this.onCallEndedCallback) this.onCallEndedCallback();
+            break;
+          case 'call-accepted':
+            console.log('📞 Call accepted by target');
             break;
         }
       },
@@ -316,17 +327,23 @@ class WebRTCService {
     console.log('📞 WebRTC signaling listeners setup complete');
   }
 
-  public handleNewParticipant(joinedUserId: number) {
-    if (!joinedUserId || joinedUserId === this.userId) return;
+  public handleNewParticipant(joinedUserId: number, joinedUserIsViewer: boolean = false) {
+    if (this.isTerminating || !joinedUserId || joinedUserId === this.userId) return;
 
-    // Star Topology Adjustment:
-    // Viewers NEVER initiate offers. They only wait for offers from Broadcasters.
-    // Broadcasters initiate offers to everyone (both other Broadcasters and Viewers).
-    if (!this.isViewer) {
-       console.log(`📞 Broadcaster/Initiator signaling to ${joinedUserId}`);
-       setTimeout(() => this.createOffer(joinedUserId), 1000);
+    // ✅ Star Topology for Channels: Only Broadcasters offer to Viewers.
+    // If I am a viewer, I NEVER initiate an offer.
+    if (this.isViewer) {
+      console.log(`📞 Audience member (${this.userId}) ignoring announcement from ${joinedUserId} (Waiting for host offer)`);
+      return;
+    }
+
+    // Reliability: Handshake tie-breaker. Higher User ID offers to Lower User ID.
+    // NOTE: Broadcasters ALWAYS offer to Viewers (since Viewers never initiate).
+    if (joinedUserIsViewer || this.userId! > joinedUserId) {
+      console.log(`📞 Role-Aware Signaling: Offering to ${joinedUserId} (IsViewer: ${joinedUserIsViewer})`);
+      setTimeout(() => this.createOffer(joinedUserId), 1000);
     } else {
-      console.log(`📞 Viewer waiting for possible offer from ${joinedUserId}`);
+      console.log(`📞 Role-Aware Signaling: Waiting for offer from High-ID Broadcaster ${joinedUserId}`);
     }
 
     if (!this.knownParticipants.has(joinedUserId)) {
@@ -347,47 +364,36 @@ class WebRTCService {
   }
 
   async notifyCallActive() {
-    if (!this.spaceId || this.isViewer) return; // Viewers do not announce themselves space-wide
-    console.log('📞 Broadcasting call active signal (Broadcaster)...');
-    await this.sendSignal(0, 'call-active', { user_id: this.userId });
+    if (!this.spaceId) return;
+    console.log(`📞 Broadcasting call active signal (As Viewer: ${this.isViewer})...`);
+    await this.sendSignal(0, 'call-active', { 
+      user_id: this.userId,
+      is_viewer: this.isViewer
+    });
   }
 
   async createOffer(targetUserId: number) {
-    if (!this.spaceId || !this.callId) {
-      console.warn('Cannot create offer: missing call metadata');
+    if (this.isTerminating) return;
+    if (!this.spaceId || !this.localStream || !this.callId) {
+      console.warn('Cannot create offer: missing stream or call metadata');
       return;
     }
-
-    if (this.offerInProgress.has(targetUserId)) {
-      console.warn(`⚠️ Offer already in-flight for ${targetUserId}, skipping concurrent duplicate`);
-      return;
-    }
-    this.offerInProgress.add(targetUserId);
 
     try {
-      if (!this.localStream) {
-        console.log(`📞 localStream not ready for ${targetUserId}, acquiring now...`);
-        const stream = await this.getLocalStream();
-        if (!stream) {
-          console.error(`❌ Failed to acquire stream for offer to ${targetUserId}`);
-          return;
-        }
-      }
-
       console.log(`📞 Creating WebRTC offer for user ${targetUserId}`);
+
       const peerConnection = this.createPeerConnection(targetUserId.toString());
 
+      // Add all tracks from local stream
       const senders = peerConnection.getSenders();
-      
-      // Only add tracks if we have local media (Broadcasters)
-      if (this.localStream) {
-        this.localStream.getTracks().forEach(track => {
-          const alreadyAdded = senders.some((s: any) => s.track === track);
-          if (!alreadyAdded) {
-            peerConnection.addTrack(track, this.localStream!);
-          }
-        });
-      }
+      this.localStream.getTracks().forEach(track => {
+        const alreadyAdded = senders.some((s: any) => s.track === track);
+        if (!alreadyAdded) {
+          peerConnection.addTrack(track, this.localStream!);
+        } else {
+          console.log(`ℹ️ Track ${track.kind} already added to peer ${targetUserId}`);
+        }
+      });
 
       const offer = await peerConnection.createOffer({
         offerToReceiveAudio: true,
@@ -396,85 +402,88 @@ class WebRTCService {
 
       await peerConnection.setLocalDescription(offer);
       
-      // ✅ SDP THINNING: Ensure offer stays under 10KB for Pusher/Reverb
-      const thinnedSDP = this.normalizeSDP(offer.sdp);
+      // ✅ Aggressive Thinning for outbound signal
+      const thinnedSDP = this.normalizeSDP(offer.sdp!);
       await this.sendSignal(targetUserId, 'offer', { 
-        offer: { type: offer.type, sdp: thinnedSDP } 
+        offer: {
+          type: offer.type,
+          sdp: thinnedSDP
+        }
       });
 
     } catch (error) {
       console.error('Error creating offer:', error);
-    } finally {
-      this.offerInProgress.delete(targetUserId);
     }
   }
 
   private async handleOffer(data: any) {
+    if (this.isTerminating) return;
+    // ✅ If stream not ready yet, queue the offer and retry once stream is available
     if (!this.spaceId || !this.callId) {
       console.warn('Cannot handle offer: missing call metadata — will retry');
       this.pendingOffers.push(data);
       return;
     }
-
     if (!this.localStream) {
-      console.log('📞 localStream not ready for incoming offer, acquiring now...');
-      const stream = await this.getLocalStream();
-      if (!stream) {
-        console.error('❌ Failed to acquire stream for incoming offer');
-        return;
-      }
+      console.warn('Cannot handle offer: localStream not ready yet — queuing offer');
+      this.pendingOffers.push(data);
+      // Attempt to acquire stream immediately so we can process queued offers
+      this.getLocalStream(true, true).then(stream => {
+        if (stream) {
+          console.log('📞 Stream acquired — processing queued offers:', this.pendingOffers.length);
+          const queued = [...this.pendingOffers];
+          this.pendingOffers = [];
+          queued.forEach(o => this.handleOffer(o));
+        }
+      }).catch(e => console.error('Failed to acquire stream for queued offer:', e));
+      return;
     }
 
     const fromId = data.from_user_id.toString();
     try {
       console.log(`📞 Handling WebRTC offer from user ${fromId}`);
+
       const peerConnection = this.createPeerConnection(fromId);
 
+      // Add local tracks to response
       const senders = peerConnection.getSenders();
-      
-      // Viewers ANSWER with receiver-only (no tracks added)
-      if (!this.isViewer && this.localStream) {
-        this.localStream!.getTracks().forEach(track => {
-          const alreadyAdded = senders.some((s: any) => s.track === track);
-          if (!alreadyAdded) {
-            peerConnection.addTrack(track, this.localStream!);
-          }
-        });
-      }
+      this.localStream.getTracks().forEach(track => {
+        const alreadyAdded = senders.some((s: any) => s.track === track);
+        if (!alreadyAdded) {
+          peerConnection.addTrack(track, this.localStream!);
+        } else {
+          console.log(`ℹ️ Track ${track.kind} already added to peer ${fromId}`);
+        }
+      });
 
+      // ✅ Normalize remote SDP to avoid parsing errors
       const normalizedSDP = this.normalizeSDP(data.offer.sdp);
       const offerDescription = new RTC_SessionDescription({
         type: data.offer.type,
         sdp: normalizedSDP
       });
 
-      // ✅ PERFECT NEGOTIATION: Handle Signaling Glare (Collision)
-      const remoteId = parseInt(fromId, 10);
-      const isPolite = this.userId! < remoteId;
-      const isGlare = peerConnection.signalingState !== 'stable' || this.offerInProgress.has(remoteId);
-
-      if (isGlare) {
-        if (!isPolite) {
-          console.warn(`⚠️ Glare detected with user ${fromId}: I am impolite, IGNORING remote offer.`);
+      // ✅ Check signaling state before applying remote offer
+      if (peerConnection.signalingState !== 'stable' && peerConnection.signalingState !== 'have-local-offer') {
+          console.warn(`⚠️ Signaling state is ${peerConnection.signalingState}, cannot handle offer from ${fromId}.`);
           return;
-        }
-        console.warn(`⚠️ Glare detected with user ${fromId}: I am polite, ROLLING BACK my local offer.`);
-        try {
-          await peerConnection.setLocalDescription({ type: 'rollback' } as any);
-        } catch (rollbackError) {
-          console.warn(`⚠️ Rollback failed for ${fromId}, attempting to apply offer anyway:`, rollbackError);
-        }
       }
 
       await peerConnection.setRemoteDescription(offerDescription);
+
       const answer = await peerConnection.createAnswer();
       await peerConnection.setLocalDescription(answer);
-      
-      // ✅ SDP THINNING: Ensure answer stays under 10KB
-      const thinnedSDP = this.normalizeSDP(answer.sdp);
+
+      // ✅ Aggressive Thinning for outbound signal
+      const thinnedSDP = this.normalizeSDP(answer.sdp!);
       await this.sendSignal(parseInt(fromId), 'answer', { 
-        answer: { type: answer.type, sdp: thinnedSDP } 
+        answer: {
+          type: answer.type,
+          sdp: thinnedSDP
+        }
       });
+
+      // Process any queued candidates that arrived before the offer
       this.processQueuedCandidates(fromId);
 
     } catch (error) {
@@ -483,11 +492,14 @@ class WebRTCService {
   }
 
   private async handleAnswer(data: any) {
+    if (this.isTerminating) return;
     const fromId = data.from_user_id.toString();
     try {
       console.log(`📞 Handling WebRTC answer from user ${fromId}`);
+
       const peerConnection = this.peerConnections.get(fromId);
       if (peerConnection) {
+        // ✅ Normalize remote SDP
         const normalizedSDP = this.normalizeSDP(data.answer.sdp);
         const answerDescription = new RTC_SessionDescription({
           type: data.answer.type,
@@ -496,7 +508,11 @@ class WebRTCService {
 
         if (peerConnection.signalingState === 'have-local-offer' || peerConnection.signalingState === 'have-remote-offer') {
           await peerConnection.setRemoteDescription(answerDescription);
+        } else {
+          console.warn(`⚠️ Ignoring answer from ${fromId}: signalingState is ${peerConnection.signalingState}`);
         }
+
+        // Process any queued candidates
         this.processQueuedCandidates(fromId);
       }
     } catch (error) {
@@ -505,25 +521,36 @@ class WebRTCService {
   }
 
   private async handleIceCandidate(data: any) {
+    if (this.isTerminating) return;
     const fromId = data.from_user_id.toString();
     try {
-      // ✅ Proactively create peer connection if it doesn't exist yet
-      // This ensures we can queue candidates even if the offer arrives slightly later (common in mesh)
-      const peerConnection = this.createPeerConnection(fromId);
-      
-      if (peerConnection.connectionState === 'closed') return;
+      const peerConnection = this.peerConnections.get(fromId);
+
+      // Guard: ignore candidates for connections that no longer exist or are closed
+      if (!peerConnection || peerConnection.connectionState === 'closed') {
+        return;
+      }
 
       const candidate = new RTC_IceCandidate(data.candidate);
+
       if (peerConnection.remoteDescription && peerConnection.remoteDescription.type) {
         try {
           await peerConnection.addIceCandidate(candidate);
         } catch (iceError: any) {
-          console.warn(`⚠️ Stale ICE candidate ignored for peer ${fromId} (expected if session expired)`);
+          // This is expected when a stale ICE candidate arrives after an ICE restart.
+          // The new session's candidates will succeed — this one is from the old session.
+          // Not dangerous: the call continues via other valid candidates.
+          console.warn(
+            `⚠️ Stale ICE candidate ignored for peer ${fromId} (likely from before an ICE restart — call unaffected)`
+          );
         }
       } else {
-        if (!this.pendingCandidates.has(fromId)) this.pendingCandidates.set(fromId, []);
+        // Offer/Answer not yet processed, queue the candidate
+        console.log(`📞 Queuing ICE candidate from ${fromId} (Remote description not ready)`);
+        if (!this.pendingCandidates.has(fromId)) {
+          this.pendingCandidates.set(fromId, []);
+        }
         this.pendingCandidates.get(fromId)!.push(candidate);
-        console.log(`📞 Queued ICE candidate from ${fromId} (awaiting remote description)`);
       }
     } catch (error) {
       console.warn(`⚠️ Could not process ICE candidate from ${fromId}:`, error);
@@ -534,15 +561,24 @@ class WebRTCService {
     const candidates = this.pendingCandidates.get(peerId);
     if (candidates && this.peerConnections.has(peerId)) {
       const pc = this.peerConnections.get(peerId)!;
+      console.log(`📞 Processing ${candidates.length} queued ICE candidates for ${peerId}`);
       candidates.forEach(async (candidate) => {
-        try { await pc.addIceCandidate(candidate); } catch (e) { }
+        try {
+          await pc.addIceCandidate(candidate);
+        } catch (e) {
+          console.error('Error adding queued candidate:', e);
+        }
       });
       this.pendingCandidates.delete(peerId);
     }
   }
 
   private createPeerConnection(peerId: string): RTCPeerConnection {
-    if (this.peerConnections.has(peerId)) return this.peerConnections.get(peerId)!;
+    if (this.peerConnections.has(peerId)) {
+      return this.peerConnections.get(peerId)!;
+    }
+
+    console.log(`📞 Creating new peer connection for ${peerId}`);
 
     const pcConfig = {
       ...this.iceServers,
@@ -554,22 +590,36 @@ class WebRTCService {
 
     peerConnection.onicecandidate = (event: any) => {
       if (event.candidate && this.spaceId && this.callId) {
-        this.sendSignal(parseInt(peerId), 'ice-candidate', { candidate: event.candidate });
+        this.sendSignal(parseInt(peerId), 'ice-candidate', {
+          candidate: event.candidate,
+        });
       }
     };
 
     peerConnection.ontrack = (event: any) => {
       const stream = event.streams && event.streams[0];
-      if (this.onRemoteStreamCallback && stream) this.onRemoteStreamCallback(peerId, stream);
+      console.log(`📞 [ontrack] Received remote stream from ${peerId}. Tracks:`, stream?.getTracks().map((t: any) => `${t.kind}:${t.enabled}`));
+      if (this.onRemoteStreamCallback && stream) {
+        this.onRemoteStreamCallback(peerId, stream);
+      }
     };
 
+    // ✅ Add onaddstream for better legacy/native compatibility
     (peerConnection as any).onaddstream = (event: any) => {
       const stream = event.stream;
-      if (this.onRemoteStreamCallback && stream) this.onRemoteStreamCallback(peerId, stream);
+      console.log(`📞 [onaddstream] Received remote stream from ${peerId}. Tracks:`, stream?.getTracks().map((t: any) => `${t.kind}:${t.enabled}`));
+      if (this.onRemoteStreamCallback && stream) {
+        this.onRemoteStreamCallback(peerId, stream);
+      }
     };
 
     peerConnection.onconnectionstatechange = () => {
-      if (peerConnection.connectionState === 'connected') this.triggerHapticSuccess();
+      console.log(`📞 Connection state with ${peerId}:`, peerConnection.connectionState);
+
+      if (peerConnection.connectionState === 'connected') {
+        this.triggerHapticSuccess();
+      }
+
       if (peerConnection.connectionState === 'disconnected' ||
         peerConnection.connectionState === 'failed' ||
         peerConnection.connectionState === 'closed') {
@@ -577,26 +627,88 @@ class WebRTCService {
       }
     };
 
+    // ✅ ICE connection state monitoring with timeout and detailed diagnostics
+    let iceCheckingTimeout: ReturnType<typeof setTimeout> | null = null;
+
     peerConnection.oniceconnectionstatechange = () => {
       const state = peerConnection.iceConnectionState;
       console.log(`📞 ICE connection state with ${peerId}:`, state);
 
-      if (this.isTerminating) return; // ✅ Safety: ignore connection drops while leaving
+      if (state === 'connected' || state === 'completed') {
+        // Clear timeout on success
+        if (iceCheckingTimeout) { clearTimeout(iceCheckingTimeout); iceCheckingTimeout = null; }
+        console.log(`✅ ICE connected for ${peerId} - media should flow`);
+      }
+
+      if (state === 'checking') {
+        // ✅ Set 15s timeout — if still checking, force ICE restart
+        iceCheckingTimeout = setTimeout(() => {
+          console.warn(`⚠️ ICE checking timeout for ${peerId} — attempting forced restart`);
+          peerConnection.createOffer({ iceRestart: true })
+            .then((offer: any) => peerConnection.setLocalDescription(offer))
+            .then(() => {
+              const desc = peerConnection.localDescription;
+              if (desc) this.sendSignal(parseInt(peerId), 'offer', { offer: desc });
+            })
+            .catch((e: any) => console.warn('ICE forced restart failed:', e));
+        }, 15000);
+      }
 
       if (state === 'failed' || state === 'disconnected') {
-        console.warn(`⚠️ ICE ${state} for ${peerId}, triggering automatic reconnection...`);
-        this.reconnectPeer(peerId);
+        if (iceCheckingTimeout) { clearTimeout(iceCheckingTimeout); iceCheckingTimeout = null; }
+        console.warn(`⚠️ ICE ${state} for ${peerId}, attempting restart...`);
+        peerConnection.createOffer({ iceRestart: true })
+          .then((offer: any) => peerConnection.setLocalDescription(offer))
+          .then(() => {
+            const description = peerConnection.localDescription;
+            if (description) {
+              this.sendSignal(parseInt(peerId), 'offer', { offer: description });
+            }
+          })
+          .catch((e: any) => {
+            console.warn(`⚠️ ICE restart for ${peerId} failed:`, e);
+          });
       }
+    };
+
+    // ✅ ICE candidate error handler — log only once per peer to avoid console spam
+    // Error 701 fires for every STUN/TURN server that times out; connection can still succeed via other candidates
+    let iceErrorLogged = false;
+    (peerConnection as any).onicecandidateerror = (error: any) => {
+      if (error.errorCode !== 701) return; // Non-fatal, ignore
+      if (iceErrorLogged) return;          // Already logged once for this peer
+      iceErrorLogged = true;
+      const isStun = error.url?.startsWith('stun:');
+      const serverType = isStun ? 'STUN' : 'TURN';
+      console.warn(
+        `⚠️ ${serverType} server unreachable for peer ${peerId} (call may still connect via other candidates):`,
+        error.errorText
+      );
     };
 
     return peerConnection;
   }
 
   private async sendSignal(targetUserId: number, type: string, data: any) {
-    if (!this.spaceId || this.spaceId === 'null' || !this.callId || this.callId === 'null') return;
+    if (!this.spaceId || this.spaceId === 'null' || !this.callId || this.callId === 'null') {
+      console.error('Cannot send signal: missing or invalid spaceId/callId', { spaceId: this.spaceId, callId: this.callId });
+      return;
+    }
+
     try {
-      const payload = { type, target_user_id: targetUserId || 0, call_id: this.callId, ...data };
+      const payload = {
+        type,
+        target_user_id: targetUserId || 0, // ✅ Use 0 for broadcast to satisfy backend 'required|integer' validation
+        call_id: this.callId,
+        ...data,
+      };
+
+      console.log(`📞 Sending ${type} signal to user ${targetUserId}`);
+
       await CollaborationService.getInstance().sendWebRTCSignal(this.spaceId, payload);
+
+      console.log(`📞 ${type} signal sent successfully`);
+
     } catch (error) {
       console.error('Error sending signal:', error);
     }
@@ -605,265 +717,426 @@ class WebRTCService {
   private handleParticipantLeft(userId: number) {
     const peerId = userId.toString();
     const connection = this.peerConnections.get(peerId);
+
     if (connection) {
       connection.close();
       this.peerConnections.delete(peerId);
     }
-    if (this.onParticipantLeftCallback) this.onParticipantLeftCallback(peerId);
+
+    if (this.onParticipantLeftCallback) {
+      this.onParticipantLeftCallback(peerId);
+    }
   }
 
   async toggleMute(isMuted: boolean) {
     if (this.localStream) {
-      this.localStream.getAudioTracks().forEach(track => { track.enabled = !isMuted; });
+      this.localStream.getAudioTracks().forEach(track => {
+        track.enabled = !isMuted;
+      });
     }
-    if (this.spaceId && this.callId) {
-      CollaborationService.getInstance().toggleCallMute(this.spaceId, this.callId, isMuted).catch(() => {});
+
+    if (this.spaceId && this.spaceId !== 'null' && this.callId && this.callId !== 'null') {
+      try {
+        await CollaborationService.getInstance().toggleCallMute(this.spaceId, this.callId, isMuted);
+      } catch (error) {
+        console.error('Error toggling mute:', error);
+      }
     }
   }
 
   async toggleVideo(hasVideo: boolean) {
     if (this.localStream) {
-      this.localStream.getVideoTracks().forEach(track => { track.enabled = hasVideo; });
+      this.localStream.getVideoTracks().forEach(track => {
+        track.enabled = hasVideo;
+      });
     }
-    if (this.spaceId && this.callId) {
-      CollaborationService.getInstance().toggleCallVideo(this.spaceId, this.callId, hasVideo).catch(() => {});
+
+    if (this.spaceId && this.spaceId !== 'null' && this.callId && this.callId !== 'null') {
+      try {
+        await CollaborationService.getInstance().toggleCallVideo(this.spaceId, this.callId, hasVideo);
+      } catch (error) {
+        console.error('Error toggling video:', error);
+      }
     }
   }
 
   async startScreenShare(): Promise<void> {
     try {
+      console.log('📞 Starting screen share on platform:', Platform.OS);
+      
       let screenStream: MediaStream | null = null;
+      
       if (Platform.OS === 'web') {
-        screenStream = await (media_Devices as any).getDisplayMedia({ video: true, audio: true });
+        screenStream = await (media_Devices as any).getDisplayMedia({
+          video: true,
+          audio: true,
+        });
       } else {
-        screenStream = await media_Devices.getDisplayMedia({ video: true, audio: true });
+        // Native: react-native-webrtc supports screen capture
+        try {
+          screenStream = await media_Devices.getDisplayMedia({
+            video: true,
+            audio: true,
+          });
+        } catch (nativeError) {
+          console.warn('Native getDisplayMedia failed, trying alternative:', nativeError);
+          // Fallback for Android - use getDisplayMedia with constraints
+          screenStream = await media_Devices.getDisplayMedia({
+            video: {
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+              frameRate: { ideal: 30 },
+            },
+            audio: true,
+          });
+        }
       }
-      if (!screenStream) throw new Error('Failed to get screen stream');
+      
+      if (!screenStream) {
+        throw new Error('Failed to get screen stream');
+      }
+      
       this.screenStream = screenStream;
       const videoTrack = screenStream.getVideoTracks()[0];
+      
+      if (!videoTrack) {
+        throw new Error('No video track in screen stream');
+      }
+      
+      // Replace video track for all peer connections
       this.peerConnections.forEach((connection) => {
         const sender = (connection as any).getSenders().find((s: any) => s.track?.kind === 'video');
-        if (sender) sender.replaceTrack(videoTrack).catch(() => {});
+        if (sender) {
+          sender.replaceTrack(videoTrack).catch((e: any) => console.error('Error replacing track:', e));
+        }
       });
-      if (this.spaceId && this.callId) {
-        CollaborationService.getInstance().toggleCallScreenShare(this.spaceId, this.callId, true).catch(() => {});
+      
+      // Notify backend about screen share
+      if (this.spaceId && this.spaceId !== 'null' && this.callId && this.callId !== 'null') {
+        await CollaborationService.getInstance().toggleCallScreenShare(this.spaceId, this.callId, true);
       }
-      videoTrack.onended = () => this.stopScreenShare();
+      
+      // Handle track end event (user stops sharing via system UI)
+      videoTrack.onended = () => {
+        console.log('📞 Screen share track ended');
+        this.stopScreenShare();
+      };
+      
+      console.log('📞 Screen share started successfully');
+      
     } catch (error) {
+      console.error('Error starting screen share:', error);
+      
+      // Provide user-friendly error messages
       if (Platform.OS === 'android') {
         const { Alert } = require('react-native');
-        Alert.alert('Screen Share', 'Grant screen recording permission to share.', [{ text: 'OK' }]);
+        Alert.alert(
+          'Screen Share',
+          'To share your screen on Android, you need to grant screen recording permission.\n\nTap "Start Now" when prompted.',
+          [{ text: 'OK' }]
+        );
+      } else if (Platform.OS === 'ios') {
+        const { Alert } = require('react-native');
+        Alert.alert(
+          'Screen Share',
+          'Screen sharing on iOS requires a broadcast extension. This feature is coming soon.',
+          [{ text: 'OK' }]
+        );
       }
+      
       throw error;
     }
   }
 
   async stopScreenShare(): Promise<void> {
+    console.log('📞 Stopping screen share');
+    
+    // Restore original video track
     if (this.localStream) {
       const videoTrack = this.localStream.getVideoTracks()[0];
+      
       if (videoTrack) {
         this.peerConnections.forEach((connection) => {
           const sender = (connection as any).getSenders().find((s: any) => s.track?.kind === 'video');
-          if (sender) sender.replaceTrack(videoTrack).catch(() => {});
+          if (sender) {
+            sender.replaceTrack(videoTrack).catch((e: any) => console.error('Error restoring track:', e));
+          }
         });
       }
     }
-    if (this.spaceId && this.callId) {
-      CollaborationService.getInstance().toggleCallScreenShare(this.spaceId, this.callId, false).catch(() => {});
+    
+    // Notify backend
+    if (this.spaceId && this.spaceId !== 'null' && this.callId && this.callId !== 'null') {
+      try {
+        await CollaborationService.getInstance().toggleCallScreenShare(this.spaceId, this.callId, false);
+      } catch (error) {
+        console.error('Error stopping screen share:', error);
+      }
     }
+    
+    // Stop and clean up screen stream
     if (this.screenStream) {
-      this.screenStream.getTracks().forEach(track => track.stop());
+      this.screenStream.getTracks().forEach(track => {
+        track.stop();
+      });
       this.screenStream = null;
     }
+    
+    console.log('📞 Screen share stopped');
   }
   
-  async reconnectAll() {
-    console.log('🔄 Manually triggering reconnection for all peers...');
-    const peerIds = Array.from(this.peerConnections.keys());
-    for (const peerId of peerIds) {
-      const pid = parseInt(peerId, 10);
-      if (pid === this.userId) continue; // ✅ Safety: never reconnect with self
-      await this.reconnectPeer(peerId);
-    }
-  }
-
-  async reconnectPeer(peerId: string) {
-    if (this.isTerminating) return; // ✅ Safety: never reconnect while leaving
-    const peerConnection = this.peerConnections.get(peerId);
-    if (!peerConnection) return;
-
-    console.log(`🔄 Attempting ICE restart for peer ${peerId}`);
-    try {
-      // ✅ We only initiate restart if we are the "Offerer" for this peer relation
-      // or if the connection is already in a failed state.
-      const remoteId = parseInt(peerId, 10);
-      const isInitiator = this.userId! > remoteId;
-
-      if (isInitiator) {
-        const offer = await peerConnection.createOffer({ iceRestart: true });
-        await peerConnection.setLocalDescription(offer);
-        
-        // ✅ SDP THINNING for ICE Restart
-        const thinnedSDP = this.normalizeSDP(offer.sdp);
-        await this.sendSignal(remoteId, 'offer', { 
-          offer: { type: offer.type, sdp: thinnedSDP } 
-        });
-      } else {
-        // Polite peers just wait for the restart offer, but we can log it
-        console.log(`ℹ️ Peer ${peerId} is the initiator, waiting for their ICE restart offer...`);
-      }
-    } catch (error) {
-      console.warn(`⚠️ Reconnection attempt failed for ${peerId}:`, error);
-    }
-  }
-
   async toggleHandRaise(isRaised: boolean) {
     if (this.spaceId && this.callId) {
       await this.sendSignal(0, isRaised ? 'hand-raised' : 'hand-lowered', { user_id: this.userId });
     }
   }
 
-  async promoteParticipant(userId: string) {
-    if (this.spaceId && this.callId) {
-      await this.sendSignal(parseInt(userId), 'promoted', { targetUserId: userId });
-    }
-  }
-
+  /**
+   * Replace the video track in all active peer connections.
+   * Used by flipCamera on web to swap front/back camera without
+   * rebuilding the MediaStream or affecting audio.
+   */
   async replaceVideoTrack(newTrack: MediaStreamTrack): Promise<void> {
     const replacePromises: Promise<void>[] = [];
     this.peerConnections.forEach((connection) => {
       const sender = (connection as any).getSenders?.().find((s: any) => s.track?.kind === 'video');
-      if (sender) replacePromises.push(sender.replaceTrack(newTrack).catch(() => {}));
+      if (sender) {
+        replacePromises.push(
+          sender.replaceTrack(newTrack).catch((e: any) =>
+            console.warn('replaceVideoTrack error on peer:', e)
+          )
+        );
+      }
     });
     await Promise.all(replacePromises);
+    console.log('📞 Video track replaced across', replacePromises.length, 'peer connections');
   }
 
-  async cleanup() { await this.leaveCall(); }
+
+  async cleanup() {
+    await this.leaveCall();
+  }
 
   /**
-   * Leave the call silently (for spectators)
+   * Complete teardown of WebRTC session.
+   * If initiator, notifies backend to end the call globally.
+   * If viewer/participant, just cleans up locally.
    */
   async leaveCall() {
+    if (this.isTerminating) return;
     this.isTerminating = true;
-    console.log('📞 [WebRTC] Leaving call and releasing hardware...');
-    await this.performLocalCleanup();
-  }
 
-  /**
-   * End the call for everyone (for owners/initiators)
-   */
-  async endCall() {
-    this.isTerminating = true; 
-    console.log('📞 [WebRTC] Aggressive cleanup: Ending call for all...');
-    
-    // 1. Notify backend to terminate the session (only if initiator/allowed)
-    if (this.spaceId && this.callId && !this.isViewer) {
-      CollaborationService.getInstance().endCall(this.spaceId, this.callId).catch(() => {});
+    console.log('🧹 WebRTC: Leaving call and cleaning up...');
+
+    // 1. Notify Backend (initiator only ends globally)
+    if (this.spaceId && this.callId && this.spaceId !== 'null' && this.callId !== 'null') {
+      try {
+        if (this.isInitiator) {
+          console.log('📞 Initiator ending call globally...');
+          await CollaborationService.getInstance().endCall(this.spaceId, this.callId);
+        } else {
+          // Non-initiators just signal they are leaving to peers
+          await this.sendSignal(0, 'leave', { user_id: this.userId });
+        }
+      } catch (error) {
+        console.error('Error during backend call end/leave:', error);
+      }
     }
 
-    await this.performLocalCleanup();
-  }
+    // 2. Clear Signaling timeout
+    if (this.signalingTimeout) {
+      clearTimeout(this.signalingTimeout);
+      this.signalingTimeout = null;
+    }
 
-  private async performLocalCleanup() {
-    // 2. Immediate track disposal (Aggressive hardware release)
+    // 3. Close Peer Connections
+    this.peerConnections.forEach((connection) => {
+      try {
+        if (connection.close) connection.close();
+      } catch (e) {}
+    });
+    this.peerConnections.clear();
+
+    // 4. Stop Local Tracks
     if (this.localStream) {
-      console.log('📞 Stopping local media tracks...');
       this.localStream.getTracks().forEach(track => {
-        try {
-          track.stop();
-          track.enabled = false;
-        } catch (e) {
-          console.warn('Error stopping local track:', e);
-        }
+        try { track.stop(); } catch (e) {}
       });
       this.localStream = null;
     }
 
     if (this.screenStream) {
-      console.log('📞 Stopping screen share tracks...');
       this.screenStream.getTracks().forEach(track => {
-        try {
-          track.stop();
-          track.enabled = false;
-        } catch (e) {
-          console.warn('Error stopping screen track:', e);
-        }
+        try { track.stop(); } catch (e) {}
       });
       this.screenStream = null;
     }
 
-    // 3. Sever all P2P connections
-    this.peerConnections.forEach((connection, peerId) => {
-      try {
-        console.log(`📞 Closing connection to peer ${peerId}`);
-        connection.close();
-      } catch (e) {
-        console.warn(`Error closing peer ${peerId}:`, e);
-      }
-    });
-    this.peerConnections.clear();
-
-    // 4. Reset signaling state
-    this.localStreamPromise = null;
-    this.offerInProgress.clear();
-    this.pendingCandidates.clear();
-    this.pendingOffers = [];
-
+    // 5. Unsubscribe
     if (this.spaceId) {
-      console.log('🔌 Unsubscribing from WebRTC signaling...');
       CollaborationService.getInstance().unsubscribeFromSpace(this.spaceId, 'webrtc-service');
       this.isSubscribed = false;
     }
 
+    // 6. Reset State
     this.spaceId = null;
     this.callId = null;
+    this.isViewer = false;
+    this.isInitiator = false;
     this.knownParticipants.clear();
-    console.log('✅ WebRTC cleanup complete');
+    
+    console.log('✅ WebRTC: Cleanup complete.');
+  }
+
+  async endCall() {
+    // Alias for compatibility with existing UI components
+    await this.leaveCall();
+  }
+
+  private async retryWithFallbackServers(peerId: string) {
+    console.log(`🔄 Retrying connection with fallback ICE servers for ${peerId}...`);
+
+    const fallbackIceServers = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        // Force TURN relay
+        { 
+          urls: 'turn:openrelay.metered.ca:80',
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        }
+      ],
+      iceTransportPolicy: 'relay' as RTCIceTransportPolicy // Force TURN relay
+    };
+
+    const oldConnection = this.peerConnections.get(peerId);
+    if (oldConnection) {
+      oldConnection.close();
+      this.peerConnections.delete(peerId);
+    }
+
+    // Recreate offer logic for this peer
+    const targetUserId = parseInt(peerId, 10);
+    if (targetUserId) {
+        // Create new connection with forced relay policy
+        const newConnection = new RTC_PeerConnection(fallbackIceServers);
+        this.peerConnections.set(peerId, newConnection);
+        
+        // standard setup
+        newConnection.onicecandidate = (event: any) => {
+            if (event.candidate && this.spaceId && this.callId) {
+                this.sendSignal(targetUserId, 'ice-candidate', { candidate: event.candidate });
+            }
+        };
+
+        newConnection.ontrack = (event: any) => {
+            if (this.onRemoteStreamCallback && event.streams?.[0]) {
+                this.onRemoteStreamCallback(peerId, event.streams[0]);
+            }
+        };
+
+        if (this.localStream) {
+            this.localStream.getTracks().forEach(track => newConnection.addTrack(track, this.localStream!));
+        }
+
+        const offer = await newConnection.createOffer();
+        await newConnection.setLocalDescription(offer);
+        
+        // ✅ Aggressive Thinning for outbound signal
+        const thinnedSDP = this.normalizeSDP(offer.sdp!);
+        await this.sendSignal(targetUserId, 'offer', { 
+          offer: {
+            type: offer.type,
+            sdp: thinnedSDP
+          }
+        });
+    }
+  }
+
+  onPromoted(callback: () => void) {
+    this.onPromotedCallback = callback;
+  }
+
+  async promoteParticipant(targetUserId: number) {
+    if (!this.spaceId || !this.callId) return;
+    console.log(`📡 Promoting audience member ${targetUserId} to speakers`);
+    await this.sendSignal(targetUserId, 'promoted', {
+       target_user_id: targetUserId,
+       action: 'promote'
+    });
+  }
+
+  async rejectCall(targetUserId: number) {
+    if (!this.spaceId || !this.callId) return;
+    console.log(`📞 Rejecting call from ${targetUserId}`);
+    await this.sendSignal(targetUserId, 'call-rejected', { user_id: this.userId });
   }
 
   private normalizeSDP(sdp: string): string {
-    if (!sdp) return '';
+    if (!sdp) return sdp;
+    let lines = sdp.split('\r\n');
     
-    // 1. Basic cleaning
-    const lines = sdp.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    // ✅ Aggressive Thinning: Remove extmap lines to save critical signaling space (~3KB-4KB)
+    // This prevents Pusher 10KB payload limit errors on mobile networks.
+    lines = lines.filter(line => !line.startsWith('a=extmap:'));
     
-    // 2. Aggressive thinning to stay under 10KB budget
-    // Stripping extension maps (extmap) saves significant space (~2KB-4KB)
-    // and they are often redundant for standard audio/video.
-    const thinnedLines = lines.filter(line => {
-      if (line.startsWith('a=extmap:')) return false;
-      if (line.startsWith('a=rtcp-fb:')) {
-         // Keep only essential feedback mechanisms
-         if (line.includes('nack') || line.includes('goog-remb') || line.includes('transport-cc')) return true;
-         return false; 
-      }
-      return true;
-    });
-
-    return thinnedLines.join('\r\n') + '\r\n';
+    // Remove non-essential attributes
+    lines = lines.filter(line => 
+      !line.startsWith('a=msid-semantic:') && 
+      !line.startsWith('a=rid:') && 
+      !line.startsWith('a=simulcast:')
+    );
+    return lines.join('\r\n') + '\r\n';
   }
 
   private async triggerHapticSuccess() {
     if (Platform.OS !== 'web') {
-      try { await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch { }
+      try {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch (error) {
+        console.warn('Haptics not available:', error);
+      }
     }
   }
 
-  onRemoteStream(callback: (userId: string, stream: MediaStream) => void) { this.onRemoteStreamCallback = callback; }
-  onCallEnded(callback: () => void) { this.onCallEndedCallback = callback; }
-  onParticipantJoined(callback: (userId: string) => void) { this.onParticipantJoinedCallback = callback; }
-  onParticipantLeft(callback: (userId: string) => void) { this.onParticipantLeftCallback = callback; }
-  onScreenShareStarted(callback: (userId: string) => void) { this.onScreenShareStartedCallback = callback; }
-  onScreenShareEnded(callback: (userId: string) => void) { this.onScreenShareEndedCallback = callback; }
-  onMuteStateChanged(callback: (userId: string, isMuted: boolean) => void) { this.onMuteStateChangedCallback = callback; }
-  onVideoStateChanged(callback: (userId: string, hasVideo: boolean) => void) { this.onVideoStateChangedCallback = callback; }
-  onHandRaised(callback: (userId: string, isRaised: boolean) => void) {
-    this.handRaisedCallback = callback;
+  onRemoteStream(callback: (userId: string, stream: MediaStream) => void) {
+    this.onRemoteStreamCallback = callback;
   }
 
-  onPromoted(callback: () => void) {
-    this.promotedCallback = callback;
+  onCallEnded(callback: () => void) {
+    this.onCallEndedCallback = callback;
   }
+
+  onParticipantJoined(callback: (userId: string) => void) {
+    this.onParticipantJoinedCallback = callback;
+  }
+
+  onParticipantLeft(callback: (userId: string) => void) {
+    this.onParticipantLeftCallback = callback;
+  }
+
+  onScreenShareStarted(callback: (userId: string) => void) {
+    this.onScreenShareStartedCallback = callback;
+  }
+
+  onScreenShareEnded(callback: (userId: string) => void) {
+    this.onScreenShareEndedCallback = callback;
+  }
+
+  onMuteStateChanged(callback: (userId: string, isMuted: boolean) => void) {
+    this.onMuteStateChangedCallback = callback;
+  }
+
+  onVideoStateChanged(callback: (userId: string, hasVideo: boolean) => void) {
+    this.onVideoStateChangedCallback = callback;
+  }
+
+  onHandRaised(callback: (userId: string, isRaised: boolean) => void) {
+    this.onHandRaisedCallback = callback;
+  }
+
 }
+
 
 export default WebRTCService;

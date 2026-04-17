@@ -66,7 +66,7 @@ const LiveDiscoveryCarousel = () => {
     // Navigate to space with meeting tab + autostart flags
     // This triggers CallContext recovery and ChannelCallView auto-join
     router.push({
-      pathname: `/(spaces)/${space.id}`,
+      pathname: `/(spaces)/${space.id}` as any,
       params: {
         tab: 'meeting',
         call: space.active_call_id || space.id,

@@ -124,7 +124,7 @@ const VideoTile = React.memo(({ participant, isLocal, stream, name, avatar, hasV
         {showControls && (
           <View style={styles.videoControls}>
             <TouchableOpacity style={styles.videoControlBtn}>
-              <Ionicons name="volume-up" size={20} color="#fff" />
+              <Ionicons name="volume-high" size={20} color="#fff" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.videoControlBtn}>
               <Ionicons name="expand" size={20} color="#fff" />
@@ -148,9 +148,9 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
   const router = useRouter();
   const { user } = useContext(AuthContext);
   const { endCall: globalEndCall } = useCall();
-  const { spaces, activeCall } = useCollaborationStore();
+  const { spaces } = useCollaborationStore();
   const currentSpace = useMemo(() =>
-    spaces.find(s => s.id === spaceId || s.id === Number(spaceId)),
+    spaces.find(s => String(s.id) === String(spaceId)),
     [spaces, spaceId]
   );
   const webRTCService = WebRTCService.getInstance();
@@ -367,7 +367,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
   };
 
   const handlePromote = async (userId: string) => {
-    await webRTCService.promoteParticipant(userId);
+    await webRTCService.promoteParticipant(Number(userId));
     setParticipants(prev => prev.map(p => p.id === userId ? { ...p, role: 'moderator', handRaised: false } : p));
   };
 
@@ -731,7 +731,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
                 {isAdmin && isJoined && (
                   <View style={styles.participantItem}>
                     <View style={styles.participantAvatar}>
-                      <Avatar user={user} size={36} />
+                      <Avatar source={user?.profile_photo} name={user?.name} size={36} />
                     </View>
                     <View style={styles.participantInfo}>
                       <Text style={styles.participantName}>{user?.name} (You)</Text>

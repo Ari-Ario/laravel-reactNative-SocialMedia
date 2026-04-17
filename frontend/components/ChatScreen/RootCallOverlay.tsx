@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Dimensions,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,19 +16,16 @@ import ImmersiveCallView from './ImmersiveCallView';
 import ChannelCallView from './ChannelCallView';
 import { createShadow } from '@/utils/styles';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
-const isMobileWeb = isWeb &&
-  typeof window !== 'undefined' &&
-  window.innerWidth <= 768;
 
 const MINIMIZED_WIDTH = Platform.OS === 'web' ? 320 : 150;
 const MINIMIZED_HEIGHT = Platform.OS === 'web' ? 180 : 220;
 
 export const RootCallOverlay: React.FC = () => {
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const { activeCall, isMinimized, minimizeCall, maximizeCall, callPosition, updateCallPosition, endCall } = useCall();
   const insets = useSafeAreaInsets();
-  
+
   const pan = useRef(new Animated.ValueXY(callPosition)).current;
   const scale = useRef(new Animated.Value(1)).current;
 
@@ -76,8 +74,8 @@ export const RootCallOverlay: React.FC = () => {
         let newY = (pan.y as any)._value;
 
         // Constrain to screen bounds
-        newX = Math.min(Math.max(newX, 10), SCREEN_WIDTH - MINIMIZED_WIDTH - 10);
-        newY = Math.min(Math.max(newY, insets.top + 50), SCREEN_HEIGHT - MINIMIZED_HEIGHT - 100);
+        newX = Math.min(Math.max(newX, 10), windowWidth - MINIMIZED_WIDTH - 10);
+        newY = Math.min(Math.max(newY, insets.top + 50), windowHeight - MINIMIZED_HEIGHT - 100);
 
         updateCallPosition(newX, newY);
         pan.setValue({ x: newX, y: newY });
@@ -88,7 +86,20 @@ export const RootCallOverlay: React.FC = () => {
   if (!activeCall) return null;
 
   return (
-    <View style={[StyleSheet.absoluteFill, { pointerEvents: Platform.OS === 'web' ? 'none' : 'box-none' }]}>
+    <View style={[
+      StyleSheet.absoluteFill,
+      { pointerEvents: Platform.OS === 'web' ? 'none' : 'box-none' },
+      (Platform.OS === 'web' && !isMinimized) && {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100vh',
+        zIndex: 99999,
+      } as any
+    ]}>
       <Animated.View
         {...(isMinimized ? panResponder.panHandlers : {})}
         style={[
@@ -102,8 +113,9 @@ export const RootCallOverlay: React.FC = () => {
             ],
           },
           !isMinimized && {
-            width: SCREEN_WIDTH,
-            height: SCREEN_HEIGHT,
+            width: Platform.OS === 'web' ? '100vw' : windowWidth,
+            height: Platform.OS === 'web' ? '100vh' : windowHeight,
+            ...(Platform.OS === 'web' ? { minWidth: '100vw', minHeight: '100vh' } : {}),
           },
           { zIndex: 9999 }
         ]}
@@ -163,7 +175,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
     zIndex: 9998,
     // Fix desktop web starting position and ensure fullscreen
-    ...(Platform.OS === 'web' && typeof window !== 'undefined' && window.innerWidth > 768 ? {
+    ...(Platform.OS === 'web' ? {
       position: 'fixed',
       top: 0,
       left: 0,
@@ -178,11 +190,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: '#1a1a1a',
-    ...createShadow({ 
-      color: '#000', 
-      opacity: 0.3, 
-      radius: 8, 
-      offset: { width: 0, height: 4 } 
+    ...createShadow({
+      color: '#000',
+      opacity: 0.3,
+      radius: 8,
+      offset: { width: 0, height: 4 }
     }),
     zIndex: 9999,
     ...Platform.select({
