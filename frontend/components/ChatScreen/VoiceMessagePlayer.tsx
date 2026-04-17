@@ -52,26 +52,34 @@ const VoiceMessagePlayer: React.FC<VoiceMessagePlayerProps> = ({
         }
     }, [audioUrl, player]);
 
-    const togglePlay = () => {
-        if (status.playbackState === 'finished') {
-            player.seekTo(0);
-            player.play().catch(e => console.warn('Voice play blocked:', e));
-        } else if (status.playing) {
-            player.pause();
-        } else {
-            // ✅ IMPROVED Web Resumption: 
-            // In some Chrome versions, a simple .play() might fail if the context was suspended.
-            // We explicitly trigger play and check if we need to 'prime' it.
-            player.play().catch(e => console.warn('Voice play blocked:', e));
+    const togglePlay = async () => {
+        try {
+            if (status.playbackState === 'finished') {
+                player.seekTo(0);
+                await player.play();
+            } else if (status.playing) {
+                player.pause();
+            } else {
+                // ✅ IMPROVED Web Resumption: 
+                // In some Chrome versions, a simple .play() might fail if the context was suspended.
+                // We explicitly trigger play and check if we need to 'prime' it.
+                await player.play();
 
-            // Safety check for Chrome: if after a short delay it's still not playing, try again
-            if (Platform.OS === 'web') {
-                setTimeout(() => {
-                    if (!player.playing) {
-                        player.play().catch(e => console.warn('Voice play blocked:', e));
-                    }
-                }, 50);
+                // Safety check for Chrome: if after a short delay it's still not playing, try again
+                if (Platform.OS === 'web') {
+                    setTimeout(async () => {
+                        if (!player.playing) {
+                            try {
+                                await player.play();
+                            } catch (e) {
+                                console.warn('Voice play repeat blocked:', e);
+                            }
+                        }
+                    }, 50);
+                }
             }
+        } catch (e) {
+            console.warn('Voice play blocked:', e);
         }
     };
 

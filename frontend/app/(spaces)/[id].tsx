@@ -280,7 +280,7 @@ const SpaceDetailScreen = () => {
   const myPermissions = space?.my_permissions || myParticipation?.permissions || {};
   const canInvite = myPermissions?.can_invite !== false;
   const canStartCalls = myPermissions?.can_start_calls !== false;
-  const canEditSpace = myPermissions?.can_edit_space === true || myParticipation?.role === 'owner';
+  const canEditSpace = myPermissions?.can_edit_space === true || ['owner', 'moderator'].includes(myParticipation?.role);
   const canRemove = myPermissions?.can_remove === true || myParticipation?.role === 'owner';
   const canChangeRoles = myPermissions?.can_change_roles === true || myParticipation?.role === 'owner';
 

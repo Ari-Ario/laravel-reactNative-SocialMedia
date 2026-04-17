@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCall } from '@/context/CallContext';
 import ImmersiveCallView from './ImmersiveCallView';
+import ChannelCallView from './ChannelCallView';
 import { createShadow } from '@/utils/styles';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -113,13 +114,21 @@ export const RootCallOverlay: React.FC = () => {
           style={styles.containerTouchable}
           disabled={!isMinimized}
         >
-          <ImmersiveCallView
-            spaceId={activeCall.spaceId}
-            spaceType={activeCall.spaceType as any}
-            isMinimized={isMinimized}
-            onToggleMinimize={isMinimized ? maximizeCall : minimizeCall}
-            type={activeCall.type as any}
-          />
+          {activeCall.spaceType === 'channel' ? (
+            <ChannelCallView
+              spaceId={activeCall.spaceId}
+              isMinimized={isMinimized}
+              onToggleMinimize={isMinimized ? maximizeCall : minimizeCall}
+            />
+          ) : (
+            <ImmersiveCallView
+              spaceId={activeCall.spaceId}
+              spaceType={activeCall.spaceType as any}
+              isMinimized={isMinimized}
+              onToggleMinimize={isMinimized ? maximizeCall : minimizeCall}
+              type={activeCall.type as any}
+            />
+          )}
 
           {isMinimized && (
             <>

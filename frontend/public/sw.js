@@ -15,60 +15,73 @@ self.addEventListener('activate', (event) => {
 
 // Push event: display notification with type-aware options
 self.addEventListener('push', (event) => {
-  let data = {};
-  if (event.data) {
-    try {
-      data = event.data.json();
-    } catch (e) {
-      data = { title: event.data.text() };
+  event.waitUntil(async function() {
+    let data = {};
+    if (event.data) {
+      try {
+        data = event.data.json();
+      } catch (e) {
+        data = { title: event.data.text() };
+      }
     }
-  }
 
-  // Robust Payload Extraction
-  // 1. Laravel WebPush uses data.data
-  // 2. Simple Web Push uses flat data
-  const payload = data.data || data;
-  const type = payload.type || data.type || 'default';
-  const isCall = type === 'call' || type === 'incoming_call';
-  
-  const title = data.title || payload.title || (isCall ? '📞 Incoming Call' : 'New Notification');
-  const body = data.body || data.message || payload.body || payload.message || '';
-  const spaceId = payload.spaceId || data.spaceId;
-  const callId = payload.callId || data.callId;
+    // Robust Payload Extraction
+    const payload = data.data || data;
+    const type = payload.type || data.type || 'default';
+    const isCall = type === 'call' || type === 'incoming_call';
+    
+    // 🔍 FOREGROUND CHECK: Detect if any app window is currently focused.
+    // If focused, we skip the system notification to allow the internal React 
+    // UI (Modal/Toast) to handle the alert without duplication.
+    const windowClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const isAppFocused = windowClients.some(client => client.focused);
 
-  // Notification Tagging for Duplication Prevention
-  // 'tag' ensures that multiple pushes for the same event update the previous one instead of duplicating
-  const tag = isCall ? `call-${spaceId || 'global'}` : (payload.id || `notif-${Date.now()}`);
+    if (isAppFocused) {
+      console.log('🔇 App focused: Suppressing system notification for type:', type);
+      return;
+    }
 
-  const notificationOptions = {
-    body,
-    icon: '/favicon.png',
-    badge: '/favicon.png',
-    tag,
-    renotify: true,
-    data: {
-      type,
-      spaceId,
-      callId,
-      postId: payload.postId || data.postId,
-      userId: payload.userId || data.userId,
-      url: isCall && spaceId
-        ? `/(spaces)/${spaceId}?tab=meeting&joining=1&call=${callId || ''}`
-        : (spaceId ? `/(spaces)/${spaceId}` : '/'),
-    },
-    // Interactive actions
-    actions: isCall ? [
-      { action: 'accept', title: '✅ Accept' },
-      { action: 'decline', title: '❌ Decline' },
-    ] : [],
-    requireInteraction: isCall,
-    vibration: isCall ? [500, 200, 500, 200, 500] : [200, 100],
-  };
+    const title = data.title || payload.title || (isCall ? '📞 Incoming Call' : 'New Notification');
+    const body = data.body || data.message || payload.body || payload.message || '';
+    const spaceId = payload.spaceId || data.spaceId;
+    const callId = payload.callId || data.callId;
 
-  event.waitUntil(
-    self.registration.showNotification(title, notificationOptions)
-  );
+    const tag = isCall ? `call-${spaceId || 'global'}` : (payload.id || `notif-${Date.now()}`);
+
+    const callerName = payload.callerName || data.userName || (isCall ? 'Someone' : '');
+    const callType = payload.callType || data.type || 'video';
+    const spaceType = payload.spaceType || data.spaceType || 'group';
+
+    const notificationOptions = {
+      body,
+      icon: '/favicon.png',
+      badge: '/favicon.png',
+      tag,
+      renotify: true,
+      data: {
+        type,
+        spaceId,
+        callId,
+        postId: payload.postId || data.postId,
+        userId: payload.userId || data.userId,
+        url: isCall && spaceId
+          ? `/(spaces)/${spaceId}?ringing=1&call=${callId || ''}&callerName=${encodeURIComponent(callerName)}&callType=${callType}&spaceType=${spaceType}`
+          : (spaceId ? `/(spaces)/${spaceId}` : '/'),
+      },
+
+      // Interactive actions
+      actions: isCall ? [
+        { action: 'accept', title: '✅ Accept' },
+        { action: 'decline', title: '❌ Decline' },
+      ] : [],
+      requireInteraction: isCall,
+      vibration: isCall ? [500, 200, 500, 200, 500] : [200, 100],
+    };
+
+    return self.registration.showNotification(title, notificationOptions);
+  }());
 });
+
 
 // Notification click: deep-link to the correct route
 self.addEventListener('notificationclick', (event) => {

@@ -59,6 +59,19 @@ export function useIncomingCallBridge() {
       }
 
       console.log('📞 [Bridge] Triggering incoming call UI for:', data.callerName);
+
+      // Guard: Suppression for Channel spaces — only ring for Admins
+      if (data.spaceType === 'channel') {
+        const CollaborationStore = require('@/stores/collaborationStore').useCollaborationStore;
+        const space = CollaborationStore.getState().spaces.find((s: any) => s.id.toString() === data.spaceId?.toString());
+        const myRole = space?.my_role || space?.my_participation?.role;
+
+        if (myRole !== 'owner' && myRole !== 'moderator') {
+          console.log('📞 [Bridge] Suppressing incoming call ringing for Channel space (Role:', myRole, ')');
+          return;
+        }
+      }
+
       setIncomingCall(data);
     };
 

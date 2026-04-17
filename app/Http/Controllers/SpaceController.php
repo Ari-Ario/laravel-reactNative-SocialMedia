@@ -933,6 +933,13 @@ public function startCall(Request $request, $id)
         ], 403);
     }
 
+    // Channel Restriction: Only owner and moderator can start a broadcast
+    if ($space->space_type === 'channel' && !in_array($participation->role, ['owner', 'moderator'])) {
+        return response()->json([
+            'message' => 'Only owners and moderators can start a broadcast in a Channel space'
+        ], 403);
+    }
+
     // Ensure conversation exists
     if (!$space->linked_conversation_id) {
         $conversation = Conversation::create([

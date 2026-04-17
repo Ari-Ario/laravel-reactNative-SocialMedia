@@ -36,6 +36,7 @@ import { createShadow } from "@/utils/styles";
 import CreateTabModal from "@/components/ChatScreen/CreateTabModal";
 import GenericMenu, { MenuItem } from '@/components/GenericMenu';
 import { calculateAnchor, AnchorPosition } from '@/utils/layout';
+import LiveDiscoveryCarousel from "@/components/ChatScreen/LiveDiscoveryCarousel";
 
 interface Chat {
   id: string;
@@ -1134,6 +1135,8 @@ const ChatPage = () => {
           }}
         />
       </Modal>
+
+      <LiveDiscoveryCarousel />
 
       {/* Main List with Integrated Search Results */}
       <SectionList

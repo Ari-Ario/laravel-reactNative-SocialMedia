@@ -61,6 +61,7 @@ export interface CollaborationSpace {
     last_active_at?: string | null;
     role?: string;
   } | null;
+  active_call_id?: string; // ✅ NEW: Tracks the current broadcast ID for discovery.
   created_at?: string;
   updated_at?: string;
 }
@@ -1107,6 +1108,13 @@ class CollaborationService {
 
   async sendWebRTCSignal(spaceId: string, signalData: any): Promise<void> {
     try {
+      // ✅ Payload Size Guard: Log warnings for large payloads to help debug Pusher 10KB limits
+      const payloadString = JSON.stringify(signalData);
+      const sizeBytes = payloadString.length;
+      if (sizeBytes > 8000) {
+        console.warn(`⚠️ Large WebRTC Signal detected (${sizeBytes} bytes) for space ${spaceId}. SDP thinning might be required.`);
+      }
+
       await axios.post(`${this.baseURL}/spaces/${spaceId}/call/signal`, signalData, {
         headers: await this.getHeaders(),
       });

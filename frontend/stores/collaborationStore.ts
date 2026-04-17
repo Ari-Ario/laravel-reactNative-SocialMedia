@@ -32,8 +32,10 @@ interface CollaborationState {
 
   processedEventIds: string[];
   isLoading: boolean;
+  activeListeningSpaceId: string | null; // ✅ NEW: Tracks the currently background-listening broadcast.
 
   // Actions
+  setListeningSpaceId: (id: string | null) => void;
   setSpaces: (spaces: CollaborationSpace[]) => void;
   recalculateTotalUnread: () => void;
   setActiveSpace: (space: CollaborationSpace | null) => void;
@@ -112,7 +114,9 @@ export const useCollaborationStore = create<CollaborationState>()(
       customTabs: [],
       processedEventIds: [],
       isLoading: false,
+      activeListeningSpaceId: null,
 
+      setListeningSpaceId: (id) => set({ activeListeningSpaceId: id }),
 
       subscribeToAllSpaces: (spaceIds) => {
         if (!PusherService.isReady()) {
@@ -374,13 +378,28 @@ export const useCollaborationStore = create<CollaborationState>()(
 
           case 'call-started':
             if (data.space_id) {
-               get().updateSpace(data.space_id, { is_live: true, current_focus: 'call' });
+               const callId = data.call?.id || data.call_id;
+               get().updateSpace(data.space_id, { 
+                 is_live: true, 
+                 current_focus: 'call',
+                 active_call_id: callId 
+               });
             }
             break;
 
           case 'call-ended':
             if (data.space_id) {
-               get().updateSpace(data.space_id, { is_live: false, current_focus: null });
+               const sid = data.space_id.toString();
+               get().updateSpace(sid, { 
+                 is_live: false, 
+                 current_focus: null,
+                 active_call_id: undefined 
+               });
+
+               // Auto-clear background listening if the call ended
+               if (get().activeListeningSpaceId === sid) {
+                 get().setListeningSpaceId(null);
+               }
             }
             break;
 

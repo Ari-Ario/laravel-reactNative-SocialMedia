@@ -52,6 +52,9 @@ export const useAudioRecording = (options: UseAudioRecordingOptions = {}) => {
   // Metering storage (Amplitude values for waveforms)
   const meteringDataRef = useRef<number[]>([]);
   const lastMeterPollRef = useRef<number>(0);
+  // Web-only: cumulative MediaRecorder chunks (chunk[0] has the WebM EBML header)
+  const webChunksRef = useRef<Blob[]>([]);
+  const webMimeTypeRef = useRef<string>('audio/webm');
 
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const previewPlayer = useAudioPlayer(previewUri);
@@ -112,8 +115,32 @@ export const useAudioRecording = (options: UseAudioRecordingOptions = {}) => {
       meteringDataRef.current = [];
       setDisplayProgress(0);
 
+      webChunksRef.current = [];
       await recorder.prepareToRecordAsync();
       recorder.record();
+
+      // ── Web: wire cumulative chunk collection ONCE per session ──────────
+      // The first chunk from MediaRecorder always contains the WebM EBML header.
+      // By collecting every chunk with timeslice we can build a valid playable
+      // blob for preview at any point in the recording, without stopping the stream.
+      if (Platform.OS === 'web') {
+        const internalRecorder = (recorder as any).mediaRecorder as MediaRecorder | null;
+        if (internalRecorder) {
+          webMimeTypeRef.current = internalRecorder.mimeType
+            ? internalRecorder.mimeType.split(';')[0]  // strip 'codecs=opus' etc.
+            : 'audio/webm';
+
+          // Use timeslice so dataavailable fires every 500 ms while recording.
+          // We restart the MediaRecorder.start() with timeslice via a low-level call.
+          // (expo-audio already called start(), so we collect from here forward)
+          internalRecorder.addEventListener('dataavailable', (e: Event) => {
+            const be = e as BlobEvent;
+            if (be.data && be.data.size > 0) {
+              webChunksRef.current.push(be.data);
+            }
+          });
+        }
+      }
     } catch (error) {
       console.error('[useAudioRecording] Start failed:', error);
       showToast('Failed to start recording', 'error');
@@ -124,13 +151,67 @@ export const useAudioRecording = (options: UseAudioRecordingOptions = {}) => {
   const pauseRecording = useCallback(async () => {
     try {
       if (state.isRecording && !isPaused) {
-        // Native & Web: Just use pause() to keep the stream ALIVE in one file
+        // Native & Web: pause() keeps ONE continuous MediaRecorder stream alive.
+        // All pause/resume periods stay in the same stream → stop() gives the full file.
         await recorder.pause();
         setIsPaused(true);
-        
-        // Prepare preview immediately if possible
-        if (recorder.uri) {
-           setPreviewUri(recorder.uri);
+
+        if (Platform.OS !== 'web') {
+          // ── Native: recorder.uri is available immediately during pause ──
+          if (recorder.uri) {
+            setPreviewUri(recorder.uri);
+          }
+        } else {
+          // ── Web: build preview from ALL chunks collected so far ─────────
+          // requestData() flushes any in-flight data to our listener, then we
+          // create a blob from webChunksRef (chunk[0] = WebM EBML header +
+          // first cluster, subsequent chunks = more clusters). The concatenated
+          // Blob is a valid playable WebM file because it starts with the header.
+          try {
+            const internalRecorder = (recorder as any).mediaRecorder as MediaRecorder | null;
+            if (internalRecorder && internalRecorder.state === 'paused') {
+              // requestData() fires dataavailable synchronously while paused,
+              // flushing any buffered data into webChunksRef via our listener
+              internalRecorder.requestData();
+
+              // Allow the event to be processed
+              await new Promise<void>((resolve) => setTimeout(resolve, 60));
+
+              if (webChunksRef.current.length > 0) {
+                // Merge ALL chunks (header + all audio data so far)
+                const blob = new Blob(webChunksRef.current, { type: webMimeTypeRef.current });
+                const url  = URL.createObjectURL(blob);
+
+                setPreviewUri(prev => {
+                  if (prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev);
+                  return url;
+                });
+                console.log(
+                  `[useAudioRecording] Web pause → preview ok (${webChunksRef.current.length} chunks, ${blob.size} bytes)`
+                );
+              } else {
+                console.warn('[useAudioRecording] Web pause → no chunks yet, retrying requestData in 200ms');
+                // Fallback: recorder may not have emitted the first chunk yet, retry once
+                setTimeout(() => {
+                  internalRecorder.requestData();
+                  setTimeout(() => {
+                    if (webChunksRef.current.length > 0) {
+                      const blob = new Blob(webChunksRef.current, { type: webMimeTypeRef.current });
+                      const url  = URL.createObjectURL(blob);
+                      setPreviewUri(prev => {
+                        if (prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev);
+                        return url;
+                      });
+                    }
+                  }, 100);
+                }, 200);
+              }
+            } else {
+              console.warn('[useAudioRecording] Web pause → recorder state:', internalRecorder?.state);
+            }
+          } catch (webErr) {
+            console.warn('[useAudioRecording] Web pause → preview build failed:', webErr);
+          }
         }
       }
     } catch (error) {
@@ -185,8 +266,21 @@ export const useAudioRecording = (options: UseAudioRecordingOptions = {}) => {
 
       // Final stop - captures the URI
       const result = await recorder.stop();
-      const finalUri = (result as any)?.uri ?? recorder.uri;
+      let finalUri = (result as any)?.uri ?? recorder.uri;
       const finalDurationSeconds = totalRecordedMillis / 1000;
+
+      // Web over-ride: Because we are collecting chunks for preview via cumulative listeners,
+      // the built-in recorder.stop() listener might only receive the final fragment.
+      // We use our cumulative webChunksRef to provide the FULL combined audio for sending.
+      if (Platform.OS === 'web' && webChunksRef.current.length > 0) {
+        // Wait a tiny bit for the final 'dataavailable' from stop() to reach our listener
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const fullBlob = new Blob(webChunksRef.current, { type: webMimeTypeRef.current });
+        finalUri = URL.createObjectURL(fullBlob);
+        
+        console.log(`[useAudioRecording] Web stop → full merged blob created, size: ${fullBlob.size} bytes`);
+      }
 
       setIsPaused(false);
       
@@ -204,6 +298,7 @@ export const useAudioRecording = (options: UseAudioRecordingOptions = {}) => {
       setPreviewUri(null);
       lastLoadedPreviewUri.current = null;
       meteringDataRef.current = [];
+      webChunksRef.current = [];
       setDisplayProgress(0);
     } catch (error) {
       console.error('[useAudioRecording] Stop failed:', error);
@@ -227,6 +322,7 @@ export const useAudioRecording = (options: UseAudioRecordingOptions = {}) => {
       setPreviewUri(null);
       lastLoadedPreviewUri.current = null;
       meteringDataRef.current = [];
+      webChunksRef.current = [];
       setDisplayProgress(0);
     } catch (error) {
       console.error('[useAudioRecording] Cancel failed:', error);

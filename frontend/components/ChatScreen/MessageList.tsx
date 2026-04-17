@@ -63,6 +63,7 @@ interface MessageListProps {
   lastReadAt?: string | null;
   onStartCall?: (type: 'audio' | 'video') => void;
   isPending?: boolean;
+  spaceType?: string;
 }
 const MessageList: React.FC<MessageListProps> = ({
   spaceId,
@@ -78,6 +79,7 @@ const MessageList: React.FC<MessageListProps> = ({
   lastReadAt,
   onStartCall,
   isPending = false,
+  spaceType,
 }) => {
   const { colors, activeScheme } = useAppTheme();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -963,7 +965,7 @@ const MessageList: React.FC<MessageListProps> = ({
         <View style={styles.systemMessageContainer}>
           <TouchableOpacity
             activeOpacity={isCallLog ? 0.7 : 1}
-            disabled={!isCallLog || !onStartCall}
+            disabled={!isCallLog || !onStartCall || (spaceType === 'channel' && !['owner', 'moderator'].includes(currentUserRole || ''))}
             onPress={() => isCallLog && onStartCall && onStartCall(isCallLog.type === 'video' ? 'video' : 'audio')}
             style={[
               isCallLog ? styles.callLogBadge : styles.systemMessageBadge,

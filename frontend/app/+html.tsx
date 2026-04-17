@@ -10,16 +10,8 @@ export default function Root({ children }: { children: React.ReactNode }) {
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
         
-        {/* PWA Manifest and Meta Tags */}
-        <link rel="manifest" href="/manifest.json" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="application-name" content="Zmzir" />
-        <meta name="apple-mobile-web-app-title" content="Zmzir" />
-        <meta name="theme-color" content="#007AFF" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
 
         <script
           dangerouslySetInnerHTML={{

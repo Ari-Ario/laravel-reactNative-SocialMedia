@@ -171,8 +171,8 @@ export const IncomingCallModal: React.FC = () => {
     }
   }, [incomingCall, isRinging, player]);
 
-  // Don't render at all if no call
-  if (!incomingCall || !isRinging) return null;
+  // Don't render at all if no call, or if it's a Channel space (we use 'Live' indicators instead for broadcast)
+  if (!incomingCall || !isRinging || incomingCall.spaceType === 'channel') return null;
 
   const isVideo = incomingCall.callType === 'video';
 

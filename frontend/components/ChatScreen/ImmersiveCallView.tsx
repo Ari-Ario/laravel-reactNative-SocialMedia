@@ -523,8 +523,8 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
         // For direct calls, we usually just close the overlay
         router.setParams({ tab: 'chat', type: undefined, call: undefined });
       } else {
-        // For space calls, go back to chats index as requested
-        router.push('/(tabs)/chats/');
+        // Space call: Stay in the current space and switch back to chat tab
+        router.push(`/(spaces)/${spaceId}?tab=chat`);
       }
     });
   }, [cleanup, router, spaceId, spaceType, fadeAnim, globalEndCall]);
@@ -927,35 +927,46 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
   }, [localStream, webRTCService]);
 
   const endCall = useCallback(async () => {
-    // 🛑 Immediate hard-stop
-    isTerminating.current = true;
-    setCallStatus('ended');
-    
-    // Cancel lobby immediately to kill re-join signals
-    collaborationService.unsubscribeFromSpace(spaceId, 'immersive-call-lobby');
-    
-    cleanup();
-    
-    if (callId) {
-      if (spaceType === 'direct') {
-        // Direct call: End for both (non-blocking notification)
-        collaborationService.endCall(spaceId, callId).catch(console.error);
+    if (isTerminating.current) return;
+    console.log('📞 UI: End call triggered (Aggressive)');
+
+    try {
+      // 🛑 1. Immediate hard-stop for UI state
+      isTerminating.current = true;
+      setCallStatus('ended');
+      
+      // 🛑 2. Deactivate local hardware IMMEDIATELY to free camera/mic
+      if (localStream) {
+        localStream.getTracks().forEach(track => {
+          try { track.stop(); } catch (e) { }
+        });
+      }
+      
+      // 🔌 3. Signal to others that we are leaving
+      collaborationService.unsubscribeFromSpace(spaceId, 'immersive-call-lobby');
+      
+      if (callId && spaceId) {
+          // Notify backend (aggressive release of space resource)
+          collaborationService.endCall(spaceId, callId).catch(() => {});
+      }
+
+      // 🧹 4. Full technical cleanup
+      cleanup();
+      
+    } catch (error) {
+      console.error('⚠️ Critical error during endCall:', error);
+    } finally {
+      // ✅ 5. Finalize UI state and navigate NO MATTER WHAT
+      console.log('🚀 UI: Navigation final phase');
+      globalEndCall();
+
+      if (spaceType !== 'direct') {
+        router.push(`/(spaces)/${spaceId}?tab=chat`);
       } else {
-        // Space call: Only we leave
-        // WebRTC cleanup is handled in cleanup() -> webRTCService.cleanup() -> endCall()
+        router.setParams({ tab: 'chat', type: undefined, call: undefined });
       }
     }
-    
-    // ✅ Signal to global context that the call has ended to unmount RootCallOverlay
-    globalEndCall();
-
-    // Navigation logic for space calls
-    if (spaceType !== 'direct') {
-      router.push('/(tabs)/chats/');
-    } else {
-      router.setParams({ tab: 'chat', type: undefined, call: undefined });
-    }
-  }, [callId, spaceId, spaceType, cleanup, globalEndCall, router, collaborationService]);
+  }, [callId, spaceId, spaceType, cleanup, globalEndCall, router, collaborationService, localStream]);
 
   const toggleHandRaise = useCallback(async () => {
     const newState = !handRaised;

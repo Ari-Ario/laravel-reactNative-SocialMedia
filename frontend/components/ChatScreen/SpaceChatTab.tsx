@@ -1,5 +1,5 @@
 // components/ChatScreen/SpaceChatTab.tsx
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
     View,
     StyleSheet,
@@ -69,11 +69,103 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
     const uploaderRef = useRef<AdvancedMediaUploaderRef>(null);
     const collaborationService = CollaborationService.getInstance();
 
+    const onRecordingCompleteCallback = useCallback(async (uri: string, duration: number, metering?: number[]) => {
+        setAudioIsUploading(true);
+
+        // ─── Optimistic UI Update ───
+        const tempId = `temp_${Date.now()}`;
+        const optimisticMessage = {
+            id: tempId,
+            user_id: currentUserId,
+            type: 'voice',
+            content: 'Voice message',
+            file_path: uri,
+            metadata: {
+                duration: Math.round(duration),
+                metering: metering || []
+            },
+            created_at: new Date().toISOString(),
+            isOptimistic: true,
+            user: { id: currentUserId, name: 'You' }
+        };
+
+        setSpace((prev: any) => ({
+            ...prev,
+            content_state: {
+                ...prev.content_state,
+                messages: [...(prev?.content_state?.messages || []), optimisticMessage]
+            }
+        }));
+
+        try {
+            const formData = new FormData();
+
+            if (Platform.OS === 'web') {
+                const response = await fetch(uri);
+                const blob = await response.blob();
+
+                let extension = 'm4a';
+                if (blob.type.includes('webm')) extension = 'webm';
+                else if (blob.type.includes('mp4')) extension = 'mp4';
+                else if (blob.type.includes('ogg')) extension = 'ogg';
+                else if (blob.type.includes('wav')) extension = 'wav';
+                else if (blob.type.includes('opus')) extension = 'opus';
+
+                formData.append('audio', blob, `audio_${Date.now()}.${extension}`);
+            } else {
+                formData.append('audio', {
+                    uri: uri,
+                    type: 'audio/m4a',
+                    name: `audio_${Date.now()}.m4a`,
+                } as any);
+            }
+
+            formData.append('duration', Math.round(duration).toString());
+            if (metering) {
+                formData.append('metering', JSON.stringify(metering));
+            }
+
+            const message = await collaborationService.sendAudioMessage(spaceId, formData);
+
+            // Replace optimistic message with the real one
+            setSpace((prev: any) => ({
+                ...prev,
+                content_state: {
+                    ...prev.content_state,
+                    messages: (prev?.content_state?.messages || []).map((m: any) =>
+                        m.id === tempId ? message : m
+                    )
+                }
+            }));
+
+            showToast('Audio message sent', 'success');
+        } catch (error) {
+            console.error('Failed to send audio message:', error);
+            showToast('Failed to send audio message', 'error');
+
+            // Remove optimistic message on error
+            setSpace((prev: any) => ({
+                ...prev,
+                content_state: {
+                    ...prev.content_state,
+                    messages: (prev?.content_state?.messages || []).filter((m: any) => m.id !== tempId)
+                }
+            }));
+        } finally {
+            setAudioIsUploading(false);
+        }
+    }, [spaceId, currentUserId, setSpace, collaborationService, showToast]);
+
+    const audioRecordingOptions = useMemo(() => ({
+        maxDuration: 120,
+        onRecordingComplete: onRecordingCompleteCallback,
+    }), [onRecordingCompleteCallback]);
+
     const {
         isRecording,
         isPaused,
         recordingDuration,
-        isUploading,
+        isUploading: audioIsUploading,
         previewStatus,
         displayProgress,
         effectiveDuration,
@@ -86,97 +178,10 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
         stopRecording,
         cancelRecording,
         formatDuration,
-        setIsUploading,
+        setIsUploading: setAudioIsUploading,
         setIsSeeking,
-    } = useAudioRecording({
-        maxDuration: 120, // Increased limit
-        onRecordingComplete: async (uri, duration, metering) => {
-            setIsUploading(true);
-            
-            // ─── Optimistic UI Update ───
-            const tempId = `temp_${Date.now()}`;
-            const optimisticMessage = {
-                id: tempId,
-                user_id: currentUserId,
-                type: 'voice',
-                content: 'Voice message',
-                file_path: uri,
-                metadata: { 
-                    duration: Math.round(duration),
-                    metering: metering || [] 
-                },
-                created_at: new Date().toISOString(),
-                isOptimistic: true,
-                user: { id: currentUserId, name: 'You' }
-            };
-
-            setSpace((prev: any) => ({
-                ...prev,
-                content_state: {
-                    ...prev.content_state,
-                    messages: [...(prev?.content_state?.messages || []), optimisticMessage]
-                }
-            }));
-
-            try {
-                const formData = new FormData();
-
-                if (Platform.OS === 'web') {
-                    const response = await fetch(uri);
-                    const blob = await response.blob();
-                    
-                    let extension = 'm4a';
-                    if (blob.type.includes('webm')) extension = 'webm';
-                    else if (blob.type.includes('mp4')) extension = 'mp4';
-                    else if (blob.type.includes('ogg')) extension = 'ogg';
-                    else if (blob.type.includes('wav')) extension = 'wav';
-                    else if (blob.type.includes('opus')) extension = 'opus';
-
-                    formData.append('audio', blob, `audio_${Date.now()}.${extension}`);
-                } else {
-                    formData.append('audio', {
-                        uri: uri,
-                        type: 'audio/m4a',
-                        name: `audio_${Date.now()}.m4a`,
-                    } as any);
-                }
-
-                formData.append('duration', Math.round(duration).toString());
-                if (metering) {
-                    formData.append('metering', JSON.stringify(metering));
-                }
-
-                const message = await collaborationService.sendAudioMessage(spaceId, formData);
-
-                // Replace optimistic message with the real one
-                setSpace((prev: any) => ({
-                    ...prev,
-                    content_state: {
-                        ...prev.content_state,
-                        messages: (prev?.content_state?.messages || []).map((m: any) => 
-                            m.id === tempId ? message : m
-                        )
-                    }
-                }));
-
-                showToast('Audio message sent', 'success');
-            } catch (error) {
-                console.error('Failed to send audio message:', error);
-                showToast('Failed to send audio message', 'error');
-                
-                // Remove optimistic message on error
-                setSpace((prev: any) => ({
-                    ...prev,
-                    content_state: {
-                        ...prev.content_state,
-                        messages: (prev?.content_state?.messages || []).filter((m: any) => m.id !== tempId)
-                    }
-                }));
-            } finally {
-                setIsUploading(false);
-            }
-        },
-    });
+        meteringData,
+    } = useAudioRecording(audioRecordingOptions);
 
     const handleAudioPress = () => {
         if (isRecording || isPaused) {
@@ -188,7 +193,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
 
     // ─── Recording UI Animations ───
     const recordingPulseScale = useSharedValue(1);
-    
+
     useEffect(() => {
         if (isRecording && !isPaused) {
             recordingPulseScale.value = withTiming(1.3, { duration: 600 }, (finished) => {
@@ -196,7 +201,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                     recordingPulseScale.value = withTiming(1, { duration: 600 });
                 }
             });
-            
+
             const interval = setInterval(() => {
                 recordingPulseScale.value = withTiming(1.3, { duration: 600 }, (finished) => {
                     if (finished) {
@@ -204,7 +209,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                     }
                 });
             }, 1200);
-            
+
             return () => clearInterval(interval);
         } else {
             recordingPulseScale.value = withTiming(1);
@@ -266,7 +271,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
         setIsJoining(true);
         try {
             const { participation, space: joinedSpace } = await collaborationService.joinSpace(spaceId);
-            
+
             // ✅ Update global store immediately
             useCollaborationStore.getState().addSpace(joinedSpace);
 
@@ -277,7 +282,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                 my_permissions: participation.permissions,
                 my_role: participation.role,
             }));
-            
+
             // ✅ Clear all local notifications related to this space (binding Join & Accept)
             useNotificationStore.getState().removeSpaceNotifications(spaceId);
 
@@ -381,7 +386,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                 {(() => {
                     const myParticipation = space?.my_participation || space?.participation;
                     const isPending = myParticipation?.role === 'pending';
-                    
+
                     return (
                         <MessageList
                             spaceId={spaceId}
@@ -399,6 +404,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                             onPollPress={() => { }} // No-op now that polls are inline
                             onStartCall={onStartCall}
                             isPending={isPending}
+                            spaceType={space?.space_type}
                         />
                     );
                 })()}
@@ -440,11 +446,11 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                     if ((!myParticipation && (isChannel || isGeneral)) || isPending) {
                         const btnText = isDirect ? "Accept Message Request" : isChannel ? "Join Channel" : "Join Space";
                         const hintText = isDirect ? "Accept this request to start chatting." : isChannel ? "Join to receive updates and participate." : "You must join to send messages.";
-                        
+
                         return (
                             <View style={styles.joinBarContainer}>
-                                <TouchableOpacity 
-                                    style={styles.joinButton} 
+                                <TouchableOpacity
+                                    style={styles.joinButton}
                                     onPress={handleJoin}
                                     disabled={isJoining}
                                 >
@@ -493,14 +499,14 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
 
                                     <View style={styles.recordingCenterSection}>
                                         {isPaused ? (
-                                            <TouchableOpacity 
+                                            <TouchableOpacity
                                                 onPress={previewStatus.playing ? pausePreview : playPreview}
                                                 style={styles.previewPlayButton}
                                             >
-                                                <Ionicons 
-                                                    name={previewStatus.playing ? "pause" : "play"} 
-                                                    size={24} 
-                                                    color="#007AFF" 
+                                                <Ionicons
+                                                    name={previewStatus.playing ? "pause" : "play"}
+                                                    size={24}
+                                                    color="#007AFF"
                                                 />
                                             </TouchableOpacity>
                                         ) : (
@@ -515,6 +521,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                                                     onSeek={seekPreview}
                                                     onSeekingChange={setIsSeeking}
                                                     isCurrentUser={true}
+                                                    metering={meteringData}
                                                     color="rgba(0, 122, 255, 0.1)"
                                                     activeColor="#007AFF"
                                                 />
@@ -524,17 +531,17 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                                                 </Text>
                                             )}
                                         </View>
-                                        
+
                                         <TouchableOpacity
                                             style={styles.pauseResumeButton}
                                             onPress={isPaused ? resumeRecording : pauseRecording}
                                             activeOpacity={0.7}
                                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                         >
-                                            <Ionicons 
-                                                name={isPaused ? "mic" : "pause-circle"} 
-                                                size={isPaused ? 26 : 30} 
-                                                color={isPaused ? "#8E8E93" : "#007AFF"} 
+                                            <Ionicons
+                                                name={isPaused ? "mic" : "pause-circle"}
+                                                size={isPaused ? 26 : 30}
+                                                color={isPaused ? "#8E8E93" : "#007AFF"}
                                             />
                                         </TouchableOpacity>
                                     </View>
@@ -581,21 +588,21 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
 
                                 <TouchableOpacity
                                     style={[
-                                        styles.sendButton, 
+                                        styles.sendButton,
                                         !content.trim() && !isRecording && { backgroundColor: '#FF9500' },
-                                        isUploading && { opacity: 0.7 }
+                                        audioIsUploading && { opacity: 0.7 }
                                     ]}
                                     onPress={content.trim() ? handleSendMessage : handleAudioPress}
-                                    disabled={isUploading}
+                                    disabled={audioIsUploading}
                                     activeOpacity={0.8}
                                 >
-                                    {isUploading ? (
+                                    {audioIsUploading ? (
                                         <ActivityIndicator color="#fff" size="small" />
                                     ) : (
-                                        <Ionicons 
-                                            name={content.trim() ? "send" : (isRecording ? "stop" : "mic")} 
-                                            size={content.trim() ? 18 : 22} 
-                                            color="#fff" 
+                                        <Ionicons
+                                            name={content.trim() ? "send" : (isRecording ? "stop" : "mic")}
+                                            size={content.trim() ? 18 : 22}
+                                            color="#fff"
                                         />
                                     )}
                                 </TouchableOpacity>

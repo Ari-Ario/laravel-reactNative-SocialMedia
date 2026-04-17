@@ -32,6 +32,7 @@ import CallsPanel from '@/components/Notifications/CallsPanel';
 import MessagesPanel from '@/components/Notifications/MessagesPanel';
 import SpacesPanel from '@/components/Notifications/SpacesPanel';
 import ActivitiesPanel from '@/components/Notifications/ActivitiesPanel';
+import LiveDiscoveryCarousel from "@/components/ChatScreen/LiveDiscoveryCarousel";
 import PushNotificationService from "@/services/PushNotificationService";
 import { useIsFocused } from "@react-navigation/native";
 import { useAppTheme } from "@/hooks/useAppTheme";
@@ -549,6 +550,8 @@ const HomePage = () => {
                     </View>
                 </View>
             </View>
+
+            <LiveDiscoveryCarousel />
 
             <FlatList
                 data={posts}

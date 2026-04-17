@@ -58,6 +58,22 @@ export default function RootLayout() {
   const params = useLocalSearchParams();
   const segments = useSegments();
 
+  // ─── Param Preservation Helper ──────────────────────────────────────────
+  // Ensures that call-related parameters (?ringing=1&call=...) are carried over
+  // through any authentication redirects (e.g., / -> /(tabs)).
+  const getCallParams = () => {
+    const keys = ['ringing', 'call', 'callType', 'type', 'spaceType', 'callerName', 'callerId', 'id', 'spaceId'];
+    const p: any = {};
+    keys.forEach(k => { if (params[k]) p[k] = params[k]; });
+    return p;
+  };
+
+
+  const safeReplace = (pathname: string) => {
+    router.replace({ pathname, params: { ...params, ...getCallParams() } });
+  };
+
+
   useEffect(() => {
     let isMounted = true;
 
@@ -75,7 +91,7 @@ export default function RootLayout() {
               id: userData.id.toString(),
               profile_photo: userData.profile_photo || null,
             });
-            
+
             // ✅ INITIALIZE REAL-TIME: Ensure Reverb/Pusher is ready as soon as we have a token.
             // This ensures that deep-linking to spaces or notifications works immediately
             // without waiting for the (tabs) layout to mount.
@@ -112,7 +128,7 @@ export default function RootLayout() {
     try {
       await setToken(null);
       setUser(null);
-      router.replace('/LoginScreen');
+      safeReplace('/LoginScreen');
     } catch (error) {
       console.error('Logout failed:', error);
     }
@@ -176,7 +192,7 @@ export default function RootLayout() {
 
       if (!isPublicRoute) {
         console.log("🛡️ Unauthorized access attempt to restricted route:", pathname, "Redirecting to /LoginScreen");
-        router.replace('/LoginScreen');
+        safeReplace('/LoginScreen');
       }
       return;
     }
@@ -187,13 +203,13 @@ export default function RootLayout() {
       if (user.is_guest) {
         // Enforce strictness: if the guest navigates to root `/` or any restricted area explicitly, destroy session!
         const forbiddenPrefixes = ['/(tabs)', '/LoginScreen', '/RegisterScreen', '/VerificationScreen', '/ForgotPasswordScreen'];
-        
+
         if (pathname === '/' || forbiddenPrefixes.some(prefix => pathname?.startsWith(prefix))) {
           console.log("🛡️ Guest attempted to navigate to a forbidden route. Destroying ephemeral session.");
           logout();
           return;
         }
-        
+
         isInitialLoad.current = false;
         return; // Halt any further redirect logic for guests!
       }
@@ -208,13 +224,13 @@ export default function RootLayout() {
         // If fully verified, redirect away from root, login, register, and verification screens
         const authScreens = ['/', '/LoginScreen', '/RegisterScreen', '/VerificationScreen'];
         if (authScreens.includes(pathname || '') && pathname !== '/(tabs)') {
-          router.replace('/(tabs)');
+          safeReplace('/(tabs)');
           return;
         }
       } else {
         // If email NOT verified, only allow VerificationScreen
         if (pathname !== '/VerificationScreen') {
-          router.replace('/VerificationScreen');
+          safeReplace('/VerificationScreen');
           return;
         }
       }
@@ -223,7 +239,7 @@ export default function RootLayout() {
     // Access control for AI Admin
     if (pathname?.startsWith('/chatbotTraining')) {
       if (!user?.ai_admin && pathname !== '/(tabs)') {
-        router.replace('/(tabs)');
+        safeReplace('/(tabs)');
         return;
       }
     }
@@ -235,7 +251,7 @@ export default function RootLayout() {
 
     // Default: redirect to tabs for any other route
     if (!pathname?.startsWith('/(tabs)') && pathname !== '/(tabs)') {
-      router.replace('/(tabs)');
+      safeReplace('/(tabs)');
     }
   }, [isReady, user, pathname]);
 
@@ -267,10 +283,18 @@ export default function RootLayout() {
     >
       <SafeAreaProvider>
         <Head>
+          {/* Unified PWA Metadata */}
           <link rel="manifest" href="/manifest.json" />
-          <meta name="theme-color" content="#007AFF" />
+          <meta name="mobile-web-app-capable" content="yes" />
+          <meta name="apple-mobile-web-app-capable" content="yes" />
+          <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+          <meta name="apple-mobile-web-app-title" content="Zmzir" />
+          <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         </Head>
+
         <AuthContext.Provider value={{ user, setUser, logout }}>
+
+
 
           <CallProvider>
             {/* Bridge: wires CollaborationService → CallContext for incoming calls */}
@@ -278,8 +302,8 @@ export default function RootLayout() {
             <ModalProvider>
               <ProfileViewProvider>
                 {/* Stack must be the last child to properly handle gestures */}
-                <SafeAreaView 
-                  style={{ flex: 1, backgroundColor: colors.background }} 
+                <SafeAreaView
+                  style={{ flex: 1, backgroundColor: colors.background }}
                   edges={['top', 'left', 'right']}
                 >
                   <StatusBar barStyle={activeScheme === 'dark' ? 'light-content' : 'dark-content'} />

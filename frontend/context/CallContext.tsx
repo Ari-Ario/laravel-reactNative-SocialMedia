@@ -21,6 +21,7 @@ interface ActiveCall {
   spaceType?: string;
   callId?: string;
   type: 'audio' | 'video';
+  autostart?: boolean; // ✅ NEW: Signals to auto-join upon entry
 }
 
 interface CallContextType {
@@ -108,47 +109,6 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCallPosition({ x, y });
   }, []);
 
-  // ─── URL Sync / Recovery ────────────────────────────────────────────────
-  // This effect ensures that if the app re-renders or "refreshes" during navigation,
-  // we can reconstruct the activeCall state from the URL parameters.
-  useEffect(() => {
-    const callId = globalParams.call as string;
-    const spaceId = globalParams.id as string;
-    const callType = globalParams.type as 'audio' | 'video';
-
-    // If we have call params but NO active call state in memory (e.g. after refresh)
-    if (callId && spaceId && !activeCall) {
-      console.log('🔄 Call recovery: restoring activeCall from URL params', { callId, spaceId });
-      setActiveCall({
-        spaceId: spaceId,
-        callId: callId,
-        type: callType || 'video',
-        spaceType: (globalParams.spaceType as string) || 'group',
-      });
-      setIsMinimized(false);
-    }
-  }, [globalParams.call, globalParams.id, globalParams.type, activeCall]);
-
-
-  // Stop vibration when ringing clears
-  useEffect(() => {
-    if (!isRinging && vibrationActive.current) {
-      try { Vibration.cancel(); } catch { }
-      vibrationActive.current = false;
-    }
-  }, [isRinging]);
-
-  // Auto-dismiss incoming call after 60 seconds (missed call)
-  useEffect(() => {
-    if (!incomingCall) return;
-    const timeout = setTimeout(() => {
-      console.log('📞 Incoming call auto-dismissed (missed)');
-      stopRinging();
-      setIncomingCallState(null);
-    }, 60000);
-    return () => clearTimeout(timeout);
-  }, [incomingCall, stopRinging]);
-
   // ─── Incoming Call Actions ───────────────────────────────────────────────
   const setIncomingCall = useCallback((call: IncomingCall | null) => {
     if (call) {
@@ -159,6 +119,11 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
       stopRinging();
     }
   }, [startRinging, stopRinging]);
+
+  const clearIncomingCall = useCallback(() => {
+    stopRinging();
+    setIncomingCallState(null);
+  }, [stopRinging]);
 
   const acceptIncomingCall = useCallback(() => {
     if (!incomingCall) return;
@@ -232,10 +197,69 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('📞 Message action: rejected call + navigated to space chat', call.spaceId);
   }, [incomingCall, rejectIncomingCall, router]);
 
-  const clearIncomingCall = useCallback(() => {
-    stopRinging();
-    setIncomingCallState(null);
-  }, [stopRinging]);
+  // ─── URL Sync / Recovery / Notification Trigger ──────────────────────────
+
+  const urlSyncDeps = [
+    globalParams.call,
+    globalParams.id,
+    globalParams.type,
+    globalParams.ringing,
+    globalParams.joining,
+    globalParams.callerName,
+    activeCall,
+    incomingCall,
+    setIncomingCall,
+    setActiveCall,
+  ];
+
+  useEffect(() => {
+    const callId = globalParams.call as string;
+    const spaceId = (globalParams.id || globalParams.spaceId) as string;
+    const callType = (globalParams.callType || globalParams.type) as 'audio' | 'video';
+    const isRingingIntent = globalParams.ringing === '1';
+
+    // 1. Handle "Ringing" Intent from Notification / Deep Link
+    if (isRingingIntent && callId && spaceId && !activeCall && !incomingCall) {
+      console.log('🔔 Notification trigger: showing incoming call UI via URL params', { callId, spaceId });
+      setIncomingCall({
+        callId,
+        spaceId,
+        callerId: Number(globalParams.callerId) || 0,
+        callerName: globalParams.callerName ? decodeURIComponent(globalParams.callerName as string) : 'Someone',
+        callType: callType || 'video',
+        spaceType: (globalParams.spaceType as string) || 'group',
+      });
+
+      // ✅ COMPETE INTENT: Clear the ringing parameters from the URL so they don't re-trigger.
+      // This is critical for preventing loops when the user navigates or rejects the call.
+      router.setParams({
+        ringing: undefined,
+        callerName: undefined,
+        callType: undefined,
+        spaceType: undefined,
+        callerId: undefined,
+        id: undefined,
+        spaceId: undefined,
+      });
+      return; 
+    }
+
+
+
+    // 2. Handle "Call Recovery" / Joining Intent
+    if (callId && spaceId && !activeCall && globalParams.joining === '1') {
+      console.log('🔄 Call recovery: restoring activeCall from URL params', { callId, spaceId });
+      setActiveCall({
+        spaceId,
+        callId,
+        type: callType || 'video',
+        spaceType: (globalParams.spaceType as string) || 'group',
+        autostart: globalParams.autostart === 'true'
+      });
+      setIsMinimized(false);
+    }
+  }, urlSyncDeps);
+
 
   return (
     <CallContext.Provider
