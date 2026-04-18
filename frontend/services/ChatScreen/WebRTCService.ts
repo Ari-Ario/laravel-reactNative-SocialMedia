@@ -39,6 +39,7 @@ class WebRTCService {
   private peerConnections: Map<string, any> = new Map();
   private localStream: MediaStream | null = null;
   private screenStream: MediaStream | null = null;
+  private originalVideoTrack: MediaStreamTrack | null = null;
   private spaceId: string | null = null;
   private userId: number | null = null;
   private callId: string | null = null;
@@ -51,17 +52,25 @@ class WebRTCService {
 
   // Callbacks
   private onRemoteStreamCallback: ((userId: string, stream: MediaStream) => void) | null = null;
-  private onCallEndedCallback: (() => void) | null = null;
-  private onParticipantJoinedCallback: ((userId: string) => void) | null = null;
+  private onPromotedCallback: ((callId?: string) => void) | null = null;
+  private onDemotedCallback: (() => void) | null = null;
   private onParticipantLeftCallback: ((userId: string) => void) | null = null;
+  private onParticipantJoinedCallback: ((userId: string, isViewer: boolean) => void) | null = null;
   private onScreenShareStartedCallback: ((userId: string) => void) | null = null;
   private onScreenShareEndedCallback: ((userId: string) => void) | null = null;
   private onMuteStateChangedCallback: ((userId: string, isMuted: boolean) => void) | null = null;
   private onVideoStateChangedCallback: ((userId: string, hasVideo: boolean) => void) | null = null;
+  private onCallEndedCallback: (() => void) | null = null;
   private onHandRaisedCallback: ((userId: string, isRaised: boolean) => void) | null = null;
-  private onPromotedCallback: (() => void) | null = null;
+  private onSpeakingUpdateCallback: ((userId: string, level: number) => void) | null = null;
+
+  private audioContext: any = null;
+  private audioAnalyzers: Map<string, any> = new Map();
 
   private knownParticipants = new Set<number>();
+  private candidateQueue: Map<string, RTCIceCandidate[]> = new Map();
+  private candidateTimers: Map<string, any> = new Map();
+  private iceTimeouts: Map<string, any> = new Map();
 
   private iceServers = {
     iceServers: [
@@ -92,11 +101,14 @@ class WebRTCService {
     return WebRTCService.instance;
   }
 
+  getSpaceId() { return this.spaceId; }
+  getCallId() { return this.callId; }
+
   async initialize(userId: number) {
     this.userId = userId;
     this.isTerminating = false;
     // Reset signaling lock to allow joining different spaces in the same session
-    this.isSubscribed = false; 
+    this.isSubscribed = false;
     console.log('📞 WebRTCService initialized for user:', userId, 'Platform:', Platform.OS);
   }
 
@@ -122,6 +134,16 @@ class WebRTCService {
     this.knownParticipants.clear();
     this.pendingOffers = [];
     this.isSubscribed = false;
+
+    // Stop audio monitoring
+    this.audioAnalyzers.forEach((analyzer, id) => {
+      if (analyzer.interval) clearInterval(analyzer.interval);
+    });
+    this.audioAnalyzers.clear();
+    if (this.audioContext) {
+      try { this.audioContext.close(); } catch (e) { }
+      this.audioContext = null;
+    }
 
     console.log('📞 WebRTCService terminated successfully');
   }
@@ -175,15 +197,28 @@ class WebRTCService {
               height: { ideal: 720 },
               facingMode: 'user',
             } : false,
-            audio: audioEnabled,
+            audio: audioEnabled ? {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            } : false,
           });
         } catch (videoError) {
           console.warn('⚠️ Web video acquisition failed, falling back to audio only:', videoError);
           this.localStream = await media_Devices.getUserMedia({
             video: false,
-            audio: audioEnabled,
+            audio: audioEnabled ? {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            } : false,
           });
         }
+      }
+
+      // Start monitoring local audio
+      if (this.localStream && this.localStream.getAudioTracks().length > 0) {
+        this.startAudioMonitoring('local', this.localStream);
       }
 
       return this.localStream;
@@ -222,8 +257,13 @@ class WebRTCService {
     this.isTerminating = false;
 
     console.log(`📞 Joining call ${callId} in space ${spaceId}, isInitiator: ${isInitiator}, isViewer: ${isViewer}, platform: ${Platform.OS}`);
-
+    
+    // ✅ NEW: Ensure audio context is ready (MUST be called from user gesture)
     if (Platform.OS === 'web') {
+      await this.ensureAudioContext();
+    }
+
+    if (Platform.OS === 'web' && !isViewer) {
       try {
         await this.getLocalStream(true, true);
       } catch (error) {
@@ -235,6 +275,65 @@ class WebRTCService {
 
     if (!isInitiator) {
       console.log('📞 Not initiator, waiting for WebRTC offers...');
+    }
+  }
+
+  /**
+   * ✅ NEW: Global fix for iOS/Safari audio routing.
+   * Ensures AudioContext is active and ready before WebRTC streams arrive.
+   */
+  public async ensureAudioContext(): Promise<void> {
+    if (Platform.OS !== 'web') return;
+
+    try {
+      if (!this.audioContext) {
+        const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+        if (AudioContextClass) {
+          this.audioContext = new AudioContextClass();
+          console.log('📞 AudioContext initialized');
+        }
+      }
+
+      if (this.audioContext && this.audioContext.state === 'suspended') {
+        console.log('📞 Resuming suspended AudioContext...');
+        await this.audioContext.resume();
+        console.log('📞 AudioContext resumed successfully');
+      }
+
+      // 🍏 Safari-Specific Hack: Play a silent buffer to "unlock" audio routing
+      // This forces the OS to open the audio session in 'PlayAndRecord' mode
+      if (this.audioContext) {
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        gainNode.gain.value = 0; // Silent
+        oscillator.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        oscillator.start(0);
+        oscillator.stop(0.001);
+      }
+    } catch (e) {
+      console.warn('⚠️ Failed to ensure AudioContext:', e);
+    }
+  }
+
+  /**
+   * ✅ NEW: Allow setting audio output device (Android/Chrome only)
+   */
+  public async setAudioOutput(deviceId: string, videoElement: HTMLVideoElement | null): Promise<boolean> {
+    if (Platform.OS !== 'web' || !videoElement) return false;
+    
+    try {
+      if (typeof (videoElement as any).setSinkId !== 'undefined') {
+        await (videoElement as any).setSinkId(deviceId);
+        console.log(`📞 Audio output successfully set to ${deviceId}`);
+        return true;
+      } else {
+        console.warn('⚠️ setSinkId is not supported on this browser (iOS Safari).');
+        return false;
+      }
+    } catch (e) {
+      console.error('📞 Failed to set audio output:', e);
+      return false;
     }
   }
 
@@ -304,7 +403,16 @@ class WebRTCService {
             if (fromId === this.userId?.toString()) return;
             console.log(`📡 YOU HAVE BEEN PROMOTED BY HOST!`);
             this.isViewer = false;
-            if (this.onPromotedCallback) this.onPromotedCallback();
+            if (this.onPromotedCallback) {
+              console.log('🎉 Promotion signal received from backend');
+              this.onPromotedCallback(this.callId || undefined);
+            }
+            break;
+          case 'demoted':
+            if (fromId === this.userId?.toString()) return;
+            console.log(`📡 YOU HAVE BEEN DEMOTED TO VIEWER!`);
+            this.isViewer = true;
+            if (this.onDemotedCallback) this.onDemotedCallback();
             break;
           case 'call-cancelled':
             console.log('📞 Call cancelled by initiator');
@@ -334,6 +442,16 @@ class WebRTCService {
           this.onVideoStateChangedCallback(data.user_id.toString(), data.has_video);
         }
       },
+      onScreenShareStarted: (userId: string) => {
+        if (this.onScreenShareStartedCallback && userId !== this.userId?.toString()) {
+          this.onScreenShareStartedCallback(userId);
+        }
+      },
+      onScreenShareEnded: (userId: string) => {
+        if (this.onScreenShareEndedCallback && userId !== this.userId?.toString()) {
+          this.onScreenShareEndedCallback(userId);
+        }
+      },
       onParticipantLeft: (data: any) => {
         const leftUserId = parseInt(data.user_id?.toString() || '0', 10);
         console.log('👤 Participant left call:', leftUserId);
@@ -358,7 +476,9 @@ class WebRTCService {
     // Reliability: Handshake tie-breaker.
     // RULE 1: Broadcasters ALWAYS offer to Viewers.
     // RULE 2: If both are Broadcasters, Higher User ID offers to Lower User ID.
-    const shouldOffer = joinedUserIsViewer || (this.userId! > joinedUserId && !this.isViewer);
+    const myIdNum = Number(this.userId);
+    const targetIdNum = Number(joinedUserId);
+    const shouldOffer = joinedUserIsViewer || (myIdNum > targetIdNum && !this.isViewer);
 
     if (shouldOffer) {
       console.log(`📞 Role-Aware Signaling: Offering to ${joinedUserId} (IsViewer: ${joinedUserIsViewer})`);
@@ -367,10 +487,21 @@ class WebRTCService {
       console.log(`📞 Role-Aware Signaling: Waiting for offer from ${joinedUserIsViewer ? 'Broadcaster' : 'High-ID Broadcaster'} ${joinedUserId}`);
     }
 
+    // Cleanup existing connection if any (important for role transitions)
+    const existingId = joinedUserId.toString();
+    if (this.peerConnections.has(existingId)) {
+      console.log(`🧹 Cleaning up existing peer connection for ${joinedUserId} before re-handshake`);
+      try {
+        const conn = this.peerConnections.get(existingId);
+        if (conn && conn.close) conn.close();
+      } catch (e) { }
+      this.peerConnections.delete(existingId);
+    }
+
     if (!this.knownParticipants.has(joinedUserId)) {
       this.knownParticipants.add(joinedUserId);
       if (this.onParticipantJoinedCallback) {
-        this.onParticipantJoinedCallback(joinedUserId.toString());
+        this.onParticipantJoinedCallback(joinedUserId.toString(), joinedUserIsViewer);
       }
     }
   }
@@ -423,6 +554,12 @@ class WebRTCService {
         offerToReceiveVideo: true,
       });
 
+      // ✅ Glare handling: If we received an offer while creating ours, abort and let the incoming one win.
+      if (peerConnection.signalingState !== 'stable') {
+        console.warn(`⚠️ Glare detected for user ${targetUserId}: signaling state is ${peerConnection.signalingState}. Aborting local offer.`);
+        return;
+      }
+
       await peerConnection.setLocalDescription(offer);
 
       // ✅ Aggressive Thinning for outbound signal
@@ -453,18 +590,7 @@ class WebRTCService {
 
       const peerConnection = this.createPeerConnection(fromId);
 
-      // Add local tracks if available
-      if (this.localStream) {
-        const senders = peerConnection.getSenders();
-        this.localStream.getTracks().forEach(track => {
-          const alreadyAdded = senders.some((s: any) => s.track === track);
-          if (!alreadyAdded) {
-            peerConnection.addTrack(track, this.localStream!);
-          }
-        });
-      }
-
-      // Add local tracks if available
+      // Add local tracks if available (Moderators only usually)
       if (this.localStream) {
         const senders = peerConnection.getSenders();
         this.localStream.getTracks().forEach(track => {
@@ -552,6 +678,12 @@ class WebRTCService {
         return;
       }
 
+      // Guard: Ensure candidate data is valid for construction
+      if (!data.candidate || (data.candidate.sdpMid === null && data.candidate.sdpMLineIndex === null)) {
+        console.warn(`⚠️ Ignoring invalid ICE candidate from ${fromId}:`, data.candidate);
+        return;
+      }
+
       const candidate = new RTC_IceCandidate(data.candidate);
 
       if (peerConnection.remoteDescription && peerConnection.remoteDescription.type) {
@@ -578,6 +710,31 @@ class WebRTCService {
     }
   }
 
+  private async onIceCandidate(targetUserId: number, candidate: any) {
+    if (this.isTerminating) return;
+    
+    // Throttling ICE candidates to prevent backend signaling 500 errors (cURL timeouts)
+    const peerId = targetUserId.toString();
+    if (!this.candidateQueue.has(peerId)) this.candidateQueue.set(peerId, []);
+    this.candidateQueue.get(peerId)!.push(candidate);
+
+    if (!this.candidateTimers.has(peerId)) {
+      this.candidateTimers.set(peerId, setTimeout(async () => {
+        const queue = this.candidateQueue.get(peerId) || [];
+        this.candidateQueue.set(peerId, []);
+        this.candidateTimers.delete(peerId);
+
+        if (queue.length > 0) {
+          // Send each with a small delay to avoid overwhelming the sync queue
+          for (const cand of queue) {
+            await this.sendSignal(targetUserId, 'ice-candidate', { candidate: cand });
+            await new Promise(resolve => setTimeout(resolve, 100)); // 100ms spacing
+          }
+        }
+      }, 500));
+    }
+  }
+
   private processQueuedCandidates(peerId: string) {
     const candidates = this.pendingCandidates.get(peerId);
     if (candidates && this.peerConnections.has(peerId)) {
@@ -587,7 +744,8 @@ class WebRTCService {
         try {
           await pc.addIceCandidate(candidate);
         } catch (e) {
-          console.error('Error adding queued candidate:', e);
+          // This is expected when a stale ICE candidate arrives after an ICE restart.
+          console.warn(`⚠️ Queued ICE candidate for ${peerId} was stale or invalid - ignoring safely`);
         }
       });
       this.pendingCandidates.delete(peerId);
@@ -611,9 +769,7 @@ class WebRTCService {
 
     peerConnection.onicecandidate = (event: any) => {
       if (event.candidate && this.spaceId && this.callId) {
-        this.sendSignal(parseInt(peerId), 'ice-candidate', {
-          candidate: event.candidate,
-        });
+        this.onIceCandidate(parseInt(peerId), event.candidate);
       }
     };
 
@@ -621,6 +777,7 @@ class WebRTCService {
       const stream = event.streams && event.streams[0];
       console.log(`📞 [ontrack] Received remote stream from ${peerId}. Tracks:`, stream?.getTracks().map((t: any) => `${t.kind}:${t.enabled}`));
       if (this.onRemoteStreamCallback && stream) {
+        this.startAudioMonitoring(peerId, stream);
         this.onRemoteStreamCallback(peerId, stream);
       }
     };
@@ -630,6 +787,7 @@ class WebRTCService {
       const stream = event.stream;
       console.log(`📞 [onaddstream] Received remote stream from ${peerId}. Tracks:`, stream?.getTracks().map((t: any) => `${t.kind}:${t.enabled}`));
       if (this.onRemoteStreamCallback && stream) {
+        this.startAudioMonitoring(peerId, stream);
         this.onRemoteStreamCallback(peerId, stream);
       }
     };
@@ -657,26 +815,35 @@ class WebRTCService {
 
       if (state === 'connected' || state === 'completed') {
         // Clear timeout on success
-        if (iceCheckingTimeout) { clearTimeout(iceCheckingTimeout); iceCheckingTimeout = null; }
+        const timeout = this.iceTimeouts.get(peerId);
+        if (timeout) { clearTimeout(timeout); this.iceTimeouts.delete(peerId); }
         console.log(`✅ ICE connected for ${peerId} - media should flow`);
       }
 
       if (state === 'checking') {
         // ✅ Set 15s timeout — if still checking, force ICE restart
-        iceCheckingTimeout = setTimeout(() => {
+        const timeout = setTimeout(() => {
+          this.iceTimeouts.delete(peerId);
+          if (peerConnection.signalingState === 'closed') return;
+          
           console.warn(`⚠️ ICE checking timeout for ${peerId} — attempting forced restart`);
           peerConnection.createOffer({ iceRestart: true })
-            .then((offer: any) => peerConnection.setLocalDescription(offer))
+            .then((offer: any) => {
+              if (peerConnection.signalingState === 'closed') return;
+              return peerConnection.setLocalDescription(offer);
+            })
             .then(() => {
               const desc = peerConnection.localDescription;
               if (desc) this.sendSignal(parseInt(peerId), 'offer', { offer: desc });
             })
             .catch((e: any) => console.warn('ICE forced restart failed:', e));
         }, 15000);
+        this.iceTimeouts.set(peerId, timeout);
       }
 
       if (state === 'failed' || state === 'disconnected') {
-        if (iceCheckingTimeout) { clearTimeout(iceCheckingTimeout); iceCheckingTimeout = null; }
+        const timeout = this.iceTimeouts.get(peerId);
+        if (timeout) { clearTimeout(timeout); this.iceTimeouts.delete(peerId); }
         console.warn(`⚠️ ICE ${state} for ${peerId}, attempting restart...`);
         peerConnection.createOffer({ iceRestart: true })
           .then((offer: any) => peerConnection.setLocalDescription(offer))
@@ -717,11 +884,15 @@ class WebRTCService {
     }
 
     try {
+      // Standardize payload and prevent duplication
+      const { target_user_id, call_id, type: _type, ...rest } = data;
+      const isStandardWebRTC = ['offer', 'answer', 'ice-candidate', 'candidate', 'call-active', 'leave', 'call-rejected'].includes(type);
+      
       const payload = {
         type,
-        target_user_id: targetUserId || 0, // ✅ Use 0 for broadcast to satisfy backend 'required|integer' validation
+        target_user_id: Number(targetUserId) || 0,
         call_id: this.callId,
-        ...data,
+        ...(isStandardWebRTC ? rest : { data: rest }) // Only flatten if standard WebRTC signal
       };
 
       console.log(`📞 Sending ${type} signal to user ${targetUserId}`);
@@ -824,6 +995,16 @@ class WebRTCService {
         throw new Error('No video track in screen stream');
       }
 
+      // Update local preview
+      if (this.localStream) {
+        const localVideoTrack = this.localStream.getVideoTracks()[0];
+        if (localVideoTrack) {
+          this.originalVideoTrack = localVideoTrack;
+          this.localStream.removeTrack(localVideoTrack);
+          this.localStream.addTrack(videoTrack);
+        }
+      }
+
       // Replace video track for all peer connections
       this.peerConnections.forEach((connection) => {
         const sender = (connection as any).getSenders().find((s: any) => s.track?.kind === 'video');
@@ -873,17 +1054,21 @@ class WebRTCService {
     console.log('📞 Stopping screen share');
 
     // Restore original video track
-    if (this.localStream) {
-      const videoTrack = this.localStream.getVideoTracks()[0];
-
-      if (videoTrack) {
-        this.peerConnections.forEach((connection) => {
-          const sender = (connection as any).getSenders().find((s: any) => s.track?.kind === 'video');
-          if (sender) {
-            sender.replaceTrack(videoTrack).catch((e: any) => console.error('Error restoring track:', e));
-          }
-        });
+    if (this.localStream && this.originalVideoTrack) {
+      const currentTrack = this.localStream.getVideoTracks()[0];
+      if (currentTrack) {
+        this.localStream.removeTrack(currentTrack);
       }
+      this.localStream.addTrack(this.originalVideoTrack);
+
+      const restoredTrack = this.originalVideoTrack;
+      this.peerConnections.forEach((connection) => {
+        const sender = (connection as any).getSenders().find((s: any) => s.track?.kind === 'video');
+        if (sender) {
+          sender.replaceTrack(restoredTrack).catch((e: any) => console.error('Error restoring track:', e));
+        }
+      });
+      this.originalVideoTrack = null;
     }
 
     // Notify backend
@@ -943,14 +1128,14 @@ class WebRTCService {
    * If initiator, notifies backend to end the call globally.
    * If viewer/participant, just cleans up locally.
    */
-  async leaveCall() {
+  async leaveCall(silent: boolean = false) {
     if (this.isTerminating) return;
     this.isTerminating = true;
 
     console.log('🧹 WebRTC: Leaving call and cleaning up...');
 
     // 1. Notify Backend (initiator only ends globally)
-    if (this.spaceId && this.callId && this.spaceId !== 'null' && this.callId !== 'null') {
+    if (!silent && this.spaceId && this.callId && this.spaceId !== 'null' && this.callId !== 'null') {
       try {
         if (this.isInitiator) {
           console.log('📞 Initiator ending call globally...');
@@ -964,13 +1149,26 @@ class WebRTCService {
       }
     }
 
-    // 2. Clear Signaling timeout
+    // 2. Clear All Timers (Signaling & ICE)
     if (this.signalingTimeout) {
       clearTimeout(this.signalingTimeout);
       this.signalingTimeout = null;
     }
+    this.iceTimeouts.forEach((timeout) => clearTimeout(timeout));
+    this.iceTimeouts.clear();
+    this.candidateTimers.forEach((timeout) => clearTimeout(timeout));
+    this.candidateTimers.clear();
+    this.candidateQueue.clear();
 
-    // 3. Close Peer Connections
+    // 3. Stop Local Tracks & Reset Stream (Important for role switches)
+    if (this.localStream) {
+      this.localStream.getTracks().forEach(track => {
+        try { track.stop(); } catch (e) { }
+      });
+      this.localStream = null;
+    }
+
+    // 4. Close Peer Connections
     this.peerConnections.forEach((connection) => {
       try {
         if (connection.close) connection.close();
@@ -980,14 +1178,14 @@ class WebRTCService {
 
     // 4. Stop Local Tracks
     if (this.localStream) {
-      this.localStream.getTracks().forEach(track => {
+      (this.localStream as any).getTracks().forEach((track: any) => {
         try { track.stop(); } catch (e) { }
       });
       this.localStream = null;
     }
 
     if (this.screenStream) {
-      this.screenStream.getTracks().forEach(track => {
+      (this.screenStream as any).getTracks().forEach((track: any) => {
         try { track.stop(); } catch (e) { }
       });
       this.screenStream = null;
@@ -1009,9 +1207,9 @@ class WebRTCService {
     console.log('✅ WebRTC: Cleanup complete.');
   }
 
-  async endCall() {
+  async endCall(silent: boolean = false) {
     // Alias for compatibility with existing UI components
-    await this.leaveCall();
+    await this.leaveCall(silent);
   }
 
   private async retryWithFallbackServers(peerId: string) {
@@ -1053,6 +1251,7 @@ class WebRTCService {
 
       newConnection.ontrack = (event: any) => {
         if (this.onRemoteStreamCallback && event.streams?.[0]) {
+          this.startAudioMonitoring(peerId, event.streams[0]);
           this.onRemoteStreamCallback(peerId, event.streams[0]);
         }
       };
@@ -1075,7 +1274,7 @@ class WebRTCService {
     }
   }
 
-  onPromoted(callback: () => void) {
+  onPromoted(callback: (callId?: string) => void) {
     this.onPromotedCallback = callback;
   }
 
@@ -1083,8 +1282,15 @@ class WebRTCService {
     if (!this.spaceId || !this.callId) return;
     console.log(`📡 Promoting audience member ${targetUserId} to speakers`);
     await this.sendSignal(targetUserId, 'promoted', {
-      target_user_id: targetUserId,
       action: 'promote'
+    });
+  }
+
+  async demoteParticipant(targetUserId: number) {
+    if (!this.spaceId || !this.callId) return;
+    console.log(`📡 Demoting speaker ${targetUserId} back to viewer`);
+    await this.sendSignal(targetUserId, 'demoted', {
+      action: 'demote'
     });
   }
 
@@ -1129,8 +1335,12 @@ class WebRTCService {
     this.onCallEndedCallback = callback;
   }
 
-  onParticipantJoined(callback: (userId: string) => void) {
+  onParticipantJoined(callback: (userId: string, isViewer: boolean) => void) {
     this.onParticipantJoinedCallback = callback;
+  }
+
+  onDemoted(callback: () => void) {
+    this.onDemotedCallback = callback;
   }
 
   onParticipantLeft(callback: (userId: string) => void) {
@@ -1155,6 +1365,57 @@ class WebRTCService {
 
   onHandRaised(callback: (userId: string, isRaised: boolean) => void) {
     this.onHandRaisedCallback = callback;
+  }
+
+  onSpeakingUpdate(callback: (userId: string, level: number) => void) {
+    this.onSpeakingUpdateCallback = callback;
+  }
+
+  private async startAudioMonitoring(userId: string, stream: MediaStream) {
+    if (Platform.OS !== 'web') return; // Audio analysis currently web-only in this impl
+
+    try {
+      if (!this.audioContext) {
+        const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+        this.audioContext = new AudioContextClass();
+      }
+
+      // Resume context if it was suspended (browser policy)
+      if (this.audioContext.state === 'suspended') {
+        await this.audioContext.resume();
+      }
+
+      const source = this.audioContext.createMediaStreamSource(stream);
+      const analyser = this.audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      const interval = setInterval(() => {
+        if (this.isTerminating) {
+          clearInterval(interval);
+          return;
+        }
+
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          sum += dataArray[i];
+        }
+        const average = sum / bufferLength;
+        const normalizedLevel = average / 128; // 0 to ~1 range
+
+        if (this.onSpeakingUpdateCallback) {
+          this.onSpeakingUpdateCallback(userId, normalizedLevel);
+        }
+      }, 100);
+
+      this.audioAnalyzers.set(userId, { source, analyser, interval });
+    } catch (e) {
+      console.warn(`⚠️ Failed to start audio monitoring for ${userId}:`, e);
+    }
   }
 
 }

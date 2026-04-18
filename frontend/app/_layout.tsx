@@ -29,6 +29,17 @@ import { CallProvider } from '@/context/CallContext';
 import { RootCallOverlay } from '@/components/ChatScreen/RootCallOverlay';
 import { IncomingCallModal } from '@/components/ChatScreen/IncomingCallModal';
 import { useIncomingCallBridge } from '@/hooks/useIncomingCallBridge';
+import { setAudioModeAsync } from 'expo-audio';
+
+// Set global audio mode for call compatibility
+if (Platform.OS !== 'web') {
+  setAudioModeAsync({
+    playsInSilentMode: true,
+    allowsRecording: true,
+    interruptionMode: 'doNotMix',
+    shouldRouteThroughEarpiece: false,
+  }).catch(e => console.warn('Failed to set global audio mode:', e));
+}
 
 SplashScreen.preventAutoHideAsync();
 
@@ -70,7 +81,7 @@ export default function RootLayout() {
 
 
   const safeReplace = (pathname: string) => {
-    router.replace({ pathname, params: { ...params, ...getCallParams() } });
+    router.replace({ pathname: pathname as any, params: { ...params, ...getCallParams() } });
   };
 
 

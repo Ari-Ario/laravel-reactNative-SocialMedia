@@ -317,6 +317,7 @@ Route::post('/update-preferences', [ApiAuthController::class, 'updatePreferences
 // Guest Access Routes (Teams-style)
 Route::get('/spaces/{id}/guest-info', [GuestAccessController::class, 'getSpaceInfo']);
 Route::post('/spaces/{id}/guest-join', [GuestAccessController::class, 'joinAsGuest']);
+Route::post('/spaces/{id}/viewer-join', [GuestAccessController::class, 'joinAsViewer']);
 
 // Pure AI Moderation & Reporting
 Route::middleware('auth:sanctum')->group(function () {

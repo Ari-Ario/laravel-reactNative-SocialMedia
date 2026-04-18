@@ -330,6 +330,7 @@ class SpaceController extends Controller
     {
         $space = CollaborationSpace::with([
             'creator',
+            'activeCall',
             'participations.user',
             'magicEvents' => function($query) {
                 $query->where('has_been_discovered', false)
@@ -1040,7 +1041,7 @@ public function startCall(Request $request, $id)
     public function callSignal(Request $request, $id)
     {
         $request->validate([
-            'type' => 'required|in:offer,answer,ice-candidate,call-active,hand-raised,hand-lowered,leave,call-rejected',
+            'type' => 'required|in:offer,answer,ice-candidate,call-active,hand-raised,hand-lowered,leave,call-rejected,promoted,demoted',
             'target_user_id' => 'required|integer',
             'call_id' => 'required|string',
             'offer' => 'sometimes|array',
@@ -1048,6 +1049,7 @@ public function startCall(Request $request, $id)
             'candidate' => 'sometimes|array',
             'user_id' => 'sometimes|integer',
             'is_viewer' => 'sometimes|boolean',
+            'data' => 'sometimes|array',
         ]);
     
     $space = CollaborationSpace::findOrFail($id);
@@ -3463,6 +3465,7 @@ public function endCall(Request $request, $id)
             'unread_count' => $participation ? $this->calculateUnreadCount($space, $participation) : 0,
             'other_participant' => $otherParticipant,
             'settings' => $settings,
+            'active_call' => $space->activeCall,
         ];
     }
 }

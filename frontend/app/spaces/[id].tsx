@@ -939,7 +939,7 @@ const SpaceDetailScreen = () => {
         console.log("Pusher init failed for guest", e);
       }
 
-      // Update local state with FULL space data (including participation)
+      // Update local state
       setSpace({
         ...joinedSpace,
         my_participation: participation,
@@ -1169,7 +1169,7 @@ const SpaceDetailScreen = () => {
     }
   };
 
-  // ✅ Auto-join space from notification (Phase 50)when space loads
+  // Eagerly load polls when space loads
   useEffect(() => {
     if (space?.id) {
       loadPolls();
@@ -1560,7 +1560,7 @@ const SpaceDetailScreen = () => {
           {/* Broadcasting Icon (for channels with active calls) */}
           {(() => {
             if (space?.space_type === 'channel' && space?.active_call) {
-              console.log('💡 Rendering LIVE icon for channel:', space.id, 'Call:', space.active_call.id);
+              console.log('💡 Rendering LIVE icon for channel (guest-route):', space.id, 'Call:', space.active_call.id);
               return (
                 <TouchableOpacity
                   style={[styles.headerButton, { backgroundColor: '#ff4444' + '30', borderRadius: 12, paddingHorizontal: 6, marginRight: 8, borderWidth: 1, borderColor: '#ff4444' }]}

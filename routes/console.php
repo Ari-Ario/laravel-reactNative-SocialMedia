@@ -9,8 +9,4 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::call(function () {
-    User::where('username', 'like', 'guest_%')
-        ->where('created_at', '<', now()->subHours(24))
-        ->delete();
-})->daily();
+Schedule::command('cleanup:guests --hours=24')->daily();

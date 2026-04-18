@@ -61,7 +61,8 @@ export interface CollaborationSpace {
     last_active_at?: string | null;
     role?: string;
   } | null;
-  active_call_id?: string; // ✅ NEW: Tracks the current broadcast ID for discovery.
+  active_call?: any;
+  active_call_id?: string; // ✅ Tracks the current broadcast ID for discovery.
   created_at?: string;
   updated_at?: string;
 }
@@ -317,6 +318,7 @@ class CollaborationService {
         } : null,
         creator: apiSpace.creator,
         other_participant: apiSpace.other_participant,
+        active_call: apiSpace.active_call,
         created_at: apiSpace.created_at,
         updated_at: apiSpace.updated_at,
       };
@@ -475,6 +477,7 @@ class CollaborationService {
         creator_id: apiSpace.creator?.id || 0,
         creator: apiSpace.creator,
         settings: {},
+        active_call: apiSpace.active_call,
         content_state: { messages: [] },
         activity_metrics: {},
         evolution_level: 1,
@@ -496,6 +499,16 @@ class CollaborationService {
       return response.data;
     } catch (error) {
       console.error('Error joining as guest:', error);
+      throw error;
+    }
+  }
+
+  async joinSpaceAsViewer(spaceId: string): Promise<{ user: any, token: string, space: CollaborationSpace, participation: SpaceParticipation }> {
+    try {
+      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/viewer-join`);
+      return response.data;
+    } catch (error) {
+      console.error('Error joining as viewer:', error);
       throw error;
     }
   }

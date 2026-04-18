@@ -15,7 +15,7 @@ class GuestAccessController extends Controller
     public function getSpaceInfo(string $id)
     {
         try {
-            $space = CollaborationSpace::with('creator:id,name,profile_photo')
+            $space = CollaborationSpace::with(['creator:id,name,profile_photo', 'activeCall'])
                 ->where('id', $id)
                 ->firstOrFail();
         } catch (\Exception $e) {
@@ -33,6 +33,7 @@ class GuestAccessController extends Controller
                 'space_type' => $space->space_type,
                 'image_url' => $space->image_url,
                 'creator' => $space->creator,
+                'active_call' => $space->activeCall,
             ]
         ]);
     }
@@ -46,7 +47,7 @@ class GuestAccessController extends Controller
             'name' => 'required|string|max:255',
         ]);
 
-        $space = CollaborationSpace::where('id', $id)->firstOrFail();
+        $space = CollaborationSpace::with('activeCall')->where('id', $id)->firstOrFail();
 
         // 1. Create a temporary guest user
         $guestId = Str::random(10);
@@ -74,6 +75,54 @@ class GuestAccessController extends Controller
 
         // 3. Generate token for the guest
         $token = $user->createToken('guest-token')->plainTextToken;
+
+        return response()->json([
+            'user' => $user->toAuthArray(),
+            'token' => $token,
+            'space' => $space->load(['participants.user', 'activeCall']),
+            'participation' => $participation,
+        ]);
+    }
+    /**
+     * Join a space as an anonymous viewer (TV mode).
+     */
+    public function joinAsViewer(string $id)
+    {
+        $space = CollaborationSpace::where('id', $id)->firstOrFail();
+
+        // Check if the space is a channel/broadcast type
+        if ($space->space_type !== 'channel') {
+            return response()->json(['error' => 'Public viewing is only available for broadcast channels'], 403);
+        }
+
+        // 1. Create a temporary guest user automatically
+        $viewerNumber = rand(1000, 9999);
+        $guestId = Str::random(10);
+        $user = User::create([
+            'name' => 'Viewer #' . $viewerNumber,
+            'username' => 'guest_v_' . $guestId,
+            'email' => 'guest_v_' . $guestId . '@temp.social',
+            'password' => Hash::make(Str::random(32)),
+            'bio' => 'Anonymous Viewer',
+        ]);
+        $user->markEmailAsVerified();
+
+        // 2. Add to space as a restricted participant (read-only)
+        $participation = SpaceParticipation::create([
+            'space_id' => $space->id,
+            'user_id' => $user->id,
+            'role' => 'participant',
+            'joined_at' => now(),
+            'permissions' => [
+                'can_message' => false,
+                'can_call' => false,
+                'can_invite' => false,
+                'is_viewer' => true, // Flag for UI to hide controls
+            ]
+        ]);
+
+        // 3. Generate token
+        $token = $user->createToken('viewer-token')->plainTextToken;
 
         return response()->json([
             'user' => $user->toAuthArray(),

@@ -100,6 +100,15 @@ class CollaborationSpace extends Model
         return $this->hasMany(AIInteraction::class, 'space_id', 'id');
     }
 
+    /**
+     * Get the active call for this space (via linked conversation)
+     */
+    public function activeCall()
+    {
+        return $this->hasOne(Call::class, 'conversation_id', 'linked_conversation_id')
+                    ->whereIn('status', ['ringing', 'ongoing']);
+    }
+
     public function getImageUrlAttribute()
     {
         return $this->image_path ? \Illuminate\Support\Facades\Storage::url($this->image_path) : null;

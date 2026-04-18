@@ -387,6 +387,26 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
 
   // Track last committed position for incremental dragging
   const pipLastPos = useRef({ x: windowWidth - PIP_W_DEFAULT - 16, y: windowHeight - PIP_H_DEFAULT - CONTROLS_H - 16 });
+  const prevDims = useRef({ w: windowWidth, h: windowHeight });
+
+  // Recalibrate PiP position on rotation
+  useEffect(() => {
+    const isAtBottomRightX = Math.abs(pipLastPos.current.x - (prevDims.current.w - PIP_W_DEFAULT - 16)) < 20;
+    const isAtBottomRightY = Math.abs(pipLastPos.current.y - (prevDims.current.h - PIP_H_DEFAULT - CONTROLS_H - 16)) < 20;
+
+    const newX = isAtBottomRightX 
+      ? windowWidth - PIP_W_DEFAULT - 16 
+      : Math.max(16, Math.min(pipLastPos.current.x, windowWidth - PIP_W_DEFAULT - 16));
+    
+    const newY = isAtBottomRightY 
+      ? windowHeight - PIP_H_DEFAULT - CONTROLS_H - 16 
+      : Math.max(16, Math.min(pipLastPos.current.y, windowHeight - PIP_H_DEFAULT - CONTROLS_H - 16));
+
+    pipLastPos.current = { x: newX, y: newY };
+    pipLeft.setValue(newX);
+    pipTop.setValue(newY);
+    prevDims.current = { w: windowWidth, h: windowHeight };
+  }, [windowWidth, windowHeight]);
 
   const pipPanResponder = useRef(
     PanResponder.create({

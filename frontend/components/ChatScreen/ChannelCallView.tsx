@@ -11,6 +11,9 @@ import {
   Platform,
   Animated,
   StatusBar,
+  useWindowDimensions,
+  Share,
+  Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
@@ -18,6 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import * as Clipboard from 'expo-clipboard';
 import { MotiView, AnimatePresence } from 'moti';
 
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
@@ -33,7 +37,47 @@ if (Platform.OS !== 'web') {
   RTCView = require('react-native-webrtc').RTCView;
 }
 
-const { width, height } = Dimensions.get('window');
+const { width: SCREEN_WIDTH_STATIC } = Dimensions.get('window');
+const width = SCREEN_WIDTH_STATIC;
+
+// Orientation-aware grid calculation
+const getGridConfig = (participantCount: number, width: number, height: number, isWeb: boolean) => {
+  const isLandscape = width > height;
+  const isMobileSize = width <= 768;
+
+  if (isMobileSize) {
+    if (isLandscape) {
+      if (participantCount === 1) return { cols: 1, itemWidth: '100%', itemHeight: '100%' };
+      if (participantCount === 2) return { cols: 2, itemWidth: '50%', itemHeight: '100%' };
+      if (participantCount <= 4) return { cols: 2, itemWidth: '50%', itemHeight: '50%' };
+      if (participantCount <= 6) return { cols: 3, itemWidth: '33.33%', itemHeight: '50%' };
+      return { cols: 4, itemWidth: '25%', itemHeight: '50%' };
+    } else {
+      if (participantCount === 1) return { cols: 1, itemWidth: '100%', itemHeight: '100%' };
+      if (participantCount === 2) return { cols: 1, itemWidth: '100%', itemHeight: '50%' };
+      if (participantCount <= 4) return { cols: 2, itemWidth: '50%', itemHeight: '50%' };
+      if (participantCount <= 6) return { cols: 2, itemWidth: '50%', itemHeight: '33.33%' };
+      return { cols: 2, itemWidth: '50%', itemHeight: '25%' };
+    }
+  }
+
+  if (isWeb) {
+    if (isLandscape) {
+      if (participantCount === 1) return { cols: 1, itemWidth: '96%', itemHeight: '96%' };
+      if (participantCount === 2) return { cols: 2, itemWidth: '48%', itemHeight: '85%' };
+      if (participantCount <= 4) return { cols: 2, itemWidth: '48%', itemHeight: '44%' };
+      if (participantCount <= 6) return { cols: 3, itemWidth: '31%', itemHeight: '44%' };
+      return { cols: 4, itemWidth: '23%', itemHeight: '23%' };
+    } else {
+      return { cols: 1, itemWidth: '96%', itemHeight: `${90 / participantCount}%` };
+    }
+  } else {
+    if (participantCount === 1) return { cols: 1, itemWidth: '100%', itemHeight: '100%' };
+    if (participantCount === 2) return { cols: 1, itemWidth: '100%', itemHeight: '50%' };
+    if (participantCount <= 4) return { cols: 2, itemWidth: '50%', itemHeight: '50%' };
+    return { cols: 2, itemWidth: '50%', itemHeight: '33.33%' };
+  }
+};
 const isWeb = Platform.OS === 'web';
 
 // Participant Interface
@@ -44,10 +88,13 @@ interface Participant {
   avatar?: string;
   role: string;
   stream?: MediaStream;
+  isLocal?: boolean;
   isMuted: boolean;
   hasVideo: boolean;
   isSharingScreen: boolean;
   handRaised?: boolean;
+  isSpeaking?: boolean;
+  joinedAt?: number;
 }
 
 interface ChannelCallViewProps {
@@ -56,95 +103,144 @@ interface ChannelCallViewProps {
   onToggleMinimize?: () => void;
 }
 
-const VideoTile = React.memo(({ participant, isLocal, stream, name, avatar, hasVideo, isMuted }: any) => {
+const VideoTile = React.memo(({ 
+  participant, 
+  stream, 
+  name, 
+  avatar, 
+  hasVideo, 
+  isMuted, 
+  isSpeaking, 
+  isLocal = false,
+  isMaximized = false,
+  isSharingScreen = false,
+  onMaximize,
+  isAdmin = false,
+  onPromote
+}: any) => {
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
-  const [showControls, setShowControls] = useState(false);
-  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const isHandRaised = participant.handRaised;
+  const role = participant.role?.toLowerCase() || 'participant';
+  const isHost = role === 'owner';
+  const isMod = role === 'moderator' || role === 'admin';
 
   useEffect(() => {
     if (isWeb && stream && videoElementRef.current) {
       videoElementRef.current.srcObject = stream;
-      if (isLocal) videoElementRef.current.muted = true;
-      videoElementRef.current.play().catch(e => console.warn("AutoPlay blocked in VideoTile:", e));
+      // Web: Mute if local
+      videoElementRef.current.muted = isLocal;
+      videoElementRef.current.play().catch(e => {
+        if (e.name !== 'AbortError') console.warn("AutoPlay blocked in VideoTile:", e);
+      });
     }
-  }, [stream, isLocal]);
-
-  const handlePress = () => {
-    Animated.sequence([
-      Animated.spring(scaleAnim, { toValue: 0.98, useNativeDriver: true, friction: 5 }),
-      Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, friction: 5 }),
-    ]).start();
-    setShowControls(!showControls);
-  };
+  }, [stream, isLocal, isSharingScreen]);
 
   return (
-    <TouchableOpacity activeOpacity={0.9} onPress={handlePress} style={styles.videoTileContainer}>
-      <Animated.View style={[styles.videoTile, { transform: [{ scale: scaleAnim }] }]}>
+    <View style={styles.videoTile}>
+      {/* Video Content */}
+      <View style={styles.videoContainer}>
         {stream && hasVideo ? (
-          <View style={StyleSheet.absoluteFill}>
+          <>
             {isWeb ? (
               <video
                 ref={videoElementRef}
                 autoPlay
                 playsInline
                 muted={isLocal}
-                style={styles.videoElement as any}
+                style={StyleSheet.flatten([
+                  styles.videoElement as any,
+                  isSharingScreen && { objectFit: 'contain' }
+                ])}
               />
             ) : RTCView ? (
               <RTCView
                 streamURL={stream.toURL()}
-                objectFit="cover"
                 style={styles.videoElement}
-                mirror={isLocal}
+                objectFit={isSharingScreen ? "contain" : "cover"}
+                mirror={isLocal && !isSharingScreen}
               />
             ) : null}
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.7)']}
-              style={styles.videoGradient}
-              pointerEvents="none"
-            />
-          </View>
+          </>
         ) : (
-          <LinearGradient
-            colors={['#2a2a3e', '#1a1a2e']}
-            style={[styles.avatarTile, StyleSheet.absoluteFill]}
-          >
-            <View style={styles.avatarWrapper}>
-              <Avatar source={avatar} size={80} name={name} />
-            </View>
-            <Text style={styles.tileName}>{name}</Text>
-            {isMuted && (
-              <View style={styles.muteIndicator}>
-                <Ionicons name="mic-off" size={14} color="#FF3B30" />
-              </View>
+          <View style={styles.avatarContainer}>
+            <Avatar source={avatar} size={isMaximized ? 120 : 80} name={name} />
+            {!stream && isHandRaised && (
+              <MotiView
+                animate={{ scale: [1, 1.2, 1], opacity: [0.6, 1, 0.6] }}
+                transition={{ loop: true, duration: 2000 }}
+                style={styles.waitingIndicator}
+              >
+                <Ionicons name="hand-left" size={24} color="#FFD700" />
+                <Text style={styles.waitingText}>Awaiting Stage...</Text>
+              </MotiView>
             )}
-          </LinearGradient>
-        )}
-
-        {showControls && (
-          <View style={styles.videoControls}>
-            <TouchableOpacity style={styles.videoControlBtn}>
-              <Ionicons name="volume-high" size={20} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.videoControlBtn}>
-              <Ionicons name="expand" size={20} color="#fff" />
-            </TouchableOpacity>
           </View>
         )}
 
-        {!isLocal && participant?.role === 'moderator' && (
-          <View style={styles.moderatorBadge}>
-            <Ionicons name="mic" size={12} color="#fff" />
-            <Text style={styles.moderatorText}>HOST</Text>
+        {/* Glossy Overlay for Name and Status */}
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.8)']}
+          style={styles.tileOverlay}
+        >
+          <View style={styles.tileHeader}>
+            <View style={styles.nameBadge}>
+              {isHost && <Ionicons name="ribbon" size={14} color="#FFD700" style={{ marginRight: 4 }} />}
+              <Text style={styles.tileName} numberOfLines={1}>{name}</Text>
+              {isLocal && <Text style={styles.youBadge}>(You)</Text>}
+            </View>
+            
+            <View style={styles.statusIcons}>
+              {isMuted && (
+                <View style={styles.tileStatusBadge}>
+                  <Ionicons name="mic-off" size={12} color="#FF6B6B" />
+                </View>
+              )}
+              {isHandRaised && (
+                <View style={[styles.tileStatusBadge, { backgroundColor: '#FFD700' }]}>
+                  <Ionicons name="hand-left" size={12} color="#000" />
+                </View>
+              )}
+            </View>
           </View>
+
+          {/* Role Badge */}
+          {(isHost || isMod) && (
+            <View style={[styles.roleBadge, isHost ? styles.hostBadge : styles.modBadge]}>
+              <Text style={styles.roleText}>{isHost ? 'HOST' : 'MODERATOR'}</Text>
+            </View>
+          )}
+        </LinearGradient>
+
+        {/* Promote Button (For Admins viewing pending requests) */}
+        {isAdmin && isHandRaised && !stream && (
+          <TouchableOpacity style={styles.gridPromoteBtn} onPress={onPromote}>
+            <LinearGradient
+              colors={['#4f46e5', '#7c3aed']}
+              style={styles.gridPromoteGradient}
+            >
+              <Ionicons name="mic" size={16} color="#fff" />
+              <Text style={styles.gridPromoteText}>Bring to Stage</Text>
+            </LinearGradient>
+          </TouchableOpacity>
         )}
-      </Animated.View>
-    </TouchableOpacity>
+      </View>
+
+      {/* Speaking Indicator */}
+      {isSpeaking && <View style={styles.speakingBorder} />}
+    </View>
   );
 });
 
-const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
+const ChannelCallView: React.FC<ChannelCallViewProps> = ({ 
+  spaceId,
+  isMinimized = false,
+  onToggleMinimize
+}) => {
   const insets = useSafeAreaInsets();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isLandscape = windowWidth > windowHeight;
+  const isMobileSize = windowWidth <= 768;
+
   const router = useRouter();
   const { user } = useContext(AuthContext);
   const { endCall: globalEndCall } = useCall();
@@ -162,24 +258,28 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
     if (!currentUserId || !currentSpace) return null;
 
     // 1. Try explicit current user participation from list
-    const p = currentSpace.participations?.find((part: any) => 
-      (part.user_id === currentUserId) || (part.user?.id === currentUserId)
-    );
+    const p = currentSpace.participations?.find((part: any) => {
+      const pId = part.user_id || part.user?.id;
+      return String(pId) === String(currentUserId);
+    });
     if (p) return p;
 
-    // 2. Fallback to space-level my_participation if ID matches
-    if (currentSpace.my_participation && currentSpace.creator_id === currentUserId) return currentSpace.my_participation;
+    // 2. Fallback to space-level my_role (direct and reliable for moderators/admins)
+    if (currentSpace.my_role) {
+      return { role: currentSpace.my_role };
+    }
+
+    // 3. Fallback to space-level my_participation if ID matches
+    if (currentSpace.my_participation && (String(currentSpace.creator_id) === String(currentUserId) || (currentSpace.my_participation as any).user_id === currentUserId)) {
+      return currentSpace.my_participation;
+    }
     
-    // 3. Last resort fallback for creator
-    if (currentSpace.creator_id === currentUserId) return { role: 'owner' };
+    // 4. Last resort fallback for creator
+    if (String(currentSpace.creator_id) === String(currentUserId)) return { role: 'owner' };
     
-    return null;
   }, [currentSpace, currentUserId]);
 
-  const isAdmin = useMemo(() => {
-    if (!currentUserId || !currentSpace) return false;
-    return ['owner', 'moderator'].includes(myParticipation?.role || '');
-  }, [myParticipation, currentUserId, currentSpace]);
+  const creatorId = currentSpace?.creator_id?.toString();
 
   // State
   const [isJoined, setIsJoined] = useState(false);
@@ -190,34 +290,144 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
   const [hasVideo, setHasVideo] = useState(true);
   const [handRaised, setHandRaised] = useState(false);
   const [isSharingScreen, setIsSharingScreen] = useState(false);
-  const [showPromotionInvite, setShowPromotionInvite] = useState(false);
-  const [activeCallId, setActiveCallId] = useState<string | null>(null);
+  const [activeCallId, _setActiveCallId] = useState<string | null>(null);
+  const activeCallIdRef = useRef<string | null>(null);
+  const setActiveCallId = useCallback((id: string | null) => {
+    activeCallIdRef.current = id;
+    _setActiveCallId(id);
+  }, []);
+
   const [showParticipantList, setShowParticipantList] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
-  const [latestRequest, setLatestRequest] = useState<{ id: string, name: string } | null>(null);
+  const [maximizedId, setMaximizedId] = useState<string | null>(null);
+  const [localModeratorOverride, setLocalModeratorOverride] = useState(false);
+  
+  const isViewer = useMemo(() => {
+    return !!(myParticipation?.permissions?.is_viewer);
+  }, [myParticipation]);
+  const [joinRequests, setJoinRequests] = useState<{ id: string, name: string, avatar?: string }[]>([]);
+
+  const handleShare = async () => {
+    const baseUrl = Platform.OS === 'web' ? window.location.origin : 'https://zmzir.com';
+    const shareUrl = `${baseUrl}/spaces/${spaceId}`;
+    const message = `📺 Watch my live broadcast on Zmzir: ${currentSpace?.title || 'Live Broadcast'}\n\nJoin now: ${shareUrl}`;
+
+    try {
+      if (Platform.OS === 'web') {
+        if (navigator.share) {
+          await navigator.share({
+            title: currentSpace?.title || 'Live Broadcast',
+            text: message,
+            url: shareUrl,
+          });
+        } else {
+          await Clipboard.setStringAsync(message);
+          Alert.alert('Link Copied!', 'The broadcast link has been copied to your clipboard.');
+        }
+      } else {
+        await Share.share({
+          message,
+          url: shareUrl,
+          title: 'Join Broadcast'
+        });
+      }
+      if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
+  };
+
+
+  const isAdmin = useMemo(() => {
+    if (!currentUserId || !currentSpace) return false;
+    // Include 'admin' as a fallback role
+    return localModeratorOverride || ['owner', 'moderator', 'admin'].includes(myParticipation?.role?.toLowerCase() || '');
+  }, [myParticipation, currentUserId, currentSpace, localModeratorOverride]);
+
+  // ─── BROADCASTER ORDERING LOGIC ───
+  const sortedBroadcasters = useMemo(() => {
+    const broadcasterList: Participant[] = [];
+    
+    if (isJoined) {
+      broadcasterList.push({
+        id: 'local',
+        user_id: currentUserId || 0,
+        name: user?.name || 'You',
+        avatar: user?.profile_photo,
+        role: isAdmin ? 'moderator' : 'participant',
+        stream: localStream || undefined,
+        hasVideo: hasVideo,
+        isMuted: isMuted,
+        isSpeaking: false,
+        isSharingScreen: isSharingScreen,
+        joinedAt: Date.now()
+      });
+    }
+
+    participants.forEach(p => {
+      if (p.id === 'local' || String(p.id) === String(currentUserId)) return;
+      const isBroadcaster = !!p.stream;
+      const isRequesting = p.handRaised;
+      if (isBroadcaster || isRequesting) {
+        broadcasterList.push(p);
+      }
+    });
+
+    return broadcasterList.sort((a, b) => {
+      const aId = String(a.id === 'local' ? currentUserId : a.id);
+      const bId = String(b.id === 'local' ? currentUserId : b.id);
+      
+      const aIsHost = aId === creatorId;
+      const bIsHost = bId === creatorId;
+      if (aIsHost) return -1;
+      if (bIsHost) return 1;
+
+      const aIsMod = ['owner', 'moderator', 'admin'].includes(a.role?.toLowerCase() || '');
+      const bIsMod = ['owner', 'moderator', 'admin'].includes(b.role?.toLowerCase() || '');
+      if (aIsMod && !bIsMod) return -1;
+      if (!aIsMod && bIsMod) return 1;
+
+      if (a.stream && !b.stream) return -1;
+      if (!a.stream && b.stream) return 1;
+
+      return 0;
+    });
+  }, [participants, isJoined, localStream, currentUserId, creatorId, isAdmin, isMuted, hasVideo, isSharingScreen, user]);
+
+  const screenSharer = useMemo(() => {
+    if (isSharingScreen) return sortedBroadcasters.find(p => p.id === 'local');
+    return sortedBroadcasters.find(p => p.isSharingScreen);
+  }, [sortedBroadcasters, isSharingScreen]);
+
+  const gridConfig = useMemo(() => {
+    return getGridConfig(sortedBroadcasters.length, windowWidth, windowHeight, Platform.OS === 'web');
+  }, [sortedBroadcasters.length, windowWidth, windowHeight]);
 
   const { activeCall: contextActiveCall } = useCall();
   const hasAutoStarted = useRef(false);
 
-  // Simulate audio levels for visualizer
-  useEffect(() => {
-    if (callStatus === 'connected') {
-      const interval = setInterval(() => {
-        setAudioLevel(Math.random());
-      }, 100);
-      return () => clearInterval(interval);
-    }
-  }, [callStatus]);
 
   // ✅ Lifecycle and Resource Management
   useEffect(() => {
     const init = async () => {
       if (spaceId && currentUserId) {
-        // 1. Clean up previous session if any (Crucial for Singleton)
-        await webRTCService.terminate();
-        await webRTCService.initialize(currentUserId);
+        // 1. Clean up previous session if any (Only if space actually changed)
+        if (webRTCService.getSpaceId() !== spaceId) {
+          console.log(`🔌 Resetting WebRTCService for new space: ${spaceId}`);
+          await webRTCService.terminate();
+          await webRTCService.initialize(currentUserId);
+        }
         
-        // 2. Pre-populate participants list from space metadata for immediate UI feedback
+        // 2. Fetch space details if missing to ensure isAdmin is correct
+        if (!currentSpace?.participations) {
+           try {
+             await collaborationService.fetchSpaceDetails(spaceId);
+           } catch (err) {
+             console.error('Error fetching space details:', err);
+           }
+        }
+
+        // 3. Pre-populate participants list
         if (currentSpace?.participations) {
           const initialParticipants = currentSpace.participations
             .filter((p: any) => {
@@ -231,30 +441,33 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
               avatar: p.user?.profile_photo,
               role: p.role || 'moderator',
               hasVideo: false,
-              isMuted: true
+              isMuted: true,
+              isSharingScreen: false
             }));
           setParticipants(initialParticipants);
         }
 
-        // 3. Automated Entry
-        const call = await findActiveCall();
-        if (call && !hasAutoStarted.current) {
-          if (isAdmin) {
-            handleStartBroadcast();
-          } else {
-            handleTuneIn();
+        // 4. Automated Entry - WAIT for metadata to be ready
+        if (currentSpace && !hasAutoStarted.current) {
+          const call = await findActiveCall();
+          if (call) {
+            console.log(`📡 [ChannelCallView] Autostarting (IsAdmin: ${isAdmin})`);
+            if (isAdmin) {
+              handleStartBroadcast();
+            } else {
+              handleTuneIn();
+            }
+            hasAutoStarted.current = true;
           }
-          hasAutoStarted.current = true;
         }
       }
     };
     init();
 
     return () => {
-      // ✅ Terminate WebRTC and release hardware resources on unmount
       webRTCService.terminate();
     };
-  }, [spaceId, currentUserId, currentSpace?.id]);
+  }, [spaceId, currentUserId, currentSpace?.id]); // Removed isAdmin to prevent re-initialization loops during promotion
 
   // Discovery logic
   const findActiveCall = useCallback(async () => {
@@ -262,11 +475,6 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
       const response = await collaborationService.joinWebRTCCall(spaceId);
       if (response.call) {
         setActiveCallId(response.call.id);
-        
-        // ✅ Sync existing participants to trigger initial signaling
-        if (response.call.participants) {
-          webRTCService.syncParticipants(response.call.participants);
-        }
         
         return response.call;
       }
@@ -288,9 +496,15 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
     }
 
     await webRTCService.initialize(currentUserId);
+    setupSignaling(); // Attach listeners FIRST
     await webRTCService.joinCall(spaceId, call.id, false, true);
+    
+    // ✅ Sync participants AFTER joinCall and listener setup
+    if (call.participants) {
+      webRTCService.syncParticipants(call.participants);
+    }
+
     setIsJoined(true);
-    setupSignaling();
   };
 
   const handleStartBroadcast = async () => {
@@ -304,12 +518,17 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
       setActiveCallId(call.id);
 
       await webRTCService.initialize(currentUserId);
+      setupSignaling(); // Attach listeners FIRST
       await webRTCService.joinCall(spaceId, call.id, true, false);
+
+      // ✅ Sync participants AFTER joinCall
+      if (call.participants) {
+        webRTCService.syncParticipants(call.participants);
+      }
 
       const stream = await webRTCService.getLocalStream(true, true);
       setLocalStream(stream);
       setIsJoined(true);
-      setupSignaling();
       await webRTCService.notifyCallActive();
     } catch (e) {
       console.error('Failed to start broadcast:', e);
@@ -320,42 +539,76 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
 
   const setupSignaling = useCallback(() => {
     webRTCService.onRemoteStream((userId, stream) => {
-      // ✅ Resolve actual name, avatar, and role from space participations
+      // ✅ Resolve actual name, avatar, and role from space metadata or participations
+      const isCreator = String(userId) === String(currentSpace?.creator_id);
+      
       const participation = currentSpace?.participations?.find((p: any) => 
         (p.user_id?.toString() === userId) || (p.user?.id?.toString() === userId)
       );
-      const userName = participation?.user?.name || 'Broadcaster';
-      const userAvatar = participation?.user?.profile_photo;
-      const userRole = participation?.role || 'moderator';
+
+      const userName = (participation?.user?.name || (isCreator ? currentSpace?.creator?.name : 'Broadcaster')) || 'Unknown';
+      const userAvatar = participation?.user?.profile_photo || (isCreator ? currentSpace?.creator?.profile_photo : null);
+      const userRole = isCreator ? 'owner' : (participation?.role || 'moderator');
+
+      console.log(`📞 Received stream from ${userId}. Role: ${userRole}, IsCreator: ${isCreator}`);
 
       setParticipants(prev => {
-        const existing = prev.find(p => p.id === userId);
-        if (existing) return prev.map(p => p.id === userId ? { 
-          ...p, 
-          stream, 
-          hasVideo: true, 
-          name: userName,
-          avatar: userAvatar,
-          role: userRole
-        } : p);
+        const existing = prev.find(p => String(p.id) === String(userId));
+        if (existing) {
+          return prev.map(p => String(p.id) === String(userId) ? { 
+            ...p, 
+            stream, 
+            hasVideo: true, 
+            name: userName || 'Unknown',
+            avatar: userAvatar || undefined,
+            role: userRole
+          } : p);
+        }
 
         return [...prev, {
           id: userId,
           user_id: parseInt(userId, 10),
-          name: userName,
-          avatar: userAvatar,
+          name: userName || 'Unknown',
+          avatar: userAvatar || undefined,
           role: userRole,
           stream,
           isMuted: false,
           hasVideo: true,
           isSharingScreen: false,
           joinedAt: Date.now()
+        } as Participant];
+      });
+    });
+
+    webRTCService.onParticipantJoined((userId, isViewer) => {
+      // ✅ Resolve actual name, avatar, and role from space metadata or participations
+      const participation = currentSpace?.participations?.find((p: any) => 
+        (p.user_id?.toString() === userId) || (p.user?.id?.toString() === userId)
+      );
+      const userName = participation?.user?.name || `User ${userId}`;
+      const forcedRole = isViewer ? 'participant' : (participation?.role || 'moderator');
+
+      setParticipants(prev => {
+        if (prev.find(p => p.id === userId)) return prev;
+        return [...prev, {
+          id: userId,
+          user_id: parseInt(userId, 10),
+          name: userName,
+          avatar: participation?.user?.profile_photo || undefined,
+          role: forcedRole,
+          isMuted: true,
+          hasVideo: false,
+          isSharingScreen: false,
+          handRaised: false,
+          isSpeaking: false,
+          joinedAt: Date.now()
         }];
       });
     });
 
-    webRTCService.onParticipantLeft(userId => {
+    webRTCService.onParticipantLeft((userId) => {
       setParticipants(prev => prev.filter(p => p.id !== userId));
+      setJoinRequests(prev => prev.filter(req => req.id !== userId));
     });
 
     webRTCService.onHandRaised((userId, isRaised) => {
@@ -378,7 +631,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
           id: userId,
           user_id: parseInt(userId, 10),
           name: userName,
-          avatar: participation?.user?.profile_photo,
+          avatar: participation?.user?.profile_photo || undefined,
           role: participation?.role || 'participant',
           isMuted: true,
           hasVideo: false,
@@ -389,23 +642,68 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
 
       // ✅ MODERATOR ALERT: Show floating join request
       if (isRaised && isAdmin) {
-        setLatestRequest({ id: userId, name: userName });
+        setJoinRequests(prev => {
+          if (prev.find(r => r.id === userId)) return prev;
+          return [...prev, { id: userId, name: userName, avatar: participation?.user?.profile_photo }];
+        });
         if (Platform.OS !== 'web') {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => { });
         }
-        // Auto-hide banner after 8 seconds
-        setTimeout(() => setLatestRequest(prev => prev?.id === userId ? null : prev), 8000);
       } else {
-        setLatestRequest(prev => prev?.id === userId ? null : prev);
+        setJoinRequests(prev => prev.filter(req => req.id !== userId));
       }
     });
 
-    webRTCService.onPromoted(async () => {
-      console.log('🎉 I have been promoted to speaker! Showing invitation.');
-      setShowPromotionInvite(true);
+    webRTCService.onPromoted(async (incomingCallId?: string) => {
+      console.log('🎉 I have been promoted to speaker! Going live immediately.');
       if (Platform.OS !== 'web') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });
       }
+      
+      const cid = incomingCallId || activeCallIdRef.current;
+      if (!cid) {
+        console.error('❌ Cannot promote: No active call ID available');
+        return;
+      }
+
+      // Immediate switch to broadcaster role
+      await webRTCService.endCall(true); // silent = true
+      setIsJoined(false);
+      setCallStatus('connected');
+      await webRTCService.initialize(currentUserId);
+      setupSignaling(); // Attach listeners FIRST
+      await webRTCService.joinCall(spaceId, cid, true, false); // true = initiator
+      
+      // Fetch current participants to establish handshakes with existing broadcasters
+      try {
+        const response = await collaborationService.joinWebRTCCall(spaceId);
+        if (response && response.call && response.call.participants) {
+          webRTCService.syncParticipants(response.call.participants);
+        }
+      } catch (err) {
+        console.warn('Failed to sync participants after promotion:', err);
+      }
+
+      // Small delay to allow browser to release hardware from previous viewer session
+      // Increased to 800ms to resolve NotReadableError on some browsers
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // Fetch local stream
+      const stream = await webRTCService.getLocalStream(true, true);
+      setLocalStream(stream);
+      setLocalModeratorOverride(true); // Ensure local tile is visible
+      setIsJoined(true);
+
+      // Notify others to trigger handshakes
+      await webRTCService.notifyCallActive();
+    });
+
+    webRTCService.onDemoted(async () => {
+      console.log('📉 I have been demoted to listener.');
+      await webRTCService.endCall();
+      setIsJoined(false);
+      setLocalStream(null);
+      handleTuneIn(); // Re-join as listener
     });
 
     webRTCService.onCallEnded(() => {
@@ -427,6 +725,24 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
     webRTCService.onScreenShareEnded((userId) => {
       setParticipants(prev => prev.map(p => p.id === userId ? { ...p, isSharingScreen: false } : p));
     });
+
+    webRTCService.onSpeakingUpdate((userId: string, level: number) => {
+      const isSpeaking = level > 0.05; // Threshold for speaking
+      if (userId === 'local') {
+        setAudioLevel(prev => {
+          if (Math.abs(prev - level) > 0.01) return level;
+          return prev;
+        });
+      } else {
+        setParticipants(prev => {
+          const participant = prev.find(p => p.id === userId);
+          if (participant && participant.isSpeaking === isSpeaking) return prev;
+          return prev.map(p =>
+            p.id === userId ? { ...p, isSpeaking } : p
+          );
+        });
+      }
+    });
   }, [isAdmin, webRTCService, currentSpace]);
 
   const handleRequestSpeak = async () => {
@@ -437,8 +753,22 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
   };
 
   const handlePromote = async (userId: string) => {
-    await webRTCService.promoteParticipant(Number(userId));
-    setParticipants(prev => prev.map(p => p.id === userId ? { ...p, role: 'moderator', handRaised: false } : p));
+    try {
+      await webRTCService.promoteParticipant(Number(userId));
+      setJoinRequests(prev => prev.filter(req => req.id !== userId));
+      setParticipants(prev => prev.map(p => p.id === userId ? { ...p, role: 'moderator', handRaised: false } : p));
+    } catch (e) {
+      console.error('Promotion failed:', e);
+    }
+  };
+
+  const handleDemote = async (userId: string) => {
+    try {
+      await webRTCService.demoteParticipant(Number(userId));
+      setParticipants(prev => prev.map(p => p.id === userId ? { ...p, role: 'participant', stream: undefined } : p));
+    } catch (e) {
+      console.error('Demotion failed:', e);
+    }
   };
 
   const handleToggleScreenShare = async () => {
@@ -492,6 +822,47 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
     extrapolate: 'clamp',
   });
 
+  const renderMinimizedUI = () => {
+    const mainParticipant = sortedBroadcasters[0] || {
+      id: 'none',
+      name: 'Live Broadcast',
+      avatar: undefined,
+      stream: undefined,
+      hasVideo: false,
+      isMuted: true
+    };
+
+    return (
+      <View style={styles.minimizedContent}>
+        <VideoTile
+          participant={mainParticipant}
+          isLocal={mainParticipant.id === 'local'}
+          stream={mainParticipant.stream}
+          name={mainParticipant.name}
+          avatar={mainParticipant.avatar}
+          hasVideo={mainParticipant.hasVideo}
+          isMuted={mainParticipant.isMuted}
+          isSpeaking={mainParticipant.isSpeaking}
+          isSharingScreen={mainParticipant.id === 'local' ? isSharingScreen : mainParticipant.isSharingScreen}
+          isAdmin={isAdmin}
+        />
+
+        <View style={styles.minimizedOverlay}>
+          <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.minimizedGradient}>
+            <View style={styles.minimizedHeader}>
+              <Ionicons name="expand" size={16} color="#fff" />
+              {participants.length > 0 && (
+                <Text style={styles.minimizedCount}>+{participants.length}</Text>
+              )}
+            </View>
+          </LinearGradient>
+        </View>
+      </View>
+    );
+  };
+
+  if (isMinimized) return renderMinimizedUI();
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
@@ -523,7 +894,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
       {/* Header */}
       <Animated.View style={[styles.header, { paddingTop: insets.top + 10, opacity: headerOpacity }]}>
         <BlurView intensity={30} tint="dark" style={styles.headerBlur}>
-          <TouchableOpacity onPress={handleLeaveCall} style={styles.backButton}>
+          <TouchableOpacity onPress={() => onToggleMinimize ? onToggleMinimize() : handleLeaveCall()} style={styles.backButton}>
             <Ionicons name="chevron-down" size={24} color="#fff" />
           </TouchableOpacity>
 
@@ -544,6 +915,13 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
               </View>
             </View>
           </View>
+          
+          <TouchableOpacity
+            style={[styles.participantsButton, { marginRight: 10 }]}
+            onPress={handleShare}
+          >
+            <Ionicons name="share-social-outline" size={22} color="#fff" />
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.participantsButton}
@@ -559,7 +937,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
 
       {/* Floating Join Stage Request (Host only) */}
       <AnimatePresence>
-        {isAdmin && latestRequest && (
+        {isAdmin && joinRequests.length > 0 && (
           <MotiView
             from={{ opacity: 0, translateY: -50 }}
             animate={{ opacity: 1, translateY: 0 }}
@@ -570,19 +948,20 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
               <Ionicons name="hand-left" size={20} color="#FFD700" />
               <View style={styles.requestInfo}>
                 <Text style={styles.requestText} numberOfLines={1}>
-                  <Text style={{ fontWeight: '800' }}>{latestRequest.name}</Text> wants to join
+                  <Text style={{ fontWeight: '800' }}>{joinRequests[0].name}</Text>
+                  {joinRequests.length > 1 ? ` & ${joinRequests.length - 1} more` : ' wants to join'}
                 </Text>
               </View>
               <TouchableOpacity 
                 style={styles.promoteActionBtn}
-                onPress={() => {
-                  handlePromote(latestRequest.id);
-                  setLatestRequest(null);
-                }}
+                onPress={() => handlePromote(joinRequests[0].id)}
               >
                 <Text style={styles.promoteActionText}>Promote</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.dismissBtn} onPress={() => setLatestRequest(null)}>
+              <TouchableOpacity 
+                style={styles.dismissBtn} 
+                onPress={() => setJoinRequests(prev => prev.slice(1))}
+              >
                 <Ionicons name="close" size={20} color="rgba(255,255,255,0.5)" />
               </TouchableOpacity>
             </BlurView>
@@ -643,77 +1022,68 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
               )}
             </LinearGradient>
           </MotiView>
-        ) : (
-          <ScrollView
-            contentContainerStyle={styles.gridContainer}
-            showsVerticalScrollIndicator={false}
-            onScroll={Animated.event(
-              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-              { useNativeDriver: false }
-            )}
-            scrollEventThrottle={16}
-          >
-            {/* Featured Broadcaster Tile (Host or Self) */}
-            {(isAdmin && isJoined) || participants.some(p => p.stream && p.role === 'moderator') ? (
-              <MotiView
-                from={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 100 }}
-                style={styles.featuredTile}
-              >
-                <View style={styles.featuredLabel}>
-                  <LinearGradient
-                    colors={['#FF3B30', '#FF6B6B']}
-                    style={styles.featuredBadge}
-                  >
-                    <Ionicons name="star" size={12} color="#fff" />
-                    <Text style={styles.featuredText}>HOST</Text>
-                  </LinearGradient>
-                </View>
-
-                {isAdmin && isJoined ? (
-                  <VideoTile
-                    isLocal
-                    stream={localStream}
-                    name={user?.name}
-                    avatar={user?.profile_photo}
-                    hasVideo={hasVideo}
-                    isMuted={isMuted}
-                  />
-                ) : (
-                  (() => {
-                    const host = participants.find(p => p.stream && p.role === 'moderator');
-                    return host ? (
+        ) : screenSharer ? (
+          <View style={styles.speakerView}>
+            <View style={styles.largeSpeakerContainer}>
+              <VideoTile
+                participant={screenSharer}
+                stream={screenSharer.stream}
+                name={screenSharer.name}
+                avatar={screenSharer.avatar}
+                hasVideo={screenSharer.hasVideo}
+                isMuted={screenSharer.isMuted}
+                isSpeaking={screenSharer.isSpeaking}
+                isLocal={screenSharer.id === 'local'}
+                isSharingScreen={true}
+                isMaximized={true}
+                onMaximize={() => setMaximizedId(null)}
+              />
+            </View>
+            <View style={styles.smallParticipantsContainer}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 10 }}>
+                {sortedBroadcasters
+                  .filter(p => p.id !== screenSharer.id)
+                  .map((p, index) => (
+                    <View key={p.id} style={styles.smallParticipantTile}>
                       <VideoTile
-                        participant={host}
-                        stream={host.stream}
-                        name={host.name}
-                        avatar={host.avatar}
-                        hasVideo={host.hasVideo}
-                        isMuted={host.isMuted}
+                        participant={p}
+                        stream={p.stream}
+                        name={p.name}
+                        avatar={p.avatar}
+                        hasVideo={p.hasVideo}
+                        isMuted={p.isMuted}
+                        isSpeaking={p.isSpeaking}
+                        isLocal={p.id === 'local'}
+                        isSharingScreen={p.id === 'local' ? isSharingScreen : p.isSharingScreen}
+                        isAdmin={isAdmin}
+                        onPromote={() => handlePromote(p.id)}
                       />
-                    ) : null;
-                  })()
-                )}
-              </MotiView>
-            ) : null}
-
-            {/* Remote Participants Grid */}
-            <View style={styles.participantsGrid}>
-              {participants
-                .filter(p => {
-                  // If we are showing someone in the featured tile, hide them from the grid
-                  if (isAdmin && isJoined) return true; // Featured is local, so all remote are in grid
-                  const featuredHostId = participants.find(p => p.stream && p.role === 'moderator')?.id;
-                  return p.id !== featuredHostId;
-                })
-                .map((p, index) => (
+                    </View>
+                  ))}
+              </ScrollView>
+            </View>
+          </View>
+        ) : (
+          <ScrollView 
+            style={styles.scrollArea} 
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={[
+              styles.dynamicGrid, 
+              { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }
+            ]}>
+              {sortedBroadcasters.map((p, index) => (
                 <MotiView
                   key={p.id}
                   from={{ opacity: 0, scale: 0.9, translateY: 20 }}
                   animate={{ opacity: 1, scale: 1, translateY: 0 }}
                   transition={{ delay: index * 50 }}
-                  style={styles.participantTile}
+                  style={{
+                    width: gridConfig.itemWidth as any,
+                    height: gridConfig.itemHeight as any,
+                    padding: 4,
+                  }}
                 >
                   <VideoTile
                     participant={p}
@@ -722,25 +1092,17 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
                     avatar={p.avatar}
                     hasVideo={p.hasVideo}
                     isMuted={p.isMuted}
+                    isSpeaking={p.isSpeaking}
+                    isLocal={p.id === 'local'}
+                    isSharingScreen={p.id === 'local' ? isSharingScreen : p.isSharingScreen}
+                    isAdmin={isAdmin}
+                    onPromote={() => handlePromote(p.id)}
                   />
-                  {isAdmin && p.handRaised && (
-                    <Animated.View style={styles.promoteOverlay}>
-                      <TouchableOpacity style={styles.promoteBtn} onPress={() => handlePromote(p.id)}>
-                        <Ionicons name="mic" size={16} color="#fff" />
-                        <Text style={styles.promoteBtnText}>Promote</Text>
-                      </TouchableOpacity>
-                    </Animated.View>
-                  )}
-                  {p.handRaised && !isAdmin && (
-                    <View style={styles.handRaisedIndicator}>
-                      <Ionicons name="hand-left" size={14} color="#FFD700" />
-                    </View>
-                  )}
                 </MotiView>
               ))}
             </View>
 
-            {participants.length === 0 && !isAdmin && (
+            {sortedBroadcasters.length === 0 && (
               <MotiView
                 from={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -749,9 +1111,11 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
                 <View style={styles.emptyIcon}>
                   <Ionicons name="tv-outline" size={56} color="rgba(255,255,255,0.2)" />
                 </View>
-                <Text style={styles.emptyTitle}>No Active Broadcasters</Text>
+                <Text style={styles.emptyTitle}>Broadcasting Studio</Text>
                 <Text style={styles.emptyText}>
-                  The broadcast hasn't started yet. Check back soon!
+                  {isAdmin 
+                    ? "You are the stage manager. Wait for speakers to join or start broadcasting yourself!"
+                    : "The stage is currently empty. The broadcast will begin shortly."}
                 </Text>
               </MotiView>
             )}
@@ -811,7 +1175,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
                       <Ionicons name="people-outline" size={22} color="#fff" />
                     </TouchableOpacity>
                   </View>
-                ) : (
+                ) : !isViewer ? (
                   <TouchableOpacity
                     style={[styles.participateButton, handRaised && styles.participateButtonActive]}
                     onPress={handleRequestSpeak}
@@ -838,6 +1202,13 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
                       )}
                     </LinearGradient>
                   </TouchableOpacity>
+                ) : (
+                  <View style={[styles.participateButton, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
+                    <View style={styles.participateButtonGradient}>
+                      <Ionicons name="eye" size={20} color="rgba(255,255,255,0.6)" />
+                      <Text style={[styles.participateText, { color: 'rgba(255,255,255,0.6)' }]}>Watching Live</Text>
+                    </View>
+                  </View>
                 )}
 
                 <TouchableOpacity style={styles.leaveButton} onPress={handleLeaveCall}>
@@ -879,7 +1250,9 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
                     </View>
                     <View style={styles.participantInfo}>
                       <Text style={styles.participantName}>{user?.name} (You)</Text>
-                      <Text style={styles.participantRole}>Host</Text>
+                      <Text style={styles.participantRole}>
+                        {String(currentUserId) === String(currentSpace?.creator_id) ? 'Host' : 'Moderator'}
+                      </Text>
                     </View>
                     <View style={styles.participantStatus}>
                       <View style={styles.statusOnline} />
@@ -899,7 +1272,14 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
                       </Text>
                     </View>
                     <View style={styles.participantStatus}>
-                      {isAdmin && p.handRaised ? (
+                      {isAdmin && (p.role === 'moderator' || p.role === 'admin') && String(p.user_id || p.id) !== String(currentSpace?.creator_id) ? (
+                        <TouchableOpacity 
+                          style={[styles.sidebarPromoteBtn, { backgroundColor: '#FF3B30' }]}
+                          onPress={() => handleDemote(p.id)}
+                        >
+                          <Text style={styles.sidebarPromoteText}>Demote</Text>
+                        </TouchableOpacity>
+                      ) : isAdmin && p.handRaised ? (
                         <TouchableOpacity 
                           style={styles.sidebarPromoteBtn}
                           onPress={() => handlePromote(p.id)}
@@ -922,54 +1302,50 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({ spaceId }) => {
         )}
       </AnimatePresence>
 
-      {/* Stage Invitation Modal */}
+      {/* Maximized Overlay */}
       <AnimatePresence>
-        {showPromotionInvite && (
-          <View style={StyleSheet.absoluteFill}>
-            <BlurView intensity={95} tint="dark" style={styles.inviteContainer}>
-              <MotiView
-                from={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                style={styles.inviteCard}
-              >
-                <LinearGradient colors={['#4f46e5', '#7c3aed']} style={styles.inviteGradient}>
-                  <View style={styles.inviteIcon}>
-                    <Ionicons name="mic" size={48} color="#fff" />
-                  </View>
-                  <Text style={styles.inviteTitle}>Join the Stage?</Text>
-                  <Text style={styles.inviteText}>The Host has invited you to share your camera and microphone. You will be live for everyone.</Text>
-                  
-                  <View style={styles.inviteActions}>
-                    <TouchableOpacity 
-                      style={styles.inviteBtnAccept}
-                      onPress={async () => {
-                        setShowPromotionInvite(false);
-                        const call = await findActiveCall();
-                        if (call) {
-                          await webRTCService.endCall();
-                          setIsJoined(false);
-                          setCallStatus('connected');
-                          await webRTCService.initialize(currentUserId);
-                          await webRTCService.joinCall(spaceId, call.id, false, false);
-                          setIsJoined(true);
-                          const stream = await webRTCService.getLocalStream(true, true);
-                          setLocalStream(stream);
-                        }
-                      }}
-                    >
-                      <Text style={styles.inviteBtnText}>Accept & Go Live</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={styles.inviteBtnDecline}
-                      onPress={() => setShowPromotionInvite(false)}
-                    >
-                      <Text style={styles.inviteBtnTextDecline}>Not Now</Text>
-                    </TouchableOpacity>
-                  </View>
-                </LinearGradient>
-              </MotiView>
-            </BlurView>
-          </View>
+        {maximizedId && (
+          <MotiView
+            from={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            style={[StyleSheet.absoluteFill, { zIndex: 1000, backgroundColor: '#000' }]}
+          >
+            {(() => {
+              if (maximizedId === 'local') {
+                return (
+                  <VideoTile
+                    isLocal
+                    stream={localStream}
+                    name={user?.name}
+                    avatar={user?.profile_photo}
+                    hasVideo={hasVideo}
+                    isMuted={isMuted}
+                    isSharingScreen={isSharingScreen}
+                    isMaximized
+                    onMaximize={() => setMaximizedId(null)}
+                  />
+                );
+              }
+              const p = participants.find(part => String(part.id) === String(maximizedId));
+              if (p) {
+                return (
+                  <VideoTile
+                    participant={p}
+                    stream={p.stream}
+                    name={p.name}
+                    avatar={p.avatar}
+                    hasVideo={p.hasVideo}
+                    isMuted={p.isMuted}
+                    isSharingScreen={p.id === 'local' ? isSharingScreen : p.isSharingScreen}
+                    isMaximized
+                    onMaximize={() => setMaximizedId(null)}
+                  />
+                );
+              }
+              return null;
+            })()}
+          </MotiView>
         )}
       </AnimatePresence>
     </View>
@@ -1084,15 +1460,6 @@ const styles = StyleSheet.create({
   },
   actionButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   gridContainer: { flexGrow: 1, padding: 16 },
-  featuredTile: {
-    width: '100%',
-    aspectRatio: 16 / 9,
-    borderRadius: 20,
-    overflow: 'hidden',
-    marginBottom: 20,
-    position: 'relative',
-    ...createShadow({ opacity: 0.3, radius: 15, height: 5 }),
-  },
   featuredLabel: {
     position: 'absolute',
     top: 12,
@@ -1113,6 +1480,37 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 12,
   },
+  broadcastLayout: {
+    marginBottom: 20,
+    width: '100%',
+  },
+  hugeCardContainer: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    borderRadius: 24,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#000',
+    ...createShadow({ opacity: 0.4, radius: 15, height: 8 }),
+  },
+  smallOverlayCard: {
+    position: 'absolute',
+    aspectRatio: 16 / 9,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+    ...createShadow({ opacity: 0.5, radius: 12, height: 6 }),
+    backgroundColor: '#1a1a2e',
+    zIndex: 100,
+  },
+  featuredTile: {
+    marginBottom: 20,
+    borderRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: '#1a1a2e',
+    ...createShadow({ opacity: 0.3, radius: 12, height: 6 }),
+  },
   participantTile: {
     width: (width - 44) / 2,
     aspectRatio: 16 / 9,
@@ -1122,8 +1520,7 @@ const styles = StyleSheet.create({
     ...createShadow({ opacity: 0.2, radius: 8, height: 2 }),
   },
   videoTileContainer: { flex: 1 },
-  videoTile: { flex: 1, backgroundColor: '#1a1a2e', position: 'relative' },
-  videoElement: { width: '100%', height: '100%' },
+
   videoGradient: {
     position: 'absolute',
     bottom: 0,
@@ -1139,7 +1536,154 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 12,
   },
-  tileName: { color: '#fff', fontSize: 14, fontWeight: '600', marginTop: 8 },
+
+  videoTile: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#000',
+    position: 'relative',
+  },
+  videoContainer: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  videoElement: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#000',
+  },
+  avatarContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1a1a2e',
+  },
+  tileOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 12,
+    paddingTop: 30,
+    justifyContent: 'flex-end',
+  },
+  tileHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  nameBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    maxWidth: '70%',
+  },
+  tileName: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  youBadge: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 10,
+    marginLeft: 4,
+  },
+  statusIcons: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  tileStatusBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  roleBadge: {
+    alignSelf: 'flex-start',
+    marginTop: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  hostBadge: {
+    backgroundColor: '#FFD700',
+  },
+  modBadge: {
+    backgroundColor: '#4f46e5',
+  },
+  roleText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  gridPromoteBtn: {
+    position: 'absolute',
+    top: '50%',
+    left: '15%',
+    right: '15%',
+    marginTop: 30,
+    borderRadius: 12,
+    overflow: 'hidden',
+    ...createShadow({ opacity: 0.3, radius: 8 }),
+  },
+  gridPromoteGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    gap: 6,
+  },
+  gridPromoteText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  speakingBorder: {
+    ...StyleSheet.absoluteFillObject,
+    borderWidth: 2,
+    borderColor: '#34C759',
+    borderRadius: 16,
+    ...createShadow({ color: '#34C759', opacity: 0.5, radius: 10 }),
+  },
+  waitingIndicator: {
+    marginTop: 15,
+    alignItems: 'center',
+    gap: 4,
+  },
+  waitingText: {
+    color: '#FFD700',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  dynamicGrid: {
+    padding: 4,
+  },
+  scrollArea: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 150,
+  },
+  speakingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    height: 16,
+    marginTop: 8,
+  },
+  speakingBar: {
+    width: 3,
+    backgroundColor: '#34C759',
+    borderRadius: 1.5,
+  },
   muteIndicator: { position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', padding: 6, borderRadius: 12 },
   videoControls: {
     position: 'absolute',
@@ -1270,7 +1814,7 @@ const styles = StyleSheet.create({
     top: 0,
     right: 0,
     bottom: 0,
-    width: width * 0.8,
+    width: SCREEN_WIDTH_STATIC * 0.8,
     maxWidth: 320,
     zIndex: 30,
   },
@@ -1373,7 +1917,7 @@ const styles = StyleSheet.create({
     zIndex: 9999,
   },
   inviteCard: {
-    width: '85%',
+    width: SCREEN_WIDTH_STATIC * 0.85,
     borderRadius: 30,
     overflow: 'hidden',
     ...createShadow({ opacity: 0.5, radius: 20, height: 10 }),
@@ -1427,6 +1971,51 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.6)',
     fontSize: 14,
     fontWeight: '600',
+  },
+  minimizedContent: {
+    flex: 1,
+  },
+  minimizedOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+  },
+  minimizedGradient: {
+    height: '40%',
+    padding: 8,
+    justifyContent: 'flex-end',
+  },
+  minimizedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  minimizedCount: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  speakerView: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  largeSpeakerContainer: {
+    flex: 1,
+    padding: 8,
+  },
+  smallParticipantsContainer: {
+    height: 160,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  smallParticipantTile: {
+    width: 140,
+    height: 140,
+    marginHorizontal: 6,
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...createShadow({ opacity: 0.3, radius: 8, height: 4 }),
   },
 });
 

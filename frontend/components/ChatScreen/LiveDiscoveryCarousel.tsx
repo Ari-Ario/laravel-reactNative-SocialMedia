@@ -1,5 +1,5 @@
 // components/LiveDiscoveryCarousel.tsx
-import React, { useMemo, useRef, useContext } from 'react';
+import React, { useMemo, useRef, useContext, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -42,10 +42,56 @@ const CARD_HEIGHT = 65; // High-density thin design
  */
 const LiveDiscoveryCarousel = () => {
   const { colors, activeScheme } = useAppTheme();
+  const styles = getStyles(colors, activeScheme);
   const { user } = useContext(AuthContext);
   const { spaces, activeListeningSpaceId, setListeningSpaceId } = useCollaborationStore();
   const scrollX = useSharedValue(0);
   const scrollViewRef = useRef<ScrollView>(null);
+  const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
+
+  // ✅ Direct Listen: Handle remote audio streams
+  useEffect(() => {
+    if (!activeListeningSpaceId) {
+      setRemoteStreams(new Map());
+      return;
+    }
+
+    const rtc = WebRTCService.getInstance();
+    
+    // Set up remote stream listener
+    rtc.onRemoteStream((userId, stream) => {
+      console.log(`🎧 Direct Listen: Received audio for user ${userId} in space ${activeListeningSpaceId}`);
+      setRemoteStreams(prev => {
+        const next = new Map(prev);
+        next.set(userId, stream);
+        return next;
+      });
+    });
+
+    rtc.onParticipantLeft((userId) => {
+      setRemoteStreams(prev => {
+        if (!prev.has(userId)) return prev;
+        const next = new Map(prev);
+        next.delete(userId);
+        return next;
+      });
+    });
+
+    return () => {
+      // Cleanup when space changes or unmounts
+      rtc.onRemoteStream(() => {});
+      rtc.onParticipantLeft(() => {});
+    };
+  }, [activeListeningSpaceId]);
+
+  // Clean up WebRTC on unmount
+  useEffect(() => {
+    return () => {
+      if (activeListeningSpaceId) {
+        WebRTCService.getInstance().leaveCall();
+      }
+    };
+  }, []);
 
   // Filter for live channel spaces
   const liveChannels = useMemo(() => {
@@ -79,7 +125,7 @@ const LiveDiscoveryCarousel = () => {
 
   const toggleListening = async (space: any) => {
     const rtc = WebRTCService.getInstance();
-    
+
     // 1. If we are already listening to THIS space, stop it.
     if (activeListeningSpaceId === space.id) {
       await rtc.leaveCall();
@@ -95,14 +141,14 @@ const LiveDiscoveryCarousel = () => {
     // 3. Join the new space in "silent listener" (isViewer) mode.
     try {
       if (!user) return;
-      
+
       // Initialize if needed
       await rtc.initialize(Number(user.id));
-      
+
       // Join as viewer (silent listener)
-      const callId = space.active_call_id || space.id; 
+      const callId = space.active_call_id || space.id;
       await rtc.joinCall(space.id, callId, false, true);
-      
+
       setListeningSpaceId(space.id);
       console.log(`🎧 Direct Listen: Joined ${space.title} as listener`);
     } catch (e) {
@@ -113,7 +159,7 @@ const LiveDiscoveryCarousel = () => {
 
   const AnimatedCard = ({ space, index }: { space: any; index: number }) => {
     const isListening = activeListeningSpaceId === space.id;
-    
+
     // ... animation logic ...
     const inputRange = [
       (index - 1) * (CARD_WIDTH + 12),
@@ -141,19 +187,19 @@ const LiveDiscoveryCarousel = () => {
           >
             <View style={styles.cardContent}>
               {/* Tap anywhere to navigate */}
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.mainActionTouch}
                 onPress={() => handleNavigate(space)}
                 activeOpacity={0.7}
               >
                 <View style={styles.liveBadge}>
-                   <View style={styles.liveDot} />
-                   <Text style={styles.liveText}>LIVE</Text>
+                  <View style={styles.liveDot} />
+                  <Text style={styles.liveText}>LIVE</Text>
                 </View>
 
                 <Avatar
-                  source={space.creator?.profile_photo}
-                  name={space.creator?.name}
+                  source={space.image_url || space.creator?.profile_photo}
+                  name={space.title || space.creator?.name}
                   size={32}
                   showStatus={false}
                 />
@@ -163,10 +209,10 @@ const LiveDiscoveryCarousel = () => {
                     {space.title || 'Live Channel'}
                   </Text>
                   <View style={styles.participantsRow}>
-                     <Ionicons name="people" size={10} color={colors.textSecondary} />
-                     <Text style={styles.participantCount}>
-                        {space.participants_count || 0}
-                     </Text>
+                    <Ionicons name="people" size={10} color={colors.textSecondary} />
+                    <Text style={styles.participantCount}>
+                      {space.participants_count || 0}
+                    </Text>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -174,8 +220,8 @@ const LiveDiscoveryCarousel = () => {
               {/* Direct Listen Toggle Button */}
               <TouchableOpacity
                 style={[
-                    styles.headsetButton,
-                    isListening && { backgroundColor: colors.tint + '30' }
+                  styles.headsetButton,
+                  isListening && { backgroundColor: colors.tint + '30' }
                 ]}
                 onPress={() => toggleListening(space)}
               >
@@ -223,17 +269,33 @@ const LiveDiscoveryCarousel = () => {
           <AnimatedCard key={space.id} space={space} index={index} />
         ))}
       </Animated.ScrollView>
+
+      {/* 🎧 Direct Listen: Hidden audio elements for Web */}
+      {Platform.OS === 'web' && Array.from(remoteStreams.entries()).map(([userId, stream]) => (
+        <video
+          key={`hidden-audio-${userId}`}
+          ref={(el) => {
+            if (el && stream && el.srcObject !== stream) {
+              el.srcObject = stream;
+              el.volume = 1.0;
+            }
+          }}
+          autoPlay
+          playsInline
+          style={{ display: 'none' }}
+        />
+      ))}
     </Animated.View>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, activeScheme: 'light' | 'dark') => StyleSheet.create({
   container: {
-    paddingVertical: 10,
+    paddingVertical: 5,
     borderBottomWidth: 1,
   },
   scrollContent: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 6,
     gap: 12,
   },
   cardWrapper: {
@@ -242,6 +304,8 @@ const styles = StyleSheet.create({
   card: {
     height: CARD_HEIGHT,
     borderRadius: 35,
+    borderWidth: 1,
+    borderColor: '#63636398',
     overflow: 'hidden',
     ...createShadow({ opacity: 0.1, radius: 4, height: 2 }),
   },
@@ -250,7 +314,7 @@ const styles = StyleSheet.create({
     borderRadius: 35,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: activeScheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
   },
   cardContent: {
     flex: 1,
@@ -287,7 +351,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   avatar: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: activeScheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
   },
   infoContainer: {
     flex: 1,
@@ -296,7 +360,7 @@ const styles = StyleSheet.create({
   channelName: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.text,
   },
   participantsRow: {
     flexDirection: 'row',
@@ -307,13 +371,13 @@ const styles = StyleSheet.create({
   participantCount: {
     fontSize: 10,
     fontWeight: '500',
-    color: 'rgba(255,255,255,0.6)',
+    color: colors.textSecondary,
   },
   headsetButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: activeScheme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.05)',
     justifyContent: 'center',
     alignItems: 'center',
   },
