@@ -11,6 +11,12 @@ class Poll extends Model
 {
     use HasFactory, HasUuids;
 
+    protected static function booted()
+    {
+        static::saved(fn ($poll) => \Illuminate\Support\Facades\Cache::increment("space_{$poll->space_id}_polls_v"));
+        static::deleted(fn ($poll) => \Illuminate\Support\Facades\Cache::increment("space_{$poll->space_id}_polls_v"));
+    }
+
     protected $keyType = 'string';
     public $incrementing = false;
 

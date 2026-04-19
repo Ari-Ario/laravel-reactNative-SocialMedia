@@ -170,7 +170,7 @@ class MessagesController extends Controller
             $conversation = Conversation::findOrFail($request->conversation_id);
 
             // Check if user is in conversation
-            if (!$conversation->users()->where('user_id', $user->id)->exists()) {
+            if (!$conversation->participants()->where('user_id', $user->id)->exists()) {
                 return response()->json([
                     'message' => 'Not authorized'
                 ], 403);
@@ -262,7 +262,7 @@ class MessagesController extends Controller
             $conversation = Conversation::findOrFail($request->conversation_id);
 
             // Check if user is in conversation
-            if (!$conversation->users()->where('user_id', $user->id)->exists()) {
+            if (!$conversation->participants()->where('user_id', $user->id)->exists()) {
                 return response()->json([
                     'message' => 'Not authorized'
                 ], 403);
@@ -320,7 +320,7 @@ class MessagesController extends Controller
 
         // Check if user can access this message
         $conversation = $message->conversation;
-        if (!$conversation->users()->where('user_id', $user->id)->exists()) {
+        if (!$conversation->participants()->where('user_id', $user->id)->exists()) {
             return response()->json([
                 'message' => 'Not authorized'
             ], 403);

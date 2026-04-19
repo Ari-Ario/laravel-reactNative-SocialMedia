@@ -8,7 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 class Post extends Model
 {
     use HasFactory;
-    
+
+    protected static function booted()
+    {
+        static::saved(fn () => \Illuminate\Support\Facades\Cache::increment('posts_cache_v'));
+        static::deleted(fn () => \Illuminate\Support\Facades\Cache::increment('posts_cache_v'));
+    }
+
     protected $fillable = [
         'user_id', // Add this line
         'caption',

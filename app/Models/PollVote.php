@@ -11,6 +11,19 @@ class PollVote extends Model
 {
     use HasFactory, HasUuids;
 
+    protected static function booted()
+    {
+        static::created(function ($vote) {
+            $spaceId = \Illuminate\Support\Facades\DB::table('polls')
+                ->where('id', $vote->poll_id)
+                ->value('space_id');
+            
+            if ($spaceId) {
+                \Illuminate\Support\Facades\Cache::increment("space_{$spaceId}_polls_v");
+            }
+        });
+    }
+
     protected $keyType = 'string';
     public $incrementing = false;
 

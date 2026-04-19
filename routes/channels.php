@@ -46,13 +46,17 @@ Broadcast::channel('space-{spaceId}', function ($user, $spaceId) {
         ->where('user_id', $user->id)
         ->first();
 
-    if ($participation) {
+    // Also check if user is the creator
+    $space = \App\Models\CollaborationSpace::find($actualSpaceId);
+    $isCreator = $space && $space->creator_id === $user->id;
+
+    if ($participation || $isCreator) {
         Log::info('✅ Auth success', ['user_id' => $user->id, 'space_id' => $spaceId]);
         return [
-        'id' => $user->id,
-        'name' => $user->name,
-        'profile_photo' => $user->profile_photo,
-        'role' => $participation->role,
+            'id' => $user->id,
+            'name' => $user->name,
+            'profile_photo' => $user->profile_photo,
+            'role' => $participation ? $participation->role : 'owner',
         ];
     }
 

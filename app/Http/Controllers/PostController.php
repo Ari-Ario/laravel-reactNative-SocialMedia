@@ -22,6 +22,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Cache;
 use App\Http\Controllers\Controller;
 use App\Events\NewComment;
 use App\Events\NewReaction;
@@ -42,62 +43,69 @@ class PostController extends Controller
     {
         try {
             $userId = Auth::id();
-            
-            $posts = Post::with([
-                    'user',
-                    'media',
-                    'reactions',
-                    'reactionCounts',
-                    'comments.user',
-                    'comments.reaction_comments.user',
-                    'comments.replies' => function ($query) {
-                        $query->with(['user', 'reaction_comments.user'])
-                            ->withCount('reaction_comments');
-                    },
-                    'comments.replies.replies' => function ($query) {
-                        $query->with(['user', 'reaction_comments.user'])
-                            ->withCount('reaction_comments');
-                    },
-                    // Add more levels if needed
-                    'reposts' => function ($query) {
-                        $query->with('user')->latest();
-                    },
-                ])
-                ->withCount([
-                    'reactions',
-                    'comments',
-                    'reposts'
-                ])
-                ->withExists([
-                    'reposts as is_reposted' => function ($q) use ($userId) {
-                        $q->where('user_id', $userId);
-                    },
-                    // ✅ Correct way to add is_following
-                    'user as is_following' => function ($q) use ($userId) {
-                        // check if the post author has the current user among their followers
-                        $q->whereHas('followers', function ($qq) use ($userId) {
-                            // check follower user id — don't reference pivot here
-                            $qq->whereKey($userId);
-                        });
-                    },
-                ])
-                ->latest()
-                ->paginate(10);
+            $page = request()->get('page', 1);
+            $version = Cache::get('posts_cache_v', 1);
+            $cacheKey = "user_{$userId}_posts_v{$version}_p{$page}";
 
-            // Recursively transform all comments and replies
-            $posts->getCollection()->transform(function ($post) {
-                $transformComment = function ($comment) use (&$transformComment) {
-                    $comment->reaction_comments_count = $comment->reaction_comments->count();
+            $posts = Cache::remember($cacheKey, 3600, function() use ($userId) {
+                $posts = Post::with([
+                        'user',
+                        'media',
+                        'reactions',
+                        'reactionCounts',
+                        'comments.user',
+                        'comments.reaction_comments.user',
+                        'comments.replies' => function ($query) {
+                            $query->with(['user', 'reaction_comments.user'])
+                                ->withCount('reaction_comments');
+                        },
+                        'comments.replies.replies' => function ($query) {
+                            $query->with(['user', 'reaction_comments.user'])
+                                ->withCount('reaction_comments');
+                        },
+                        // Add more levels if needed
+                        'reposts' => function ($query) {
+                            $query->with('user')->latest();
+                        },
+                    ])
+                    ->withCount([
+                        'reactions',
+                        'comments',
+                        'reposts'
+                    ])
+                    ->withExists([
+                        'reposts as is_reposted' => function ($q) use ($userId) {
+                            $q->where('user_id', $userId);
+                        },
+                        // ✅ Correct way to add is_following
+                        'user as is_following' => function ($q) use ($userId) {
+                            // check if the post author has the current user among their followers
+                            $q->whereHas('followers', function ($qq) use ($userId) {
+                                // check follower user id — don't reference pivot here
+                                $qq->whereKey($userId);
+                            });
+                        },
+                    ])
+                    ->latest()
+                    ->paginate(10);
+
+                // Recursively transform all comments and replies
+                $posts->getCollection()->transform(function ($post) {
+                    $transformComment = function ($comment) use (&$transformComment) {
+                        $comment->reaction_comments_count = $comment->reaction_comments->count();
+                        
+                        if ($comment->replies) {
+                            $comment->replies->each($transformComment);
+                        }
+                        
+                        return $comment;
+                    };
                     
-                    if ($comment->replies) {
-                        $comment->replies->each($transformComment);
-                    }
-                    
-                    return $comment;
-                };
-                
-                $post->comments->each($transformComment);
-                return $post;
+                    $post->comments->each($transformComment);
+                    return $post;
+                });
+
+                return $posts;
             });
 
             return response()->json($posts);

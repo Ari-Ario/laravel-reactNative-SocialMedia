@@ -61,4 +61,5 @@ Homestead.yaml
 /.nova
 /.zed
 /venv
-/public/app
+/public/apprr
+.rr.yaml

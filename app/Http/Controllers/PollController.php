@@ -12,6 +12,7 @@ use App\Models\SpaceParticipation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use App\Events\PollCreated;
 use App\Events\PollUpdated;
@@ -37,12 +38,17 @@ class PollController extends Controller
                 return response()->json(['message' => 'Not authorized'], 403);
             }
 
-            $polls = Poll::where('space_id', $spaceId)
-                ->with(['creator', 'options.votes.user'])
-                ->orderBy('created_at', 'desc')
-                ->get();
+            $version = Cache::get("space_{$spaceId}_polls_v", 1);
+            $cacheKey = "space_{$spaceId}_polls_v{$version}";
 
-            return response()->json(['polls' => $polls]);
+            return Cache::remember($cacheKey, 3600, function() use ($spaceId) {
+                $polls = Poll::where('space_id', $spaceId)
+                    ->with(['creator', 'options.votes.user'])
+                    ->orderBy('created_at', 'desc')
+                    ->get();
+
+                return response()->json(['polls' => $polls]);
+            });
 
         }
         catch (\Exception $e) {

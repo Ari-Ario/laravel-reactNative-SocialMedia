@@ -44,6 +44,12 @@ class CollaborationSpace extends Model
         'image_path',
     ];
 
+    protected static function booted()
+    {
+        static::saved(fn () => \Illuminate\Support\Facades\Cache::increment('spaces_cache_v'));
+        static::deleted(fn () => \Illuminate\Support\Facades\Cache::increment('spaces_cache_v'));
+    }
+
     protected $appends = ['image_url'];
 
     protected $casts = [
@@ -117,8 +123,10 @@ class CollaborationSpace extends Model
     // Scope for user's spaces
     public function scopeForUser($query, $userId)
     {
-        return $query->whereHas('participations', function ($q) use ($userId) {
-            $q->where('user_id', $userId);
+        return $query->where(function ($q) use ($userId) {
+            $q->whereHas('participations', function ($qq) use ($userId) {
+                $qq->where('user_id', $userId);
+            })->orWhere('creator_id', $userId);
         });
     }
 

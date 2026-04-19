@@ -10,7 +10,8 @@ import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import PusherService from '@/services/PusherService';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { deleteReportByTarget } from '@/services/ReportService';
-import { PostVideoPlayer } from './PostVideoPlayer';
+import { VideoView, useVideoPlayer } from 'expo-video';
+import { useWindowDimensions } from 'react-native';
 import PostShareModal from './PostShareModal';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -68,6 +69,61 @@ interface StoryViewerProps {
   onPrevUser: (currentIndex?: number) => void;
 }
 
+const StoryVideoContent = ({ 
+  uri, 
+  paused, 
+  isMuted, 
+  volume, 
+  onVolumeChange 
+}: { 
+  uri: string, 
+  paused: boolean, 
+  isMuted: boolean, 
+  volume: number, 
+  onVolumeChange: (v: number) => void 
+}) => {
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isMobileWeb = Platform.OS === 'web' && windowWidth < 768;
+
+  const player = useVideoPlayer(uri, (p) => {
+    p.loop = true;
+    // Sync audio state with user preference
+    p.muted = isMuted;
+    p.volume = volume;
+    if (!paused) {
+      p.play();
+    }
+  });
+
+  useEffect(() => {
+    player.muted = isMuted;
+  }, [player, isMuted]);
+
+  useEffect(() => {
+    player.volume = volume;
+  }, [player, volume]);
+
+  useEffect(() => {
+    if (paused) {
+      player.pause();
+    } else {
+      player.play();
+    }
+  }, [player, paused]);
+
+  return (
+    <View style={styles.storyMedia}>
+      <VideoView
+        player={player}
+        style={[StyleSheet.absoluteFill, { maxWidth: '100%', maxHeight: '100%' }]}
+        contentFit="contain"
+        nativeControls={false}
+        allowsVideoFrameAnalysis={false}
+      />
+    </View>
+  );
+};
+
 const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }: StoryViewerProps) => {
   const { showToast } = useToastStore();
   const { colors, activeScheme } = useAppTheme();
@@ -79,6 +135,9 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
     return group ? group.stories : [];
   }, [storyGroups, userId]);
 
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isMobileWeb = Platform.OS === 'web' && windowWidth < 768;
+
   const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
   // Ensure loading state is handled correctly since stories come from store
   useEffect(() => {
@@ -88,7 +147,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
   }, [stories.length]);
   const [loading, setLoading] = useState(true);
   const [paused, setPaused] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(isMobileWeb); // Default to muted on mobile web for autoplay
   const [showLocationPopup, setShowLocationPopup] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
@@ -637,12 +696,9 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
             >
               {/* Main Media or Background Color */}
               {currentStory.type === 'video' ? (
-                <PostVideoPlayer
-                  ref={videoRef}
+                <StoryVideoContent
                   uri={currentStory.media_path.startsWith('http') ? currentStory.media_path : `${getApiBaseImage()}/storage/${currentStory.media_path}`}
-                  style={styles.storyMedia}
-                  contentFit="contain"
-                  shouldPlay={!paused && !showLocationPopup && !showShareModal && !showReactions && !showInfo}
+                  paused={paused || showLocationPopup || showShareModal || showReactions || showInfo}
                   isMuted={isMuted}
                   volume={volume}
                   onVolumeChange={handleVolumeChange}
@@ -1004,7 +1060,10 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
+    width: '100%',
     justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
   },
   progressBarsContainer: {
     flexDirection: 'row',
@@ -1030,6 +1089,8 @@ const styles = StyleSheet.create({
   storyMedia: {
     width: '100%',
     height: '100%',
+    maxWidth: '100%',
+    maxHeight: '100%',
   },
   stickerWrapper: {
     position: 'absolute',

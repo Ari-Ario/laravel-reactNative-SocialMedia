@@ -1373,6 +1373,7 @@ class WebRTCService {
 
   private async startAudioMonitoring(userId: string, stream: MediaStream) {
     if (Platform.OS !== 'web') return; // Audio analysis currently web-only in this impl
+    if (!stream || stream.getAudioTracks().length === 0) return; // No audio to monitor
 
     try {
       if (!this.audioContext) {

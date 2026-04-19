@@ -9,6 +9,7 @@ use App\Models\CollaborativeActivity;
 use App\Models\SpaceParticipation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 class CollaborativeActivityController extends Controller
 {

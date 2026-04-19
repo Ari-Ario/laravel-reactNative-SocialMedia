@@ -131,9 +131,11 @@ const PiPRemoteVideo = React.memo(({ stream, participantId, videoRefs }: {
 }) => {
   const ref = useRef<HTMLVideoElement | null>(null);
   useEffect(() => {
-    if (ref.current && ref.current.srcObject !== stream) {
+    if (ref.current && stream && ref.current.srcObject !== stream) {
       ref.current.srcObject = stream;
-      ref.current.play().catch(e => console.warn("AutoPlay blocked in PiPRemoteVideo:", e));
+      ref.current.play().catch(e => {
+        if (e.name !== 'AbortError') console.warn("AutoPlay blocked in PiPRemoteVideo:", e);
+      });
     }
     if (ref.current) videoRefs.current.set(participantId, ref.current);
   }, [stream, participantId, videoRefs]);
@@ -156,10 +158,12 @@ const PiPRemoteVideo = React.memo(({ stream, participantId, videoRefs }: {
 const PiPLocalVideo = React.memo(({ stream }: { stream: MediaStream }) => {
   const ref = useRef<HTMLVideoElement | null>(null);
   useEffect(() => {
-    if (ref.current && ref.current.srcObject !== stream) {
+    if (ref.current && stream && ref.current.srcObject !== stream) {
       ref.current.srcObject = stream;
       ref.current.muted = true;
-      ref.current.play().catch(e => console.warn("AutoPlay blocked in PiPLocalVideo:", e));
+      ref.current.play().catch(e => {
+        if (e.name !== 'AbortError') console.warn("AutoPlay blocked in PiPLocalVideo:", e);
+      });
     }
   }, [stream]);
   return (
@@ -198,15 +202,18 @@ const VideoTile = React.memo(({
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
   const [autoplayFailed, setAutoplayFailed] = useState(false);
 
+  // Consolidate stream assignment in ref callback for better reliability
   useEffect(() => {
-    if (isWeb && stream && videoElementRef.current) {
+    if (isWeb && stream && videoElementRef.current && videoElementRef.current.srcObject !== stream) {
       videoElementRef.current.srcObject = stream;
       if (isLocal) videoElementRef.current.muted = true;
       videoElementRef.current.play().then(() => {
         setAutoplayFailed(false);
       }).catch(e => {
-        console.warn("AutoPlay blocked in VideoTile:", e);
-        if (!isLocal) setAutoplayFailed(true);
+        if (e.name !== 'AbortError' && e.name !== 'NotAllowedError') {
+          console.warn("AutoPlay blocked in VideoTile useEffect:", e);
+        }
+        if (!isLocal && e.name === 'NotAllowedError') setAutoplayFailed(true);
       });
     }
   }, [stream, isLocal]);
@@ -232,8 +239,11 @@ const VideoTile = React.memo(({
                 if (el && stream && el.srcObject !== stream) {
                   el.srcObject = stream;
                   if (isLocal) el.muted = true;
+                  el.play().catch(e => {
+                     if (e.name !== 'AbortError') console.warn("Video ref play failed:", e);
+                  });
                 }
-                if (el && videoRefs) videoRefs.current.set(participant.id, el);
+                if (el && videoRefs && participant?.id) videoRefs.current.set(participant.id, el);
               }}
               autoPlay
               playsInline

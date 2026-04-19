@@ -125,12 +125,14 @@ const VideoTile = React.memo(({
   const isMod = role === 'moderator' || role === 'admin';
 
   useEffect(() => {
-    if (isWeb && stream && videoElementRef.current) {
+    if (isWeb && stream && videoElementRef.current && videoElementRef.current.srcObject !== stream) {
       videoElementRef.current.srcObject = stream;
       // Web: Mute if local
       videoElementRef.current.muted = isLocal;
       videoElementRef.current.play().catch(e => {
-        if (e.name !== 'AbortError') console.warn("AutoPlay blocked in VideoTile:", e);
+        if (e.name !== 'AbortError' && e.name !== 'NotAllowedError') {
+          console.warn("AutoPlay blocked in VideoTile:", e);
+        }
       });
     }
   }, [stream, isLocal, isSharingScreen]);

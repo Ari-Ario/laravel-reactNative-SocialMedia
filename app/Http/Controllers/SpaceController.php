@@ -24,6 +24,7 @@ use Illuminate\Support\Str;
 use App\Notifications\SpaceInvitationNotification;
 use App\Notifications\SpaceMessageNotification;
 use App\Services\SpaceService;
+use Illuminate\Support\Facades\Cache;
 
 use App\Events\SpaceCreated;
 use App\Events\SpaceUpdated;
@@ -69,36 +70,41 @@ class SpaceController extends Controller
         try {
             /** @var User $user */
             $user = Auth::user();
-            
-            $spaces = CollaborationSpace::forUser($user->id)
-                ->select([
-                    'id', 'title', 'description', 'space_type', 'creator_id',
-                    'is_live', 'has_ai_assistant', 'linked_conversation_id',
-                    'image_path', 'created_at', 'updated_at', 'content_state', 'settings'
-                ])
-                ->with(['creator:id,name,profile_photo,username'])
-                ->withCount('participations')
-                ->orderBy('updated_at', 'desc')
-                ->paginate(20);
-            
-            // Format for frontend using centralized helper
-            $formattedSpaces = $spaces->getCollection()->map(function($space) use ($user) {
-                return $this->formatSpaceData($space, $user);
+            $page = $request->get('page', 1);
+            $version = Cache::get('spaces_cache_v', 1);
+            $cacheKey = "user_{$user->id}_spaces_v{$version}_p{$page}";
+
+            return Cache::remember($cacheKey, 3600, function() use ($user, $request) {
+                $spaces = CollaborationSpace::forUser($user->id)
+                    ->select([
+                        'id', 'title', 'description', 'space_type', 'creator_id',
+                        'is_live', 'has_ai_assistant', 'linked_conversation_id',
+                        'image_path', 'created_at', 'updated_at', 'content_state', 'settings'
+                    ])
+                    ->with(['creator:id,name,profile_photo,username', 'activeCall', 'participations.user'])
+                    ->withCount('participations')
+                    ->orderBy('updated_at', 'desc')
+                    ->paginate(20);
+                
+                // Format for frontend using centralized helper
+                $formattedSpaces = $spaces->getCollection()->map(function($space) use ($user) {
+                    return $this->formatSpaceData($space, $user);
+                });
+                
+                return [
+                    'spaces' => $formattedSpaces,
+                    'user_preferences' => [
+                        'custom_tabs' => $user->custom_tabs ?? [],
+                        'theme_preference' => $user->theme_preference,
+                        'locale' => $user->locale
+                    ],
+                    'pagination' => [
+                        'current_page' => $spaces->currentPage(),
+                        'last_page' => $spaces->lastPage(),
+                        'total' => $spaces->total()
+                    ]
+                ];
             });
-            
-            return response()->json([
-                'spaces' => $formattedSpaces,
-                'user_preferences' => [
-                    'custom_tabs' => $user->custom_tabs ?? [],
-                    'theme_preference' => $user->theme_preference,
-                    'locale' => $user->locale
-                ],
-                'pagination' => [
-                    'current_page' => $spaces->currentPage(),
-                    'last_page' => $spaces->lastPage(),
-                    'total' => $spaces->total()
-                ]
-            ]);
             
         } catch (\Exception $e) {
             Log::error('Error fetching spaces: ' . $e->getMessage());
@@ -338,7 +344,7 @@ class SpaceController extends Controller
             }
         ])->findOrFail($id);
 
-        $participation = $space->participations()
+        $participation = $space->participations
             ->where('user_id', auth()->id())
             ->first();
 
@@ -363,7 +369,7 @@ class SpaceController extends Controller
         return response()->json([
             'space' => $this->formatSpaceData($space, auth()->user()),
             'participation' => $participation,
-            'participants' => $space->participations()->with('user')->get(),
+            'participants' => $space->participations,
             'magic_events' => $space->magicEvents
         ]);
     }
@@ -907,7 +913,7 @@ public function updateContentState(Request $request, $id)
         
         return response()->json([
             'participation' => $participation->load('user'),
-            'space' => $space->load(['creator', 'participations.user']),
+            'space' => $this->formatSpaceData($space->load(['creator', 'participations.user', 'activeCall']), $authUser),
             'message' => 'Successfully joined the space'
         ]);
     }
@@ -923,19 +929,20 @@ public function startCall(Request $request, $id)
 
     $space = CollaborationSpace::with('participations.user')->findOrFail($id);
 
-    // Check participation
     $participation = $space->participations()
         ->where('user_id', auth()->id())
         ->first();
 
-    if (!$participation) {
+    $isOwner = auth()->id() === $space->creator_id;
+    if (!$participation && !$isOwner) {
         return response()->json([
             'message' => 'You must be a participant in the space to start a call'
         ], 403);
     }
 
     // Channel Restriction: Only owner and moderator can start a broadcast
-    if ($space->space_type === 'channel' && !in_array($participation->role, ['owner', 'moderator'])) {
+    $role = $participation ? $participation->role : ($isOwner ? 'owner' : null);
+    if ($space->space_type === 'channel' && !in_array($role, ['owner', 'moderator'])) {
         return response()->json([
             'message' => 'Only owners and moderators can start a broadcast in a Channel space'
         ], 403);
@@ -3406,9 +3413,11 @@ public function endCall(Request $request, $id)
     private function formatSpaceData($space, $user)
     {
         // 1. Get participation for this user
-        $participation = SpaceParticipation::where('space_id', $space->id)
-            ->where('user_id', $user->id)
-            ->first();
+        $participation = $space->relationLoaded('participations')
+            ? $space->participations->where('user_id', $user->id)->first()
+            : SpaceParticipation::where('space_id', $space->id)
+                ->where('user_id', $user->id)
+                ->first();
 
         // 2. Decode settings if necessary
         $settings = is_string($space->settings) ? json_decode($space->settings, true) : $space->settings;
@@ -3418,10 +3427,16 @@ public function endCall(Request $request, $id)
         $isDirect = ($settings['is_direct'] ?? false) || $space->space_type === 'direct' || $space->space_type === 'chat';
         
         if ($isDirect) {
-            $otherParticipation = SpaceParticipation::where('space_id', $space->id)
-                ->where('user_id', '!=', $user->id)
-                ->with('user:id,name,username,profile_photo')
-                ->first();
+            if ($space->relationLoaded('participations')) {
+                $otherParticipation = $space->participations
+                    ->where('user_id', '!=', $user->id)
+                    ->first();
+            } else {
+                $otherParticipation = SpaceParticipation::where('space_id', $space->id)
+                    ->where('user_id', '!=', $user->id)
+                    ->with('user:id,name,username,profile_photo')
+                    ->first();
+            }
             
             if ($otherParticipation) {
                 $otherParticipant = $otherParticipation->user;
@@ -3447,7 +3462,7 @@ public function endCall(Request $request, $id)
             'linked_post_id' => $space->linked_post_id,
             'linked_story_id' => $space->linked_story_id,
             'participants_count' => $space->participations_count ?? $space->participations()->count(),
-            'creator' => $space->relationLoaded('creator') ? $space->creator : $space->creator()->select(['id','name','profile_photo','username'])->first(),
+            'creator' => $space->relationLoaded('creator') ? $space->creator : ($space->creator_id ? $space->creator()->select(['id','name','profile_photo','username'])->first() : null),
             'created_at' => $space->created_at,
             'updated_at' => $space->updated_at,
             'my_role' => $participation ? $participation->role : null,
@@ -3465,7 +3480,7 @@ public function endCall(Request $request, $id)
             'unread_count' => $participation ? $this->calculateUnreadCount($space, $participation) : 0,
             'other_participant' => $otherParticipant,
             'settings' => $settings,
-            'active_call' => $space->activeCall,
+            'active_call' => $space->relationLoaded('activeCall') ? $space->activeCall : $space->activeCall,
         ];
     }
 }

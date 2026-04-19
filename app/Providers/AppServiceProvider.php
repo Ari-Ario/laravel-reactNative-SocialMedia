@@ -22,12 +22,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-    // if (app()->environment('local')) {
-    //     // Auto-refresh stories daily at midnight
-    //     if (now()->format('H:i') === '00:00') {
-    //         \Artisan::call('db:seed --class=StoriesTableSeeder');
-    //     }
-    // }
+        \Illuminate\Database\Eloquent\Model::preventLazyLoading(! app()->isProduction());
+
+        // if (app()->environment('local')) {
+        //     // Auto-refresh stories daily at midnight
+        //     if (now()->format('H:i') === '00:00') {
+        //         \Artisan::call('db:seed --class=StoriesTableSeeder');
+        //     }
+        // }
     }
 
 // public function boot()
