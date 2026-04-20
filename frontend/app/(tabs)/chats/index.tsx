@@ -1,42 +1,38 @@
 // app/(tabs)/chats/index.tsx
 import React, { useState, useEffect, useContext, useMemo, useCallback, useRef } from "react";
 import {
-  View, StyleSheet, ActivityIndicator, SectionList,
+  View, StyleSheet, ActivityIndicator,
   TextInput, TouchableOpacity, Text, Modal, Alert,
   RefreshControl, Animated, ScrollView,
-  Platform, Image
+  Platform, Image, FlatList
 } from "react-native";
+import { useSpaces } from '@/hooks/queries/usePosts';
 import OfflineService from '@/services/ChatScreen/OfflineServiceChat';
 import RealTimeService from '@/services/ChatScreen/RealTimeServiceChat';
 import NotificationService from '@/services/ChatScreen/NotificationServiceChat';
 import SearchService, { SearchResult } from '@/services/ChatScreen/SearchServiceChat';
-import PusherService from '@/services/PusherService';
 import getApiBaseImage from "@/services/getApiBaseImage";
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import AuthContext from "@/context/AuthContext";
-import { usePostStore } from '@/stores/postStore';
 import EnhancedChatRow from '@/components/ChatScreen/EnhancedChatRow';
 import { useProfileView } from "@/context/ProfileViewContext";
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from "@/hooks/useAppTheme";
-import CollaborationService, { CollaborationSpace, CollaborativeActivity } from '@/services/ChatScreen/CollaborationService';
+import CollaborationService, { CollaborationSpace } from '@/services/ChatScreen/CollaborationService';
 import * as Haptics from 'expo-haptics';
 import { getToken } from "@/services/TokenService";
 import getApiBase from "@/services/getApiBase";
 import axios from '@/services/axios';
-import { useSpaceStore } from '@/stores/spaceStore';
-import { SynchronicityEngine } from '@/services/ChatScreen/SynchronicityEngine';
-import { DatabaseIntegrator } from '@/services/ChatScreen/DatabaseIntegrator';
 import debounce from 'lodash/debounce';
 import CreativeGenerator from "@/components/AI/CreativeGenerator";
 import CollaborativeActivities from "@/components/ChatScreen/CollaborativeActivities";
 import SpaceCreationModal from "@/components/ChatScreen/SpaceCreationModal";
 import { useCollaborationStore } from "@/stores/collaborationStore";
-import { createShadow } from "@/utils/styles";
-import CreateTabModal from "@/components/ChatScreen/CreateTabModal";
-import GenericMenu, { MenuItem } from '@/components/GenericMenu';
+import GenericMenu from '@/components/GenericMenu';
 import { calculateAnchor, AnchorPosition } from '@/utils/layout';
 import LiveDiscoveryCarousel from "@/components/ChatScreen/LiveDiscoveryCarousel";
+import CreateTabModal from '@/components/ChatScreen/CreateTabModal';
+import { useSpaceStore } from "@/stores/spaceStore";
 
 interface Chat {
   id: string;
@@ -100,31 +96,6 @@ const formatTimestamp = (timestamp: string | Date): string => {
   }
 };
 
-const getSpaceTypeIcon = (type: string): string => {
-  const icons: Record<string, string> = {
-    whiteboard: 'easel',
-    meeting: 'videocam',
-    document: 'document-text',
-    brainstorm: 'bulb',
-    voice_channel: 'mic',
-    chat: 'chatbubbles',
-    story: 'book',
-  };
-  return icons[type] || 'cube';
-};
-
-const getSpaceTypeColor = (type: string): string => {
-  const colors: Record<string, string> = {
-    whiteboard: '#4CAF50',
-    meeting: '#FF6B6B',
-    document: '#FFA726',
-    brainstorm: '#9C27B0',
-    voice_channel: '#3F51B5',
-    chat: '#2196F3',
-    story: '#E91E63',
-  };
-  return colors[type] || '#666';
-};
 
 const ChatPage = () => {
   const { colors, activeScheme } = useAppTheme();
@@ -138,13 +109,11 @@ const ChatPage = () => {
   const [isSearching, setIsSearching] = useState(false);
 
   const { user } = useContext(AuthContext);
-  const { posts } = usePostStore();
 
   // ✅ Unified Space Store
   const {
     spaces: storeSpaces,
     spaceUnreadCounts,
-    fetchUserSpaces: fetchUserSpacesFromStore,
     customTabs,
     createCustomTab,
     deleteCustomTab,
@@ -163,16 +132,88 @@ const ChatPage = () => {
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
 
   const collaborationService = CollaborationService.getInstance();
-  const synchronicityEngine = SynchronicityEngine.getInstance();
-  const { currentSpace } = useSpaceStore();
-  const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-50)).current;
   const searchInputRef = useRef<TextInput>(null);
 
+  const { currentSpace } = useSpaceStore();
+  const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
+
+  // Helper function to transform API data to contacts
+  const transformUsersToContacts = useCallback((data: any[]): Chat[] => {
+    return data.map((item) => {
+      const user = item.follower || item.following || item.user || item;
+      return {
+        id: user.id.toString(),
+        name: user.name || 'User',
+        lastMessage: 'Tap to start a conversation',
+        timestamp: 'Recently active',
+        avatar: user.profile_photo,
+        isOnline: Math.random() > 0.5,
+        user_id: user.id.toString(),
+        type: 'contact' as const,
+        email: user.email,
+        username: user.username,
+        updatedAt: new Date(0).toISOString(), // Contacts always at bottom
+      };
+    });
+  }, []);
+
+
+  // Fallback contacts when API fails
+  const getFallbackContacts = useCallback((): Chat[] => [
+    {
+      id: 'contact-1',
+      name: 'Alex Johnson',
+      lastMessage: 'Hey there! 👋',
+      timestamp: '2:30 PM',
+      avatar: 'https://i.pravatar.cc/150?img=1',
+      isOnline: true,
+      user_id: 'contact-1',
+      type: 'contact',
+      updatedAt: new Date(0).toISOString(),
+    },
+    {
+      id: 'contact-2',
+      name: 'Sam Wilson',
+      lastMessage: 'Available for collaboration',
+      timestamp: 'Yesterday',
+      avatar: 'https://i.pravatar.cc/150?img=2',
+      isOnline: false,
+      user_id: 'contact-2',
+      type: 'contact',
+      updatedAt: new Date(0).toISOString(),
+    },
+  ], []);
+  
+  // Animation on mount
+  const startAnimations = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      })
+    ]).start();
+  }, [fadeAnim, slideAnim]);
+
+  const fetchActivitiesCount = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      await useCollaborationStore.getState().fetchGlobalActivities();
+    } catch (error) {
+      console.error('Error fetching global activities:', error);
+    }
+  }, [user?.id]);
+
   const globalUpcomingCount = useCollaborationStore(state => state.globalUpcomingCount);
-  const globalActivities = useCollaborationStore(state => state.globalActivities);
   const [showActivities, setShowActivities] = useState(false);
 
   // Handle initial activity parameter (e.g. from global activity notification)
@@ -181,19 +222,232 @@ const ChatPage = () => {
       console.log('📍 Auto-opening activities modal for activity:', activity);
       setShowActivities(true);
     }
-  }, [activity]);
+  }, [activity, showActivities]);
 
   // New Unified Space Creation Flow State
   const [showSpaceCreationModal, setShowSpaceCreationModal] = useState(false);
 
+  // ✅ Map store spaces to Chat interface reactively
+  const spaces = useMemo<Chat[]>(() => {
+    const items = storeSpaces.map(space => {
+      const isDirect = space.settings?.is_direct || space.space_type === 'direct';
+      const otherUser = space.other_participant;
+
+      let chatName = space.title || 'Direct Message';
+      const chatAvatar = (isDirect && otherUser) ? (otherUser.profile_photo || undefined) : (space.creator?.profile_photo || undefined);
+
+      if (isDirect && otherUser) {
+        chatName = otherUser.name || otherUser.username || chatName;
+      }
+
+      const updatedAt = space.updated_at || space.created_at || new Date().toISOString();
+
+      return {
+        id: space.id,
+        name: chatName,
+        lastMessage: getSpaceDescription(space),
+        timestamp: formatTimestamp(updatedAt),
+        updatedAt: updatedAt,
+        unreadCount: spaceUnreadCounts[space.id] || 0,
+        avatar: chatAvatar,
+        isOnline: isDirect && otherUser ? otherUser.is_online ?? space.is_live : space.is_live,
+        user_id: isDirect && otherUser ? otherUser.id?.toString() || '' : space.creator_id?.toString() || '',
+        type: 'space' as const,
+        spaceData: space,
+        conversationId: space.linked_conversation_id,
+        isPinned: space.my_permissions?.is_pinned || false,
+        email: undefined,
+        username: undefined,
+      };
+    }).sort((a, b) => {
+      // 1. Pinned priority
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+
+      // 2. Live priority
+      if (a.spaceData?.is_live && !b.spaceData?.is_live) return -1;
+      if (!a.spaceData?.is_live && b.spaceData?.is_live) return 1;
+
+      // 3. Date-based sorting
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+    return items as Chat[];
+  }, [storeSpaces, spaceUnreadCounts]);
+
   // Space Tabs state
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+
+    if (!query.trim() || !user?.id) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+
+    try {
+      console.log('Searching for:', query);
+      const response = await searchService.searchAll(query, user.id);
+      const results = response.results || [];
+      console.log('Search results:', results.length);
+      setSearchResults(results);
+
+      // Cache results for offline use
+      searchService.cacheSearchData(user.id, results);
+    } catch (error) {
+      console.error('Search error:', error);
+
+      // Fallback to local search
+      const allItems: Chat[] = [
+        ...spaces,
+        ...contacts,
+      ];
+
+      // Basic matching logic
+      const matchesQuery = (text?: string) => text?.toLowerCase().includes(query.toLowerCase());
+
+      const localResults = allItems.filter(item =>
+        matchesQuery(item.name) ||
+        matchesQuery(item.lastMessage) ||
+        (item.username && matchesQuery(item.username)) ||
+        (item.email && matchesQuery(item.email))
+      ).map(item => ({
+        ...item,
+        isSearchResult: true,
+        searchRelevance: 0, // Simplified for fallback
+        searchType: item.type === 'space' ? 'space' : 'contact' // Cast to match SearchResult type
+      })) as unknown as SearchResult[];
+
+      setSearchResults(localResults);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        refetchSpaces(),
+        fetchChatsAndContacts()
+      ]);
+    } catch (error) {
+      console.error('Refresh error:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+
+
+
   const [activeTab, setActiveTab] = useState<string>('all');
 
   // Custom Tab Modal State
+  // Fixed fetchChatsAndContacts with better error handling
+  const fetchChatsAndContacts = useCallback(async () => {
+    if (!user?.id || !token) return;
+
+    setLoading(true);
+    const API_BASE = getApiBase();
+
+    try {
+      // Fetch contacts from followers/following
+      let followerContacts: Chat[] = [];
+      let fallbackUsed = false;
+
+      try {
+        // Try followers endpoint first
+        const followersResponse = await axios.get(`${API_BASE}/profile/followers`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        followerContacts = transformUsersToContacts(followersResponse.data);
+      } catch {
+        console.log('Followers endpoint failed, trying following...');
+
+        try {
+          const followingResponse = await axios.get(`${API_BASE}/profile/following`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          followerContacts = transformUsersToContacts(followingResponse.data);
+        } catch {
+          console.log('Following endpoint failed, using users endpoint...');
+
+          try {
+            const usersResponse = await axios.get(`${API_BASE}/users`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+
+            followerContacts = transformUsersToContacts(usersResponse.data.slice(0, 10));
+          } catch {
+            console.log('All endpoints failed, using fallback contacts');
+            followerContacts = getFallbackContacts();
+            fallbackUsed = true;
+          }
+        }
+      }
+
+      setContacts(followerContacts);
+
+      if (fallbackUsed) {
+        Alert.alert(
+          'Limited Mode',
+          'Using demo contacts. Check your backend is running.',
+          [{ text: 'OK' }]
+        );
+      }
+
+    } catch (error) {
+      console.error('Error in fetchChatsAndContacts:', error);
+      Alert.alert('Error', 'Failed to load contacts');
+
+      // Set empty states
+      setContacts(getFallbackContacts());
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id, token, transformUsersToContacts, getFallbackContacts]);
+
   const [tabModalVisible, setTabModalVisible] = useState(false);
   const [tabModalMode, setTabModalMode] = useState<'create' | 'edit'>('create');
   const [tabModalStep, setTabModalStep] = useState<1 | 2>(1);
   const [editingTab, setEditingTab] = useState<any>(null);
+
+  // Get AI suggestion for user
+  const getAISuggestion = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      const activeSpaces = spaces.filter(s => s.spaceData?.is_live).length;
+
+      let suggestion = '';
+      if (spaces.length === 0) {
+        suggestion = 'Try creating your first collaboration space! Start with a brainstorming session.';
+      } else if (activeSpaces === 0) {
+        suggestion = 'None of your spaces are currently live. Start a real-time session to collaborate instantly!';
+      }
+
+      setAiSuggestion(suggestion || null);
+    } catch (error) {
+      console.error('Error getting AI suggestion:', error);
+    }
+  }, [user?.id, spaces]);
+
+  const loadAllData = useCallback(async () => {
+    // Only fetch contacts manually for now as they don't have a hook yet
+    try {
+      await Promise.all([
+        fetchChatsAndContacts(),
+        getAISuggestion(),
+        fetchActivitiesCount()
+      ]);
+    } catch (error) {
+      console.error('Error loading ancillary data:', error);
+    }
+  }, [fetchChatsAndContacts, getAISuggestion, fetchActivitiesCount]);
 
   // Tab Context Menu State
   const [showTabMenu, setShowTabMenu] = useState(false);
@@ -220,7 +474,7 @@ const ChatPage = () => {
       }
     };
     loadToken();
-  }, []);
+  }, [collaborationService]);
 
   // Redirect if no user
   useEffect(() => {
@@ -229,51 +483,6 @@ const ChatPage = () => {
     }
   }, [user]);
 
-  // ✅ Map store spaces to Chat interface reactively
-  const spaces = useMemo<Chat[]>(() => {
-    return storeSpaces.map(space => {
-      const isDirect = space.settings?.is_direct || space.space_type === 'direct';
-      const otherUser = space.other_participant;
-
-      let chatName = space.title || 'Direct Message';
-      let chatAvatar = (isDirect && otherUser) ? (otherUser.profile_photo || undefined) : (space.creator?.profile_photo || undefined);
-
-      if (isDirect && otherUser) {
-        chatName = otherUser.name || otherUser.username || chatName;
-      }
-
-      const updatedAt = space.updated_at || space.created_at || new Date().toISOString();
-
-      return {
-        id: space.id,
-        name: chatName,
-        lastMessage: getSpaceDescription(space),
-        timestamp: formatTimestamp(updatedAt),
-        updatedAt: updatedAt,
-        unreadCount: spaceUnreadCounts[space.id] || 0,
-        avatar: chatAvatar,
-        isOnline: isDirect && otherUser ? (otherUser as any).is_online ?? space.is_live : space.is_live,
-        user_id: isDirect && otherUser ? otherUser.id?.toString() || '' : space.creator_id?.toString() || '',
-        type: 'space' as const,
-        spaceData: space,
-        conversationId: space.linked_conversation_id,
-        isPinned: space.my_permissions?.is_pinned || false,
-        email: undefined,
-        username: undefined,
-      };
-    }).sort((a, b) => {
-      // 1. Pinned priority
-      if (a.isPinned && !b.isPinned) return -1;
-      if (!a.isPinned && b.isPinned) return 1;
-
-      // 2. Live priority
-      if (a.spaceData?.is_live && !b.spaceData?.is_live) return -1;
-      if (!a.spaceData?.is_live && b.spaceData?.is_live) return 1;
-
-      // 3. Date-based sorting
-      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-    });
-  }, [storeSpaces, spaceUnreadCounts]);
 
   // Initialize real-time service (User channel only, rooms now handled by store)
   useEffect(() => {
@@ -307,213 +516,43 @@ const ChatPage = () => {
       loadAllData();
       startAnimations();
     }
-  }, [user, token]);
+  }, [user, token, loadAllData, startAnimations]);
 
   // Animation on mount
-  const startAnimations = () => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      })
-    ]).start();
-  };
 
-  const loadAllData = async () => {
-    setLoading(true);
-    try {
-      await Promise.all([
-        fetchChatsAndContacts(),
-        fetchUserSpaces(),
-        getAISuggestion(),
-        fetchActivitiesCount()
-      ]);
-    } catch (error) {
-      console.error('Error loading data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: spacesData, isLoading: isSpacesLoading, refetch: refetchSpaces } = useSpaces();
 
-  const fetchActivitiesCount = async () => {
-    if (!user?.id) return;
-    try {
-      await useCollaborationStore.getState().fetchGlobalActivities();
-    } catch (error) {
-      console.error('Error fetching global activities:', error);
+  // Sync query data to Zustand store for real-time updates
+  useEffect(() => {
+    if (spacesData) {
+      const spacesArray = Array.isArray(spacesData) ? spacesData : (spacesData as any)?.data || [];
+      useCollaborationStore.getState().setSpaces(spacesArray);
+      
+      // Subscribe to real-time updates for these spaces
+      const spaceIds = spacesArray.map((s: any) => s.id.toString());
+      useCollaborationStore.getState().subscribeToAllSpaces(spaceIds);
+      
+      // Cache for offline use
+      if (user?.id) {
+        offlineService.cacheUserSpaces(user.id, spacesArray);
+      }
     }
-  };
+  }, [spacesData, user?.id, offlineService]);
+
+
+  const isLoading = isSpacesLoading || loading;
+
   // Debounced search
   const debouncedSearch = useCallback(
     debounce((query: string) => {
       handleSearch(query);
     }, 300),
-    []
+    [handleSearch]
   );
 
-  // Get AI suggestion for user
-  const getAISuggestion = async () => {
-    if (!user?.id) return;
-
-    try {
-      const activeSpaces = spaces.filter(s => s.spaceData?.is_live).length;
-
-      let suggestion = '';
-      if (spaces.length === 0) {
-        suggestion = 'Try creating your first collaboration space! Start with a brainstorming session.';
-      } else if (activeSpaces === 0) {
-        suggestion = 'You have no active spaces. Create a space to collaborate with multiple people at once.';
-      }
-
-      setAiSuggestion(suggestion || null);
-    } catch (error) {
-      console.error('Error getting AI suggestion:', error);
-    }
-  };
-
-  // Fixed fetchChatsAndContacts with better error handling
-  const fetchChatsAndContacts = async () => {
-    if (!user?.id || !token) return;
-
-    setLoading(true);
-    const API_BASE = getApiBase();
-
-    try {
-      // Fetch contacts from followers/following
-      let followerContacts: Chat[] = [];
-      let fallbackUsed = false;
-
-      try {
-        // Try followers endpoint first
-        const followersResponse = await axios.get(`${API_BASE}/profile/followers`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        followerContacts = transformUsersToContacts(followersResponse.data, 'follower');
-      } catch (followerError) {
-        console.log('Followers endpoint failed, trying following...');
-
-        try {
-          const followingResponse = await axios.get(`${API_BASE}/profile/following`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-
-          followerContacts = transformUsersToContacts(followingResponse.data, 'following');
-        } catch (followingError) {
-          console.log('Following endpoint failed, using users endpoint...');
-
-          try {
-            const usersResponse = await axios.get(`${API_BASE}/users`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-
-            followerContacts = transformUsersToContacts(usersResponse.data.slice(0, 10), 'user');
-          } catch (usersError) {
-            console.log('All endpoints failed, using fallback contacts');
-            followerContacts = getFallbackContacts();
-            fallbackUsed = true;
-          }
-        }
-      }
-
-      setContacts(followerContacts);
-
-      if (fallbackUsed) {
-        Alert.alert(
-          'Limited Mode',
-          'Using demo contacts. Check your backend is running.',
-          [{ text: 'OK' }]
-        );
-      }
-
-    } catch (error: any) {
-      console.error('Error in fetchChatsAndContacts:', error);
-      Alert.alert('Error', 'Failed to load contacts');
-
-      // Set empty states
-      setContacts(getFallbackContacts());
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Helper function to transform API data to contacts
-  const transformUsersToContacts = (data: any[], source: string): Chat[] => {
-    return data.map((item: any) => {
-      const user = item.follower || item.following || item.user || item;
-      return {
-        id: user.id.toString(),
-        name: user.name || 'User',
-        lastMessage: 'Tap to start a conversation',
-        timestamp: 'Recently active',
-        avatar: user.profile_photo,
-        isOnline: Math.random() > 0.5,
-        user_id: user.id.toString(),
-        type: 'contact' as const,
-        email: user.email,
-        username: user.username,
-        updatedAt: new Date(0).toISOString(), // Contacts always at bottom
-      };
-    });
-  };
 
 
-  // Fallback contacts when API fails
-  const getFallbackContacts = (): Chat[] => [
-    {
-      id: 'contact-1',
-      name: 'Alex Johnson',
-      lastMessage: 'Hey there! 👋',
-      timestamp: '2:30 PM',
-      avatar: 'https://i.pravatar.cc/150?img=1',
-      isOnline: true,
-      user_id: 'contact-1',
-      type: 'contact',
-      updatedAt: new Date(0).toISOString(),
-    },
-    {
-      id: 'contact-2',
-      name: 'Sam Wilson',
-      lastMessage: 'Available for collaboration',
-      timestamp: 'Yesterday',
-      avatar: 'https://i.pravatar.cc/150?img=2',
-      isOnline: false,
-      user_id: 'contact-2',
-      type: 'contact',
-      updatedAt: new Date(0).toISOString(),
-    },
-  ];
 
-  const fetchUserSpaces = async () => {
-    if (!user?.id || !token) return;
-
-    try {
-      const result = await collaborationService.fetchUserSpaces(Number(user.id));
-      const userSpaces = result.spaces;
-
-      // Update the store with the fetched spaces
-      useCollaborationStore.getState().setSpaces(userSpaces);
-
-      // ✅ FIX: Phase 71 - Subscribe to all spaces to ensure real-time deletions in the list view
-      const spaceIds = userSpaces.map((s: any) => s.id.toString());
-      useCollaborationStore.getState().subscribeToAllSpaces(spaceIds);
-
-      // Store automatically sorts and updates
-      console.log('🌐 Fetched spaces from store:', userSpaces.length);
-      // Cache the raw spaces from store
-      await offlineService.cacheUserSpaces(user.id, userSpaces);
-    } catch (error) {
-      console.error('Error fetching spaces:', error);
-      // ... rest of error handling
-    }
-  };
 
   // Enhanced filtered data with search results integration
   const filteredData = useMemo(() => {
@@ -523,7 +562,7 @@ const ChatPage = () => {
     const directSpaceUserIds = new Set<string | number>(
       spaces
         .filter(s => s.spaceData?.other_participant?.id)
-        .map(s => s.spaceData?.other_participant?.id!)
+        .map(s => s.spaceData?.other_participant?.id as string | number)
     );
 
     // 2. Filter contacts to exclude those already in a direct space
@@ -570,7 +609,7 @@ const ChatPage = () => {
         else if (activeTab === 'archived') title = '📦 Archived Chats';
         else if (customTab) title = `📂 ${customTab.name}`;
 
-        const data = activeSpaces.map(s => ({
+        const data: Chat[] = activeSpaces.map(s => ({
           ...s,
           unreadCount: spaceUnreadCounts[s.id] || 0
         }));
@@ -581,7 +620,7 @@ const ChatPage = () => {
             type: 'space',
             timestamp: '',
             user_id: '',
-          } as any);
+          } as Chat);
         }
 
         sections.push({ title, data, type: 'spaces' });
@@ -651,26 +690,10 @@ const ChatPage = () => {
     return sections;
   }, [searchQuery, contacts, spaces, searchResults, activeTab, customTabs, spaceUnreadCounts]);
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    try {
-      await Promise.all([
-        fetchChatsAndContacts(),
-        fetchUserSpaces()
-      ]);
-      if (Platform.OS !== 'web') {
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
-    } catch (error) {
-      console.error('Refresh error:', error);
-    } finally {
-      setRefreshing(false);
-    }
-  };
 
-  const handleCreateSpaceFlow = () => {
+  const handleCreateSpaceFlow = useCallback(() => {
     setShowSpaceCreationModal(true);
-  };
+  }, []);
 
   const onSpaceCreated = (newSpace: CollaborationSpace) => {
     // Navigate to the newly created space
@@ -801,55 +824,6 @@ const ChatPage = () => {
   };
 
   // Update search handler
-  const handleSearch = async (query: string) => {
-    setSearchQuery(query);
-
-    if (!query.trim() || !user?.id) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
-
-    setIsSearching(true);
-
-    try {
-      console.log('Searching for:', query);
-      const response = await searchService.searchAll(query, user.id);
-      const results = response.results || [];
-      console.log('Search results:', results.length);
-      setSearchResults(results);
-
-      // Cache results for offline use
-      searchService.cacheSearchData(user.id, results);
-    } catch (error) {
-      console.error('Search error:', error);
-
-      // Fallback to local search
-      const allItems: Chat[] = [
-        ...spaces,
-        ...contacts,
-      ];
-
-      // Basic matching logic
-      const matchesQuery = (text?: string) => text?.toLowerCase().includes(query.toLowerCase());
-
-      const localResults = allItems.filter(item =>
-        matchesQuery(item.name) ||
-        matchesQuery(item.lastMessage) ||
-        (item.username && matchesQuery(item.username)) ||
-        (item.email && matchesQuery(item.email))
-      ).map(item => ({
-        ...item,
-        isSearchResult: true,
-        searchRelevance: 0, // Simplified for fallback
-        searchType: item.type === 'space' ? 'space' : 'contact' // Cast to match SearchResult type
-      })) as unknown as SearchResult[];
-
-      setSearchResults(localResults);
-    } finally {
-      setIsSearching(false);
-    }
-  };
 
   // Search Result Row Component (Memoized for performance)
   const SearchResultRow = React.memo(({ item, index }: {
@@ -963,31 +937,8 @@ const ChatPage = () => {
     return prevProps.item.id === nextProps.item.id && prevProps.item.timestamp === nextProps.item.timestamp;
   });
 
-  const handleSearchResultTap = async (result: SearchResult) => {
-    switch (result.type) {
-      case 'space':
-        router.push(`/(spaces)/${result.id}`);
-        break;
-      case 'chat':
-        router.push(`/(spaces)/${result.id}`);
-        break;
-      case 'contact':
-        try {
-          const space = await CollaborationService.getInstance().getOrCreateDirectSpace(result.id);
-          if (space && space.id) {
-            router.push(`/(spaces)/${space.id}`);
-          }
-        } catch (error) {
-          console.error('Failed to create or fetch direct space from search:', error);
-          Alert.alert('Error', 'Could not start chat with this contact.');
-        }
-        break;
-    }
-    handleClearSearch();
-  };
-
   // Render loading skeleton
-  if (loading && !refreshing) {
+  if (isLoading && !refreshing) {
     return (
       <View style={styles.container}>
         <View style={styles.searchContainer}>
@@ -1139,12 +1090,47 @@ const ChatPage = () => {
       <LiveDiscoveryCarousel />
 
       {/* Main List with Integrated Search Results */}
-      <SectionList
-        sections={filteredData}
-        keyExtractor={(item, index) => `${item.type}-${item.id}-${index}-${item.isSearchResult ? 'search' : ''}`}
-        renderItem={({ item, index, section }) => {
+      <FlatList
+        data={(() => {
+          const flattened: any[] = [];
+          filteredData.forEach(section => {
+            if (section.title) {
+              flattened.push({ type: 'section-header', title: section.title, isSearchSection: section.isSearchSection });
+            }
+            section.data.forEach(item => {
+              flattened.push({ ...item, isSearchSection: section.isSearchSection });
+            });
+          });
+          return flattened;
+        })()}
+        keyExtractor={(item, index) => `${item.type || 'row'}-${item.id || index}-${index}-${item.isSearchResult ? 'search' : ''}`}
+        renderItem={({ item, index }) => {
+          if (item.type === 'section-header') {
+            if (item.isSearchSection) {
+              return (
+                <View style={styles.searchSectionHeader}>
+                  <View style={styles.searchSectionHeaderContent}>
+                    <Ionicons name="search" size={18} color="#007AFF" />
+                    <Text style={styles.searchSectionHeaderText}>{item.title}</Text>
+                    <TouchableOpacity
+                      onPress={handleClearSearch}
+                      style={styles.clearSearchButton}
+                    >
+                      <Text style={styles.clearSearchText}>Clear</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            }
+            return (
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionHeaderText}>{item.title}</Text>
+              </View>
+            );
+          }
+
           // Render search results differently
-          if (section.isSearchSection) {
+          if (item.isSearchSection) {
             return (
               <SearchResultRow
                 item={item}
@@ -1153,7 +1139,7 @@ const ChatPage = () => {
             );
           }
 
-          // Extra row for adding spaces to custom tab if empty or just because
+          // Extra row for adding spaces to custom tab
           if (item.id === 'add-to-tab') {
             return (
               <TouchableOpacity
@@ -1190,45 +1176,7 @@ const ChatPage = () => {
 
           );
         }}
-        renderSectionHeader={({ section: { title, data, isSearchSection } }) => {
-          if (data.length === 0) return null;
-
-          // Special styling for search results section
-          if (isSearchSection) {
-            return (
-              <View style={styles.searchSectionHeader}>
-                <View style={styles.searchSectionHeaderContent}>
-                  <Ionicons name="search" size={18} color="#007AFF" />
-                  <Text style={styles.searchSectionHeaderText}>{title}</Text>
-                  <TouchableOpacity
-                    onPress={handleClearSearch}
-                    style={styles.clearSearchButton}
-                  >
-                    <Text style={styles.clearSearchText}>Clear</Text>
-                  </TouchableOpacity>
-                </View>
-                <Text style={styles.searchSectionCount}>
-                  {data.length} results • Tap to select
-                </Text>
-              </View>
-            );
-          }
-
-          // Regular section headers
-          return (
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionHeaderText}>{title}</Text>
-              <Text style={styles.sectionCount}>{data.length}</Text>
-            </View>
-          );
-        }}
-        ItemSeparatorComponent={({ section }) => {
-          // Different separator for search results
-          if (section.isSearchSection) {
-            return <View style={styles.searchSeparator} />;
-          }
-          return <View style={styles.separator} />;
-        }}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
         contentContainerStyle={styles.listContent}
         style={styles.list}
         refreshControl={
@@ -1254,7 +1202,6 @@ const ChatPage = () => {
             </TouchableOpacity>
           </View>
         }
-        stickySectionHeadersEnabled={true}
         onEndReachedThreshold={0.5}
         initialNumToRender={10}
         windowSize={5}
@@ -1353,7 +1300,7 @@ const ChatPage = () => {
   );
 };
 
-function getStyles(colors: any, activeScheme: string) {
+function getStyles(colors: any, activeScheme: string): any {
   return StyleSheet.create({
     container: {
       flex: 1,

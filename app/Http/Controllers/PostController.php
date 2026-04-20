@@ -47,8 +47,22 @@ class PostController extends Controller
             $version = Cache::get('posts_cache_v', 1);
             $cacheKey = "user_{$userId}_posts_v{$version}_p{$page}";
 
-            $posts = Cache::remember($cacheKey, 3600, function() use ($userId) {
-                $posts = Post::with([
+            $isLite = request()->has('lite');
+
+            $posts = Cache::remember($cacheKey, 3600, function() use ($userId, $isLite) {
+                $query = Post::query();
+
+                if ($isLite) {
+                    $query->select(['id', 'user_id', 'caption', 'created_at', 'updated_at'])
+                        ->with([
+                            'user:id,name,profile_photo,username',
+                            'media' => function($q) {
+                                $q->select(['id', 'post_id', 'file_path', 'type'])->limit(1);
+                            },
+                            'reactionCounts'
+                        ]);
+                } else {
+                    $query->with([
                         'user',
                         'media',
                         'reactions',
@@ -63,12 +77,13 @@ class PostController extends Controller
                             $query->with(['user', 'reaction_comments.user'])
                                 ->withCount('reaction_comments');
                         },
-                        // Add more levels if needed
                         'reposts' => function ($query) {
                             $query->with('user')->latest();
                         },
-                    ])
-                    ->withCount([
+                    ]);
+                }
+
+                $posts = $query->withCount([
                         'reactions',
                         'comments',
                         'reposts'
@@ -77,11 +92,8 @@ class PostController extends Controller
                         'reposts as is_reposted' => function ($q) use ($userId) {
                             $q->where('user_id', $userId);
                         },
-                        // ✅ Correct way to add is_following
                         'user as is_following' => function ($q) use ($userId) {
-                            // check if the post author has the current user among their followers
                             $q->whereHas('followers', function ($qq) use ($userId) {
-                                // check follower user id — don't reference pivot here
                                 $qq->whereKey($userId);
                             });
                         },

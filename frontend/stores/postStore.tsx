@@ -152,6 +152,7 @@ interface PostStore {
 
   // Cleanup
   reset: () => void;
+  hydratePost: (postId: number) => Promise<Post | undefined>;
 }
 
 export const usePostStore = create<PostStore>((set, get) => ({
@@ -226,6 +227,22 @@ export const usePostStore = create<PostStore>((set, get) => ({
   deletePostById: (postId: number) => set((state) => ({
     posts: state.posts.filter((p) => p.id !== postId),
   })),
+
+  hydratePost: async (postId: number) => {
+    const currentPost = get().posts.find(p => p.id === postId);
+    // If post exists and is lite (missing full media or comments/reactions)
+    if (currentPost && (!currentPost.reactions || currentPost.is_lite)) {
+      try {
+        console.log(`🌐 Hydrating post: ${postId}`);
+        const fullPost = await require('@/services/PostService').fetchPostById(postId);
+        get().updatePost({ ...fullPost, is_lite: false });
+        return fullPost;
+      } catch (error) {
+        console.error(`❌ Error hydrating post ${postId}:`, error);
+      }
+    }
+    return currentPost;
+  },
 
   // Expanded post management
   setExpandedPostId: (postId) => set({ expandedPostId: postId }),

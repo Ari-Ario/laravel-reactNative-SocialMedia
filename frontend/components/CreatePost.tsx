@@ -178,7 +178,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
   };
 
   const pickMedia = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
+    const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images', 'videos'],
       allowsMultipleSelection: true,
       quality: 0.7, // Reduced quality for compression

@@ -9,8 +9,7 @@ export default class SwipeableRow extends Component<
   PropsWithChildren<unknown & { onDelete: () => void }>
 > {
   private renderRightActions = (
-    progress: Animated.AnimatedInterpolation<number>,
-    _dragAnimatedValue: Animated.AnimatedInterpolation<number>
+    progress: Animated.AnimatedInterpolation<number>
   ) => (
     <View
       style={{

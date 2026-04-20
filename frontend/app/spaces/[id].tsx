@@ -2228,7 +2228,7 @@ const SpaceDetailScreen = () => {
 };
 
 
-function getStyles(colors: any, activeScheme: string) {
+function getStyles(colors: any, activeScheme: string): any {
   return StyleSheet.create({
   container: {
     flex: 1,

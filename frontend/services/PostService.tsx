@@ -23,6 +23,7 @@ export async function fetchPosts() {
   const url = `${API_BASE}/posts`;
 
   const response = await axios.get(url, {
+    params: { lite: 1 },
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -41,6 +42,7 @@ export async function fetchPostById(postId: number) {
 
   try {
     const response = await axios.get(`${API_BASE}/posts/${postId}`, {
+      params: { lite: 0 }, // Force full data when fetching by ID
       headers: {
         Authorization: `Bearer ${token}`,
       },

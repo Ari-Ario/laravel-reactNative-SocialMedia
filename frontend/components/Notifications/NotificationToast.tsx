@@ -1,11 +1,10 @@
 // components/Notifications/NotificationToast.tsx
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, TouchableOpacity, Animated, StyleSheet, Platform, useWindowDimensions } from 'react-native';
+import { View, Text, TouchableOpacity, Animated, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { createShadow } from '@/utils/styles';
 import { Notification } from '@/types/Notification';
 import { getNotificationIcon, getNotificationColor, NOTIFICATION_TYPES, isChatNotification } from '@/stores/notificationStore';
-import getApiBaseImage from '@/services/getApiBaseImage';
 import { router } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import Avatar from '../Image/Avatar';
@@ -99,15 +98,15 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
         router.push({
           pathname: '/(spaces)/[id]',
           params: { id: spaceId, tab: 'chat', ...(messageId ? { highlightMessageId: messageId } : {}) }
-        } as any);
+        });
       };
 
       if (item.type === NOTIFICATION_TYPES.SPACE_INVITATION) {
         const spaceId = resolveSpaceId();
-        if (spaceId) router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, justInvited: 'true' } } as any);
+        if (spaceId) router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, justInvited: 'true' } });
       } else if (item.type === NOTIFICATION_TYPES.CALL_STARTED) {
         const spaceId = resolveSpaceId();
-        if (spaceId) router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'meeting' } } as any);
+        if (spaceId) router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'meeting' } });
       } else if ([NOTIFICATION_TYPES.NEW_MESSAGE, NOTIFICATION_TYPES.MESSAGE_REACTION, NOTIFICATION_TYPES.MESSAGE_REPLY, NOTIFICATION_TYPES.MESSAGE_DELETED, NOTIFICATION_TYPES.SPACE_MESSAGE].includes(item.type)) {
         const spaceId = resolveSpaceId();
         const messageId = resolveMessageId();
@@ -115,28 +114,28 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
           navigateToSpaceMessage(spaceId, messageId);
         } else {
           const userId = item.userId || item.data?.user?.id || item.data?.userId;
-          if (userId) router.push({ pathname: '/(tabs)/chats/[id]', params: { id: userId.toString() } } as any);
+          if (userId) router.push({ pathname: '/(tabs)/chats/[id]', params: { id: userId.toString() } });
         }
       } else if (item.type === NOTIFICATION_TYPES.PARTICIPANT_JOINED) {
         const spaceId = resolveSpaceId();
-        if (spaceId) router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'chat' } } as any);
+        if (spaceId) router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'chat' } });
       } else if (item.type === NOTIFICATION_TYPES.MAGIC_EVENT) {
         const spaceId = resolveSpaceId();
         const eventId = item.data?.event?.id || item.data?.eventId;
-        if (spaceId) router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, highlightMagic: eventId ? eventId.toString() : 'true' } } as any);
+        if (spaceId) router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, highlightMagic: eventId ? eventId.toString() : 'true' } });
       } else if (item.type === NOTIFICATION_TYPES.SCREEN_SHARE) {
         const spaceId = resolveSpaceId();
-        if (spaceId) router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'meeting' } } as any);
+        if (spaceId) router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'meeting' } });
       } else if (item.type === NOTIFICATION_TYPES.ACTIVITY_CREATED || item.type === NOTIFICATION_TYPES.ACTIVITY_UPDATED) {
         const spaceId = resolveSpaceId();
         const activityId = item.data?.activity?.id || item.data?.activity_id;
         if (spaceId) router.push({ 
           pathname: '/(spaces)/[id]', 
           params: { id: spaceId, tab: 'calendar', activity: activityId ? activityId.toString() : undefined } 
-        } as any);
+        });
       } else if (item.type === NOTIFICATION_TYPES.SPACE_UPDATED) {
         const spaceId = resolveSpaceId();
-        if (spaceId) router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId } } as any);
+        if (spaceId) router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId } });
       } else if (item.type === NOTIFICATION_TYPES.VIOLATION_REPORTED) {
         router.push('/moderation');
       } else if (item.type === NOTIFICATION_TYPES.MODERATION_ACTION) {
@@ -148,15 +147,15 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
       } else if (['post', NOTIFICATION_TYPES.POST_UPDATED, 'reaction'].includes(item.type) && item.postId) {
         const postData = await fetchPostById(Number(item.postId));
         if (postData?.data) addPost(postData.data);
-        router.push(`/post/${item.postId}` as any);
+        router.push(`/post/${item.postId}`);
       } else if ((item.type === NOTIFICATION_TYPES.COMMENT || item.type === NOTIFICATION_TYPES.COMMENT_REACTION) && item.postId && item.commentId) {
         const postData = await fetchPostById(Number(item.postId));
         if (postData?.data) addPost(postData.data);
-        router.push({ pathname: `/post/${item.postId}` as any, params: { highlightCommentId: item.commentId.toString() } });
+        router.push({ pathname: `/post/${item.postId}`, params: { highlightCommentId: item.commentId.toString() } });
       } else if (item.type === 'comment-deleted' && item.postId) {
         const postData = await fetchPostById(Number(item.postId));
         if (postData?.data) addPost(postData.data);
-        router.push(`/post/${item.postId}` as any);
+        router.push(`/post/${item.postId}`);
       } else if (item.userId && !isChatNotification(item.type) && !['new_follower', 'user_unfollowed', 'new-follower', 'user-unfollowed'].includes(item.type)) {
         try { await fetchProfile(item.userId.toString()); } catch (err) {}
         setProfileViewUserId(item.userId.toString());

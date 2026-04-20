@@ -14,7 +14,7 @@ export interface Notification {
   type: string;
   title: string;
   message: string;
-  data: any;
+  data: Record<string, any>;
   isRead: boolean;
   createdAt: Date;
   userId?: number;
@@ -308,7 +308,7 @@ export const useNotificationStore = create<NotificationStore>()(
         }
       },
 
-      addNotification: (notificationData: any) => {
+      addNotification: (notificationData: Partial<Notification> & Record<string, any>) => {
         if (notificationData.id && get().notifications.some(n => n.id === notificationData.id)) {
           return;
         }
@@ -322,20 +322,28 @@ export const useNotificationStore = create<NotificationStore>()(
           (notificationData.follower && typeof notificationData.follower === 'object' ? (notificationData.follower.profile_photo || notificationData.follower.avatar) : null) ||
           (notificationData.post?.user && typeof notificationData.post.user === 'object' ? notificationData.post.user.profile_photo : null) ||
           (notificationData.reaction?.user && typeof notificationData.reaction.user === 'object' ? notificationData.reaction.user.profile_photo : null) ||
-          (notificationData.message?.user && typeof notificationData.message.user === 'object' ? notificationData.message.user.profile_photo : null) ||
-          (notificationData.call?.user && typeof notificationData.call.user === 'object' ? notificationData.call.user.profile_photo : null);
+          ((notificationData as any).message?.user && typeof (notificationData as any).message.user === 'object' ? (notificationData as any).message.user.profile_photo : null) ||
+          ((notificationData as any).call?.user && typeof (notificationData as any).call.user === 'object' ? (notificationData as any).call.user.profile_photo : null);
 
         const avatar = (typeof rawAvatar === 'string' && rawAvatar.trim().length > 0) ? rawAvatar : undefined;
 
         const newNotification: Notification = {
-          ...notificationData,
           id: notificationData.id || String(Date.now()),
           type: notificationData.type || 'regular',
           title: notificationData.title || 'New Notification',
           message: notificationData.notification_message || notificationData.message || 'You have a new alert',
           avatar: avatar,
           isRead: false,
-          createdAt: notificationData.createdAt ? new Date(notificationData.createdAt) : (notificationData.created_at ? new Date(notificationData.created_at) : new Date())
+          createdAt: notificationData.createdAt ? new Date(notificationData.createdAt) : (notificationData.created_at ? new Date(notificationData.created_at) : new Date()),
+          data: notificationData.data || {},
+          // Preserve IDs that might be at the top level of the payload
+          userId: notificationData.userId,
+          postId: notificationData.postId,
+          commentId: notificationData.commentId,
+          spaceId: notificationData.spaceId || notificationData.space_id,
+          messageId: notificationData.messageId || notificationData.message_id,
+          callId: notificationData.callId,
+          activityId: notificationData.activityId,
         };
 
         // ✅ Update last seen time to the receipt of this notification 
@@ -759,7 +767,7 @@ export const useNotificationStore = create<NotificationStore>()(
         if (success && userId) {
           PusherService.subscribeToUserNotifications(userId, (notificationData) => {
             console.log('🔔 PUSHER EVENT RECEIVED → ADDING TO STORE:', notificationData);
-            get().addNotification(notificationData);
+            get().addNotification(notificationData as any);
 
             // ✅ Bridge to CollaborationStore if it's a space event
             if (notificationData.spaceId || notificationData.space_id) {

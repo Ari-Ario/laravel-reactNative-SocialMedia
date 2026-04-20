@@ -147,7 +147,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       setShowContactMenu(false);
     } catch (error: any) {
       console.error('Error starting video call:', error);
-      let errorMessage = 'Failed to start video call.';
+      const errorMessage = 'Failed to start video call.';
       simpleAlert('Error', errorMessage);
     }
   };

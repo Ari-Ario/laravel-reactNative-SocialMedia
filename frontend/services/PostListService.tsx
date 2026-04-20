@@ -59,97 +59,94 @@ export const usePostListService = (user: any) => {
   const [mediaViewerIndex, setMediaViewerIndex] = useState(0);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
-  // Helper function for reaction counts
-  const updateReactionCounts = (
-    counts: Array<{ emoji: string; count: number }>,
-    emoji: string,
-    delta: number
-  ): Array<{ emoji: string; count: number }> => {
-    const newCounts = [...counts];
-    const index = newCounts.findIndex(item => item.emoji === emoji);
+// Move heavy computation helpers outside to prevent re-creation
+const updateReactionCounts = (
+  counts: Array<{ emoji: string; count: number }>,
+  emoji: string,
+  delta: number
+): Array<{ emoji: string; count: number }> => {
+  const newCounts = [...counts];
+  const index = newCounts.findIndex(item => item.emoji === emoji);
 
-    if (index >= 0) {
-      newCounts[index] = {
-        emoji,
-        count: Math.max(0, newCounts[index].count + delta)
-      };
+  if (index >= 0) {
+    newCounts[index] = {
+      emoji,
+      count: Math.max(0, newCounts[index].count + delta)
+    };
 
-      if (newCounts[index].count <= 0) {
-        newCounts.splice(index, 1);
-      }
-    } else if (delta > 0) {
-      newCounts.push({ emoji, count: 1 });
+    if (newCounts[index].count <= 0) {
+      newCounts.splice(index, 1);
     }
+  } else if (delta > 0) {
+    newCounts.push({ emoji, count: 1 });
+  }
 
-    return newCounts;
-  };
+  return newCounts;
+};
 
-  // Get reactions to display
-  const getGroupedReactions = (post: Post, currentUserId?: number): { emoji: string; count: number; user_ids: number[] }[] => {
+const getGroupedReactions = (post: Post, currentUserId?: number): { emoji: string; count: number; user_ids: number[] }[] => {
+  const defaultEmojis = ['🤍'];
 
-    const defaultEmojis = ['🤍'];
+  if (!post.reactions || post.reactions.length === 0) {
+    return defaultEmojis.map(emoji => ({
+      emoji,
+      count: 0,
+      user_ids: []
+    }));
+  }
 
-    if (!post.reactions || post.reactions.length === 0) {
-      return defaultEmojis.map(emoji => ({
-        emoji,
-        count: 0,
-        user_ids: []
-      }));
-    }
+  const reactionMap = new Map<string, { count: number, user_ids: number[] }>();
 
-    const reactionMap = new Map<string, { count: number, user_ids: number[] }>();
+  for (const reaction of post.reactions) {
+    const existing = reactionMap.get(reaction.emoji) || { count: 0, user_ids: [] };
+    reactionMap.set(reaction.emoji, {
+      count: existing.count + 1,
+      user_ids: [...existing.user_ids, reaction.user_id]
+    });
+  }
 
-    for (const reaction of post.reactions) {
-      const existing = reactionMap.get(reaction.emoji) || { count: 0, user_ids: [] };
-      reactionMap.set(reaction.emoji, {
-        count: existing.count + 1,
-        user_ids: [...existing.user_ids, reaction.user_id]
-      });
-    }
+  return [...reactionMap.entries()].map(([emoji, { count, user_ids }]) => ({
+    emoji,
+    count,
+    user_ids
+  })).sort((a, b) => b.count - a.count);
+};
 
-    return [...reactionMap.entries()].map(([emoji, { count, user_ids }]) => ({
+const getGroupedReactionsComments = (
+  comment: Comment,
+  currentUserId?: number
+): { emoji: string; count: number; user_ids: number[] }[] => {
+  const defaultEmojis = ['🤍'];
+
+  if (!comment?.reaction_comments || comment?.reaction_comments.length === 0) {
+    return defaultEmojis.map(emoji => ({
+      emoji,
+      count: 0,
+      user_ids: []
+    }));
+  }
+
+  const reactionMap = new Map<string, { count: number, user_ids: number[] }>();
+
+  for (const reaction of comment.reaction_comments) {
+    const existing = reactionMap.get(reaction.emoji) || { count: 0, user_ids: [] };
+    reactionMap.set(reaction.emoji, {
+      count: existing.count + 1,
+      user_ids: [...existing.user_ids, reaction.user_id]
+    });
+  }
+
+  return [...reactionMap.entries()]
+    .map(([emoji, { count, user_ids }]) => ({
       emoji,
       count,
       user_ids
-    })).sort((a, b) => b.count - a.count);
-  };
-
-  // Get comment reactions
-  const getGroupedReactionsComments = (
-    comment: Comment,
-    currentUserId?: number
-  ): { emoji: string; count: number; user_ids: number[] }[] => {
-    const defaultEmojis = ['🤍'];
-
-    if (!comment?.reaction_comments || comment?.reaction_comments.length === 0) {
-      return defaultEmojis.map(emoji => ({
-        emoji,
-        count: 0,
-        user_ids: []
-      }));
-    }
-
-    const reactionMap = new Map<string, { count: number, user_ids: number[] }>();
-
-    for (const reaction of comment.reaction_comments) {
-      const existing = reactionMap.get(reaction.emoji) || { count: 0, user_ids: [] };
-      reactionMap.set(reaction.emoji, {
-        count: existing.count + 1,
-        user_ids: [...existing.user_ids, reaction.user_id]
-      });
-    }
-
-    return [...reactionMap.entries()]
-      .map(([emoji, { count, user_ids }]) => ({
-        emoji,
-        count,
-        user_ids
-      }))
-      .sort((a, b) => b.count - a.count);
-  };
+    }))
+    .sort((a, b) => b.count - a.count);
+};
 
   // Handle post deletion
-  const handleDelete = async (postId: number) => {
+  const handleDelete = useCallback(async (postId: number) => {
     try {
       const confirmMessage = Platform.OS === 'web'
         ? window.confirm("Are you sure you want to delete this post?")
@@ -180,10 +177,10 @@ export const usePostListService = (user: any) => {
       const errorMessage = error.message || "Could not delete post. Please try again.";
       showToast(errorMessage, "error");
     }
-  };
+  }, [deletePostById, showToast]);
 
   // Handle post edit
-  const handleEdit = (post: Post) => {
+  const handleEdit = useCallback((post: Post) => {
     openModal('edit', {
       postId: post.id,
       initialCaption: post.caption,
@@ -194,20 +191,20 @@ export const usePostListService = (user: any) => {
       }
     });
     setMenuVisible(false);
-  };
+  }, [openModal, updatePostInStore]);
 
   // Handle post report
-  const handleReport = () => {
+  const handleReport = useCallback(() => {
     setMenuVisible(false);
     setReportVisible(true);
-  };
+  }, []);
 
-  const handleReportSubmitted = () => {
+  const handleReportSubmitted = useCallback(() => {
     showToast("Report Submitted: Thank you for your report. We'll review it shortly.", "success");
-  };
+  }, [showToast]);
 
   // Handle post reaction
-  const handleReact = async (emoji: string, postId: number, commentId?: number) => {
+  const handleReact = useCallback(async (emoji: string, postId: number, commentId?: number) => {
     if (!postId || !user?.id) {
       console.error('Missing reaction data:', { postId, user });
       return;
@@ -289,10 +286,10 @@ export const usePostListService = (user: any) => {
     } finally {
       setIsEmojiPickerOpen(false);
     }
-  };
+  }, [user, postStore, showToast]);
 
   // Handle comment reaction
-  const handleReactComment = async (emoji: string, postId: number, commentId: number) => {
+  const handleReactComment = useCallback(async (emoji: string, postId: number, commentId: number) => {
     if (!postId || !commentId || !user?.id) {
       console.error('Missing reaction data:', { postId, commentId, user });
       return;
@@ -331,10 +328,10 @@ export const usePostListService = (user: any) => {
     } finally {
       setIsEmojiPickerOpen(false);
     }
-  };
+  }, [user, postStore, showToast]);
 
   // Delete post reaction
-  const deletePostReaction = async (postId: number) => {
+  const deletePostReaction = useCallback(async (postId: number) => {
     if (!postId || !user?.id) return;
     const targetPost = postStore.posts.find(p => p.id === Number(postId));
 
@@ -363,10 +360,10 @@ export const usePostListService = (user: any) => {
       }
       showToast("Failed to remove reaction", "error");
     }
-  };
+  }, [user, postStore, showToast]);
 
   // Delete comment reaction
-  const deleteCommentReaction = async (commentId: number, emoji: string) => {
+  const deleteCommentReaction = useCallback(async (commentId: number, emoji: string) => {
     if (!commentId || !user?.id) return;
 
     // Find the post containing this comment for reversion
@@ -405,10 +402,10 @@ export const usePostListService = (user: any) => {
       }
       showToast("Failed to remove reaction", "error");
     }
-  };
+  }, [user, postStore, showToast]);
 
   // Delete comment
-  const handleDeleteComment = async (postId: number, commentId: number) => {
+  const handleDeleteComment = useCallback(async (postId: number, commentId: number) => {
     // Capture state for manual reversion if needed
     const postToRevert = postStore.posts.find(p => p.id === Number(postId));
     const previousComments = postToRevert ? [...(postToRevert.comments || [])] : [];
@@ -451,7 +448,7 @@ export const usePostListService = (user: any) => {
         'error'
       );
     }
-  };
+  }, [postStore, showToast]);
 
   // Double tap handler
   const useDoubleTap = (onDoubleTap: () => void, onSingleTap: () => void = () => { }) => {
@@ -523,7 +520,7 @@ export const usePostListService = (user: any) => {
   };
 
   // Submit comment
-  const submitComment = async (postId: number, onCommentSubmit: Function) => {
+  const submitComment = useCallback(async (postId: number, onCommentSubmit: Function) => {
     if (!commentText.trim() || isSubmittingComment) return;
 
     setIsSubmittingComment(true);
@@ -535,7 +532,6 @@ export const usePostListService = (user: any) => {
         commentText,
         replyingTo || undefined
       );
-      console.warn(comment)
 
       if (!comment?.id) {
         throw new Error('Invalid comment response - missing id');
@@ -558,8 +554,6 @@ export const usePostListService = (user: any) => {
         reactions: []
       };
 
-      // console.log(formattedComment)
-
       // Update the store
       postStore.updatePostWithNewComment(postId, formattedComment);
 
@@ -567,21 +561,15 @@ export const usePostListService = (user: any) => {
       setCommentText('');
       setReplyingTo(null);
     } catch (err) {
-      console.error('Full error details:', {
-        err,
-        postId,
-        commentText,
-        replyingTo,
-        user: user?.id
-      });
+      console.error('Full error details:', err);
       showToast("Failed to post comment", "error");
     } finally {
       setIsSubmittingComment(false);
     }
-  };
+  }, [commentText, isSubmittingComment, replyingTo, postStore, showToast]);
 
   // Sort media for display
-  const sortMedia = (media: any[]) => {
+  const sortMedia = useCallback((media: any[]) => {
     if (!media) return { visualMedia: [], extraMedia: [] };
     
     const visualMedia = media.filter(m => m.type === 'image' || m.type === 'video')
@@ -590,13 +578,13 @@ export const usePostListService = (user: any) => {
     const extraMedia = media.filter(m => m.type !== 'image' && m.type !== 'video');
     
     return { visualMedia, extraMedia };
-  };
+  }, []);
 
   // Check if user is owner
-  const isOwner = (postUserId: number | string) => {
+  const isOwner = useCallback((postUserId: number | string) => {
     if (!user?.id || !postUserId) return false;
     return String(user.id) === String(postUserId);
-  };
+  }, [user?.id]);
 
   return {
     // State

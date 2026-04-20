@@ -16,6 +16,28 @@ interface UseAudioRecordingOptions {
   onRecordingError?: (error: Error) => void;
 }
 
+export interface UseAudioRecordingReturn {
+  isRecording: boolean;
+  isPaused: boolean;
+  displayProgress: number;
+  effectiveDuration: number;
+  recordingDuration: number;
+  isUploading: boolean;
+  previewStatus: any;
+  startRecording: () => Promise<void>;
+  pauseRecording: () => Promise<void>;
+  resumeRecording: () => Promise<void>;
+  playPreview: () => Promise<void>;
+  pausePreview: () => void;
+  seekPreview: (seconds: number) => void;
+  stopRecording: () => Promise<void>;
+  cancelRecording: () => Promise<void>;
+  formatDuration: (millis: number) => string;
+  setIsUploading: (uploading: boolean) => void;
+  setIsSeeking: (seeking: boolean) => void;
+  meteringData: number[];
+}
+
 /**
  * useAudioRecording (v3.0 - Total Restructure)
  * Fixes:
@@ -23,7 +45,7 @@ interface UseAudioRecordingOptions {
  * 2. [Real-time Waveforms] Amplitude metering support
  * 3. [Stability] Robust discard / state machine
  */
-export const useAudioRecording = (options: UseAudioRecordingOptions = {}) => {
+export const useAudioRecording = (options: UseAudioRecordingOptions = {}): UseAudioRecordingReturn => {
   const { maxDuration = 120, onRecordingComplete, onRecordingError } = options;
   const { showToast } = useToastStore();
   

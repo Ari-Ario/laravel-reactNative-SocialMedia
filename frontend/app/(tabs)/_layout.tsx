@@ -1,290 +1,150 @@
-// app/(tabs)/_layout.tsx
-import { Tabs, Stack, router, Redirect } from 'expo-router';
-import { useContext, useEffect, useState, useRef } from 'react';
-import AuthContext from '@/context/AuthContext';
+import { Tabs } from 'expo-router';
 import React from 'react';
-import { Platform, ActivityIndicator, View, Text } from 'react-native';
+import { Platform, View } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Colors } from '@/constants/Colors';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import LoginScreen from '../LoginScreen';
-import { usePostStore } from '@/stores/postStore';
-import { useNotificationStore, NOTIFICATION_TYPES } from '@/stores/notificationStore';
+import { useNotificationStore } from '@/stores/notificationStore';
 import { useCollaborationStore } from '@/stores/collaborationStore';
-import { useReportedContentStore } from '@/stores/reportedContentStore';
-import { logout } from '@/services/AuthService';
-import { getToken } from '@/services/TokenService';
-import { NotificationToast } from '@/components/Notifications/NotificationToast';
-import { Toast } from '@/components/Shared/Toast';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 export default function TabLayout() {
   const { colors, activeScheme } = useAppTheme();
-  const { user, setUser } = useContext(AuthContext);
-  const { initializeRealtime, disconnectRealtime } = usePostStore();
+
+  // Use useAuthStore for logic, but keep AuthContext for compatibility if needed
+  // RootLayout already provides AuthContext bridged to useAuthStore.
+  const { user } = useAuthStore();
+
   const {
-    initializeRealtime: initNotifications,
-    disconnectRealtime: disconnectNotifications,
-    setNotificationPanelVisible,
-    isNotificationPanelVisible,
-    setInitializationTime,
-    setIsRealtimeReady: setGlobalRealtimeReady,
-    unreadCallCount,
     unreadModerationCount
   } = useNotificationStore();
+
   const totalUnreadSpaces = useCollaborationStore(state => state.totalUnreadSpaces);
 
-  const realtimeInitialized = useRef(false);
-  const [isRealtimeReady, setIsRealtimeReady] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Global toast state
-  const currentToast = useNotificationStore(state => state.currentToastNotification);
-  const setCurrentToast = useNotificationStore(state => state.setCurrentToastNotification);
-
-  // Real-time initialization effect
-  useEffect(() => {
-    let isMounted = true;
-    let initializationTimeout: NodeJS.Timeout;
-
-    async function initializeRealtimeConnection() {
-      if (realtimeInitialized.current) {
-        console.log('ℹ️ Real-time already initialized, skipping...');
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        const token = await getToken();
-
-        if (!isMounted) return;
-
-        if (token && user?.id) {
-          console.log('🔐 Initializing real-time for user:', user.id);
-
-          // Initialize both stores explicitly once
-          initializeRealtime(token);
-          initNotifications(token, Number(user.id));
-
-          // Pre-fetch spaces to ensure the Chats tab badge exists offline instantly
-          useCollaborationStore.getState().fetchUserSpaces(Number(user.id));
-
-          // Pre-fetch reported content for red flags
-          useReportedContentStore.getState().fetchReportedContent();
-
-
-          if (typeof setInitializationTime === 'function') {
-            setInitializationTime(new Date());
-          }
-
-          realtimeInitialized.current = true;
-          setIsRealtimeReady(true);
-          setGlobalRealtimeReady(true);
-          console.log('✅ Real-time systems initialized');
-        } else {
-          setIsRealtimeReady(true);
-          setGlobalRealtimeReady(true);
-        }
-      } catch (error) {
-        console.error('❌ Real-time initialization failed:', error);
-        setIsRealtimeReady(true);
-        setGlobalRealtimeReady(true);
-      } finally {
-        if (isMounted) {
-          initializationTimeout = setTimeout(() => {
-            setIsLoading(false);
-          }, 500);
-        }
-      }
-    }
-
-    const initializationTimer = setTimeout(() => {
-      initializeRealtimeConnection();
-    }, 800);
-
-    return () => {
-      isMounted = false;
-      clearTimeout(initializationTimer);
-      clearTimeout(initializationTimeout);
-      if (realtimeInitialized.current) {
-        console.log('🧹 Cleaning up real-time connections...');
-        disconnectRealtime();
-        disconnectNotifications();
-        realtimeInitialized.current = false;
-        setIsRealtimeReady(false);
-        setGlobalRealtimeReady(false);
-      }
-    };
-  }, [user?.id]);
-
-  // NEW: Handle notification toasts (empty placeholder just in case passed from props)
-  const handleShowToast = (notification: any) => {
-    setCurrentToast(notification);
-  };
-
-  const handleHideToast = () => {
-    setCurrentToast(null);
-  };
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-      setUser(null);
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
-  };
-
-  const handleToastPress = () => {
-    setNotificationPanelVisible(true);
-    handleHideToast();
-  };
-
-  // Show loading while checking token and initializing real-time
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
-        <ActivityIndicator size="large" color={colors.tint} />
-        <Text style={{ color: colors.textSecondary, marginTop: 10 }}>Initializing app...</Text>
-      </View>
-    );
-  }
-
-  // FIX: Add debug logging to see what's happening
-  console.log('🔐 TabLayout render state:', {
-    isLoading,
-    hasUser: !!user,
-    isRealtimeReady
-  });
+  // If for some reason RootLayout hasn't finished, wait (should be rare)
+  if (!user) return null;
 
   return (
-    <AuthContext.Provider value={{ user, setUser, logout: handleLogout }}>
-      {user ? (
-        <>
-          {/* NEW: Notification Toast */}
-          <NotificationToast
-            notification={currentToast}
-            onPress={handleToastPress}
-            onHide={handleHideToast}
-            visible={!!currentToast}
-          />
+    <>
 
-          <Toast />
-
-          <Tabs
-            screenOptions={{
-              tabBarActiveTintColor: colors.tint,
-              tabBarInactiveTintColor: colors.tabIconDefault,
-              headerShown: false,
-              tabBarShowLabel: true,
-              tabBarLabelStyle: {
-                fontSize: 10,
-                fontWeight: '600',
-                marginBottom: 4,
-              },
-              tabBarStyle: {
-                position: 'absolute',
-                bottom: Platform.OS === 'ios' ? 10 : 5,
-                left: 16,
-                right: 16,
-                height: 64,
-                borderRadius: 32,
-                backgroundColor: activeScheme === 'dark' ? 'rgba(21, 23, 24, 0.9)' : 'rgba(255, 255, 255, 0.9)',
-                borderTopWidth: 1,
-                borderTopColor: activeScheme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-                borderWidth: 1,
-                borderColor: activeScheme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-                elevation: 4,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.15,
-                shadowRadius: 12,
-                paddingBottom: 0,
-                overflow: 'hidden',
-              },
-              tabBarItemStyle: {
-                paddingVertical: Platform.OS === 'web' ? 12 : 8,
-              },
-            }}
-          >
-            <Tabs.Screen
-              name="index"
-              options={{
-                title: 'Home',
-                tabBarIcon: ({ color, focused }) => (
-                  <View style={{ alignItems: 'center' }}>
-                    <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
-                      <IconSymbol size={28} name="house.fill" color={color} />
-                    </View>
-                    {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: colors.tint, marginTop: 4 }} />}
-                  </View>
-                ),
-              }}
-            />
-            <Tabs.Screen
-              name="chats"
-              options={{
-                title: 'Chats',
-                tabBarIcon: ({ color, focused }) => (
-                  <View style={{ alignItems: 'center' }}>
-                    <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
-                      <FontAwesome size={26} name="comments" color={color} />
-                    </View>
-                    {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: colors.tint, marginTop: 4 }} />}
-                  </View>
-                ),
-                tabBarBadge: totalUnreadSpaces > 0 ? totalUnreadSpaces : undefined,
-              }}
-            />
-            <Tabs.Screen
-              name="market"
-              options={{
-                title: 'Market',
-                tabBarIcon: ({ color, focused }) => (
-                  <View style={{ alignItems: 'center' }}>
-                    <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
-                      <FontAwesome size={26} name="shopping-basket" color={color} />
-                    </View>
-                    {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: colors.tint, marginTop: 4 }} />}
-                  </View>
-                ),
-              }}
-            />
-            <Tabs.Screen
-              name="chatbot"
-              options={{
-                title: 'Chatbot',
-                tabBarIcon: ({ color, focused }) => (
-                  <View style={{ alignItems: 'center' }}>
-                    <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
-                      <FontAwesome size={26} name="android" color={color} />
-                    </View>
-                    {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: colors.tint, marginTop: 4 }} />}
-                  </View>
-                ),
-              }}
-            />
-            <Tabs.Screen
-              name="settings"
-              options={{
-                title: 'Settings',
-                tabBarIcon: ({ color, focused }) => (
-                  <View style={{ alignItems: 'center' }}>
-                    <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
-                      <FontAwesome size={26} name="gear" color={color} />
-                    </View>
-                    {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: colors.tint, marginTop: 4 }} />}
-                  </View>
-                ),
-                tabBarBadge: (unreadModerationCount || 0) > 0 ? unreadModerationCount : undefined,
-              }}
-            />
-
-          </Tabs>
-        </>
-      ) : (
-        <Redirect href="/LoginScreen" />
-      )}
-    </AuthContext.Provider>
+      <Tabs
+        sceneContainerStyle={{ backgroundColor: colors.background }}
+        screenOptions={{
+          tabBarActiveTintColor: colors.tint,
+          tabBarInactiveTintColor: colors.tabIconDefault,
+          headerShown: false,
+          tabBarShowLabel: true,
+          tabBarLabelStyle: {
+            fontSize: 10,
+            fontWeight: '600',
+            marginBottom: 4,
+          },
+          tabBarStyle: Platform.select({
+            web: {
+              height: 64,
+              backgroundColor: colors.surface,
+              borderTopWidth: 1,
+              borderTopColor: colors.border,
+            },
+            default: {
+              position: 'absolute',
+              bottom: Platform.OS === 'ios' ? 10 : 5,
+              left: 16,
+              right: 16,
+              height: 64,
+              borderRadius: 32,
+              backgroundColor: activeScheme === 'dark' ? 'rgba(21, 23, 24, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+              borderTopWidth: 1,
+              borderTopColor: activeScheme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+              borderWidth: 1,
+              borderColor: activeScheme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+              elevation: 4,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 12,
+              paddingBottom: 0,
+              overflow: 'hidden',
+            }
+          }),
+          tabBarItemStyle: {
+            paddingVertical: Platform.OS === 'web' ? 12 : 8,
+          },
+        }}
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Home',
+            tabBarIcon: ({ color, focused }) => (
+              <View style={{ alignItems: 'center' }}>
+                <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
+                  <IconSymbol size={28} name="house.fill" color={color} />
+                </View>
+                {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: colors.tint, marginTop: 4 }} />}
+              </View>
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="chats"
+          options={{
+            title: 'Chats',
+            tabBarIcon: ({ color, focused }) => (
+              <View style={{ alignItems: 'center' }}>
+                <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
+                  <FontAwesome size={26} name="comments" color={color} />
+                </View>
+                {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: colors.tint, marginTop: 4 }} />}
+              </View>
+            ),
+            tabBarBadge: totalUnreadSpaces > 0 ? totalUnreadSpaces : undefined,
+          }}
+        />
+        <Tabs.Screen
+          name="market"
+          options={{
+            title: 'Market',
+            tabBarIcon: ({ color, focused }) => (
+              <View style={{ alignItems: 'center' }}>
+                <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
+                  <FontAwesome size={26} name="shopping-basket" color={color} />
+                </View>
+                {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: colors.tint, marginTop: 4 }} />}
+              </View>
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="chatbot"
+          options={{
+            title: 'Chatbot',
+            tabBarIcon: ({ color, focused }) => (
+              <View style={{ alignItems: 'center' }}>
+                <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
+                  <FontAwesome size={26} name="android" color={color} />
+                </View>
+                {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: colors.tint, marginTop: 4 }} />}
+              </View>
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="settings"
+          options={{
+            title: 'Settings',
+            tabBarIcon: ({ color, focused }) => (
+              <View style={{ alignItems: 'center' }}>
+                <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
+                  <FontAwesome size={26} name="gear" color={color} />
+                </View>
+                {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: colors.tint, marginTop: 4 }} />}
+              </View>
+            ),
+            tabBarBadge: (unreadModerationCount || 0) > 0 ? unreadModerationCount : undefined,
+          }}
+        />
+      </Tabs>
+    </>
   );
 }

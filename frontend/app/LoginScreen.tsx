@@ -1,66 +1,65 @@
-import { useState, useContext } from "react";
+import { useState } from "react";
 import { Platform, View, Text, StyleSheet, Button, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import axios from "@/services/axios";
 import FormTextField from "@/components/FormTextField";
-import { login, loadUser } from "@/services/AuthService";
-import { Link, router } from 'expo-router';
-import AuthContext from "@/context/AuthContext";
+import { login as loginApi } from "@/services/AuthService";
+import { Link, useRouter } from 'expo-router';
+import { useAuthStore } from "@/stores/useAuthStore";
 import { useAppTheme } from "@/hooks/useAppTheme";
 
-export default function () {
+export default function LoginScreen() {
     const { colors } = useAppTheme();
-    const { setUser } = useContext(AuthContext);
+    const router = useRouter();
+    const authStore = useAuthStore();
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [errors, setErrors] = useState<any>({});
 
     async function handleLogin() {
-
+        setErrors({});
         try {
-            await login({
+            console.log("🔐 [LoginScreen] Attempting login for:", email);
+            const response = await loginApi({
                 email,
                 password,
                 device_name: `${Platform.OS} ${Platform.Version}`,
             });
 
-            const user = await loadUser();
-            setUser(user);
-            console.log("send it to TABS");
-            if (user.email_verified_at === null) {
+            // response.data contains { token, user }
+            const userData = response.user || response.data?.user || response;
+            const token = response.token || response.data?.token;
+
+            if (!token || !userData) {
+               throw new Error("Invalid login response: Missing token or user data");
+            }
+
+            // Centralized login in Zustand (automatically persists to storage)
+            await authStore.login(userData, token);
+            
+            console.log("✅ [LoginScreen] Login successful, redirecting...");
+
+            if (userData.email_verified_at === null) {
                 router.push({
                     pathname: '/VerificationScreen',
                     params: { email: email }
                 });
                 return;
             }
-            router.push('/(tabs)');
+            
+            router.replace('/(tabs)');
         } catch (e: any) {
-            console.error('Login failed:', e);                    // ← Add this!
-            console.log('Full error:', e.message, e.code, e.config?.url);
-
-            // if (axios.isAxiosError(e)) {
+            console.error('❌ [LoginScreen] Login failed:', e);
             if (e.response) {
-                // Server responded (e.g. 422, 401, 500)
-                console.log('Response error:', e.response.status, e.response.data);
                 if (e.response.status === 422) {
                     setErrors(e.response.data.errors || {});
                 } else {
                     setErrors({ general: e.response.data.message || 'Server error' });
                 }
-            } else if (e.request) {
-                // No response received → network issue
-                console.log('Network-level failure - request was:', e.request);
-                setErrors({ general: 'Network error - check connection or server' });
             } else {
-                // Something else (setup error)
-                setErrors({ general: e.message || 'Unknown error' });
+                setErrors({ general: e.message || 'Network error' });
             }
-            // } else {
-            //     setErrors({ general: 'Unexpected error' });
-            // }
         }
     }
 
@@ -75,15 +74,16 @@ export default function () {
             </View>
 
             <View style={styles.container}>
-
-                <FormTextField label="Email address:"
+                <FormTextField 
+                    label="Email address:"
                     value={email}
                     onChangeText={(text) => setEmail(text)}
                     keyboardType="email-address"
                     errors={errors.email}
                 />
 
-                <FormTextField label="Password:"
+                <FormTextField 
+                    label="Password:"
                     secureTextEntry={true}
                     value={password}
                     onChangeText={(text) => setPassword(text)}
@@ -91,15 +91,16 @@ export default function () {
                     errors={errors.password}
                 />
 
-                <Button title="login" onPress={handleLogin} />
+                <Button title="Login" onPress={handleLogin} />
 
                 {errors.general && (
                     <Text style={[styles.errorText, { color: colors.error }]}>{errors.general}</Text>
                 )}
 
-
-                <Link href={'/ForgotPasswordScreen'} >
-                    <Text style={[styles.buttonText, { color: colors.tint }]}>Forgot Password</Text>
+                <Link href={'/ForgotPasswordScreen'} asChild>
+                    <TouchableOpacity>
+                        <Text style={[styles.buttonText, { color: colors.tint, fontSize: 16, marginTop: 10 }]}>Forgot Password</Text>
+                    </TouchableOpacity>
                 </Link>
 
                 <View style={styles.loginLink}>
@@ -112,7 +113,7 @@ export default function () {
                 </View>
             </View>
         </SafeAreaView>
-    )
+    );
 }
 
 const styles = StyleSheet.create({
@@ -128,20 +129,14 @@ const styles = StyleSheet.create({
         width: 300,
     },
     button: {
-        top: 0,
-        left: 0,
-        width: '100%',
-        textAlign: 'left',
         marginBottom: 20,
     },
     buttonText: {
         textAlign: "center",
-        color: "blue",
         fontSize: 22,
         fontWeight: '500',
     },
     errorText: {
-        color: 'red',
         textAlign: 'center',
         marginTop: 10,
     },
@@ -151,7 +146,6 @@ const styles = StyleSheet.create({
         marginTop: 20,
     },
     linkText: {
-        color: 'blue',
         fontWeight: '600',
     },
 });

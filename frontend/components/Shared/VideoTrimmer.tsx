@@ -5,12 +5,10 @@ import {
     StyleSheet,
     TouchableOpacity,
     Modal,
-    Dimensions,
     Platform,
     PanResponder,
     ActivityIndicator,
     StatusBar,
-    Vibration,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -22,15 +20,11 @@ import Animated, {
     useAnimatedStyle,
     withSpring,
     withTiming,
-    runOnJS,
     FadeIn,
     FadeOut,
     SlideInDown,
     SlideOutDown,
-    interpolate,
-    Extrapolate,
     withSequence,
-    withDelay,
 } from 'react-native-reanimated';
 import { MediaCompressor } from '@/utils/mediaCompressor';
 import * as Haptics from 'expo-haptics';
@@ -70,14 +64,11 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
     const [endPos, setEndPos] = useState(1);
     const [currentTime, setCurrentTime] = useState(0);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [isDragging, setIsDragging] = useState<'start' | 'end' | 'playhead' | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [showTimeTooltip, setShowTimeTooltip] = useState(false);
     const [tooltipTime, setTooltipTime] = useState(0);
     const [zoomLevel, setZoomLevel] = useState(1);
-    const [isSnapping, setIsSnapping] = useState(false);
-    const [scrubberLayout, setScrubberLayout] = useState({ x: 0, width: 0 });
     const { width: trimmerWindowWidth } = useWindowDimensions();
     const scrubberLayoutRef = useRef({ x: 0, width: 0 });
     const [effectiveScrubberWidth, setEffectiveScrubberWidth] = useState(trimmerWindowWidth - 72);
@@ -89,7 +80,7 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
         setIsLoading(true);
     }, [videoUri]);
 
-    const onScrubberLayout = useCallback((event: any) => {
+    const onScrubberLayout = useCallback((event: { nativeEvent: { layout: { x: number; width: number } } }) => {
         const { x, width } = event.nativeEvent.layout;
         scrubberLayoutRef.current = { x, width };
         setEffectiveScrubberWidth(width);
@@ -98,7 +89,6 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
     // Animation values
     const scrubberScale = useSharedValue(1);
     const handlesOpacity = useSharedValue(1);
-    const tooltipOpacity = useSharedValue(0);
     const durationLabelScale = useSharedValue(0);
     const saveButtonScale = useSharedValue(1);
 
@@ -115,7 +105,6 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
         (safeEndPos - safeStartPos) * safeDuration, 
         [safeEndPos, safeStartPos, safeDuration]
     );
-    const safeTrimDuration = useMemo(() => trimDuration > 0 ? trimDuration : 1, [trimDuration]);
 
     const safeSetCurrentTime = useCallback((timeInSeconds: number) => {
         if (!player || !duration || duration === 0) return;
@@ -134,7 +123,7 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                 withSpring(1)
             );
         }
-    }, [trimDuration]);
+    }, [trimDuration, durationLabelScale]);
 
     // Simplified Duration Loading Logic (Easy Logic) with 10s Story constraint
     useEffect(() => {
@@ -203,7 +192,7 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
         });
 
         return () => subscription.remove();
-    }, [player, startPos, endPos, duration]);
+    }, [player, startPos, endPos, duration, safeSetCurrentTime]);
 
     // Play/pause sync
     useEffect(() => {
@@ -233,7 +222,6 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
             onStartShouldSetPanResponder: () => true,
             onMoveShouldSetPanResponder: () => true,
             onPanResponderGrant: () => {
-                setIsDragging('start');
                 setShowTimeTooltip(true);
                 handlesOpacity.value = withTiming(1.2);
                 scrubberScale.value = withSpring(1.02);
@@ -273,7 +261,6 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                 triggerHaptic('light');
             },
             onPanResponderRelease: () => {
-                setIsDragging(null);
                 setShowTimeTooltip(false);
                 handlesOpacity.value = withTiming(1);
                 scrubberScale.value = withSpring(1);
@@ -288,7 +275,6 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
             onStartShouldSetPanResponder: () => true,
             onMoveShouldSetPanResponder: () => true,
             onPanResponderGrant: () => {
-                setIsDragging('end');
                 setShowTimeTooltip(true);
                 handlesOpacity.value = withTiming(1.2);
                 scrubberScale.value = withSpring(1.02);
@@ -323,7 +309,6 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                 triggerHaptic('light');
             },
             onPanResponderRelease: () => {
-                setIsDragging(null);
                 setShowTimeTooltip(false);
                 handlesOpacity.value = withTiming(1);
                 scrubberScale.value = withSpring(1);
@@ -338,7 +323,6 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
             onStartShouldSetPanResponder: () => true,
             onMoveShouldSetPanResponder: () => true,
             onPanResponderGrant: () => {
-                setIsDragging('playhead');
                 setShowTimeTooltip(true);
                 player.pause();
                 setIsPlaying(false);
@@ -358,7 +342,6 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                 triggerHaptic('light');
             },
             onPanResponderRelease: () => {
-                setIsDragging(null);
                 setShowTimeTooltip(false);
                 triggerHaptic('medium');
             },
@@ -390,7 +373,7 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                     endTime,
                     maxSizeMB: MAX_FILE_SIZE_MB,
                     quality: 'high',
-                });
+                }) as any;
 
                 trimmedUri = result.uri;
                 thumbnailUri = result.thumbnailUri;
@@ -419,10 +402,9 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
     const handlePlayPause = useCallback(() => {
         setIsPlaying(prev => !prev);
         triggerHaptic('light');
-    }, []);
+    }, [triggerHaptic]);
 
     const handleReset = useCallback(() => {
-        setIsSnapping(true);
         setStartPos(0);
         setEndPos(Math.min(1, maxDuration / safeDuration));
         safeSetCurrentTime(0);
@@ -435,19 +417,17 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
         );
 
         triggerHaptic('medium');
-
-        setTimeout(() => setIsSnapping(false), 300);
-    }, [duration, maxDuration, player]);
+    }, [safeDuration, maxDuration, safeSetCurrentTime, scrubberScale, triggerHaptic]);
 
     const handleZoomIn = useCallback(() => {
         setZoomLevel(prev => Math.min(prev + 0.5, 3));
         triggerHaptic('light');
-    }, []);
+    }, [triggerHaptic]);
 
     const handleZoomOut = useCallback(() => {
         setZoomLevel(prev => Math.max(prev - 0.5, 1));
         triggerHaptic('light');
-    }, []);
+    }, [triggerHaptic]);
 
     const formatTime = (seconds: number) => {
         if (isNaN(seconds)) return '0:00';
@@ -464,9 +444,7 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
         return `${mins}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
     };
 
-    const isOverMax = trimDuration > maxDuration;
     const isUnderMin = trimDuration < MIN_SELECTION_DURATION;
-    const progress = (currentTime - startPos * safeDuration) / safeTrimDuration;
 
     // Animated styles
     const scrubberAnimatedStyle = useAnimatedStyle(() => ({
@@ -475,10 +453,6 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
 
     const handlesAnimatedStyle = useAnimatedStyle(() => ({
         opacity: handlesOpacity.value,
-    }));
-
-    const tooltipAnimatedStyle = useAnimatedStyle(() => ({
-        opacity: tooltipOpacity.value,
     }));
 
     const durationLabelStyle = useAnimatedStyle(() => ({
@@ -605,7 +579,7 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                                     </Animated.View>
                                     <Text style={[
                                         styles.selectionText,
-                                        (isOverMax || isUnderMin) && styles.selectionTextWarning
+                                        ((trimDuration > maxDuration) || isUnderMin) && styles.selectionTextWarning
                                     ]}>
                                         {isStory ? 'max 10s' : 'max 2min'}
                                     </Text>

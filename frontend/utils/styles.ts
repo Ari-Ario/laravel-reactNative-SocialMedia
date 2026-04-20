@@ -58,3 +58,15 @@ export const createTextShadow = ({
         },
     });
 };
+/**
+ * Creates cross-platform pointer events styles.
+ * On Web, it returns a style object.
+ * On Native, it returns an empty object (pointerEvents is a prop, not a style).
+ * This allows using ...createPointerEvents('none') in style arrays safely.
+ */
+export const createPointerEvents = (value: 'box-none' | 'none' | 'box-only' | 'auto'): any[] => {
+    return Platform.select({
+        web: [{ pointerEvents: value as any }],
+        default: []
+    }) || [];
+};

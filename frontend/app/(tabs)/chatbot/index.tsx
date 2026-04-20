@@ -3,7 +3,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import {
   View,
   Text,
-  StyleSheet,
+  StyleSheet as RNStyleSheet,
   FlatList,
   TextInput,
   TouchableOpacity,
@@ -134,7 +134,7 @@ export default function ChatbotScreen() {
       keyboardVerticalOffset={90}
     >
       <FlatList
-        ref={flatListRef}
+        ref={flatListRef as any}
         data={messages}
         keyExtractor={item => item.id.toString()}
         renderItem={renderItem}
@@ -177,7 +177,7 @@ export default function ChatbotScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = RNStyleSheet.create({
   container: { flex: 1 },
   chatContainer: { padding: 16, paddingBottom: 100 },
   messageBubble: {

@@ -5,12 +5,12 @@ import {
   StyleSheet,
   Dimensions,
   Modal,
-  Image,
   TouchableWithoutFeedback,
   TouchableOpacity,
   Platform,
   useWindowDimensions,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { GestureHandlerRootView, Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -27,7 +27,6 @@ import { Ionicons } from '@expo/vector-icons';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system';
 import { Alert, Share as RNShare } from 'react-native';
-import AuthContext from '@/context/AuthContext';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -74,7 +73,7 @@ interface MediaViewerProps {
     }>;
     reposts_count?: number;
     is_reposted?: boolean;
-    reactions: any;
+    reactions: any[];
     reaction_counts: Array<{ emoji: string; count: number }>;
   } | null;
   getApiBaseImage: () => string;
@@ -111,7 +110,7 @@ interface MediaViewerProps {
 
 // Internal component to handle individual media rendering and its hooks correctly
 const MediaItemDisplay: React.FC<{
-  media: any;
+  media: { file_path?: string; url?: string; type?: string; thumbnail_path?: string; metadata?: { is_whiteboard_snapshot?: boolean } };
   index: number;
   currentIndex: number;
   getApiBaseImage: () => string;
@@ -203,10 +202,12 @@ const MediaItemDisplay: React.FC<{
   }
 
   return (
-    <Image
+    <ExpoImage
       source={{ uri }}
       style={[styles.innerMedia, { width, height }, isWhiteboard && { backgroundColor: '#fff' }]}
-      resizeMode="contain"
+      contentFit="contain"
+      transition={200}
+      cachePolicy="disk"
     />
   );
 };
@@ -256,8 +257,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   }, [width, currentIndex]);
 
   const { colors } = useAppTheme();
-  const { user } = React.useContext(AuthContext);
-  const reactionsToShow = getGroupedReactions(post, Number(user?.id) || undefined);
+  const reactionsToShow = getGroupedReactions(post);
 
   // Reset state when visibility or post changes
   useEffect(() => {
@@ -275,9 +275,8 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     if (index >= 0 && index < mediaItems.length) {
       setCurrentIndex(index);
       currentIndexShared.value = index;
-      translateX.value = withTiming(-width * index, ANIMATION_CONFIG);
     }
-  }, [mediaItems.length]); // Minimize dependencies
+  }, [mediaItems.length, width, translateX, currentIndexShared]); // Minimize dependencies
 
   const handleSwipeHorizontal = useCallback((direction: 'left' | 'right') => {
     const newIndex = direction === 'left' ? currentIndex + 1 : currentIndex - 1;
@@ -379,9 +378,9 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     <GestureHandlerRootView style={[
       StyleSheet.absoluteFill,
       Platform.OS === 'web' && {
-        position: 'fixed' as any,
-        width: '100vw' as any,
-        height: '100vh' as any,
+        position: 'fixed' as 'fixed',
+        width: '100%' as any,
+        height: '100%' as any,
         zIndex: 999999,
       }
     ]}>
@@ -401,10 +400,10 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
             position: 'fixed',
             top: 0,
             left: 0,
-            width: '100vw' as any,
-            height: '100vh' as any,
-            minWidth: '100vw' as any,
-            minHeight: '100vh' as any,
+            width: '100%' as any,
+            height: '100%' as any,
+            minWidth: '100%' as any,
+            minHeight: '100%' as any,
           }
         ]}>
           <GestureDetector gesture={panGesture}>

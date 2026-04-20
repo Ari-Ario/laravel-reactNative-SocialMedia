@@ -1,3 +1,4 @@
+import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import {
   View,
   Text,
@@ -12,31 +13,26 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   StatusBar,
-  PanResponder,
   ScrollView,
   FlatList,
-  Keyboard
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlobalStyles } from '@/styles/GlobalStyles';
 import { createShadow, createTextShadow } from '@/utils/styles';
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import PlatformCameraView from './PlatformCameraView';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { MotiView, AnimatePresence } from 'moti';
+import { MotiView } from 'moti';
 import EmojiPicker from 'rn-emoji-keyboard';
 import { createStory } from '@/services/StoryService';
 import { useToastStore } from '@/stores/toastStore';
-import getApiBaseImage from '@/services/getApiBaseImage';
-import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
 import ShareLocation from '@/components/ChatScreen/ShareLocation';
-import { GestureHandlerRootView, Gesture, GestureDetector, PanGestureHandler, PinchGestureHandler, State } from 'react-native-gesture-handler';
+import { GestureHandlerRootView, Gesture, GestureDetector, PanGestureHandler, PinchGestureHandler } from 'react-native-gesture-handler';
 import Animated, {
   SharedValue,
   useSharedValue,
@@ -51,13 +47,11 @@ import Animated, {
   Extrapolate,
   cancelAnimation
 } from 'react-native-reanimated';
-import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-import * as ExpoFileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
 import VideoTrimmer from './Shared/VideoTrimmer';
 import { MediaCompressor } from '@/utils/mediaCompressor';
 import { useAppTheme } from '@/hooks/useAppTheme';
-
+import { AnimatePresence } from 'moti';
 const { width, height } = Dimensions.get('window');
 const RECORDING_LIMIT_MS = 10000;
 const MAX_VIDEO_DURATION = 10; // seconds
@@ -121,7 +115,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showFeelingInput, setShowFeelingInput] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
-  const [selectedLocationForModal, setSelectedLocationForModal] = useState<any>(null);
+  const [selectedLocationForModal, setSelectedLocationForModal] = useState<{ latitude: number; longitude: number; name: string; address?: string } | null>(null);
   const [tempEmoji, setTempEmoji] = useState('');
   const [feelingText, setFeelingText] = useState('');
   const [currentText, setCurrentText] = useState('');
@@ -132,9 +126,9 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
   const [showTrimmer, setShowTrimmer] = useState(false);
   const [videoDuration, setVideoDuration] = useState(0);
 
-  const cameraRef = useRef<any>(null);
-  const timerRef = useRef<any>(null);
-  const longPressTimeout = useRef<any>(null);
+  const cameraRef = useRef<{ takePictureAsync: (options: any) => Promise<any>; recordAsync: (options: any) => Promise<any>; stopRecording: () => void }>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const longPressTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const textInputRef = useRef<TextInput>(null);
   const shouldRecordRef = useRef(false);
 
@@ -162,7 +156,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
         s.id === id ? { ...s, x, y } : s
       );
     });
-  }, []);
+  }, [setStickers]);
 
   const deleteSticker = useCallback((id: string) => {
     setStickers(prev => prev.filter(s => s.id !== id));
@@ -170,7 +164,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
     // Clean up animation values
     stickerAnimations.current.delete(id);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, []);
+  }, [setStickers, setSelectedSticker]);
 
   // Video Player for preview
   const videoPlayer = useVideoPlayer(media?.type === 'video' ? media.uri : null, (p) => {
@@ -318,7 +312,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
     longPressTimeout.current = setTimeout(() => {
       startRecording();
     }, 200);
-  }, []);
+  }, [startRecording]);
 
   const handlePressOut = useCallback(() => {
     if (longPressTimeout.current) {
@@ -329,7 +323,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
     } else if (cameraMode === 'picture') {
       takePhoto();
     }
-  }, [isRecording, cameraMode]);
+  }, [isRecording, cameraMode, takePhoto, startRecording]);
 
   const stopRecording = () => {
     shouldRecordRef.current = false;
@@ -354,7 +348,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
       if (!result.canceled) {
         setUploading(true);
         const asset = result.assets[0];
-        
+
         // 1. Check if it's a long video
         const duration = asset.duration ? asset.duration / 1000 : 0; // ms to s
         const isLongVideo = asset.type === 'video' && duration > MAX_VIDEO_DURATION;
@@ -389,7 +383,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
     }
   };
 
-  const handleLocationSelect = (locData: any) => {
+  const handleLocationSelect = (locData: { latitude: number; longitude: number; name: string; address?: string; region?: string }) => {
     // Determine the most descriptive name for the location
     let finalName = locData.name;
 
@@ -439,12 +433,12 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  const handlePressLocationSticker = (loc: any) => {
+  const handlePressLocationSticker = (loc: { latitude: number; longitude: number; name: string; address?: string }) => {
     setSelectedLocationForModal(loc);
     setShowLocationModal(true);
   };
 
-  const handleEmojiSelect = (emojiObject: any) => {
+  const handleEmojiSelect = (emojiObject: { emoji: string }) => {
     setTempEmoji(emojiObject.emoji);
     setShowEmojiPicker(false);
     // Auto-focus the feeling input after a small delay
@@ -529,7 +523,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
   const handleTrimComplete = async (trimmedData: { uri: string; duration: number; startTime?: number; endTime?: number }) => {
     try {
       setUploading(true);
-      
+
       // Compress the trimmed segment (matches CreatePost flow)
       const compressed = await MediaCompressor.prepareMediaForUpload(
         trimmedData.uri,
@@ -653,7 +647,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
           type = 'image/png';
         }
 
-        formData.append('media', blob, filename);
+        formData.append('media', blob, finalFilename);
       } else {
         formData.append('media', {
           uri: finalUri,
@@ -1188,15 +1182,15 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                   />
                 </View>
                 <View style={styles.feelingInputButtons}>
-                    <TouchableOpacity
-                      style={[styles.feelingCancelButton, { backgroundColor: colors.muted }]}
-                      onPress={() => {
-                        setShowFeelingInput(false);
-                        setFeelingText('');
-                      }}
-                    >
-                      <Text style={[styles.feelingCancelText, { color: colors.text }]}>Cancel</Text>
-                    </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.feelingCancelButton, { backgroundColor: colors.muted }]}
+                    onPress={() => {
+                      setShowFeelingInput(false);
+                      setFeelingText('');
+                    }}
+                  >
+                    <Text style={[styles.feelingCancelText, { color: colors.text }]}>Cancel</Text>
+                  </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.feelingDoneButton}
                     onPress={handleFinishFeeling}

@@ -1,15 +1,11 @@
 // components/PostListItem.tsx
 import {
   View,
-  Image,
   Text,
-  StyleSheet,
   TouchableOpacity,
-  FlatList,
   TextInput,
   ScrollView,
   Modal,
-  NativeSyntheticEvent,
   Alert,
   Dimensions,
   Platform,
@@ -17,7 +13,8 @@ import {
   KeyboardAvoidingView,
   ActivityIndicator
 } from 'react-native';
-import { Ionicons, Feather, AntDesign } from '@expo/vector-icons';
+import { Image as ExpoImage } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { useContext, useState, useMemo } from 'react';
 import EmojiPicker from 'rn-emoji-keyboard';
 import PostMenu from './PostMenu';
@@ -36,8 +33,6 @@ import { PostVideoPlayer } from './PostVideoPlayer';
 import { usePostListService } from '@/services/PostListService';
 import { LinkPreviewCard } from './LinkPreviewCard';
 import RenderComments from './RenderComments';
-import { createShadow } from '@/utils/styles';
-import PusherService from '@/services/PusherService';
 import { CuratorFrame } from './CuratorFrame';
 import { CuratorCircle } from './CuratorCircle';
 import { ContextTagSelector } from './ContextTagSelector';
@@ -48,6 +43,7 @@ import { BookmarkGallery } from './BookmarkGallery';
 import { Bookmark } from '@/services/BookmarkService';
 import { GlobalStyles } from '@/styles/GlobalStyles';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { createShadow } from '@/utils/styles';
 
 
 interface PostListItemProps {
@@ -61,7 +57,7 @@ interface PostListItemProps {
   shouldPlay?: boolean;
 }
 
-export default function PostListItem({
+function PostListItem({
   post,
   onReact,
   onReactComment,
@@ -75,12 +71,21 @@ export default function PostListItem({
   const { user } = useContext(AuthContext);
   const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
   const { openModal } = useModal();
-  const { posts, updatePost: updatePostInStore, expandedPostId, toggleExpandedPostId } = usePostStore();
-  const { showToast } = useToastStore();
+  const currentPost = usePostStore(state => state.posts.find(p => p.id === post.id) || post);
+  const updatePostInStore = usePostStore(state => state.updatePost);
+  const expandedPostId = usePostStore(state => state.expandedPostId);
+  const toggleExpandedPostId = usePostStore(state => state.toggleExpandedPostId);
+  const hydratePost = usePostStore(state => state.hydratePost);
+
+  const handleToggleExpand = () => {
+    if (expandedPostId !== post.id) {
+      hydratePost(post.id);
+    }
+    toggleExpandedPostId(post.id);
+  };
   const [tagSelectorVisible, setTagSelectorVisible] = useState(false);
   const [bookmarkGalleryVisible, setBookmarkGalleryVisible] = useState(false);
   const [newBookmark, setNewBookmark] = useState<Bookmark | null>(null);
-  const currentPost = posts.find(p => p.id === post.id) || post;
 
   const { addBookmark, bookmarks } = useBookmarkStore();
   const isBookmarked = bookmarks.some(b => b && b.post_id === post.id);
@@ -92,7 +97,7 @@ export default function PostListItem({
 
   const { visualMedia, extraMedia } = useMemo(() => {
     return service.sortMedia(post.media);
-  }, [post.media]);
+  }, [post.media, service]);
 
   // Detect link in caption
   const detectedUrl = useMemo(() => {
@@ -101,7 +106,7 @@ export default function PostListItem({
     const urlRegex = /((https?:\/\/|www\.)[^\s\n\r]+)/g;
     const matches = post.caption.match(urlRegex);
     if (!matches) return null;
-    
+
     let url = matches[0];
     // Clean up trailing punctuation
     if (url.endsWith('.') || url.endsWith(',') || url.endsWith(')')) {
@@ -160,7 +165,7 @@ export default function PostListItem({
           is_reposted: isCurrentlyReposted,
           reposts: isCurrentlyReposted
             ? (response.repost ? [response.repost, ...(currentPost.reposts || [])] : currentPost.reposts)
-            : (currentPost.reposts || []).filter((r: any) => {
+            : (currentPost.reposts || []).filter((r: { user?: { id: number }; user_id?: number }) => {
               const reposterId = r.user?.id || r.user_id;
               return Number(reposterId) !== Number(currentUserId);
             })
@@ -178,14 +183,14 @@ export default function PostListItem({
     if (!path) return '';
     if (path.startsWith('http') || path.startsWith('file://') || path.startsWith('data:')) return path;
 
-    let cleanPath = path.startsWith('/') ? path.substring(1) : path;
+    const cleanPath = path.startsWith('/') ? path.substring(1) : path;
     if (cleanPath.startsWith('storage/')) {
       return `${getApiBaseImage()}/${cleanPath}`;
     }
     return `${getApiBaseImage()}/storage/${cleanPath}`;
   };
 
-  const getPosterUrl = (media: any) => {
+  const getPosterUrl = (media: { thumbnail_path?: string; metadata?: { thumbnail?: string; poster?: string } }) => {
     if (media.thumbnail_path) return getMediaUrl(media.thumbnail_path);
     if (media.metadata?.thumbnail) return getMediaUrl(media.metadata.thumbnail);
     if (media.metadata?.poster) return getMediaUrl(media.metadata.poster);
@@ -314,16 +319,18 @@ export default function PostListItem({
                       poster={getPosterUrl(visualMedia[0])}
                     />
                   ) : (
-                    <Image
+                    <ExpoImage
                       source={{ uri: `${getApiBaseImage()}/storage/${visualMedia[0].file_path}` }}
                       style={styles.singleMedia}
-                      resizeMode="cover"
+                      contentFit="cover"
+                      transition={200}
+                      cachePolicy="disk"
                     />
                   )}
                 </TouchableOpacity>
               ) : (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  {visualMedia.map((media: any, index: number) => (
+                  {visualMedia.map((media: { id: number | string; type: string; file_path: string }, index: number) => (
                     <TouchableOpacity
                       key={`${media.id}-${index}`}
                       onPress={() => onMediaPress(index)}
@@ -339,10 +346,12 @@ export default function PostListItem({
                           poster={getPosterUrl(media)}
                         />
                       ) : (
-                        <Image
+                        <ExpoImage
                           source={{ uri: `${getApiBaseImage()}/storage/${media.file_path}` }}
                           style={styles.multiMediaContent}
-                          resizeMode="cover"
+                          contentFit="cover"
+                          transition={200}
+                          cachePolicy="disk"
                         />
                       )}
                     </TouchableOpacity>
@@ -357,7 +366,7 @@ export default function PostListItem({
             <LinkPreviewCard url={detectedUrl} />
           )}
 
-          {extraMedia.map((media: any, index: number) => {
+          {extraMedia.map((media: { id?: number | string; type?: string; mime_type?: string; file_path: string }, index: number) => {
             if (media.type === 'link' || media.mime_type === 'text/url') {
               return <LinkPreviewCard key={media.id || index} url={media.file_path} />;
             }
@@ -370,12 +379,12 @@ export default function PostListItem({
   );
 
   const reactions = currentPost.reactions || [];
-  const reactionsByEmoji = reactions.reduce((acc: any, r: any) => {
+  const reactionsByEmoji = reactions.reduce((acc: Record<string, number>, r: { reaction: string }) => {
     acc[r.reaction] = (acc[r.reaction] || 0) + 1;
     return acc;
   }, {});
 
-  const myReactions = reactions.filter((r: any) => Number(r.user_id) === Number(user?.id)).map((r: any) => r.reaction);
+  const myReactions = reactions.filter((r: { user_id: number | string }) => Number(r.user_id) === Number(user?.id)).map((r: { reaction: string }) => r.reaction);
 
   return (
     <Pressable
@@ -387,7 +396,7 @@ export default function PostListItem({
       {/* Show Grouped Reposts if multiple people shared it */}
       {currentPost.reposts && currentPost.reposts.length > 1 && (
         <CuratorCircle
-          reposters={currentPost.reposts.map((r: any) => ({
+          reposters={currentPost.reposts.map((r: { user: any; context_tag?: string; personal_note?: string; created_at?: string }) => ({
             ...r.user,
             context_tag: r.context_tag,
             personal_note: r.personal_note,
@@ -647,7 +656,7 @@ export default function PostListItem({
   );
 }
 
-const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
+const getStyles = (colors: any, activeScheme: string): any => ({
   container: {
   },
   head: {
@@ -940,4 +949,16 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     textTransform: 'uppercase',
   },
 });
+
+const PostListItemMemo = React.memo(PostListItem, (prevProps, nextProps) => {
+  return (
+    prevProps.post.id === nextProps.post.id &&
+    prevProps.post.reactions_count === nextProps.post.reactions_count &&
+    prevProps.post.comments_count === nextProps.post.comments_count &&
+    prevProps.post.is_reposted === nextProps.post.is_reposted &&
+    prevProps.shouldPlay === nextProps.shouldPlay
+  );
+});
+
+export default PostListItemMemo;
 

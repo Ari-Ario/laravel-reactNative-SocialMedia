@@ -33,6 +33,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useThemeStore } from '@/stores/themeStore';
 import GenericMenu, { MenuItem } from '@/components/GenericMenu';
 import { calculateAnchor, AnchorPosition } from '@/utils/layout';
+import { createShadow } from '@/utils/styles';
 
 interface SpaceSettingsModalProps {
     visible: boolean;
@@ -47,20 +48,8 @@ interface SpaceSettingsModalProps {
 
 type SettingsTab = 'info' | 'media' | 'evolution';
 
-const createShadow = ({ color = '#000', width = 0, height = 2, opacity = 0.1, radius = 4, elevation = 3 }: any) => Platform.select({
-    ios: {
-        shadowColor: color,
-        shadowOffset: { width, height },
-        shadowOpacity: opacity,
-        shadowRadius: radius,
-    },
-    android: { elevation },
-    web: {
-        boxShadow: `${width}px ${height}px ${radius}px rgba(0,0,0,${opacity})`,
-    },
-}) as any;
 
-const getStyles = (colors: any, activeScheme: 'light' | 'dark', isWeb: boolean, isLargeScreen: boolean) => StyleSheet.create({
+const getStyles = (colors: any, activeScheme: 'light' | 'dark', isWeb: boolean, isLargeScreen: boolean): any => StyleSheet.create({
     overlay: {
         flex: 1,
         backgroundColor: activeScheme === 'dark' ? 'rgba(0,0,0,0.85)' : 'rgba(0,0,0,0.45)',

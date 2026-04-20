@@ -1,6 +1,6 @@
 // components/RenderComments.tsx
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, FlatList, Alert } from 'react-native';
+import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, FlatList } from 'react-native';
 import EmojiPicker from 'rn-emoji-keyboard';
 import { Ionicons } from '@expo/vector-icons';
 import getApiBaseImage from '@/services/getApiBaseImage';
@@ -46,7 +46,7 @@ const RenderComments = ({
   const [showReportModal, setShowReportModal] = React.useState(false);
   const [reportingCommentId, setReportingCommentId] = React.useState<number | null>(null);
 
-  const getGroupedReactionsComments = (comment: any) => {
+  const getGroupedReactionsComments = (comment: { reaction_comments?: Array<{ emoji: string; user_id: number | string }> }) => {
     const defaultEmojis = ['🤍'];
     if (!comment?.reaction_comments || comment?.reaction_comments.length === 0) {
       return defaultEmojis.map(emoji => ({
@@ -241,7 +241,7 @@ const RenderComments = ({
             targetId={reportingCommentId || 0}
             type="comment"
             onClose={() => setShowReportModal(false)}
-            onReportSubmitted={(reportId) => {
+            onReportSubmitted={() => {
               useToastStore.getState().showToast('Report Submitted: Our AI is reviewing this comment.', 'success');
               setShowReportModal(false);
             }}

@@ -1,10 +1,11 @@
 import axios from "@/services/axios";
+import { AxiosError } from 'axios';
 import { Platform, Alert, Share } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import getApiBase from '@/services/getApiBase';
 import type PusherConstructor from 'pusher-js';
 import { getToken } from "@/services/TokenService";
-import PusherService from "@/services/PusherService";
+import PusherService, { PusherChannel, PusherEventPayload } from "@/services/PusherService";
 import * as Calendar from 'expo-calendar';
 
 export interface WhiteboardElement {
@@ -14,7 +15,7 @@ export interface WhiteboardElement {
   y: number;
   width?: number;
   height?: number;
-  content?: any;
+  content?: string | Record<string, unknown>;
   user_id?: number;
 }
 
@@ -25,9 +26,9 @@ export interface CollaborationSpace {
   image_url?: string;
   space_type: 'chat' | 'whiteboard' | 'meeting' | 'document' | 'brainstorm' | 'story' | 'voice_channel' | 'direct' | 'general' | 'protected' | 'channel';
   creator_id: number;
-  settings: any;
-  content_state: any;
-  activity_metrics: any;
+  settings: Record<string, unknown>;
+  content_state: Record<string, unknown>;
+  activity_metrics: Record<string, unknown>;
   evolution_level: number;
   unlocked_features: string[];
   is_live: boolean;
@@ -51,17 +52,18 @@ export interface CollaborationSpace {
     name: string;
     username?: string;
     profile_photo?: string;
+    is_online?: boolean;
   };
-  magic_events?: any[];
+  magic_events?: MagicEvent[];
   my_role?: string;
-  my_permissions?: any;
+  my_permissions?: Record<string, unknown>;
   /** The current user's participation record — includes last_read_at for unread tracking */
   my_participation?: {
     last_read_at?: string | null;
     last_active_at?: string | null;
     role?: string;
   } | null;
-  active_call?: any;
+  active_call?: Record<string, unknown>;
   active_call_id?: string; // ✅ Tracks the current broadcast ID for discovery.
   created_at?: string;
   updated_at?: string;
@@ -72,12 +74,12 @@ export interface SpaceParticipation {
   space_id: string;
   user_id: number;
   role: 'owner' | 'moderator' | 'participant' | 'viewer' | 'pending';
-  permissions?: any;
-  presence_data?: any;
-  contribution_map?: any;
+  permissions?: Record<string, unknown>;
+  presence_data?: Record<string, unknown>;
+  contribution_map?: Record<string, unknown>;
   focus_areas?: string[];
-  cursor_state?: any;
-  audio_video_state?: any;
+  cursor_state?: Record<string, unknown>;
+  audio_video_state?: Record<string, unknown>;
   current_activity?: string;
   user?: {
     id: number;
@@ -90,9 +92,9 @@ export interface SpaceParticipation {
 export interface MagicEvent {
   id: string;
   event_type: string;
-  event_data: any;
-  context: any;
-  impact: any;
+  event_data: Record<string, unknown>;
+  context: Record<string, unknown>;
+  impact: Record<string, unknown>;
   has_been_discovered: boolean;
   created_at: string;
 }
@@ -109,7 +111,7 @@ export interface AIInteraction {
   response_time_ms?: number;
   user_feedback?: string;
   training_match_id?: number;
-  context_data?: any;
+  context_data?: Record<string, unknown>;
   created_at: string;
   updated_at?: string;
 }
@@ -134,8 +136,8 @@ export interface CollaborativeActivity {
   max_participants?: number;
   confirmed_participants?: number;
   status: 'proposed' | 'active' | 'completed' | 'cancelled' | 'archived' | 'scheduled';
-  metadata?: any;
-  outcomes?: any;
+  metadata?: Record<string, unknown>;
+  outcomes?: Record<string, unknown>;
   notes?: string;
   proposed_at: string;
   started_at?: string;
@@ -146,20 +148,36 @@ export interface CollaborativeActivity {
     name: string;
     profile_photo?: string;
   };
-  participants?: any[];
+  participants?: Record<string, unknown>[];
   participant_ids?: number[];
 }
 
+interface PusherPayload extends Record<string, unknown> {
+  chat_message?: unknown;
+  message?: unknown;
+  type?: string;
+  data?: unknown;
+  space_id?: string;
+  user_id?: number | string;
+  id?: string;
+  user?: { id: number; name?: string; profile_photo?: string };
+  content_state?: Record<string, unknown>;
+  poll?: unknown;
+  poll_id?: string;
+  is_sharing?: boolean;
+  status?: number;
+}
+
 class CollaborationService {
-  static setToken(token: Promise<any>) {
+  static setToken() {
     throw new Error('Method not implemented.');
   }
-  static setUserId(id: Promise<any>) {
+  static setUserId() {
     throw new Error('Method not implemented.');
   }
   private static instance: CollaborationService;
   private pusherService: typeof PusherService;
-  private spaceSubscriptions: Map<string, any> = new Map();
+  private spaceSubscriptions: Map<string, PusherChannel> = new Map();
   private userToken: string | null = null;
   private baseURL: string;
 
@@ -176,8 +194,8 @@ class CollaborationService {
     return CollaborationService.instance;
   }
 
-  async setToken(token: string) {
-    this.userToken = await getToken();
+  async setToken(token?: string) {
+    this.userToken = token || await getToken();
   }
 
   async getHeaders() {
@@ -233,19 +251,20 @@ class CollaborationService {
    */
   private getPusherInstance(): PusherConstructor | null {
     // Access the pusher instance from the singleton
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (this.pusherService as any).pusher || null;
   }
 
   // 🔥 CORE SPACE OPERATIONS
 
-  async fetchUserSpaces(userId: number): Promise<{ spaces: CollaborationSpace[]; user_preferences?: any }> {
+  async fetchUserSpaces(userId: number, lite: boolean = false): Promise<{ spaces: CollaborationSpace[]; user_preferences?: any }> {
     try {
-      const response = await axios.get(`${this.baseURL}/spaces`, {
-        headers: await this.getHeaders(),
-        params: { user_id: userId }
+      // ✅ Use global axios instance with relative path and automatic headers
+      const response = await axios.get('/spaces', {
+        params: { user_id: userId, lite: lite ? 1 : undefined }
       });
 
-      const spaces = response.data.spaces.map((space: any) => ({
+      const spaces = response.data.spaces.map((space: Record<string, unknown>) => ({
         ...space,
         participants_count: space.participants_count || 0,
         is_live: space.is_live || false,
@@ -254,6 +273,7 @@ class CollaborationService {
         has_ai_assistant: space.has_ai_assistant || false,
         ai_capabilities: space.ai_capabilities || [],
       }));
+
 
       return {
         spaces,
@@ -266,21 +286,10 @@ class CollaborationService {
   }
 
   async fetchSpaceDetails(spaceId: string): Promise<CollaborationSpace> {
-    if (!this.userToken) {
-      const token = await getToken();
-      if (token) {
-        this.userToken = token;
-      } else {
-        throw new Error('No authentication token available');
-      }
-    }
-
     try {
       console.log(`Fetching space details for: ${spaceId}`);
 
-      const response = await axios.get(`${this.baseURL}/spaces/${spaceId}`, {
-        headers: await this.getHeaders(),
-      });
+      const response = await axios.get(`/spaces/${spaceId}`);
 
       console.log('Space API response:', response.data);
 
@@ -295,7 +304,7 @@ class CollaborationService {
         space_type: apiSpace.space_type,
         creator_id: apiSpace.creator_id,
         settings: apiSpace.settings || {},
-        content_state: apiSpace.content_state || this.getInitialContentState(apiSpace.space_type),
+        content_state: apiSpace.content_state || this.getInitialContentState(),
         activity_metrics: apiSpace.activity_metrics || {},
         evolution_level: apiSpace.evolution_level || 1,
         unlocked_features: apiSpace.unlocked_features || [],
@@ -317,15 +326,18 @@ class CollaborationService {
           role: participation.role,
         } : null,
         creator: apiSpace.creator,
-        other_participant: apiSpace.other_participant,
+        other_participant: apiSpace.other_participant ? {
+          ...apiSpace.other_participant,
+          is_online: apiSpace.other_participant.is_online || false
+        } : undefined,
         active_call: apiSpace.active_call,
         created_at: apiSpace.created_at,
         updated_at: apiSpace.updated_at,
       };
     } catch (error: any) {
-      console.error('Error fetching space details:', error.response?.data || error.message);
+      console.error('Error fetching space details:', (error as AxiosError).response?.data || (error as Error).message);
 
-      if (error.response?.status === 404) {
+      if ((error as AxiosError).response?.status === 404) {
         console.log('Space not found, returning mock data for testing');
         return this.getMockSpace(spaceId);
       }
@@ -334,7 +346,7 @@ class CollaborationService {
     }
   }
 
-  private getInitialContentState(spaceType: string): any {
+  private getInitialContentState(): Record<string, unknown> {
     return { messages: [] };
   }
 
@@ -431,14 +443,12 @@ class CollaborationService {
     linked_conversation_id?: number;
     linked_post_id?: number;
     linked_story_id?: number;
-    settings?: any;
+    settings?: Record<string, unknown>;
     ai_personality?: string;
     ai_capabilities?: string[];
   }): Promise<CollaborationSpace> {
     try {
-      const response = await axios.post(`${this.baseURL}/spaces`, spaceData, {
-        headers: await this.getHeaders(),
-      });
+      const response = await axios.post('/spaces', spaceData);
 
       await this.triggerHapticSuccess();
 
@@ -451,9 +461,7 @@ class CollaborationService {
 
   async joinSpace(spaceId: string): Promise<{ participation: SpaceParticipation; space: CollaborationSpace }> {
     try {
-      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/join`, {}, {
-        headers: await this.getHeaders(),
-      });
+      const response = await axios.post(`/spaces/${spaceId}/join`, {});
 
       await this.triggerHapticSuccess();
 
@@ -466,7 +474,7 @@ class CollaborationService {
 
   async fetchGuestSpaceInfo(spaceId: string): Promise<CollaborationSpace> {
     try {
-      const response = await axios.get(`${this.baseURL}/spaces/${spaceId}/guest-info`);
+      const response = await axios.get(`/spaces/${spaceId}/guest-info`);
       const apiSpace = response.data.space;
       return {
         id: apiSpace.id,
@@ -493,9 +501,9 @@ class CollaborationService {
     }
   }
 
-  async joinSpaceAsGuest(spaceId: string, name: string): Promise<{ user: any, token: string, space: CollaborationSpace, participation: SpaceParticipation }> {
+  async joinSpaceAsGuest(spaceId: string, name: string): Promise<{ user: Record<string, unknown>, token: string, space: CollaborationSpace, participation: SpaceParticipation }> {
     try {
-      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/guest-join`, { name });
+      const response = await axios.post(`/spaces/${spaceId}/guest-join`, { name });
       return response.data;
     } catch (error) {
       console.error('Error joining as guest:', error);
@@ -503,9 +511,9 @@ class CollaborationService {
     }
   }
 
-  async joinSpaceAsViewer(spaceId: string): Promise<{ user: any, token: string, space: CollaborationSpace, participation: SpaceParticipation }> {
+  async joinSpaceAsViewer(spaceId: string): Promise<{ user: Record<string, unknown>, token: string, space: CollaborationSpace, participation: SpaceParticipation }> {
     try {
-      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/viewer-join`);
+      const response = await axios.post(`/spaces/${spaceId}/viewer-join`, {});
       return response.data;
     } catch (error) {
       console.error('Error joining as viewer:', error);
@@ -515,12 +523,10 @@ class CollaborationService {
 
   async inviteToSpace(spaceId: string, userIds: number[], role?: string, message?: string): Promise<void> {
     try {
-      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/invite`, {
+      const response = await axios.post(`/spaces/${spaceId}/invite`, {
         user_ids: userIds,
         role,
         message,
-      }, {
-        headers: await this.getHeaders(),
       });
 
       console.log('Invitation response:', response.data);
@@ -534,9 +540,9 @@ class CollaborationService {
       }
 
     } catch (error: any) {
-      console.error('Error inviting to space:', error.response?.data || error.message);
+      console.error('Error inviting to space:', (error as AxiosError).response?.data || (error as Error).message);
 
-      if (error.response?.status === 403) {
+      if ((error as AxiosError).response?.status === 403) {
         throw new Error('You do not have permission to invite users to this space');
       }
 
@@ -544,11 +550,9 @@ class CollaborationService {
     }
   }
 
-  async acceptSpaceInvitation(spaceId: string): Promise<any> {
+  async acceptSpaceInvitation(spaceId: string): Promise<Record<string, unknown>> {
     try {
-      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/accept-invitation`, {}, {
-        headers: await this.getHeaders(),
-      });
+      const response = await axios.post(`/spaces/${spaceId}/accept-invitation`, {});
 
       try {
         if (Platform.OS !== 'web') {
@@ -565,12 +569,11 @@ class CollaborationService {
     }
   }
 
-  async sendAudioMessage(spaceId: string, formData: FormData): Promise<any> {
+  async sendAudioMessage(spaceId: string, formData: FormData): Promise<Record<string, unknown>> {
     try {
       // Use axios for multipart upload
-      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/audio-message`, formData, {
+      const response = await axios.post(`/spaces/${spaceId}/audio-message`, formData, {
         headers: {
-          ...(await this.getHeaders()),
           'Content-Type': 'multipart/form-data',
         },
       });
@@ -578,16 +581,14 @@ class CollaborationService {
       await this.triggerHapticSuccess();
       return response.data;
     } catch (error: any) {
-      console.error('Error sending audio message:', error.response?.data || error.message);
+      console.error('Error sending audio message:', (error as AxiosError).response?.data || (error as Error).message);
       throw error;
     }
   }
 
   async clearChat(spaceId: string): Promise<void> {
     try {
-      await axios.post(`${this.baseURL}/spaces/${spaceId}/clear-messages`, {}, {
-        headers: await this.getHeaders(),
-      });
+      await axios.post(`/spaces/${spaceId}/clear-messages`, {});
       await this.triggerHapticLight();
     } catch (error) {
       console.error('Error clearing chat:', error);
@@ -598,15 +599,14 @@ class CollaborationService {
   /**
    * Fetch trending/popular messages across user's conversations
    */
-  async fetchChatHighlights(page: number = 1, limit: number = 10): Promise<{ 
-    messages: any[], 
-    current_page: number, 
-    has_more: boolean, 
-    total: number 
+  async fetchChatHighlights(page: number = 1, limit: number = 10): Promise<{
+    messages: Record<string, unknown>[],
+    current_page: number,
+    has_more: boolean,
+    total: number
   }> {
     try {
-      const response = await axios.get(`${this.baseURL}/messages/highlights`, {
-        headers: await this.getHeaders(),
+      const response = await axios.get('/messages/highlights', {
         params: { page, limit }
       });
       return response.data;
@@ -617,11 +617,9 @@ class CollaborationService {
   }
 
   // Poll management
-  async createPoll(spaceId: string, pollData: any): Promise<any> {
+  async createPoll(spaceId: string, pollData: Record<string, unknown>): Promise<Record<string, unknown>> {
     try {
-      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/polls`, pollData, {
-        headers: await this.getHeaders(),
-      });
+      const response = await axios.post(`/spaces/${spaceId}/polls`, pollData);
       await this.triggerHapticSuccess();
       return response.data.poll;
     } catch (error) {
@@ -630,11 +628,9 @@ class CollaborationService {
     }
   }
 
-  async updatePoll(spaceId: string, pollId: string, pollData: any): Promise<any> {
+  async updatePoll(spaceId: string, pollId: string, pollData: Record<string, unknown>): Promise<Record<string, unknown>> {
     try {
-      const response = await axios.put(`${this.baseURL}/spaces/${spaceId}/polls/${pollId}`, pollData, {
-        headers: await this.getHeaders(),
-      });
+      const response = await axios.put(`/spaces/${spaceId}/polls/${pollId}`, pollData);
       await this.triggerHapticSuccess();
       return response.data.poll;
     } catch (error) {
@@ -643,14 +639,12 @@ class CollaborationService {
     }
   }
 
-  async getPolls(spaceId: string): Promise<any[]> {
+  async getPolls(spaceId: string): Promise<Record<string, unknown>[]> {
     try {
-      const response = await axios.get(`${this.baseURL}/spaces/${spaceId}/polls`, {
-        headers: await this.getHeaders(),
-      });
+      const response = await axios.get(`/spaces/${spaceId}/polls`);
       return response.data.polls;
     } catch (error: any) {
-      if (error.response?.status === 403) {
+      if ((error as AxiosError).response?.status === 403) {
         console.warn('📡 Access denied to polls for space:', spaceId);
         return [];
       }
@@ -661,10 +655,8 @@ class CollaborationService {
 
   async voteOnPoll(spaceId: string, pollId: string, optionIds: string[]): Promise<void> {
     try {
-      await axios.post(`${this.baseURL}/spaces/${spaceId}/polls/${pollId}/vote`, {
+      await axios.post(`/spaces/${spaceId}/polls/${pollId}/vote`, {
         option_ids: optionIds,
-      }, {
-        headers: await this.getHeaders(),
       });
       await this.triggerHapticLight();
     } catch (error) {
@@ -675,9 +667,7 @@ class CollaborationService {
 
   async closePoll(spaceId: string, pollId: string): Promise<void> {
     try {
-      await axios.post(`${this.baseURL}/spaces/${spaceId}/polls/${pollId}/close`, {}, {
-        headers: await this.getHeaders(),
-      });
+      await axios.post(`/spaces/${spaceId}/polls/${pollId}/close`, {});
       await this.triggerHapticWarning();
     } catch (error) {
       console.error('Error closing poll:', error);
@@ -687,10 +677,8 @@ class CollaborationService {
 
   async forwardPoll(pollId: string, targetSpaceIds: string[]): Promise<void> {
     try {
-      await axios.post(`${this.baseURL}/polls/${pollId}/forward`, {
+      await axios.post(`/polls/${pollId}/forward`, {
         target_space_ids: targetSpaceIds,
-      }, {
-        headers: await this.getHeaders(),
       });
       await this.triggerHapticSuccess();
     } catch (error) {
@@ -699,11 +687,9 @@ class CollaborationService {
     }
   }
 
-  async getPollResults(spaceId: string, pollId: string): Promise<any> {
+  async getPollResults(spaceId: string, pollId: string): Promise<Record<string, unknown>> {
     try {
-      const response = await axios.get(`${this.baseURL}/spaces/${spaceId}/polls/${pollId}/results`, {
-        headers: await this.getHeaders(),
-      });
+      const response = await axios.get(`/spaces/${spaceId}/polls/${pollId}/results`);
       return response.data.results;
     } catch (error) {
       console.error('Error fetching poll results:', error);
@@ -713,9 +699,7 @@ class CollaborationService {
 
   async updateUserPreferences(preferences: { custom_tabs?: any[]; theme_preference?: string; locale?: string }): Promise<void> {
     try {
-      await axios.post(`${this.baseURL}/update-preferences`, preferences, {
-        headers: await this.getHeaders(),
-      });
+      await axios.post('/update-preferences', preferences);
     } catch (error) {
       console.error('Error updating user preferences:', error);
       throw error;
@@ -730,9 +714,7 @@ class CollaborationService {
   async deletePoll(spaceId: string, pollId: string): Promise<void> {
     try {
       // Using DELETE HTTP method for deletion
-      const response = await axios.delete(`${this.baseURL}/spaces/${spaceId}/polls/${pollId}`, {
-        headers: await this.getHeaders(),
-      });
+      const response = await axios.delete(`/spaces/${spaceId}/polls/${pollId}`);
 
       // Provide haptic feedback for deletion (warning style)
       await this.triggerHapticWarning();
@@ -741,58 +723,58 @@ class CollaborationService {
 
       return response.data;
     } catch (error: any) {
-      console.error('Error deleting poll:', error.response?.data || error.message);
+      console.error('Error deleting poll:', (error as AxiosError).response?.data || (error as Error).message);
 
       // Handle specific error cases
-      if (error.response?.status === 403) {
+      if ((error as AxiosError).response?.status === 403) {
         throw new Error('You do not have permission to delete this poll');
-      } else if (error.response?.status === 404) {
+      } else if ((error as AxiosError).response?.status === 404) {
         throw new Error('Poll not found or already deleted');
-      } else if (error.response?.status === 400) {
-        throw new Error(error.response.data.message || 'Cannot delete this poll');
+      } else if ((error as AxiosError).response?.status === 400) {
+        throw new Error(((error as AxiosError).response?.data as Record<string, unknown>)?.message as string || 'Cannot delete this poll');
       }
 
-      throw new Error(error.response?.data?.message || 'Failed to delete poll');
+      throw new Error(((error as AxiosError).response?.data as Record<string, unknown>)?.message as string || 'Failed to delete poll');
     }
   }
   // Map to store callbacks by space ID and then by consumer ID (e.g. 'root' or 'message-list')
-  private spaceCallbacks: Map<string, Map<string, { [key: string]: Function }>> = new Map();
+  private spaceCallbacks: Map<string, Map<string, { [key: string]: (data: Record<string, unknown>) => void }>> = new Map();
 
   async subscribeToSpace(spaceId: string, consumerId: string, callbacks: {
-    onSpaceUpdate?: (data: any) => void;
-    onParticipantJoined?: (data: any) => void;
-    onParticipantLeft?: (data: any) => void;
-    onParticipantUpdate?: (data: any) => void;
-    onMessage?: (data: any) => void;
-    onContentUpdate?: (contentState: any) => void;
-    onMagicEvent?: (event: any) => void;
-    onVoiceActivity?: (data: any) => void;
-    onMessageSent?: (data: any) => void;
-    onWebRTCOffer?: (data: any) => void;
-    onWebRTCAnswer?: (data: any) => void;
-    onWebRTCIceCandidate?: (data: any) => void;
-    onWebRTCSignal?: (data: any) => void;
-    onWebRTCJoin?: (data: any) => void;
-    onCallStarted?: (data: any) => void;
-    onCallEnded?: (data: any) => void;
-    onScreenShareStarted?: (data: any) => void;
-    onScreenShareEnded?: (data: any) => void;
-    onMuteStateChanged?: (data: any) => void;
-    onvideoStateChanged?: (data: any) => void;
-    onScreenShareToggled?: (data: any) => void;
-    onMagicTriggered?: (data: any) => void;
-    onPollCreated?: (poll: any) => void;
-    onPollUpdated?: (poll: any) => void;
-    onPollDeleted?: (poll: any) => void;
-    onMessageDeleted?: (data: any) => void;
-    onMessagePinned?: (data: any) => void;
-    onMessageReacted?: (data: any) => void;
-    onMessageReplied?: (data: any) => void;
-    onSpaceRead?: (data: any) => void;
-    onSpaceDeleted?: (data: any) => void;
-    onActivityCreated?: (data: any) => void;
-    onActivityUpdated?: (data: any) => void;
-    onActivityDeleted?: (data: any) => void;
+    onSpaceUpdate?: (data: Record<string, unknown>) => void;
+    onParticipantJoined?: (data: Record<string, unknown>) => void;
+    onParticipantLeft?: (data: Record<string, unknown>) => void;
+    onParticipantUpdate?: (data: Record<string, unknown>) => void;
+    onMessage?: (data: Record<string, unknown>) => void;
+    onContentUpdate?: (contentState: Record<string, unknown>) => void;
+    onMagicEvent?: (event: Record<string, unknown>) => void;
+    onVoiceActivity?: (data: Record<string, unknown>) => void;
+    onMessageSent?: (data: Record<string, unknown>) => void;
+    onWebRTCOffer?: (data: Record<string, unknown>) => void;
+    onWebRTCAnswer?: (data: Record<string, unknown>) => void;
+    onWebRTCIceCandidate?: (data: Record<string, unknown>) => void;
+    onWebRTCSignal?: (data: Record<string, unknown>) => void;
+    onWebRTCJoin?: (data: Record<string, unknown>) => void;
+    onCallStarted?: (data: Record<string, unknown>) => void;
+    onCallEnded?: (data: Record<string, unknown>) => void;
+    onScreenShareStarted?: (data: Record<string, unknown>) => void;
+    onScreenShareEnded?: (data: Record<string, unknown>) => void;
+    onMuteStateChanged?: (data: Record<string, unknown>) => void;
+    onvideoStateChanged?: (data: Record<string, unknown>) => void;
+    onScreenShareToggled?: (data: Record<string, unknown>) => void;
+    onMagicTriggered?: (data: Record<string, unknown>) => void;
+    onPollCreated?: (poll: Record<string, unknown>) => void;
+    onPollUpdated?: (poll: Record<string, unknown>) => void;
+    onPollDeleted?: (poll: Record<string, unknown>) => void;
+    onMessageDeleted?: (data: Record<string, unknown>) => void;
+    onMessagePinned?: (data: Record<string, unknown>) => void;
+    onMessageReacted?: (data: Record<string, unknown>) => void;
+    onMessageReplied?: (data: Record<string, unknown>) => void;
+    onSpaceRead?: (data: Record<string, unknown>) => void;
+    onSpaceDeleted?: (data: Record<string, unknown>) => void;
+    onActivityCreated?: (data: Record<string, unknown>) => void;
+    onActivityUpdated?: (data: Record<string, unknown>) => void;
+    onActivityDeleted?: (data: Record<string, unknown>) => void;
   }) {
     if (!callbacks) {
       console.warn(`📡 subscribeToSpace called without callbacks in space ${spaceId}`);
@@ -834,83 +816,80 @@ class CollaborationService {
       }
 
       // Create handler mappings
-      const handlers: { [key: string]: Function } = {
-        'message-sent': (data: any) => {
+      const handlers: { [key: string]: (data: PusherPayload) => void } = {
+        'message-sent': (data: PusherPayload) => {
           const normalized = { ...data, message: data.chat_message || data.message };
-          callbacks.onMessage?.(normalized);
+          callbacks.onMessage?.(normalized as Record<string, unknown>);
         },
-        'space-message': (data: any) => {
+        'space-message': (data: PusherPayload) => {
           const normalized = { ...data, message: data.chat_message || data.message };
-          callbacks.onMessage?.(normalized);
+          callbacks.onMessage?.(normalized as Record<string, unknown>);
         },
-        'webrtc-signal': (data: any) => callbacks.onWebRTCSignal?.(data),
-        'call-participant-active': (data: any) => callbacks.onWebRTCJoin?.(data),
-        'call-started': (data: any) => {
+        'webrtc-signal': (data: PusherPayload) => callbacks.onWebRTCSignal?.(data as Record<string, unknown>),
+        'call-participant-active': (data: PusherPayload) => callbacks.onWebRTCJoin?.(data as Record<string, unknown>),
+        'call-started': (data: PusherPayload) => {
           const notification = {
             ...data,
             type: data.type || 'call_started',
-            title: data.title || 'Incoming Call',
-            message: data.message && typeof data.message === 'string' ? data.message : `${data.user?.name || 'Someone'} is calling you...`,
-            spaceId: data.space_id,
-            callId: data.call?.id,
-            userId: data.user?.id,
-            avatar: data.profile_photo || data.user?.profile_photo,
+            data: data.data || {},
+            space_id: data.space_id || spaceId,
+            user_id: data.user_id || 0,
+            id: data.id || Date.now().toString(),
           };
-          callbacks.onCallStarted?.(notification);
+          callbacks.onCallStarted?.(notification as Record<string, unknown>);
         },
-        'call-ended': (data: any) => {
+        'call-ended': (data: PusherPayload) => {
           const notification = {
             ...data,
             type: data.type || 'call_ended',
-            title: data.title || 'Call Ended',
-            message: data.message || 'The call has ended',
-            spaceId: data.space_id,
-            callId: data.call?.id,
-            avatar: data.profile_photo || data.user?.profile_photo,
+            data: data.data || {},
+            space_id: data.space_id || spaceId,
+            user_id: data.user_id || 0,
+            id: data.id || Date.now().toString(),
           };
-          callbacks.onCallEnded?.(notification);
+          callbacks.onCallEnded?.(notification as Record<string, unknown>);
         },
-        'magic-triggered': (data: any) => {
-          callbacks.onMagicEvent?.(data);
-          callbacks.onMagicTriggered?.(data);
+        'magic-triggered': (data: PusherPayload) => {
+          callbacks.onMagicEvent?.(data as Record<string, unknown>);
+          callbacks.onMagicTriggered?.(data as Record<string, unknown>);
         },
-        'space-updated': (data: any) => callbacks.onSpaceUpdate?.(data),
-        'space-read': (data: any) => callbacks.onSpaceRead?.(data),
-        'space-deleted': (data: any) => callbacks.onSpaceDeleted?.(data),
-        'participant-joined': (data: any) => {
+        'space-updated': (data: PusherPayload) => callbacks.onSpaceUpdate?.(data as Record<string, unknown>),
+        'space-read': (data: PusherPayload) => callbacks.onSpaceRead?.(data as Record<string, unknown>),
+        'space-deleted': (data: PusherPayload) => callbacks.onSpaceDeleted?.(data as Record<string, unknown>),
+        'participant-joined': (data: PusherPayload) => {
           const normalized = { ...data, user_id: data.user?.id || data.user_id };
-          callbacks.onParticipantJoined?.(normalized);
-          callbacks.onParticipantUpdate?.(normalized);
+          callbacks.onParticipantJoined?.(normalized as Record<string, unknown>);
+          callbacks.onParticipantUpdate?.(normalized as Record<string, unknown>);
         },
-        'participant-left': (data: any) => {
+        'participant-left': (data: PusherPayload) => {
           const normalized = { ...data, user_id: data.user?.id || data.user_id };
-          callbacks.onParticipantLeft?.(normalized);
-          callbacks.onParticipantUpdate?.(normalized);
+          callbacks.onParticipantLeft?.(normalized as Record<string, unknown>);
+          callbacks.onParticipantUpdate?.(normalized as Record<string, unknown>);
         },
-        'message-reacted': (data: any) => callbacks.onMessageReacted?.(data),
-        'message-deleted': (data: any) => callbacks.onMessageDeleted?.(data),
-        'message-pinned': (data: any) => callbacks.onMessagePinned?.(data),
-        'message-replied': (data: any) => callbacks.onMessageReplied?.(data),
-        'content-updated': (data: any) => callbacks.onContentUpdate?.(data.content_state || data),
-        'poll-created': (data: any) => callbacks.onPollCreated?.(data.poll || data),
-        'poll-updated': (data: any) => callbacks.onPollUpdated?.(data.poll || data),
-        'poll-deleted': (data: any) => callbacks.onPollDeleted?.(data.poll_id),
-        'mute-state-changed': (data: any) => callbacks.onMuteStateChanged?.(data),
-        'video-state-changed': (data: any) => callbacks.onvideoStateChanged?.(data),
-        'screen-share-toggled': (data: any) => {
+        'message-reacted': (data: PusherPayload) => callbacks.onMessageReacted?.(data as Record<string, unknown>),
+        'message-deleted': (data: PusherPayload) => callbacks.onMessageDeleted?.(data as Record<string, unknown>),
+        'message-pinned': (data: PusherPayload) => callbacks.onMessagePinned?.(data as Record<string, unknown>),
+        'message-replied': (data: PusherPayload) => callbacks.onMessageReplied?.(data as Record<string, unknown>),
+        'content-updated': (data: PusherPayload) => callbacks.onContentUpdate?.((data.content_state || data) as Record<string, unknown>),
+        'poll-created': (data: PusherPayload) => callbacks.onPollCreated?.((data.poll || data) as Record<string, unknown>),
+        'poll-updated': (data: PusherPayload) => callbacks.onPollUpdated?.((data.poll || data) as Record<string, unknown>),
+        'poll-deleted': (data: PusherPayload) => callbacks.onPollDeleted?.({ poll_id: data.poll_id } as Record<string, unknown>),
+        'mute-state-changed': (data: PusherPayload) => callbacks.onMuteStateChanged?.(data as Record<string, unknown>),
+        'video-state-changed': (data: PusherPayload) => callbacks.onvideoStateChanged?.(data as Record<string, unknown>),
+        'screen-share-toggled': (data: PusherPayload) => {
           if (data.is_sharing) {
-            callbacks.onScreenShareStarted?.(data.user_id?.toString());
+            callbacks.onScreenShareStarted?.({ user_id: data.user_id?.toString() } as Record<string, unknown>);
           } else {
-            callbacks.onScreenShareEnded?.(data.user_id?.toString());
+            callbacks.onScreenShareEnded?.({ user_id: data.user_id?.toString() } as Record<string, unknown>);
           }
-          callbacks.onScreenShareToggled?.(data);
+          callbacks.onScreenShareToggled?.(data as Record<string, unknown>);
         },
         // ✅ ACTIVITY EVENTS
-        'activity-created': (data: any) => callbacks.onActivityCreated?.(data),
-        'activity-updated': (data: any) => callbacks.onActivityUpdated?.(data),
-        'activity-deleted': (data: any) => callbacks.onActivityDeleted?.(data),
-        'pusher:subscription_error': (err: any) => {
-          if (err?.status === 403) {
+        'activity-created': (data: PusherPayload) => callbacks.onActivityCreated?.(data as Record<string, unknown>),
+        'activity-updated': (data: PusherPayload) => callbacks.onActivityUpdated?.(data as Record<string, unknown>),
+        'activity-deleted': (data: PusherPayload) => callbacks.onActivityDeleted?.(data as Record<string, unknown>),
+        'pusher:subscription_error': (err: PusherPayload) => {
+          if (err.status === 403) {
             console.warn(`📡 Channel authorization denied for space: ${spaceId}. User might not be a participant yet. Clearing stale channel object.`);
             this.spaceSubscriptions.delete(spaceId);
           } else {
@@ -972,9 +951,9 @@ class CollaborationService {
     }
   }
 
-  async updateContentState(spaceId: string, contentState: any): Promise<void> {
+  async updateContentState(spaceId: string, contentState: Record<string, unknown>): Promise<void> {
     try {
-      const response = await axios.put(`${this.baseURL}/spaces/${spaceId}/content`, {
+      await axios.put(`${this.baseURL}/spaces/${spaceId}/content`, {
         content_state: contentState,
       }, {
         headers: await this.getHeaders(),
@@ -989,7 +968,7 @@ class CollaborationService {
     }
   }
 
-  async updateCursorPosition(spaceId: string, cursorState: any): Promise<void> {
+  async updateCursorPosition(spaceId: string, cursorState: unknown): Promise<void> {
     try {
       await axios.put(`${this.baseURL}/spaces/${spaceId}/cursor`, {
         cursor_state: cursorState,
@@ -1092,7 +1071,7 @@ class CollaborationService {
 
   // 📞 VOICE/VIDEO CALLS
 
-  async startCall(spaceId: string, callType: 'audio' | 'video' | 'screen_share'): Promise<any> {
+  async startCall(spaceId: string, callType: 'audio' | 'video' | 'screen_share'): Promise<unknown> {
     try {
       const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/start-call`, {
         call_type: callType,
@@ -1107,7 +1086,7 @@ class CollaborationService {
     }
   }
 
-  async joinWebRTCCall(spaceId: string): Promise<any> {
+  async joinWebRTCCall(spaceId: string): Promise<unknown> {
     try {
       const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/call/join`, {}, {
         headers: await this.getHeaders(),
@@ -1119,7 +1098,7 @@ class CollaborationService {
     }
   }
 
-  async sendWebRTCSignal(spaceId: string, signalData: any): Promise<void> {
+  async sendWebRTCSignal(spaceId: string, signalData: unknown): Promise<void> {
     try {
       // ✅ Payload Size Guard: Log warnings for large payloads to help debug Pusher 10KB limits
       const payloadString = JSON.stringify(signalData);
@@ -1206,25 +1185,25 @@ class CollaborationService {
   }
 
   // ─── Incoming Call: Client-side observer pattern ────────────────────────────
-  private incomingCallListeners: Array<(data: any) => void> = [];
+  private incomingCallListeners: Array<(data: unknown) => void> = [];
 
   /**
    * Register a callback to be notified when a `call.started` event arrives on
    * the user's private Pusher channel and concerns a direct space call meant
    * for this user.  Called by PusherService after it receives `call.started`.
    */
-  onIncomingCall(callback: (data: any) => void): void {
+  onIncomingCall(callback: (data: unknown) => void): void {
     if (!this.incomingCallListeners.includes(callback)) {
       this.incomingCallListeners.push(callback);
     }
   }
 
-  offIncomingCall(callback: (data: any) => void): void {
+  offIncomingCall(callback: (data: unknown) => void): void {
     this.incomingCallListeners = this.incomingCallListeners.filter(cb => cb !== callback);
   }
 
   /** Called internally (by PusherService notification handler) */
-  emitIncomingCall(data: any): void {
+  emitIncomingCall(data: unknown): void {
     console.log('📞 Emitting incoming call to', this.incomingCallListeners.length, 'listener(s)');
     this.incomingCallListeners.forEach(cb => {
       try { cb(data); } catch (e) { console.error('incomingCall listener error:', e); }
@@ -1248,7 +1227,7 @@ class CollaborationService {
 
   // 🤖 AI ASSISTANT
 
-  async queryAI(spaceId: string, query: string, context?: any, action?: string): Promise<AIInteraction> {
+  async queryAI(spaceId: string, query: string, context?: Record<string, unknown>, action?: string): Promise<AIInteraction> {
     try {
       if (spaceId === 'global' || !spaceId) {
         console.log('Using mock AI response for global space');
@@ -1275,7 +1254,7 @@ class CollaborationService {
     }
   }
 
-  private getMockAIResponse(query: string, context?: any, action?: string): AIInteraction {
+  private getMockAIResponse(query: string, context?: Record<string, unknown>, action?: string): AIInteraction {
     const mockResponses: Record<string, string> = {
       'brainstorm': "Let's brainstorm! How about we explore: 1) Customer journey mapping, 2) SWOT analysis, 3) Mind mapping our key ideas?",
       'story-continue': "As the team ventured deeper into the digital realm, they discovered that their collective thoughts began to manifest as shimmering structures around them...",
@@ -1314,7 +1293,7 @@ class CollaborationService {
     };
   }
 
-  async getAISuggestions(spaceId: string): Promise<any[]> {
+  async getAISuggestions(spaceId: string): Promise<unknown[]> {
     try {
       const response = await axios.get(`${this.baseURL}/spaces/${spaceId}/ai-suggestions`, {
         headers: await this.getHeaders(),
@@ -1341,9 +1320,7 @@ class CollaborationService {
     }
   }
 
-  // 🔮 MAGIC EVENTS
-
-  async triggerMagicEvent(spaceId: string, eventType: string, data?: any): Promise<MagicEvent> {
+  async triggerMagicEvent(spaceId: string, eventType: string, data?: Record<string, unknown>): Promise<MagicEvent> {
     try {
       const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/magic`, {
         event_type: eventType,
@@ -1397,13 +1374,14 @@ class CollaborationService {
     }
   }
 
-  async addVoiceAnnotation(postId: number, audioUri: string, timestamp?: number, note?: string): Promise<any> {
+  async addVoiceAnnotation(postId: number, audioUri: string, timestamp?: number, note?: string): Promise<unknown> {
     try {
       const formData = new FormData();
       formData.append('audio_file', {
         uri: audioUri,
         type: 'audio/m4a',
         name: `voice-annotation-${Date.now()}.m4a`,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
 
       if (timestamp) formData.append('timestamp', timestamp.toString());
@@ -1426,7 +1404,7 @@ class CollaborationService {
     }
   }
 
-  async createPostBranch(postId: number, changes: any, title: string, description?: string): Promise<any> {
+  async createPostBranch(postId: number, changes: Record<string, unknown>, title: string, description?: string): Promise<Record<string, unknown>> {
     try {
       const response = await axios.post(`${this.baseURL}/posts/${postId}/create-branch`, {
         title,
@@ -1447,8 +1425,8 @@ class CollaborationService {
   }
 
   async makeStoryCollaborative(storyId: number, options: {
-    branch_options?: any[];
-    interactive_elements?: any[];
+    branch_options?: unknown[];
+    interactive_elements?: unknown[];
     space_type?: string;
   }): Promise<CollaborationSpace> {
     try {
@@ -1466,7 +1444,7 @@ class CollaborationService {
     }
   }
 
-  async addToStoryChain(storyId: number, mediaPath: string, caption?: string, branchChoice?: string): Promise<any> {
+  async addToStoryChain(storyId: number, mediaPath: string, caption?: string, branchChoice?: string): Promise<unknown> {
     try {
       const response = await axios.post(`${this.baseURL}/stories/${storyId}/add-to-chain`, {
         media_path: mediaPath,
@@ -1497,10 +1475,10 @@ class CollaborationService {
     // Do nothing - we use PusherService
   }
 
-  private broadcastContentUpdate(spaceId: string, contentState: any) {
+  private broadcastContentUpdate(spaceId: string, contentState: unknown) {
     const channel = this.spaceSubscriptions.get(spaceId);
     if (channel) {
-      channel.trigger('client-content-update', {
+      channel.trigger?.('client-content-update', {
         content_state: contentState,
         updated_at: new Date().toISOString(),
         user_id: this.getCurrentUserId(),
@@ -1508,10 +1486,10 @@ class CollaborationService {
     }
   }
 
-  private broadcastCursorUpdate(spaceId: string, cursorState: any) {
+  private broadcastCursorUpdate(spaceId: string, cursorState: unknown) {
     const channel = this.spaceSubscriptions.get(spaceId);
     if (channel) {
-      channel.trigger('client-cursor-update', {
+      channel.trigger?.('client-cursor-update', {
         cursor_state: cursorState,
         user_id: this.getCurrentUserId(),
         timestamp: Date.now(),
@@ -1522,7 +1500,7 @@ class CollaborationService {
   private broadcastScreenShareState(spaceId: string, isSharing: boolean) {
     const channel = this.spaceSubscriptions.get(spaceId);
     if (channel) {
-      channel.trigger('client-screen-share', {
+      channel.trigger?.('client-screen-share', {
         is_sharing: isSharing,
         user_id: this.getCurrentUserId(),
         timestamp: Date.now(),
@@ -1539,11 +1517,12 @@ class CollaborationService {
   async checkForEmergence(spaceId: string): Promise<boolean> {
     try {
       const space = await this.fetchSpaceDetails(spaceId);
-      const { activity_metrics, participants_count, evolution_level } = space;
+      const { activity_metrics, participants_count } = space;
 
+      const ametrics = activity_metrics as any;
       const conditions = [
-        participants_count >= 3 && (activity_metrics?.energy_level || 0) > 70,
-        activity_metrics?.total_interactions > 50,
+        participants_count >= 3 && (ametrics?.energy_level || 0) > 70,
+        ametrics?.total_interactions > 50,
         new Date().getHours() >= 22 || new Date().getHours() <= 6,
       ];
 
@@ -1562,7 +1541,7 @@ class CollaborationService {
     }
   }
 
-  async enhancePostWithAI(postId: number): Promise<any> {
+  async enhancePostWithAI(postId: number): Promise<unknown> {
     try {
       const response = await axios.get(`${this.baseURL}/ai/posts/${postId}/enhance`, {
         headers: await this.getHeaders(),
@@ -1575,7 +1554,7 @@ class CollaborationService {
     }
   }
 
-  async suggestStoryContinuation(storyId: number): Promise<any> {
+  async suggestStoryContinuation(storyId: number): Promise<unknown> {
     try {
       const response = await axios.get(`${this.baseURL}/ai/stories/${storyId}/continue`, {
         headers: await this.getHeaders(),
@@ -1642,7 +1621,7 @@ class CollaborationService {
     duration_minutes?: number;
     max_participants?: number;
     participant_ids?: number[];
-    metadata?: any;
+    metadata?: unknown;
   }): Promise<CollaborativeActivity> {
     try {
       const response = await axios.post(`${this.baseURL}/collaborative-activities`, activityData, {
@@ -1658,7 +1637,7 @@ class CollaborationService {
     }
   }
 
-  async updateCollaborativeActivity(activityId: number, activityData: any): Promise<CollaborativeActivity> {
+  async updateCollaborativeActivity(activityId: number, activityData: unknown): Promise<CollaborativeActivity> {
     try {
       const response = await axios.put(`${this.baseURL}/collaborative-activities/${activityId}`, activityData, {
         headers: await this.getHeaders(),
@@ -1689,14 +1668,14 @@ class CollaborationService {
       return response.data;
     } catch (error: any) {
       console.error('Error deleting collaborative activity:', error.response?.data || error.message);
-      
+
       const errorMessage = error.response?.data?.message || 'Failed to delete activity';
       if (error.response?.status === 403) {
         throw new Error('You do not have permission to delete this activity');
       } else if (error.response?.status === 404) {
         throw new Error('Activity not found');
       }
-      
+
       throw new Error(errorMessage);
     }
   }
@@ -1705,7 +1684,7 @@ class CollaborationService {
     status: 'proposed' | 'active' | 'completed' | 'cancelled' | 'archived' | 'scheduled';
     notes?: string;
     actual_duration?: number;
-    outcomes?: any;
+    outcomes?: unknown;
   }): Promise<CollaborativeActivity> {
     try {
       const response = await axios.post(`${this.baseURL}/collaborative-activities/${activityId}/status`, data, {
@@ -1739,7 +1718,7 @@ class CollaborationService {
     }
   }
 
-  async getSpaceActivityStatistics(spaceId: string): Promise<any> {
+  async getSpaceActivityStatistics(spaceId: string): Promise<unknown> {
     try {
       const response = await axios.get(`${this.baseURL}/collaborative-activities/space/${spaceId}/statistics`, {
         headers: await this.getHeaders(),
@@ -1861,9 +1840,9 @@ END:VCALENDAR`;
     content: string;
     type?: 'text' | 'image' | 'video' | 'file' | 'voice' | 'poll' | 'album' | 'post_share' | 'story_share' | 'location' | 'live_location';
     file_path?: string;
-    metadata?: any;
+    metadata?: unknown;
     reply_to_id?: string;
-  }): Promise<any> {
+  }): Promise<unknown> {
     try {
       const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/send-message`, messageData, {
         headers: await this.getHeaders(),
@@ -1902,7 +1881,7 @@ END:VCALENDAR`;
     }
   }
 
-  async forwardSpaceMessages(sourceSpaceId: string, messageIds: string[], destinationSpaceId: string): Promise<any> {
+  async forwardSpaceMessages(sourceSpaceId: string, messageIds: string[], destinationSpaceId: string): Promise<unknown> {
     try {
       const response = await axios.post(`${this.baseURL}/spaces/${sourceSpaceId}/messages/forward`, {
         message_ids: messageIds,
@@ -1917,7 +1896,7 @@ END:VCALENDAR`;
     }
   }
 
-  async getUserSpaces(userId: number): Promise<any> {
+  async getUserSpaces(userId: number): Promise<unknown> {
     try {
       const response = await axios.get(`${this.baseURL}/users/${userId}/spaces`, {
         headers: await this.getHeaders(),
@@ -1929,7 +1908,7 @@ END:VCALENDAR`;
     }
   }
 
-  async reactToSpaceMessage(spaceId: string, messageId: string, emoji: string): Promise<any> {
+  async reactToSpaceMessage(spaceId: string, messageId: string, emoji: string): Promise<unknown> {
     try {
       const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/messages/${messageId}/react`, {
         emoji,
@@ -1943,7 +1922,7 @@ END:VCALENDAR`;
     }
   }
 
-  async pinSpaceMessage(spaceId: string, messageId: string): Promise<any> {
+  async pinSpaceMessage(spaceId: string, messageId: string): Promise<Record<string, unknown>> {
     try {
       const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/messages/${messageId}/pin`, {}, {
         headers: await this.getHeaders(),
@@ -1971,7 +1950,7 @@ END:VCALENDAR`;
     }
   }
 
-  async getMessageReactions(messageId: string): Promise<any[]> {
+  async getMessageReactions(messageId: string): Promise<Record<string, unknown>[]> {
     try {
       const response = await axios.get(`${this.baseURL}/messages/${messageId}/reactions`, {
         headers: await this.getHeaders(),
@@ -1984,13 +1963,13 @@ END:VCALENDAR`;
     }
   }
 
-  getGroupedReactions(post: any, userId?: number) {
-    const reactions = post?.reactions || [];
+  getGroupedReactions(post: Record<string, unknown>) {
+    const reactions = (post['reactions'] as { reaction: string, user_id?: number }[]) || [];
     if (!reactions || !Array.isArray(reactions)) return [];
 
     const groups: { [key: string]: { emoji: string, count: number, user_ids: number[] } } = {};
 
-    reactions.forEach((r: any) => {
+    reactions.forEach((r: { reaction: string, user_id?: number }) => {
       if (!groups[r.reaction]) {
         groups[r.reaction] = { emoji: r.reaction, count: 0, user_ids: [] };
       }
@@ -2007,7 +1986,7 @@ END:VCALENDAR`;
     title?: string;
     description?: string;
     space_type?: string;
-    settings?: any;
+    settings?: Record<string, unknown>;
     ai_personality?: string;
     ai_capabilities?: string[];
   }): Promise<CollaborationSpace> {
@@ -2086,6 +2065,7 @@ END:VCALENDAR`;
         uri: photoUri,
         type: 'image/jpeg',
         name: `space-${spaceId}-${Date.now()}.jpg`,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
 
       const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/photo`, formData, {
@@ -2227,10 +2207,10 @@ END:VCALENDAR`;
   async sendMessageToUser(userId: number, data: {
     content: string,
     type: string,
-    metadata?: any,
+    metadata?: Record<string, unknown>,
     file_path?: string,
     mime_type?: string
-  }): Promise<any> {
+  }): Promise<unknown> {
     try {
       const response = await axios.post(`${this.baseURL}/messages/forward-to-user`, {
         target_user_id: userId,
@@ -2244,7 +2224,7 @@ END:VCALENDAR`;
       throw error;
     }
   }
-  async getOrCreateDirectSpace(userId: number | string): Promise<any> {
+  async getOrCreateDirectSpace(userId: number | string): Promise<Record<string, unknown>> {
     try {
       const response = await axios.get(`${this.baseURL}/spaces/direct/${userId}`, {
         headers: await this.getHeaders(),

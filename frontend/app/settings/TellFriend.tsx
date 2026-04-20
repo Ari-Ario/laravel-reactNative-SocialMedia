@@ -186,7 +186,7 @@ export default function TellFriendScreen() {
     const handleSocialShare = async (platform: SocialLink, targetContact?: Contact) => {
         try {
             let url = platform.url;
-            let message = customMessage;
+            const message = customMessage;
 
             // Platform-specific logic for prefilling and app detection
             if (platform.platform === 'WhatsApp') {

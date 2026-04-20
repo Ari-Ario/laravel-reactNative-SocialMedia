@@ -3,8 +3,6 @@ import React, { memo, useCallback, useMemo } from 'react';
 import {
     TouchableOpacity,
     Text,
-    View,
-    StyleSheet,
     ActivityIndicator,
     GestureResponderEvent,
     Platform,
@@ -12,11 +10,10 @@ import {
     StyleProp,
     ViewStyle,
     TextStyle,
+    StyleSheet as RNStyleSheet,
+    ShadowStyleIOS
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useColorScheme } from 'react-native';
-import { Colors } from '@/constants/Colors';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { createShadow } from '@/utils/styles';
 
@@ -149,20 +146,13 @@ export const IconButton = memo<IconButtonProps>(({
     accessibilityLabel,
     accessibilityHint,
 
-    // Performance
-    throttleMs = 300,
-    debounceMs = 0,
-
     // Style overrides
     style,
     textStyle,
     containerStyle,
 
-    // Test ID
     testID,
 }) => {
-    // Safe area for notch handling (only if needed)
-    const insets = useSafeAreaInsets();
 
     // Memoize derived styles for performance
     const variantStyle = useMemo(() => VARIANT_STYLES[variant], [variant]);
@@ -170,7 +160,6 @@ export const IconButton = memo<IconButtonProps>(({
 
     // Memoize dynamic styles
     const dynamicStyles = useMemo(() => {
-        const isTransparent = variant === 'transparent' || variant === 'ghost';
 
         return {
             container: {
@@ -179,11 +168,11 @@ export const IconButton = memo<IconButtonProps>(({
                 borderWidth: variant === 'outline' ? 1 : 0,
                 borderRadius,
                 opacity: disabled ? 0.5 : 1,
-                width: (fullWidth ? '100%' : undefined) as any,
+                width: fullWidth ? '100%' : undefined,
                 ...sizeConfig.container,
-                flexDirection: (iconPosition === 'left' ? 'row' :
+                flexDirection: iconPosition === 'left' ? 'row' :
                     iconPosition === 'right' ? 'row-reverse' :
-                        iconPosition === 'top' ? 'column' : 'column-reverse') as any,
+                        iconPosition === 'top' ? 'column' : 'column-reverse',
                 alignItems: 'center' as const,
                 justifyContent: 'center' as const,
             },
@@ -259,8 +248,8 @@ export const IconButton = memo<IconButtonProps>(({
         } catch (error) {
             handleButtonError(error as Error, 'renderContent');
             return null;
-        }
-    }, [loading, icon, title, dynamicStyles, textStyle, variantStyle.text]);
+        };
+    }, [loading, icon, title, dynamicStyles, textStyle, variantStyle.text, textColor]);
 
     // Determine accessibility label
     const accessibilityLabelValue = useMemo(() => {
@@ -288,7 +277,7 @@ export const IconButton = memo<IconButtonProps>(({
 });
 
 // Base styles (static for performance)
-const styles = StyleSheet.create({
+const styles = {
     baseContainer: {
         // iOS shadow for depth (only when not transparent)
         ...createShadow({
@@ -299,7 +288,7 @@ const styles = StyleSheet.create({
             elevation: 2,
         }),
     },
-});
+};
 
 // Utility HOC for common button patterns
 export const withIconButton = <P extends object>(
@@ -332,7 +321,7 @@ export const CloseButton = memo((props: Partial<IconButtonProps>) => (
 
 export const BackButton = memo((props: Partial<IconButtonProps>) => {
     const { colors } = useAppTheme();
-    
+
     return (
         <IconButton
             icon="chevron-back"

@@ -18,7 +18,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 // Conditionally import DateTimePicker only on native platforms
-let DateTimePicker: any = null;
+const DateTimePicker: any = null;
 // if (Platform.OS !== 'web') {
 //     DateTimePicker = require('@react-native-community/datetimepicker').default;
 // }

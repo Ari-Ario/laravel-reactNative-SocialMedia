@@ -1,13 +1,11 @@
-import { Platform, View, Text, StyleSheet, TouchableOpacity, Image, Dimensions, Animated, ActivityIndicator, TextInput, ScrollView, Keyboard, Modal, Alert } from 'react-native';
+import { Platform, View, Text, StyleSheet, TouchableOpacity, Image, Dimensions, Animated, ActivityIndicator, TextInput, ScrollView, Keyboard, Alert, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlobalStyles } from '@/styles/GlobalStyles';
-import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState, useMemo, useContext } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { markStoryAsViewed, fetchUserStories, deleteStory } from '@/services/StoryService';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
-import PusherService from '@/services/PusherService';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { deleteReportByTarget } from '@/services/ReportService';
 import { VideoView, useVideoPlayer } from 'expo-video';
@@ -27,9 +25,10 @@ import AnimatedComponent, {
   SlideInDown,
   SlideOutDown,
   withSequence,
+  withDelay,
 } from 'react-native-reanimated';
 import { AnimatePresence } from 'moti';
-import { GestureHandlerRootView, GestureDetector, Gesture, TapGestureHandlerEventPayload } from 'react-native-gesture-handler';
+import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useModal } from '@/context/ModalContext';
 import AuthContext from '@/context/AuthContext';
 import { useStoryStore } from '@/stores/storyStore';
@@ -37,29 +36,13 @@ import { useCollaborationStore } from '@/stores/collaborationStore';
 import ReportPost from './ReportPost';
 import { useToastStore } from '@/stores/toastStore';
 import { useReportedContentStore } from '@/stores/reportedContentStore';
-import { createShadow, createTextShadow } from '@/utils/styles';
+import { createTextShadow } from '@/utils/styles';
 
 const { width, height } = Dimensions.get('window');
 const STORY_DURATION = 10000; // 10 seconds
 const LONG_PRESS_DURATION = 300;
 
-interface Story {
-  id: number;
-  userId: number;
-  media_path: string;
-  type: 'photo' | 'video';
-  caption?: string;
-  stickers?: any;
-  location?: any;
-  viewed: boolean;
-  created_at: string;
-  views_count?: number;
-  user: {
-    id: number;
-    name: string;
-    profile_photo: string;
-  };
-}
+// Local Story interface removed in favor of import from storyStore
 
 interface StoryViewerProps {
   userId: number;
@@ -69,21 +52,17 @@ interface StoryViewerProps {
   onPrevUser: (currentIndex?: number) => void;
 }
 
-const StoryVideoContent = ({ 
-  uri, 
-  paused, 
-  isMuted, 
-  volume, 
-  onVolumeChange 
-}: { 
-  uri: string, 
-  paused: boolean, 
-  isMuted: boolean, 
-  volume: number, 
-  onVolumeChange: (v: number) => void 
+const StoryVideoContent = ({
+  uri,
+  paused,
+  isMuted,
+  volume
+}: {
+  uri: string,
+  paused: boolean,
+  isMuted: boolean,
+  volume: number
 }) => {
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-  const isMobileWeb = Platform.OS === 'web' && windowWidth < 768;
 
   const player = useVideoPlayer(uri, (p) => {
     p.loop = true;
@@ -116,8 +95,10 @@ const StoryVideoContent = ({
       <VideoView
         player={player}
         style={[StyleSheet.absoluteFill, { maxWidth: '100%', maxHeight: '100%' }]}
-        contentFit="contain"
+        contentFit="cover"
         nativeControls={false}
+        allowsFullscreen={false}
+        allowsPictureInPicture={false}
         allowsVideoFrameAnalysis={false}
       />
     </View>
@@ -135,7 +116,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
     return group ? group.stories : [];
   }, [storyGroups, userId]);
 
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
   const isMobileWeb = Platform.OS === 'web' && windowWidth < 768;
 
   const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
@@ -148,7 +129,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
   const [loading, setLoading] = useState(true);
   const [paused, setPaused] = useState(false);
   const [isMuted, setIsMuted] = useState(isMobileWeb); // Default to muted on mobile web for autoplay
-  const [showLocationPopup, setShowLocationPopup] = useState(false);
+  const [showLocationPopup] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -157,12 +138,11 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
   const [volume, setVolume] = useState(1);
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
-  const [deleteStatus, setDeleteStatus] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
+  const [deleteStatus] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
   const [isTyping, setIsTyping] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
 
   const progressAnim = useRef(new Animated.Value(0)).current;
-  const videoRef = useRef<any>(null);
   const replyInputRef = useRef<TextInput>(null);
   const hasInitialized = useRef(false);
   const { openModal } = useModal();
@@ -193,10 +173,10 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
   // Initialize current index based on initialStoryId
   useEffect(() => {
     if (stories.length > 0 && !hasInitialized.current) {
-      const initialIndex = stories.findIndex((story: any) => story.id === initialStoryId);
-      const firstUnviewedIndex = stories.findIndex((story: any) => !story.viewed);
+      const initialIndex = stories.findIndex((story) => story.id === initialStoryId);
+      const firstUnviewedIndex = stories.findIndex((story) => !story.viewed);
 
-      setCurrentStoryIndex(prev => {
+      setCurrentStoryIndex(() => {
         // 1. Resume from the first story they haven't seen (highest priority for "Resume" behavior)
         if (firstUnviewedIndex !== -1) {
           hasInitialized.current = true;
@@ -334,7 +314,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
     return () => {
       progressAnim.stopAnimation();
     };
-  }, [currentStoryIndex, stories, paused, showLocationPopup, showShareModal, showReactions, isLongPressing, showInfo, loading, progressAnim, handleNext]);
+  }, [currentStoryIndex, stories, paused, showLocationPopup, showShareModal, showReactions, isLongPressing, showInfo, loading, progressAnim, handleNext, isTyping]);
 
   // Handle remote deletion by observing store changes
   useEffect(() => {
@@ -360,7 +340,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
     transform: [{ translateY: reactionPanelY.value }],
   }));
 
-  const handleTap = useCallback((event: any) => {
+  const handleTap = useCallback((event: { nativeEvent: { pageX: number } }) => {
     const { pageX } = event.nativeEvent;
     const screenThird = width / 3;
 
@@ -378,7 +358,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
     safeHaptics.impact();
   }, [onClose]);
 
-  const handleLocationPress = useCallback((location: any) => {
+  const handleLocationPress = useCallback((location: { latitude: number; longitude: number; name: string }) => {
     openModal('location', { location });
     setPaused(true);
     safeHaptics.impact();
@@ -418,7 +398,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
 
         await collaborationService.sendMessage(spaceId, {
           content: currentStory.caption || 'Shared a story',
-          type: 'story_share' as any,
+          type: 'story_share' as 'text' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'contact' | 'story_share',
           metadata
         });
 
@@ -441,7 +421,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
     } finally {
       setIsSendingReply(false);
     }
-  }, [replyText, currentStory, replyButtonScale]);
+  }, [replyText, currentStory, replyButtonScale, user?.id, showToast]);
 
   const toggleMute = useCallback(() => {
     setIsMuted(prev => !prev);
@@ -510,7 +490,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
         ]
       );
     }
-  }, [currentStory, stories, currentStoryIndex, onClose]);
+  }, [currentStory, stories, currentStoryIndex, onClose, handleNext, handlePrev, showToast]);
 
   const handleVolumeChange = useCallback((newVolume: number) => {
     setVolume(newVolume);
@@ -544,7 +524,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
   }, [currentStory?.stickers]);
 
   const backgroundColors = useMemo(() => {
-    const bgMetadata = storyStickers.find((s: any) => s.type === 'background');
+    const bgMetadata = storyStickers.find((s: { type: string; colors?: string[]; gradient?: string[] }) => s.type === 'background');
     return bgMetadata ? (bgMetadata.colors || bgMetadata.gradient) : null;
   }, [storyStickers]);
 
@@ -663,7 +643,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                         await deleteReportByTarget('story', currentStory.id);
                         useReportedContentStore.getState().removeReportedItem('story', currentStory.id);
                         showToast('Report removed', 'success');
-                      } catch (error) {
+                      } catch {
                         showToast('Failed to remove report', 'error');
                       }
                     } else {
@@ -721,7 +701,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
               )}
 
               {/* Stickers */}
-              {storyStickers.filter((s: any) => s.type !== 'background').map((sticker: any, index: number) => (
+              {storyStickers.filter((s: { type: string }) => s.type !== 'background').map((sticker: { id: string | number; type: string; x: number; y: number; scale?: number; rotation?: number; text?: string; color?: string; fontSize?: number; fontFamily?: string; location?: { name: string; latitude: number; longitude: number }; feeling?: { emoji: string; text: string } }, index: number) => (
                 <AnimatedComponent.View
                   key={sticker.id || index}
                   entering={FadeIn.delay(index * 100).springify()}
@@ -991,7 +971,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
             targetId={currentStory.id}
             type="story"
             onClose={() => setShowReportModal(false)}
-            onReportSubmitted={(reportId) => {
+            onReportSubmitted={() => {
               useToastStore.getState().showToast('Report Submitted: Our AI is reviewing this story.', 'success');
               setShowReportModal(false);
             }}

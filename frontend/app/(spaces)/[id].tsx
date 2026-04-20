@@ -492,22 +492,30 @@ const SpaceDetailScreen = () => {
         // chat real-time granular updates
         onMessage: (message) => {
           console.log('💬 New message (onMessage):', message);
+          const newMsg = message.message || message;
+          
           setSpace((prev: any) => {
             const msgs = prev?.content_state?.messages || [];
-            // message might be nested under { message: {...} } or raw
-            const newMsg = message.message || message;
             
             // Avoid duplicates
             if (msgs.some((m: any) => m.id === newMsg.id)) {
               return prev;
             }
             
+            const updatedContentState = {
+              ...prev?.content_state,
+              messages: [newMsg, ...msgs]
+            };
+
+            // ✅ Sync with global store to trigger list re-ordering
+            useCollaborationStore.getState().updateSpace(id as string, {
+              updated_at: new Date().toISOString(),
+              content_state: updatedContentState
+            });
+            
             return {
               ...prev,
-              content_state: {
-                ...prev?.content_state,
-                messages: [newMsg, ...msgs] // Prepend for standard chat list order
-              }
+              content_state: updatedContentState
             };
           });
         },
@@ -1583,13 +1591,15 @@ const SpaceDetailScreen = () => {
             return null;
           })()}
 
-          {/* Share Button (Primary for channels) */}
-          <TouchableOpacity
-            style={styles.headerButton}
-            onPress={handleShare}
-          >
-            <Ionicons name="share-social-outline" size={24} color={colors.tint} />
-          </TouchableOpacity>
+          {/* Share Button (Primary for channels and general spaces) */}
+          {(space?.space_type === 'general' || space?.space_type === 'channel') && (
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={handleShare}
+            >
+              <Ionicons name="share-social-outline" size={24} color={colors.tint} />
+            </TouchableOpacity>
+          )}
 
           {/* Priority 1: Add People (only for non-direct spaces, and if allowed) */}
           {!isDirectChat && space?.space_type !== 'channel' && (canInvite || myParticipation?.role === 'owner') && (
@@ -1714,11 +1724,11 @@ const SpaceDetailScreen = () => {
             label: 'View Participants',
             onPress: () => setShowParticipantsModal(true),
           } as MenuItem,
-          {
+          ...((space?.space_type === 'general' || space?.space_type === 'channel') ? [{
             icon: 'share-social-outline',
             label: 'Share Space',
             onPress: handleShare,
-          } as MenuItem,
+          } as MenuItem] : []),
           ...(canEditSpace ? [{
             icon: 'shield-outline',
             label: 'Manage Admins',
@@ -2228,7 +2238,7 @@ const SpaceDetailScreen = () => {
 };
 
 
-function getStyles(colors: any, activeScheme: string) {
+function getStyles(colors: any, activeScheme: string): any {
   return StyleSheet.create({
   container: {
     flex: 1,

@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { BackButton } from '@/components/ui/IconButton';
-import { createShadow } from '../utils/styles';
+import { createShadow, createPointerEvents } from '../utils/styles';
 
 const { width, height } = Dimensions.get('window');
 

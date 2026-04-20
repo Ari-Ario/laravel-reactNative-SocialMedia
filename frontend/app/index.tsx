@@ -1,58 +1,21 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
 import { Link, useRouter } from 'expo-router';
-import WelcomeAlphabet from '@/components/StartPageAlphabet.js';
-import 'expo-router/entry';
-import AuthContext from '@/context/AuthContext';
-import { loadUser } from '@/services/AuthService';
-import { getToken } from '@/services/TokenService';
-import { useState, useEffect } from 'react';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 const WelcomeScreen = () => {
   const router = useRouter();
+  const { isAuthenticated } = useAuthStore();
+
   const portfolioLink = () => {
     Linking.openURL('https://mostafanejad.ch/');
   };
 
-  const [user, setUser] = useState(null);
-
-  const [isReady, setIsReady] = useState(false);
-
-  useEffect(() => {
-    async function prepare() {
-      try {
-        const token = await getToken();
-
-        if (token) {
-          const userData = await loadUser();
-          if (userData) {
-            console.log("👋 Authenticated user detected on Welcome Screen, redirecting to home...");
-            router.replace('/(tabs)');
-            return;
-          }
-        }
-      } catch (error) {
-        console.log("Auth check error on index:", error);
-      } finally {
-        setIsReady(true);
-      }
-    }
-    prepare();
-  }, []);
-
-  if (!isReady) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        {/* <ActivityIndicator size="large" /> */}
-        <Text>Loading</Text>
-      </View>
-    );
-  }
+  // RootLayout handles the redirect if authenticated.
+  // This screen only shows if RootLayout decides to show it.
 
   return (
     <View style={styles.container}>
-      {/* <WelcomeAlphabet style={styles.welcome} /> */}
-      {/* <Image source={{ uri: welcome_image }} style={styles.welcome} /> */}
       <Text style={styles.headline}>Welcome to zmzir</Text>
       <Text style={styles.description}>
         Read our{' '}
@@ -65,20 +28,29 @@ const WelcomeScreen = () => {
         </Text>
         .
       </Text>
-      <Link href={'/LoginScreen'} asChild>
-        <TouchableOpacity style={styles.button}>
-          <Text style={styles.buttonText}>Agree & Continue Login</Text>
-        </TouchableOpacity>
-      </Link>
+      
+      {!isAuthenticated ? (
+        <>
+          <Link href={'/LoginScreen'} asChild>
+            <TouchableOpacity style={styles.button}>
+              <Text style={styles.buttonText}>Agree & Continue Login</Text>
+            </TouchableOpacity>
+          </Link>
 
-      <Link href={'/RegisterScreen'} asChild>
-        <TouchableOpacity style={styles.button}>
-          <Text style={styles.NotRegistered}>
-            Not Registered!{' '}
-          </Text>
-          <Text style={styles.buttonText}>Create Account</Text>
+          <Link href={'/RegisterScreen'} asChild>
+            <TouchableOpacity style={styles.button}>
+              <Text style={styles.NotRegistered}>
+                Not Registered!{' '}
+              </Text>
+              <Text style={styles.buttonText}>Create Account</Text>
+            </TouchableOpacity>
+          </Link>
+        </>
+      ) : (
+        <TouchableOpacity style={styles.button} onPress={() => router.replace('/(tabs)')}>
+          <Text style={styles.buttonText}>Continue to App</Text>
         </TouchableOpacity>
-      </Link>
+      )}
 
       <TouchableOpacity style={styles.footer} onPress={portfolioLink}>
         <Text style={styles.developedBy}>
@@ -96,13 +68,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     backgroundColor: '#fff',
-  },
-  welcome: {
-    width: '100%',
-    height: 300,
-    borderRadius: 60,
-    marginBottom: 80,
-    maxWidth: 500,
   },
   headline: {
     fontSize: 24,

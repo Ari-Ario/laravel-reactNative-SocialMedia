@@ -1,5 +1,5 @@
 // components/ChatScreen/UnifiedSpace.tsx
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,9 @@ import { VideoView } from 'expo-video';
 import { usePlatformCamera } from '@/hooks/usePlatformCamera';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
+import axios from 'axios';
+import { useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
+import pusher from 'pusher-js';
 
 interface UnifiedSpaceProps {
   spaceId: string;

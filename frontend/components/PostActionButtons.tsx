@@ -39,7 +39,7 @@ interface PostActionButtonsProps {
   isDark?: boolean;
 }
 
-export const PostActionButtons = ({
+const PostActionButtonsBase = ({
   post,
   onReact,
   onDeleteReaction,
@@ -206,6 +206,9 @@ export const PostActionButtons = ({
     </View>
   );
 };
+
+export const PostActionButtons = React.memo(PostActionButtonsBase);
+PostActionButtons.displayName = 'PostActionButtons';
 
 const styles = StyleSheet.create({
   actionBar: {

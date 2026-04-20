@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import getApiBaseImage from '@/services/getApiBaseImage';
@@ -17,8 +18,7 @@ interface AvatarProps {
 
 /**
  * High-performance Avatar component with local initials fallback.
- * Handles 404 image errors without external dependencies.
- * Works on both Web and Mobile.
+ * Uses expo-image for superior caching and performance.
  */
 const Avatar: React.FC<AvatarProps> = ({
   source,
@@ -70,9 +70,12 @@ const Avatar: React.FC<AvatarProps> = ({
     }
     if (source && String(source).trim() !== 'null' && !imgError) {
       return (
-        <Image
-          source={{ uri: resolveUri(source), cache: 'force-cache' }}
+        <ExpoImage
+          source={{ uri: resolveUri(source) }}
           style={{ width: size, height: size, borderRadius: size / 2 }}
+          contentFit="cover"
+          transition={200}
+          cachePolicy="disk"
           onError={() => setImgError(true)}
         />
       );

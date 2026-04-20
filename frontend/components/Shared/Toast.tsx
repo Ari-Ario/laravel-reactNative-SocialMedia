@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useToastStore } from '@/stores/toastStore';
 
 export const Toast = () => {
-  const { message, visible, type, hideToast } = useToastStore();
+  const { message, visible, type } = useToastStore();
   const { width } = useWindowDimensions();
 
   const getIcon = () => {

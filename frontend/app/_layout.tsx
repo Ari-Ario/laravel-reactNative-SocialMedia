@@ -5,31 +5,29 @@ import { useFonts } from 'expo-font';
 import { useRouter, Redirect, Stack } from 'expo-router';
 import Head from 'expo-router/head';
 import * as SplashScreen from 'expo-splash-screen';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useEffect, useRef, useState } from 'react';
 import 'react-native-reanimated';
 import AuthContext from '@/context/AuthContext';
-import { Platform, ActivityIndicator, View, Text, StatusBar } from 'react-native';
+import { Platform, ActivityIndicator, View, StatusBar } from 'react-native';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { loadUser } from '@/services/AuthService';
-import { getToken, setToken } from '@/services/TokenService';
-import LoginScreen from './LoginScreen';
-import RegisterScreen from './RegisterScreen';
-import VerificationScreen from './VerificationScreen';
+import { useAuthStore } from '@/stores/useAuthStore';
+import AppInitializer from '@/services/AppInitializer';
 import { usePathname, useLocalSearchParams, useSegments } from 'expo-router';
 import { ProfileViewProvider } from '@/context/ProfileViewContext';
 import { GlobalModals } from '@/components/GlobalModals';
 import { ModalProvider } from '@/context/ModalContext';
 import ModalManager from '@/components/ModalManager';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Toast } from '@/components/Shared/Toast';
 import { CallProvider } from '@/context/CallContext';
 import { RootCallOverlay } from '@/components/ChatScreen/RootCallOverlay';
 import { IncomingCallModal } from '@/components/ChatScreen/IncomingCallModal';
 import { useIncomingCallBridge } from '@/hooks/useIncomingCallBridge';
+import { useNotificationStore } from '@/stores/notificationStore';
+import { NotificationToast } from '@/components/Notifications/NotificationToast';
 import { setAudioModeAsync } from 'expo-audio';
+
 
 // Set global audio mode for call compatibility
 if (Platform.OS !== 'web') {
@@ -49,29 +47,44 @@ function IncomingCallBridge() {
   return null;
 }
 
+/** Isolated component to handle notification toasts without re-rendering RootLayout */
+function NotificationToastBridge() {
+  const currentToast = useNotificationStore(state => state.currentToastNotification);
+  const setCurrentToast = useNotificationStore(state => state.setCurrentToastNotification);
+  const setNotificationPanelVisible = useNotificationStore(state => state.setNotificationPanelVisible);
+
+  const handleHideToast = () => setCurrentToast(null);
+  const handleToastPress = () => {
+    setNotificationPanelVisible(true);
+    handleHideToast();
+  };
+
+  return (
+    <NotificationToast
+      notification={currentToast}
+      onPress={handleToastPress}
+      onHide={handleHideToast}
+      visible={!!currentToast}
+    />
+  );
+}
+
 export default function RootLayout() {
   const { colors, activeScheme } = useAppTheme();
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
-  const [user, setUser] = useState<{
-    id: string; // Changed from number to string to match AuthContext
-    name: string;
-    email: string;
-    profile_photo: string | null; // Made required (can be null)
-    email_verified_at?: string | null;
-    is_admin?: boolean;
-    ai_admin?: boolean;
-    is_guest?: boolean;
-  } | null>(null);
+
+  const { user, setUser, logout, initialize: initAuth, isInitialized: isAuthInitialized } = useAuthStore();
   const [isReady, setIsReady] = useState(false);
+  
   const router = useRouter();
   const params = useLocalSearchParams();
+  const pathname = usePathname();
   const segments = useSegments();
+  const isInitialLoad = useRef(true);
 
   // ─── Param Preservation Helper ──────────────────────────────────────────
-  // Ensures that call-related parameters (?ringing=1&call=...) are carried over
-  // through any authentication redirects (e.g., / -> /(tabs)).
   const getCallParams = () => {
     const keys = ['ringing', 'call', 'callType', 'type', 'spaceType', 'callerName', 'callerId', 'id', 'spaceId'];
     const p: any = {};
@@ -79,76 +92,29 @@ export default function RootLayout() {
     return p;
   };
 
-
-  const safeReplace = (pathname: string) => {
-    router.replace({ pathname: pathname as any, params: { ...params, ...getCallParams() } });
+  const safeReplace = (target: string) => {
+    router.replace({ pathname: target as any, params: { ...params, ...getCallParams() } });
   };
 
-
+  // 1. Initialize Auth Store
   useEffect(() => {
-    let isMounted = true;
-
-    async function initialize() {
-      try {
-        const token = await getToken();
-        if (!isMounted) return;
-
-        if (token) {
-          const userData = await loadUser();
-          if (isMounted && userData) {
-            // Ensure ID is string
-            setUser({
-              ...userData,
-              id: userData.id.toString(),
-              profile_photo: userData.profile_photo || null,
-            });
-
-            // ✅ INITIALIZE REAL-TIME: Ensure Reverb/Pusher is ready as soon as we have a token.
-            // This ensures that deep-linking to spaces or notifications works immediately
-            // without waiting for the (tabs) layout to mount.
-            const PusherService = require('@/services/PusherService').default;
-            PusherService.initialize(token);
-
-            // ✅ INITIALIZE PUSH NOTIFICATIONS: Ensure Service Worker and VAPID
-            // are ready at the root level for deep-linking and background support.
-            const PushNotificationService = require('@/services/PushNotificationService').default;
-            PushNotificationService.initialize();
-
-          }
-        }
-        // else {
-        //   router.replace('/LoginScreen');
-        // }
-      } catch (error) {
-        console.log("Initial auth check failed:", error);
-      } finally {
-        if (isMounted) {
-          setIsReady(true);
-          await SplashScreen.hideAsync();
-        }
-      }
-    }
-
-    initialize();
-
-    return () => { isMounted = false };
-
+    initAuth();
   }, []);
 
-  const logout = async () => {
-    try {
-      await setToken(null);
-      setUser(null);
-      safeReplace('/LoginScreen');
-    } catch (error) {
-      console.error('Logout failed:', error);
+  // 2. Initialize App Services (Pusher, etc.) when user is ready
+  useEffect(() => {
+    if (isAuthInitialized && user) {
+      AppInitializer.initialize();
     }
-  };
+  }, [isAuthInitialized, user?.id]);
 
-  const pathname = usePathname();
-
-  // Tracking initial load to handle web reloads/app restarts
-  const isInitialLoad = useRef(true);
+  // 3. Handle Fonts & Splash Screen
+  useEffect(() => {
+    if (loaded && isAuthInitialized) {
+      setIsReady(true);
+      SplashScreen.hideAsync();
+    }
+  }, [loaded, isAuthInitialized]);
 
   // User checking and routing logic
   useEffect(() => {
@@ -210,9 +176,8 @@ export default function RootLayout() {
 
     // User is logged in
     if (user) {
-      // 🛡️ Guest Access Guard (Prevent guests from going anywhere but explicitly allowed spaces)
+      // 🛡️ Guest Access Guard
       if (user.is_guest) {
-        // Enforce strictness: if the guest navigates to root `/` or any restricted area explicitly, destroy session!
         const forbiddenPrefixes = ['/(tabs)', '/LoginScreen', '/RegisterScreen', '/VerificationScreen', '/ForgotPasswordScreen'];
 
         if (pathname === '/' || forbiddenPrefixes.some(prefix => pathname?.startsWith(prefix))) {
@@ -222,12 +187,10 @@ export default function RootLayout() {
         }
 
         isInitialLoad.current = false;
-        return; // Halt any further redirect logic for guests!
+        return;
       }
 
       if (user.email_verified_at) {
-        // ✅ RELOAD LOGIC: Allow users to stay on their current deep-linked path (e.g. spaces)
-        // while ensuring that we still guide them to tabs if they land on auth screens.
         if (isInitialLoad.current) {
           isInitialLoad.current = false;
         }
@@ -264,12 +227,12 @@ export default function RootLayout() {
     if (!pathname?.startsWith('/(tabs)') && pathname !== '/(tabs)') {
       safeReplace('/(tabs)');
     }
-  }, [isReady, user, pathname]);
+  }, [isReady, user?.id, pathname]);
 
   if (!isReady) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.tint} />
       </View>
     );
   }
@@ -278,13 +241,11 @@ export default function RootLayout() {
     <GestureHandlerRootView
       style={{
         flex: 1,
-        // Only apply maxWidth on web
         ...(Platform.OS === 'web' && {
           width: '100%',
           maxWidth: 1440,
           justifyContent: 'center',
           alignSelf: 'center',
-          // marginHorizontal: 'auto',
           backgroundColor: colors.background,
           borderLeftWidth: 1,
           borderRightWidth: 1,
@@ -294,84 +255,54 @@ export default function RootLayout() {
     >
       <SafeAreaProvider>
         <Head>
-          {/* Unified PWA Metadata */}
-          <link rel="manifest" href="/manifest.json" />
-          <meta name="mobile-web-app-capable" content="yes" />
-          <meta name="apple-mobile-web-app-capable" content="yes" />
-          <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-          <meta name="apple-mobile-web-app-title" content="Zmzir" />
-          <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        </Head>
+            <link rel="manifest" href="/manifest.json" />
+            <meta name="mobile-web-app-capable" content="yes" />
+            <meta name="apple-mobile-web-app-capable" content="yes" />
+            <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+            <meta name="apple-mobile-web-app-title" content="Zmzir" />
+            <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+            <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
+          </Head>
 
-        <AuthContext.Provider value={{ user, setUser, logout }}>
+          {/* Bridge AuthStore to Legacy AuthContext */}
+          <AuthContext.Provider value={{ user: user as any, setUser: setUser as any, logout }}>
+            <CallProvider>
+              <IncomingCallBridge />
+              <ModalProvider>
+                <ProfileViewProvider>
+                  <SafeAreaView
+                    style={{ flex: 1, backgroundColor: colors.background }}
+                    edges={['top', 'left', 'right']}
+                  >
+                    <StatusBar barStyle={activeScheme === 'dark' ? 'light-content' : 'dark-content'} />
+                    <Stack screenOptions={{
+                      headerShown: false,
+                      animation: 'none',
+                      gestureEnabled: true,
+                      contentStyle: { backgroundColor: colors.background }
+                    }}>
+                      <Stack.Screen name="LoginScreen" options={{ headerShown: false }} />
+                      <Stack.Screen name="RegisterScreen" options={{ headerShown: false }} />
+                      <Stack.Screen name="ForgotPasswordScreen" options={{ headerShown: false }} />
+                      <Stack.Screen name="ResetPasswordScreen" options={{ headerShown: false }} />
+                      <Stack.Screen name="VerificationScreen" options={{ headerShown: false }} />
+                      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                      <Stack.Screen name="chatbotTraining" options={{ headerShown: false }} />
+                      <Stack.Screen name="moderation/index" options={{ headerShown: false }} />
+                    </Stack>
 
-
-
-          <CallProvider>
-            {/* Bridge: wires CollaborationService → CallContext for incoming calls */}
-            <IncomingCallBridge />
-            <ModalProvider>
-              <ProfileViewProvider>
-                {/* Stack must be the last child to properly handle gestures */}
-                <SafeAreaView
-                  style={{ flex: 1, backgroundColor: colors.background }}
-                  edges={['top', 'left', 'right']}
-                >
-                  <StatusBar barStyle={activeScheme === 'dark' ? 'light-content' : 'dark-content'} />
-                  <Stack screenOptions={{
-                    headerShown: false,
-                    animation: 'none',
-                    gestureEnabled: true,
-                    contentStyle: { backgroundColor: colors.background }
-                  }}>
-                    {/* Define ALL screens statically - no conditional rendering */}
-                    <Stack.Screen
-                      name="LoginScreen"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="RegisterScreen"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="ForgotPasswordScreen"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="ResetPasswordScreen"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="VerificationScreen"
-                      options={{ headerShown: false }}
-                    />
-
-                    <Stack.Screen
-                      name="(tabs)"
-                      options={{ headerShown: false }}
-                    />
-
-                    <Stack.Screen
-                      name="chatbotTraining"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="moderation/index"
-                      options={{ headerShown: false }}
-                    />
-                  </Stack>
-                </SafeAreaView>
-
-                {/* Modals render above Stack */}
-                <GlobalModals />
-                <ModalManager />
-                <RootCallOverlay />
-                <IncomingCallModal />
-                <Toast />
-              </ProfileViewProvider>
-            </ModalProvider>
-          </CallProvider>
-        </AuthContext.Provider>
+                    {/* Global Overlays - Moved inside SafeAreaView for consistent layering and visibility */}
+                    <GlobalModals />
+                    <ModalManager />
+                    <RootCallOverlay />
+                    <IncomingCallModal />
+                    <NotificationToastBridge />
+                    <Toast />
+                  </SafeAreaView>
+                </ProfileViewProvider>
+              </ModalProvider>
+            </CallProvider>
+          </AuthContext.Provider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

@@ -75,13 +75,24 @@ class SpaceController extends Controller
             $cacheKey = "user_{$user->id}_spaces_v{$version}_p{$page}";
 
             return Cache::remember($cacheKey, 3600, function() use ($user, $request) {
-                $spaces = CollaborationSpace::forUser($user->id)
-                    ->select([
+                $isLite = $request->has('lite');
+                
+                $query = CollaborationSpace::forUser($user->id);
+                
+                if ($isLite) {
+                    $query->select(['id', 'title', 'space_type', 'creator_id', 'is_live', 'image_path', 'updated_at']);
+                } else {
+                    $query->select([
                         'id', 'title', 'description', 'space_type', 'creator_id',
                         'is_live', 'has_ai_assistant', 'linked_conversation_id',
                         'image_path', 'created_at', 'updated_at', 'content_state', 'settings'
-                    ])
-                    ->with(['creator:id,name,profile_photo,username', 'activeCall', 'participations.user'])
+                    ]);
+                }
+
+                $spaces = $query->with(['creator:id,name,profile_photo,username'])
+                    ->when(!$isLite, function($q) {
+                        return $q->with(['activeCall', 'participations.user']);
+                    })
                     ->withCount('participations')
                     ->orderBy('updated_at', 'desc')
                     ->paginate(20);
@@ -376,19 +387,26 @@ class SpaceController extends Controller
 
     public function getUserSpaces($userId)
     {
-        $spaces = CollaborationSpace::where('creator_id', $userId)
+        $isLite = request()->has('lite');
+        $query = CollaborationSpace::where('creator_id', $userId)
             ->orWhereHas('participants', function($query) use ($userId) {
                 $query->where('user_id', $userId);
-            })
-            ->select([
+            });
+
+        if ($isLite) {
+            $query->select(['id', 'title', 'space_type', 'creator_id', 'is_live', 'image_path', 'updated_at']);
+        } else {
+            $query->select([
                 'id', 'title', 'space_type', 'description', 'creator_id', 
                 'is_live', 'has_ai_assistant', 'settings', 'image_path',
                 'created_at', 'updated_at'
-            ])
-            ->with(['creator:id,name,profile_photo,username'])
+            ]);
+        }
+
+        $spaces = $query->with(['creator:id,name,profile_photo,username'])
             ->withCount('participations')
             ->orderBy('updated_at', 'desc')
-            ->limit(50) // Prevent fetching thousands of records globally
+            ->limit(50)
             ->get();
 
         // Get user participations in a single query
@@ -3441,6 +3459,23 @@ public function endCall(Request $request, $id)
             if ($otherParticipation) {
                 $otherParticipant = $otherParticipation->user;
             }
+        }
+
+        $isLite = request()->has('lite');
+
+        if ($isLite) {
+            return [
+                'id' => $space->id,
+                'title' => $space->title,
+                'space_type' => $space->space_type,
+                'creator_id' => $space->creator_id,
+                'is_live' => $space->is_live,
+                'image_url' => $space->image_url,
+                'updated_at' => $space->updated_at,
+                'participants_count' => $space->participations_count ?? $space->participations()->count(),
+                'creator' => $space->relationLoaded('creator') ? $space->creator : null,
+                'is_lite' => true
+            ];
         }
 
         return [

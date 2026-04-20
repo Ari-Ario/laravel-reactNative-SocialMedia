@@ -7,18 +7,15 @@ import {
     FlatList,
     StyleSheet,
     Modal,
-    Image,
     ScrollView,
     Platform,
     Switch,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Avatar from '../Image/Avatar';
 import { createShadow } from '@/utils/styles';
 import { useNotificationStore, NOTIFICATION_TYPES, getNotificationIcon, getNotificationColor, isChatNotification } from '@/stores/notificationStore';
 import { Notification } from '@/types/Notification';
-import getApiBaseImage from '@/services/getApiBaseImage';
 import { router } from 'expo-router';
 import { useProfileView } from '@/context/ProfileViewContext';
 import { usePostStore } from '@/stores/postStore';
@@ -195,7 +192,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 // Fallback: DM chat — only if no spaceId found
                 const userId = item.userId || item.data?.user?.id || item.data?.userId;
                 if (userId) {
-                    router.push({ pathname: '/(tabs)/chats/[id]', params: { id: userId.toString() } } as any);
+                    router.push({ pathname: '/(tabs)/chats/[id]', params: { id: userId.toString() } });
                     onClose();
                     return;
                 }
@@ -299,7 +296,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             if (['post', NOTIFICATION_TYPES.POST_UPDATED, 'reaction'].includes(item.type) && item.postId) {
                 const postData = await fetchPostById(item.postId);
                 if (postData?.data) addPost(postData.data);
-                router.push(`/post/${item.postId}` as any);
+                router.push(`/post/${item.postId}`);
                 onClose();
                 return;
             }
@@ -308,7 +305,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 const postData = await fetchPostById(item.postId);
                 if (postData?.data) addPost(postData.data);
                 router.push({
-                    pathname: `/post/${item.postId}` as any,
+                    pathname: `/post/${item.postId}`,
                     params: { highlightCommentId: item.commentId.toString() },
                 });
                 onClose();
@@ -318,7 +315,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             if (item.type === 'comment-deleted' && item.postId) {
                 const postData = await fetchPostById(item.postId);
                 if (postData?.data) addPost(postData.data);
-                router.push(`/post/${item.postId}` as any);
+                router.push(`/post/${item.postId}`);
                 onClose();
                 return;
             }

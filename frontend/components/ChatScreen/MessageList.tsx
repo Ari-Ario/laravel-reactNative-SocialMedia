@@ -64,6 +64,7 @@ interface MessageListProps {
   onStartCall?: (type: 'audio' | 'video') => void;
   isPending?: boolean;
   spaceType?: string;
+  messages?: Message[];
 }
 const MessageList: React.FC<MessageListProps> = ({
   spaceId,
@@ -80,9 +81,19 @@ const MessageList: React.FC<MessageListProps> = ({
   onStartCall,
   isPending = false,
   spaceType,
+  messages: messagesProp = [],
 }) => {
   const { colors, activeScheme } = useAppTheme();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(messagesProp);
+
+  // Sync with prop when it changes (e.g. from SpaceChatTab optimistic updates)
+  useEffect(() => {
+    // We sort chronologically: oldest to newest
+    const sorted = [...messagesProp].sort((a, b) => 
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    setMessages(sorted);
+  }, [messagesProp]);
   const [loading, setLoading] = useState(true);
   const [translatingMessageId, setTranslatingMessageId] = useState<string | null>(null);
   const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
@@ -642,7 +653,7 @@ const MessageList: React.FC<MessageListProps> = ({
               } else if (data.reaction && data.user) {
                 // Check if user already reacted with this emoji to toggle it
                 const existingIndex = currentReactions.findIndex((r: any) => r.user_id === data.user.id && r.reaction === data.reaction);
-                let newReactions = [...currentReactions];
+                const newReactions = [...currentReactions];
                 if (existingIndex >= 0) {
                   newReactions.splice(existingIndex, 1);
                 } else {

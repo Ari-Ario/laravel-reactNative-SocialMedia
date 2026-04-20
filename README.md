@@ -18,6 +18,8 @@ php artisan serve --host 0.0.0.0
 
 php artisan reverb:start --debug
 
+php artisan queue:work --tries=3
+
 or deepclean:
 php artisan optimize:clear && php artisan event:clear && composer dump-autoload
 

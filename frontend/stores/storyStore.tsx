@@ -10,8 +10,8 @@ export interface Story {
   media_path: string;
   type: 'photo' | 'video';
   caption?: string;
-  stickers?: any;
-  location?: any;
+  stickers?: any[] | string;
+  location?: { latitude: number; longitude: number; name: string } | string | null;
   viewed: boolean;
   created_at: string;
   views_count?: number;
@@ -42,7 +42,7 @@ interface StoryStore {
   setStoryGroups: (groups: StoryGroup[]) => void;
 
   // Real-time handlers
-  handleStoryCreated: (data: { story: any }) => void;
+  handleStoryCreated: (data: { story: Story }) => void;
   handleStoryDeleted: (data: { storyId: number; userId: number }) => void;
 
   // Real-time initialization
@@ -131,8 +131,8 @@ export const useStoryStore = create<StoryStore>((set, get) => ({
   initializeRealtime: () => {
     console.log('📡 Initializing StoryStore real-time connection');
     PusherService.subscribeToStories(
-      (data) => get().handleStoryCreated(data),
-      (data) => get().handleStoryDeleted(data)
+      (data) => get().handleStoryCreated(data as any),
+      (data) => get().handleStoryDeleted(data as any)
     );
   },
 

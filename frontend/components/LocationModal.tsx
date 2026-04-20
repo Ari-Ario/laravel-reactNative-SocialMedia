@@ -175,7 +175,7 @@ const LocationModal: React.FC<LocationModalProps> = ({
     setDistance(distStr);
 
     // Estimate travel time based on mode
-    let speed = directionsMode === 'walk' ? 5 : directionsMode === 'transit' ? 20 : 50;
+    const speed = directionsMode === 'walk' ? 5 : directionsMode === 'transit' ? 20 : 50;
     const time = distanceVal / speed * 60; // in minutes
     let timeStr = '';
     if (time < 1) {

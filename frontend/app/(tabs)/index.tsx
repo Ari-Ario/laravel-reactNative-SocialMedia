@@ -1,14 +1,13 @@
 // app/(tabs)/index.tsx
-import { View, Text, Pressable, StyleSheet, Button, ActivityIndicator, ScrollView, FlatList, Image, TouchableOpacity, Alert, Platform, Dimensions } from "react-native";
-import { Link, router, Stack, useRouter } from 'expo-router';
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Alert, Platform, Dimensions, FlatList } from "react-native";
+import { useRouter, usePathname } from 'expo-router';
 import { useState, useEffect, useContext, useRef, useMemo } from "react";
 import AuthContext from "@/context/AuthContext";
 import LoginScreen from "../LoginScreen";
 import VerificationScreen from "../VerificationScreen";
 import PostListItem from '@/components/PostListItem';
 import FloatingActionButton from '@/components/FloatingActionButton';
-import getApiBaseImage from "@/services/getApiBaseImage";
-import { fetchPosts, bookmarkPost, repostPost, sharePost, commentOnPost, reactToPost, updatePost } from "@/services/PostService";
+import { bookmarkPost, repostPost, sharePost, commentOnPost, reactToPost } from "@/services/PostService";
 import CreatePost from "@/components/CreatePost";
 import { Ionicons } from "@expo/vector-icons";
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -21,22 +20,19 @@ import { usePostStore } from "@/stores/postStore"; // ✅ Zustand store
 import { useCollaborationStore } from "@/stores/collaborationStore";
 import { useNotificationStore } from '@/stores/notificationStore'; // NEW
 import { usePostListService } from "@/services/PostListService";
-import { getToken } from "@/services/TokenService";
-import PusherService from "@/services/PusherService";
-import { NotificationPanel } from "@/components/Notifications/NotificationPanel";
-import FollowersPanel from "@/components/Notifications/FollowersPanel";
-import RealTimeService from '@/services/ChatScreen/RealTimeServiceChat';
-import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import { Avatar } from '@/components/ui/Avatar';
 import CallsPanel from '@/components/Notifications/CallsPanel';
 import MessagesPanel from '@/components/Notifications/MessagesPanel';
 import SpacesPanel from '@/components/Notifications/SpacesPanel';
 import ActivitiesPanel from '@/components/Notifications/ActivitiesPanel';
 import LiveDiscoveryCarousel from "@/components/ChatScreen/LiveDiscoveryCarousel";
+import NotificationPanel from '@/components/Notifications/NotificationPanel';
+import FollowersPanel from '@/components/Notifications/FollowersPanel';
 import PushNotificationService from "@/services/PushNotificationService";
 import { useIsFocused } from "@react-navigation/native";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { Colors } from "@/constants/Colors";
+import { usePosts, useStories } from '@/hooks/queries/usePosts';
 
 type StoryGroup = {
     user: {
@@ -53,11 +49,11 @@ const HomePage = () => {
     const { colors, activeScheme } = useAppTheme();
     const styles = getStyles(colors, activeScheme);
     const isFocused = useIsFocused();
+    const pathname = usePathname();
     const { user, setUser } = useContext(AuthContext);
     const router = useRouter();
     const { profileViewUserId, setProfileViewUserId, profilePreviewVisible, setProfilePreviewVisible } = useProfileView();
 
-    const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
     const [addStoryVisible, setAddStoryVisible] = useState(false);
@@ -83,27 +79,16 @@ const HomePage = () => {
         isRealtimeReady
     } = useNotificationStore();
 
-    const [isTokenReady, setIsTokenReady] = useState(false);
-
-    // ✅ Token ready state management
-    useEffect(() => {
-        if (user?.id) {
-            setIsTokenReady(true);
-            setCurrentUserId(Number(user.id));
-            PushNotificationService.initialize(); // Initialize push notifications
-        }
-    }, [user?.id]);
-
     const [activeNotificationType, setActiveNotificationType] = useState<"all" | "regular" | "spaces" | "calls" | "messages" | "activities" | "chatbot" | null>(null);
 
     // Refs for notification icons
-    const callsIconRef = useRef<any>(null);
-    const messagesIconRef = useRef<any>(null);
-    const spacesIconRef = useRef<any>(null);
-    const activitiesIconRef = useRef<any>(null);
-    const followersIconRef = useRef<any>(null);
-    const chatbotIconRef = useRef<any>(null);
-    const regularIconRef = useRef<any>(null);
+    const callsIconRef = useRef<View>(null);
+    const messagesIconRef = useRef<View>(null);
+    const spacesIconRef = useRef<View>(null);
+    const activitiesIconRef = useRef<View>(null);
+    const followersIconRef = useRef<View>(null);
+    const chatbotIconRef = useRef<View>(null);
+    const regularIconRef = useRef<View>(null);
 
     const [notificationAnchor, setNotificationAnchor] = useState<{ top: number; left?: number; right?: number; arrowOffset?: number }>();
     const [followersAnchor, setFollowersAnchor] = useState<{ top: number; left?: number; right?: number; arrowOffset?: number }>();
@@ -164,96 +149,32 @@ const HomePage = () => {
         }
     };
 
-    // ✅ Real-time initialization
+    // Real-time synchronization for posts (optional, but good to keep for specific list sub)
     useEffect(() => {
-        if (isRealtimeReady && isTokenReady) {
-            initStoryRealtime();
-
-            // ✅ Ensure user notifications are also initialized from index.tsx
-            if (user?.id) {
-                getToken().then(token => {
-                    if (token) useNotificationStore.getState().initializeRealtime(token, Number(user.id));
-                });
-            }
-        }
-    }, [isRealtimeReady, isTokenReady]);
-
-    // Subscribe to posts
-    useEffect(() => {
-        if (isRealtimeReady && isTokenReady) {
+        if (user?.id && posts.length > 0) {
             const postIds = posts.map(post => post.id);
             usePostStore.getState().subscribeToPosts(postIds);
         }
         return () => {
             usePostStore.getState().unsubscribeFromAllPosts();
         };
-    }, [posts.length, isTokenReady, isRealtimeReady]);
+    }, [posts, user?.id]);
 
-    const fetchUserSpacesFromStore = useCollaborationStore(state => state.fetchUserSpaces);
+    const { data: postsData, isLoading: isPostsLoading, refetch: refetchPosts } = usePosts();
+    const { data: storiesData, isLoading: isStoriesLoading, refetch: refetchStories } = useStories();
 
-    // Global space initialization
+    // Sync query data to Zustand store for real-time updates to work
     useEffect(() => {
-        if (!isRealtimeReady || !isTokenReady || !user?.id) return;
+        if (postsData) setPosts(postsData);
+    }, [postsData]);
 
-        const initializeSpaces = async () => {
-            try {
-                await fetchUserSpacesFromStore(Number(user.id));
-                PusherService.subscribeToAllSpaces((data: any) => {
-                    // ✅ GUARD: If this is a 'left' or 'deleted' update, don't show the "New Space" notification
-                    // We check both data.update_type and data.changes.update_type for robustness
-                    if (
-                        data.update_type === 'left' ||
-                        data.changes?.update_type === 'left' ||
-                        data.type === 'space-deleted' ||
-                        data.update_type === 'deleted'
-                    ) {
-                        console.log('🔇 Suppressing notification for space leave/delete:', data.update_type || data.type);
-                        return;
-                    }
-
-                    if (data?.space && data.space.creator_id != user.id) {
-                        addNotification({
-                            type: 'space_updated',
-                            title: 'New Space Available',
-                            message: `"${data.space.title}" space was created`,
-                            userId: Number(data.space.creator_id),
-                            spaceId: data.space.id,
-                            data: { ...data },
-                            createdAt: new Date(),
-                        });
-                    }
-                });
-            } catch (error) {
-                console.error('❌ Error initializing spaces:', error);
-            }
-        };
-
-        initializeSpaces();
-        return () => {
-            PusherService.unsubscribeFromChannel('spaces');
-        };
-    }, [isTokenReady, user?.id, isRealtimeReady, fetchUserSpacesFromStore]);
-
-    // Initial data load
-    useEffect(() => {
-        if (user && isTokenReady) {
-            fetchPostsAndHandleState();
-            fetchStoriesFromStore();
-        }
-    }, [user, isTokenReady]);
-
-    const fetchPostsAndHandleState = async () => {
-        try {
-            setLoading(true);
-            const postsData = await fetchPosts();
-            setPosts(postsData);
-        } catch (error) {
-            Alert.alert('Error', 'Something went wrong while fetching posts');
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        await Promise.all([refetchPosts(), refetchStories()]);
+        setRefreshing(false);
     };
+
+    const isLoading = isPostsLoading || isStoriesLoading;
 
     const handleRepost = async (postId: number) => {
         try {
@@ -264,7 +185,7 @@ const HomePage = () => {
                 reposts_count: response.reposts_count,
                 reposts: response.reposted
                     ? [{ id: Date.now(), user: response.repost_user, created_at: new Date().toISOString() }, ...(posts.find(p => p.id === postId)?.reposts || [])]
-                    : (posts.find(p => p.id === postId)?.reposts || []).filter((r: any) => user?.id && r.user.id !== user.id)
+                    : (posts.find(p => p.id === postId)?.reposts || []).filter((r: { user: { id: number } }) => user?.id && r.user.id !== Number(user.id))
             });
         } catch (error) {
             console.error('Error handling repost:', error);
@@ -272,11 +193,6 @@ const HomePage = () => {
         }
     };
 
-    const handleRefresh = () => {
-        setRefreshing(true);
-        fetchPostsAndHandleState();
-        fetchStoriesFromStore();
-    };
 
     const handleCommentSubmit = async (postId: number, content: string, parentId?: number) => {
         try {
@@ -296,7 +212,7 @@ const HomePage = () => {
         itemVisiblePercentThreshold: 100, // User requested 100% visible
     }).current;
 
-    const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+    const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: Array<{ item: { id: number } }> }) => {
         if (viewableItems && viewableItems.length > 0) {
             setViewablePostId(viewableItems[0].item.id);
         } else {
@@ -326,7 +242,7 @@ const HomePage = () => {
         // This prevents deep links from being hijacked by background tab mounts.
     }, [user]);
 
-    if ((loading && !refreshing) || !user) {
+    if ((isLoading && !refreshing) || !user) {
         return (
             <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
                 <ActivityIndicator size="large" color={colors.tint} />
@@ -335,7 +251,7 @@ const HomePage = () => {
     }
 
     return (
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.container, { backgroundColor: colors.background }]} data-testid="home-page-container">
             {/* Modals and Panels */}
             {activeNotificationType === 'regular' || activeNotificationType === 'all' || activeNotificationType === 'chatbot' ? (
                 <NotificationPanel
@@ -588,7 +504,7 @@ const HomePage = () => {
                 visible={isCreateModalVisible}
                 onClose={() => setIsCreateModalVisible(false)}
                 onPostCreated={(post) => {
-                    if (!post?.id) fetchPostsAndHandleState();
+                    if (!post?.id) refetchPosts();
                 }}
             />
 
@@ -601,8 +517,8 @@ const HomePage = () => {
     );
 };
 
-function getStyles(colors: any, activeScheme: string) {
-    return StyleSheet.create({
+function getStyles(colors: any, activeScheme: string): any {
+    return {
         container: {
             flex: 1,
             position: 'relative',
@@ -610,7 +526,7 @@ function getStyles(colors: any, activeScheme: string) {
             alignSelf: 'center',
         },
         headerScrollContainer: {
-            position: 'sticky',
+            position: (Platform.OS === 'web' ? 'relative' : 'relative') as any, // Fix sticky type issue
             top: 0,
             left: 0,
             right: 0,
@@ -799,7 +715,7 @@ function getStyles(colors: any, activeScheme: string) {
             color: 'white',
             fontWeight: 'bold'
         },
-    });
+    };
 }
 
 export default HomePage;

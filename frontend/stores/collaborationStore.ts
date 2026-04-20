@@ -21,7 +21,7 @@ interface CollaborationState {
   spaceUpcomingCounts: Record<string, number>; // ✅ NEW: Tracks badge counts per space
   activitiesLastFetched: Record<string, number>;
   totalActivitiesCount: number;
-  
+
   globalActivities: CollaborativeActivity[]; // ✅ NEW: Global session manager data
   globalUpcomingCount: number; // ✅ NEW: Badge count for "Activities" button
 
@@ -80,11 +80,11 @@ interface CollaborationState {
   fetchUserSpaces: (userId: number) => Promise<CollaborationSpace[]>;
   fetchGlobalActivities: (params?: any) => Promise<void>; // ✅ NEW
   fetchSpaceActivities: (spaceId: string, page?: number, limit?: number) => Promise<void>; // ✅ NEW
-  
+
   addActivity: (activity: CollaborativeActivity) => void;
   updateActivity: (activity: CollaborativeActivity) => void;
   deleteActivity: (activityId: string, spaceId: string) => void;
-  
+
   reset: () => void;
 }
 
@@ -276,7 +276,7 @@ export const useCollaborationStore = create<CollaborationState>()(
                 const sid = data.space_id.toString();
                 const newCounts: Record<string, number> = { ...state.spaceUnreadCounts, [sid]: 0 };
                 const totalUnread = Object.values(newCounts).reduce((sum, count) => sum + count, 0);
-                
+
                 // Clear notifications for this space
                 require('@/stores/notificationStore').useNotificationStore.getState().markSpaceNotificationsAsRead(sid);
 
@@ -294,59 +294,59 @@ export const useCollaborationStore = create<CollaborationState>()(
           case 'new_message':
             const spaceId = (data.space_id || data.spaceId || data.data?.space_id || data.data?.spaceId)?.toString();
             if (spaceId) {
-                const state = get();
-                const spaceExists = state.spaces.some(s => s.id.toString() === spaceId);
-                const currentUserId = require('@/stores/notificationStore').useNotificationStore.getState().currentUserId;
-                
-                // Extraction of space data from various possible nesting levels
-                const spaceInfo = data.space || data.data?.space;
-                
-                // If the event carries enough space info, we can use it
-                if (spaceInfo) {
-                    // Normalize space info
-                    const spaceData = { ...spaceInfo };
-                    
-                    // Ensure core fields exist
-                    spaceData.id = spaceId;
-                    spaceData.creator_id = spaceData.creator_id || data.creator_id || data.data?.creator_id;
-                    spaceData.title = spaceData.title || data.title || data.data?.title;
-                    spaceData.space_type = spaceData.space_type || data.space_type || data.data?.space_type;
+              const state = get();
+              const spaceExists = state.spaces.some(s => s.id.toString() === spaceId);
+              const currentUserId = require('@/stores/notificationStore').useNotificationStore.getState().currentUserId;
 
-                    // If we have participations but no other_participant, derive it
-                    if (spaceData.participations && !spaceData.other_participant) {
-                        const other = spaceData.participations.find((p: any) => (p.user_id || p.userId) != currentUserId);
-                        const user = other?.user || (other as any)?.user;
-                        if (user) {
-                            spaceData.other_participant = user;
-                        }
-                    }
-                    
-                    // Only add if it has core fields
-                    const hasRequiredFields = spaceData.creator_id && (spaceData.title || spaceData.other_participant?.name);
+              // Extraction of space data from various possible nesting levels
+              const spaceInfo = data.space || data.data?.space;
 
-                    if (spaceExists) {
-                        get().updateSpace(spaceId, spaceData);
-                    } else if (hasRequiredFields) {
-                        get().addSpace(spaceData);
-                    } else {
-                        // Fallback to fetch if data is incomplete
-                        console.log(`🆕 Incomplete space data for ${spaceId} (missing creator_id or title). Triggering fetch.`);
-                        if (currentUserId) get().fetchUserSpaces(currentUserId);
-                    }
-                } else if (!spaceExists) {
-                    console.log(`🆕 New space detected from message: ${spaceId}. Triggering fetch.`);
-                    if (currentUserId) {
-                        get().fetchUserSpaces(currentUserId);
-                    }
+              // If the event carries enough space info, we can use it
+              if (spaceInfo) {
+                // Normalize space info
+                const spaceData = { ...spaceInfo };
+
+                // Ensure core fields exist
+                spaceData.id = spaceId;
+                spaceData.creator_id = spaceData.creator_id || data.creator_id || data.data?.creator_id;
+                spaceData.title = spaceData.title || data.title || data.data?.title;
+                spaceData.space_type = spaceData.space_type || data.space_type || data.data?.space_type;
+
+                // If we have participations but no other_participant, derive it
+                if (spaceData.participations && !spaceData.other_participant) {
+                  const other = spaceData.participations.find((p: any) => (p.user_id || p.userId) != currentUserId);
+                  const user = other?.user || (other as any)?.user;
+                  if (user) {
+                    spaceData.other_participant = user;
+                  }
                 }
 
-                // Always increment unread count for messages from others
-                const senderId = data?.user_id || data?.userId || data?.data?.user_id || data?.message?.user_id || data?.message?.userId;
-                if (senderId && currentUserId && senderId == currentUserId) {
-                    console.log('🚫 Skipping unread increment for self-sent message');
+                // Only add if it has core fields
+                const hasRequiredFields = spaceData.creator_id && (spaceData.title || spaceData.other_participant?.name);
+
+                if (spaceExists) {
+                  get().updateSpace(spaceId, spaceData);
+                } else if (hasRequiredFields) {
+                  get().addSpace(spaceData);
                 } else {
-                    get().incrementUnreadCount(spaceId);
+                  // Fallback to fetch if data is incomplete
+                  console.log(`🆕 Incomplete space data for ${spaceId} (missing creator_id or title). Triggering fetch.`);
+                  if (currentUserId) get().fetchUserSpaces(currentUserId);
                 }
+              } else if (!spaceExists) {
+                console.log(`🆕 New space detected from message: ${spaceId}. Triggering fetch.`);
+                if (currentUserId) {
+                  get().fetchUserSpaces(currentUserId);
+                }
+              }
+
+              // Always increment unread count for messages from others
+              const senderId = data?.user_id || data?.userId || data?.data?.user_id || data?.message?.user_id || data?.message?.userId;
+              if (senderId && currentUserId && senderId == currentUserId) {
+                console.log('🚫 Skipping unread increment for self-sent message');
+              } else {
+                get().incrementUnreadCount(spaceId);
+              }
             }
             break;
 
@@ -378,28 +378,28 @@ export const useCollaborationStore = create<CollaborationState>()(
 
           case 'call-started':
             if (data.space_id) {
-               const callId = data.call?.id || data.call_id;
-               get().updateSpace(data.space_id, { 
-                 is_live: true, 
-                 current_focus: 'call',
-                 active_call_id: callId 
-               });
+              const callId = data.call?.id || data.call_id;
+              get().updateSpace(data.space_id, {
+                is_live: true,
+                current_focus: 'call',
+                active_call_id: callId
+              });
             }
             break;
 
           case 'call-ended':
             if (data.space_id) {
-               const sid = data.space_id.toString();
-               get().updateSpace(sid, { 
-                 is_live: false, 
-                 current_focus: null,
-                 active_call_id: undefined 
-               });
+              const sid = data.space_id.toString();
+              get().updateSpace(sid, {
+                is_live: false,
+                current_focus: null,
+                active_call_id: undefined
+              });
 
-               // Auto-clear background listening if the call ended
-               if (get().activeListeningSpaceId === sid) {
-                 get().setListeningSpaceId(null);
-               }
+              // Auto-clear background listening if the call ended
+              if (get().activeListeningSpaceId === sid) {
+                get().setListeningSpaceId(null);
+              }
             }
             break;
 
@@ -423,19 +423,19 @@ export const useCollaborationStore = create<CollaborationState>()(
               get().deleteActivity(data.activity_id, data.space_id.toString());
             }
             break;
-            
+
           case 'message-deleted':
           case 'message.deleted':
             const msgId = (data.message_id || data.id)?.toString();
             const sid = (data.space_id || data.spaceId)?.toString();
             if (msgId && sid) {
-                console.log(`🗑️ Removing message ${msgId} from space ${sid} in store`);
-                get().updateSpace(sid, {
-                    content_state: {
-                        ...(get().activeSpace?.content_state || {}),
-                        messages: (get().activeSpace?.content_state?.messages || []).filter((m: any) => m.id.toString() !== msgId)
-                    }
-                });
+              console.log(`🗑️ Removing message ${msgId} from space ${sid} in store`);
+              get().updateSpace(sid, {
+                content_state: {
+                  ...(get().activeSpace?.content_state || {}),
+                  messages: ((get().activeSpace?.content_state as any)?.messages || []).filter((m: any) => m.id.toString() !== msgId)
+                }
+              });
             }
             break;
 
@@ -443,27 +443,27 @@ export const useCollaborationStore = create<CollaborationState>()(
           case 'space.deleted':
             const deletedId = (data.space_id || data.id || data.spaceId)?.toString();
             if (deletedId) {
-                console.log(`🗑️ Removing space ${deletedId} from store due to deletion event`);
-                get().removeSpace(deletedId);
+              console.log(`🗑️ Removing space ${deletedId} from store due to deletion event`);
+              get().removeSpace(deletedId);
 
-                // ✅ NEW: Clean up notifications for this space
-                try {
-                  const notificationStore = require('@/stores/notificationStore').useNotificationStore;
-                  if (notificationStore.getState().removeSpaceNotifications) {
-                    notificationStore.getState().removeSpaceNotifications(deletedId);
-                  }
-                } catch (e) {
-                  console.warn('Could not clean up notifications for deleted space:', e);
+              // ✅ NEW: Clean up notifications for this space
+              try {
+                const notificationStore = require('@/stores/notificationStore').useNotificationStore;
+                if (notificationStore.getState().removeSpaceNotifications) {
+                  notificationStore.getState().removeSpaceNotifications(deletedId);
                 }
-                
-                // If this was the active space, clear it
-                if (get().activeSpace?.id?.toString() === deletedId) {
-                    get().setActiveSpace(null);
-                    Alert.alert('Space Deleted', 'This space has been deleted by the owner.');
-                    
-                    // Unsubscribe to stop receiving further events for this channel
-                    PusherService.unsubscribeFromChannel(`presence-space-${deletedId}`);
-                }
+              } catch (e) {
+                console.warn('Could not clean up notifications for deleted space:', e);
+              }
+
+              // If this was the active space, clear it
+              if (get().activeSpace?.id?.toString() === deletedId) {
+                get().setActiveSpace(null);
+                Alert.alert('Space Deleted', 'This space has been deleted by the owner.');
+
+                // Unsubscribe to stop receiving further events for this channel
+                PusherService.unsubscribeFromChannel(`presence-space-${deletedId}`);
+              }
             }
             break;
         }
@@ -540,14 +540,18 @@ export const useCollaborationStore = create<CollaborationState>()(
 
 
       setSpaces: (spaces) => {
-        // 🛡️ Filter nulls/undefined to prevent downstream mapping crashes
-        const validSpaces = (spaces || []).filter(s => s && s.id);
-        
+        // 🛡️ Handle potential object-wrapped responses and filter nulls/undefined
+        const spacesArray = Array.isArray(spaces)
+          ? spaces
+          : (spaces as any)?.spaces || (spaces as any)?.data || [];
+
+        const validSpaces = spacesArray.filter((s: any) => s && s.id);
+
         // Recalculate unread counts from the fresh space data
         const newUnreadCounts: Record<string, number> = {};
         let totalUnread = 0;
-        
-        validSpaces.forEach(space => {
+
+        validSpaces.forEach((space: any) => {
           const sid = space.id.toString();
           const fetchedUnread = (space as any).unread_count || 0;
           if (fetchedUnread > 0) {
@@ -556,10 +560,10 @@ export const useCollaborationStore = create<CollaborationState>()(
           }
         });
 
-        set({ 
-          spaces: validSpaces, 
-          spaceUnreadCounts: newUnreadCounts, 
-          totalUnreadSpaces: totalUnread 
+        set({
+          spaces: validSpaces,
+          spaceUnreadCounts: newUnreadCounts,
+          totalUnreadSpaces: totalUnread
         });
       },
 
@@ -632,27 +636,27 @@ export const useCollaborationStore = create<CollaborationState>()(
         return {
           spaces: state.spaces.map(space => {
             if (space.id.toString() === spaceIdStr) {
-               const newSpace = { ...space, ...updates };
-               
-               // Dynamically derive other_participant if it's a direct chat and missing
-               const isDirect = (newSpace.settings?.is_direct || newSpace.space_type === 'direct' || newSpace.space_type === 'chat');
-               if (isDirect && !newSpace.other_participant && newSpace.participations) {
-                 const other = newSpace.participations.find((p: any) => (p.user_id || p.userId) != currentUserId);
-                 if (other) {
-                    const user = (other as any).user;
-                    if (user) {
-                      newSpace.other_participant = user;
-                    } else if ((other as any).name) {
-                      // Fallback for flat participation objects
-                      newSpace.other_participant = { 
-                        id: (other as any).user_id || (other as any).userId, 
-                        name: (other as any).name, 
-                        profile_photo: (other as any).profile_photo 
-                      };
-                    }
-                 }
-               }
-               return newSpace;
+              const newSpace = { ...space, ...updates };
+
+              // Dynamically derive other_participant if it's a direct chat and missing
+              const isDirect = (newSpace.settings?.is_direct || newSpace.space_type === 'direct' || newSpace.space_type === 'chat');
+              if (isDirect && !newSpace.other_participant && newSpace.participations) {
+                const other = newSpace.participations.find((p: any) => (p.user_id || p.userId) != currentUserId);
+                if (other) {
+                  const user = (other as any).user;
+                  if (user) {
+                    newSpace.other_participant = user;
+                  } else if ((other as any).name) {
+                    // Fallback for flat participation objects
+                    newSpace.other_participant = {
+                      id: (other as any).user_id || (other as any).userId,
+                      name: (other as any).name,
+                      profile_photo: (other as any).profile_photo
+                    };
+                  }
+                }
+              }
+              return newSpace;
             }
             return space;
           }),
@@ -677,7 +681,7 @@ export const useCollaborationStore = create<CollaborationState>()(
         const sid = spaceId.toString();
         const newUnreadCounts = { ...state.spaceUnreadCounts };
         delete newUnreadCounts[sid];
-        
+
         const newTotalUnread = Object.values(newUnreadCounts).reduce((sum, count) => (sum as number) + (count as number), 0);
 
         return {
@@ -764,7 +768,7 @@ export const useCollaborationStore = create<CollaborationState>()(
 
       markSpaceAsRead: async (spaceId, lastReadAt) => {
         const id = spaceId.toString();
-        
+
         // ✅ Only clear local badge if we are doing a full reset (lastReadAt is null)
         // For partial reads during scroll, we let MessageList handle progressive decrement.
         if (!lastReadAt) {
@@ -776,9 +780,9 @@ export const useCollaborationStore = create<CollaborationState>()(
             );
             // Also clear any space-related notification badges
             require('@/stores/notificationStore').useNotificationStore.getState().markSpaceNotificationsAsRead(id);
-            
+
             // Clear the is_unread manual flag if it exists
-            const newSpaces = state.spaces.map(space => 
+            const newSpaces = state.spaces.map(space =>
               space.id === spaceId && space.my_permissions?.is_unread
                 ? { ...space, my_permissions: { ...space.my_permissions, is_unread: false } }
                 : space
@@ -809,62 +813,62 @@ export const useCollaborationStore = create<CollaborationState>()(
           spaceIds: spaceIds
         };
         const newTabs = [...state.customTabs, newTab];
-        
+
         // Background sync
         CollaborationService.getInstance().updateUserPreferences({ custom_tabs: newTabs });
-        
+
         return { customTabs: newTabs };
       }),
 
       deleteCustomTab: (id) => set((state) => {
         const newTabs = state.customTabs.filter(t => t.id !== id);
-        
+
         // Background sync
         CollaborationService.getInstance().updateUserPreferences({ custom_tabs: newTabs });
-        
+
         return { customTabs: newTabs };
       }),
 
       addSpaceToTab: (tabId, spaceId) => set((state) => {
-        const newTabs = state.customTabs.map(t => 
+        const newTabs = state.customTabs.map(t =>
           t.id === tabId ? { ...t, spaceIds: [...new Set([...t.spaceIds, spaceId])] } : t
         );
-        
+
         CollaborationService.getInstance().updateUserPreferences({ custom_tabs: newTabs });
-        
+
         return { customTabs: newTabs };
       }),
 
       removeSpaceFromTab: (tabId, spaceId) => set((state) => {
-        const newTabs = state.customTabs.map(t => 
+        const newTabs = state.customTabs.map(t =>
           t.id === tabId ? { ...t, spaceIds: t.spaceIds.filter(id => id !== spaceId) } : t
         );
-        
+
         // Background sync
         CollaborationService.getInstance().updateUserPreferences({ custom_tabs: newTabs });
-        
+
         return { customTabs: newTabs };
       }),
 
       setSpacesInTab: (tabId, spaceIds) => set((state) => {
-        const newTabs = state.customTabs.map(t => 
+        const newTabs = state.customTabs.map(t =>
           t.id === tabId ? { ...t, spaceIds } : t
         );
-        
+
         // Background sync
         CollaborationService.getInstance().updateUserPreferences({ custom_tabs: newTabs });
-        
+
         return { customTabs: newTabs };
       }),
 
       renameCustomTab: (tabId, newName) => set((state) => {
-        const newTabs = state.customTabs.map(t => 
+        const newTabs = state.customTabs.map(t =>
           t.id === tabId ? { ...t, name: newName.substring(0, 12) } : t
         );
-        
+
         // Background sync
         CollaborationService.getInstance().updateUserPreferences({ custom_tabs: newTabs });
-        
+
         return { customTabs: newTabs };
       }),
 
@@ -912,13 +916,13 @@ export const useCollaborationStore = create<CollaborationState>()(
       addActivity: (activity) => set((state) => {
         const spaceId = activity.space_id;
         const currentSpaceActivities = state.spaceActivities[spaceId] || [];
-        
+
         // Prevent duplicate - safe comparison
         if (currentSpaceActivities.some(a => String(a.id) === String(activity.id))) return state;
 
-        const isUpcoming = !!(activity.status === 'scheduled' && 
-                            activity.scheduled_start && 
-                            new Date(activity.scheduled_start) > new Date());
+        const isUpcoming = !!(activity.status === 'scheduled' &&
+          activity.scheduled_start &&
+          new Date(activity.scheduled_start) > new Date());
 
         return {
           spaceActivities: {
@@ -937,18 +941,18 @@ export const useCollaborationStore = create<CollaborationState>()(
       updateActivity: (activity) => set((state) => {
         const spaceId = activity.space_id;
         const currentSpaceActivities = state.spaceActivities[spaceId] || [];
-        
-        const oldActivity = currentSpaceActivities.find(a => String(a.id) === String(activity.id)) || 
-                            state.globalActivities.find(a => String(a.id) === String(activity.id));
 
-        const wasUpcoming = !!(oldActivity && 
-                             oldActivity.status === 'scheduled' && 
-                             oldActivity.scheduled_start && 
-                             new Date(oldActivity.scheduled_start) > new Date());
-                             
-        const isUpcoming = !!(activity.status === 'scheduled' && 
-                            activity.scheduled_start && 
-                            new Date(activity.scheduled_start) > new Date());
+        const oldActivity = currentSpaceActivities.find(a => String(a.id) === String(activity.id)) ||
+          state.globalActivities.find(a => String(a.id) === String(activity.id));
+
+        const wasUpcoming = !!(oldActivity &&
+          oldActivity.status === 'scheduled' &&
+          oldActivity.scheduled_start &&
+          new Date(oldActivity.scheduled_start) > new Date());
+
+        const isUpcoming = !!(activity.status === 'scheduled' &&
+          activity.scheduled_start &&
+          new Date(activity.scheduled_start) > new Date());
 
         const diff = (isUpcoming ? 1 : 0) - (wasUpcoming ? 1 : 0);
 
@@ -968,13 +972,13 @@ export const useCollaborationStore = create<CollaborationState>()(
 
       deleteActivity: (activityId, spaceId) => set((state) => {
         const currentSpaceActivities = state.spaceActivities[spaceId] || [];
-        const activityToDelete = currentSpaceActivities.find(a => String(a.id) === String(activityId)) || 
-                                 state.globalActivities.find(a => String(a.id) === String(activityId));
-        
-        const wasUpcoming = !!(activityToDelete && 
-                             activityToDelete.status === 'scheduled' && 
-                             activityToDelete.scheduled_start && 
-                             new Date(activityToDelete.scheduled_start) > new Date());
+        const activityToDelete = currentSpaceActivities.find(a => String(a.id) === String(activityId)) ||
+          state.globalActivities.find(a => String(a.id) === String(activityId));
+
+        const wasUpcoming = !!(activityToDelete &&
+          activityToDelete.status === 'scheduled' &&
+          activityToDelete.scheduled_start &&
+          new Date(activityToDelete.scheduled_start) > new Date());
 
         return {
           spaceActivities: {
@@ -989,30 +993,46 @@ export const useCollaborationStore = create<CollaborationState>()(
           }
         };
       }),
-      
+
       fetchUserSpaces: async (userId) => {
         try {
-          console.log('🌐 Store: Fetching spaces for user:', userId);
-          const result = await CollaborationService.getInstance().fetchUserSpaces(userId);
+          console.log('🌐 Store: Fetching spaces (LITE) for user:', userId);
+          const result = await CollaborationService.getInstance().fetchUserSpaces(userId, true);
           const { spaces, user_preferences } = result;
-          
+
           // Use our new setSpaces logic to also update unread counts
           get().setSpaces(spaces);
 
           // Correct mapping from raw API result if present
           if (user_preferences?.custom_tabs) {
-             set({ customTabs: user_preferences.custom_tabs });
+            set({ customTabs: user_preferences.custom_tabs || [] });
           }
-          
+
           // Also automatically subscribe to all fetched spaces
           const spaceIds = spaces.map(s => s.id);
           get().subscribeToAllSpaces(spaceIds);
-          
+
           return spaces;
         } catch (error) {
           console.error('❌ Store: Error fetching user spaces:', error);
           throw error;
         }
+      },
+
+      hydrateSpace: async (spaceId: string) => {
+        const currentSpace = get().spaces.find(s => s.id === spaceId);
+        // Only hydrate if we don't have content_state or explicitly lite
+        if (currentSpace && (currentSpace as any).is_lite) {
+          try {
+            console.log(`🌐 Hydrating space: ${spaceId}`);
+            const fullSpace = await CollaborationService.getInstance().fetchSpaceDetails(spaceId);
+            get().updateSpace(spaceId, { ...fullSpace, is_lite: false } as any);
+            return fullSpace;
+          } catch (error) {
+            console.error(`❌ Error hydrating space ${spaceId}:`, error);
+          }
+        }
+        return currentSpace;
       },
 
       reset: () => {

@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Image,
   Alert,
   Platform,
   Dimensions,
@@ -15,6 +14,7 @@ import {
   Switch,
   Modal,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MotiView, AnimatePresence } from 'moti';
@@ -308,7 +308,15 @@ const Page = () => {
   const renderProfilePhoto = () => {
     // Check for null, undefined, or the literal string "null" from backend
     if (user?.profile_photo && String(user.profile_photo).trim() !== 'null') {
-      return <Image source={{ uri: `${getApiBaseImage()}/storage/${user.profile_photo}` }} style={styles.profilePhoto} />;
+      return (
+        <ExpoImage
+          source={{ uri: `${getApiBaseImage()}/storage/${user.profile_photo}` }}
+          style={styles.profilePhoto}
+          contentFit="cover"
+          transition={200}
+          cachePolicy="disk"
+        />
+      );
     }
     return (
       <LinearGradient colors={['#667eea', '#764ba2']} style={styles.profilePhoto}>

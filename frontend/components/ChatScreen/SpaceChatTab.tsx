@@ -2,25 +2,22 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
     View,
-    StyleSheet,
+    StyleSheet as RNStyleSheet,
     TouchableOpacity,
     TextInput,
     Text,
-    Modal,
-    ScrollView,
-    Animated,
     Platform,
     ActivityIndicator,
 } from 'react-native';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import AnimatedRN, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
+import AnimatedRN, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import MessageList from './MessageList';
 import AdvancedMediaUploader, { AdvancedMediaUploaderRef } from './AdvancedMediaUploader';
 import AttachmentPicker from './AttachmentPicker';
 import ShareLocation, { LocationData } from './ShareLocation';
-import CollaborationService from '@/services/ChatScreen/CollaborationService';
+import CollaborationService, { CollaborationSpace } from '@/services/ChatScreen/CollaborationService';
 import { useCollaborationStore } from '@/stores/collaborationStore';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { createShadow } from '@/utils/styles';
@@ -31,8 +28,8 @@ import AudioSeeker from './AudioSeeker';
 interface SpaceChatTabProps {
     spaceId: string;
     currentUserId: number;
-    space: any;
-    setSpace: React.Dispatch<React.SetStateAction<any>>;
+    space: CollaborationSpace;
+    setSpace: React.Dispatch<React.SetStateAction<CollaborationSpace>>;
     setShowPollCreator: (show: boolean) => void;
     /** All polls for this space (passed from [id].tsx so we don't re-fetch) */
     polls?: any[];
@@ -63,11 +60,41 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
     const [showMediaUploader, setShowMediaUploader] = useState(false);
     const [showAttachmentPicker, setShowAttachmentPicker] = useState(false);
     const [showLocationPicker, setShowLocationPicker] = useState(false);
-    const [pendingAsset, setPendingAsset] = useState<any>(null);
-    const [replyingTo, setReplyingTo] = useState<any>(null);
+    const [replyingTo, setReplyingTo] = useState<{ id: string; content: string; user: { name: string } } | null>(null);
     const [isJoining, setIsJoining] = useState(false);
     const uploaderRef = useRef<AdvancedMediaUploaderRef>(null);
     const collaborationService = CollaborationService.getInstance();
+
+    // 1. Ref to break circular dependency (the hook needs options which needs callback, but callback needs hook returns)
+    const onRecordingCompleteRef = useRef<(uri: string, duration: number, metering?: number[]) => Promise<void>>(undefined);
+
+    const audioRecordingOptions = useMemo(() => ({
+        maxDuration: 120,
+        onRecordingComplete: (uri: string, duration: number, metering?: number[]) =>
+            onRecordingCompleteRef.current?.(uri, duration, metering),
+    }), []);
+
+    const {
+        isRecording,
+        isPaused,
+        recordingDuration,
+        isUploading: audioIsUploading,
+        previewStatus,
+        displayProgress,
+        effectiveDuration,
+        startRecording,
+        pauseRecording,
+        resumeRecording,
+        playPreview,
+        pausePreview,
+        seekPreview,
+        stopRecording,
+        cancelRecording,
+        formatDuration,
+        setIsUploading: setAudioIsUploading,
+        setIsSeeking,
+        meteringData,
+    } = useAudioRecording(audioRecordingOptions);
 
     const onRecordingCompleteCallback = useCallback(async (uri: string, duration: number, metering?: number[]) => {
         setAudioIsUploading(true);
@@ -154,34 +181,11 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
         } finally {
             setAudioIsUploading(false);
         }
-    }, [spaceId, currentUserId, setSpace, collaborationService, showToast]);
+    }, [spaceId, currentUserId, setSpace, collaborationService, showToast, setAudioIsUploading]);
 
-    const audioRecordingOptions = useMemo(() => ({
-        maxDuration: 120,
-        onRecordingComplete: onRecordingCompleteCallback,
-    }), [onRecordingCompleteCallback]);
-
-    const {
-        isRecording,
-        isPaused,
-        recordingDuration,
-        isUploading: audioIsUploading,
-        previewStatus,
-        displayProgress,
-        effectiveDuration,
-        startRecording,
-        pauseRecording,
-        resumeRecording,
-        playPreview,
-        pausePreview,
-        seekPreview,
-        stopRecording,
-        cancelRecording,
-        formatDuration,
-        setIsUploading: setAudioIsUploading,
-        setIsSeeking,
-        meteringData,
-    } = useAudioRecording(audioRecordingOptions);
+    useEffect(() => {
+        onRecordingCompleteRef.current = onRecordingCompleteCallback;
+    }, [onRecordingCompleteCallback]);
 
     const handleAudioPress = () => {
         if (isRecording || isPaused) {
@@ -234,7 +238,15 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
         transform: [{ translateY: inputTranslateY.value }]
     }));
 
-    const handleSendMessage = async () => {
+    const hydrateSpace = useCollaborationStore(state => state.hydrateSpace);
+
+    useEffect(() => {
+        if (spaceId) {
+            hydrateSpace(spaceId);
+        }
+    }, [spaceId, hydrateSpace]);
+
+    const handleSendMessage = useCallback(async () => {
         if (!content.trim() || !space) return;
 
         const trimmed = content.trim();
@@ -245,17 +257,28 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                 content: trimmed,
                 type: 'text',
                 reply_to_id: replyingTo?.id,
-            });
+            }) as any;
 
             setReplyingTo(null);
 
-            setSpace((prev: any) => ({
-                ...prev,
-                content_state: {
-                    ...prev.content_state,
-                    messages: [...(prev?.content_state?.messages || []), message]
-                }
-            }));
+            setSpace((prev: any) => {
+                const updatedSpace = {
+                    ...prev,
+                    content_state: {
+                        ...prev.content_state,
+                        messages: [...(prev?.content_state?.messages || []), message]
+                    },
+                    updated_at: new Date().toISOString()
+                };
+                
+                // ✅ Sync with global store to trigger list re-ordering
+                useCollaborationStore.getState().updateSpace(spaceId, {
+                    updated_at: updatedSpace.updated_at,
+                    content_state: updatedSpace.content_state
+                });
+                
+                return updatedSpace;
+            });
 
             if (message.user_id !== currentUserId) {
                 useCollaborationStore.getState().incrementUnreadCount(spaceId);
@@ -265,7 +288,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
             // Restore content on error
             setContent(trimmed);
         }
-    };
+    }, [content, space, spaceId, currentUserId, collaborationService, showToast, replyingTo, setAudioIsUploading, setReplyingTo, setContent]);
 
     const handleJoin = async () => {
         setIsJoining(true);
@@ -311,7 +334,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                     isLive: false,
                 },
                 reply_to_id: replyingTo?.id,
-            });
+            }) as any;
 
             setReplyingTo(null);
             setSpace((prev: any) => ({
@@ -340,7 +363,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                     expiresAt: new Date(Date.now() + duration * 60 * 1000).toISOString(),
                 },
                 reply_to_id: replyingTo?.id,
-            });
+            }) as any;
 
             setReplyingTo(null);
             setSpace((prev: any) => ({
@@ -384,7 +407,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
 
                 {/* ─── Message List ─── */}
                 {(() => {
-                    const myParticipation = space?.my_participation || space?.participation;
+                    const myParticipation = space?.my_participation || (space?.participations ? space.participations[0] : null);
                     const isPending = myParticipation?.role === 'pending';
 
                     return (
@@ -396,15 +419,16 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                             onReply={(msg) => setReplyingTo(msg)}
                             highlightMessageId={highlightMessageId}
                             lastReadAt={
-                                space?.my_participation?.last_read_at ??
-                                space?.my_permissions?.last_read_at ??
-                                space?.my_participation?.last_active_at ??
+                                (space?.my_participation as any)?.last_read_at ??
+                                (space?.my_permissions as any)?.last_read_at ??
+                                (space?.my_participation as any)?.last_active_at ??
                                 null
                             }
                             onPollPress={() => { }} // No-op now that polls are inline
                             onStartCall={onStartCall}
                             isPending={isPending}
                             spaceType={space?.space_type}
+                            messages={(space?.content_state as any)?.messages || []}
                         />
                     );
                 })()}
@@ -415,10 +439,10 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                         <View style={styles.replyPreviewBar} />
                         <View style={styles.replyPreviewContent}>
                             <Text style={styles.replyPreviewName} numberOfLines={1}>
-                                {replyingTo.user?.name || replyingTo.user_name || 'User'}
+                                {(replyingTo as any).user_name || replyingTo.user?.name || 'User'}
                             </Text>
-                            <Text style={styles.replyPreviewText} numberOfLines={1}>
-                                {replyingTo.type === 'text' ? replyingTo.content : `[${replyingTo.type}]`}
+                            <Text style={[styles.replyPreviewText, { color: colors.text }]} numberOfLines={1}>
+                                {replyingTo.content}
                             </Text>
                         </View>
                         <TouchableOpacity
@@ -432,14 +456,14 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
 
                 {/* ─── Input Bar / Join Bar ─── */}
                 {(() => {
-                    const myParticipation = space?.my_participation || space?.participation;
+                    const myParticipation = space?.my_participation || (space?.participations ? space.participations[0] : null);
                     const isParticipant = !!myParticipation;
                     const isPending = myParticipation?.role === 'pending';
                     const isChannel = space?.space_type === 'channel';
                     const isGeneral = space?.space_type === 'general';
                     const isDirect = space?.space_type === 'direct' || space?.space_type === 'chat';
                     const isAdmin = ['owner', 'moderator', 'admin'].includes(myParticipation?.role || currentUserRole || '');
-                    const permissions = space?.my_permissions || myParticipation?.permissions || {};
+                    const permissions = space?.my_permissions || (myParticipation as any)?.permissions || {};
                     const canWrite = permissions.write !== false;
 
                     // Case 1: Not joined a public space or Pending participation
@@ -678,7 +702,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                             };
                         }
 
-                        const message = await collaborationService.sendMessage(spaceId, messageData);
+                        const message = await collaborationService.sendMessage(spaceId, messageData) as any;
 
                         setSpace((prev: any) => ({
                             ...prev,
@@ -688,7 +712,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                             }
                         }));
 
-                        if (message.user_id !== currentUserId) {
+                        if ((message as any).user_id !== currentUserId) {
                             useCollaborationStore.getState().incrementUnreadCount(spaceId);
                         }
                     } catch (error) {
@@ -700,7 +724,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
     );
 };
 
-const styles = StyleSheet.create({
+const styles = RNStyleSheet.create({
     chatContainer: {
         flex: 1,
     },

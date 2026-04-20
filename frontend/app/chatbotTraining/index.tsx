@@ -29,14 +29,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Toast } from '@/components/Shared/Toast';
 import { useToastStore } from '@/stores/toastStore';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { createShadow } from '@/utils/styles';
 
-const createShadow = ({ opacity, radius }: { opacity: number; radius: number }) => ({
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: opacity,
-  shadowRadius: radius,
-  elevation: radius / 2,
-});
 
 interface TrainingRule {
     id: number;
@@ -399,7 +393,7 @@ const ChatbotTrainingScreen = () => {
     );
 };
 
-function getStyles(colors: any, activeScheme: string) {
+function getStyles(colors: any, activeScheme: string): any {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },

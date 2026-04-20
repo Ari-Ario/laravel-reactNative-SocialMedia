@@ -2,11 +2,124 @@ import { Platform } from 'react-native';
 import getApiBase from '@/services/getApiBase';
 
 // Pusher type for TypeScript only (no runtime import at module level)
-type PusherType = InstanceType<typeof import('pusher-js').default>;
+type PusherType = any; // Use any for internal reference since it's dynamic
+export interface PusherChannel {
+  bind(event: string, callback: (data: Record<string, unknown>) => void): void;
+  unbind(event?: string, callback?: (data: Record<string, unknown>) => void): void;
+  unbind_all?(): void;
+  trigger?(event: string, data: any): void;
+}
+export interface PusherEventPayload extends Record<string, unknown> {
+  type?: string;
+  title?: string;
+  message?: string;
+  data?: Record<string, unknown> | unknown;
+  userId?: number | string;
+  user_id?: number | string;
+  postId?: number | string;
+  post_id?: number | string;
+  spaceId?: string;
+  space_id?: string;
+  commentId?: number | string;
+  comment_id?: number | string;
+  messageId?: string;
+  message_id?: string;
+  activityId?: string;
+  activity_id?: string;
+  callId?: string;
+  call_id?: string;
+  avatar?: string;
+  profile_photo?: string;
+  user_avatar?: string;
+  userName?: string;
+  user?: {
+    id: number;
+    name?: string;
+    profile_photo?: string;
+  };
+  comment?: {
+    id: number;
+    user_id: number;
+    content: string;
+    user?: {
+      name: string;
+      profile_photo?: string;
+    };
+    post_id?: number;
+  };
+  reaction?: {
+    user_id: number;
+    emoji: string;
+    comment_id?: number;
+    comment?: {
+      content: string;
+    };
+    post?: {
+      caption: string;
+    };
+    user?: {
+      id: number;
+      name: string;
+      profile_photo?: string;
+    };
+  };
+  followerName?: string;
+  followerId?: number;
+  follower?: {
+    id: number;
+    name: string;
+    profile_photo?: string;
+  };
+  post?: {
+    id: number;
+    user_id: number;
+    caption: string;
+    user?: {
+      name: string;
+      profile_photo?: string;
+    };
+  };
+  changes?: {
+    caption?: {
+      new: string;
+    };
+  };
+  postCaption?: string;
+  question?: string;
+  category?: string;
+  keywords?: string[];
+  timestamp?: string | number;
+  created_at?: string;
+  id?: string;
+  isCall?: boolean;
+  is_sharing?: boolean;
+  status?: number;
+  call?: {
+    id: string;
+    type?: string;
+  };
+  call_type?: string;
+  caller_id?: number;
+  caller_name?: string;
+  space_title?: string;
+  inviter_id?: number;
+  inviter_name?: string;
+  inviter_avatar?: string;
+  space?: {
+    id: string;
+    title?: string;
+    space_type?: string;
+  };
+  notification_message?: string;
+  chat_message?: Record<string, unknown>;
+  content_state?: Record<string, unknown>;
+  poll?: Record<string, unknown>;
+  poll_id?: string;
+}
 
 class PusherService {
   private pusher: PusherType | null = null;
-  private channels: Map<string, any> = new Map();
+  private channels: Map<string, PusherChannel> = new Map();
   private isInitialized = false;
   private connectionAttempts = 0;
   private maxReconnectAttempts = 8;
@@ -77,13 +190,13 @@ class PusherService {
 
       // Dynamically import pusher-js to avoid SSR window crash
       import('pusher-js').then((mod) => {
-        const Pusher = (mod as any).default || mod;
+        const Pusher = (mod.default || mod) as (new (key: string, options: any) => any);
 
         // ✅ FIX: Only apply React Native overrides if NOT on web
-        if (Platform.OS !== 'web' && (Pusher as any).Runtime) {
+        if (Platform.OS !== 'web' && Pusher.Runtime) {
           console.log(`📱 Applying React Native Pusher overrides for ${Platform.OS}`);
-          (Pusher as any).Runtime.createXHR = () => new XMLHttpRequest();
-          (Pusher as any).Runtime.createWebSocket = (url: string) => new WebSocket(url);
+          Pusher.Runtime.createXHR = () => new XMLHttpRequest();
+          Pusher.Runtime.createWebSocket = (url: string) => new WebSocket(url);
         } else {
           console.log('🌐 Using native browser environment for Pusher');
         }
@@ -96,9 +209,9 @@ class PusherService {
           wssPort: finalWsPort,
           forceTLS: finalWsScheme === 'https',
           enabledTransports: ['ws', 'wss'],
-          authorizer: (channel: any, options: any) => {
+          authorizer: (channel: { name: string }) => {
             return {
-              authorize: (socketId: string, callback: Function) => {
+              authorize: (socketId: string, callback: (error: Error | null, data: Record<string, unknown> | null) => void) => {
                 // ✅ HARDENING: DECISIVELY Use the api/broadcasting/auth endpoint.
                 // Mobile (via getApiBase) already includes /api, so this is /api/broadcasting/auth.
                 // Web also uses /api, so this is consistent across all platforms.
@@ -136,9 +249,9 @@ class PusherService {
                         const data = await response.json();
                         console.log(`✅ Channel authorized: ${channel.name}`);
                         callback(null, data);
-                        return; // Success, exit retry loop
+                        return;
                       }
-                    } catch (error: any) {
+                    } catch (error: unknown) {
                       console.error(`⚠️ Auth loop attempt ${i + 1}/${retries} failed for ${channel.name}:`, error);
                       // If this was the last attempt, fail permanently
                       if (i === retries - 1) {
@@ -146,7 +259,7 @@ class PusherService {
                         if (Platform.OS === 'android' && apiUrl.includes('localhost')) {
                           console.warn('⚠️ Android detected using localhost. Try 10.0.2.2 instead.');
                         }
-                        callback(error, null);
+                        callback(error as Error, null);
                         return; // Exit
                       }
                       // Otherwise wait and retry
@@ -187,11 +300,11 @@ class PusherService {
           }
         });
 
-        this.pusher?.connection.bind('error', (err: any) => {
+        this.pusher?.connection.bind('error', (err: Record<string, unknown>) => {
           console.error('❌ Pusher connection error:', err);
 
           // Code 4200 means "Please reconnect immediately"
-          const errorCode = err?.error?.data?.code || err?.data?.code;
+          const errorCode = (err as any)?.error?.data?.code || (err as any)?.data?.code;
           if (errorCode === 4200 || errorCode === 4201) {
             console.log('🔄 Pusher: Reconnecting as requested by server...');
             this.pusher?.disconnect();
@@ -208,7 +321,7 @@ class PusherService {
           this.isInitialized = false;
           this.handleReconnection();
         });
-      }).catch((err: any) => {
+      }).catch((err: unknown) => {
         console.error('❌ Failed to load pusher-js:', err);
       });
 
@@ -258,7 +371,7 @@ class PusherService {
   // OPTIMIZED: Subscribe to user notifications with ALL event types
   subscribeToUserNotifications(
     userId: number,
-    onNotification: (data: any) => void
+    onNotification: (data: Record<string, unknown>) => void
   ): boolean {
     if (!this.pusher || !this.isInitialized) {
       console.log('⏳ Pusher not ready. Queuing notification subscription for user:', userId);
@@ -278,7 +391,7 @@ class PusherService {
       const channel = this.pusher.subscribe(channelName);
 
       // ✅ PROPERLY FORMAT NOTIFICATIONS FOR THE STORE
-      channel.bind('new-comment', (data: any) => {
+      channel?.bind('new-comment', (data: PusherEventPayload) => {
         console.log('💬 RAW DATA (new-comment):', data);
 
         const notification = {
@@ -294,48 +407,48 @@ class PusherService {
         };
 
         console.log('💬 SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
       });
 
       // ✅ FIX: Update other bindings too if they use broadcastAs
-      channel.bind('new-reaction', (data: any) => {
+      channel?.bind('new-reaction', (data: PusherEventPayload) => {
         console.log('❤️ RAW DATA (new-reaction):', data);
 
         const notification = {
           type: data.type || 'reaction',
           title: data.title || 'New Reaction',
-          message: data.message || `${data.reaction.user?.name || 'Someone'} reacted with ${data.reaction.emoji} on post: "${data.reaction.post?.caption?.substring(0, 50)}..."`,
+          message: data.message || `${data.reaction?.user?.name || 'Someone'} reacted with ${data.reaction?.emoji} on post: "${data.reaction?.post?.caption?.substring(0, 50)}..."`,
           data: data,
-          userId: data.reaction.user_id,
+          userId: data.reaction?.user_id,
           postId: data.postId,
-          avatar: data.reaction.user?.profile_photo,
+          avatar: data.reaction?.user?.profile_photo,
           createdAt: new Date()
         };
 
         console.log('❤️ SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
       });
 
-      channel.bind('comment-reaction', (data: any) => {
+      channel?.bind('comment-reaction', (data: PusherEventPayload) => {
         console.log('💖 New comment reaction:', data);
 
         const notification = {
           type: data.type || 'comment_reaction',
           title: data.title || 'Comment Reaction',
-          message: `${data.reaction.user?.name || 'Someone'} reacted to your comment "${data.reaction.comment.content.substring(0, 50)}..." with ${data.reaction.emoji}` || data.message,
+          message: (data.reaction?.user?.name) ? `${data.reaction?.user?.name} reacted to your comment "${(data.reaction?.comment as Record<string, unknown>)?.content as string || ''}" with ${data.reaction?.emoji}` : (data.message as string || 'New reaction'),
           data: data,
-          userId: data.reaction.user_id,
+          userId: data.reaction?.user_id,
           postId: data.postId,
-          commentId: data.reaction.comment_id,
-          avatar: data.reaction.user?.profile_photo,
+          commentId: data.reaction?.comment_id,
+          avatar: data.reaction?.user?.profile_photo,
           createdAt: new Date()
         };
 
         console.log('💖 SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
       });
 
-      channel.bind('new-follower', (data: any) => {
+      channel?.bind('new-follower', (data: PusherEventPayload) => {
         console.log('👤 RAW DATA (new-follower):', data);
 
         const notification = {
@@ -349,10 +462,10 @@ class PusherService {
         };
 
         console.log('👤 SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
       });
 
-      channel.bind('new-post', (data: any) => {
+      channel?.bind('new-post', (data: PusherEventPayload) => {
         console.log('📝 New post notification:', data);
 
         const notification = {
@@ -367,16 +480,16 @@ class PusherService {
         };
 
         console.log('📝 SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
       });
 
-      channel.bind('post-updated', (data: any) => {
+      channel?.bind('post-updated', (data: PusherEventPayload) => {
         console.log('✏️ Post updated notification:', data);
 
         const notification = {
           type: data.type || 'post_updated',
           title: data.title || 'Post Updated',
-          message: `${data.userName} updated a post : ${data.changes.caption?.new.substring(0, 30)}...` || data.message,
+          message: data.userName ? `${data.userName} updated a post : ${data.changes?.caption?.new?.substring(0, 30)}...` : (data.message as string || 'Post updated'),
           data: data,
           userId: data.userId,    // ✅ Use userId instead of data.post.user_id
           postId: data.postId,    // ✅ Use postId instead of data.post.id
@@ -385,16 +498,16 @@ class PusherService {
         };
 
         console.log('✏️ SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
       });
 
-      channel.bind('post-deleted', (data: any) => {
+      channel?.bind('post-deleted', (data: PusherEventPayload) => {
         console.log('✏️ Post deleted notification:', data);
 
         const notification = {
           type: data.type || 'post_deleted',
           title: data.title || 'Post deleted',
-          message: `${data.userName} deleted post: ${data.postCaption}` || data.message,
+          message: data.userName ? `${data.userName} deleted post: ${data.postCaption}` : (data.message as string || 'Post deleted'),
           data: data,
           userId: data.userId,
           postId: data.postId,
@@ -403,32 +516,32 @@ class PusherService {
         };
 
         console.log('✏️ SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
       });
 
       // ✅ DELETED: Comment deleted notification binding
       // Reason: This was causing a redundant "dropdown" toast. 
       // The actual UI update is already handled by the global channel subscription in PostStore.
 
-      channel.bind('chatbot-training-needed', (data: any) => {
+      channel?.bind('chatbot-training-needed', (data: PusherEventPayload) => {
         console.log('🤖 Chatbot training notification (user channel):', data);
 
         const notification = {
           id: data.id || `chatbot-${Date.now()}-${Math.random()}`,
           type: data.type || 'chatbot_training',
           title: data.title || 'Chatbot Training Needed',
-          message: `New training data: "${data.question}"` || data.message.substring(0, 60) + '...',
+          message: data.message ? (data.message as string).substring(0, 60) + '...' : `New training data: "${data.question}"`,
           data: data,
           question: data.question,
           category: data.category,
           keywords: data.keywords,
-          timestamp: new Date(data.timestamp),
+          timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
           createdAt: new Date(),
           $isRead: false,
         };
 
         console.log('🤖 SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
       });
 
       // ==================== ADDITIONAL NOTIFICATIONS FOR CHAT PAGE ====================
@@ -439,7 +552,7 @@ class PusherService {
 
 
       // ✅ FIX: capture direct message replies and reactions sent via Notifications
-      channel.bind('message_reply', (data: any) => {
+      channel?.bind('message_reply', (data: PusherEventPayload) => {
         console.log('↩️ RAW DATA (message_reply via notification):', data);
         const notification = {
           type: data.type || 'message_reply',
@@ -453,10 +566,10 @@ class PusherService {
           createdAt: new Date()
         };
         console.log('↩️ SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
       });
 
-      channel.bind('message_reaction', (data: any) => {
+      channel?.bind('message_reaction', (data: PusherEventPayload) => {
         console.log('❤️ RAW DATA (message_reaction via notification):', data);
         const notification = {
           type: 'message_reaction',
@@ -470,10 +583,10 @@ class PusherService {
           createdAt: new Date()
         };
         console.log('❤️ SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
       });
 
-      channel.bind('space-deleted', (data: any) => {
+      channel?.bind('space-deleted', (data: PusherEventPayload) => {
         console.log('🗑️ User channel: Space deleted received:', data);
         const notification = {
           type: 'space-deleted',
@@ -483,14 +596,14 @@ class PusherService {
           spaceId: data.space_id,
           createdAt: new Date()
         };
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
       });
 
       // Handle Violation Reported (Specific Event)
-      channel.bind('violation-reported', (data: any) => {
+      channel?.bind('violation-reported', (data: PusherEventPayload) => {
         console.log('🚨 Violation Report Received (Real-time):', data);
 
-        const innerData = data.data || data;
+        const innerData = (data.data || data) as Record<string, unknown>;
         const notification = {
           id: data.id || Date.now().toString(),
           type: 'violation_reported',
@@ -504,11 +617,11 @@ class PusherService {
         };
 
         console.log('🚨 SENDING VIOLATION TO STORE:', notification.severity);
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
       });
 
       // Handle Moderation Action (Real-time)
-      channel.bind('moderation_action', (data: any) => {
+      channel?.bind('moderation_action', (data: PusherEventPayload) => {
         console.log('⚒️ Moderation Action Received (Real-time):', data);
 
         const notification = {
@@ -521,17 +634,17 @@ class PusherService {
           isRead: false,
         };
 
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
       });
 
       // Handle Laravel's generic BroadcastNotificationCreated events
-      channel.bind('Illuminate\\Notifications\\Events\\BroadcastNotificationCreated', (data: any) => {
+      channel?.bind('Illuminate\\Notifications\\Events\\BroadcastNotificationCreated', (data: PusherEventPayload) => {
 
         console.log('📨 Laravel notification received:', data);
 
         // Extract inner data which contains the actual message
-        const innerData = data.data || {};
-        let notifType = innerData.type || data.type || 'generic';
+        const innerData = (data.data || {}) as Record<string, unknown>;
+        let notifType = (innerData.type || data.type || 'generic') as string;
 
         // Normalize type names
         const upperNotifType = notifType.toUpperCase();
@@ -546,20 +659,21 @@ class PusherService {
         if (upperNotifType.includes('FOLLOW')) notifType = 'new_follower';
 
         // Map generic Laravel notification to our store format
-        const notification: any = {
+        const idata = innerData as any;
+        const notification: Record<string, unknown> = {
           id: data.id || Date.now().toString(),
           type: notifType,
-          title: innerData.title || (notifType === 'space_invitation' ? 'Space Invitation' : 'New Notification'),
-          message: innerData.message,
-          data: innerData,
-          userId: innerData.userId || innerData.user_id || innerData.inviter_id || innerData.followerId || innerData.follower_id || innerData.follower?.id,
-          postId: innerData.postId || innerData.post_id,
-          spaceId: innerData.spaceId || innerData.space_id,
-          messageId: innerData.messageId || innerData.message_id || innerData.message?.id,
-          commentId: innerData.commentId || innerData.comment_id || innerData.comment?.id || innerData.reaction?.comment_id,
-          activityId: innerData.activityId || innerData.activity_id || innerData.activity?.id,
-          callId: innerData.callId || innerData.call_id || innerData.call?.id,
-          avatar: innerData.avatar || innerData.profile_photo || innerData.inviter_avatar || innerData.user?.profile_photo || innerData.follower?.profile_photo,
+          title: idata.title || (notifType === 'space_invitation' ? 'Space Invitation' : 'New Notification'),
+          message: idata.message,
+          data: idata,
+          userId: idata.userId || idata.user_id || idata.inviter_id || idata.followerId || idata.follower_id || idata.follower?.id,
+          postId: idata.postId || idata.post_id,
+          spaceId: idata.spaceId || idata.space_id,
+          messageId: idata.messageId || idata.message_id || idata.message?.id,
+          commentId: idata.commentId || idata.comment_id || idata.comment?.id || idata.reaction?.comment_id,
+          activityId: idata.activityId || idata.activity_id || idata.activity?.id,
+          callId: idata.callId || idata.call_id || idata.call?.id,
+          avatar: idata.avatar || idata.profile_photo || idata.inviter_avatar || idata.user?.profile_photo || idata.follower?.profile_photo,
           createdAt: new Date(data.created_at || Date.now()),
           isRead: false,
         };
@@ -576,18 +690,19 @@ class PusherService {
 
           // Trigger the modal bridge
           try {
-            const CollaborationService = require('@/services/ChatScreen/CollaborationService').default;
-            const cs = CollaborationService.getInstance();
-            cs.emitIncomingCall({
-              callId: notification.callId,
-              spaceId: notification.spaceId,
-              callerId: notification.userId,
-              callerName: innerData.userName || innerData.user?.name || 'Someone',
-              callerAvatar: notification.avatar,
-              callType: msgText.includes('audio') ? 'audio' : 'video',
-              spaceType: 'direct', // Defaulting for notification-based calls
+            import('@/services/ChatScreen/CollaborationService').then((mod) => {
+              const cs = mod.default.getInstance();
+              cs.emitIncomingCall({
+                callId: notification.callId as string,
+                spaceId: notification.spaceId as string,
+                callerId: notification.userId as number,
+                callerName: (innerData.userName || (innerData.user as Record<string, unknown>)?.name || 'Someone') as string,
+                callerAvatar: notification.avatar as string,
+                callType: msgText.includes('audio') ? 'audio' : 'video',
+                spaceType: 'direct', // Defaulting for notification-based calls
+              });
             });
-          } catch (e) { }
+          } catch { /* ignore */ }
         }
 
         // Construct message if missing (common for Laravel notifications with raw data)
@@ -600,12 +715,12 @@ class PusherService {
         }
 
         console.log('📨 SENDING BROADCAST NOTIFICATION TO STORE:', notification.type, '| spaceId:', notification.spaceId);
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
       });
 
 
       // Call started
-      channel.bind('call-started', (data: any) => {
+      channel?.bind('call-started', (data: PusherEventPayload) => {
         console.log('📞 [PusherService] call.started RAW payload:', JSON.stringify(data));
 
         const notification = {
@@ -620,7 +735,7 @@ class PusherService {
           createdAt: new Date()
         };
         console.log('📞 SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
 
         // ─── Incoming Call UI ─────────────────────────────────────────────
         // This event fires on the PRIVATE user channel (private-user.{userId}),
@@ -637,26 +752,25 @@ class PusherService {
 
         if (callerId && spaceId) {
           try {
-            const CollaborationService = require('@/services/ChatScreen/CollaborationService').default;
-            const cs = CollaborationService.getInstance();
-            console.log('📞 [PusherService] Calling emitIncomingCall...');
-            cs.emitIncomingCall({
-              callId,
-              spaceId,
-              callerId,
-              callerName: data.user?.name || data.caller_name || 'Unknown',
-              callerAvatar: data.user?.profile_photo || undefined,
-              callType,
-              spaceType,
+            import('@/services/ChatScreen/CollaborationService').then((mod) => {
+              const cs = mod.default.getInstance();
+              console.log('📞 [PusherService] Calling emitIncomingCall...');
+              cs.emitIncomingCall({
+                callId,
+                spaceId,
+                callerId,
+                callerName: data.user?.name || data.caller_name || 'Unknown',
+                callerAvatar: data.user?.profile_photo || undefined,
+                callType,
+                spaceType,
+              });
             });
-          } catch (e) {
-            console.warn('📞 [PusherService] Could not emit incoming call event:', e);
-          }
+          } catch { /* ignore */ }
         }
       });
 
       // ✅ Call Ended (Unified Payload)
-      channel.bind('call-ended', (data: any) => {
+      channel?.bind('call-ended', (data: PusherEventPayload) => {
         console.log('📞 [PusherService] call.ended RAW payload:', JSON.stringify(data));
 
         const notification = {
@@ -671,20 +785,19 @@ class PusherService {
         };
 
         console.log('📞 SENDING END-CALL TO STORE:', notification);
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
       });
 
       // ✅ ADDED: space.message (used by SpaceMessageSent event)
-      channel.bind('space-message', (data: any) => {
+      channel?.bind('space-message', (data: PusherEventPayload) => {
         console.log('💬 New message notification (space.message):', data);
 
-        const msgObj = data.chat_message || data.message || {};
         const msgText = (data.message && typeof data.message === 'string' ? data.message : (data.notification_message || '')).toLowerCase();
         const isCallEvent = msgText.includes('started a video call') || msgText.includes('started an audio call');
 
         const notification = {
           ...data,
-          id: msgObj.id || data.id || `msg-${Date.now()}`,
+          id: data.id || `msg-${Date.now()}`,
           type: isCallEvent ? 'call_started' : (data.type || 'space_message'),
           isCall: isCallEvent,
           title: data.title || (isCallEvent ? 'Incoming Call' : 'New Message'),
@@ -694,71 +807,72 @@ class PusherService {
           createdAt: new Date()
         };
 
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
 
         // If it's a call embedded in a message, trigger the modal
         if (isCallEvent) {
           try {
-            const CollaborationService = require('@/services/ChatScreen/CollaborationService').default;
-            const cs = CollaborationService.getInstance();
-            cs.emitIncomingCall({
-              callId: data.call_id || data.call?.id,
-              spaceId: notification.spaceId,
-              callerId: data.user?.id || data.user_id,
-              callerName: data.user?.name || 'Someone',
-              callerAvatar: notification.avatar,
-              callType: msgText.includes('audio') ? 'audio' : 'video',
-              spaceType: data.space_type || 'direct',
+            import('@/services/ChatScreen/CollaborationService').then((mod) => {
+              const cs = mod.default.getInstance();
+              cs.emitIncomingCall({
+                callId: data.call_id || data.call?.id,
+                spaceId: notification.spaceId as string,
+                callerId: data.user?.id || data.user_id,
+                callerName: data.user?.name || 'Someone',
+                callerAvatar: notification.avatar as string,
+                callType: msgText.includes('audio') ? 'audio' : 'video',
+                spaceType: data.space_type || 'direct',
+              });
             });
-          } catch (e) { }
+          } catch { /* ignore */ }
         }
       });
 
       // ✅ SPACE MANAGEMENT EVENTS
-      channel.bind('space-muted', (data: any) => {
+      channel?.bind('space-muted', (data: PusherEventPayload) => {
         onNotification({
           type: 'space_muted',
           spaceId: data.space_id,
           data: data,
           createdAt: new Date()
-        });
+        } as Record<string, unknown>);
       });
 
-      channel.bind('space-pinned', (data: any) => {
+      channel?.bind('space-pinned', (data: PusherEventPayload) => {
         onNotification({
           type: 'space_pinned',
           spaceId: data.space_id,
           data: data,
           createdAt: new Date()
-        });
+        } as Record<string, unknown>);
       });
 
-      channel.bind('space-archived', (data: any) => {
+      channel?.bind('space-archived', (data: PusherEventPayload) => {
         onNotification({
           type: 'space_archived',
           spaceId: data.space_id,
           data: data,
           createdAt: new Date()
-        });
+        } as Record<string, unknown>);
       });
 
-      channel.bind('space-unread', (data: any) => {
+      channel?.bind('space-unread', (data: PusherEventPayload) => {
         onNotification({
           type: 'space_unread',
           spaceId: data.space_id,
           data: data,
           createdAt: new Date()
-        });
+        } as Record<string, unknown>);
       });
 
       // Space invitation
-      channel.bind('space-invitation', (data: any) => {
+      channel?.bind('space-invitation', (data: PusherEventPayload) => {
         console.log('📨 Space invitation event received:', data);
 
         // ✅ FILTER: If this is a Laravel notification wrapper sent via the same event name, skip it.
         // The raw event has 'type: space_invitation', while the notification wrapper has the class name.
-        if (data.type && data.type.includes('Notifications')) {
-          console.log('🚫 Skipping redundant Laravel notification wrapper sent via space.invitation');
+        if (data.type && (data.type as string).includes('Notifications')) {
+          console.log('🚫 Skipping redundant SpaceInvitation broadcast (robust check), handled by dedicated event');
           return;
         }
 
@@ -775,11 +889,11 @@ class PusherService {
           isRead: false,
         };
         console.log('📨 SENDING INVITATION TO NOTIFICATION STORE:', notification);
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
       });
 
       // Participant joined space
-      channel.bind('participant-joined', (data: any) => {
+      channel?.bind('participant-joined', (data: PusherEventPayload) => {
         console.log('👤 Participant joined notification:', data);
         const notification = {
           ...data,
@@ -793,11 +907,11 @@ class PusherService {
           createdAt: data.timestamp ? new Date(data.timestamp) : new Date()
         };
         console.log('👤 SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
       });
 
       // Participant left space
-      channel.bind('participant-left', (data: any) => {
+      channel?.bind('participant-left', (data: PusherEventPayload) => {
         console.log('👤 Participant left notification:', data);
         const notification = {
           ...data,
@@ -811,28 +925,28 @@ class PusherService {
           createdAt: data.timestamp ? new Date(data.timestamp) : new Date()
         };
         console.log('👤 SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
       });
 
       // Magic event triggered
-      channel.bind('magic-triggered', (data: any) => {
+      channel?.bind('magic-triggered', (data: PusherEventPayload) => {
         console.log('✨ Magic event notification:', data);
         const notification = {
           type: data.type || 'magic_event',
           title: data.title || '✨ Magic Discovered!',
-          message: `A ${data.event?.event_type || 'magic'} event occurred in "${data.space?.title}"`,
+          message: `A ${(data.event as Record<string, unknown>)?.event_type || 'magic'} event occurred in "${data.space?.title}"`,
           data: data,
           spaceId: data.space_id,
-          eventId: data.event?.id,
+          eventId: (data.event as Record<string, unknown>)?.id,
           userId: data.triggered_by,
           createdAt: new Date()
         };
         console.log('✨ SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification); // ✅ ADD THIS LINE
+        onNotification(notification as Record<string, unknown>);
       });
 
       // Screen share started
-      channel.bind('screen-share-started', (data: any) => {
+      channel?.bind('screen-share-started', (data: PusherEventPayload) => {
         console.log('🖥️ Screen share notification:', data);
         const notification = {
           type: data.type || 'screen_share',
@@ -845,11 +959,11 @@ class PusherService {
           createdAt: new Date()
         };
         console.log('🖥️ SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
       });
 
       // Poll created
-      channel.bind('poll-created', (data: any) => {
+      channel?.bind('poll-created', (data: PusherEventPayload) => {
         console.log('📊 Poll created notification:', data);
         const notification = {
           type: 'poll_created',
@@ -861,11 +975,11 @@ class PusherService {
           createdAt: new Date()
         };
         console.log('📊 SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
       });
 
       // Poll deleted
-      channel.bind('poll-deleted', (data: any) => {
+      channel?.bind('poll-deleted', (data: PusherEventPayload) => {
         console.log('📊 Poll deleted notification:', data);
         const notification = {
           type: 'poll_deleted',
@@ -876,60 +990,64 @@ class PusherService {
           createdAt: new Date()
         };
         console.log('📊 SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
       });
 
-      channel.bind('activity-created', (data: any) => {
+      channel?.bind('activity-created', (data: PusherEventPayload) => {
         console.log('📅 New activity notification:', data);
         const notification = {
           type: data.type || 'activity_created',
           title: data.title || 'New Activity',
-          message: data.message || `${data.creator?.name || 'Someone'} created "${data.activity?.title}" in "${data.space?.title}"`,
+          message: data.message || `${(data.creator as Record<string, unknown>)?.name || 'Someone'} created "${(data.activity as Record<string, unknown>)?.title}" in "${data.space?.title}"`,
           data: data,
           spaceId: data.space_id,
-          activityId: data.activity?.id,
-          userId: data.creator?.id || data.user?.id,
-          avatar: data.profile_photo || data.creator?.profile_photo || data.user?.profile_photo,
+          activityId: (data.activity as Record<string, unknown>)?.id,
+          userId: (data.creator as Record<string, unknown>)?.id,
+          avatar: data.profile_photo || (data.creator as Record<string, unknown>)?.profile_photo || data.user?.profile_photo,
           createdAt: new Date()
         };
         console.log('📅 SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
 
         // Ensure the calendar gets updated instantly with the new activity
         if (data.activity) {
           try {
-            require('@/stores/collaborationStore').useCollaborationStore.getState().handleSpaceEvent({
-              type: 'activity-created',
-              data: { activity: data.activity }
+            import('@/stores/collaborationStore').then((mod) => {
+              mod.useCollaborationStore.getState().handleSpaceEvent({
+                type: 'activity-created',
+                data: { activity: data.activity }
+              });
             });
-          } catch (e) { console.warn('Could not forward activity to calendar', e); }
+          } catch { /* ignore */ }
         }
       });
 
-      channel.bind('activity-updated', (data: any) => {
+      channel?.bind('activity-updated', (data: PusherEventPayload) => {
         console.log('📅 Activity updated notification:', data);
         const notification = {
           type: data.type || 'activity_updated',
           title: data.title || 'Activity Updated',
-          message: data.message || `Activity "${data.activity?.title}" was updated`,
+          message: data.message || `Activity "${(data.activity as Record<string, unknown>)?.title}" was updated`,
           data: data,
           spaceId: data.space_id,
-          activityId: data.activity?.id,
-          avatar: data.profile_photo || data.creator?.profile_photo || data.user?.profile_photo,
+          activityId: (data.activity as Record<string, unknown>)?.id,
+          avatar: data.profile_photo || (data.creator as Record<string, unknown>)?.profile_photo || data.user?.profile_photo,
           createdAt: new Date()
         };
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
         if (data.activity) {
           try {
-            require('@/stores/collaborationStore').useCollaborationStore.getState().handleSpaceEvent({
-              type: 'activity-updated',
-              data: { activity: data.activity }
+            import('@/stores/collaborationStore').then((mod) => {
+              mod.useCollaborationStore.getState().handleSpaceEvent({
+                type: 'activity-updated',
+                data: { activity: data.activity }
+              });
             });
-          } catch (e) { }
+          } catch { /* ignore */ }
         }
       });
 
-      channel.bind('activity-deleted', (data: any) => {
+      channel?.bind('activity-deleted', (data: PusherEventPayload) => {
         console.log('📅 Activity deleted notification:', data);
         const notification = {
           type: 'activity_deleted',
@@ -937,43 +1055,45 @@ class PusherService {
           message: 'An activity was removed',
           data: data,
           spaceId: data.space_id,
-          activityId: data.activity_id,
+          activityId: data.activity_id as string,
           createdAt: new Date()
         };
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
         try {
-          require('@/stores/collaborationStore').useCollaborationStore.getState().handleSpaceEvent({
-            type: 'activity-deleted',
-            data: { activity_id: data.activity_id, space_id: data.space_id }
+          import('@/stores/collaborationStore').then((mod) => {
+            mod.useCollaborationStore.getState().handleSpaceEvent({
+              type: 'activity-deleted',
+              data: { activity_id: data.activity_id, space_id: data.space_id }
+            });
           });
-        } catch (e) { }
+        } catch { /* ignore */ }
       });
 
-      channel.bind('space-created', (data: any) => {
+      channel?.bind('space-created', (data: PusherEventPayload) => {
         console.log('🚀 New space created by someone you follow:', data);
 
         const notification = {
           type: 'space_created',
           title: 'New Space Created',
-          message: `${data.creator?.name || 'Someone'} created a new space: "${data.space?.title}"`,
+          message: `${(data.creator as Record<string, unknown>)?.name || 'Someone'} created a new space: "${data.space?.title}"`,
           data: data,
           spaceId: data.space?.id,
-          userId: data.creator?.id,
-          avatar: data.creator?.profile_photo,
+          userId: (data.creator as Record<string, unknown>)?.id,
+          avatar: (data.creator as Record<string, unknown>)?.profile_photo,
           createdAt: new Date()
         };
 
         console.log('🚀 SENDING TO NOTIFICATION STORE:', notification);
-        onNotification(notification);
+        onNotification(notification as Record<string, unknown>);
       });
       // ==================== END OF CHAT PAGE NOTIFICATIONS ====================
 
       // Consistently moved to a single handler
-      channel.bind('pusher:subscription_succeeded', () => {
+      channel?.bind('pusher:subscription_succeeded', () => {
         console.log(`✅ SUBSCRIBED TO USER NOTIFICATIONS: ${channelName}`);
       });
 
-      channel.bind('pusher:subscription_error', (error: any) => {
+      channel?.bind('pusher:subscription_error', (error: Record<string, unknown>) => {
         console.error(`❌ NOTIFICATION SUBSCRIPTION ERROR:`, error);
       });
 
@@ -994,14 +1114,14 @@ class PusherService {
   // UPDATED: Enhanced posts-global subscription with all event types
   subscribeToPosts(
     postIds: number[],
-    onNewComment: (data: any) => void,
-    onNewReaction: (data: any) => void,
-    onCommentReaction: (data: any) => void,
-    onNewPost: (data: any) => void,
-    onPostUpdated: (data: any) => void,
-    onPostDeleted: (data: any) => void,
-    onCommentDeleted: (data: any) => void,
-    onReactionDeleted: (data: any) => void
+    onNewComment: (data: Record<string, unknown>) => void,
+    onNewReaction: (data: Record<string, unknown>) => void,
+    onCommentReaction: (data: Record<string, unknown>) => void,
+    onNewPost: (data: Record<string, unknown>) => void,
+    onPostUpdated: (data: Record<string, unknown>) => void,
+    onPostDeleted: (data: Record<string, unknown>) => void,
+    onCommentDeleted: (data: Record<string, unknown>) => void,
+    onReactionDeleted: (data: Record<string, unknown>) => void
   ): boolean {
     if (!this.pusher || !this.isInitialized) {
       console.log('⏳ Pusher not ready. Queuing posts subscription.');
@@ -1022,65 +1142,65 @@ class PusherService {
       const channel = this.pusher.subscribe(channelName);
 
       // Comments
-      channel.bind('new-comment', (data: any) => {
+      channel?.bind('new-comment', (data: PusherEventPayload) => {
         console.log('💬 Global channel: comment received:', data.postId);
-        onNewComment(data);
+        onNewComment(data as Record<string, unknown>);
       });
 
       // Post Reactions
-      channel.bind('new-reaction', (data: any) => {
+      channel?.bind('new-reaction', (data: PusherEventPayload) => {
         console.log('❤️ Global channel: reaction received:', data.postId);
-        onNewReaction(data);
+        onNewReaction(data as Record<string, unknown>);
       });
 
       // New Posts
-      channel.bind('new-post', (data: any) => {
+      channel?.bind('new-post', (data: PusherEventPayload) => {
         console.log('📝 Global channel: New post received:', data.post?.id);
-        onNewPost(data);
+        onNewPost(data as Record<string, unknown>);
       });
 
       // Comment Reactions
-      channel.bind('comment-reaction', (data: any) => {
+      channel?.bind('comment-reaction', (data: PusherEventPayload) => {
         console.log('💖 Global channel: comment reaction received:', data.postId);
-        onCommentReaction(data);
+        onCommentReaction(data as Record<string, unknown>);
       });
 
 
       // Post Updates
-      channel.bind('post-updated', (data: any) => {
+      channel?.bind('post-updated', (data: PusherEventPayload) => {
         console.log('✏️ Global channel: post update received:', data.postId);
-        onPostUpdated(data);
+        onPostUpdated(data as Record<string, unknown>);
       });
 
       // Post Deletions
-      channel.bind('post-deleted', (data: any) => {
+      channel?.bind('post-deleted', (data: PusherEventPayload) => {
         console.log('🗑️ Global channel: post deletion received:', data.postId);
-        onPostDeleted(data);
+        onPostDeleted(data as Record<string, unknown>);
       });
 
       // Comment Deletions
-      channel.bind('comment-deleted', (data: any) => {
+      channel?.bind('comment-deleted', (data: PusherEventPayload) => {
         console.log('🗑️ Global channel: comment deletion received:', data.postId);
-        onCommentDeleted(data);
+        onCommentDeleted(data as Record<string, unknown>);
       });
 
       // Reaction Deletions
-      channel.bind('reaction-deleted', (data: any) => {
+      channel?.bind('reaction-deleted', (data: PusherEventPayload) => {
         console.log('❌ Global channel: reaction deletion received:', data.postId);
-        onReactionDeleted(data);
+        onReactionDeleted(data as Record<string, unknown>);
       });
 
       // Chatbot Training (if relevant to posts)
-      channel.bind('chatbot-training-needed', (data: any) => {
-        console.log('🤖 Global channel: Chatbot training needed');
+      channel?.bind('chatbot-training-needed', (data: PusherEventPayload) => {
+        console.log('🤖 Global channel: Chatbot training needed', data);
         // You might want to handle this differently for posts channel
       });
 
-      channel.bind('pusher:subscription_succeeded', () => {
+      channel?.bind('pusher:subscription_succeeded', () => {
         console.log(`✅ SUBSCRIBED TO GLOBAL POSTS CHANNEL for ${postIds.length} posts`);
       });
 
-      channel.bind('pusher:subscription_error', (error: any) => {
+      channel?.bind('pusher:subscription_error', (error: Record<string, unknown>) => {
         console.error(`❌ GLOBAL POSTS SUBSCRIPTION ERROR:`, error);
       });
 
@@ -1095,14 +1215,14 @@ class PusherService {
   // Update post subscriptions when posts change
   updatePostSubscriptions(
     postIds: number[],
-    onNewComment: (data: any) => void,
-    onNewReaction: (data: any) => void,
-    onCommentReaction: (data: any) => void,
-    onNewPost: (data: any) => void,
-    onPostUpdated: (data: any) => void,
-    onPostDeleted: (data: any) => void,
-    onCommentDeleted: (data: any) => void,
-    onReactionDeleted: (data: any) => void
+    onNewComment: (data: Record<string, unknown>) => void,
+    onNewReaction: (data: Record<string, unknown>) => void,
+    onCommentReaction: (data: Record<string, unknown>) => void,
+    onNewPost: (data: Record<string, unknown>) => void,
+    onPostUpdated: (data: Record<string, unknown>) => void,
+    onPostDeleted: (data: Record<string, unknown>) => void,
+    onCommentDeleted: (data: Record<string, unknown>) => void,
+    onReactionDeleted: (data: Record<string, unknown>) => void
   ): boolean {
     // First unsubscribe from old channel
     this.unsubscribeFromChannel('posts-global');
@@ -1129,37 +1249,37 @@ class PusherService {
 
   // subscribing to spaces
   subscribeToSpace(spaceId: string, callbacks: {
-    onSpaceUpdate?: (data: any) => void;
-    onParticipantJoined?: (data: any) => void;
-    onParticipantLeft?: (data: any) => void;
-    onMessage?: (data: any) => void;
-    onCallStarted?: (data: any) => void;
-    onCallEnded?: (data: any) => void;
-    onMagicEvent?: (data: any) => void;
-    onScreenShareStarted?: (data: any) => void;
-    onScreenShareEnded?: (data: any) => void;
-    onPollCreated?: (poll: any) => void;
-    onPollUpdated?: (poll: any) => void;
-    onPollDeleted?: (poll: any) => void;
+    onSpaceUpdate?: (data: Record<string, unknown>) => void;
+    onParticipantJoined?: (data: Record<string, unknown>) => void;
+    onParticipantLeft?: (data: Record<string, unknown>) => void;
+    onMessage?: (data: Record<string, unknown>) => void;
+    onCallStarted?: (data: Record<string, unknown>) => void;
+    onCallEnded?: (data: Record<string, unknown>) => void;
+    onMagicEvent?: (data: Record<string, unknown>) => void;
+    onScreenShareStarted?: (data: Record<string, unknown>) => void;
+    onScreenShareEnded?: (data: Record<string, unknown>) => void;
+    onPollCreated?: (poll: Record<string, unknown>) => void;
+    onPollUpdated?: (poll: Record<string, unknown>) => void;
+    onPollDeleted?: (poll_id: string) => void;
     // ✅ NEW: message lifecycle events
-    onMessageDeleted?: (data: any) => void;
-    onMessageReacted?: (data: any) => void;
-    onMessageReplied?: (data: any) => void;
+    onMessageDeleted?: (data: Record<string, unknown>) => void;
+    onMessageReacted?: (data: Record<string, unknown>) => void;
+    onMessageReplied?: (data: Record<string, unknown>) => void;
 
     // Space Management Events
-    onSpaceMuted?: (data: any) => void;
-    onSpacePinned?: (data: any) => void;
-    onSpaceArchived?: (data: any) => void;
-    onSpaceUnread?: (data: any) => void;
-    onSpaceDeleted?: (data: any) => void;
+    onSpaceMuted?: (data: Record<string, unknown>) => void;
+    onSpacePinned?: (data: Record<string, unknown>) => void;
+    onSpaceArchived?: (data: Record<string, unknown>) => void;
+    onSpaceUnread?: (data: Record<string, unknown>) => void;
+    onSpaceDeleted?: (data: Record<string, unknown>) => void;
 
     // Activity Events
-    onActivityCreated?: (data: any) => void;
-    onActivityUpdated?: (data: any) => void;
-    onActivityDeleted?: (data: any) => void;
-    onWebRTCSignal?: (data: any) => void;
-    onMuteStateChanged?: (data: any) => void;
-    onvideoStateChanged?: (data: any) => void;
+    onActivityCreated?: (data: Record<string, unknown>) => void;
+    onActivityUpdated?: (data: Record<string, unknown>) => void;
+    onActivityDeleted?: (data: Record<string, unknown>) => void;
+    onWebRTCSignal?: (data: Record<string, unknown>) => void;
+    onMuteStateChanged?: (data: Record<string, unknown>) => void;
+    onvideoStateChanged?: (data: Record<string, unknown>) => void;
   }): boolean {
     if (!this.pusher || !this.isInitialized) {
       console.log('⏳ Pusher not initialized. Queuing space subscription.');
@@ -1186,123 +1306,123 @@ class PusherService {
 
     // Bind all space events
     if (callbacks.onSpaceUpdate) {
-      channel.bind('space-updated', callbacks.onSpaceUpdate);
+      channel?.bind('space-updated', callbacks.onSpaceUpdate);
     }
 
     if (callbacks.onParticipantJoined) {
-      channel.bind('participant-joined', callbacks.onParticipantJoined);
+      channel?.bind('participant-joined', callbacks.onParticipantJoined);
     }
 
     if (callbacks.onParticipantLeft) {
-      channel.bind('participant-left', callbacks.onParticipantLeft);
+      channel?.bind('participant-left', callbacks.onParticipantLeft);
     }
 
     if (callbacks.onMessage) {
-      channel.bind('message-sent', callbacks.onMessage);
-      channel.bind('space-message', callbacks.onMessage);
+      channel?.bind('message-sent', callbacks.onMessage);
+      channel?.bind('space-message', callbacks.onMessage);
     }
 
     if (callbacks.onCallStarted) {
-      channel.bind('call-started', callbacks.onCallStarted);
+      channel?.bind('call-started', callbacks.onCallStarted);
     }
 
     if (callbacks.onCallEnded) {
-      channel.bind('call-ended', callbacks.onCallEnded);
+      channel?.bind('call-ended', callbacks.onCallEnded);
     }
 
     if (callbacks.onWebRTCSignal) {
-      channel.bind('webrtc-signal', callbacks.onWebRTCSignal);
+      channel?.bind('webrtc-signal', callbacks.onWebRTCSignal);
     }
 
     if (callbacks.onMagicEvent) {
-      channel.bind('magic-triggered', callbacks.onMagicEvent);
+      channel?.bind('magic-triggered', callbacks.onMagicEvent);
     }
 
     if (callbacks.onScreenShareStarted) {
-      channel.bind('screen_share-started', callbacks.onScreenShareStarted);
+      channel?.bind('screen_share-started', callbacks.onScreenShareStarted);
     }
 
     if (callbacks.onScreenShareEnded) {
-      channel.bind('screen_share-ended', callbacks.onScreenShareEnded);
+      channel?.bind('screen_share-ended', callbacks.onScreenShareEnded);
     }
 
     if (callbacks.onMuteStateChanged) {
-      channel.bind('mute-state-changed', callbacks.onMuteStateChanged);
+      channel?.bind('mute-state-changed', callbacks.onMuteStateChanged);
     }
 
     if (callbacks.onvideoStateChanged) {
-      channel.bind('video-state-changed', callbacks.onvideoStateChanged);
+      channel?.bind('video-state-changed', callbacks.onvideoStateChanged);
     }
 
     // Space Management Events
     if (callbacks.onSpaceMuted) {
-      channel.bind('space-muted', callbacks.onSpaceMuted);
+      channel?.bind('space-muted', callbacks.onSpaceMuted);
     }
 
     if (callbacks.onSpacePinned) {
-      channel.bind('space-pinned', callbacks.onSpacePinned);
+      channel?.bind('space-pinned', callbacks.onSpacePinned);
     }
 
     if (callbacks.onSpaceArchived) {
-      channel.bind('space-archived', callbacks.onSpaceArchived);
+      channel?.bind('space-archived', callbacks.onSpaceArchived);
     }
 
     if (callbacks.onSpaceUnread) {
-      channel.bind('space-unread', callbacks.onSpaceUnread);
+      channel?.bind('space-unread', callbacks.onSpaceUnread);
     }
 
     // ✅ NEW: message lifecycle events → notification store
     if (callbacks.onMessageDeleted) {
-      channel.bind('message-deleted', callbacks.onMessageDeleted);
+      channel?.bind('message-deleted', callbacks.onMessageDeleted);
     }
 
     if (callbacks.onMessageReacted) {
-      channel.bind('message-reacted', callbacks.onMessageReacted);
+      channel?.bind('message-reacted', callbacks.onMessageReacted);
     }
 
     if (callbacks.onMessageReplied) {
-      channel.bind('message-replied', callbacks.onMessageReplied);
+      channel?.bind('message-replied', callbacks.onMessageReplied);
     }
 
     if (callbacks.onSpaceDeleted) {
-      channel.bind('space-deleted', callbacks.onSpaceDeleted);
+      channel?.bind('space-deleted', callbacks.onSpaceDeleted);
     }
 
     // Activity bindings
     if (callbacks.onActivityCreated) {
-      channel.bind('activity-created', callbacks.onActivityCreated);
+      channel?.bind('activity-created', callbacks.onActivityCreated);
     }
     if (callbacks.onActivityUpdated) {
-      channel.bind('activity-updated', callbacks.onActivityUpdated);
+      channel?.bind('activity-updated', callbacks.onActivityUpdated);
     }
     if (callbacks.onActivityDeleted) {
-      channel.bind('activity-deleted', callbacks.onActivityDeleted);
+      channel?.bind('activity-deleted', callbacks.onActivityDeleted);
     }
 
     if (callbacks.onPollCreated) {
-      channel.bind('poll-created', (data: any) => {
-        console.log(`📊 Poll created in space ${spaceId}:`, data.poll.question);
-        callbacks.onPollCreated?.(data.poll);
+      channel?.bind('poll-created', (data: PusherEventPayload) => {
+        console.log(`📊 Poll created in space ${spaceId}:`, (data.poll as Record<string, unknown>)?.question);
+        callbacks.onPollCreated?.(data.poll as Record<string, unknown>);
       });
     }
     if (callbacks.onPollDeleted) {
-      channel.bind('poll-deleted', (data: any) => {
-        console.log(`🗑️ Poll deleted from space ${spaceId}:`, data.poll.id);
-        callbacks.onPollDeleted?.(data.poll_id);
+      channel?.bind('poll-deleted', (data: PusherEventPayload) => {
+        console.log(`🗑️ Poll deleted from space ${spaceId}:`, data.poll_id);
+        callbacks.onPollDeleted?.(data.poll_id as string);
       });
     }
 
     if (callbacks.onPollUpdated) {
-      channel.bind('poll-updated', (data: any) => {
+      channel?.bind('poll-updated', (data: PusherEventPayload) => {
         console.log(`📊 Poll updated in space ${spaceId}`);
-        callbacks.onPollUpdated?.(data.poll);
+        callbacks.onPollUpdated?.(data.poll as Record<string, unknown>);
       });
     }
-    channel.bind('pusher:subscription_succeeded', () => {
+    channel?.bind('pusher:subscription_succeeded', () => {
       console.log(`✅ Successfully subscribed to space: ${channelName}`);
     });
 
-    channel.bind('pusher:subscription_error', (error: any) => {
+    channel?.bind('pusher:subscription_error', (error: Record<string, unknown>) => {
       console.error(`❌ Subscription error for space ${channelName}:`, error);
     });
 
@@ -1311,7 +1431,7 @@ class PusherService {
   }
 
   // ✅ NEW: Subscribe to global spaces channel
-  subscribeToAllSpaces(onSpaceUpdated: (data: any) => void): boolean {
+  subscribeToAllSpaces(onSpaceUpdated: (data: Record<string, unknown>) => void): boolean {
     if (!this.pusher || !this.isInitialized) {
       console.warn('⚠️ Pusher not initialized. Skipping global spaces subscription.');
       return false;
@@ -1328,21 +1448,21 @@ class PusherService {
       console.log(`🔌 Subscribing to global spaces channel: ${channelName}`);
       const channel = this.pusher.subscribe(channelName);
 
-      channel.bind('space-updated', (data: any) => {
+      channel?.bind('space-updated', (data: PusherEventPayload) => {
         console.log('🪐 Global space update received:', data);
-        onSpaceUpdated(data);
+        onSpaceUpdated(data as Record<string, unknown>);
       });
 
-      channel.bind('space-deleted', (data: any) => {
+      channel?.bind('space-deleted', (data: PusherEventPayload) => {
         console.log('🗑️ Global space deletion received:', data);
-        onSpaceUpdated({ ...data, type: 'space-deleted' });
+        onSpaceUpdated({ ...data, type: 'space-deleted' } as Record<string, unknown>);
       });
 
-      channel.bind('pusher:subscription_succeeded', () => {
+      channel?.bind('pusher:subscription_succeeded', () => {
         console.log(`✅ SUBSCRIBED TO GLOBAL SPACES CHANNEL`);
       });
 
-      channel.bind('pusher:subscription_error', (error: any) => {
+      channel?.bind('pusher:subscription_error', (error: Record<string, unknown>) => {
         console.error(`❌ GLOBAL SPACES SUBSCRIPTION ERROR:`, error);
       });
 
@@ -1355,44 +1475,12 @@ class PusherService {
   }
 
 
-  // Add this method to PusherService.ts
-
-  /**
-   * Subscribe to private user channel for real-time events
-   */
-  subscribeToPrivateUser(userId: number, onEvent: (data: any) => void): boolean {
-    if (!this.pusher || !this.isInitialized) {
-      console.warn('⚠️ Pusher not initialized. Skipping private user subscription.');
-      return false;
-    }
-
-    try {
-      // Private channel format for Laravel
-      const channelName = `private-user-${userId}`;
-
-      if (this.channels.has(channelName)) {
-        console.log(`ℹ️ Already subscribed to private user channel: ${channelName}`);
-        return true;
-      }
-
-      console.log(`🔌 Subscribing to private user channel: ${channelName}`);
-      const channel = this.pusher.subscribe(channelName);
-
-      // Note: All relevant events (space.invitation, space.muted, etc.) 
-      // are now handled in subscribeToUserNotifications to unify synchronization.
-
-      this.channels.set(channelName, channel);
-      return true;
-    } catch (error) {
-      console.error(`❌ Error subscribing to private user channel:`, error);
-      return false;
-    }
-  }
+  // Removed redundant subscribeToPrivateUser - handled in subscribeToUserNotifications
   // Generic unsubscribe method
   // ✅ NEW: Subscribe to global stories channel
   subscribeToStories(
-    onStoryCreated: (data: any) => void,
-    onStoryDeleted: (data: any) => void
+    onStoryCreated: (data: Record<string, unknown>) => void,
+    onStoryDeleted: (data: Record<string, unknown>) => void
   ): boolean {
     if (!this.pusher || !this.isInitialized) {
       console.log('⏳ Pusher not ready. Queuing stories subscription.');
@@ -1412,17 +1500,17 @@ class PusherService {
 
       const channel = this.pusher.subscribe(channelName);
 
-      channel.bind('story-created', (data: any) => {
+      channel?.bind('story-created', (data: PusherEventPayload) => {
         console.log('✨ Global channel: story created received');
-        onStoryCreated(data);
+        onStoryCreated(data as Record<string, unknown>);
       });
 
-      channel.bind('story-deleted', (data: any) => {
+      channel?.bind('story-deleted', (data: PusherEventPayload) => {
         console.log('🗑️ Global channel: story deletion received');
-        onStoryDeleted(data);
+        onStoryDeleted(data as Record<string, unknown>);
       });
 
-      channel.bind('pusher:subscription_succeeded', () => {
+      channel?.bind('pusher:subscription_succeeded', () => {
         console.log(`✅ SUBSCRIBED TO GLOBAL STORIES CHANNEL`);
       });
 
@@ -1439,17 +1527,18 @@ class PusherService {
   }
 
   // ✅ ADDED: Generic subscribe method for custom notification types
-  subscribe(channelName: string): any {
+  subscribe(channelName: string): PusherChannel {
     if (!this.pusher || !this.isInitialized) {
       console.warn('⚠️ Pusher not ready for subscription:', channelName);
       // Return a dummy object if not ready yet, or we could queue it
       return {
-        bind: (event: string, callback: Function) => {
+        bind: (event: string, callback: (data: Record<string, unknown>) => void) => {
           this.pendingSubscriptions.push(() => {
             const channel = this.pusher?.subscribe(channelName);
             channel?.bind(event, callback);
           });
-        }
+        },
+        unbind: () => {}, // Dummy for interface compliance
       };
     }
     return this.pusher.subscribe(channelName);
@@ -1472,11 +1561,11 @@ class PusherService {
         const connectionState = this.pusher.connection.state;
         const canUnsubscribe = connectionState === 'connected';
 
-        this.channels.forEach((channel, channelName) => {
+        this.channels.forEach((_channel, channelName) => {
           if (canUnsubscribe) {
             try {
               this.pusher?.unsubscribe(channelName);
-            } catch (e) {
+            } catch {
               // Silently ignore closure errors during disconnect
             }
           }

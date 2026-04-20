@@ -42,7 +42,7 @@ export const IncomingCallModal: React.FC = () => {
   // ─── Modern Audio (Zen Temple) ─────────────────────────────────────────────
   // NOTE: This URL is a high-quality meditation bell Gong. 
   // If you experience CORS issues on web, please download this file to your local assets/sounds folder.
-  const zenTempleChime = 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3'; 
+  const zenTempleChime = 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3';
   const player = useAudioPlayer(zenTempleChime);
 
   useEffect(() => {
@@ -64,7 +64,7 @@ export const IncomingCallModal: React.FC = () => {
           console.warn("Audio Mode setup failed:", e);
         }
       };
-      
+
       setupAudio();
 
       // 2. Start Audio Loop
@@ -93,7 +93,7 @@ export const IncomingCallModal: React.FC = () => {
             setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light), 200);
             setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light), 400);
           }
-        } catch (e) {}
+        } catch (e) { }
       };
 
       triggerZenHaptic();
@@ -159,7 +159,7 @@ export const IncomingCallModal: React.FC = () => {
       if (player.playing) {
         player.pause();
       }
-      
+
       // Slide out (Popping back down)
       Animated.spring(slideAnim, {
         toValue: height + 350,

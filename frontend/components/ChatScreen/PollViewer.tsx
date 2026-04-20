@@ -345,7 +345,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
         const isCreator = String(localPoll?.created_by) === String(currentUserId);
         const isModerator = currentUserRole === 'owner' || currentUserRole === 'moderator';
 
-        let title = 'Delete Poll';
+        const title = 'Delete Poll';
         let message = '';
 
         if (isCreator) {
