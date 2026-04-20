@@ -520,7 +520,7 @@ const ChatPage = () => {
 
   // Animation on mount
 
-  const { data: spacesData, isLoading: isSpacesLoading, refetch: refetchSpaces } = useSpaces();
+  const { data: spacesData, isLoading: isSpacesLoading, refetch: refetchSpaces } = useSpaces({ lite: true });
 
   // Sync query data to Zustand store for real-time updates
   useEffect(() => {
@@ -696,9 +696,14 @@ const ChatPage = () => {
   }, []);
 
   const onSpaceCreated = (newSpace: CollaborationSpace) => {
+    // Manually add the new space to the store for immediate UI update
+    useCollaborationStore.getState().addSpace(newSpace);
+    
     // Navigate to the newly created space
     router.push(`/(spaces)/${newSpace.id}`);
-    onRefresh(); // Refresh the list in the background
+    
+    // Refresh the list in the background to sync everything
+    onRefresh();
   };
 
   // Calculate counts for badges
@@ -1203,10 +1208,10 @@ const ChatPage = () => {
           </View>
         }
         onEndReachedThreshold={0.5}
-        initialNumToRender={10}
+        initialNumToRender={5}
         windowSize={5}
-        maxToRenderPerBatch={10}
-        removeClippedSubviews={Platform.OS === 'android'}
+        maxToRenderPerBatch={5}
+        removeClippedSubviews={Platform.OS !== 'web'}
       />
       <CreateTabModal
         visible={tabModalVisible}

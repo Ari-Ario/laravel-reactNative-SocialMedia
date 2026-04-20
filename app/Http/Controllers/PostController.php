@@ -45,9 +45,8 @@ class PostController extends Controller
             $userId = Auth::id();
             $page = request()->get('page', 1);
             $version = Cache::get('posts_cache_v', 1);
-            $cacheKey = "user_{$userId}_posts_v{$version}_p{$page}";
-
             $isLite = request()->has('lite');
+            $cacheKey = "user_{$userId}_posts_v{$version}_p{$page}_lite_" . ($isLite ? '1' : '0');
 
             $posts = Cache::remember($cacheKey, 3600, function() use ($userId, $isLite) {
                 $query = Post::query();
@@ -57,7 +56,7 @@ class PostController extends Controller
                         ->with([
                             'user:id,name,profile_photo,username',
                             'media' => function($q) {
-                                $q->select(['id', 'post_id', 'file_path', 'type'])->limit(1);
+                                $q->select(['id', 'model_id', 'file_path', 'type'])->limit(1);
                             },
                             'reactionCounts'
                         ]);
@@ -101,21 +100,31 @@ class PostController extends Controller
                     ->latest()
                     ->paginate(10);
 
-                // Recursively transform all comments and replies
-                $posts->getCollection()->transform(function ($post) {
-                    $transformComment = function ($comment) use (&$transformComment) {
-                        $comment->reaction_comments_count = $comment->reaction_comments->count();
+                // Only transform comments if they are loaded (non-lite mode)
+                if (!$isLite) {
+                    $posts->getCollection()->transform(function ($post) {
+                        $transformComment = function ($comment) use (&$transformComment) {
+                            $comment->reaction_comments_count = $comment->reaction_comments ? $comment->reaction_comments->count() : 0;
+                            
+                            if ($comment->relationLoaded('replies')) {
+                                $comment->replies->each($transformComment);
+                            }
+                            
+                            return $comment;
+                        };
                         
-                        if ($comment->replies) {
-                            $comment->replies->each($transformComment);
+                        if ($post->relationLoaded('comments')) {
+                            $post->comments->each($transformComment);
                         }
-                        
-                        return $comment;
-                    };
-                    
-                    $post->comments->each($transformComment);
-                    return $post;
-                });
+                        return $post;
+                    });
+                } else {
+                    // Mark posts as lite for the frontend
+                    $posts->getCollection()->transform(function ($post) {
+                        $post->is_lite = true;
+                        return $post;
+                    });
+                }
 
                 return $posts;
             });

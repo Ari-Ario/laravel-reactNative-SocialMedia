@@ -586,6 +586,36 @@ class PusherService {
         onNotification(notification as Record<string, unknown>);
       });
 
+      channel?.bind('space-created', (data: PusherEventPayload) => {
+        console.log('🚀 User channel: Space created received:', data);
+        const notification = {
+          type: 'space-created',
+          title: 'New Space Created',
+          message: data.message || `A new space "${data.space?.title || ''}" was created`,
+          data: data,
+          spaceId: data.space?.id,
+          userId: data.creator?.id,
+          avatar: data.creator?.profile_photo,
+          createdAt: new Date()
+        };
+        onNotification(notification as Record<string, unknown>);
+      });
+
+      channel?.bind('space-invitation', (data: PusherEventPayload) => {
+        console.log('📨 User channel: Space invitation received:', data);
+        const notification = {
+          type: 'space-invitation',
+          title: 'Space Invitation',
+          message: data.message || `You were invited to join "${data.space?.title || ''}"`,
+          data: data,
+          spaceId: data.space?.id,
+          userId: data.inviter?.id,
+          avatar: data.inviter?.profile_photo,
+          createdAt: new Date()
+        };
+        onNotification(notification as Record<string, unknown>);
+      });
+
       channel?.bind('space-deleted', (data: PusherEventPayload) => {
         console.log('🗑️ User channel: Space deleted received:', data);
         const notification = {

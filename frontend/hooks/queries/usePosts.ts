@@ -23,7 +23,12 @@ interface QueryResult<T> {
   refetch: () => Promise<void>;
 }
 
-export const usePosts = (): QueryResult<Post[]> => {
+export interface QueryOptions {
+  lite?: boolean;
+  page?: number;
+}
+
+export const usePosts = (options: QueryOptions = {}): QueryResult<Post[]> => {
   const [data, setData] = useState<Post[]>();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<any>(null);
@@ -31,8 +36,13 @@ export const usePosts = (): QueryResult<Post[]> => {
   const fetchPosts = async () => {
     setIsLoading(true);
     try {
-      console.log('📡 [Manual Fetch] Fetching posts...');
-      const response = await axios.get('/posts');
+      const params = new URLSearchParams();
+      if (options.lite) params.append('lite', '1');
+      if (options.page) params.append('page', options.page.toString());
+      
+      const queryStr = params.toString() ? `?${params.toString()}` : '';
+      console.log(`📡 [Hydration] Fetching posts (lite: ${!!options.lite})...`);
+      const response = await axios.get(`/posts${queryStr}`);
       setData(response.data.data || response.data);
     } catch (err) {
       setError(err);
@@ -43,12 +53,12 @@ export const usePosts = (): QueryResult<Post[]> => {
 
   useEffect(() => {
     fetchPosts();
-  }, []);
+  }, [options.lite, options.page]);
 
   return { data, isLoading, error, refetch: fetchPosts };
 };
 
-export const useStories = (): QueryResult<any[]> => {
+export const useStories = (options: QueryOptions = {}): QueryResult<any[]> => {
   const [data, setData] = useState<any[]>();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<any>(null);
@@ -56,8 +66,9 @@ export const useStories = (): QueryResult<any[]> => {
   const fetchStories = async () => {
     setIsLoading(true);
     try {
-      console.log('📡 [Manual Fetch] Fetching stories...');
-      const response = await axios.get('/stories');
+      const queryStr = options.lite ? '?lite=1' : '';
+      console.log(`📡 [Hydration] Fetching stories (lite: ${!!options.lite})...`);
+      const response = await axios.get(`/stories${queryStr}`);
       setData(response.data.data || response.data);
     } catch (err) {
       setError(err);
@@ -68,12 +79,12 @@ export const useStories = (): QueryResult<any[]> => {
 
   useEffect(() => {
     fetchStories();
-  }, []);
+  }, [options.lite]);
 
   return { data, isLoading, error, refetch: fetchStories };
 };
 
-export const useSpaces = (): QueryResult<any[]> => {
+export const useSpaces = (options: QueryOptions = {}): QueryResult<any[]> => {
   const [data, setData] = useState<any[]>();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<any>(null);
@@ -81,8 +92,13 @@ export const useSpaces = (): QueryResult<any[]> => {
   const fetchSpaces = async () => {
     setIsLoading(true);
     try {
-      console.log('📡 [Manual Fetch] Fetching spaces...');
-      const response = await axios.get('/spaces');
+      const params = new URLSearchParams();
+      if (options.lite) params.append('lite', '1');
+      if (options.page) params.append('page', options.page.toString());
+      
+      const queryStr = params.toString() ? `?${params.toString()}` : '';
+      console.log(`📡 [Hydration] Fetching spaces (lite: ${!!options.lite})...`);
+      const response = await axios.get(`/spaces${queryStr}`);
       setData(response.data.spaces || response.data.data || response.data);
     } catch (err) {
       setError(err);
@@ -93,7 +109,7 @@ export const useSpaces = (): QueryResult<any[]> => {
 
   useEffect(() => {
     fetchSpaces();
-  }, []);
+  }, [options.lite, options.page]);
 
   return { data, isLoading, error, refetch: fetchSpaces };
 };

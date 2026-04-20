@@ -3474,6 +3474,7 @@ public function endCall(Request $request, $id)
                 'updated_at' => $space->updated_at,
                 'participants_count' => $space->participations_count ?? $space->participations()->count(),
                 'creator' => $space->relationLoaded('creator') ? $space->creator : null,
+                'other_participant' => $otherParticipant, // Essential for direct chat names/avatars
                 'is_lite' => true
             ];
         }

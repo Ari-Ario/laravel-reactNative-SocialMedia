@@ -81,9 +81,9 @@ class WebRTCService {
       { urls: 'stun:stun4.l.google.com:19302' },
       // ✅ Private Coturn Server for 4G/5G - CRITICAL for carrier-grade NAT
       {
-        urls: process.env.EXPO_PUBLIC_TURN_SERVER_URL,
-        username: process.env.EXPO_PUBLIC_TURN_SERVER_USERNAME,
-        credential: process.env.EXPO_PUBLIC_TURN_SERVER_PASSWORD
+        urls: process.env.EXPO_PUBLIC_TURN_SERVER_URL || 'turn:159.89.101.120:3478',
+        username: process.env.EXPO_PUBLIC_TURN_SERVER_USERNAME || 'ari_admin',
+        credential: process.env.EXPO_PUBLIC_TURN_SERVER_PASSWORD || 'zmzir_secure_relay_2026'
       }
     ],
     iceCandidatePoolSize: 10,
@@ -1219,11 +1219,11 @@ class WebRTCService {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
-        // Force TURN relay
+        // ✅ Private Coturn Server for 4G/5G (Forced Relay Mode)
         {
-          urls: 'turn:openrelay.metered.ca:80',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
+          urls: process.env.EXPO_PUBLIC_TURN_SERVER_URL || 'turn:159.89.101.120:3478',
+          username: process.env.EXPO_PUBLIC_TURN_SERVER_USERNAME || 'ari_admin',
+          credential: process.env.EXPO_PUBLIC_TURN_SERVER_PASSWORD || 'zmzir_secure_relay_2026'
         }
       ],
       iceTransportPolicy: 'relay' as RTCIceTransportPolicy // Force TURN relay

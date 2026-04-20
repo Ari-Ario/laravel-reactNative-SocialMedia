@@ -85,6 +85,7 @@ interface CollaborationState {
   updateActivity: (activity: CollaborativeActivity) => void;
   deleteActivity: (activityId: string, spaceId: string) => void;
 
+  hydrateSpace: (spaceId: string) => Promise<CollaborationSpace | undefined>;
   reset: () => void;
 }
 
@@ -115,6 +116,24 @@ export const useCollaborationStore = create<CollaborationState>()(
       processedEventIds: [],
       isLoading: false,
       activeListeningSpaceId: null,
+
+      hydrateSpace: async (spaceId) => {
+        const id = spaceId.toString();
+        const currentSpace = get().spaces.find(s => s.id.toString() === id);
+        
+        // If space exists and is lite (missing full detail fields or is_lite is true)
+        if (currentSpace && (currentSpace.is_lite || !currentSpace.description)) {
+          try {
+            console.log(`🌐 [Hydration] Fetching full details for space: ${id}`);
+            const fullSpace = await CollaborationService.getInstance().fetchSpaceDetails(id);
+            get().updateSpace(id, { ...fullSpace, is_lite: false });
+            return fullSpace;
+          } catch (error) {
+            console.error(`❌ [Hydration] Error hydrating space ${id}:`, error);
+          }
+        }
+        return currentSpace;
+      },
 
       setListeningSpaceId: (id) => set({ activeListeningSpaceId: id }),
 
@@ -269,7 +288,7 @@ export const useCollaborationStore = create<CollaborationState>()(
 
         // Update the store based on event type
         switch (type) {
-          case 'space-read':
+          case 'space-read': {
             if (data.space_id) {
               // Internal reset/update without API call to avoid loops
               set((state) => {
@@ -287,11 +306,12 @@ export const useCollaborationStore = create<CollaborationState>()(
               });
             }
             break;
+          }
 
           case 'message-sent':
           case 'message.sent':
           case 'space.message':
-          case 'new_message':
+          case 'new_message': {
             const spaceId = (data.space_id || data.spaceId || data.data?.space_id || data.data?.spaceId)?.toString();
             if (spaceId) {
               const state = get();
@@ -349,6 +369,7 @@ export const useCollaborationStore = create<CollaborationState>()(
               }
             }
             break;
+          }
 
           case 'space-updated':
           case 'space.updated':
@@ -357,6 +378,46 @@ export const useCollaborationStore = create<CollaborationState>()(
               get().updateSpace(data.space_id, data.space);
             }
             break;
+
+          case 'space-created':
+          case 'space_created':
+          case 'space-invitation':
+          case 'space_invitation':
+          case 'invitation': {
+            const spaceDataFromEvent = data.space || data.data?.space;
+            const sid = (spaceDataFromEvent?.id || data.space_id || data.spaceId || data.data?.space_id)?.toString();
+            
+            if (sid) {
+              const exists = get().spaces.some(s => s.id.toString() === sid);
+              
+              // If we have full space data in the event, use it
+              if (spaceDataFromEvent && spaceDataFromEvent.creator_id) {
+                if (!exists) {
+                  console.log(`🚀 Adding new space to store from real-time event: ${sid}`);
+                  get().addSpace(spaceDataFromEvent);
+                  get().subscribeToAllSpaces([sid]);
+                } else {
+                  get().updateSpace(sid, spaceDataFromEvent);
+                }
+              } else {
+                // If data is incomplete (e.g. from an invitation notification), fetch full details
+                console.log(`🆕 Incomplete space data for ${sid} from event ${type}. Fetching full details.`);
+                CollaborationService.getInstance().fetchSpaceDetails(sid)
+                  .then(fullSpace => {
+                    if (fullSpace) {
+                      if (!get().spaces.some(s => s.id.toString() === sid)) {
+                        get().addSpace(fullSpace);
+                        get().subscribeToAllSpaces([sid]);
+                      } else {
+                        get().updateSpace(sid, fullSpace);
+                      }
+                    }
+                  })
+                  .catch(err => console.error(`Error fetching space details after ${type}:`, err));
+              }
+            }
+            break;
+          }
 
           case 'participant-joined':
           case 'participant.joined':
@@ -387,7 +448,7 @@ export const useCollaborationStore = create<CollaborationState>()(
             }
             break;
 
-          case 'call-ended':
+          case 'call-ended': {
             if (data.space_id) {
               const sid = data.space_id.toString();
               get().updateSpace(sid, {
@@ -402,6 +463,7 @@ export const useCollaborationStore = create<CollaborationState>()(
               }
             }
             break;
+          }
 
           case 'activity.created':
           case 'activity_created':
@@ -425,7 +487,7 @@ export const useCollaborationStore = create<CollaborationState>()(
             break;
 
           case 'message-deleted':
-          case 'message.deleted':
+          case 'message.deleted': {
             const msgId = (data.message_id || data.id)?.toString();
             const sid = (data.space_id || data.spaceId)?.toString();
             if (msgId && sid) {
@@ -438,9 +500,10 @@ export const useCollaborationStore = create<CollaborationState>()(
               });
             }
             break;
+          }
 
           case 'space-deleted':
-          case 'space.deleted':
+          case 'space.deleted': {
             const deletedId = (data.space_id || data.id || data.spaceId)?.toString();
             if (deletedId) {
               console.log(`🗑️ Removing space ${deletedId} from store due to deletion event`);
@@ -466,6 +529,7 @@ export const useCollaborationStore = create<CollaborationState>()(
               }
             }
             break;
+          }
         }
 
         // ✅ Map internal event types → NOTIFICATION_TYPES
@@ -560,10 +624,24 @@ export const useCollaborationStore = create<CollaborationState>()(
           }
         });
 
-        set({
-          spaces: validSpaces,
-          spaceUnreadCounts: newUnreadCounts,
-          totalUnreadSpaces: totalUnread
+        set((state) => {
+          const mergedSpaces = validSpaces.map((newSpace: any) => {
+            const existingSpace = state.spaces.find(s => String(s.id) === String(newSpace.id));
+            if (existingSpace) {
+              // If new space is lite, merge it into existing space (preserving hydrated fields)
+              // If new space is NOT lite, it's a full refresh, replace it
+              return newSpace.is_lite 
+                ? { ...existingSpace, ...newSpace } 
+                : { ...newSpace };
+            }
+            return newSpace;
+          });
+
+          return {
+            spaces: mergedSpaces,
+            spaceUnreadCounts: newUnreadCounts,
+            totalUnreadSpaces: totalUnread
+          };
         });
       },
 
@@ -1017,22 +1095,6 @@ export const useCollaborationStore = create<CollaborationState>()(
           console.error('❌ Store: Error fetching user spaces:', error);
           throw error;
         }
-      },
-
-      hydrateSpace: async (spaceId: string) => {
-        const currentSpace = get().spaces.find(s => s.id === spaceId);
-        // Only hydrate if we don't have content_state or explicitly lite
-        if (currentSpace && (currentSpace as any).is_lite) {
-          try {
-            console.log(`🌐 Hydrating space: ${spaceId}`);
-            const fullSpace = await CollaborationService.getInstance().fetchSpaceDetails(spaceId);
-            get().updateSpace(spaceId, { ...fullSpace, is_lite: false } as any);
-            return fullSpace;
-          } catch (error) {
-            console.error(`❌ Error hydrating space ${spaceId}:`, error);
-          }
-        }
-        return currentSpace;
       },
 
       reset: () => {

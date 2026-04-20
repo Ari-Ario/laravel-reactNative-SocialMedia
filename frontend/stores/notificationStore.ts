@@ -40,16 +40,16 @@ export const NOTIFICATION_TYPES = {
   CHATBOT_TRAINING: 'chatbot_training',
 
   // Space / Chat
-  SPACE_INVITATION: 'space_invitation',
-  SPACE_UPDATED: 'space_updated',
-  SPACE_CREATED: 'space_created',          // ✅ NEW
+  SPACE_INVITATION: 'space-invitation',
+  SPACE_UPDATED: 'space-updated',
+  SPACE_CREATED: 'space-created',          // ✅ Standardized to hyphen
   CALL_STARTED: 'call_started',
   CALL_ENDED: 'call_ended',
   NEW_MESSAGE: 'new_message',
   MESSAGE_REACTION: 'message_reaction',
   MESSAGE_REPLY: 'message_reply',
   MESSAGE_DELETED: 'message_deleted',
-  SPACE_DELETED: 'space-deleted',          // ✅ NEW
+  SPACE_DELETED: 'space-deleted',          // ✅ Standardized
   PARTICIPANT_JOINED: 'participant_joined',
   PARTICIPANT_LEFT: 'participant_left',
   MAGIC_EVENT: 'magic_event',
@@ -771,13 +771,19 @@ export const useNotificationStore = create<NotificationStore>()(
 
             // ✅ Bridge to CollaborationStore if it's a space event
             if (notificationData.spaceId || notificationData.space_id) {
-              require('@/stores/collaborationStore').useCollaborationStore.getState().handleSpaceEvent({
+              const eventPayload = {
                 type: notificationData.type || 'new_message',
                 data: {
                   ...notificationData,
                   space_id: (notificationData.space_id || notificationData.spaceId)?.toString()
                 }
-              });
+              };
+
+              // Update Collaboration Store
+              require('@/stores/collaborationStore').useCollaborationStore.getState().handleSpaceEvent(eventPayload);
+
+              // Update Space Store (as requested by user)
+              require('@/stores/spaceStore').useSpaceStore.getState().handleSpaceEvent(eventPayload);
             }
           });
 

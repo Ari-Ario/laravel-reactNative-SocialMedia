@@ -1,7 +1,7 @@
 // app/(tabs)/index.tsx
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Alert, Platform, Dimensions, FlatList } from "react-native";
 import { useRouter, usePathname } from 'expo-router';
-import { useState, useEffect, useContext, useRef, useMemo } from "react";
+import { useState, useEffect, useContext, useRef, useMemo, useCallback } from "react";
 import AuthContext from "@/context/AuthContext";
 import LoginScreen from "../LoginScreen";
 import VerificationScreen from "../VerificationScreen";
@@ -60,7 +60,7 @@ const HomePage = () => {
     const [viewablePostId, setViewablePostId] = useState<number | null>(null);
 
     // Stores
-    const { storyGroups, fetchStories: fetchStoriesFromStore, initializeRealtime: initStoryRealtime } = useStoryStore();
+    const { storyGroups, fetchStories: fetchStoriesFromStore, initializeRealtime: initStoryRealtime, setStoryGroups } = useStoryStore();
     const { posts, setPosts, updatePost: updatePostInStore } = usePostStore();
     const {
         isNotificationPanelVisible,
@@ -160,13 +160,23 @@ const HomePage = () => {
         };
     }, [posts, user?.id]);
 
-    const { data: postsData, isLoading: isPostsLoading, refetch: refetchPosts } = usePosts();
-    const { data: storiesData, isLoading: isStoriesLoading, refetch: refetchStories } = useStories();
+    useEffect(() => {
+        if (user?.id) {
+            initStoryRealtime();
+        }
+    }, [user?.id]);
+
+    const { data: postsData, isLoading: isPostsLoading, refetch: refetchPosts } = usePosts({ lite: true });
+    const { data: storiesData, isLoading: isStoriesLoading, refetch: refetchStories } = useStories({ lite: true });
 
     // Sync query data to Zustand store for real-time updates to work
     useEffect(() => {
         if (postsData) setPosts(postsData);
     }, [postsData]);
+
+    useEffect(() => {
+        if (storiesData) setStoryGroups(storiesData);
+    }, [storiesData]);
 
     const handleRefresh = async () => {
         setRefreshing(true);
@@ -236,6 +246,26 @@ const HomePage = () => {
             </TouchableOpacity>
         );
     };
+
+    const handleReactComment = useCallback((postId: number, emoji: string, commentId?: number) => {
+        reactToPost(postId, emoji, commentId);
+    }, [reactToPost]);
+
+    const renderPostItem = useCallback(({ item }: { item: any }) => (
+        <View style={styles.postContainer}>
+            <PostListItem
+                post={item}
+                onReact={reactToPost}
+                onReactComment={handleReactComment}
+                onCommentSubmit={handleCommentSubmit}
+                onRepost={handleRepost}
+                onShare={sharePost}
+                onBookmark={bookmarkPost}
+                shouldPlay={isFocused && viewablePostId === item.id}
+            />
+            <View style={{ height: 1.5, backgroundColor: colors.border, opacity: 0.5 }} />
+        </View>
+    ), [styles, colors.border, reactToPost, handleReactComment, handleCommentSubmit, handleRepost, sharePost, bookmarkPost, isFocused, viewablePostId]);
 
     useEffect(() => {
         // Auth routing is strictly handled by _layout.tsx now. 
@@ -469,25 +499,16 @@ const HomePage = () => {
 
             <LiveDiscoveryCarousel />
 
+
             <FlatList
                 data={posts}
-                renderItem={({ item }) => (
-                    <View style={styles.postContainer}>
-                        <PostListItem
-                            post={item}
-                            onReact={reactToPost}
-                            onReactComment={(postId, emoji, commentId) => reactToPost(postId, emoji, commentId)}
-                            onCommentSubmit={handleCommentSubmit}
-                            onRepost={handleRepost}
-                            onShare={sharePost}
-                            onBookmark={bookmarkPost}
-                            shouldPlay={isFocused && viewablePostId === item.id}
-                        />
-                        <View style={{ height: 1.5, backgroundColor: colors.border, opacity: 0.5 }} />
-                    </View>
-                )}
+                renderItem={renderPostItem}
                 contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
+                initialNumToRender={5}
+                maxToRenderPerBatch={5}
+                windowSize={5}
+                removeClippedSubviews={Platform.OS !== 'web'}
                 onRefresh={handleRefresh}
                 refreshing={refreshing}
                 keyExtractor={(item) => item.id.toString()}

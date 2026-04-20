@@ -11,7 +11,8 @@ import {
   Platform,
   Pressable,
   KeyboardAvoidingView,
-  ActivityIndicator
+  ActivityIndicator,
+  StyleSheet
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,7 +30,22 @@ import { usePostStore } from '@/stores/postStore';
 import { MediaViewer } from './MediaViewer';
 import React from 'react';
 import { PostActionButtons } from './PostActionButtons';
-import { PostVideoPlayer } from './PostVideoPlayer';
+const PostVideoPlayer = React.lazy(() => import('./PostVideoPlayer').then(module => ({ default: module.PostVideoPlayer })));
+
+const VideoFallback = ({ posterUrl, style }: { posterUrl?: string, style: any }) => (
+  <View style={[style, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }]}>
+    {posterUrl && (
+      <ExpoImage 
+        source={{ uri: posterUrl }} 
+        style={StyleSheet.absoluteFillObject} 
+        contentFit="cover" 
+        cachePolicy="disk"
+      />
+    )}
+    <Ionicons name="play-circle" size={50} color="rgba(255,255,255,0.7)" />
+  </View>
+);
+
 import { usePostListService } from '@/services/PostListService';
 import { LinkPreviewCard } from './LinkPreviewCard';
 import RenderComments from './RenderComments';
@@ -84,12 +100,12 @@ function PostListItem({
     toggleExpandedPostId(post.id);
   };
   const [tagSelectorVisible, setTagSelectorVisible] = useState(false);
-  const [bookmarkGalleryVisible, setBookmarkGalleryVisible] = useState(false);
   const [newBookmark, setNewBookmark] = useState<Bookmark | null>(null);
 
   const { addBookmark, bookmarks } = useBookmarkStore();
   const isBookmarked = bookmarks.some(b => b && b.post_id === post.id);
 
+  const { showToast } = useToastStore();
   // Use the PostListService
   const service = usePostListService(user);
 
@@ -202,6 +218,7 @@ function PostListItem({
   const isMobilePlatform = isNativeMobile || isMobileWeb;
 
   const onMediaPress = (index: number) => {
+    hydratePost(post.id);
     service.openMediaViewer(index);
   };
 
@@ -219,8 +236,17 @@ function PostListItem({
       const result = await addBookmark(post.id);
       if (result.bookmarked && result.bookmark) {
         showToast('Post bookmarked!', 'success');
-        setNewBookmark(result.bookmark as any);
-        setBookmarkGalleryVisible(true);
+        
+        // If MediaViewer is open, close it so the "popup" navigation is visible
+        if (service.mediaViewerVisible) {
+          service.setMediaViewerVisible(false);
+        }
+
+        // Navigate to the bookmarks settings page which acts as the official popup
+        router.push({
+          pathname: '/settings/bookmarks',
+          params: { initialPostId: post.id }
+        });
       } else {
         showToast('Bookmark removed', 'info');
       }
@@ -274,7 +300,7 @@ function PostListItem({
               </View>
               <View style={styles.menuContainer}>
                 {post.caption && (
-                  <Pressable onPress={() => toggleExpandedPostId(post.id)}>
+                  <Pressable onPress={handleToggleExpand}>
                     <Text style={[styles.caption, { color: colors.text }]}>
                       {expandedPostId === post.id
                         ? post.caption
@@ -310,14 +336,16 @@ function PostListItem({
                   onPress={() => onMediaPress(0)}
                 >
                   {visualMedia[0].type === 'video' ? (
-                    <PostVideoPlayer
-                      uri={getMediaUrl(visualMedia[0].file_path)}
-                      style={styles.singleMedia}
-                      contentFit="cover"
-                      shouldPlay={shouldPlay}
-                      isMuted={true}
-                      poster={getPosterUrl(visualMedia[0])}
-                    />
+                    <React.Suspense fallback={<VideoFallback posterUrl={getPosterUrl(visualMedia[0])} style={styles.singleMedia} />}>
+                      <PostVideoPlayer
+                        uri={getMediaUrl(visualMedia[0].file_path)}
+                        style={styles.singleMedia}
+                        contentFit="cover"
+                        shouldPlay={shouldPlay}
+                        isMuted={true}
+                        poster={getPosterUrl(visualMedia[0])}
+                      />
+                    </React.Suspense>
                   ) : (
                     <ExpoImage
                       source={{ uri: `${getApiBaseImage()}/storage/${visualMedia[0].file_path}` }}
@@ -337,14 +365,16 @@ function PostListItem({
                       style={styles.multiMediaItem}
                     >
                       {media.type === 'video' ? (
-                        <PostVideoPlayer
-                          uri={getMediaUrl(media.file_path)}
-                          style={styles.multiMediaContent}
-                          contentFit="cover"
-                          shouldPlay={shouldPlay}
-                          isMuted={true}
-                          poster={getPosterUrl(media)}
-                        />
+                        <React.Suspense fallback={<VideoFallback posterUrl={getPosterUrl(media)} style={styles.multiMediaContent} />}>
+                          <PostVideoPlayer
+                            uri={getMediaUrl(media.file_path)}
+                            style={styles.multiMediaContent}
+                            contentFit="cover"
+                            shouldPlay={shouldPlay}
+                            isMuted={true}
+                            poster={getPosterUrl(media)}
+                          />
+                        </React.Suspense>
                       ) : (
                         <ExpoImage
                           source={{ uri: `${getApiBaseImage()}/storage/${media.file_path}` }}
@@ -446,7 +476,7 @@ function PostListItem({
           currentReactingItem={service.currentReactingItem}
           setCurrentReactingItem={service.setCurrentReactingItem}
           setIsEmojiPickerOpen={service.setIsEmojiPickerOpen}
-          onCommentSubmit={async (content) => onCommentSubmit(post.id, content)}
+          onCommentSubmit={async (content, parentId) => onCommentSubmit(post.id, content, parentId)}
           getGroupedReactions={(p) => service.getGroupedReactions(p as any)}
           isBookmarked={isBookmarked}
           handleReactComment={(emoji) => {
@@ -472,7 +502,10 @@ function PostListItem({
         onShare={() => openModal('share', { post: currentPost })}
         onBookmark={handleBookmark}
         isBookmarked={isBookmarked}
-        onCommentPress={() => service.setShowComments(!service.showComments)}
+        onCommentPress={() => {
+          if (!service.showComments) hydratePost(post.id);
+          service.setShowComments(!service.showComments);
+        }}
         currentReactingItem={service.currentReactingItem}
         setCurrentReactingItem={service.setCurrentReactingItem}
         setIsEmojiPickerOpen={service.setIsEmojiPickerOpen}
@@ -644,13 +677,6 @@ function PostListItem({
         />
       )}
 
-      {bookmarkGalleryVisible && (
-        <BookmarkGallery
-          visible={bookmarkGalleryVisible}
-          onClose={() => setBookmarkGalleryVisible(false)}
-          initialBookmark={newBookmark as any}
-        />
-      )}
 
     </Pressable>
   );

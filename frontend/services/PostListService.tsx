@@ -551,7 +551,9 @@ const getGroupedReactionsComments = (
         parent_id: comment.parent_id,
         replies: comment.replies || [],
         reaction_counts: [],
-        reactions: []
+        reactions: [],
+        reaction_comments: [],
+        reaction_comments_count: 0
       };
 
       // Update the store

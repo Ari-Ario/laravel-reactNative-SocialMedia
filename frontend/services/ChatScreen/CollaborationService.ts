@@ -67,6 +67,8 @@ export interface CollaborationSpace {
   active_call_id?: string; // ✅ Tracks the current broadcast ID for discovery.
   created_at?: string;
   updated_at?: string;
+  is_lite?: boolean; // ✅ NEW: Tracks hydration status
+  [key: string]: any;
 }
 
 export interface SpaceParticipation {

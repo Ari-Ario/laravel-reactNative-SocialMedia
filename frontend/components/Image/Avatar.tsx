@@ -31,6 +31,11 @@ const Avatar: React.FC<AvatarProps> = ({
   const { colors, activeScheme } = useAppTheme();
   const [imgError, setImgError] = useState(false);
   const styles = getStyles(colors, activeScheme);
+  
+  // Reset error state when source changes
+  React.useEffect(() => {
+    setImgError(false);
+  }, [source]);
 
   // Resolve URI: relative paths become full API storage URLs
   const resolveUri = (src: string) => {

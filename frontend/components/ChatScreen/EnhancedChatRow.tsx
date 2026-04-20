@@ -654,11 +654,13 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
     let isDirectSpace = false;
 
     if (type === 'space' && spaceData) {
-      const isDirect = (spaceData.settings?.is_direct || spaceType === 'direct' || spaceType === 'chat') && !!spaceData.other_participant;
-      if (isDirect && spaceData.other_participant) {
+      const isDirect = (spaceData.settings?.is_direct || spaceType === 'direct' || spaceType === 'chat');
+      if (isDirect) {
         isDirectSpace = true;
-        displayTitle = spaceData.other_participant.name || spaceData.other_participant.username || displayTitle;
-        displayAvatar = spaceData.other_participant.profile_photo || null;
+        if (spaceData.other_participant) {
+          displayTitle = spaceData.other_participant.name || spaceData.other_participant.username || displayTitle;
+          displayAvatar = spaceData.other_participant.profile_photo || displayAvatar;
+        }
       }
     }
 

@@ -182,7 +182,22 @@ export const usePostStore = create<PostStore>((set, get) => ({
   },
 
   // Basic post operations
-  setPosts: (posts) => set({ posts }),
+  setPosts: (newPosts) => {
+    set((state) => {
+      const mergedPosts = newPosts.map((newPost: any) => {
+        const existingPost = state.posts.find(p => p.id === newPost.id);
+        if (existingPost) {
+          // If new post is lite, merge it into existing post
+          // If new post is NOT lite, it's a full refresh, replace it
+          return newPost.is_lite 
+            ? { ...existingPost, ...newPost } 
+            : { ...newPost };
+        }
+        return newPost;
+      });
+      return { posts: mergedPosts };
+    });
+  },
 
   updatePost: (updatedPostOrFn) => {
     set((state) => {

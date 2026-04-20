@@ -176,6 +176,8 @@ const MediaItemDisplay: React.FC<{
           contentFit="contain"
           nativeControls={false} 
           allowsVideoFrameAnalysis={false}
+          allowsFullscreen={false}
+          allowsPictureInPicture={false}
           // @ts-ignore
           posterSource={posterUri ? { uri: posterUri } : undefined}
         />

@@ -56,7 +56,8 @@ import SpaceChatTab from '@/components/ChatScreen/SpaceChatTab';
 import SpaceExportModal from '@/components/ChatScreen/SpaceExportModal';
 import SpaceSettingsModal from '@/components/ChatScreen/SpaceSettingsModal';
 import { createShadow } from '@/utils/styles';
-import WhiteboardCanvas from '@/components/ChatScreen/WhiteboardCanvas';
+import React from 'react';
+const WhiteboardCanvas = React.lazy(() => import('@/components/ChatScreen/WhiteboardCanvas'));
 import * as FileSystem from 'expo-file-system/legacy';
 import getApiBase from '@/services/getApiBase';
 import ReportPost from '@/components/ReportPost';
@@ -304,7 +305,12 @@ const SpaceDetailScreen = () => {
     try {
       let spaceData;
       if (user) {
-        spaceData = await collaborationService.fetchSpaceDetails(id as string);
+        // ✅ Use hydration logic from store to sync lite -> full data globally
+        spaceData = await useCollaborationStore.getState().hydrateSpace(id as string);
+        // If hydration returned nothing (e.g. not in store yet), fallback to direct fetch
+        if (!spaceData) {
+          spaceData = await collaborationService.fetchSpaceDetails(id as string);
+        }
       } else {
         spaceData = await collaborationService.fetchGuestSpaceInfo(id as string);
       }
@@ -1272,11 +1278,12 @@ const SpaceDetailScreen = () => {
       case 'whiteboard':
         return (
           <View style={{ flex: 1 }}>
-            <WhiteboardCanvas
-              spaceId={id as string}
-              initialElements={space?.content_state?.whiteboard?.elements || []}
-              onShare={handleWhiteboardShare}
-              onElementsChange={(elements) => {
+            <React.Suspense fallback={<View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}><ActivityIndicator size="large" color="#007AFF" /></View>}>
+              <WhiteboardCanvas
+                spaceId={id as string}
+                initialElements={space?.content_state?.whiteboard?.elements || []}
+                onShare={handleWhiteboardShare}
+                onElementsChange={(elements) => {
                 // Update local state and remote sync
                 setSpace((prev: any) => {
                   const newState = {
@@ -1307,6 +1314,7 @@ const SpaceDetailScreen = () => {
                 showToast('Whiteboard something went wrong. Please try again.', 'error');
               }}
             />
+            </React.Suspense>
           </View>
         );
 

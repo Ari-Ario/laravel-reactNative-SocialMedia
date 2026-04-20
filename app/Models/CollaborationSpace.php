@@ -46,8 +46,14 @@ class CollaborationSpace extends Model
 
     protected static function booted()
     {
-        static::saved(fn () => \Illuminate\Support\Facades\Cache::increment('spaces_cache_v'));
-        static::deleted(fn () => \Illuminate\Support\Facades\Cache::increment('spaces_cache_v'));
+        static::saved(function () {
+            $version = \Illuminate\Support\Facades\Cache::get('spaces_cache_v', 1);
+            \Illuminate\Support\Facades\Cache::put('spaces_cache_v', $version + 1, 86400); // 24h
+        });
+        static::deleted(function () {
+            $version = \Illuminate\Support\Facades\Cache::get('spaces_cache_v', 1);
+            \Illuminate\Support\Facades\Cache::put('spaces_cache_v', $version + 1, 86400); // 24h
+        });
     }
 
     protected $appends = ['image_url'];

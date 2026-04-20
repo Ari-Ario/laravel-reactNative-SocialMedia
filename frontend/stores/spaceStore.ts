@@ -29,6 +29,7 @@ interface SpaceStoreState {
     setSpaces: (spaces: Space[]) => void;
     addSpace: (space: Space) => void;
     updateSpace: (space: Space) => void;
+    handleSpaceEvent: (event: any) => void;
     reset: () => void;
 }
 
@@ -50,6 +51,38 @@ export const useSpaceStore = create<SpaceStoreState>((set, get) => ({
     updateSpace: (updatedSpace) => set((state) => ({
         spaces: state.spaces.map(s => s.id === updatedSpace.id ? { ...s, ...updatedSpace } : s)
     })),
+
+    handleSpaceEvent: (event: any) => {
+        const { type, data } = event;
+        const spaceData = data.space || data.data?.space || data;
+        const spaceId = (spaceData.id || data.space_id || data.spaceId)?.toString();
+
+        if (!spaceId) return;
+
+        switch (type) {
+            case 'space-created':
+            case 'space_created':
+            case 'space-invitation':
+            case 'space_invitation':
+                const exists = get().spaces.some(s => s.id.toString() === spaceId);
+                if (!exists) {
+                    get().addSpace(spaceData);
+                } else {
+                    get().updateSpace(spaceData);
+                }
+                break;
+            case 'space-updated':
+            case 'space.updated':
+                get().updateSpace(spaceData);
+                break;
+            case 'space-deleted':
+            case 'space.deleted':
+                set((state) => ({
+                    spaces: state.spaces.filter(s => s.id.toString() !== spaceId)
+                }));
+                break;
+        }
+    },
 
     reset: () => set({
         currentSpace: null,

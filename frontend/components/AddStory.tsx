@@ -318,7 +318,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
     if (longPressTimeout.current) {
       clearTimeout(longPressTimeout.current);
     }
-    if (isRecording) {
+    if (isRecording || shouldRecordRef.current) {
       stopRecording();
     } else if (cameraMode === 'picture') {
       takePhoto();
@@ -326,13 +326,13 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
   }, [isRecording, cameraMode, takePhoto, startRecording]);
 
   const stopRecording = () => {
+    const wasRecording = isRecording || shouldRecordRef.current;
     shouldRecordRef.current = false;
-    if (cameraRef.current && isRecording) {
+    setIsRecording(false);
+    
+    if (cameraRef.current && wasRecording) {
       cameraRef.current.stopRecording();
-      setIsRecording(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } else {
-      setIsRecording(false);
     }
   };
 

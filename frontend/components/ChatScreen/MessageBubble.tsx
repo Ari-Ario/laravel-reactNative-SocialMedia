@@ -26,7 +26,20 @@ import { useModal } from '@/context/ModalContext';
 
 import { fetchPostById } from '@/services/PostService';
 import { fetchStory } from '@/services/StoryService';
-import { PostVideoPlayer } from '../PostVideoPlayer';
+const PostVideoPlayer = React.lazy(() => import('../PostVideoPlayer').then(module => ({ default: module.PostVideoPlayer })));
+
+const VideoFallback = ({ posterUrl, style }: { posterUrl?: string, style: any }) => (
+  <View style={[style, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }]}>
+    {posterUrl && (
+      <Image 
+        source={{ uri: posterUrl, cache: 'force-cache' }} 
+        style={StyleSheet.absoluteFillObject} 
+        resizeMode="cover" 
+      />
+    )}
+    <Ionicons name="play-circle" size={50} color="rgba(255,255,255,0.7)" />
+  </View>
+);
 import VoiceMessagePlayer from './VoiceMessagePlayer';
 import { LinkPreviewCard } from '../LinkPreviewCard';
 import { extractFirstUrl } from '@/utils/urlUtils';
@@ -194,13 +207,15 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               style={styles.image}
             >
               {isVideo ? (
-                <PostVideoPlayer
-                  uri={url}
-                  style={styles.image}
-                  shouldPlay={true}
-                  isMuted={true}
-                  contentFit="cover"
-                />
+                <React.Suspense fallback={<VideoFallback style={styles.image} />}>
+                  <PostVideoPlayer
+                    uri={url}
+                    style={styles.image}
+                    shouldPlay={true}
+                    isMuted={true}
+                    contentFit="cover"
+                  />
+                </React.Suspense>
               ) : (
                 <Image
                   source={{ uri: url, cache: 'force-cache' }}
@@ -264,13 +279,15 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                     ]}
                   >
                     {isVideo ? (
-                      <PostVideoPlayer
-                        uri={url}
-                        style={styles.albumMedia}
-                        shouldPlay={true}
-                        isMuted={true}
-                        contentFit="cover"
-                      />
+                      <React.Suspense fallback={<VideoFallback style={styles.albumMedia} />}>
+                        <PostVideoPlayer
+                          uri={url}
+                          style={styles.albumMedia}
+                          shouldPlay={true}
+                          isMuted={true}
+                          contentFit="cover"
+                        />
+                      </React.Suspense>
                     ) : (
                       <Image
                         source={{ uri: url, cache: 'force-cache' }}
@@ -735,13 +752,15 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         return (
           <View style={styles.sharedPostMediaContainer}>
             {(item.type === 'video' || metadata.media_type === 'video') ? (
-              <PostVideoPlayer
-                uri={mediaUrl}
-                style={[styles.sharedPostMedia, isStory && { height: 350 }]}
-                contentFit="cover"
-                shouldPlay={true}
-                isMuted={true}
-              />
+              <React.Suspense fallback={<VideoFallback style={[styles.sharedPostMedia, isStory && { height: 350 }]} />}>
+                <PostVideoPlayer
+                  uri={mediaUrl}
+                  style={[styles.sharedPostMedia, isStory && { height: 350 }]}
+                  contentFit="cover"
+                  shouldPlay={true}
+                  isMuted={true}
+                />
+              </React.Suspense>
             ) : (
               <Image 
                 source={{ uri: mediaUrl }} 

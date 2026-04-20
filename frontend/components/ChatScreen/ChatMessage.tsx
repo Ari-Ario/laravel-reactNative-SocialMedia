@@ -5,6 +5,9 @@ import { VideoView, useVideoPlayer } from 'expo-video';
 import { PostActionButtons } from '../PostActionButtons';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { Ionicons } from '@expo/vector-icons';
+import { useBookmarkStore } from '@/stores/bookmarkStore';
+import { useToastStore } from '@/stores/toastStore';
+import { router } from 'expo-router';
 
 interface ChatMessageProps {
   item: any;
@@ -18,6 +21,30 @@ const ChatMessage = ({ item, user, service, onMenuPress, onCommentPress }: ChatM
   const postMedia = useMemo(() => {
     return service.sortMedia(item.media || []);
   }, [item.media, service]);
+
+  const { addBookmark, bookmarks } = useBookmarkStore();
+  const isBookmarked = bookmarks.some(b => b && b.post_id === item.id);
+  const showToast = useToastStore(state => state.showToast);
+
+  const handleBookmark = async () => {
+    try {
+      const result = await addBookmark(item.id);
+      if (result.bookmarked && result.bookmark) {
+        showToast('Post bookmarked!', 'success');
+        
+        // Navigation to bookmarks settings which acts as the popup gallery
+        router.push({
+          pathname: '/settings/bookmarks',
+          params: { initialPostId: item.id }
+        });
+      } else {
+        showToast('Bookmark removed', 'info');
+      }
+    } catch (error) {
+      console.error("Bookmark from chat failed:", error);
+      showToast("Failed to bookmark post", 'error');
+    }
+  };
 
   // Handle comment press with the specific post
   const handleCommentPress = () => {
@@ -131,12 +158,13 @@ const ChatMessage = ({ item, user, service, onMenuPress, onCommentPress }: ChatM
             onDeleteReaction={() => service.deletePostReaction(item.id)}
             onRepost={() => { }}
             onShare={() => { }}
-            onBookmark={() => { }}
+            onBookmark={handleBookmark}
             onCommentPress={handleCommentPress}
             currentReactingItem={service.currentReactingItem}
             setCurrentReactingItem={service.setCurrentReactingItem}
             setIsEmojiPickerOpen={service.setIsEmojiPickerOpen}
             getGroupedReactions={service.getGroupedReactions}
+            isBookmarked={isBookmarked}
             compact={true}
           />
         </View>

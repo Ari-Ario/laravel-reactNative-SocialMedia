@@ -6,6 +6,7 @@ import AuthContext from '@/context/AuthContext';
 import { useReportedContentStore } from '@/stores/reportedContentStore';
 import { deleteReportByTarget } from '@/services/ReportService';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useToastStore } from '@/stores/toastStore';
 
 interface PostActionButtonsProps {
   post: {

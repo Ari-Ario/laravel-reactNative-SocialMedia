@@ -67,10 +67,13 @@ export default function PlatformCameraView({
         if (cameraRef && 'current' in cameraRef) {
             (cameraRef as any).current = {
                 takePictureAsync: async () => {
-                    if (!videoRef.current) throw new Error('Video ref not ready');
+                    const videoEl = videoRef.current;
+                    if (!videoEl) throw new Error('Video element is not mounted');
+                    if (videoEl.readyState < 2) throw new Error('Video stream not ready yet');
+                    
                     const canvas = document.createElement('canvas');
-                    canvas.width = videoRef.current.videoWidth;
-                    canvas.height = videoRef.current.videoHeight;
+                    canvas.width = videoEl.videoWidth || 1280;
+                    canvas.height = videoEl.videoHeight || 720;
                     const ctx = canvas.getContext('2d');
                     if (!ctx) throw new Error('Could not get canvas context');
                     
@@ -80,7 +83,7 @@ export default function PlatformCameraView({
                         ctx.scale(-1, 1);
                     }
                     
-                    ctx.drawImage(videoRef.current, 0, 0);
+                    ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
                     return { uri: canvas.toDataURL('image/jpeg', 0.9) };
                 },
                 recordAsync: async (options: any) => {

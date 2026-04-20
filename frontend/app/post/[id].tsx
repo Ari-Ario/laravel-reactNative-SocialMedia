@@ -86,9 +86,8 @@ const PostDetailScreen = () => {
   const styles = getStyles(colors, activeScheme as string);
   const { id, highlightCommentId, returnTo } = useLocalSearchParams();
   const { posts, addPost, updatePost } = usePostStore();
-  const { bookmarks, removeBookmark } = useBookmarkStore();
-  const { user } = useContext(AuthContext);
-  const post = posts.find(p => p.id.toString() === id);
+  const { bookmarks, addBookmark, removeBookmark } = useBookmarkStore();
+  const isBookmarked = bookmarks.some(b => b && b.post_id === Number(id));
   const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
   const { openModal } = useModal();
   const router = useRouter();
@@ -299,13 +298,34 @@ const PostDetailScreen = () => {
 
     setIsSubmitting(true);
     try {
-      await commentOnPost(postId, commentText.trim());
+      const comment = await commentOnPost(postId, commentText.trim());
+      
+      // Optimistic update for immediate feedback
+      const formattedComment = {
+        id: comment.id,
+        content: comment.content,
+        user_id: comment.user_id,
+        user: {
+          id: user?.id || comment.user.id,
+          name: user?.name || comment.user.name,
+          profile_photo: user?.profile_photo || comment.user.profile_photo
+        },
+        post_id: comment.post_id,
+        parent_id: comment.parent_id,
+        replies: [],
+        reaction_counts: [],
+        reactions: [],
+        reaction_comments: [],
+        reaction_comments_count: 0
+      };
+      
+      usePostStore.getState().updatePostWithNewComment(Number(postId), formattedComment as any);
       setCommentText('');
 
-      // Refresh post data to get updated comments
+      // Refresh post data to get updated comments and other metadata
       const postData = await fetchPostById(postId);
       if (postData) {
-        addPost(postData);
+        updatePostInStore(postData);
       }
     } catch (error: any) {
       console.error('Error submitting comment:', error);
@@ -341,11 +361,26 @@ const PostDetailScreen = () => {
   };
 
   const handleBookmarkPost = async () => {
+    if (!post) return;
     try {
-      // Implement bookmark post logic
-      console.log('Bookmark post:', postId);
+      const result = await addBookmark(post.id);
+      if (result.bookmarked && result.bookmark) {
+        showToast('Post bookmarked!', 'success');
+        
+        if (mediaViewerVisible) {
+          setMediaViewerVisible(false);
+        }
+
+        router.push({
+          pathname: '/settings/bookmarks',
+          params: { initialPostId: post.id }
+        });
+      } else {
+        showToast('Bookmark removed', 'info');
+      }
     } catch (error) {
       console.error('Error bookmarking post:', error);
+      showToast("Failed to bookmark post", 'error');
     }
   };
 
@@ -656,7 +691,11 @@ const PostDetailScreen = () => {
               )}
             </View>
             <TouchableOpacity style={styles.actionButton} onPress={handleBookmarkPost}>
-              <Ionicons name="bookmark-outline" size={26} color={colors.text} />
+              <Ionicons 
+                name={isBookmarked ? "bookmark" : "bookmark-outline"} 
+                size={26} 
+                color={isBookmarked ? "#10b981" : colors.text} 
+              />
             </TouchableOpacity>
           </View>
 
@@ -786,6 +825,7 @@ const PostDetailScreen = () => {
           currentReactingItem={currentReactingItem}
           setCurrentReactingItem={setCurrentReactingItem}
           setIsEmojiPickerOpen={setIsEmojiPickerOpen}
+          isBookmarked={isBookmarked}
           onCommentSubmit={async (content) => commentOnPost(post.id, content)}
           getGroupedReactions={(p) => service.getGroupedReactions(p as any)}
           handleReactComment={(emoji) => { }}
