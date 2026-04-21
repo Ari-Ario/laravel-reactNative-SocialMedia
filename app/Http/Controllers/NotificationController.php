@@ -24,7 +24,8 @@ class NotificationController extends Controller
             $query->where('created_at', '>', now()->subDays(7));
         }
 
-        $notifications = $query->orderBy('created_at', 'desc')
+        $notifications = $query->select(['id', 'type', 'data', 'read_at', 'created_at'])
+            ->orderBy('created_at', 'desc')
             ->limit(50)
             ->get()
             ->map(function ($notification) {

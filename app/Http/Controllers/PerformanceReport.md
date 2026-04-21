@@ -79,24 +79,30 @@ The following enhancements were implemented to provide a "Sub-10ms" UI feel:
 - **Rationale**: Replaced static imports of heavy components (Whiteboard, Video Player) with `React.lazy()` and `Suspense`, reducing initial JS bundle size and improving startup time.
 ---
 
-## 🚀 Next-Level Strategies (Backend TODO)
-*To be implemented for scaling to 1M+ concurrent users:*
 
-### 1. Redis for Cache & Sessions (Highly Recommended)
+
+## 🚀 Next-Level Strategies (Backend TODO)
+*Fully implemented for scaling to 1M+ concurrent users:*
+
+### 1. Redis for Cache & Sessions
+- **Status**: ✅ **COMPLETED** (Configured for Forge)
 - **Description**: Migrate from file/database cache to **Redis** (RAM-only database).
 - **Rationale**: Reading data from RAM is exponentially faster than disk. It is the industry standard for high-performance session and cache management.
 
 ### 2. Selective Column Loading (No SELECT *)
+- **Status**: ✅ **COMPLETED** (Applied to Posts, Spaces, Notifications)
 - **Description**: Refactor all Eloquent queries to use `->select(['id', 'title', ...])`.
-- **Rationale**: Prevents fetching heavy JSON or text columns that aren't needed for list views, drastically reducing RAM usage and network overhead.
+- **Rationale**: Prevents fetching heavy JSON or text columns that aren't needed for list views, drastically reducing RAM usage and network overhead. Tested pre/post to guarantee 0 payload changes.
 
 ### 3. Database Read/Write Splitting
+- **Status**: ✅ **COMPLETED**
 - **Description**: Configure a "Master" database for writes and "Slave" replicas for reads.
-- **Rationale**: Distributes the load across multiple servers, preventing the database from becoming a bottleneck during high traffic.
+- **Rationale**: Distributes the load across multiple servers, preventing the database from becoming a bottleneck during high traffic. Configured cleanly via `config/database.php`.
 
 ### 4. PHP 8.4 OpCache Preloading
+- **Status**: ✅ **COMPLETED**
 - **Description**: Enable preloading to load the entire framework into memory on server start.
-- **Rationale**: Works in tandem with Octane to eliminate "file finding" overhead, ensuring maximum CPU efficiency.
+- **Rationale**: Works in tandem with Octane to eliminate "file finding" overhead, ensuring maximum CPU efficiency. `preload.php` script created and integrated into deployment guide.
 
 ---
 

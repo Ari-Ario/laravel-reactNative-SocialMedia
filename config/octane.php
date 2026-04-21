@@ -42,6 +42,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Octane State File
+    |--------------------------------------------------------------------------
+    |
+    | This value determines the path to the "state" file that will be used by
+    | Octane to store the server's process ID and other state information.
+    |
+    */
+
+    'state_file' => env('OCTANE_STATE_FILE', storage_path('logs/octane-state.json')),
+
+    /*
+    |--------------------------------------------------------------------------
     | Force HTTPS
     |--------------------------------------------------------------------------
     |
