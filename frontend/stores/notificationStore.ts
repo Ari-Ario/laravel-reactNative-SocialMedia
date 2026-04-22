@@ -357,12 +357,30 @@ export const useNotificationStore = create<NotificationStore>()(
         const isActivity = isActivityNotification(newNotification.type);
         const isRegular = !isFollower && !isCall && !isMessage && !isSpace && !isActivity;
 
+        // ✅ SUPPRESSION: If the notification is for the currently active space, do not add it as a notification
+        // (The message is already visible in the chat UI via the presence channel broadcast)
+        // NOTE: Use plain `return` (not `return state`) — we are in addNotification's function body,
+        // NOT inside a set() callback, so `state` is not in scope here.
+        try {
+          const activeSpaceId = require('@/stores/collaborationStore').useCollaborationStore.getState().activeSpace?.id;
+          if (newNotification.spaceId && activeSpaceId && String(newNotification.spaceId) === String(activeSpaceId)) {
+            console.log('🔇 Suppressing notification for active space (user is viewing it):', newNotification.spaceId);
+            return; // ✅ FIXED: was `return state` which is undefined here and caused silent early exits
+          }
+        } catch (e) {
+          // Non-fatal: if collaborationStore is unavailable, proceed normally
+        }
+
         set((state) => {
           const targetArray = isFollower ? state.followerNotifications : state.notifications;
 
           // ✅ Atomic Duplicate Check
           const isDuplicate = targetArray.some(notif => {
             if (notif.id === newNotification.id) return true;
+
+            // If we have messageId/postId, use it for exact deduplication
+            if (newNotification.messageId && notif.messageId && String(newNotification.messageId) === String(notif.messageId)) return true;
+            if (newNotification.postId && notif.postId && String(newNotification.postId) === String(notif.postId)) return true;
 
             const isSameSpaceInv = notif.type === 'space_invitation' &&
               newNotification.type === 'space_invitation' &&

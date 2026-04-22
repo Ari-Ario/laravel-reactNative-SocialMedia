@@ -112,15 +112,15 @@ function PostListItem({
   const isOwner = service.isOwner(post.user.id);
 
   const { visualMedia, extraMedia } = useMemo(() => {
-    return service.sortMedia(post.media);
-  }, [post.media, service]);
+    return service.sortMedia(currentPost.media);
+  }, [currentPost.media, service]);
 
   // Detect link in caption
   const detectedUrl = useMemo(() => {
-    if (!post.caption) return null;
+    if (!currentPost.caption) return null;
     // Enhanced regex to catch both http and www links
     const urlRegex = /((https?:\/\/|www\.)[^\s\n\r]+)/g;
-    const matches = post.caption.match(urlRegex);
+    const matches = currentPost.caption.match(urlRegex);
     if (!matches) return null;
 
     let url = matches[0];
@@ -133,7 +133,7 @@ function PostListItem({
       url = 'https://' + url;
     }
     return url;
-  }, [post.caption]);
+  }, [currentPost.caption]);
 
   const reactionsToShow = service.getGroupedReactions(currentPost, user?.id ? Number(user.id) : undefined);
   const totalReactions = reactionsToShow.reduce((acc, r) => acc + r.count, 0);
@@ -141,15 +141,15 @@ function PostListItem({
 
   // Parse location safely
   const postLocation = useMemo(() => {
-    if (!post.location) return null;
+    if (!currentPost.location) return null;
     try {
-      return typeof post.location === 'string'
-        ? JSON.parse(post.location)
-        : post.location;
+      return typeof currentPost.location === 'string'
+        ? JSON.parse(currentPost.location)
+        : currentPost.location;
     } catch {
       return null;
     }
-  }, [post.location]);
+  }, [currentPost.location]);
 
   const handleDoubleTap = service.useDoubleTap(
     () => {
@@ -281,7 +281,7 @@ function PostListItem({
 
             <View style={styles.nameCaption}>
               <View style={styles.usernameRow}>
-                <Text style={[styles.username, { color: colors.text }]}>{post.user.name}</Text>
+                <Text style={[styles.username, { color: colors.text }]}>{currentPost.user?.name || post.user?.name}</Text>
                 {postLocation && (
                   <TouchableOpacity
                     onPress={() => openModal('location', { location: postLocation })}
@@ -299,14 +299,14 @@ function PostListItem({
                 )}
               </View>
               <View style={styles.menuContainer}>
-                {post.caption && (
+                {currentPost.caption && (
                   <Pressable onPress={handleToggleExpand}>
                     <Text style={[styles.caption, { color: colors.text }]}>
-                      {expandedPostId === post.id
-                        ? post.caption
-                        : post.caption.length > 60
-                          ? `${post.caption.substring(0, 60)} ...`
-                          : post.caption}
+                      {expandedPostId === currentPost.id
+                        ? currentPost.caption
+                        : currentPost.caption.length > 60
+                          ? `${currentPost.caption.substring(0, 60)} ...`
+                          : currentPost.caption}
                     </Text>
                   </Pressable>
                 )}
@@ -322,12 +322,14 @@ function PostListItem({
             <Ionicons name="ellipsis-horizontal" size={20} color={colors.text} />
           </TouchableOpacity>
         </View>
-
       </View>
 
       {/* Media Rendering */}
       {(visualMedia.length > 0 || extraMedia.length > 0 || detectedUrl) && (
-        <View style={styles.mediaContainer}>
+        <View 
+          key={`media-${currentPost.id}-${visualMedia.length}-${currentPost.updated_at}`}
+          style={styles.mediaContainer}
+        >
           {/* Visual Media Carousel */}
           {visualMedia.length > 0 && (
             <View>
@@ -348,7 +350,7 @@ function PostListItem({
                     </React.Suspense>
                   ) : (
                     <ExpoImage
-                      source={{ uri: `${getApiBaseImage()}/storage/${visualMedia[0].file_path}` }}
+                      source={{ uri: getMediaUrl(visualMedia[0].file_path) }}
                       style={styles.singleMedia}
                       contentFit="cover"
                       transition={200}
@@ -377,7 +379,7 @@ function PostListItem({
                         </React.Suspense>
                       ) : (
                         <ExpoImage
-                          source={{ uri: `${getApiBaseImage()}/storage/${media.file_path}` }}
+                          source={{ uri: getMediaUrl(media.file_path) }}
                           style={styles.multiMediaContent}
                           contentFit="cover"
                           transition={200}
@@ -982,6 +984,7 @@ const PostListItemMemo = React.memo(PostListItem, (prevProps, nextProps) => {
     prevProps.post.reactions_count === nextProps.post.reactions_count &&
     prevProps.post.comments_count === nextProps.post.comments_count &&
     prevProps.post.is_reposted === nextProps.post.is_reposted &&
+    prevProps.post.updated_at === nextProps.post.updated_at &&
     prevProps.shouldPlay === nextProps.shouldPlay
   );
 });

@@ -2,6 +2,7 @@
 import axiosLib from 'axios';
 import { getToken } from './TokenService';
 import getApiBase from './getApiBase';
+import PusherService from './PusherService';
 
 const baseURL = getApiBase();
 const axios = axiosLib.create({
@@ -33,6 +34,12 @@ axios.interceptors.request.use(async (req) => {
     const token = await getToken();
     if (token) {
       req.headers.Authorization = `Bearer ${token}`;
+    }
+
+    // ✅ FIX: Include X-Socket-ID for broadcast deduplication (toOthers)
+    const socketId = PusherService.getSocketId();
+    if (socketId) {
+      req.headers['X-Socket-ID'] = socketId;
     }
   }
 

@@ -262,11 +262,17 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
             setReplyingTo(null);
 
             setSpace((prev: any) => {
+                const msgs = prev?.content_state?.messages || [];
+                // ✅ FIX: Prevent duplicates if real-time event arrived before API response
+                if (msgs.some((m: any) => m.id === message.id)) {
+                    return prev;
+                }
+
                 const updatedSpace = {
                     ...prev,
                     content_state: {
                         ...prev.content_state,
-                        messages: [...(prev?.content_state?.messages || []), message]
+                        messages: [...msgs, message]
                     },
                     updated_at: new Date().toISOString()
                 };

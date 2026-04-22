@@ -7,6 +7,7 @@ import { login as loginApi } from "@/services/AuthService";
 import { Link, useRouter } from 'expo-router';
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useAppTheme } from "@/hooks/useAppTheme";
+import { BackButton } from "@/components/ui/IconButton";
 
 export default function LoginScreen() {
     const { colors } = useAppTheme();
@@ -65,11 +66,9 @@ export default function LoginScreen() {
 
     return (
         <SafeAreaView style={[styles.wrapper, { backgroundColor: colors.background }]}>
-            <View>
+            <View style={{ position: 'absolute', top: 10, left: 10, zIndex: 10 }}>
                 <Link href={'/'} asChild>
-                    <TouchableOpacity style={styles.button}>
-                        <Text style={[styles.buttonText, { color: colors.tint }]}>◀ Back to Homescreen</Text>
-                    </TouchableOpacity>
+                    <BackButton />
                 </Link>
             </View>
 

@@ -13,8 +13,8 @@ class Poll extends Model
 
     protected static function booted()
     {
-        static::saved(fn ($poll) => \Illuminate\Support\Facades\Cache::increment("space_{$poll->space_id}_polls_v"));
-        static::deleted(fn ($poll) => \Illuminate\Support\Facades\Cache::increment("space_{$poll->space_id}_polls_v"));
+        static::saved(fn ($poll) => \Illuminate\Support\Facades\Cache::put("space_{$poll->space_id}_polls_v", time(), 86400));
+        static::deleted(fn ($poll) => \Illuminate\Support\Facades\Cache::put("space_{$poll->space_id}_polls_v", time(), 86400));
     }
 
     protected $keyType = 'string';

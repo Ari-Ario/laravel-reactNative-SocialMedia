@@ -255,15 +255,16 @@ class PushNotificationService {
     switch (type) {
       case 'call':
       case 'incoming_call':
-        if (spaceId) router.push(`/(spaces)/${spaceId}?tab=meeting`);
+        // ✅ Use replace() to avoid stacking space screens from notification taps
+        if (spaceId) router.replace(`/(spaces)/${spaceId}?tab=meeting` as any);
         break;
       case 'message':
       case 'message_reply':
       case 'message_reaction':
-        if (spaceId) router.push(`/(spaces)/${spaceId}`);
+        if (spaceId) router.replace(`/(spaces)/${spaceId}` as any);
         break;
       case 'space_invitation':
-        if (spaceId) router.push(`/(spaces)/${spaceId}`);
+        if (spaceId) router.replace(`/(spaces)/${spaceId}` as any);
         break;
       case 'post_reaction':
       case 'new_comment':

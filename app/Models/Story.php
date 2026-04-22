@@ -31,13 +31,21 @@ class Story extends Model
         parent::boot();
 
         static::creating(function ($story) {
-            $story->expires_at = now()->addHours(24);
+            if (!$story->expires_at) {
+                $story->expires_at = now()->addHours(24);
+            }
         });
 
+        static::saved(fn () => \Illuminate\Support\Facades\Cache::put('stories_global_version', time(), 86400));
+        
         static::deleting(function ($story) {
             // Delete the associated media file
-            Storage::disk('public')->delete($story->media_path);
+            if ($story->media_path) {
+                Storage::disk('public')->delete($story->media_path);
+            }
         });
+
+        static::deleted(fn () => \Illuminate\Support\Facades\Cache::put('stories_global_version', time(), 86400));
     }
 
     public function user()

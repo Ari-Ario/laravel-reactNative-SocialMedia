@@ -56,7 +56,7 @@ class PostController extends Controller
                         ->with([
                             'user:id,name,profile_photo,username',
                             'media' => function($q) {
-                                $q->select(['id', 'model_id', 'file_path', 'type'])->limit(1);
+                                $q->select(['id', 'model_id', 'model_type', 'file_path', 'type']);
                             },
                             'reactionCounts'
                         ]);
@@ -357,7 +357,7 @@ class PostController extends Controller
             'media' => 'sometimes|array|max:10',
             'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,webm,avi,mp3,wav,pdf,doc,docx,ogg,oga,opus,flac,aac,m4a,m4b,m4p,m4r,m4v,mp2,mp3,mp4,mpeg,mpeg4,mpegps,mpg,mpegts,mpegv,mts,oga,ogg,opus,wav,webm,mpga|max:40960', // 40MB
             'delete_media' => 'sometimes|array',
-            'delete_media.*' => 'exists:media,id',
+            'delete_media.*' => 'nullable', // We will validate ownership manually to avoid 422 errors on stale IDs
             'trim_start' => 'sometimes|array',
             'trim_end' => 'sometimes|array',
         ]);
@@ -397,7 +397,8 @@ class PostController extends Controller
         $deletedMedia = [];
         if ($request->has('delete_media')) {
             foreach ($request->delete_media as $mediaId) {
-                $media = Media::find($mediaId);
+                // ✅ Only find media that actually belongs to THIS post
+                $media = $post->media()->find($mediaId);
                 if ($media) {
                     $deletedMedia[] = [
                         'id' => $media->id,
@@ -409,7 +410,6 @@ class PostController extends Controller
                 }
             }
             if (!empty($deletedMedia)) {
-                $changes['deleted_media'] = $deletedMedia;
                 $updatedFields[] = 'media';
             }
         }
@@ -451,17 +451,32 @@ class PostController extends Controller
                 ];
             }
             if (!empty($newMedia)) {
-                $changes['new_media'] = $newMedia;
                 $updatedFields[] = 'media';
             }
         }
 
-        // Reload the post with fresh relationships
+        // ✅ Forcefully reset the media relationship to ensure deleted items are gone
+        $post->unsetRelation('media');
         $updatedPost = $post->fresh()->load('user', 'media');
+
+        // ✅ Bust the post cache for all devices
+        \Illuminate\Support\Facades\Cache::forget("post_{$post->id}");
+        \Illuminate\Support\Facades\Cache::forget("post_lite_{$post->id}");
 
         // AI Moderation Check on update
         $moderationEngine = app(ModerationEngine::class);
         $moderationEngine->analyzeContent($post->caption ?? '', 'post', $post->id);
+
+        // Prepare broadcast changes
+        if (!empty($newMedia) || !empty($deletedMedia)) {
+            if (!in_array('media', $updatedFields)) {
+                $updatedFields[] = 'media';
+            }
+            $changes['media'] = [
+                'old' => null,
+                'new' => $updatedPost->media->values() // Ensure clean array indexing
+            ];
+        }
 
         // Broadcast update event only if there were actual changes
         if (!empty($updatedFields)) {
@@ -481,9 +496,8 @@ class PostController extends Controller
             Log::info('✅ Post updated and broadcasted', [
                 'post_id' => $post->id,
                 'user_id' => Auth::id(),
-                'user_name' => Auth::user()->name,
                 'updated_fields' => $updatedFields,
-                'changes' => $changes,
+                'media_count' => $updatedPost->media->count(),
                 'follower_count' => count($followerIds)
             ]);
         }
@@ -743,6 +757,8 @@ class PostController extends Controller
             ], 500);
         }
     }
+
+
 
 
 

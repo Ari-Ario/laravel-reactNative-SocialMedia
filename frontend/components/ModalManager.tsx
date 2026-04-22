@@ -28,7 +28,8 @@ export default function ModalManager() {
           initialParams={{
             postId: modalProps?.postId,
             caption: modalProps?.initialCaption,
-            media: JSON.stringify(modalProps?.initialMedia || [])
+            media: modalProps?.initialMedia ? JSON.stringify(modalProps.initialMedia) : '[]',
+            location: modalProps?.initialLocation ? JSON.stringify(modalProps.initialLocation) : null
           }}
         />
       );

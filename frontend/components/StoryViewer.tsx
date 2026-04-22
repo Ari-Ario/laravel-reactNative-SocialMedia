@@ -1,11 +1,10 @@
-import { Platform, View, Text, StyleSheet, TouchableOpacity, Image, Dimensions, Animated, ActivityIndicator, TextInput, ScrollView, Keyboard, Alert, Modal } from 'react-native';
+import { Platform, View, Text, StyleSheet, TouchableOpacity, Image, Dimensions, Animated, ActivityIndicator, TextInput, ScrollView, Keyboard, Alert, Modal, KeyboardAvoidingView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlobalStyles } from '@/styles/GlobalStyles';
 import { useCallback, useEffect, useRef, useState, useMemo, useContext } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { markStoryAsViewed, fetchUserStories, deleteStory } from '@/services/StoryService';
-import CollaborationService from '@/services/ChatScreen/CollaborationService';
+import { markStoryAsViewed, fetchUserStories, deleteStory, sendStoryReply } from '@/services/StoryService';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { deleteReportByTarget } from '@/services/ReportService';
 import { VideoView, useVideoPlayer } from 'expo-video';
@@ -242,20 +241,29 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
   const currentStory = useMemo(() => stories[currentStoryIndex], [stories, currentStoryIndex]);
 
   const handleNext = useCallback(() => {
+    // Validate current story and index before proceeding
+    if (stories.length === 0) {
+      onClose();
+      return;
+    }
+
     if (currentStoryIndex < stories.length - 1) {
       setCurrentStoryIndex(prev => prev + 1);
     } else {
-      onNextUser(currentStoryIndex);
+      // Pass the index only if it points to a valid story
+      const safeIndex = (currentStoryIndex < stories.length) ? currentStoryIndex : undefined;
+      onNextUser(safeIndex);
     }
-  }, [currentStoryIndex, stories.length, onNextUser]);
+  }, [currentStoryIndex, stories.length, onNextUser, onClose]);
 
   const handlePrev = useCallback(() => {
-    if (currentStoryIndex > 0) {
+    if (currentStoryIndex > 0 && stories.length > 0) {
       setCurrentStoryIndex(prev => prev - 1);
     } else {
-      onPrevUser(currentStoryIndex);
+      const safeIndex = (currentStoryIndex < stories.length) ? currentStoryIndex : undefined;
+      onPrevUser(safeIndex);
     }
-  }, [currentStoryIndex, onPrevUser]);
+  }, [currentStoryIndex, stories.length, onPrevUser]);
 
   const togglePause = useCallback(() => {
     setPaused(prev => !prev);
@@ -316,16 +324,31 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
     };
   }, [currentStoryIndex, stories, paused, showLocationPopup, showShareModal, showReactions, isLongPressing, showInfo, loading, progressAnim, handleNext, isTyping]);
 
-  // Handle remote deletion by observing store changes
+  // Handle remote deletion and index integrity
+  const lastViewedStoryId = useRef<number | null>(null);
+
   useEffect(() => {
-    if (!loading) {
-      if (stories.length === 0) {
-        onClose();
-      } else if (currentStoryIndex >= stories.length) {
-        setCurrentStoryIndex(stories.length - 1);
+    if (!loading && stories.length > 0) {
+      const storyExists = stories.some(s => s.id === currentStory?.id);
+      
+      if (!storyExists && currentStory) {
+        console.log('⚠️ Current story was deleted remotely, re-syncing index');
+        // If current story is gone, try to stay at the same index or go to the end
+        if (currentStoryIndex >= stories.length) {
+          setCurrentStoryIndex(stories.length - 1);
+        } else {
+          // Stay at same index (which now points to the next story)
+          // but we might need to force a re-render
+          setCurrentStoryIndex(prev => prev); 
+        }
+      } else if (stories.length === 0) {
+        // Spring to next user instead of closing
+        onNextUser();
       }
+    } else if (!loading && stories.length === 0) {
+      onNextUser();
     }
-  }, [stories.length, loading, currentStoryIndex, onClose]);
+  }, [stories.length, loading, currentStory?.id, currentStoryIndex, onNextUser]);
 
   // Animated Styles
   const animatedVolumeStyle = useAnimatedStyle(() => ({
@@ -374,38 +397,12 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
     );
 
     try {
-      // Direct sharing to owner via CollaborationService
-      const collaborationService = CollaborationService.getInstance();
-      const directSpace = await collaborationService.getOrCreateDirectSpace(currentStory.user.id);
-      const spaceId = directSpace?.space?.id || directSpace?.id;
+      // Use the dedicated story reply service which handles space creation on backend
+      await sendStoryReply(currentStory.id, replyText.trim());
 
-      if (spaceId) {
-        const baseUrl = getApiBaseImage();
-        const shareUrl = `${baseUrl}/story/${currentStory.id}`;
-
-        const metadata = {
-          story_id: currentStory.id,
-          creator_name: currentStory.user.name || 'Anonymous',
-          creator_avatar: currentStory.user.profile_photo,
-          media_url: currentStory.media_path,
-          media_type: currentStory.type || 'image',
-          media: [], // Consistent with PostShareModal
-          caption: currentStory.caption,
-          is_internal_share: true,
-          post_url: shareUrl,
-          appended_message: replyText.trim()
-        };
-
-        await collaborationService.sendMessage(spaceId, {
-          content: currentStory.caption || 'Shared a story',
-          type: 'story_share' as 'text' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'contact' | 'story_share',
-          metadata
-        });
-
-        // ✅ Ensure the sender's chat list is updated immediately
-        if (user?.id) {
-          useCollaborationStore.getState().fetchUserSpaces(Number(user.id));
-        }
+      // ✅ Update chat store to reflect the new message/space immediately
+      if (user?.id) {
+        useCollaborationStore.getState().fetchUserSpaces(Number(user.id));
       }
 
       setReplyText('');
@@ -414,8 +411,10 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
       if (Platform.OS !== 'web') {
         safeHaptics.success();
       }
+      
+      showToast('Reply sent!', 'success');
     } catch (error) {
-      console.error('Error sending reply/share:', error);
+      console.error('Error sending reply:', error);
       showToast('Failed to send reply. Please try again.', 'error');
       safeHaptics.error();
     } finally {
@@ -443,24 +442,14 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
 
         // Show success message
         showToast('Story deleted successfully', 'success');
-        safeHaptics.success();
+        
+        // INSTANT LOCAL UPDATE: Update the store immediately for the owner
+        // This makes the transition "spring" instantly without waiting for Pusher
+        useStoryStore.getState().handleStoryDeleted({ 
+          storyId: currentStory.id, 
+          userId: Number(currentStory.user.id) 
+        });
 
-        // Note: We don't need to manually update state here anymore because Pusher 
-        // will broadcast 'story-deleted' and storyStore will handle it globally!
-        // But if we want it to be instant for the owner, we can call it:
-        // useStoryStore.getState().handleStoryDeleted({ storyId, userId: user!.id });
-
-        setTimeout(() => {
-          if (stories.length > 1) {
-            if (currentStoryIndex < stories.length - 1) {
-              handleNext();
-            } else {
-              handlePrev();
-            }
-          } else {
-            onClose();
-          }
-        }, 1500);
       } catch (error) {
         console.error('❌ Failed to delete story:', error);
         showToast('Could not delete story. Please try again.', 'error');
@@ -552,8 +541,13 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <GestureDetector gesture={panGesture}>
-        <View style={[styles.container, GlobalStyles.popupContainer, { backgroundColor: '#000' }]}>
-          <BlurView intensity={100} style={StyleSheet.absoluteFill} />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={0}
+        >
+          <View style={[styles.container, GlobalStyles.popupContainer, { backgroundColor: '#000' }]}>
+            <BlurView intensity={100} style={StyleSheet.absoluteFill} />
 
           {/* Delete Status Message */}
           <AnimatePresence>
@@ -665,7 +659,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
           </LinearGradient>
 
           {/* Story content */}
-          <View style={styles.contentWrapper}>
+          <View key={`story-content-${currentStory.id}`} style={styles.contentWrapper}>
             <TouchableOpacity
               style={styles.contentContainer}
               activeOpacity={1}
@@ -677,6 +671,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
               {/* Main Media or Background Color */}
               {currentStory.type === 'video' ? (
                 <StoryVideoContent
+                  key={`video-${currentStory.id}`}
                   uri={currentStory.media_path.startsWith('http') ? currentStory.media_path : `${getApiBaseImage()}/storage/${currentStory.media_path}`}
                   paused={paused || showLocationPopup || showShareModal || showReactions || showInfo}
                   isMuted={isMuted}
@@ -686,14 +681,16 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
               ) : backgroundColors ? (
                 backgroundColors.length > 1 ? (
                   <LinearGradient
+                    key={`gradient-${currentStory.id}`}
                     colors={backgroundColors}
                     style={styles.storyMedia}
                   />
                 ) : (
-                  <View style={[styles.storyMedia, { backgroundColor: backgroundColors[0] }]} />
+                  <View key={`bg-${currentStory.id}`} style={[styles.storyMedia, { backgroundColor: backgroundColors[0] }]} />
                 )
               ) : (
                 <Image
+                  key={`image-${currentStory.id}`}
                   source={{ uri: currentStory.media_path.startsWith('http') ? currentStory.media_path : `${getApiBaseImage()}/storage/${currentStory.media_path}` }}
                   style={styles.storyMedia}
                   resizeMode="contain"
@@ -977,9 +974,10 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
             }}
           />
         </View>
-      </GestureDetector>
-    </GestureHandlerRootView>
-  );
+      </KeyboardAvoidingView>
+    </GestureDetector>
+  </GestureHandlerRootView>
+);
 };
 
 const styles = StyleSheet.create({

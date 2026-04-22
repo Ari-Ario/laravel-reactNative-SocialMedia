@@ -30,8 +30,16 @@ import { useBookmarkStore } from '@/stores/bookmarkStore';
 import AuthContext from '@/context/AuthContext';
 
 const isWeb = Platform.OS === 'web';
+const isMobileWeb = isWeb && (
+    (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches) ||
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        typeof navigator !== 'undefined' ? navigator.userAgent : ''
+    )
+);
+const isDesktopWeb = isWeb && !isMobileWeb;
+
 const { width, height } = Dimensions.get('window');
-const CARD_WIDTH = isWeb ? Math.min(width * 0.85, 1000) : width * 0.98;
+const CARD_WIDTH = isDesktopWeb ? Math.min(width * 0.85, 1000) : width * 0.95;
 
 const COLLECTIONS = [
     { id: 'all', name: 'All Saves', icon: 'apps', color: '#0d0d0d', gradient: ['#0d0d0d', '#1a1a1a'] },
@@ -64,6 +72,83 @@ const WebActionButtons = ({ onAddNote, onRemove, onNavigate }: any) => {
     </View>
     );
 };
+
+const BookmarkCard = React.memo(({ 
+    bookmark, 
+    colors, 
+    activeScheme, 
+    styles, 
+    isDesktopWeb, 
+    onAddNote, 
+    onRemove, 
+    onNavigate 
+}: any) => {
+    return (
+        <MotiView
+            from={{ opacity: 0, translateX: -20 }}
+            animate={{ opacity: 1, translateX: 0 }}
+            transition={{ type: 'timing', duration: 300 }}
+            style={styles.timelineCard}
+        >
+            <View style={styles.timelineGradient}>
+                <TouchableOpacity 
+                    style={styles.timelineContent} 
+                    onPress={() => onNavigate(bookmark.post_id)}
+                >
+                    {bookmark.post.media?.[0] && (
+                        <Image 
+                            source={{ uri: `${getApiBaseImage()}/storage/${bookmark.post.media[0].file_path}` }} 
+                            style={styles.timelineThumb} 
+                        />
+                    )}
+                    <View style={styles.timelineInfo}>
+                        <View style={styles.timelineRow}>
+                            <Image 
+                                source={{ uri: bookmark.post.user.profile_photo ? `${getApiBaseImage()}/storage/${bookmark.post.user.profile_photo}` : 'https://via.placeholder.com/20' }} 
+                                style={styles.timelineAvatar} 
+                            />
+                            <Text style={styles.timelineName}>{bookmark.post.user.name}</Text>
+                        </View>
+                        <Text style={styles.timelineCaption} numberOfLines={2}>
+                            {bookmark.post.caption || 'No caption'}
+                        </Text>
+                        {bookmark.note && (
+                            <View style={styles.timelineNote}>
+                                <Ionicons name="chatbubble" size={12} color={colors.tint} />
+                                <Text style={styles.timelineNoteText}>{bookmark.note}</Text>
+                            </View>
+                        )}
+                        {!isDesktopWeb && (
+                            <View style={styles.mobileActionButtons}>
+                                <TouchableOpacity 
+                                    style={styles.mobileActionButton} 
+                                    onPress={() => onAddNote(bookmark)}
+                                >
+                                    <Ionicons name="pencil" size={18} color={colors.text} />
+                                </TouchableOpacity>
+                                <TouchableOpacity 
+                                    style={[styles.mobileActionButton, styles.mobileActionDelete]} 
+                                    onPress={() => onRemove(bookmark.post_id)}
+                                >
+                                    <Ionicons name="trash-outline" size={18} color={colors.error} />
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                    </View>
+                </TouchableOpacity>
+                {isDesktopWeb && (
+                    <WebActionButtons 
+                        onAddNote={() => onAddNote(bookmark)} 
+                        onRemove={() => onRemove(bookmark.post_id)} 
+                        onNavigate={() => onNavigate(bookmark.post_id)} 
+                    />
+                )}
+            </View>
+        </MotiView>
+    );
+});
+
+BookmarkCard.displayName = 'BookmarkCard';
 
 export default function BookmarksScreen() {
     const { colors, activeScheme } = useAppTheme();
@@ -126,7 +211,7 @@ export default function BookmarksScreen() {
         const confirm = () => {
             removeBookmark(postId);
         };
-        if (isWeb) {
+        if (isDesktopWeb) {
             if (window.confirm('Remove this bookmark?')) confirm();
         } else {
             Alert.alert('Remove Bookmark', 'Remove this from your collection?', [
@@ -170,46 +255,26 @@ export default function BookmarksScreen() {
                         <View style={styles.timelineDot} />
                         <Text style={styles.timelineDate}>{date}</Text>
                     </View>
-                    {items.map((bookmark: any, index: number) => (
-                        <MotiView
-                            key={`timeline-${bookmark.id}`}
-                            from={{ opacity: 0, translateX: -20 }}
-                            animate={{ opacity: 1, translateX: 0 }}
-                            transition={{ delay: index * 50 }}
-                            style={styles.timelineCard}
-                        >
-                            <View style={styles.timelineGradient}>
-                                <TouchableOpacity style={styles.timelineContent} onPress={() => navigateToPost(bookmark.post_id)}>
-                                    {bookmark.post.media?.[0] && (
-                                        <Image source={{ uri: `${getApiBaseImage()}/storage/${bookmark.post.media[0].file_path}` }} style={styles.timelineThumb} />
-                                    )}
-                                    <View style={styles.timelineInfo}>
-                                        <View style={styles.timelineRow}>
-                                            <Image source={{ uri: bookmark.post.user.profile_photo ? `${getApiBaseImage()}/storage/${bookmark.post.user.profile_photo}` : 'https://via.placeholder.com/20' }} style={styles.timelineAvatar} />
-                                            <Text style={styles.timelineName}>{bookmark.post.user.name}</Text>
-                                        </View>
-                                        <Text style={styles.timelineCaption} numberOfLines={2}>{bookmark.post.caption || 'No caption'}</Text>
-                                        {bookmark.note && (
-                                            <View style={styles.timelineNote}>
-                                                <Ionicons name="chatbubble" size={12} color={colors.tint} />
-                                                <Text style={styles.timelineNoteText}>{bookmark.note}</Text>
-                                            </View>
-                                        )}
-                                        {!isWeb && (
-                                            <View style={styles.mobileActionButtons}>
-                                                <TouchableOpacity style={styles.mobileActionButton} onPress={() => handleAddNote(bookmark)}><Ionicons name="pencil" size={18} color={colors.text} /></TouchableOpacity>
-                                                <TouchableOpacity style={[styles.mobileActionButton, styles.mobileActionDelete]} onPress={() => handleRemoveBookmark(bookmark.post_id)}><Ionicons name="trash-outline" size={18} color={colors.error} /></TouchableOpacity>
-                                            </View>
-                                        )}
-                                    </View>
-                                </TouchableOpacity>
-                                {isWeb && <WebActionButtons onAddNote={() => handleAddNote(bookmark)} onRemove={() => handleRemoveBookmark(bookmark.post_id)} onNavigate={() => navigateToPost(bookmark.post_id)} />}
-                            </View>
-                        </MotiView>
+                    {items.map((bookmark: any) => (
+                        <BookmarkCard
+                            key={`card-${bookmark.id}`}
+                            bookmark={bookmark}
+                            colors={colors}
+                            activeScheme={activeScheme}
+                            styles={styles}
+                            isDesktopWeb={isDesktopWeb}
+                            onAddNote={handleAddNote}
+                            onRemove={handleRemoveBookmark}
+                            onNavigate={navigateToPost}
+                        />
                     ))}
                 </View>
             )}
             contentContainerStyle={styles.timelineList}
+            initialNumToRender={3}
+            maxToRenderPerBatch={3}
+            windowSize={5}
+            removeClippedSubviews={Platform.OS !== 'web'}
         />
     );
 
@@ -344,7 +409,7 @@ function getStyles(colors: any, activeScheme: string) {
         marginHorizontal: 20, 
         marginBottom: 25, 
         paddingHorizontal: 20, 
-        paddingVertical: Platform.OS === 'ios' ? 16 : 12, 
+        paddingVertical: isDesktopWeb ? 12 : 16, 
         borderRadius: 35, 
         gap: 12,
         ...createShadow({ opacity: 0.15, height: 6 })

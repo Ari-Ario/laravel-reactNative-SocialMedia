@@ -99,45 +99,78 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
   const { analysis, isChecking, factScore, maliciousScore, moralityScore, isSafe } = useModeration(caption, 'post');
   const isInitialized = useRef(false);
 
-  // Initialize with edit data if available
+  // Initialize with edit data and hydrate from server
   useEffect(() => {
-    if (visible && !isInitialized.current) {
-      isInitialized.current = true;
-      if (isEditing) {
-        setCaption((params.caption as string) || '');
+    const initializeData = async () => {
+      if (visible && !isInitialized.current) {
+        isInitialized.current = true;
+        
+        // Prioritize props over router params for live store sync
+        const activePostId = params.postId || initialParams?.postId;
+        const activeCaption = params.caption || initialParams?.caption;
+        const activeMedia = params.media || initialParams?.media;
+        const activeLocation = (params as any).location || initialParams?.location;
 
-        try {
-          const parsedMedia = params.media ? JSON.parse(params.media as string) : [];
-          setMedia(Array.isArray(parsedMedia) ? parsedMedia : []);
-        } catch (e) {
-          console.error('Error parsing media:', e);
-          setMedia([]);
-        }
+        const isActualEditing = !!(activePostId && activePostId !== 'null');
 
-        // Parse location if available in edit mode
-        try {
-          if ((params as any).location) {
-            const parsedLocation = JSON.parse((params as any).location as string);
-            setLocation(parsedLocation);
+        if (isActualEditing) {
+          console.log('🔄 Editor: Initializing edit for post', activePostId);
+          
+          // 1. Initial sync from provided data
+          setCaption((activeCaption as string) || '');
+          try {
+            if (activeMedia) {
+              const parsedMedia = typeof activeMedia === 'string' ? JSON.parse(activeMedia) : activeMedia;
+              setMedia(Array.isArray(parsedMedia) ? parsedMedia : []);
+            }
+          } catch (e) { console.error('Error parsing initial media:', e); }
+
+          try {
+            if (activeLocation) {
+              const parsedLoc = typeof activeLocation === 'string' ? JSON.parse(activeLocation) : activeLocation;
+              setLocation(parsedLoc);
+            }
+          } catch (e) { console.error('Error parsing initial location:', e); }
+
+          // 2. Fetch ground truth from server/store
+          try {
+            const numericId = Number(activePostId);
+            if (!isNaN(numericId) && numericId > 0) {
+              const fullPost = await postStore.hydratePost(numericId);
+              if (fullPost) {
+                setCaption(fullPost.caption || '');
+                setMedia(fullPost.media || []);
+                if (fullPost.location) {
+                  const loc = typeof fullPost.location === 'string' ? JSON.parse(fullPost.location) : fullPost.location;
+                  setLocation(loc);
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Failed to hydrate post in editor:', error);
           }
-        } catch (e) {
-          console.error('Error parsing location:', e);
+        } else {
+          // New post reset
+          setCaption((activeCaption as string) || '');
+          setMedia([]);
+          setLocation(null);
         }
-      } else {
-        // New post: check if we have initial caption (e.g., sharing a poll)
-        setCaption((params.caption as string) || '');
-        setMedia([]);
-        setLocation(null);
       }
-    } else if (!visible) {
+    };
+
+    initializeData();
+
+    if (!visible) {
       // Reset when closed
       isInitialized.current = false;
       setCaption('');
       setMedia([]);
       setLocation(null);
       setLongVideosDetected(false);
+      // Clean router params to prevent stale data on next open
+      router.setParams({ postId: null, caption: null, media: null, location: null });
     }
-  }, [visible, isEditing, params.caption, params.media, (params as any).location]);
+  }, [visible, isEditing, params.postId, initialParams?.postId]);
 
   // Check for long videos whenever media changes
   useEffect(() => {
@@ -459,31 +492,20 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
     setCameraVisible(false);
   };
 
-  const removeMedia = async (index: number) => {
-    const item = media[index];
+  const removeMedia = (index: number) => {
+    const newMedia = [...media];
+    const item = newMedia[index];
 
-    // If this is existing media (has an ID)
     if (item.id && isEditing) {
-      try {
-        await deletePostMedia(Number(params.postId), item.id);
-
-        // Show success message
-        showToast('Media deleted successfully', 'success');
-
-        // Remove from local state
-        const newMedia = [...media];
-        newMedia.splice(index, 1);
-        setMedia(newMedia);
-
-      } catch (error) {
-        Alert.alert('Error', 'Failed to delete media');
-        console.error('Media deletion error:', error);
-      }
+      // Mark for deletion instead of immediate server call
+      newMedia[index] = { ...item, _deleted: true };
+      setMedia(newMedia);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } else {
       // For new uploads, just remove from array
-      const newMedia = [...media];
       newMedia.splice(index, 1);
       setMedia(newMedia);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
 
@@ -519,10 +541,10 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
 
       if (isEditing) {
         formData.append('_method', 'PUT');
-        media.forEach(item => {
-          if (item._deleted && item.id) {
-            formData.append('delete_media[]', item.id.toString());
-          }
+        // ✅ Track deleted media IDs
+        const deletedIds = media.filter(item => item._deleted && item.id).map(item => item.id.toString());
+        deletedIds.forEach(id => {
+          formData.append('delete_media[]', id);
         });
       }
 
@@ -817,76 +839,79 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
             </View>
           )}
 
-          {media.length > 0 && (
+          {media.some(item => !item._deleted) && (
             <View style={styles.mediaContainer}>
-              {media.map((item, index) => (
-                <View key={index} style={styles.mediaItem}>
-                  {item.type === 'video' ? (
-                    <View style={styles.videoThumbnail}>
-                      <Ionicons name="videocam" size={40} color="#fff" />
-                      {item.duration && (
-                        <View style={styles.durationContainer}>
-                          <Text style={styles.durationLabel}>
-                            {item.startTime !== undefined
-                              ? `${Math.floor((item.endTime - item.startTime) / 60)}:${Math.floor((item.endTime - item.startTime) % 60).toString().padStart(2, '0')}`
-                              : `${Math.floor(item.duration / 60000)}:${Math.floor((item.duration % 60000) / 1000).toString().padStart(2, '0')}`}
-                          </Text>
-                          {item.startTime !== undefined && (
-                            <View style={styles.trimmedBadgeTiny}>
-                              <Text style={styles.trimmedTextTiny}>Trimmed</Text>
+              {media.map((item, index) => {
+                if (item._deleted) return null;
+                return (
+                  <View key={`media-${item.id || index}`} style={styles.mediaItem}>
+                    {item.type === 'video' ? (
+                      <View style={styles.videoThumbnail}>
+                        <Ionicons name="videocam" size={40} color="#fff" />
+                        {item.duration && (
+                          <View style={styles.durationContainer}>
+                            <Text style={styles.durationLabel}>
+                              {item.startTime !== undefined
+                                ? `${Math.floor((item.endTime - item.startTime) / 60)}:${Math.floor((item.endTime - item.startTime) % 60).toString().padStart(2, '0')}`
+                                : `${Math.floor(item.duration / 60000)}:${Math.floor((item.duration % 60000) / 1000).toString().padStart(2, '0')}`}
+                            </Text>
+                            {item.startTime !== undefined && (
+                              <View style={styles.trimmedBadgeTiny}>
+                                <Text style={styles.trimmedTextTiny}>Trimmed</Text>
+                              </View>
+                            )}
+                          </View>
+                        )}
+
+                        {item.duration && item.duration > 120000 && !item.startTime && (
+                          <TouchableOpacity
+                            style={styles.trimOverlay}
+                            onPress={() => handleTrim(index)}
+                          >
+                            <View style={styles.trimBadge}>
+                              <Ionicons name="cut" size={16} color="#fff" />
+                              <Text style={styles.trimText}>Cut to 2m</Text>
                             </View>
-                          )}
-                        </View>
-                      )}
+                          </TouchableOpacity>
+                        )}
 
-                      {item.duration && item.duration > 120000 && !item.startTime && (
-                        <TouchableOpacity
-                          style={styles.trimOverlay}
-                          onPress={() => handleTrim(index)}
-                        >
-                          <View style={styles.trimBadge}>
-                            <Ionicons name="cut" size={16} color="#fff" />
-                            <Text style={styles.trimText}>Cut to 2m</Text>
-                          </View>
-                        </TouchableOpacity>
-                      )}
+                        {item.startTime !== undefined && (
+                          <TouchableOpacity
+                            style={styles.trimOverlayActive}
+                            onPress={() => handleTrim(index)}
+                          >
+                            <View style={styles.trimBadgeActive}>
+                              <Ionicons name="checkmark-circle" size={16} color="#fff" />
+                              <Text style={styles.trimText}>Trimmed</Text>
+                            </View>
+                          </TouchableOpacity>
+                        )}
 
-                      {item.startTime !== undefined && (
-                        <TouchableOpacity
-                          style={styles.trimOverlayActive}
-                          onPress={() => handleTrim(index)}
-                        >
-                          <View style={styles.trimBadgeActive}>
-                            <Ionicons name="checkmark-circle" size={16} color="#fff" />
-                            <Text style={styles.trimText}>Trimmed</Text>
-                          </View>
-                        </TouchableOpacity>
-                      )}
-
-                      {(!item.duration || item.duration <= 120000) && item.startTime === undefined && (
-                        <TouchableOpacity
-                          style={styles.miniTrimButton}
-                          onPress={() => handleTrim(index)}
-                        >
-                          <Ionicons name="cut" size={14} color="#fff" />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  ) : (
-                    <Image
-                      source={{ uri: item.file_path ? `${getApiBaseImage()}/storage/${item.file_path}` : item.uri }}
-                      style={styles.mediaPreview}
-                      resizeMode="cover"
-                    />
-                  )}
-                  <TouchableOpacity
-                    style={styles.removeMediaButton}
-                    onPress={() => removeMedia(index)}
-                  >
-                    <Ionicons name="trash" size={20} color="white" />
-                  </TouchableOpacity>
-                </View>
-              ))}
+                        {(!item.duration || item.duration <= 120000) && item.startTime === undefined && (
+                          <TouchableOpacity
+                            style={styles.miniTrimButton}
+                            onPress={() => handleTrim(index)}
+                          >
+                            <Ionicons name="cut" size={14} color="#fff" />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    ) : (
+                      <Image
+                        source={{ uri: item.file_path ? `${getApiBaseImage()}/storage/${item.file_path}` : item.uri }}
+                        style={styles.mediaPreview}
+                        resizeMode="cover"
+                      />
+                    )}
+                    <TouchableOpacity
+                      style={styles.removeMediaButton}
+                      onPress={() => removeMedia(index)}
+                    >
+                      <Ionicons name="trash" size={20} color="white" />
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
             </View>
           )}
 

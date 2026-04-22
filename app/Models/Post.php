@@ -11,8 +11,8 @@ class Post extends Model
 
     protected static function booted()
     {
-        static::saved(fn () => \Illuminate\Support\Facades\Cache::increment('posts_cache_v'));
-        static::deleted(fn () => \Illuminate\Support\Facades\Cache::increment('posts_cache_v'));
+        static::saved(fn () => \Illuminate\Support\Facades\Cache::put('posts_cache_v', time(), 86400));
+        static::deleted(fn () => \Illuminate\Support\Facades\Cache::put('posts_cache_v', time(), 86400));
     }
 
     protected $fillable = [

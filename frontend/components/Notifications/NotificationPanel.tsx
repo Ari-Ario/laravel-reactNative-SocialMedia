@@ -139,8 +139,9 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             || undefined;
 
         // ✅ HELPER: Navigate to space+chat+message
+        // Use replace() not push() to avoid stacking space screens on top of each other.
         const navigateToSpaceMessage = (spaceId: string, messageId?: string) => {
-            router.push({
+            router.replace({
                 pathname: '/(spaces)/[id]',
                 params: {
                     id: spaceId,
@@ -156,7 +157,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             if (item.type === NOTIFICATION_TYPES.SPACE_INVITATION) {
                 const spaceId = resolveSpaceId();
                 if (spaceId) {
-                    router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, justInvited: 'true' } });
+                    // ✅ replace() prevents stacking space screens from notification taps
+                    router.replace({ pathname: '/(spaces)/[id]', params: { id: spaceId, justInvited: 'true' } });
                     onClose();
                     return;
                 }
@@ -166,7 +168,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             if (item.type === NOTIFICATION_TYPES.CALL_STARTED) {
                 const spaceId = resolveSpaceId();
                 if (spaceId) {
-                    router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'meeting' } });
+                    // ✅ replace() prevents stacking space screens from notification taps
+                    router.replace({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'meeting' } });
                     onClose();
                     return;
                 }
@@ -207,7 +210,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             if (item.type === NOTIFICATION_TYPES.PARTICIPANT_JOINED) {
                 const spaceId = resolveSpaceId();
                 if (spaceId) {
-                    router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'chat' } });
+                    // ✅ replace() prevents stacking space screens from notification taps
+                    router.replace({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'chat' } });
                     onClose();
                     return;
                 }
@@ -218,7 +222,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 const spaceId = resolveSpaceId();
                 const eventId = item.data?.event?.id || item.data?.eventId;
                 if (spaceId) {
-                    router.push({
+                    // ✅ replace() prevents stacking space screens from notification taps
+                    router.replace({
                         pathname: '/(spaces)/[id]',
                         params: { id: spaceId, highlightMagic: eventId ? eventId.toString() : 'true' },
                     });
@@ -231,7 +236,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             if (item.type === NOTIFICATION_TYPES.SCREEN_SHARE) {
                 const spaceId = resolveSpaceId();
                 if (spaceId) {
-                    router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'meeting' } });
+                    // ✅ replace() prevents stacking space screens from notification taps
+                    router.replace({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'meeting' } });
                     onClose();
                     return;
                 }
@@ -242,7 +248,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 const spaceId = resolveSpaceId();
                 const activityId = item.data?.activity?.id || item.data?.activity_id;
                 if (spaceId) {
-                    router.push({
+                    // ✅ replace() prevents stacking space screens from notification taps
+                    router.replace({
                         pathname: '/(spaces)/[id]',
                         params: { id: spaceId, tab: 'calendar', activity: activityId ? activityId.toString() : undefined }
                     });
@@ -255,7 +262,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             if (item.type === NOTIFICATION_TYPES.SPACE_UPDATED) {
                 const spaceId = resolveSpaceId();
                 if (spaceId) {
-                    router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId } });
+                    // ✅ replace() prevents stacking space screens from notification taps
+                    router.replace({ pathname: '/(spaces)/[id]', params: { id: spaceId } });
                     onClose();
                     return;
                 }

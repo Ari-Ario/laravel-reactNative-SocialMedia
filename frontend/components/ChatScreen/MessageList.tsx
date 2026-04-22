@@ -88,8 +88,16 @@ const MessageList: React.FC<MessageListProps> = ({
 
   // Sync with prop when it changes (e.g. from SpaceChatTab optimistic updates)
   useEffect(() => {
+    // ✅ FIX: Deduplicate by ID before sorting to prevent "Encountered two children with the same key" warning
+    const uniqueMap = new Map();
+    messagesProp.forEach(m => {
+      if (m && m.id) uniqueMap.set(m.id.toString(), m);
+    });
+    
+    const uniqueMessages = Array.from(uniqueMap.values());
+
     // We sort chronologically: oldest to newest
-    const sorted = [...messagesProp].sort((a, b) => 
+    const sorted = uniqueMessages.sort((a, b) => 
       new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
     setMessages(sorted);

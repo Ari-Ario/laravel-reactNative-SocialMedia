@@ -210,7 +210,11 @@ const CreateTabModal: React.FC<CreateTabModalProps> = ({
       onRequestClose={onClose}
     >
       <Pressable style={styles.overlay} onPress={onClose}>
-        <BlurView intensity={25} style={StyleSheet.absoluteFill} tint="dark" />
+        {Platform.OS === 'web' ? (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.6)' }]} />
+        ) : (
+          <BlurView intensity={25} style={StyleSheet.absoluteFill} tint="dark" />
+        )}
         
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

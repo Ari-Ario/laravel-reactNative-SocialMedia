@@ -47,7 +47,8 @@ const SpacesPanel = ({ visible, onClose, anchorPosition }: SpacesPanelProps) => 
 
         if (item.spaceId || item.data?.space_id) {
             const spaceId = item.spaceId || item.data?.space_id;
-            router.push({
+            // ✅ Use replace() not push() to avoid stacking space screens from panel taps
+            router.replace({
                 pathname: '/(spaces)/[id]',
                 params: { id: spaceId }
             });

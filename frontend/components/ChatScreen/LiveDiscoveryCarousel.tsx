@@ -180,59 +180,109 @@ const LiveDiscoveryCarousel = () => {
     return (
       <Animated.View style={[styles.cardWrapper, animatedStyle]}>
         <View style={styles.card}>
-          <BlurView
-            intensity={activeScheme === 'dark' ? 15 : 45}
-            tint={activeScheme === 'dark' ? 'dark' : 'light'}
-            style={styles.blurContainer}
-          >
-            <View style={styles.cardContent}>
-              {/* Tap anywhere to navigate */}
-              <TouchableOpacity
-                style={styles.mainActionTouch}
-                onPress={() => handleNavigate(space)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.liveBadge}>
-                  <View style={styles.liveDot} />
-                  <Text style={styles.liveText}>LIVE</Text>
-                </View>
-
-                <Avatar
-                  source={space.image_url || space.creator?.profile_photo}
-                  name={space.title || space.creator?.name}
-                  size={32}
-                  showStatus={false}
-                />
-
-                <View style={styles.infoContainer}>
-                  <Text style={styles.channelName} numberOfLines={1}>
-                    {space.title || 'Live Channel'}
-                  </Text>
-                  <View style={styles.participantsRow}>
-                    <Ionicons name="people" size={10} color={colors.textSecondary} />
-                    <Text style={styles.participantCount}>
-                      {space.participants_count || 0}
-                    </Text>
+          {Platform.OS === 'web' ? (
+            <View style={[styles.blurContainer, { backgroundColor: activeScheme === 'dark' ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]}>
+              <View style={styles.cardContent}>
+                <TouchableOpacity
+                  style={styles.mainActionTouch}
+                  onPress={() => handleNavigate(space)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.liveBadge}>
+                    <View style={styles.liveDot} />
+                    <Text style={styles.liveText}>LIVE</Text>
                   </View>
-                </View>
-              </TouchableOpacity>
 
-              {/* Direct Listen Toggle Button */}
-              <TouchableOpacity
-                style={[
-                  styles.headsetButton,
-                  isListening && { backgroundColor: colors.tint + '30' }
-                ]}
-                onPress={() => toggleListening(space)}
-              >
-                <Ionicons
-                  name={isListening ? "megaphone" : "headset"}
-                  size={18}
-                  color={isListening ? colors.error : colors.tint}
-                />
-              </TouchableOpacity>
+                  <Avatar
+                    source={space.image_url || space.creator?.profile_photo}
+                    name={space.title || space.creator?.name}
+                    size={32}
+                    showStatus={false}
+                  />
+
+                  <View style={styles.infoContainer}>
+                    <Text style={styles.channelName} numberOfLines={1}>
+                      {space.title || 'Live Channel'}
+                    </Text>
+                    <View style={styles.participantsRow}>
+                      <Ionicons name="people" size={10} color={colors.textSecondary} />
+                      <Text style={styles.participantCount}>
+                        {space.participants_count || 0}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.headsetButton,
+                    isListening && { backgroundColor: colors.tint + '30' }
+                  ]}
+                  onPress={() => toggleListening(space)}
+                >
+                  <Ionicons
+                    name={isListening ? "megaphone" : "headset"}
+                    size={18}
+                    color={isListening ? colors.error : colors.tint}
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
-          </BlurView>
+          ) : (
+            <BlurView
+              intensity={activeScheme === 'dark' ? 15 : 45}
+              tint={activeScheme === 'dark' ? 'dark' : 'light'}
+              style={styles.blurContainer}
+            >
+              <View style={styles.cardContent}>
+                {/* Tap anywhere to navigate */}
+                <TouchableOpacity
+                  style={styles.mainActionTouch}
+                  onPress={() => handleNavigate(space)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.liveBadge}>
+                    <View style={styles.liveDot} />
+                    <Text style={styles.liveText}>LIVE</Text>
+                  </View>
+
+                  <Avatar
+                    source={space.image_url || space.creator?.profile_photo}
+                    name={space.title || space.creator?.name}
+                    size={32}
+                    showStatus={false}
+                  />
+
+                  <View style={styles.infoContainer}>
+                    <Text style={styles.channelName} numberOfLines={1}>
+                      {space.title || 'Live Channel'}
+                    </Text>
+                    <View style={styles.participantsRow}>
+                      <Ionicons name="people" size={10} color={colors.textSecondary} />
+                      <Text style={styles.participantCount}>
+                        {space.participants_count || 0}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+
+                {/* Direct Listen Toggle Button */}
+                <TouchableOpacity
+                  style={[
+                    styles.headsetButton,
+                    isListening && { backgroundColor: colors.tint + '30' }
+                  ]}
+                  onPress={() => toggleListening(space)}
+                >
+                  <Ionicons
+                    name={isListening ? "megaphone" : "headset"}
+                    size={18}
+                    color={isListening ? colors.error : colors.tint}
+                  />
+                </TouchableOpacity>
+              </View>
+            </BlurView>
+          )}
         </View>
       </Animated.View>
     );

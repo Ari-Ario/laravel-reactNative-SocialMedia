@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, router } from 'expo-router';
 import axios from '@/services/axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { BackButton } from '@/components/ui/IconButton';
 
 export default function ForgotPasswordScreen() {
     const { colors, activeScheme } = useAppTheme();
@@ -41,7 +43,13 @@ export default function ForgotPasswordScreen() {
     };
     
     return (
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container}>
+            <View style={{ position: 'absolute', top: 10, left: 10, zIndex: 10 }}>
+                <Link href="/LoginScreen" asChild>
+                    <BackButton />
+                </Link>
+            </View>
+
             <View style={styles.headerIcon}>
                 <Ionicons name="key-outline" size={40} color={colors.tint} />
             </View>
@@ -74,13 +82,7 @@ export default function ForgotPasswordScreen() {
                 <Text style={styles.buttonText}>{loading ? "Sending..." : "Send Reset Code"}</Text>
             </TouchableOpacity>
             
-            <Link href="/LoginScreen" asChild>
-                <TouchableOpacity style={styles.backLink}>
-                    <Ionicons name="arrow-back" size={16} color={colors.tint} />
-                    <Text style={styles.linkText}>Back to Login</Text>
-                </TouchableOpacity>
-            </Link>
-        </View>
+        </SafeAreaView>
     );
 }
 

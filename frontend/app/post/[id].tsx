@@ -41,6 +41,17 @@ import { useReportedContentStore } from '@/stores/reportedContentStore';
 import { deleteReportByTarget } from '@/services/ReportService';
 import { useToastStore } from '@/stores/toastStore';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { LinkPreviewCard } from '@/components/LinkPreviewCard';
+import Avatar from '@/components/Image/Avatar';
+import { useMemo } from 'react';
+const isWeb = Platform.OS === 'web';
+const isMobileWeb = isWeb && (
+    (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches) ||
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        typeof navigator !== 'undefined' ? navigator.userAgent : ''
+    )
+);
+const isDesktopWeb = isWeb && !isMobileWeb;
 
 const VideoCarouselItem = ({ uri, index, service, styles }: { uri: string, index: number, service: any, styles: any }) => {
   const player = useVideoPlayer(uri);
@@ -105,15 +116,33 @@ const PostDetailScreen = () => {
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [mediaViewerVisible, setMediaViewerVisible] = useState(false);
   const [mediaViewerIndex, setMediaViewerIndex] = useState(0);
+  const { user } = useContext(AuthContext);
+  const postId = parseInt(id as string);
+  const post = posts.find(p => p.id === postId);
   const service = usePostListService(user);
+
+  // Detect link in caption
+  const detectedUrl = useMemo(() => {
+    if (!post?.caption) return null;
+    const urlRegex = /((https?:\/\/|www\.)[^\s\n\r]+)/g;
+    const matches = post.caption.match(urlRegex);
+    if (!matches) return null;
+
+    let url = matches[0];
+    if (url.endsWith('.') || url.endsWith(',') || url.endsWith(')')) {
+      url = url.slice(0, -1);
+    }
+    if (url.startsWith('www.')) {
+      url = 'https://' + url;
+    }
+    return url;
+  }, [post?.caption]);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const commentsSectionRef = useRef<View>(null);
   const highlightAnimation = useRef(new Animated.Value(0)).current;
   const { isReported, addReportedItem, removeReportedItem } = useReportedContentStore();
   const { showToast } = useToastStore();
-
-  const postId = parseInt(id as string);
 
   const handleStalePost = async () => {
     const isBookmarked = bookmarks.some(b => b.post_id === postId);
@@ -325,7 +354,7 @@ const PostDetailScreen = () => {
       // Refresh post data to get updated comments and other metadata
       const postData = await fetchPostById(postId);
       if (postData) {
-        updatePostInStore(postData);
+        updatePost(postData);
       }
     } catch (error: any) {
       console.error('Error submitting comment:', error);
@@ -401,7 +430,7 @@ const PostDetailScreen = () => {
   };
 
   // Get grouped reactions for post
-  const getGroupedReactions = () => {
+  const groupedReactions = useMemo(() => {
     if (!post?.reactions) return [];
 
     const reactionMap = new Map();
@@ -420,13 +449,13 @@ const PostDetailScreen = () => {
         user_ids
       }))
       .sort((a, b) => b.count - a.count);
-  };
+  }, [post?.reactions]);
 
   // Check if user has reacted to post
-  const hasUserReacted = () => {
+  const userHasReacted = useMemo(() => {
     if (!post?.reactions || !user) return false;
     return post.reactions.some(reaction => reaction.user_id === Number(user.id));
-  };
+  }, [post?.reactions, user?.id]);
 
   if (loading) {
     return (
@@ -460,8 +489,6 @@ const PostDetailScreen = () => {
     outputRange: ['transparent', activeScheme === 'dark' ? 'rgba(52, 152, 219, 0.2)' : '#e6f3ff']
   });
 
-  const groupedReactions = getGroupedReactions();
-  const userHasReacted = hasUserReacted();
 
   return (
     <KeyboardAvoidingView
@@ -512,16 +539,14 @@ const PostDetailScreen = () => {
               style={styles.userInfo}
               onPress={() => post.user && handleProfilePress(post.user.id.toString())}
             >
-              {post.user?.profile_photo && (
-                <Image
-                  source={{
-                    uri: `${getApiBaseImage()}/storage/${post.user.profile_photo}`,
-                    cache: 'force-cache'
-                  }}
-                  style={styles.userAvatar}
-                  defaultSource={require('@/assets/images/favicon.png')}
+              <View style={{ marginRight: 8 }}>
+                <Avatar
+                  source={post.user?.profile_photo}
+                  name={post.user?.name || 'User'}
+                  size={32}
+                  showStatus={false}
                 />
-              )}
+              </View>
               <Text style={styles.userName}>{post.user?.name}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.moreButton} onPress={handleOpenMenu}>
@@ -540,6 +565,24 @@ const PostDetailScreen = () => {
                 {post.content}
               </Text>
             )}
+            
+            {/* Link Previews */}
+            {detectedUrl && (
+              <View style={{ marginTop: 10 }}>
+                <LinkPreviewCard url={detectedUrl} />
+              </View>
+            )}
+
+            {post.media?.map((media: any, index: number) => {
+              if (media.type === 'link' || media.mime_type === 'text/url') {
+                return (
+                  <View key={`link-${index}`} style={{ marginTop: 10 }}>
+                    <LinkPreviewCard url={media.file_path || media.url} />
+                  </View>
+                );
+              }
+              return null;
+            })}
           </View>
 
           {/* Post media – Premium Gallery */}
@@ -552,7 +595,7 @@ const PostDetailScreen = () => {
                   return 0;
                 });
 
-                const containerWidth = Dimensions.get('window').width * (Platform.OS === 'web' ? 0.8 : 1.0);
+                const containerWidth = Dimensions.get('window').width * (isDesktopWeb ? 0.8 : 1.0);
 
                 return (
                   <>
@@ -568,6 +611,10 @@ const PostDetailScreen = () => {
                         setActiveMediaIndex(index);
                       }}
                       keyExtractor={(item, index) => `${item.id}-${index}`}
+                      initialNumToRender={1}
+                      maxToRenderPerBatch={2}
+                      windowSize={3}
+                      removeClippedSubviews={Platform.OS !== 'web'}
                       renderItem={({ item, index }: { item: any, index: number }) => {
                         const mediaUrl = (item.file_path || item.url || '').startsWith('http')
                           ? (item.file_path || item.url || '')
@@ -740,41 +787,50 @@ const PostDetailScreen = () => {
         </ScrollView>
 
         {/* Comment Input */}
-        <View style={styles.commentInputContainer}>
-          <Image
-            source={{
-              uri: user?.profile_photo
-                ? `${getApiBaseImage()}/storage/${user.profile_photo}`
-                : require('@/assets/images/favicon.png')
-            }}
-            style={styles.currentUserAvatar}
-            defaultSource={require('@/assets/images/favicon.png')}
-          />
-          <TextInput
-            style={styles.commentInput}
-            placeholder="Add a comment..."
-            placeholderTextColor={colors.textSecondary}
-            value={commentText}
-            onChangeText={setCommentText}
-            multiline
-            maxLength={500}
-          />
-          <TouchableOpacity
-            style={[
-              styles.postButton,
-              (!commentText.trim() || isSubmitting) && styles.postButtonDisabled
-            ]}
-            onPress={handleSubmitComment}
-            disabled={!commentText.trim() || isSubmitting}
-          >
-            <Text style={[
-              styles.postButtonText,
-              (!commentText.trim() || isSubmitting) && styles.postButtonTextDisabled
-            ]}>
-              Post
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+          style={styles.commentInputWrapper}
+        >
+          <View style={styles.commentInputContainer}>
+            <View style={{ marginRight: 8 }}>
+              <Avatar
+                source={user?.profile_photo}
+                name={user?.name || 'User'}
+                size={32}
+                showStatus={false}
+              />
+            </View>
+            <TextInput
+              style={styles.commentInput}
+              placeholder="Add a comment..."
+              placeholderTextColor={colors.textSecondary}
+              value={commentText}
+              onChangeText={setCommentText}
+              multiline
+              maxLength={500}
+            />
+            <TouchableOpacity
+              style={[
+                styles.commentSubmitButton,
+                (!commentText.trim() || isSubmitting) && styles.commentSubmitButtonDisabled
+              ]}
+              onPress={handleSubmitComment}
+              disabled={!commentText.trim() || isSubmitting}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Ionicons
+                  name="send"
+                  size={20}
+                  color="white"
+                  style={styles.sendIcon}
+                />
+              )}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
       </View>
 
       {/* Overlays & Modals */}
@@ -867,7 +923,7 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    alignItems: 'center', // Center on web
+    alignItems: isDesktopWeb ? 'center' : 'stretch', 
   },
   webWrapper: {
     width: '100%',
@@ -975,7 +1031,7 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     position: 'relative',
   },
   carouselItem: {
-    width: Platform.OS === 'web' ? Dimensions.get('window').width * 0.8 : Dimensions.get('window').width,
+    width: isDesktopWeb ? Dimensions.get('window').width * 0.8 : Dimensions.get('window').width,
     aspectRatio: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1126,13 +1182,17 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     marginHorizontal: 8,
     marginBottom: 8,
   },
+  commentInputWrapper: {
+    backgroundColor: colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
+  },
   commentInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
   },
   currentUserAvatar: {
     width: 32,
@@ -1153,20 +1213,21 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     marginRight: 8,
     backgroundColor: colors.surface,
   },
-  postButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+  commentSubmitButton: {
+    backgroundColor: colors.tint,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingLeft: 3, 
   },
-  postButtonDisabled: {
+  commentSubmitButtonDisabled: {
+    backgroundColor: colors.muted,
     opacity: 0.5,
   },
-  postButtonText: {
-    color: colors.tint,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  postButtonTextDisabled: {
-    color: colors.muted,
+  sendIcon: {
+    transform: [{ rotate: '-15deg' }], 
   },
   emojiPicker: {
     borderRadius: 10,

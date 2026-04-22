@@ -179,7 +179,10 @@ export default function ChatbotScreen() {
 
 const styles = RNStyleSheet.create({
   container: { flex: 1 },
-  chatContainer: { padding: 16, paddingBottom: 100 },
+  chatContainer: {
+    padding: 16,
+    paddingBottom: 100
+  },
   messageBubble: {
     maxWidth: '80%',
     padding: 12,
@@ -219,7 +222,7 @@ const styles = RNStyleSheet.create({
     padding: 12,
     borderTopWidth: 1,
     alignItems: 'center',
-    marginBottom: Platform.OS === 'ios' ? 80 : 70, // Offset for floating tab bar
+    // marginBottom: Platform.OS === 'ios' ? 80 : 70, // Offset for floating tab bar
     // backgroundColor: colors.background,
   },
   input: {

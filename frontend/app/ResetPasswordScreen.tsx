@@ -1,10 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { Platform, View, Text, TextInput, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import axios from '@/services/axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { Ionicons } from '@expo/vector-icons';
+import { BackButton } from '@/components/ui/IconButton';
 
 export default function ResetPasswordScreen() {
     const { colors, activeScheme } = useAppTheme();
@@ -98,7 +100,13 @@ export default function ResetPasswordScreen() {
     
     if (step === 1) {
         return (
-            <View style={styles.container}>
+            <SafeAreaView style={styles.container}>
+                <View style={{ position: 'absolute', top: 10, left: 10, zIndex: 10 }}>
+                    <Link href="/ForgotPasswordScreen" asChild>
+                        <BackButton />
+                    </Link>
+                </View>
+
                 <View style={styles.headerIcon}>
                     <Ionicons name="mail-unread-outline" size={40} color={colors.tint} />
                 </View>
@@ -150,20 +158,12 @@ export default function ResetPasswordScreen() {
                     <Text style={styles.buttonText}>{loading ? "Verifying..." : "Verify Code"}</Text>
                 </TouchableOpacity>
 
-                <Link href="/ForgotPasswordScreen" asChild>
-                    <TouchableOpacity style={styles.backButton}>
-                        <View style={styles.linkRow}>
-                            <Ionicons name="arrow-back" size={16} color={colors.tint} />
-                            <Text style={styles.linkText}>Back to Email</Text>
-                        </View>
-                    </TouchableOpacity>
-                </Link>
-            </View>
+            </SafeAreaView>
         );
     } 
     
     return (
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container}>
             <View style={styles.headerIcon}>
                 <Ionicons name="lock-open-outline" size={40} color={colors.tint} />
             </View>
@@ -206,7 +206,7 @@ export default function ResetPasswordScreen() {
             >
                 <Text style={styles.buttonText}>{loading ? "Resetting..." : "Reset Password"}</Text>
             </TouchableOpacity>
-        </View>
+        </SafeAreaView>
     );
 }
 

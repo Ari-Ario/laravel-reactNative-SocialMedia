@@ -581,93 +581,59 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
     if (!media) return;
 
     try {
-      setUploading(true);
+      // 🚀 INSTANT UI: Close modal immediately and show optimistic feedback
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      showToast('Sharing story...', 'info');
+      
+      const uploadFormData = new FormData();
+      const currentMedia = { ...media };
+      const currentStickers = [...stickers];
+      const currentLocation = location ? { ...location } : null;
 
-      const formData = new FormData();
+      // Close modal right away
+      handleClose();
 
-      const isDataUri = media.uri.startsWith('data:');
+      // Perform upload in the background
+      const isDataUri = currentMedia.uri.startsWith('data:');
       let filename = 'story_media';
       let type = '';
 
       if (isDataUri) {
-        // Extract type from data URI (e.g., "image/png")
-        const typeMatch = media.uri.match(/^data:([^;]+);/);
-        type = typeMatch ? typeMatch[1] : (media.type === 'video' ? 'video/mp4' : 'image/jpeg');
+        const typeMatch = currentMedia.uri.match(/^data:([^;]+);/);
+        type = typeMatch ? typeMatch[1] : (currentMedia.type === 'video' ? 'video/mp4' : 'image/jpeg');
         const ext = type.split('/')[1] || 'jpg';
         filename = `story_background.${ext}`;
       } else {
-        filename = media.uri.split('/').pop() || (media.type === 'video' ? 'story.mp4' : 'story.jpg');
+        filename = currentMedia.uri.split('/').pop() || (currentMedia.type === 'video' ? 'story.mp4' : 'story.jpg');
         const match = /\.(\w+)$/.exec(filename);
-        const ext = match ? match[1].toLowerCase() : (media.type === 'video' ? 'mp4' : 'jpg');
-
-        if (media.type === 'video') {
-          type = 'video/mp4';
-        } else {
-          type = ext === 'png' ? 'image/png' : 'image/jpeg';
-        }
-      }
-
-      let finalUri = media.uri;
-      if (Platform.OS !== 'web' && media.uri.startsWith('data:image')) {
-        const base64Data = media.uri.split(',')[1];
-        // @ts-ignore
-        const tempFilePath = `${ExpoFileSystem.cacheDirectory}story_background.png`;
-        // @ts-ignore
-        await ExpoFileSystem.writeAsStringAsync(tempFilePath, base64Data, {
-          encoding: 'base64',
-        });
-        finalUri = tempFilePath;
+        const ext = match ? match[1].toLowerCase() : (currentMedia.type === 'video' ? 'mp4' : 'jpg');
+        type = currentMedia.type === 'video' ? 'video/mp4' : (ext === 'png' ? 'image/png' : 'image/jpeg');
       }
 
       if (Platform.OS === 'web') {
-        const response = await fetch(media.uri);
+        const response = await fetch(currentMedia.uri);
         const blob = await response.blob();
-
-        // Ensure web recorded videos have extension and correct type for Laravel validation
         let finalFilename = filename;
         if (!finalFilename.includes('.')) {
-          finalFilename = media.type === 'video' ? 'story.webm' : 'story.jpg';
+          finalFilename = currentMedia.type === 'video' ? 'story.webm' : 'story.jpg';
         }
-
-        const blobType = blob.type;
-        if (media.type === 'video') {
-          if (blobType.includes('webm')) {
-            finalFilename = finalFilename.replace(/\.\w+$/, '.webm');
-            type = 'video/webm';
-          } else if (blobType.includes('mp4')) {
-            finalFilename = finalFilename.replace(/\.\w+$/, '.mp4');
-            type = 'video/mp4';
-          }
-        }
-
-        // Handle data:image/png;base64 for text backgrounds
-        if (media.uri.startsWith('data:image')) {
-          finalFilename = 'background.png';
-          type = 'image/png';
-        }
-
-        formData.append('media', blob, finalFilename);
+        uploadFormData.append('media', blob, finalFilename);
       } else {
-        formData.append('media', {
-          uri: finalUri,
+        uploadFormData.append('media', {
+          uri: currentMedia.uri,
           name: filename,
           type,
         } as any);
       }
 
-      formData.append('type', media.type);
+      uploadFormData.append('type', currentMedia.type);
 
-      // Process stickers with their positions and styles
-      // Guard: deduplicate by ID just in case to avoid any potential UI race conditions
-      // Add background metadata if it's a text story
-      // Use a copy to avoid mutating state
-      const baseStickers = [...stickers];
-      if (media.type === 'photo' && media.gradient) {
+      const baseStickers = [...currentStickers];
+      if (currentMedia.type === 'photo' && currentMedia.gradient) {
         baseStickers.push({
           id: 'bg-metadata',
           type: 'background' as any,
-          colors: media.gradient,
+          colors: currentMedia.gradient,
           x: 0,
           y: 0,
           scale: 1,
@@ -682,28 +648,24 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
       const uniqueStickers = Array.from(new Map(baseStickers.map(s => [s.id, s])).values());
       const stickersData = uniqueStickers.map(s => ({
         ...s,
-        // Normalize positions to percentages (only for actual stickers)
         x: s.id === 'bg-metadata' ? 0 : s.x / width,
         y: s.id === 'bg-metadata' ? 0 : s.y / height,
       }));
-      formData.append('stickers', JSON.stringify(stickersData));
+      
+      uploadFormData.append('stickers', JSON.stringify(stickersData));
+      if (currentLocation) uploadFormData.append('location', JSON.stringify(currentLocation));
 
-      if (location) formData.append('location', JSON.stringify(location));
-
-      await createStory(formData);
-      onStoryCreated();
-      handleClose();
-    } catch (error: any) {
-      console.error('Error creating story:', error);
-      if (error.response?.data) {
-        console.error('Validation errors:', error.response.data.errors);
-        showToast(error.response.data.message || 'Validation failed', 'error');
-      } else {
-        showToast('Failed to share story. Please check your connection.', 'error');
+      // Background API call
+      const response = await createStory(uploadFormData);
+      
+      if (response.success) {
+        showToast('Story shared!', 'success');
+        onStoryCreated();
       }
+    } catch (error: any) {
+      console.error('Background Story Upload Failed:', error);
+      showToast('Failed to share story.', 'error');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    } finally {
-      setUploading(false);
     }
   };
 

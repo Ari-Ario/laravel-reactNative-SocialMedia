@@ -146,7 +146,9 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Navigate to the space meeting tab — ImmersiveCallView will now render
     // because activeCall is set for this spaceId.
-    router.push({
+    // ✅ Use replace() not push() to avoid stacking space screens on top of each other
+    // when accepting calls from notifications. Back button should go to chats in one tap.
+    router.replace({
       pathname: '/(spaces)/[id]',
       params: {
         id: call.spaceId,
@@ -188,8 +190,9 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const call = incomingCall;
     // First reject so the caller is notified
     await rejectIncomingCall();
-    // Then navigate the callee directly to the space chat tab
-    router.push({
+    // Then navigate the callee directly to the space chat tab.
+    // ✅ Use replace() not push() to avoid stacking space screens on top of each other.
+    router.replace({
       pathname: '/(spaces)/[id]',
       params: {
         id: call.spaceId,

@@ -153,7 +153,8 @@ class NotificationService {
     // 1. Prioritize Magic Event routing first if there is a specific magic query param
     if (type === 'magic_event' && spaceId) {
       import('expo-router').then(({ router }) => {
-        router.push(`/(spaces)/${spaceId}?magic=${magicEventId}`);
+        // ✅ Use replace() to avoid stacking space screens from notification taps
+        router.replace(`/(spaces)/${spaceId}?magic=${magicEventId}` as any);
       });
       return;
     }
@@ -161,7 +162,7 @@ class NotificationService {
     // 2. If it belongs to a Space (e.g., poll, message, activity, invitation), route there directly!
     if (spaceId) {
       import('expo-router').then(({ router }) => {
-        router.push(`/(spaces)/${spaceId}`);
+        router.replace(`/(spaces)/${spaceId}` as any);
       });
       return;
     }

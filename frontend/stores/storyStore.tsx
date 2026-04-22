@@ -69,10 +69,30 @@ export const useStoryStore = create<StoryStore>((set, get) => ({
   setStoryGroups: (groups) => set({ storyGroups: groups }),
 
   handleStoryCreated: (data) => {
-    if (!data.story) return;
+    console.log('📝 StoryStore.handleStoryCreated: Processing data', data);
+    if (!data.story) {
+      console.warn('⚠️ StoryStore: Received story-created event but story data is missing');
+      return;
+    }
+
+    // 🚀 EXTREME PERFORMANCE: Get current user to avoid self-notifying
+    const { useAuthStore } = require('./useAuthStore');
+    const { useToastStore } = require('./toastStore');
+    const currentUser = useAuthStore.getState().user;
+    const storyOwnerId = Number(data.story.user_id || data.story.userId);
+
+    console.log('👤 StoryStore: Current User ID:', currentUser?.id, 'Story Owner ID:', storyOwnerId);
+
+    if (currentUser && currentUser.id !== storyOwnerId) {
+      console.log('🔔 StoryStore: Showing toast notification for new story');
+      useToastStore.getState().showToast(
+        `${data.story.user?.name || 'Someone'} added a new story!`,
+        'success'
+      );
+    }
 
     set((state) => {
-      const userId = Number(data.story.user_id || data.story.userId);
+      const userId = storyOwnerId;
       const prevGroups = [...state.storyGroups];
       const existingGroupIndex = prevGroups.findIndex(g => g.user.id === userId);
 
@@ -129,10 +149,17 @@ export const useStoryStore = create<StoryStore>((set, get) => ({
   },
 
   initializeRealtime: () => {
-    console.log('📡 Initializing StoryStore real-time connection');
+    console.log('📡 StoryStore: Initializing real-time connection');
+    const PusherService = require('../services/PusherService').default;
     PusherService.subscribeToStories(
-      (data) => get().handleStoryCreated(data as any),
-      (data) => get().handleStoryDeleted(data as any)
+      (data: any) => {
+        console.log('✨ StoryStore: story-created event received', data);
+        get().handleStoryCreated(data);
+      },
+      (data: any) => {
+        console.log('🗑️ StoryStore: story-deleted event received', data);
+        get().handleStoryDeleted(data);
+      }
     );
   },
 

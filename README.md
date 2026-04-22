@@ -20,6 +20,12 @@ php artisan reverb:start --debug
 
 php artisan queue:work --tries=3
 
+### 🚀 Production (Server)
+# These are already managed by Supervisor on Forge:
+# - Octane (Swoole) on Port 8089
+# - Reverb on Port 8080
+# - Queue Workers (Redis)
+
 or deepclean:
 php artisan optimize:clear && php artisan event:clear && composer dump-autoload
 

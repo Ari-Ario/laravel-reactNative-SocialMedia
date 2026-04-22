@@ -99,7 +99,7 @@ export default function StoryScreen() {
     const groups = useStoryStore.getState().storyGroups;
     if (currentGroupIndex < groups.length - 1) {
       try {
-        if (currentIndex !== undefined) {
+        if (currentIndex !== undefined && groups[currentGroupIndex]?.stories[currentIndex]) {
           await markStoryAsViewed(groups[currentGroupIndex].stories[currentIndex].id);
         }
       } catch (error) {
@@ -118,7 +118,7 @@ export default function StoryScreen() {
     const groups = useStoryStore.getState().storyGroups;
     if (currentGroupIndex > 0) {
       try {
-        if (currentIndex !== undefined) {
+        if (currentIndex !== undefined && groups[currentGroupIndex]?.stories[currentIndex]) {
           await markStoryAsViewed(groups[currentGroupIndex].stories[currentIndex].id);
         }
       } catch (error) {
@@ -141,6 +141,14 @@ export default function StoryScreen() {
 
   // Modify the initialStoryId selection logic (around line 76)
   const currentGroup = storyGroups[currentGroupIndex];
+  
+  if (!currentGroup) {
+    // 🚀 EXTREME PERFORMANCE: Gracefully exit if the group was deleted in real-time
+    console.warn('⚠️ Current story group not found, closing viewer');
+    setTimeout(() => handleClose(), 0);
+    return null;
+  }
+
   const initialStoryId = currentGroup.stories.find(story => story.id.toString() === id)?.id ||
     currentGroup.stories.find(story => !story.viewed)?.id ||
     currentGroup.stories[0].id;

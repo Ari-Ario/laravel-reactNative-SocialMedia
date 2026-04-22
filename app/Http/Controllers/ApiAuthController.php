@@ -37,7 +37,8 @@ class ApiAuthController extends Controller
         \Illuminate\Support\Facades\Auth::login($user);
 
         return response()->json([
-            'token' => $user->createToken($request->device_name)->plainTextToken
+            'token' => $user->createToken($request->device_name)->plainTextToken,
+            'user' => $user
         ]);
     }
 
@@ -49,6 +50,7 @@ class ApiAuthController extends Controller
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'device_name' => ['required', 'string'],
             'username' => ['nullable', 'string', 'max:255', 'unique:users'],
+            'locale' => ['nullable', 'string', 'max:10'],
         ]);
 
         // Generate username if not provided
@@ -59,6 +61,7 @@ class ApiAuthController extends Controller
             'email' => $request->email,
             'username' => $username,
             'password' => Hash::make($request->password),
+            'locale' => $request->locale ?? 'en',
         ]);
 
         // Generate 6-digit verification code

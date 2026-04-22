@@ -18,6 +18,14 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { createShadow } from '@/utils/styles';
 
 // Types for better IDE support and type safety
+const isNativeMobile = Platform.OS === 'ios' || Platform.OS === 'android';
+const isMobileWeb = Platform.OS === 'web' && (
+    (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches) ||
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        typeof navigator !== 'undefined' ? navigator.userAgent : ''
+    )
+);
+
 type IconName = keyof typeof Ionicons.glyphMap;
 type IconPosition = 'left' | 'right' | 'top' | 'bottom';
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'transparent' | 'danger' | 'success' | 'warning';
@@ -319,6 +327,7 @@ export const CloseButton = memo((props: Partial<IconButtonProps>) => (
     />
 ));
 
+
 export const BackButton = memo((props: Partial<IconButtonProps>) => {
     const { colors } = useAppTheme();
 
@@ -326,11 +335,22 @@ export const BackButton = memo((props: Partial<IconButtonProps>) => {
         <IconButton
             icon="chevron-back"
             variant="ghost"
+            size="xs"
             customIconSize={28}
             iconColor={colors.text}
             accessibilityLabel="Go back"
             hapticFeedback="light"
-            style={[props.style, { padding: 4 }]}
+            style={[
+                { 
+                    padding: 0, 
+                    paddingHorizontal: 0, 
+                    paddingVertical: 0,
+                    marginLeft: (isNativeMobile || isMobileWeb) ? -12 : 0,
+                    marginRight: 0,
+                    backgroundColor: 'transparent'
+                },
+                props.style
+            ]}
             {...props}
         />
     );

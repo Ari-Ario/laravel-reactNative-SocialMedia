@@ -102,19 +102,28 @@ export default function GenericMenu({
     );
 }
 
+const isMobileWeb = Platform.OS === 'web' && (
+    (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches) ||
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        typeof navigator !== 'undefined' ? navigator.userAgent : ''
+    )
+);
+
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.38)',
+        backgroundColor: 'rgba(0,0,0,0.35)',
         width: '100%',
         height: '100%',
         zIndex: 9999,
     },
     webBackdrop: {
-        backgroundColor: 'rgba(0,0,0,0.42)',
+        backgroundColor: 'rgba(0,0,0,0.45)',
         ...Platform.select({
             web: {
-                backdropFilter: 'blur(6px)',
+                // ✅ Optimized: Remove backdropFilter on mobile web to avoid "blurry screen" bugs
+                // Only apply blur on desktop browsers where it's more stable
+                backdropFilter: isMobileWeb ? 'none' : 'blur(8px)',
             }
         })
     } as any,

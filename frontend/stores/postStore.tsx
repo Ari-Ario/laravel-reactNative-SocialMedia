@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import PusherService from '@/services/PusherService';
 import { useNotificationStore } from '@/stores/notificationStore';
+import { fetchPostById } from '@/services/PostService';
 
 export interface Reaction {
   id: number;
@@ -212,9 +213,10 @@ export const usePostStore = create<PostStore>((set, get) => ({
       const updatedPost = updatedPostOrFn;
       if (!updatedPost?.id) return state;
 
+      console.log('🔄 Store: Updating post', updatedPost.id);
       return {
         posts: state.posts.map((p) =>
-          p.id === updatedPost.id ? { ...p, ...updatedPost } : p
+          p.id === updatedPost.id ? { ...p, ...updatedPost, is_lite: false } : p
         ),
       };
     });
@@ -244,12 +246,14 @@ export const usePostStore = create<PostStore>((set, get) => ({
   })),
 
   hydratePost: async (postId: number) => {
+    if (!postId || isNaN(postId)) return undefined;
+
     const currentPost = get().posts.find(p => p.id === postId);
     // If post exists and is lite (missing full media or comments/reactions)
     if (currentPost && (!currentPost.reactions || currentPost.is_lite)) {
       try {
         console.log(`🌐 Hydrating post: ${postId}`);
-        const fullPost = await require('@/services/PostService').fetchPostById(postId);
+        const fullPost = await fetchPostById(postId);
         get().updatePost({ ...fullPost, is_lite: false });
         return fullPost;
       } catch (error) {
@@ -745,20 +749,32 @@ export const usePostStore = create<PostStore>((set, get) => ({
 
     const updatedPosts = posts.map(post => {
       if (post.id === postId) {
-        console.log('✅ Updating post via real-time:', postId);
+        console.log('✏️ Store: Applying real-time update to post', postId, 'Fields:', data.updatedFields);
         const updatedPost = { ...post };
+        
         if (data.changes) {
           Object.keys(data.changes).forEach((field) => {
-            updatedPost[field] = data.changes[field].new;
+            // ✅ FORCE NEW REFERENCE for media to trigger carousel re-render
+            if (field === 'media') {
+               updatedPost.media = Array.isArray(data.changes[field].new) 
+                 ? [...data.changes[field].new] 
+                 : data.changes[field].new;
+               console.log('🖼️ Store: Updated media count:', updatedPost.media?.length);
+            } else {
+               updatedPost[field] = data.changes[field].new;
+            }
           });
         }
         return {
           ...updatedPost,
-          updated_at: data.timestamp || new Date().toISOString()
+          updated_at: data.timestamp || new Date().toISOString(),
+          // If we received media or caption updates, this post is no longer "lite" for those fields
+          is_lite: data.updatedFields?.includes('media') ? false : post.is_lite
         };
       }
       return post;
     });
+
     set({ posts: updatedPosts });
   },
 

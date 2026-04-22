@@ -268,7 +268,15 @@ export const useCollaborationStore = create<CollaborationState>()(
         // Generate a unique event ID to prevent duplicate processing from multiple channels
         const msgObj = data.message || data.data?.message;
         const eventId = (() => {
-          if (msgObj?.id) return `msg:${msgObj.id}`;
+          // 1. Check for ID inside message object (standard for space broadcasts)
+          if (msgObj && typeof msgObj === 'object' && msgObj.id) return `msg:${msgObj.id}`;
+          
+          // 2. Check for ID at top level (standard for notifications bridged from NotificationStore)
+          const topLevelMsgId = data.messageId || data.message_id || data.id;
+          if (topLevelMsgId && (type.includes('message') || type.includes('sent'))) {
+            return `msg:${topLevelMsgId}`;
+          }
+
           if (data.id) return `notif:${data.id}`;
           if (type.includes('call') && data.space_id) return `call:${data.space_id}:${type}:${data.timestamp || Date.now().toString().substring(0, 10)}`;
           return `${type}:${data.space_id || 'global'}:${data.timestamp || Date.now()}`;

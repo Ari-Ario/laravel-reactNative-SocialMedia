@@ -119,15 +119,19 @@ export interface PusherEventPayload extends Record<string, unknown> {
 
 class PusherService {
   private pusher: PusherType | null = null;
-  private channels: Map<string, PusherChannel> = new Map();
-  private isInitialized = false;
+  private isInitialized: boolean = false;
   private connectionAttempts = 0;
   private maxReconnectAttempts = 8;
   private reconnectTimer: NodeJS.Timeout | null = null;
   private maxConnectionAttempts = 3;
+  private currentToken: string | null = null;
+  private channels: Map<string, any> = new Map();
+  private subscriptionRegistry: Map<string, {
+    onEvent: (event: string, data: any) => void;
+    bindings: Map<string, (data: any) => void>;
+  }> = new Map();
   private pendingSubscriptions: Array<() => void> = []; // ✅ Queue for early subscriptions
   private onConnectedCallbacks: Array<() => void> = []; // ✅ Callbacks for reconnection/initial connection
-  private currentToken: string | null = null; // ✅ Track current token to detect identity changes
 
 
   getPusher(): PusherType | null {
@@ -291,6 +295,18 @@ class PusherService {
             console.log(`📡 Processing ${this.pendingSubscriptions.length} pending subscriptions...`);
             this.pendingSubscriptions.forEach(sub => sub());
             this.pendingSubscriptions = [];
+          }
+          
+          // 🚀 EXTREME PERFORMANCE: Re-apply registry subscriptions on re-init
+          if (this.subscriptionRegistry.size > 0) {
+            console.log(`🔄 Re-applying ${this.subscriptionRegistry.size} registered subscriptions`);
+            this.subscriptionRegistry.forEach((reg, channelName) => {
+              const channel = this.pusher!.subscribe(channelName);
+              reg.bindings.forEach((callback, event) => {
+                channel.bind(event, callback);
+              });
+              this.channels.set(channelName, channel);
+            });
           }
 
           // ✅ Notify connection listeners (for re-syncing missed events)
@@ -484,16 +500,27 @@ class PusherService {
       });
 
       channel?.bind('post-updated', (data: PusherEventPayload) => {
-        console.log('✏️ Post updated notification:', data);
+        console.log('✏️ Global channel: post update received:', data.postId);
+
+        let message = data.message as string || 'Post updated';
+        if (data.userName) {
+            if (data.changes?.caption?.new) {
+                message = `${data.userName} updated a post: "${data.changes.caption.new.substring(0, 30)}..."`;
+            } else if (data.updatedFields?.includes('media')) {
+                message = `${data.userName} updated the media in their post`;
+            } else {
+                message = `${data.userName} updated their post`;
+            }
+        }
 
         const notification = {
           type: data.type || 'post_updated',
           title: data.title || 'Post Updated',
-          message: data.userName ? `${data.userName} updated a post : ${data.changes?.caption?.new?.substring(0, 30)}...` : (data.message as string || 'Post updated'),
+          message: message,
           data: data,
-          userId: data.userId,    // ✅ Use userId instead of data.post.user_id
-          postId: data.postId,    // ✅ Use postId instead of data.post.id
-          avatar: data.profile_photo,           // Your current event doesn't send avatar
+          userId: data.userId,
+          postId: data.postId,
+          avatar: data.profile_photo,
           createdAt: new Date()
         };
 
@@ -818,45 +845,7 @@ class PusherService {
         onNotification(notification as Record<string, unknown>);
       });
 
-      // ✅ ADDED: space.message (used by SpaceMessageSent event)
-      channel?.bind('space-message', (data: PusherEventPayload) => {
-        console.log('💬 New message notification (space.message):', data);
-
-        const msgText = (data.message && typeof data.message === 'string' ? data.message : (data.notification_message || '')).toLowerCase();
-        const isCallEvent = msgText.includes('started a video call') || msgText.includes('started an audio call');
-
-        const notification = {
-          ...data,
-          id: data.id || `msg-${Date.now()}`,
-          type: isCallEvent ? 'call_started' : (data.type || 'space_message'),
-          isCall: isCallEvent,
-          title: data.title || (isCallEvent ? 'Incoming Call' : 'New Message'),
-          message: data.message && typeof data.message === 'string' ? data.message : (data.notification_message || 'New message received'),
-          avatar: data.profile_photo || data.user?.profile_photo || data.avatar,
-          spaceId: data.space_id || data.spaceId,
-          createdAt: new Date()
-        };
-
-        onNotification(notification as Record<string, unknown>);
-
-        // If it's a call embedded in a message, trigger the modal
-        if (isCallEvent) {
-          try {
-            import('@/services/ChatScreen/CollaborationService').then((mod) => {
-              const cs = mod.default.getInstance();
-              cs.emitIncomingCall({
-                callId: data.call_id || data.call?.id,
-                spaceId: notification.spaceId as string,
-                callerId: data.user?.id || data.user_id,
-                callerName: data.user?.name || 'Someone',
-                callerAvatar: notification.avatar as string,
-                callType: msgText.includes('audio') ? 'audio' : 'video',
-                spaceType: data.space_type || 'direct',
-              });
-            });
-          } catch { /* ignore */ }
-        }
-      });
+      // ✅ Removed: redundant space-message (now handled by SpaceMessageNotification)
 
       // ✅ SPACE MANAGEMENT EVENTS
       channel?.bind('space-muted', (data: PusherEventPayload) => {
@@ -1349,7 +1338,6 @@ class PusherService {
 
     if (callbacks.onMessage) {
       channel?.bind('message-sent', callbacks.onMessage);
-      channel?.bind('space-message', callbacks.onMessage);
     }
 
     if (callbacks.onCallStarted) {
@@ -1507,7 +1495,7 @@ class PusherService {
 
   // Removed redundant subscribeToPrivateUser - handled in subscribeToUserNotifications
   // Generic unsubscribe method
-  // ✅ NEW: Subscribe to global stories channel
+  // ✅ NEW: Subscribe to follower-only stories channel (via private user channel)
   subscribeToStories(
     onStoryCreated: (data: Record<string, unknown>) => void,
     onStoryDeleted: (data: Record<string, unknown>) => void
@@ -1521,39 +1509,58 @@ class PusherService {
     }
 
     try {
-      const channelName = 'stories-global';
+      // 🚀 EXTREME PERFORMANCE: Get current user ID for private channel
+      const { useAuthStore } = require('../stores/useAuthStore');
+      const userId = useAuthStore.getState().user?.id;
 
-      if (this.channels.has(channelName)) {
-        console.log(`ℹ️ Already subscribed to global stories channel`);
-        return true;
+      if (!userId) {
+        console.warn('⚠️ No user ID found for stories subscription. Waiting for login.');
+        // We will be re-initialized after login anyway thanks to currentToken check
+        return false;
       }
+
+      const channelName = `private-user-${userId}`;
+
+      console.log(`📡 PusherService: Subscribing to stories on private channel: ${channelName}`);
+
+      // Add to registry for auto-resubscription
+      if (!this.subscriptionRegistry.has(channelName)) {
+        this.subscriptionRegistry.set(channelName, {
+          onEvent: (event, data) => {},
+          bindings: new Map()
+        });
+      }
+      
+      const reg = this.subscriptionRegistry.get(channelName)!;
+      reg.bindings.set('story-created', onStoryCreated);
+      reg.bindings.set('story-deleted', onStoryDeleted);
 
       const channel = this.pusher.subscribe(channelName);
 
-      channel?.bind('story-created', (data: PusherEventPayload) => {
-        console.log('✨ Global channel: story created received');
-        onStoryCreated(data as Record<string, unknown>);
+      channel?.bind('story-created', (data: any) => {
+        console.log(`✨ PusherService: story-created received on channel ${channelName}`, data);
+        onStoryCreated(data);
       });
 
-      channel?.bind('story-deleted', (data: PusherEventPayload) => {
-        console.log('🗑️ Global channel: story deletion received');
-        onStoryDeleted(data as Record<string, unknown>);
-      });
-
-      channel?.bind('pusher:subscription_succeeded', () => {
-        console.log(`✅ SUBSCRIBED TO GLOBAL STORIES CHANNEL`);
+      channel?.bind('story-deleted', (data: any) => {
+        console.log(`🗑️ PusherService: story-deleted received on channel ${channelName}`, data);
+        onStoryDeleted(data);
       });
 
       this.channels.set(channelName, channel);
       return true;
     } catch (error) {
-      console.error(`❌ ERROR SUBSCRIBING TO GLOBAL STORIES:`, error);
+      console.error(`❌ ERROR SUBSCRIBING TO STORIES:`, error);
       return false;
     }
   }
 
   unsubscribeFromStories(): void {
-    this.unsubscribeFromChannel('stories-global');
+    const { useAuthStore } = require('../stores/useAuthStore');
+    const userId = useAuthStore.getState().user?.id;
+    if (userId) {
+      this.unsubscribeFromChannel(`private-user-${userId}`);
+    }
   }
 
   // ✅ ADDED: Generic subscribe method for custom notification types

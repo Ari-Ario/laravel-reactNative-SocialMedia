@@ -1507,11 +1507,9 @@ const SpaceDetailScreen = () => {
             onPress={() => {
               if (params.returnTo) {
                 router.replace(params.returnTo as any);
-              } else if (router.canGoBack()) {
-                router.back();
               } else {
-                // ✅ Fallback: If entered from "outside" (notification/deep-link)
-                // and no returnTo is provided, always go to chat history.
+                // ✅ Always replace to chats — prevents navigating back through
+                // stacked space duplicates pushed by notifications/calls.
                 router.replace('/(tabs)/chats');
               }
             }}

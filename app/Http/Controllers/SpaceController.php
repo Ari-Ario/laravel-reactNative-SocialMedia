@@ -1671,11 +1671,8 @@ public function endCall(Request $request, $id)
             $userIds = $participants->pluck('user_id')->toArray();
             
             if (!empty($userIds)) {
-                // 1. Real-time broadcast for chat list snippet updates
-                broadcast(new SpaceMessageSent($space->id, $userIds, $message))->toOthers();
-
-
-                // 2. Persistent Push Notification for mobile (Expo) and web
+                // Persistent Push Notification for mobile (Expo) and web
+                // This also triggers a real-time broadcast on the user's private channel
                 $targetUsers = User::whereIn('id', $userIds)->get();
                 Notification::send($targetUsers, new SpaceMessageNotification($message, $space->id, $user, $space->title));
             }
@@ -1782,9 +1779,10 @@ public function endCall(Request $request, $id)
             $userIds = $participants->pluck('user_id')->toArray();
             
             if (!empty($userIds)) {
-                broadcast(new SpaceMessageSent($space->id, $userIds, $message))->toOthers();
+                // Persistent Push Notification for mobile (Expo) and web
+                // This also triggers a real-time broadcast on the user's private channel
                 $targetUsers = User::whereIn('id', $userIds)->get();
-                Notification::send($targetUsers, new MessageSent($message, $space->id, $user));
+                Notification::send($targetUsers, new \App\Notifications\SpaceMessageNotification($message, $space->id, $user, $space->title));
             }
         } catch (\Exception $e) {
             Log::error('Failed to broadcast audio message: ' . $e->getMessage());
@@ -3417,10 +3415,9 @@ public function endCall(Request $request, $id)
             // General presence channel for those inside the space
             broadcast(new MessageSent($message, $space->id, null))->toOthers();
             
-            // Individual user channels for those on the chat list page
-            foreach ($space->participations as $p) {
-                broadcast(new SpaceMessageSent($space->id, $p->user_id, $message))->toOthers();
-            }
+            // We rely on the presence channel broadcast above for real-time updates inside the space.
+            // Notifications for system messages are generally not sent to avoid spam, 
+            // but if needed, you could send a SpaceMessageNotification here.
         } catch (\Exception $e) {
             Log::error('System message broadcast failed: ' . $e->getMessage());
         }

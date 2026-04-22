@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Story;
+use App\Models\CollaborationSpace;
+use App\Models\MagicEvent;
 use App\Events\StoryCreated;
 use App\Events\StoryDeleted;
+use App\Http\Controllers\SpaceController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -17,58 +20,59 @@ class StoryController extends Controller
     // StoryController constructor
     public function __construct()
     {
-        // Cleanup expired stories on every controller instantiation
-        $deletedCount = Story::cleanupExpiredStories();
-
-        if ($deletedCount > 0) {
-            \Log::info("Cleaned up {$deletedCount} expired stories");
-        }
+        // Cleanup moved to background task for performance
     }
-
 
     public function index()
     {
-        // Cleanup expired stories first
-        Story::cleanupExpiredStories();
-
         $user = Auth::user();
+        // 🚀 EXTREME PERFORMANCE: Use versioned keys for surgical invalidation
+        $version = \Cache::get('stories_global_version');
+        if ($version === null) {
+            $version = 1;
+            \Cache::forever('stories_global_version', $version);
+        }
+        $cacheKey = "stories_index_user_{$user->id}_v{$version}";
 
-        // Get all active stories grouped by user
-        $stories = Story::with(['user', 'viewers' => function ($query) use ($user) {
-            $query->where('user_id', $user->id);
-        }])
-            ->where('expires_at', '>', now())
-            ->latest()
-            ->get()
-            ->groupBy('user_id')
-            ->map(function ($userStories) use ($user) {
-            // Check if all stories from this user are viewed
-            $allViewed = $userStories->every(function ($story) {
-                    return $story->viewers->isNotEmpty();
-                }
-                );
+        \Log::info("📖 StoryController@index: User {$user->id} using version {$version} (Key: {$cacheKey})");
 
-                return [
-                'user' => $userStories->first()->user,
-                'stories' => $userStories,
-                'all_viewed' => $allViewed,
-                'latest_story' => $userStories->first(), // Most recent story
-                'viewed' => $allViewed, // For backward compatibility
-                ];
-            })
-            ->sortByDesc(function ($group) {
-            // Sort groups: unviewed first, then viewed
-            return $group['all_viewed'] ? 0 : 1;
-        })
-            ->values();
+        return \Cache::remember($cacheKey, 300, function () use ($user) {
+            // Get all active stories grouped by user
+            return Story::with(['user', 'viewers' => function ($query) use ($user) {
+                $query->where('user_id', $user->id);
+            }])
+                ->where('expires_at', '>', now())
+                ->latest()
+                ->get()
+                ->groupBy('user_id')
+                ->map(function ($userStories) use ($user) {
+                    $allViewed = $userStories->every(function ($story) {
+                        return $story->viewers->isNotEmpty();
+                    });
 
-        return response()->json($stories);
+                    return [
+                        'user' => $userStories->first()->user,
+                        'stories' => $userStories,
+                        'all_viewed' => $allViewed,
+                        'latest_story' => $userStories->first(),
+                        'viewed' => $allViewed,
+                    ];
+                })
+                ->sortByDesc(function ($group) {
+                    return $group['all_viewed'] ? 0 : 1;
+                })
+                ->values();
+        });
     }
 
 
-    public function markAsViewed($id)
+    public function markAsViewed($storyId)
     {
-        $story = Story::findOrFail($id);
+        $story = Story::find($storyId);
+
+        if (!$story) {
+            return response()->json(['success' => true, 'message' => 'Story already removed']);
+        }
 
         if (!Auth::user()->viewedStories()->where('story_id', $story->id)->exists()) {
             Auth::user()->viewedStories()->attach($story->id);
@@ -130,7 +134,11 @@ class StoryController extends Controller
                 'expires_at' => now()->addHours(24),
             ]);
 
-            event(new StoryCreated($story));
+            \Cache::forget("user_stories_" . Auth::id());
+
+            // 🚀 EXTREME PERFORMANCE: Only broadcast to followers
+            $followerIds = Auth::user()->followers()->pluck('users.id')->toArray();
+            event(new StoryCreated($story, $followerIds));
 
             return response()->json([
                 'success' => true,
@@ -186,7 +194,7 @@ class StoryController extends Controller
         ]);
 
         // Create collaboration space for the story
-        $spaceController = new SpaceController();
+        $spaceController = app(SpaceController::class);
         $space = $spaceController->createSpaceFromStory($story, $request->all());
 
         // Update story
@@ -295,8 +303,113 @@ class StoryController extends Controller
         
         $story->delete();
 
-        event(new StoryDeleted($storyId, $userId));
+        \Cache::forget("user_stories_" . $userId);
+        
+        // 🚀 EXTREME PERFORMANCE: Only broadcast deletion to followers
+        $followerIds = Auth::user()->followers()->pluck('users.id')->toArray();
+        event(new StoryDeleted($storyId, $userId, $followerIds));
 
         return response()->json(['success' => true, 'message' => 'Story deleted successfully']);
+    }
+    /**
+     * Reply to a story
+     */
+    public function reply(Request $request, $id)
+    {
+        $request->validate([
+            'message' => 'required|string|max:1000',
+        ]);
+
+        $story = Story::with('user')->findOrFail($id);
+        $user = Auth::user();
+
+        if ($story->user_id === $user->id) {
+            return response()->json(['message' => 'You cannot reply to your own story'], 400);
+        }
+
+        // 1. Get or create direct space
+        $spaceController = app(SpaceController::class);
+        $response = $spaceController->getOrCreateDirectSpace($request, $story->user_id);
+        $spaceData = json_decode($response->getContent(), true);
+        
+        if (!isset($spaceData['space']['id'])) {
+            return response()->json(['message' => 'Could not establish chat space'], 500);
+        }
+
+        $spaceId = $spaceData['space']['id'];
+
+        // 2. Send message via SpaceController logic
+        $metadata = [
+            'story_id' => $story->id,
+            'media_url' => $story->media_path,
+            'media_type' => $story->type,
+            'caption' => $story->caption,
+            'creator_name' => $story->user->name,
+            'creator_avatar' => $story->user->profile_photo,
+            'is_internal_share' => true,
+            'appended_message' => $request->message
+        ];
+
+        $request->merge([
+            'content' => $request->message,
+            'type' => 'story_share',
+            'metadata' => $metadata
+        ]);
+
+        return $spaceController->sendMessage($request, $spaceId);
+    }
+
+    /**
+     * Share a story
+     */
+    public function share(Request $request, $id)
+    {
+        $request->validate([
+            'space_id' => 'sometimes|string',
+            'user_id' => 'sometimes|integer',
+            'message' => 'nullable|string|max:1000',
+        ]);
+
+        $story = Story::with('user')->findOrFail($id);
+        $user = Auth::user();
+
+        // If space_id or user_id is provided, it's an internal share
+        if ($request->has('space_id') || $request->has('user_id')) {
+            $spaceController = app(SpaceController::class);
+            $spaceId = $request->space_id;
+
+            if (!$spaceId && $request->has('user_id')) {
+                // Get or create direct space
+                $response = $spaceController->getOrCreateDirectSpace($request, $request->user_id);
+                $spaceData = json_decode($response->getContent(), true);
+                $spaceId = $spaceData['space']['id'] ?? null;
+            }
+
+            if ($spaceId) {
+                $metadata = [
+                    'story_id' => $story->id,
+                    'media_url' => $story->media_path,
+                    'media_type' => $story->type,
+                    'caption' => $story->caption,
+                    'creator_name' => $story->user->name,
+                    'creator_avatar' => $story->user->profile_photo,
+                    'is_internal_share' => true,
+                    'appended_message' => $request->message
+                ];
+
+                $request->merge([
+                    'content' => $request->message ?: 'Shared a story',
+                    'type' => 'story_share',
+                    'metadata' => $metadata
+                ]);
+
+                return $spaceController->sendMessage($request, $spaceId);
+            }
+        }
+
+        return response()->json([
+            'message' => 'Story shared successfully',
+            'story' => $story->load('user')
+        ]);
     }
 }

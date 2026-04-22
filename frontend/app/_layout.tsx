@@ -27,6 +27,7 @@ import { useIncomingCallBridge } from '@/hooks/useIncomingCallBridge';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { NotificationToast } from '@/components/Notifications/NotificationToast';
 import { setAudioModeAsync } from 'expo-audio';
+import { setLocale, Locale } from '@/constants/i18n';
 
 
 // Set global audio mode for call compatibility
@@ -105,8 +106,13 @@ export default function RootLayout() {
   useEffect(() => {
     if (isAuthInitialized && user) {
       AppInitializer.initialize();
+      
+      // Sync language preference globally
+      if (user.locale) {
+        setLocale(user.locale as Locale);
+      }
     }
-  }, [isAuthInitialized, user?.id]);
+  }, [isAuthInitialized, user?.id, user?.locale]);
 
   // 3. Handle Fonts & Splash Screen
   useEffect(() => {

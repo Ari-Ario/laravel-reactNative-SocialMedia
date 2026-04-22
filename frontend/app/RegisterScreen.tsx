@@ -9,6 +9,7 @@ import {
     Platform,
     Alert
 } from 'react-native';
+import * as Localization from 'expo-localization';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import FormTextField from "@/components/FormTextField";
@@ -18,6 +19,7 @@ import { setToken } from "@/services/TokenService"; // Add this import
 import AuthContext from "@/context/AuthContext";
 import { useContext } from "react";
 import { useAppTheme } from "@/hooks/useAppTheme";
+import { BackButton } from "@/components/ui/IconButton";
 
 const RegisterUser: React.FC = () => {
     const { colors } = useAppTheme();
@@ -41,6 +43,7 @@ const RegisterUser: React.FC = () => {
                 password: password,
                 password_confirmation: passwordConfirmation,
                 device_name: `${Platform.OS} ${Platform.Version}`,
+                locale: Localization.getLocales()[0]?.languageCode || 'en',
             });
 
             console.log('Register response:', response);
@@ -104,11 +107,9 @@ const RegisterUser: React.FC = () => {
 
     return (
         <SafeAreaView style={[styles.wrapper, { backgroundColor: colors.background }]}>
-            <View>
+            <View style={{ position: 'absolute', top: 10, left: 10, zIndex: 10 }}>
                 <Link href={'/'} asChild>
-                    <TouchableOpacity style={styles.button}>
-                        <Text style={[styles.buttonText, { color: colors.tint }]}>◀ Back to Homescreen</Text>
-                    </TouchableOpacity>
+                    <BackButton />
                 </Link>
             </View>
 

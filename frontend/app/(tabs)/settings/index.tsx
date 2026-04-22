@@ -36,6 +36,8 @@ import PlatformCameraView from '@/components/PlatformCameraView';
 import { Colors } from '@/constants/Colors';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useThemeStore } from '@/stores/themeStore';
+import { t, LANGUAGES, Locale } from '@/constants/i18n';
+import axios from '@/services/axios';
 
 export const THEME_CONFIG = {
   nav: Colors.nav,
@@ -53,7 +55,6 @@ const SettingsItem = ({ name, icon, color, onPress, badge, rightElement }: any) 
       style={[styles.item, { backgroundColor: colors.card, borderColor: activeScheme === 'dark' ? colors.border : '#000' }]}
       onPress={onPress}
       activeOpacity={0.7}
-      disabled={!!rightElement}
     >
       <View style={[styles.iconContainer, { backgroundColor: color + '20', borderColor: activeScheme === 'dark' ? colors.border : 'rgba(0,0,0,0.05)' }]}>
         <Ionicons name={icon} size={22} color={color} />
@@ -87,6 +88,7 @@ const Page = () => {
   const [isCameraVisible, setIsCameraVisible] = useState(false);
   const nameInputRef = useRef<TextInput>(null);
   const webCameraRef = useRef<any>(null);
+
 
   useEffect(() => {
     if (editNameMode) {
@@ -305,6 +307,10 @@ const Page = () => {
     }
   };
 
+  const handleLanguageAction = () => {
+    router.push('/settings/language');
+  };
+
   const renderProfilePhoto = () => {
     // Check for null, undefined, or the literal string "null" from backend
     if (user?.profile_photo && String(user.profile_photo).trim() !== 'null') {
@@ -328,10 +334,24 @@ const Page = () => {
   const settingsSections = useMemo(() => {
     const sections = [
       {
-        title: 'Personal',
+        title: t('settings'),
         items: [
-          { name: 'Account', icon: 'key-outline', color: '#075E54', onPress: () => router.push('/settings/account') },
-          { name: 'Privacy Settings', icon: 'lock-closed-outline', color: '#2196F3', onPress: () => router.push('/settings/privacy') },
+          { name: t('account'), icon: 'key-outline', color: '#075E54', onPress: () => router.push('/settings/account') },
+          {
+            name: t('language'),
+            icon: 'language-outline',
+            color: '#0084ff',
+            onPress: handleLanguageAction,
+            rightElement: (
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={{ color: colors.textSecondary, marginRight: 8 }}>
+                  {LANGUAGES.find(l => l.code === (user?.locale || 'en'))?.native}
+                </Text>
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary + '99'} />
+              </View>
+            )
+          },
+          { name: t('privacy'), icon: 'lock-closed-outline', color: '#2196F3', onPress: () => router.push('/settings/privacy') },
           { name: 'Administration', icon: 'shield-half-outline', color: '#FF3B30', badge: unreadModerationCount, onPress: () => router.push('/moderation/admin-channel') },
         ]
       },
@@ -405,7 +425,7 @@ const Page = () => {
       <StatusBar barStyle={activeScheme === 'dark' ? 'light-content' : 'dark-content'} />
 
       <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 60 : 40 }]}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Settings & Stats</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{t('settings')} & Stats</Text>
         <View ref={themeIconRef}>
           <TouchableOpacity onPress={handleThemeAction} style={styles.closeButton}>
             <Ionicons name={getThemeIcon()} size={22} color={colors.tint} />
@@ -426,7 +446,7 @@ const Page = () => {
           onPress={() => setActiveTab('settings')}
         >
           <Text style={[styles.tabText, activeTab === 'settings' ? { color: '#fff' } : { color: colors.textSecondary }]}>
-            Profile & Security
+            {t('profile_security')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -434,7 +454,7 @@ const Page = () => {
           onPress={() => setActiveTab('stats')}
         >
           <Text style={[styles.tabText, activeTab === 'stats' ? { color: '#fff' } : { color: colors.textSecondary }]}>
-            Insights
+            {t('insights')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -522,7 +542,7 @@ const Page = () => {
                 <Ionicons name="pencil-outline" size={16} color={colors.tint} />
               </TouchableOpacity>
             )}
-            <Text style={[styles.userRole, { color: colors.textSecondary }]}>{user?.is_admin ? 'Elite Admin' : 'Premium Member'}</Text>
+            <Text style={[styles.userRole, { color: colors.textSecondary }]}>{user?.is_admin ? t('role_admin') : t('role_member')}</Text>
           </View>
         </View>
 
@@ -558,7 +578,7 @@ const Page = () => {
 
               <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
                 <LinearGradient colors={['#F44336', '#D32F2F']} style={styles.logoutGradient}>
-                  <Text style={styles.logoutText}>Log Out Account</Text>
+                  <Text style={styles.logoutText}>{t('logout')}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </MotiView>

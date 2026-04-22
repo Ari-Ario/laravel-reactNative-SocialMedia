@@ -246,7 +246,7 @@ const VerificationScreen = () => {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.content}
             >
-                <View style={styles.header}>
+                <View style={{ position: 'absolute', top: 10, left: 10, zIndex: 10 }}>
                     <BackButton onPress={() => router.push('/RegisterScreen')} />
                 </View>
                 <View style={styles.formContainer}>

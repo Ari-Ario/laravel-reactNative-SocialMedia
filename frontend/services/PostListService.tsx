@@ -181,17 +181,22 @@ const getGroupedReactionsComments = (
 
   // Handle post edit
   const handleEdit = useCallback((post: Post) => {
+    // 🛡️ SECURITY: Always pull the ABSOLUTE LATEST data from the store
+    // This prevents "ghost data" if the list item was stale
+    const latestPost = postStore.posts.find(p => p.id === post.id) || post;
+
     openModal('edit', {
-      postId: post.id,
-      initialCaption: post.caption,
-      initialMedia: post.media,
+      postId: latestPost.id,
+      initialCaption: latestPost.caption,
+      initialMedia: latestPost.media,
+      initialLocation: latestPost.location,
       onPostCreated: (updatedPost: Post) => {
         updatePostInStore(updatedPost as any);
         setMenuVisible(false);
       }
     });
     setMenuVisible(false);
-  }, [openModal, updatePostInStore]);
+  }, [openModal, updatePostInStore, postStore.posts]);
 
   // Handle post report
   const handleReport = useCallback(() => {

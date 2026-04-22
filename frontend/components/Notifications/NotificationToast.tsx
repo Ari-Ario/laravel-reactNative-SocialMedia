@@ -95,7 +95,8 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
         item.messageId || item.data?.messageId || item.data?.message_id || item.data?.message?.id || item.data?.replyId || undefined;
 
       const navigateToSpaceMessage = (spaceId: string, messageId?: string) => {
-        router.push({
+        // ✅ Use replace() not push() to avoid stacking space screens from toast taps
+        router.replace({
           pathname: '/(spaces)/[id]',
           params: { id: spaceId, tab: 'chat', ...(messageId ? { highlightMessageId: messageId } : {}) }
         });
@@ -103,10 +104,11 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
 
       if (item.type === NOTIFICATION_TYPES.SPACE_INVITATION) {
         const spaceId = resolveSpaceId();
-        if (spaceId) router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, justInvited: 'true' } });
+        // ✅ replace() prevents stacking space screens from toast taps
+        if (spaceId) router.replace({ pathname: '/(spaces)/[id]', params: { id: spaceId, justInvited: 'true' } });
       } else if (item.type === NOTIFICATION_TYPES.CALL_STARTED) {
         const spaceId = resolveSpaceId();
-        if (spaceId) router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'meeting' } });
+        if (spaceId) router.replace({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'meeting' } });
       } else if ([NOTIFICATION_TYPES.NEW_MESSAGE, NOTIFICATION_TYPES.MESSAGE_REACTION, NOTIFICATION_TYPES.MESSAGE_REPLY, NOTIFICATION_TYPES.MESSAGE_DELETED, NOTIFICATION_TYPES.SPACE_MESSAGE].includes(item.type)) {
         const spaceId = resolveSpaceId();
         const messageId = resolveMessageId();
@@ -118,24 +120,25 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
         }
       } else if (item.type === NOTIFICATION_TYPES.PARTICIPANT_JOINED) {
         const spaceId = resolveSpaceId();
-        if (spaceId) router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'chat' } });
+        // ✅ replace() prevents stacking space screens from toast taps
+        if (spaceId) router.replace({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'chat' } });
       } else if (item.type === NOTIFICATION_TYPES.MAGIC_EVENT) {
         const spaceId = resolveSpaceId();
         const eventId = item.data?.event?.id || item.data?.eventId;
-        if (spaceId) router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, highlightMagic: eventId ? eventId.toString() : 'true' } });
+        if (spaceId) router.replace({ pathname: '/(spaces)/[id]', params: { id: spaceId, highlightMagic: eventId ? eventId.toString() : 'true' } });
       } else if (item.type === NOTIFICATION_TYPES.SCREEN_SHARE) {
         const spaceId = resolveSpaceId();
-        if (spaceId) router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'meeting' } });
+        if (spaceId) router.replace({ pathname: '/(spaces)/[id]', params: { id: spaceId, tab: 'meeting' } });
       } else if (item.type === NOTIFICATION_TYPES.ACTIVITY_CREATED || item.type === NOTIFICATION_TYPES.ACTIVITY_UPDATED) {
         const spaceId = resolveSpaceId();
         const activityId = item.data?.activity?.id || item.data?.activity_id;
-        if (spaceId) router.push({ 
+        if (spaceId) router.replace({ 
           pathname: '/(spaces)/[id]', 
           params: { id: spaceId, tab: 'calendar', activity: activityId ? activityId.toString() : undefined } 
         });
       } else if (item.type === NOTIFICATION_TYPES.SPACE_UPDATED) {
         const spaceId = resolveSpaceId();
-        if (spaceId) router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId } });
+        if (spaceId) router.replace({ pathname: '/(spaces)/[id]', params: { id: spaceId } });
       } else if (item.type === NOTIFICATION_TYPES.VIOLATION_REPORTED) {
         router.push('/moderation');
       } else if (item.type === NOTIFICATION_TYPES.MODERATION_ACTION) {

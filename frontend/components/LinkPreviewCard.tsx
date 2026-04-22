@@ -531,7 +531,7 @@ const getPlatformColor = (domain: string): string => {
   if (domain.includes('spotify')) return '#1DB954';
   if (domain.includes('soundcloud')) return '#FF3300';
   if (domain.includes('vimeo')) return '#1AB7EA';
-  return '#3498db'; // Standard App Blue
+  return '#3498db';
 };
 
 const isValidImageUrl = (url: string): boolean => {
@@ -546,6 +546,36 @@ const getDirectMediaType = (url: string): 'image' | 'video' | 'audio' | null => 
   if (['mp4', 'm4v', 'webm', 'mov', 'avi', 'mkv'].includes(extension || '')) return 'video';
   if (['mp3', 'wav', 'aac', 'm4a', 'ogg', 'flac'].includes(extension || '')) return 'audio';
   return null;
+};
+
+// Enhanced YouTube thumbnail extraction
+const getYouTubeVideoId = (url: string): string | null => {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?#]+)/,
+    /youtube\.com\/embed\/([^/?]+)/,
+    /youtube\.com\/v\/([^/?]+)/,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+};
+
+const getYouTubeThumbnail = (videoId: string): string => {
+  return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+};
+
+// Enhanced Twitter/X card image extraction
+const getTwitterCardImage = (html: string): string | null => {
+  const match = html.match(/<meta\s+name="twitter:image"\s+content="([^"]+)"/i);
+  return match ? match[1] : null;
+};
+
+// Enhanced Open Graph image extraction from HTML
+const extractOpenGraphImage = (html: string): string | null => {
+  const match = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/i);
+  return match ? match[1] : null;
 };
 
 const MediaViewerModal = ({
@@ -683,6 +713,7 @@ export const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({
     setLoading(true);
     setError(null);
 
+    // Check for direct media files first
     const directType = getDirectMediaType(url);
     if (directType) {
       const mediaData: LinkPreviewData = {
@@ -708,9 +739,37 @@ export const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({
       return;
     }
 
+    // Check for YouTube
+    const youtubeId = getYouTubeVideoId(url);
+    if (youtubeId) {
+      const youtubeThumbnail = getYouTubeThumbnail(youtubeId);
+      const mediaData: LinkPreviewData = {
+        title: propTitle || 'YouTube Video',
+        description: propDescription || 'Watch this video on YouTube',
+        image: youtubeThumbnail,
+        video: url,
+        audio: null,
+        siteName: 'YouTube',
+        favicon: 'https://youtube.com/favicon.ico',
+        type: 'video',
+        author: null,
+        publishedDate: null,
+        duration: null,
+        width: null,
+        height: null,
+        embedUrl: `https://www.youtube.com/embed/${youtubeId}`,
+        embedCode: null,
+      };
+      setPreviewData(mediaData);
+      setLoading(false);
+      onLoad?.(mediaData);
+      return;
+    }
+
     try {
+      // Try microlink.io API first
       const response = await axios.get(`https://api.microlink.io?url=${encodeURIComponent(url)}`, {
-        timeout: 10000,
+        timeout: 8000,
         headers: {
           'Accept': 'application/json',
         },
@@ -719,10 +778,17 @@ export const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({
 
       if (response.status === 200 && response.data && response.data.data) {
         const data = response.data.data;
+        let imageUrl = data.image?.url || propImage || null;
+
+        // If no image found, try to extract from HTML
+        if (!imageUrl && data.html) {
+          imageUrl = extractOpenGraphImage(data.html) || getTwitterCardImage(data.html);
+        }
+
         const preview: LinkPreviewData = {
           title: data.title || propTitle || url,
           description: data.description || propDescription || '',
-          image: data.image?.url || propImage || null,
+          image: imageUrl,
           video: data.video?.url || null,
           audio: data.audio || null,
           siteName: data.site_name || domain,
@@ -738,40 +804,51 @@ export const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({
         };
         setPreviewData(preview);
         onLoad?.(preview);
-      } else {
-        setPreviewData({
-          title: propTitle || url,
-          description: propDescription || '',
-          image: propImage || null,
-          video: null,
-          audio: null,
-          siteName: domain,
-          favicon: null,
-          type: 'unknown',
-          author: null,
-          publishedDate: null,
-          duration: null,
-          width: null,
-          height: null,
-          embedUrl: null,
-          embedCode: null,
-        });
+        setLoading(false);
+        return;
       }
-    } catch (err: any) {
-      if (!err.response || err.response.status !== 400) {
-        console.warn('Silent Link Preview Fallback:', url);
-      }
-      
-      setError('Basic preview loaded');
 
-      setPreviewData({
+      // If API fails but we have a YouTube ID, we already set preview
+      if (youtubeId) {
+        setLoading(false);
+        return;
+      }
+
+      // Fallback: Use placeholder image from favicon service
+      const fallbackImage = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+      const fallbackData: LinkPreviewData = {
         title: propTitle || url,
-        description: propDescription || 'Click to visit this website',
-        image: propImage || null,
+        description: propDescription || `Click to visit ${domain}`,
+        image: fallbackImage,
         video: null,
         audio: null,
         siteName: domain,
-        favicon: null,
+        favicon: fallbackImage,
+        type: 'website',
+        author: null,
+        publishedDate: null,
+        duration: null,
+        width: null,
+        height: null,
+        embedUrl: null,
+        embedCode: null,
+      };
+      setPreviewData(fallbackData);
+      onLoad?.(fallbackData);
+
+    } catch (err: any) {
+      console.warn('Link preview fetch failed:', err?.message || err);
+
+      // Even on error, try to show a favicon-based preview
+      const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+      const errorData: LinkPreviewData = {
+        title: propTitle || url,
+        description: propDescription || `Click to visit ${domain}`,
+        image: faviconUrl,
+        video: null,
+        audio: null,
+        siteName: domain,
+        favicon: faviconUrl,
         type: 'unknown',
         author: null,
         publishedDate: null,
@@ -780,7 +857,9 @@ export const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({
         height: null,
         embedUrl: null,
         embedCode: null,
-      });
+      };
+      setPreviewData(errorData);
+      setError('Basic preview mode');
       onError?.(err as Error);
     } finally {
       setLoading(false);
@@ -886,8 +965,8 @@ export const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({
           ]}
         >
           <LinearGradient
-            colors={isHovered 
-              ? (activeScheme === 'dark' ? ['#2c2c2e', '#1c1c1e'] : ['#fff', '#f8f9fa']) 
+            colors={isHovered
+              ? (activeScheme === 'dark' ? ['#2c2c2e', '#1c1c1e'] : ['#fff', '#f8f9fa'])
               : [colors.surface, colors.surface]}
             style={styles.gradient}
             start={{ x: 0, y: 0 }}
@@ -908,63 +987,69 @@ export const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({
 
             {/* Main Content */}
             <View style={[styles.content, compact && styles.contentCompact]}>
-              {hasMedia ? (
-                <TouchableOpacity
-                  style={[styles.mediaContainer, compact && styles.mediaContainerCompact]}
-                  onPress={() => {
-                    if (previewData.video) handleMediaPress(previewData.video, 'video');
-                    else if (previewData.audio) handleMediaPress(previewData.audio, 'audio');
-                    else if (previewData.image) handleMediaPress(previewData.image, 'image');
-                  }}
-                >
-                  {previewData.video ? (
-                    <View style={styles.videoPreview}>
-                      <VideoView
-                        player={videoPreviewPlayer}
-                        style={styles.videoThumbnail}
-                        contentFit="cover"
-                        nativeControls={false}
-                      />
-                      {previewData.duration && !compact && (
-                        <View style={styles.durationBadge}>
-                          <Text style={styles.durationText}>
-                            {formatDuration(previewData.duration)}
-                          </Text>
+              {/* Media Container - Always show something */}
+              <TouchableOpacity
+                style={[styles.mediaContainer, compact && styles.mediaContainerCompact]}
+                onPress={() => {
+                  if (previewData.video) handleMediaPress(previewData.video, 'video');
+                  else if (previewData.audio) handleMediaPress(previewData.audio, 'audio');
+                  else if (previewData.image) handleMediaPress(previewData.image, 'image');
+                  else if (previewData.favicon) handleMediaPress(previewData.favicon, 'image');
+                }}
+              >
+                {previewData.video ? (
+                  <View style={styles.videoPreview}>
+                    <VideoView
+                      player={videoPreviewPlayer}
+                      style={styles.videoThumbnail}
+                      contentFit="cover"
+                      nativeControls={false}
+                    />
+                    {previewData.duration && !compact && (
+                      <View style={styles.durationBadge}>
+                        <Text style={styles.durationText}>
+                          {formatDuration(previewData.duration)}
+                        </Text>
+                      </View>
+                    )}
+                    <View style={styles.playOverlay}>
+                      <Ionicons name="play-circle" size={compact ? 24 : 48} color="#fff" />
+                    </View>
+                  </View>
+                ) : previewData.audio ? (
+                  <View style={styles.audioPreview}>
+                    <LinearGradient
+                      colors={[platformColor, platformColor + '80']}
+                      style={styles.audioVisualizer}
+                    >
+                      <Ionicons name="musical-notes" size={compact ? 20 : 32} color="#fff" />
+                      {!compact && (
+                        <View style={styles.waveform}>
+                          {[...Array(12)].map((_, i) => (
+                            <AnimatedWaveformBar key={i} index={i} />
+                          ))}
                         </View>
                       )}
-                      <View style={styles.playOverlay}>
-                        <Ionicons name="play-circle" size={compact ? 24 : 48} color="#fff" />
-                      </View>
-                    </View>
-                  ) : previewData.audio ? (
-                    <View style={styles.audioPreview}>
-                      <LinearGradient
-                        colors={[platformColor, platformColor + '80']}
-                        style={styles.audioVisualizer}
-                      >
-                        <Ionicons name="musical-notes" size={compact ? 20 : 32} color="#fff" />
-                        {!compact && (
-                          <View style={styles.waveform}>
-                            {[...Array(12)].map((_, i) => (
-                              <AnimatedWaveformBar key={i} index={i} />
-                            ))}
-                          </View>
-                        )}
-                      </LinearGradient>
-                    </View>
-                  ) : (previewData.image && isValidImageUrl(previewData.image)) ? (
-                    <Image
-                      source={{ uri: previewData.image }}
-                      style={styles.previewImage}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View style={styles.placeholderMedia}>
-                      <Ionicons name="image-outline" size={32} color="#ccc" />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ) : null}
+                    </LinearGradient>
+                  </View>
+                ) : (previewData.image && isValidImageUrl(previewData.image)) ? (
+                  <Image
+                    source={{ uri: previewData.image }}
+                    style={styles.previewImage}
+                    resizeMode="cover"
+                  />
+                ) : previewData.favicon ? (
+                  <Image
+                    source={{ uri: previewData.favicon }}
+                    style={styles.previewImage}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <View style={styles.placeholderMedia}>
+                    <Ionicons name={platformIcon as any} size={32} color={platformColor} />
+                  </View>
+                )}
+              </TouchableOpacity>
 
               <View style={[styles.textContainer, compact && styles.textContainerCompact]}>
                 <Text style={styles.title} numberOfLines={compact ? 2 : 3}>
@@ -974,6 +1059,10 @@ export const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({
                 {previewData.description && !compact ? (
                   <Text style={styles.description} numberOfLines={showFullPreview ? undefined : 2}>
                     {previewData.description}
+                  </Text>
+                ) : !compact && !previewData.description && previewData.siteName ? (
+                  <Text style={styles.description} numberOfLines={1}>
+                    {previewData.siteName}
                   </Text>
                 ) : null}
 
@@ -1028,6 +1117,7 @@ export const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({
                         if (previewData.video) handleMediaPress(previewData.video, 'video');
                         else if (previewData.audio) handleMediaPress(previewData.audio, 'audio');
                         else if (previewData.image) handleMediaPress(previewData.image, 'image');
+                        else if (previewData.favicon) handleMediaPress(previewData.favicon, 'image');
                       }}
                     >
                       <Ionicons name="expand-outline" size={16} color="#3498db" />
@@ -1082,7 +1172,7 @@ export const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({
           }}
           mediaUrl={selectedMedia.url}
           mediaType={selectedMedia.type as any}
-          title={previewData.title}
+          title={previewData?.title}
         />
       )}
     </>
