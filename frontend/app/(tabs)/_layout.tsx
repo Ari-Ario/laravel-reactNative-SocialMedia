@@ -3,6 +3,7 @@ import React from 'react';
 import { Platform, View } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { useCollaborationStore } from '@/stores/collaborationStore';
@@ -10,6 +11,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 
 export default function TabLayout() {
   const { colors, activeScheme } = useAppTheme();
+  const { t } = useTranslation();
 
   // Use useAuthStore for logic, but keep AuthContext for compatibility if needed
   // RootLayout already provides AuthContext bridged to useAuthStore.
@@ -75,7 +77,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="index"
           options={{
-            title: 'Home',
+            title: t('home'),
             tabBarIcon: ({ color, focused }) => (
               <View style={{ alignItems: 'center' }}>
                 <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
@@ -89,7 +91,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="chats"
           options={{
-            title: 'Chats',
+            title: t('chats'),
             tabBarIcon: ({ color, focused }) => (
               <View style={{ alignItems: 'center' }}>
                 <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
@@ -104,7 +106,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="market"
           options={{
-            title: 'Market',
+            title: t('market'),
             tabBarIcon: ({ color, focused }) => (
               <View style={{ alignItems: 'center' }}>
                 <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
@@ -118,7 +120,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="chatbot"
           options={{
-            title: 'Chatbot',
+            title: t('chatbot'),
             tabBarIcon: ({ color, focused }) => (
               <View style={{ alignItems: 'center' }}>
                 <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
@@ -132,7 +134,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="settings"
           options={{
-            title: 'Settings',
+            title: t('settings'),
             tabBarIcon: ({ color, focused }) => (
               <View style={{ alignItems: 'center' }}>
                 <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>

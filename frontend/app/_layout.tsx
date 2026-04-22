@@ -106,13 +106,15 @@ export default function RootLayout() {
   useEffect(() => {
     if (isAuthInitialized && user) {
       AppInitializer.initialize();
-      
-      // Sync language preference globally
-      if (user.locale) {
-        setLocale(user.locale as Locale);
-      }
     }
-  }, [isAuthInitialized, user?.id, user?.locale]);
+  }, [isAuthInitialized, user?.id]);
+
+  // Sync language preference globally whenever user data changes
+  useEffect(() => {
+    if (isAuthInitialized && user?.locale) {
+      setLocale(user.locale as Locale);
+    }
+  }, [isAuthInitialized, user?.locale]);
 
   // 3. Handle Fonts & Splash Screen
   useEffect(() => {

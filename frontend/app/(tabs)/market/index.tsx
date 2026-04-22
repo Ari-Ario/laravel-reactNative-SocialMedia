@@ -16,12 +16,14 @@ import { MotiView } from 'moti';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useToastStore } from '@/stores/toastStore';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 
 const { width } = Dimensions.get('window');
 const isMobile = width < 768;
 
 const MarketScreen = () => {
     const { colors, activeScheme } = useAppTheme();
+    const { t, isRTL } = useTranslation();
     const styles = getStyles(colors, activeScheme);
     const insets = useSafeAreaInsets();
     const { showToast } = useToastStore();
@@ -35,7 +37,7 @@ const MarketScreen = () => {
     ];
 
     const handleNotifyMe = () => {
-        showToast('Notification alert set for Version 2 release!', 'success');
+        showToast(t('success'), 'success');
     };
 
     return (
@@ -43,10 +45,10 @@ const MarketScreen = () => {
             <StatusBar barStyle={activeScheme === 'dark' ? 'light-content' : 'dark-content'} />
 
             {/* Header */}
-            <View style={[styles.header, { paddingTop: insets.top + 20, backgroundColor: colors.background }]}>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>Nexus Market</Text>
+            <View style={[styles.header, { paddingTop: insets.top + 20, backgroundColor: colors.background, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>Nexus {t('market')}</Text>
                 <View style={styles.versionBadge}>
-                    <Text style={styles.versionText}>v2.0 Beta Coming</Text>
+                    <Text style={styles.versionText}>v2.0 Beta {t('coming_soon')}</Text>
                 </View>
             </View>
 
@@ -65,15 +67,15 @@ const MarketScreen = () => {
                         colors={['#1a1a1a', '#333']}
                         style={styles.heroGradient}
                     >
-                        <MaterialCommunityIcons name="shopping-outline" size={80} color="rgba(255,255,255,0.1)" style={styles.heroIcon} />
-                        <View style={styles.heroBadge}>
-                            <Text style={styles.heroBadgeText}>COMING SOON</Text>
+                        <MaterialCommunityIcons name="shopping-outline" size={80} color="rgba(255,255,255,0.1)" style={[styles.heroIcon, isRTL ? { left: -20, right: undefined } : { right: -20 }]} />
+                        <View style={[styles.heroBadge, isRTL ? { alignSelf: 'flex-end' } : { alignSelf: 'flex-start' }]}>
+                            <Text style={styles.heroBadgeText}>{t('coming_soon')}</Text>
                         </View>
-                        <Text style={styles.heroTitle}>The Future of Social Commerce</Text>
-                        <Text style={styles.heroSubtitle}>We're building a revolutionary marketplace experience. Stay tuned for Version 2.</Text>
+                        <Text style={[styles.heroTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t('market_hero_title')}</Text>
+                        <Text style={[styles.heroSubtitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t('market_hero_subtitle')}</Text>
 
-                        <TouchableOpacity style={styles.notifyBtn} onPress={handleNotifyMe} activeOpacity={0.8}>
-                            <Text style={styles.notifyBtnText}>Notify Me on Launch</Text>
+                        <TouchableOpacity style={[styles.notifyBtn, { flexDirection: isRTL ? 'row-reverse' : 'row' }, isRTL ? { alignSelf: 'flex-end' } : { alignSelf: 'flex-start' }]} onPress={handleNotifyMe} activeOpacity={0.8}>
+                            <Text style={styles.notifyBtnText}>{t('notify_me')}</Text>
                             <Ionicons name="notifications-outline" size={18} color="#1a1a1a" />
                         </TouchableOpacity>
                     </LinearGradient>
@@ -81,23 +83,23 @@ const MarketScreen = () => {
 
                 {/* Upcoming Features Section */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Upcoming Features</Text>
+                    <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t('upcoming_features')}</Text>
                     {upcomingFeatures.map((feature, index) => (
                         <MotiView
                             key={index}
                             from={{ opacity: 0, translateX: -20 }}
                             animate={{ opacity: 1, translateX: 0 }}
                             transition={{ type: 'timing', duration: 500, delay: 200 + (index * 100) }}
-                            style={styles.featureCard}
+                            style={[styles.featureCard, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
                         >
-                            <View style={styles.iconContainer}>
+                            <View style={[styles.iconContainer, isRTL ? { marginLeft: 16, marginRight: 0 } : { marginRight: 16 }]}>
                                 <Ionicons name={feature.icon as any} size={24} color="#0084ff" />
                             </View>
                             <View style={styles.featureText}>
-                                <Text style={styles.featureTitle}>{feature.title}</Text>
-                                <Text style={styles.featureDesc}>{feature.desc}</Text>
+                                <Text style={[styles.featureTitle, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}>{feature.title}</Text>
+                                <Text style={[styles.featureDesc, { color: colors.textSecondary, textAlign: isRTL ? 'right' : 'left' }]}>{feature.desc}</Text>
                             </View>
-                            <Ionicons name="chevron-forward" size={16} color="rgba(0,0,0,0.2)" />
+                            <Ionicons name={isRTL ? "chevron-back" : "chevron-forward"} size={16} color="rgba(0,0,0,0.2)" />
                         </MotiView>
                     ))}
                 </View>

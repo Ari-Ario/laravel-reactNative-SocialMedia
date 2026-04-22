@@ -20,9 +20,11 @@ import AuthContext from "@/context/AuthContext";
 import { useContext } from "react";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { BackButton } from "@/components/ui/IconButton";
+import { useTranslation } from "@/constants/i18n";
 
 const RegisterUser: React.FC = () => {
     const { colors } = useAppTheme();
+    const { t, isRTL } = useTranslation();
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -98,7 +100,7 @@ const RegisterUser: React.FC = () => {
             } else if (e.response?.data?.message) {
                 setErrors({ general: e.response.data.message });
             } else {
-                setErrors({ general: 'Registration failed. Please try again.' });
+                setErrors({ general: t('error') });
             }
         } finally {
             setLoading(false);
@@ -113,18 +115,18 @@ const RegisterUser: React.FC = () => {
                 </Link>
             </View>
 
-            <View style={styles.container}>
-                <Text style={[styles.title, { color: colors.text }]}>Create Account</Text>
+            <View style={[styles.container, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+                <Text style={[styles.title, { color: colors.text }]}>{t('create_account')}</Text>
 
                 <FormTextField
-                    label="Name:"
+                    label={t('name') + ":"}
                     value={name}
                     onChangeText={(text) => setName(text)}
                     errors={errors.name}
                 />
 
                 <FormTextField
-                    label="Email address:"
+                    label={t('email_address') + ":"}
                     value={email}
                     onChangeText={(text) => setEmail(text)}
                     keyboardType="email-address"
@@ -132,7 +134,7 @@ const RegisterUser: React.FC = () => {
                 />
 
                 <FormTextField
-                    label="Password:"
+                    label={t('password') + ":"}
                     secureTextEntry={true}
                     value={password}
                     onChangeText={(text) => setPassword(text)}
@@ -140,7 +142,7 @@ const RegisterUser: React.FC = () => {
                 />
 
                 <FormTextField
-                    label="Confirm Password:"
+                    label={t('confirm_password') + ":"}
                     secureTextEntry={true}
                     value={passwordConfirmation}
                     onChangeText={(text) => setPasswordConfirmation(text)}
@@ -148,7 +150,7 @@ const RegisterUser: React.FC = () => {
                 />
 
                 <Button
-                    title={loading ? "Registering..." : "Register"}
+                    title={loading ? t('registering') : t('register')}
                     onPress={handleRegister}
                     disabled={loading}
                 />
@@ -157,11 +159,11 @@ const RegisterUser: React.FC = () => {
                     <Text style={[styles.errorText, { color: colors.error }]}>{errors.general}</Text>
                 )}
 
-                <View style={styles.loginLink}>
-                    <Text style={{ color: colors.textSecondary }}>Already have an account? </Text>
+                <View style={[styles.loginLink, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                    <Text style={{ color: colors.textSecondary }}>{t('already_account')}</Text>
                     <Link href="/LoginScreen" asChild>
                         <TouchableOpacity>
-                            <Text style={[styles.linkText, { color: colors.tint }]}>Login</Text>
+                            <Text style={[styles.linkText, { color: colors.tint }]}>{t('login_btn')}</Text>
                         </TouchableOpacity>
                     </Link>
                 </View>

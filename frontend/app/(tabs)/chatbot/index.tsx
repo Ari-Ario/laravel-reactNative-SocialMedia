@@ -1,5 +1,6 @@
 import { useState, useEffect, useContext, useRef } from 'react';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 import {
   View,
   Text,
@@ -26,6 +27,7 @@ interface Message {
 
 export default function ChatbotScreen() {
   const { colors, activeScheme } = useAppTheme();
+  const { t, isRTL } = useTranslation();
   const { user } = useContext(AuthContext);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -38,12 +40,12 @@ export default function ChatbotScreen() {
     setMessages([
       {
         id: Date.now(),
-        text: 'Hello! How can I help you today?',
+        text: t('bot_welcome'),
         sender: 'bot',
         type: 'text'
       },
     ]);
-  }, []);
+  }, [t]);
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -80,7 +82,7 @@ export default function ChatbotScreen() {
 
       const botReply: Message = {
         id: Date.now() + 1,
-        text: data.response || "No response",
+        text: data.response || t('error'),
         sender: 'bot',
         type: (data.response?.includes('powered by AI') || data.response?.includes('*')) ? 'ai' : 'text',
       };
@@ -90,10 +92,10 @@ export default function ChatbotScreen() {
     } catch (error: any) {
       console.error("Chatbot error:", error.message);
 
-      let errorText = "Sorry, I'm having trouble connecting.";
+      let errorText = t('ai_error');
 
       if (error.code === 'ECONNABORTED') {
-        errorText = "The AI is thinking deeply... this can take up to 45 seconds.";
+        errorText = t('ai_thinking_deeply');
       }
 
       setMessages(prev => [...prev, {
@@ -116,13 +118,13 @@ export default function ChatbotScreen() {
       <Animated.View
         style={[
           styles.messageBubble,
-          isUser ? [styles.userBubble, { backgroundColor: colors.tint }] : [styles.botBubble, { backgroundColor: colors.surface, borderColor: colors.border }],
+          isUser ? [styles.userBubble, { backgroundColor: colors.tint, alignSelf: isRTL ? 'flex-start' : 'flex-end' }] : [styles.botBubble, { backgroundColor: colors.surface, borderColor: colors.border, alignSelf: isRTL ? 'flex-end' : 'flex-start' }],
           isAI && [styles.aiBubble, { backgroundColor: activeScheme === 'dark' ? colors.muted : '#E6F7FF', borderColor: colors.tint }],
           isError && styles.errorBubble,
         ]}
       >
-        {isAI && <Text style={[styles.aiTag, { color: colors.tint }]}>AI</Text>}
-        <Text style={[styles.messageText, { color: isUser || isError ? '#fff' : colors.text }]}>{item.text}</Text>
+        {isAI && <Text style={[styles.aiTag, { color: colors.tint, textAlign: isRTL ? 'right' : 'left' }]}>AI</Text>}
+        <Text style={[styles.messageText, { color: isUser || isError ? '#fff' : colors.text, textAlign: isRTL ? 'right' : 'left' }]}>{item.text}</Text>
       </Animated.View>
     );
   };
@@ -143,24 +145,25 @@ export default function ChatbotScreen() {
       />
 
       {isTyping && (
-        <View style={{ padding: 15, alignItems: 'flex-start' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.muted, padding: 12, borderRadius: 18 }}>
+        <View style={{ padding: 15, alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
+          <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', backgroundColor: colors.muted, padding: 12, borderRadius: 18 }}>
             <ActivityIndicator size="small" color={colors.tint} />
-            <Text style={{ marginLeft: 10, color: colors.textSecondary }}>AI is thinking...</Text>
+            <Text style={{ marginHorizontal: 10, color: colors.textSecondary }}>{t('ai_thinking')}</Text>
           </View>
         </View>
       )}
 
-      <View style={styles.inputContainer}>
+      <View style={[styles.inputContainer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
         <TextInput
           value={input}
           onChangeText={setInput}
-          placeholder="Ask me anything..."
+          placeholder={t('ask_anything')}
           placeholderTextColor={colors.textSecondary + '80'}
           style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.surface }]}
           multiline
           numberOfLines={1}
           textAlignVertical="top"
+          textAlign={isRTL ? 'right' : 'left'}
           blurOnSubmit={false}
           keyboardAppearance={activeScheme}
           onContentSizeChange={(e) => {
@@ -170,7 +173,7 @@ export default function ChatbotScreen() {
           }}
         />
         <TouchableOpacity onPress={handleSend} style={[styles.sendButton, { backgroundColor: colors.tint }]} disabled={isTyping}>
-          <Text style={styles.sendButtonText}>{isTyping ? '...' : 'Send'}</Text>
+          <Text style={styles.sendButtonText}>{isTyping ? '...' : t('send')}</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

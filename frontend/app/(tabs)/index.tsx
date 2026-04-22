@@ -32,6 +32,7 @@ import PushNotificationService from "@/services/PushNotificationService";
 import { useIsFocused } from "@react-navigation/native";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { Colors } from "@/constants/Colors";
+import { useTranslation } from "@/constants/i18n";
 import { usePosts, useStories } from '@/hooks/queries/usePosts';
 
 type StoryGroup = {
@@ -47,7 +48,8 @@ type StoryGroup = {
 
 const HomePage = () => {
     const { colors, activeScheme } = useAppTheme();
-    const styles = getStyles(colors, activeScheme);
+    const { t, isRTL } = useTranslation();
+    const styles = getStyles(colors, activeScheme, isRTL);
     const isFocused = useIsFocused();
     const pathname = usePathname();
     const { user, setUser } = useContext(AuthContext);
@@ -340,10 +342,10 @@ const HomePage = () => {
             )}
 
             {/* Header */}
-            <View style={[styles.header, { backgroundColor: colors.background }]}>
-                <View style={styles.headerContent}>
-                    <Text style={[styles.headerTitle, { color: colors.text }]}>Home</Text>
-                    <View style={styles.headerIcons}>
+            <View style={[styles.header, { backgroundColor: colors.background, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                <View style={[styles.headerContent, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                    <Text style={[styles.headerTitle, { color: colors.text }]}>{t('home')}</Text>
+                    <View style={[styles.headerIcons, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                         <TouchableOpacity
                             ref={callsIconRef}
                             style={styles.notificationIconContainer}
@@ -443,7 +445,7 @@ const HomePage = () => {
             <View style={[styles.headerScrollContainer, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
                 <View style={[styles.header, { backgroundColor: colors.surface }]}>
                     <View style={styles.storiesContainer}>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 10 }}>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 10, flexDirection: isRTL ? 'row-reverse' : 'row' }}>
                             <View style={styles.storyItem}>
                                 <View style={{ position: 'relative' }}>
                                     <TouchableOpacity
@@ -473,7 +475,7 @@ const HomePage = () => {
                                         <Ionicons name="add" size={16} color="white" />
                                     </TouchableOpacity>
                                 </View>
-                                <Text style={[styles.storyUsername, { color: colors.textSecondary }]} numberOfLines={1}>Your Story</Text>
+                                <Text style={[styles.storyUsername, { color: colors.textSecondary }]} numberOfLines={1}>{t('your_story')}</Text>
                             </View>
 
                             {otherStoryGroups.map(group => (
@@ -538,7 +540,7 @@ const HomePage = () => {
     );
 };
 
-function getStyles(colors: any, activeScheme: string): any {
+function getStyles(colors: any, activeScheme: string, isRTL: boolean): any {
     return {
         container: {
             flex: 1,

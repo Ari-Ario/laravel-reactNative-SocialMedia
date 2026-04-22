@@ -19,10 +19,12 @@ import { verifyEmailCode, resendVerificationCode } from '@/services/AuthService'
 import { setToken } from '@/services/TokenService'; // Fixed: should be setToken not saveToken
 import AuthContext from '@/context/AuthContext';
 import { getToken } from '@/services/TokenService';
+import { useTranslation } from '@/constants/i18n';
 
 const VerificationScreen = () => {
     const { colors, activeScheme } = useAppTheme();
-    const styles = getStyles(colors, activeScheme);
+    const { t, isRTL } = useTranslation();
+    const styles = getStyles(colors, activeScheme, isRTL);
     const params = useLocalSearchParams();
     const { user, setUser } = useContext(AuthContext);
 
@@ -123,13 +125,13 @@ const VerificationScreen = () => {
         console.log('Verify button clicked, userId:', userId, 'token:', token);
 
         if (!userId) {
-            Alert.alert('Error', 'User ID not found');
+            Alert.alert(t('error'), 'User ID not found');
             return;
         }
 
         const fullCode = code.join('');
         if (fullCode.length !== 6) {
-            setMessage('Please enter all 6 digits');
+            setMessage(t('enter_code_sent'));
             return;
         }
 
@@ -162,11 +164,11 @@ const VerificationScreen = () => {
                 }
 
                 Alert.alert(
-                    'Success',
-                    'Email verified successfully!',
+                    t('success'),
+                    t('verify_success'),
                     [
                         {
-                            text: 'Continue',
+                            text: t('continue'),
                             onPress: () => {
                                 console.log('Navigating to tabs');
                                 router.replace('/(tabs)');
@@ -180,7 +182,7 @@ const VerificationScreen = () => {
         } catch (error: any) {
             console.error('Verification error:', error);
             console.error('Error response:', error.response?.data);
-            setMessage(error.response?.data?.message || 'Verification failed. Please try again.');
+            setMessage(error.response?.data?.message || t('error'));
             // Clear code on error
             setCode(['', '', '', '', '', '']);
             inputRefs.current[0]?.focus();
@@ -219,7 +221,7 @@ const VerificationScreen = () => {
         } catch (error: any) {
             console.error('Resend error:', error);
             console.error('Error response:', error.response?.data);
-            setMessage(error.response?.data?.message || 'Failed to resend code. Please try again.');
+            setMessage(error.response?.data?.message || t('error'));
         } finally {
             setResendLoading(false);
         }
@@ -250,13 +252,13 @@ const VerificationScreen = () => {
                     <BackButton onPress={() => router.push('/RegisterScreen')} />
                 </View>
                 <View style={styles.formContainer}>
-                    <Text style={styles.title}>Verify Your Email</Text>
+                    <Text style={styles.title}>{t('verify_email_title')}</Text>
                     <Text style={styles.subtitle}>
-                        Enter the 6-digit code sent to:
+                        {t('enter_code_sent')}
                     </Text>
                     <Text style={styles.email}>{email}</Text>
 
-                    <View style={styles.codeContainer}>
+                    <View style={[styles.codeContainer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                         {[0, 1, 2, 3, 4, 5].map((index) => (
                             <TextInput
                                 key={index}
@@ -297,7 +299,7 @@ const VerificationScreen = () => {
                             onPress={verifyCode}
                             disabled={loading || code.join('').length !== 6}
                         >
-                            <Text style={styles.buttonText}>{loading ? "Verifying..." : "Verify Email"}</Text>
+                            <Text style={styles.buttonText}>{loading ? t('verifying') : t('verify_email_btn')}</Text>
                         </TouchableOpacity>
                     </View>
 
@@ -311,10 +313,10 @@ const VerificationScreen = () => {
                     >
                         <Text style={styles.resendButtonText}>
                             {resendLoading
-                                ? 'Sending...'
+                                ? t('sending')
                                 : countdown > 0
-                                    ? `Resend code in ${countdown}s`
-                                    : "Didn't receive code? Resend"}
+                                    ? `${t('resend_code_in')} ${countdown}s`
+                                    : t('didnt_receive_code')}
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -323,7 +325,7 @@ const VerificationScreen = () => {
     );
 };
 
-function getStyles(colors: any, activeScheme: string) {
+function getStyles(colors: any, activeScheme: string, isRTL: boolean) {
     return StyleSheet.create({
     container: {
         flex: 1,

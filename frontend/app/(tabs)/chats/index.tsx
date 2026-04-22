@@ -33,6 +33,7 @@ import { calculateAnchor, AnchorPosition } from '@/utils/layout';
 import LiveDiscoveryCarousel from "@/components/ChatScreen/LiveDiscoveryCarousel";
 import CreateTabModal from '@/components/ChatScreen/CreateTabModal';
 import { useSpaceStore } from "@/stores/spaceStore";
+import { useTranslation } from '@/constants/i18n';
 
 interface Chat {
   id: string;
@@ -88,7 +89,7 @@ const formatTimestamp = (timestamp: string | Date): string => {
   if (diffDays === 0) {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   } else if (diffDays === 1) {
-    return 'Yesterday';
+    return 'Yesterday'; // Note: This will be handled inside the component or we need to pass t
   } else if (diffDays < 7) {
     return date.toLocaleDateString([], { weekday: 'short' });
   } else {
@@ -99,6 +100,7 @@ const formatTimestamp = (timestamp: string | Date): string => {
 
 const ChatPage = () => {
   const { colors, activeScheme } = useAppTheme();
+  const { t, isRTL, locale } = useTranslation();
   const styles = getStyles(colors, activeScheme);
   const notificationService = NotificationService.getInstance();
   const searchService = SearchService.getInstance();
@@ -246,7 +248,7 @@ const ChatPage = () => {
         id: space.id,
         name: chatName,
         lastMessage: getSpaceDescription(space),
-        timestamp: formatTimestamp(updatedAt),
+        timestamp: updatedAt.includes('T') ? (Math.abs(new Date().getTime() - new Date(updatedAt).getTime()) < 86400000 ? new Date(updatedAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : (Math.abs(new Date().getTime() - new Date(updatedAt).getTime()) < 172800000 ? t('yesterday') : new Date(updatedAt).toLocaleDateString(locale))) : updatedAt,
         updatedAt: updatedAt,
         unreadCount: spaceUnreadCounts[space.id] || 0,
         avatar: chatAvatar,
@@ -402,7 +404,7 @@ const ChatPage = () => {
 
     } catch (error) {
       console.error('Error in fetchChatsAndContacts:', error);
-      Alert.alert('Error', 'Failed to load contacts');
+      Alert.alert(t('error'), t('error'));
 
       // Set empty states
       setContacts(getFallbackContacts());
@@ -603,10 +605,10 @@ const ChatPage = () => {
     if (!query) {
       const sections: SectionData[] = [];
       if (activeSpaces.length > 0 || customTab) {
-        let title = '🎯 Collaboration Spaces';
-        if (activeTab === 'favorites') title = '❤️ Favorite Spaces';
-        else if (activeTab === 'unread') title = '🔴 Unread Chats';
-        else if (activeTab === 'archived') title = '📦 Archived Chats';
+        let title = `🎯 ${t('collaboration_spaces')}`;
+        if (activeTab === 'favorites') title = `❤️ ${t('favorites')}`;
+        else if (activeTab === 'unread') title = `🔴 ${t('unread')}`;
+        else if (activeTab === 'archived') title = `📦 ${t('archived')}`;
         else if (customTab) title = `📂 ${customTab.name}`;
 
         const data: Chat[] = activeSpaces.map(s => ({
@@ -628,7 +630,7 @@ const ChatPage = () => {
 
       // Only show contacts in the 'all' tab or when searching
       if (activeTab === 'all' && deduplicatedContacts.length > 0) {
-        sections.push({ title: '👥 Contacts', data: deduplicatedContacts, type: 'contacts' });
+        sections.push({ title: `👥 ${t('contacts')}`, data: deduplicatedContacts, type: 'contacts' });
       }
       return sections;
     }
@@ -648,11 +650,11 @@ const ChatPage = () => {
     const sections: SectionData[] = [];
 
     if (localSpaces.length > 0) {
-      sections.push({ title: '🎯 Spaces in your list', data: localSpaces, type: 'spaces' });
+      sections.push({ title: `🎯 ${t('collaboration_spaces')}`, data: localSpaces, type: 'spaces' });
     }
 
     if (localContacts.length > 0) {
-      sections.push({ title: '👥 Contacts in your list', data: localContacts, type: 'contacts' });
+      sections.push({ title: `👥 ${t('contacts')}`, data: localContacts, type: 'contacts' });
     }
 
     // Filter global results to exclude those already in local lists
@@ -667,7 +669,7 @@ const ChatPage = () => {
 
     if (globalResults.length > 0) {
       sections.push({
-        title: '🌍 Global Results',
+        title: `🌍 ${t('global_results')}`,
         data: globalResults.map(result => ({
           id: result.id,
           name: result.title,
@@ -725,7 +727,7 @@ const ChatPage = () => {
             if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           }}
         >
-          <Text style={[styles.tabText, activeTab === 'all' ? styles.activeTabText : { color: colors.textSecondary }]}>All</Text>
+          <Text style={[styles.tabText, activeTab === 'all' ? styles.activeTabText : { color: colors.textSecondary }]}>{t('all')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -735,9 +737,9 @@ const ChatPage = () => {
             if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           }}
         >
-          <View style={styles.tabContentWithIcon}>
+          <View style={[styles.tabContentWithIcon, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
             <Ionicons name="heart" size={14} color={activeTab === 'favorites' ? '#fff' : '#667781'} style={styles.tabIcon} />
-            <Text style={[styles.tabText, activeTab === 'favorites' && styles.activeTabText]}>Favorites</Text>
+            <Text style={[styles.tabText, activeTab === 'favorites' && styles.activeTabText]}>{t('favorites')}</Text>
           </View>
           {favoritesCount > 0 && activeTab !== 'favorites' && (
             <View style={styles.tabBadge}>
@@ -753,7 +755,7 @@ const ChatPage = () => {
             if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           }}
         >
-          <Text style={[styles.tabText, activeTab === 'unread' && styles.activeTabText]}>Unread</Text>
+          <Text style={[styles.tabText, activeTab === 'unread' && styles.activeTabText]}>{t('unread')}</Text>
           {unreadCount > 0 && (
             <View style={[styles.tabBadge, { backgroundColor: '#25D366' }]}>
               <Text style={styles.tabBadgeText}>{unreadCount}</Text>
@@ -768,7 +770,7 @@ const ChatPage = () => {
             if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           }}
         >
-          <Text style={[styles.tabText, activeTab === 'archived' && styles.activeTabText]}>Archived</Text>
+          <Text style={[styles.tabText, activeTab === 'archived' && styles.activeTabText]}>{t('archived')}</Text>
           {archivedCount > 0 && (
             <View style={[styles.tabBadge, { backgroundColor: '#667781' }]}>
               <Text style={styles.tabBadgeText}>{archivedCount}</Text>

@@ -19,11 +19,11 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    'allowed_origins' => ['https://zmzir.com', 'http://localhost:19006', 'http://localhost:8081', 'http://localhost:3000'],
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['*'],
+    'allowed_headers' => ['*', 'X-Socket-Id', 'X-Requested-With'],
 
     'exposed_headers' => [],
 

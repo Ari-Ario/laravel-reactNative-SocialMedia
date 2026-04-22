@@ -8,9 +8,11 @@ import { Link, useRouter } from 'expo-router';
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { BackButton } from "@/components/ui/IconButton";
+import { useTranslation } from "@/constants/i18n";
 
 export default function LoginScreen() {
     const { colors } = useAppTheme();
+    const { t, isRTL } = useTranslation();
     const router = useRouter();
     const authStore = useAuthStore();
 
@@ -56,10 +58,10 @@ export default function LoginScreen() {
                 if (e.response.status === 422) {
                     setErrors(e.response.data.errors || {});
                 } else {
-                    setErrors({ general: e.response.data.message || 'Server error' });
+                    setErrors({ general: e.response.data.message || t('error') });
                 }
             } else {
-                setErrors({ general: e.message || 'Network error' });
+                setErrors({ general: e.message || t('error') });
             }
         }
     }
@@ -72,9 +74,9 @@ export default function LoginScreen() {
                 </Link>
             </View>
 
-            <View style={styles.container}>
+            <View style={[styles.container, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
                 <FormTextField 
-                    label="Email address:"
+                    label={t('email_address') + ":"}
                     value={email}
                     onChangeText={(text) => setEmail(text)}
                     keyboardType="email-address"
@@ -82,7 +84,7 @@ export default function LoginScreen() {
                 />
 
                 <FormTextField 
-                    label="Password:"
+                    label={t('password') + ":"}
                     secureTextEntry={true}
                     value={password}
                     onChangeText={(text) => setPassword(text)}
@@ -90,7 +92,7 @@ export default function LoginScreen() {
                     errors={errors.password}
                 />
 
-                <Button title="Login" onPress={handleLogin} />
+                <Button title={t('login_btn')} onPress={handleLogin} />
 
                 {errors.general && (
                     <Text style={[styles.errorText, { color: colors.error }]}>{errors.general}</Text>
@@ -98,15 +100,15 @@ export default function LoginScreen() {
 
                 <Link href={'/ForgotPasswordScreen'} asChild>
                     <TouchableOpacity>
-                        <Text style={[styles.buttonText, { color: colors.tint, fontSize: 16, marginTop: 10 }]}>Forgot Password</Text>
+                        <Text style={[styles.buttonText, { color: colors.tint, fontSize: 16, marginTop: 10, textAlign: isRTL ? 'right' : 'center' }]}>{t('forgot_password')}</Text>
                     </TouchableOpacity>
                 </Link>
 
-                <View style={styles.loginLink}>
-                    <Text style={{ color: colors.textSecondary }}>Don't have an account? </Text>
+                <View style={[styles.loginLink, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                    <Text style={{ color: colors.textSecondary }}>{t('no_account')}</Text>
                     <Link href="/RegisterScreen" asChild>
                         <TouchableOpacity>
-                            <Text style={[styles.linkText, { color: colors.tint }]}>Register</Text>
+                            <Text style={[styles.linkText, { color: colors.tint }]}>{t('register')}</Text>
                         </TouchableOpacity>
                     </Link>
                 </View>

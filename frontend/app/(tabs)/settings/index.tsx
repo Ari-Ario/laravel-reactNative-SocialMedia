@@ -36,7 +36,7 @@ import PlatformCameraView from '@/components/PlatformCameraView';
 import { Colors } from '@/constants/Colors';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useThemeStore } from '@/stores/themeStore';
-import { t, LANGUAGES, Locale } from '@/constants/i18n';
+import { useTranslation, LANGUAGES, Locale } from '@/constants/i18n';
 import axios from '@/services/axios';
 
 export const THEME_CONFIG = {
@@ -72,6 +72,7 @@ const SettingsItem = ({ name, icon, color, onPress, badge, rightElement }: any) 
 
 const Page = () => {
   const { colors, activeScheme, themePreference } = useAppTheme();
+  const { t, isRTL } = useTranslation();
   const { setThemePreference } = useThemeStore();
   const { user, setUser } = useContext(AuthContext);
   const { unreadModerationCount } = useNotificationStore();
@@ -148,11 +149,11 @@ const Page = () => {
     };
 
     if (isWeb) {
-      if (window.confirm("Are you sure you want to log out?")) confirmLogout();
+      if (window.confirm(t('logout_confirm'))) confirmLogout();
     } else {
-      Alert.alert('Logout', 'Are you sure?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Logout', style: 'destructive', onPress: confirmLogout }
+      Alert.alert(t('logout'), t('logout_confirm'), [
+        { text: t('cancel'), style: 'cancel' },
+        { text: t('logout'), style: 'destructive', onPress: confirmLogout }
       ]);
     }
   };
@@ -206,11 +207,11 @@ const Page = () => {
         await uploadProfilePhoto(compressedUri);
         const updated = await loadUser();
         setUser(updated);
-        showToast('Profile photo updated successfully', 'success');
+        showToast(t('success'), 'success');
       }
     } catch (e) {
       console.error('Photo upload error:', e);
-      showToast('Photo upload failed. Please try again.', 'error');
+      showToast(t('error'), 'error');
     } finally {
       setSaving(false);
     }
@@ -235,17 +236,17 @@ const Page = () => {
   const photoMenuItems: MenuItem[] = [
     {
       icon: 'camera',
-      label: 'Take Photo',
+      label: t('take_photo'),
       onPress: () => showImagePicker(true),
     },
     {
       icon: 'images',
-      label: 'Choose from Gallery',
+      label: t('choose_gallery'),
       onPress: () => showImagePicker(false),
     },
     ...(user?.profile_photo && String(user.profile_photo).trim() !== 'null' ? [{
       icon: 'trash-outline',
-      label: 'Delete Photo',
+      label: t('delete_photo'),
       onPress: handleDeletePhoto,
       isDestructive: true,
     } as MenuItem] : [])
@@ -273,10 +274,10 @@ const Page = () => {
   };
 
   const themeMenuItems: MenuItem[] = [
-    { icon: 'contrast', label: 'Automatic (System)', onPress: () => { setThemePreference('automatic'); setShowThemeMenu(false); } },
-    { icon: 'sunny', label: 'Light Mode', onPress: () => { setThemePreference('light'); setShowThemeMenu(false); } },
-    { icon: 'moon', label: 'Dark Mode', onPress: () => { setThemePreference('dark'); setShowThemeMenu(false); } },
-    { icon: 'color-palette', label: 'Dynamic (Android 12+)', onPress: () => { setThemePreference('dynamic'); setShowThemeMenu(false); } },
+    { icon: 'contrast', label: t('theme_auto'), onPress: () => { setThemePreference('automatic'); setShowThemeMenu(false); } },
+    { icon: 'sunny', label: t('theme_light'), onPress: () => { setThemePreference('light'); setShowThemeMenu(false); } },
+    { icon: 'moon', label: t('theme_dark'), onPress: () => { setThemePreference('dark'); setShowThemeMenu(false); } },
+    { icon: 'color-palette', label: t('theme_dynamic'), onPress: () => { setThemePreference('dynamic'); setShowThemeMenu(false); } },
   ];
 
   const handleWebCapture = async () => {
@@ -352,14 +353,14 @@ const Page = () => {
             )
           },
           { name: t('privacy'), icon: 'lock-closed-outline', color: '#2196F3', onPress: () => router.push('/settings/privacy') },
-          { name: 'Administration', icon: 'shield-half-outline', color: '#FF3B30', badge: unreadModerationCount, onPress: () => router.push('/moderation/admin-channel') },
+          { name: t('administration'), icon: 'shield-half-outline', color: '#FF3B30', badge: unreadModerationCount, onPress: () => router.push('/moderation/admin-channel') },
         ]
       },
       {
-        title: 'Notifications',
+        title: t('notifications'),
         items: [
           {
-            name: 'Web Push (Offline)',
+            name: t('web_push'),
             icon: 'notifications-outline',
             color: '#FF2D55',
             rightElement: (
@@ -375,26 +376,26 @@ const Page = () => {
         ]
       },
       {
-        title: 'Content',
+        title: t('content'),
         items: [
-          { name: 'Bookmarks', icon: 'bookmark-outline', color: '#FFD700', badge: bookmarks?.length, onPress: () => router.push('/settings/bookmarks') },
-          { name: 'AI Safety Status', icon: 'shield-checkmark-outline', color: '#4CAF50', onPress: () => router.push('/settings/ai-safety') },
-          { name: 'Storage and Data', icon: 'cloud-outline', color: '#25D366', onPress: () => router.push('/settings/storage') },
+          { name: t('bookmarks'), icon: 'bookmark-outline', color: '#FFD700', badge: bookmarks?.length, onPress: () => router.push('/settings/bookmarks') },
+          { name: t('ai_safety'), icon: 'shield-checkmark-outline', color: '#4CAF50', onPress: () => router.push('/settings/ai-safety') },
+          { name: t('storage_data'), icon: 'cloud-outline', color: '#25D366', onPress: () => router.push('/settings/storage') },
         ]
       },
       {
-        title: 'Connect',
+        title: t('connect'),
         items: [
-          { name: 'Broadcast Lists', icon: 'megaphone-outline', color: '#25D366', onPress: () => router.push('/settings/broadcasts') },
-          { name: 'Linked Devices', icon: 'laptop-outline', color: '#25D366', onPress: () => router.push('/settings/linked-devices') },
-          { name: 'Chat Highlights', icon: 'flash-outline', color: '#FFD700', onPress: () => router.push('/settings/highlights') },
+          { name: t('broadcast_lists'), icon: 'megaphone-outline', color: '#25D366', onPress: () => router.push('/settings/broadcasts') },
+          { name: t('linked_devices'), icon: 'laptop-outline', color: '#25D366', onPress: () => router.push('/settings/linked-devices') },
+          { name: t('chat_highlights'), icon: 'flash-outline', color: '#FFD700', onPress: () => router.push('/settings/highlights') },
         ]
       },
       {
-        title: 'Support',
+        title: t('support'),
         items: [
-          { name: 'Help Center', icon: 'information-circle-outline', color: '#075E54', onPress: () => router.push('/settings/help') },
-          { name: 'Tell a Friend', icon: 'heart-outline', color: '#FF3B30', onPress: () => router.push('/settings/TellFriend') },
+          { name: t('help_center'), icon: 'information-circle-outline', color: '#075E54', onPress: () => router.push('/settings/help') },
+          { name: t('tell_friend'), icon: 'heart-outline', color: '#FF3B30', onPress: () => router.push('/settings/TellFriend') },
         ]
       }
     ];
@@ -410,9 +411,9 @@ const Page = () => {
 
     if (user?.is_admin) {
       sections.push({
-        title: 'Admin',
+        title: t('admin'),
         items: [
-          { name: 'Moderation Panel', icon: 'hammer-outline', color: '#F44336', onPress: () => router.push('/moderation') },
+          { name: t('moderation_panel'), icon: 'hammer-outline', color: '#F44336', onPress: () => router.push('/moderation') },
         ]
       });
     }
@@ -424,8 +425,8 @@ const Page = () => {
     <View style={[styles.mainContainer, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={activeScheme === 'dark' ? 'light-content' : 'dark-content'} />
 
-      <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 60 : 40 }]}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>{t('settings')} & Stats</Text>
+      <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 60 : 40, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+        <Text style={[styles.headerTitle, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}>{t('settings')}</Text>
         <View ref={themeIconRef}>
           <TouchableOpacity onPress={handleThemeAction} style={styles.closeButton}>
             <Ionicons name={getThemeIcon()} size={22} color={colors.tint} />
@@ -587,21 +588,21 @@ const Page = () => {
               <View style={styles.statsGrid}>
                 <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
                   <Text style={[styles.statValue, { color: colors.text }]}>{bookmarks?.length || 0}</Text>
-                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Saves</Text>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('total_saves')}</Text>
                 </View>
                 <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
                   <Text style={[styles.statValue, { color: colors.text }]}>0</Text>
-                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>App Influence</Text>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('app_influence')}</Text>
                 </View>
               </View>
 
               <View style={[styles.aiInsightsCard, { backgroundColor: colors.tint + '10', borderLeftColor: colors.tint }]}>
-                <Text style={[styles.insightTitle, { color: colors.tint }]}>AI Engagement Trends</Text>
-                <Text style={[styles.insightText, { color: colors.textSecondary }]}>Your activity suggests a high interest in creative communities. Your content interactions are 100% compliant.</Text>
+                <Text style={[styles.insightTitle, { color: colors.tint, textAlign: isRTL ? 'right' : 'left' }]}>{t('ai_trends')}</Text>
+                <Text style={[styles.insightText, { color: colors.textSecondary, textAlign: isRTL ? 'right' : 'left' }]}>Your activity suggests a high interest in creative communities. Your content interactions are 100% compliant.</Text>
                 <View style={[styles.trendBar, { backgroundColor: colors.muted }]}>
                   <LinearGradient colors={[colors.tint, colors.tint + '80']} style={[styles.trendFill, { width: '85%' }]} />
                 </View>
-                <Text style={styles.trendLabel}>Account Health: Excellent</Text>
+                <Text style={[styles.trendLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t('account_health')}</Text>
               </View>
             </MotiView>
           )}
@@ -637,7 +638,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 13, fontWeight: '700', color: 'rgba(0,0,0,0.6)', textTransform: 'uppercase', marginBottom: 16, letterSpacing: 1 },
   item: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', padding: 18, borderRadius: 20, marginBottom: 12, borderWidth: 1.5, borderColor: '#000' },
   iconContainer: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginRight: 15, borderWidth: 1 },
-  itemText: { flex: 1, fontSize: 16, fontWeight: '700' },
+  itemText: { flex: 1, fontSize: 16, fontWeight: '700', textAlign: 'left' },
   badge: { backgroundColor: '#F44336', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2, marginRight: 8 },
   badgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
   logoutBtn: { marginTop: 8 },

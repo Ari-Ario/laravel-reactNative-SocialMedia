@@ -20,6 +20,7 @@ import { useState, useEffect, useRef, useContext, useCallback, useMemo } from 'r
 import { fetchProfile, followUser } from '@/services/UserService';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MotiView, AnimatePresence } from 'moti';
 import PostListItem from './PostListItem';
@@ -80,6 +81,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
   const { profilePreviewVisible, setProfilePreviewVisible } = useProfileView();
   const { showToast } = useToastStore();
   const { colors, activeScheme } = useAppTheme();
+  const { t, isRTL } = useTranslation();
   const styles = getStyles(colors, activeScheme);
   const { user } = useContext(AuthContext);
   const [profile, setProfile] = useState<any>(null);
@@ -201,7 +203,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
 
     } catch (error) {
       console.error('Error fetching profile:', error);
-      showToast('Failed to load profile', 'error');
+      showToast(t('error'), 'error');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -280,7 +282,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
       }
     } catch (error) {
       console.error('Error opening URL:', error);
-      showToast('Could not open link', 'error');
+      showToast(t('error'), 'error');
     }
   };
 
@@ -300,10 +302,10 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
         };
       });
       if (!isWeb) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      showToast(isFollowing ? 'Unfollowed successfully' : 'Followed successfully', 'success');
+      showToast(isFollowing ? t('success') : t('success'), 'success');
     } catch (error) {
       console.error('Error following user:', error);
-      showToast('Failed to update follow status', 'error');
+      showToast(t('error'), 'error');
     } finally {
       setFollowLoading(false);
     }
@@ -353,7 +355,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
         <Ionicons name={icon as any} size={20} color={colors.textSecondary} />
       </View>
       <Text style={[styles.statNumber, { color: colors.text }]}>{formatNumber(value)}</Text>
-      <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{label}</Text>
+      <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t(label.toLowerCase())}</Text>
     </MotiView>
   );
 
@@ -366,49 +368,49 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
           <View style={[styles.privateIconCircle, { backgroundColor: colors.muted }]}>
             <Ionicons name="lock-closed" size={32} color={colors.textSecondary} />
           </View>
-          <Text style={[styles.privateTitle, { color: colors.text }]}>This Account is Private</Text>
-          <Text style={[styles.privateSubtitle, { color: colors.textSecondary }]}>Follow this account to see their full profile and media uploads.</Text>
+          <Text style={[styles.privateTitle, { color: colors.text }]}>{t('private_account_title')}</Text>
+          <Text style={[styles.privateSubtitle, { color: colors.textSecondary }]}>{t('private_account_subtitle')}</Text>
         </MotiView>
       );
     }
 
     const sections = [
       {
-        title: 'Professional',
+        title: t('professional'),
         icon: 'briefcase',
         show: profile?.job_title || profile?.company || profile?.education,
         items: [
-          { label: 'Work', value: profile?.job_title && profile?.company ? `${profile.job_title} at ${profile.company}` : (profile?.job_title || profile?.company), icon: 'business-outline' },
-          { label: 'Education', value: profile?.education, icon: 'school-outline' },
+          { label: t('work'), value: profile?.job_title && profile?.company ? `${profile.job_title} at ${profile.company}` : (profile?.job_title || profile?.company), icon: 'business-outline' },
+          { label: t('education'), value: profile?.education, icon: 'school-outline' },
         ]
       },
       {
-        title: 'Personal',
+        title: t('personal'),
         icon: 'person',
         show: profile?.bio || profile?.location || profile?.birthday || profile?.gender,
         items: [
-          { label: 'Bio', value: profile?.bio, icon: 'chatbubble-outline' },
+          { label: t('bio'), value: profile?.bio, icon: 'chatbubble-outline' },
           { 
-            label: 'Location', 
+            label: t('location'), 
             value: parsedLocation?.name || parsedLocation?.address || profile?.location, 
             icon: 'location-outline',
             onPress: handleLocationPress 
           },
           { 
-            label: 'Gender', 
+            label: t('gender'), 
             value: profile?.gender, 
             icon: 'transgender-outline' 
           },
           { 
-            label: 'Birthday', 
-            value: profile?.birthday ? new Date(profile.birthday).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : null, 
+            label: t('birthday'), 
+            value: profile?.birthday ? new Date(profile.birthday).toLocaleDateString(locale, { month: 'long', day: 'numeric', year: 'numeric' }) : null, 
             icon: 'cake-outline',
             private: profile?.preferences && !profile.preferences.show_birthday
           },
         ]
       },
       {
-        title: 'Connect',
+        title: t('connect'),
         icon: 'link',
         show: profile?.website || (profile?.social_links && Object.keys(profile.social_links).length > 0) || profile?.phone || profile?.email,
         items: [
@@ -435,7 +437,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
       return (
         <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} style={styles.emptyAbout}>
         <Ionicons name="person-outline" size={48} color={colors.textSecondary + '40'} />
-        <Text style={[styles.emptyAboutText, { color: colors.textSecondary }]}>No additional information provided</Text>
+        <Text style={[styles.emptyAboutText, { color: colors.textSecondary }]}>{t('no_about_info')}</Text>
         </MotiView>
       );
     }
@@ -450,9 +452,9 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
             transition={{ delay: sIndex * 100 }}
             style={styles.aboutSection}
           >
-            <View style={styles.sectionHeader}>
+            <View style={[styles.sectionHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
               <Ionicons name={section.icon as any} size={18} color={colors.tint} />
-              <Text style={[styles.sectionTitleText, { color: colors.text }]}>{section.title}</Text>
+              <Text style={[styles.sectionTitleText, { color: colors.text, textAlign: isRTL ? 'right' : 'left', marginHorizontal: 8 }]}>{section.title}</Text>
             </View>
 
             {(section.items as AboutItem[]).filter(i => i.value).map((item, iIndex) => (
@@ -479,7 +481,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
                     }
                   }
                 }}
-                style={styles.aboutItem}
+                style={[styles.aboutItem, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
               >
                 <View style={[styles.aboutIconCircle, { backgroundColor: colors.muted }]}>
                   <Ionicons name={item.icon as any} size={16} color={colors.textSecondary} />
@@ -494,7 +496,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
                       </View>
                     )}
                   </View>
-                  <Text style={[styles.aboutText, { color: colors.text }, (item.isLink || item.isEmail || item.isPhone) && styles.linkText]}>
+                  <Text style={[styles.aboutText, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }, (item.isLink || item.isEmail || item.isPhone) && styles.linkText]}>
                     {item.value}
                   </Text>
                 </View>
@@ -541,7 +543,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
           {renderProfilePhoto()}
         </Animated.View>
 
-        <View style={styles.statsRow}>
+        <View style={[styles.statsRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
           <StatCard value={profile.posts_count || 0} label="Posts" icon="document-text-outline" />
           <StatCard value={profile.followers_count || 0} label="Followers" icon="people-outline" />
           <StatCard value={profile.following_count || 0} label="Following" icon="person-add-outline" />
@@ -557,7 +559,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
         </View>
         <View style={styles.usernameRow}>
           {profile.username && <Text style={[styles.username, { color: colors.tint }]}>@{profile.username}</Text>}
-          <Text style={[styles.joinedDate, { color: colors.textSecondary }]}> • Joined {new Date(profile.created_at).getFullYear()}</Text>
+          <Text style={[styles.joinedDate, { color: colors.textSecondary }]}> • {t('joined')} {new Date(profile.created_at).getFullYear()}</Text>
         </View>
       </View>
 
@@ -587,7 +589,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
                   styles.followButtonLabel,
                   { color: isFollowing ? colors.text : '#fff' }
                 ]}>
-                  {isFollowing ? 'Following' : 'Follow'}
+                  {isFollowing ? t('following') : t('follow')}
                 </Text>
               </>
             )}
@@ -595,11 +597,11 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
         </TouchableOpacity>
       )}
 
-      <View style={styles.tabsContainer}>
+      <View style={[styles.tabsContainer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
         {[
-          { id: 'posts', label: 'Posts', icon: 'grid-outline' },
-          { id: 'about', label: 'About', icon: 'information-circle-outline' },
-          { id: 'media', label: 'Media', icon: 'images-outline' },
+          { id: 'posts', label: t('posts'), icon: 'grid-outline' },
+          { id: 'about', label: t('about'), icon: 'information-circle-outline' },
+          { id: 'media', label: t('media'), icon: 'images-outline' },
         ].map((tab) => (
           <TouchableOpacity
             key={tab.id}
@@ -635,14 +637,14 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
       return (
         <View style={styles.footerLoader}>
           <ActivityIndicator size="small" color={colors.tint} />
-          <Text style={[styles.footerText, { color: colors.textSecondary }]}>Loading more posts...</Text>
+          <Text style={[styles.footerText, { color: colors.textSecondary }]}>{t('loading_more')}</Text>
         </View>
       );
     }
     if (activeTab === 'posts' && uniqueUserPosts.length > 0 && !hasMorePosts) {
       return (
         <View style={styles.footerEnd}>
-          <Text style={[styles.footerEndText, { color: colors.textSecondary }]}>End of posts</Text>
+          <Text style={[styles.footerEndText, { color: colors.textSecondary }]}>{t('end_of_posts')}</Text>
         </View>
       );
     }
@@ -658,7 +660,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
           style={styles.emptyState}
         >
           <Ionicons name="grid-outline" size={48} color={colors.textSecondary + '40'} />
-          <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>No posts yet</Text>
+          <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>{t('no_posts')}</Text>
         </MotiView>
       );
     }
@@ -699,15 +701,15 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
     >
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
         <View
-          style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}
+          style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border, flexDirection: isRTL ? 'row-reverse' : 'row' }]}
         >
-          <View style={styles.headerTop}>
+          <View style={[styles.headerTop, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
             <TouchableOpacity
               style={styles.headerButton}
               onPress={() => setProfilePreviewVisible(false)}
               activeOpacity={0.7}
             >
-              <Ionicons name="chevron-back" size={24} color={colors.text} />
+              <Ionicons name={isRTL ? "chevron-forward" : "chevron-back"} size={24} color={colors.text} />
             </TouchableOpacity>
 
             <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
@@ -746,7 +748,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
         {loading && activeTab === 'posts' ? (
           <View style={[styles.loaderContainer, { backgroundColor: colors.background }]}>
             <ActivityIndicator size="large" color={colors.tint} />
-            <Text style={[styles.loaderText, { color: colors.textSecondary }]}>Loading profile...</Text>
+            <Text style={[styles.loaderText, { color: colors.textSecondary }]}>{t('loading')}</Text>
           </View>
         ) : (
           <Animated.FlatList
