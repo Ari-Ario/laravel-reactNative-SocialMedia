@@ -19,11 +19,11 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    'allowed_origins' => ['https://zmzir.com', 'https://www.zmzir.com', 'https://laravel-reactnative-socialmedia-qcx2q9ci.on-forge.com', 'http://localhost:8081'],
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['*'],
+    'allowed_headers' => ['Content-Type', 'X-Requested-With', 'Authorization', 'X-Socket-Id', 'x-socket-id', 'X-Socket-ID', 'Accept', 'Origin'],
 
     'exposed_headers' => [],
 
