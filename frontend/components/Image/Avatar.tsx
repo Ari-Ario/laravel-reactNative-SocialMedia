@@ -14,6 +14,7 @@ interface AvatarProps {
   onPress?: () => void;
   borderColor?: string;
   showStatus?: boolean;
+  style?: any;
 }
 
 /**
@@ -27,6 +28,7 @@ const Avatar: React.FC<AvatarProps> = ({
   isOnline = false,
   onPress,
   showStatus = true,
+  style,
 }) => {
   const { colors, activeScheme } = useAppTheme();
   const [imgError, setImgError] = useState(false);
@@ -100,7 +102,7 @@ const Avatar: React.FC<AvatarProps> = ({
 
   return (
     <TouchableOpacity onPress={onPress} disabled={!onPress} activeOpacity={onPress ? 0.7 : 1}>
-      <View style={styles.container}>
+      <View style={[styles.container, style]}>
         {renderAvatar()}
         {showStatus && isOnline && (
           <View

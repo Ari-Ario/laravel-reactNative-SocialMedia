@@ -20,6 +20,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { GlobalStyles } from '@/styles/GlobalStyles';
 import { createShadow, createTextShadow } from '@/utils/styles';
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useTranslation } from '@/constants/i18n';
 import * as ImagePicker from 'expo-image-picker';
 import { useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import PlatformCameraView from './PlatformCameraView';
@@ -86,6 +87,7 @@ interface AddStoryProps {
 }
 
 const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated }) => {
+  const { t } = useTranslation();
   const { colors, activeScheme } = useAppTheme();
   const { showToast } = useToastStore();
   const insets = useSafeAreaInsets();
@@ -256,7 +258,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
         setMedia({ uri: compressed.uri, type: 'photo' });
       } catch (e) {
         console.error('Photo error:', e);
-        showToast('Failed to take photo', 'error');
+        showToast(t('failed_take_photo'), 'error');
       }
     }
   };
@@ -301,7 +303,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
 
         if (!isUserAborted) {
           console.error('Recording error:', e);
-          showToast('Failed to record video', 'error');
+          showToast(t('failed_record_video'), 'error');
         }
       }
     }
@@ -377,7 +379,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
       }
     } catch (error) {
       console.error('Gallery pick error:', error);
-      showToast('Failed to pick from gallery', 'error');
+      showToast(t('failed_pick_gallery'), 'error');
     } finally {
       setUploading(false);
     }
@@ -545,7 +547,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
       setShowTrimmer(false);
     } catch (error) {
       console.error('Error processing trimmed video:', error);
-      showToast('Failed to process trimmed video', 'error');
+      showToast(t('failed_save_trimmed_video'), 'error');
     } finally {
       setUploading(false);
     }
@@ -564,16 +566,16 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== 'granted') {
-        showToast('Please allow gallery access to save media.', 'info');
+        showToast(t('allow_gallery_save'), 'info');
         return;
       }
 
       await MediaLibrary.saveToLibraryAsync(media.uri);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      showToast('Media saved to gallery!', 'success');
+      showToast(t('saved_to_gallery'), 'success');
     } catch (error) {
       console.error('Error saving media:', error);
-      showToast('Failed to save media.', 'error');
+      showToast(t('failed_save_media'), 'error');
     }
   };
 
@@ -583,7 +585,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
     try {
       // 🚀 INSTANT UI: Close modal immediately and show optimistic feedback
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      showToast('Sharing story...', 'info');
+      showToast(t('sharing_story'), 'info');
       
       const uploadFormData = new FormData();
       const currentMedia = { ...media };
@@ -659,12 +661,12 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
       const response = await createStory(uploadFormData);
       
       if (response.success) {
-        showToast('Story shared!', 'success');
+        showToast(t('story_shared'), 'success');
         onStoryCreated();
       }
     } catch (error: any) {
       console.error('Background Story Upload Failed:', error);
-      showToast('Failed to share story.', 'error');
+      showToast(t('failed_share_story'), 'error');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
   };
@@ -810,8 +812,8 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                           </TouchableOpacity>
                           <Text style={styles.modeText}>
                             {cameraMode === 'video'
-                              ? isRecording ? `Recording ${Math.floor(recordingProgress * 10)}s` : 'Hold for Video'
-                              : 'Tap for Photo'}
+                              ? isRecording ? `${t('recording_label')} ${Math.floor(recordingProgress * 10)}s` : t('hold_for_video')
+                              : t('tap_for_photo')}
                           </Text>
                         </View>
 
@@ -832,19 +834,19 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                   onPress={() => setCameraMode('text')}
                   style={[styles.modeButton, cameraMode === 'text' && styles.activeModeButton]}
                 >
-                  <Text style={[styles.modeItem, cameraMode === 'text' && styles.activeMode]}>Aa TEXT</Text>
+                  <Text style={[styles.modeItem, cameraMode === 'text' && styles.activeMode]}>Aa {t('text_label').toUpperCase()}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setCameraMode('picture')}
                   style={[styles.modeButton, cameraMode === 'picture' && styles.activeModeButton]}
                 >
-                  <Text style={[styles.modeItem, cameraMode === 'picture' && styles.activeMode]}>PHOTO</Text>
+                  <Text style={[styles.modeItem, cameraMode === 'picture' && styles.activeMode]}>{t('photo_label').toUpperCase()}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setCameraMode('video')}
                   style={[styles.modeButton, cameraMode === 'video' && styles.activeModeButton]}
                 >
-                  <Text style={[styles.modeItem, cameraMode === 'video' && styles.activeMode]}>VIDEO</Text>
+                  <Text style={[styles.modeItem, cameraMode === 'video' && styles.activeMode]}>{t('video_label').toUpperCase()}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -896,12 +898,12 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                   >
                     <BlurView intensity={80} tint="dark" style={styles.trimWarningContent}>
                       <Ionicons name="alert-circle" size={20} color="#FFB340" />
-                      <Text style={styles.trimWarningText}>Video longer than 10s needs trimming</Text>
+                      <Text style={styles.trimWarningText}>{t('trim_videos_warning')}</Text>
                       <TouchableOpacity
                         style={styles.trimNowButton}
                         onPress={() => setShowTrimmer(true)}
                       >
-                        <Text style={styles.trimNowText}>Trim Now</Text>
+                        <Text style={styles.trimNowText}>{t('trim_now')}</Text>
                       </TouchableOpacity>
                     </BlurView>
                   </MotiView>
@@ -910,7 +912,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                 <View style={[styles.previewBottom, { pointerEvents: 'auto' }]}>
                   <TouchableOpacity style={styles.saveDraft} onPress={handleSave}>
                     <Ionicons name="download-outline" size={24} color="white" />
-                    <Text style={styles.previewBottomText}>Save</Text>
+                    <Text style={styles.previewBottomText}>{t('save')}</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -922,7 +924,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                       <ActivityIndicator color="black" size="small" />
                     ) : (
                       <>
-                        <Text style={styles.shareButtonText}>Share Story</Text>
+                        <Text style={styles.shareButtonText}>{t('share_story')}</Text>
                         <Ionicons name="chevron-forward" size={20} color="black" />
                       </>
                     )}
@@ -993,7 +995,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                   ]}
                   value={currentText}
                   onChangeText={setCurrentText}
-                  placeholder="Type something..."
+                  placeholder={t('type_something_placeholder')}
                   placeholderTextColor="rgba(255,255,255,0.5)"
                   selectionColor="white"
                   multiline={true}
@@ -1090,7 +1092,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                   onPress={handleAddText}
                   disabled={!currentText.trim()}
                 >
-                  <Text style={styles.editorDoneText}>Add Text</Text>
+                  <Text style={styles.editorDoneText}>{t('add_text')}</Text>
                 </TouchableOpacity>
               </View>
             </KeyboardAvoidingView>
@@ -1129,12 +1131,12 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
               style={styles.feelingInputContainer}
             >
               <BlurView intensity={90} tint={activeScheme as any} style={[styles.feelingInputContent, { backgroundColor: colors.surface }]}>
-                <Text style={feelingText ? [styles.feelingInputTitle, { color: colors.text }] : [styles.feelingInputTitle, { opacity: 0 }]}>How are you feeling?</Text>
+                <Text style={feelingText ? [styles.feelingInputTitle, { color: colors.text }] : [styles.feelingInputTitle, { opacity: 0 }]}>{t('feeling_prompt')}</Text>
                 <View style={[styles.feelingInputRow, { backgroundColor: colors.muted }]}>
                   <Text style={styles.feelingEmojiPreview}>{tempEmoji}</Text>
                   <TextInput
                     style={[styles.feelingTextInput, { color: colors.text }]}
-                    placeholder="e.g. happy, thinking, eating..."
+                    placeholder={t('feeling_placeholder')}
                     placeholderTextColor={colors.textSecondary}
                     value={feelingText}
                     onChangeText={setFeelingText}
@@ -1151,13 +1153,13 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                       setFeelingText('');
                     }}
                   >
-                    <Text style={[styles.feelingCancelText, { color: colors.text }]}>Cancel</Text>
+                    <Text style={[styles.feelingCancelText, { color: colors.text }]}>{t('cancel')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.feelingDoneButton}
                     onPress={handleFinishFeeling}
                   >
-                    <Text style={styles.feelingDoneText}>Add Feeling</Text>
+                    <Text style={styles.feelingDoneText}>{t('add_feeling')}</Text>
                   </TouchableOpacity>
                 </View>
               </BlurView>

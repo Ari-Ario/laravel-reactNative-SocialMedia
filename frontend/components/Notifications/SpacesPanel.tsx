@@ -16,8 +16,11 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { createShadow } from '@/utils/styles';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { Notification } from '@/types/Notification';
+import Avatar from '../Image/Avatar';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { router } from 'expo-router';
+import { useTranslation } from '@/constants/i18n';
+import { formatTimeAgo } from '@/utils/dateUtils';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import AuthContext from '@/context/AuthContext';
 import { useCollaborationStore } from '@/stores/collaborationStore';
@@ -31,6 +34,7 @@ type SpacesPanelProps = {
 
 const SpacesPanel = ({ visible, onClose, anchorPosition }: SpacesPanelProps) => {
     const { colors, activeScheme } = useAppTheme();
+    const { t } = useTranslation();
     const {
         getSpaces,
         markAsRead,
@@ -64,11 +68,11 @@ const SpacesPanel = ({ visible, onClose, anchorPosition }: SpacesPanelProps) => 
             await CollaborationService.respondToInvitation(spaceId, 'accepted');
             await refreshCollaborations();
             markAsRead(item.id);
-            Alert.alert('Success', 'You have joined the space');
+            Alert.alert(t('success'), t('success_joined_space'));
             handleSpacePress(item);
         } catch (error) {
             console.error('Error accepting invitation:', error);
-            Alert.alert('Error', 'Failed to accept invitation');
+            Alert.alert(t('error'), t('error_accept_invitation'));
         }
     };
 
@@ -83,11 +87,10 @@ const SpacesPanel = ({ visible, onClose, anchorPosition }: SpacesPanelProps) => 
             onPress={() => handleSpacePress(item)}
         >
             <View style={styles.Foto}>
-                <Image
-                    source={{
-                        uri: item.avatar ? `${getApiBaseImage()}/storage/${item.avatar}` : undefined
-                    }}
-                    defaultSource={require('@/assets/images/favicon.png')}
+                <Avatar
+                    source={item.avatar}
+                    name={item.title}
+                    size={48}
                     style={[styles.avatar, { borderColor: colors.surface, backgroundColor: colors.muted }]}
                 />
             </View>
@@ -118,7 +121,7 @@ const SpacesPanel = ({ visible, onClose, anchorPosition }: SpacesPanelProps) => 
                                     handleAcceptInvitation(item);
                                 }}
                             >
-                                <Text style={styles.acceptButtonText}>Accept</Text>
+                                <Text style={styles.acceptButtonText}>{t('accept')}</Text>
                             </TouchableOpacity>
                         </View>
                     )}
@@ -137,20 +140,7 @@ const SpacesPanel = ({ visible, onClose, anchorPosition }: SpacesPanelProps) => 
         </TouchableOpacity>
     );
 
-    const formatTimeAgo = (dateString: string) => {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMins / 60);
-        const diffDays = Math.floor(diffHours / 24);
-
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffHours < 24) return `${diffHours}h ago`;
-        if (diffDays < 7) return `${diffDays}d ago`;
-        return date.toLocaleDateString();
-    };
+    // formatTimeAgo removed as it is now imported from utils/dateUtils
 
     return (
         <Modal
@@ -194,7 +184,7 @@ const SpacesPanel = ({ visible, onClose, anchorPosition }: SpacesPanelProps) => 
                 <View style={styles.contentWrapper}>
                     <View style={[styles.panelHeader, { borderBottomColor: colors.border, backgroundColor: colors.surface }]}>
                         <Text style={[styles.panelTitle, { color: colors.text }]}>
-                            Spaces {spaces.length > 0 ? `(${spaces.length})` : ''}
+                            {t('spaces_count', { count: spaces.length })}
                         </Text>
                         <TouchableOpacity onPress={onClose} style={[styles.closeButton, { backgroundColor: colors.muted }]}>
                             <Ionicons name="close" size={20} color={colors.textSecondary} />
@@ -204,9 +194,9 @@ const SpacesPanel = ({ visible, onClose, anchorPosition }: SpacesPanelProps) => 
                         {spaces.length === 0 ? (
                             <View style={styles.emptyState}>
                                 <Ionicons name="cube-outline" size={48} color={colors.textSecondary + '40'} />
-                                <Text style={[styles.emptyText, { color: colors.text }]}>No space notifications</Text>
+                                <Text style={[styles.emptyText, { color: colors.text }]}>{t('no_spaces')}</Text>
                                 <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
-                                    Space invitations and updates will appear here
+                                    {t('no_spaces_desc')}
                                 </Text>
                             </View>
                         ) : (

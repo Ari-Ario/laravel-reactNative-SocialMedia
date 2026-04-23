@@ -14,8 +14,10 @@ import {
   Platform,
   Dimensions,
   StatusBar,
-  FlatList
+  FlatList,
+  useColorScheme
 } from 'react-native';
+import { useTranslation } from '@/constants/i18n';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import { GlobalStyles } from '@/styles/GlobalStyles';
@@ -64,6 +66,7 @@ interface CreatePostProps {
 }
 
 export default function CreatePost({ visible, onClose, onPostCreated, initialParams }: CreatePostProps) {
+  const { t } = useTranslation();
   const { colors, activeScheme } = useAppTheme();
   const styles = getStyles(colors, activeScheme);
   const insets = useSafeAreaInsets();
@@ -117,7 +120,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
           console.log('🔄 Editor: Initializing edit for post', activePostId);
           
           // 1. Initial sync from provided data
-          setCaption((activeCaption as string) || '');
+          setCaption(activeCaption && activeCaption !== 'null' ? String(activeCaption) : '');
           try {
             if (activeMedia) {
               const parsedMedia = typeof activeMedia === 'string' ? JSON.parse(activeMedia) : activeMedia;
@@ -138,7 +141,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
             if (!isNaN(numericId) && numericId > 0) {
               const fullPost = await postStore.hydratePost(numericId);
               if (fullPost) {
-                setCaption(fullPost.caption || '');
+                setCaption(fullPost.caption && fullPost.caption !== 'null' ? String(fullPost.caption) : '');
                 setMedia(fullPost.media || []);
                 if (fullPost.location) {
                   const loc = typeof fullPost.location === 'string' ? JSON.parse(fullPost.location) : fullPost.location;
@@ -151,7 +154,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
           }
         } else {
           // New post reset
-          setCaption((activeCaption as string) || '');
+          setCaption(activeCaption && activeCaption !== 'null' ? String(activeCaption) : '');
           setMedia([]);
           setLocation(null);
         }
@@ -306,7 +309,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
         setCameraVisible(false);
       } catch (error) {
         console.error('Error taking photo:', error);
-        Alert.alert('Error', 'Failed to capture photo');
+        Alert.alert(t('error'), t('failed_capture_photo'));
       }
     }
   };
@@ -443,7 +446,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
       setVideoToTrimIndex(null);
     } catch (err) {
       console.error('Trim save error:', err);
-      Alert.alert('Error', 'Failed to save trimmed video');
+      Alert.alert(t('error'), t('failed_save_trimmed_video'));
     } finally {
       setIsUploading(false);
     }
@@ -482,7 +485,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
         setCameraVisible(false);
       } catch (error) {
         console.error('Error taking photo:', error);
-        Alert.alert('Error', 'Failed to capture photo. Please try again.');
+        Alert.alert(t('error'), t('failed_capture_photo_retry'));
       }
     }
   };
@@ -511,7 +514,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
 
   const handleSubmit = async () => {
     if (!caption.trim() && media.length === 0) {
-      Alert.alert('Error', 'Please add a caption or media');
+      Alert.alert(t('error'), t('add_caption_or_media_error'));
       return;
     }
 
@@ -522,9 +525,9 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
 
     if (untrimmedLongVideos.length > 0) {
       Alert.alert(
-        'Long Videos Detected',
-        'Please trim videos longer than 2 minutes before posting.',
-        [{ text: 'OK' }]
+        t('long_videos_detected'),
+        t('trim_videos_warning'),
+        [{ text: t('ok') }]
       );
       return;
     }
@@ -691,8 +694,8 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
                 </TouchableOpacity>
                 <Text style={styles.modeText}>
                   {cameraMode === 'video'
-                    ? isRecording ? `Recording ${Math.floor(recordingProgress * RECORDING_LIMIT_MS / 1000)}s` : 'Hold for Video'
-                    : 'Tap for Photo'}
+                    ? isRecording ? `${t('recording_label')} ${Math.floor(recordingProgress * RECORDING_LIMIT_MS / 1000)}s` : t('hold_for_video')
+                    : t('tap_for_photo')}
                 </Text>
               </View>
 
@@ -706,13 +709,13 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
                 onPress={() => setCameraMode('picture')}
                 style={[styles.modeButton, cameraMode === 'picture' && styles.activeModeButton]}
               >
-                <Text style={[styles.modeItem, cameraMode === 'picture' && styles.activeMode]}>PHOTO</Text>
+                <Text style={[styles.modeItem, cameraMode === 'picture' && styles.activeMode]}>{t('photo_label').toUpperCase()}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setCameraMode('video')}
                 style={[styles.modeButton, cameraMode === 'video' && styles.activeModeButton]}
               >
-                <Text style={[styles.modeItem, cameraMode === 'video' && styles.activeMode]}>VIDEO</Text>
+                <Text style={[styles.modeItem, cameraMode === 'video' && styles.activeMode]}>{t('video_label').toUpperCase()}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -737,7 +740,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
               <TouchableOpacity onPress={handleClose}>
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
-              <Text style={[styles.title, { color: colors.text }]}>{isEditing ? 'Edit Post' : 'New Post'}</Text>
+              <Text style={[styles.title, { color: colors.text }]}>{isEditing ? t('edit_post') : t('new_post')}</Text>
               <TouchableOpacity
                 onPress={handleSubmit}
                 disabled={isUploading || (longVideosDetected && !isEditing)}
@@ -749,7 +752,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
                     styles.postButton,
                     (longVideosDetected && !isEditing) && styles.postButtonDisabled
                   ]}>
-                    {isEditing ? 'Update' : 'Post'}
+                    {isEditing ? t('update') : t('post')}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -758,7 +761,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
             <ScrollView contentContainerStyle={styles.content}>
               <TextInput
                 style={[styles.captionInput, { color: colors.text }]}
-                placeholder="What's happening?"
+                placeholder={t('whats_happening_placeholder')}
             placeholderTextColor={colors.textSecondary}
             multiline
             value={caption}
@@ -775,19 +778,19 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
                   color={isSafe ? colors.success : colors.error} 
                 />
                 <Text style={[styles.aiShieldTitle, { color: isSafe ? colors.success : colors.error }]}>
-                  AI Shield: {isChecking ? 'Analyzing...' : isSafe ? 'Safe Content' : 'Potential Violation'}
+                  {t('ai_shield')}: {isChecking ? t('analyzing') : isSafe ? t('safe_content') : t('potential_violation')}
                 </Text>
               </View>
               
               <View style={styles.aiMetricsRow}>
                 <View style={styles.aiMetric}>
-                  <Text style={[styles.aiMetricLabel, { color: colors.textSecondary }]}>Scientific / Factual</Text>
+                  <Text style={[styles.aiMetricLabel, { color: colors.textSecondary }]}>{t('factual_score')}</Text>
                   <Text style={[styles.aiMetricValue, { color: factScore > 0.8 ? colors.success : colors.text }]}>
                     {(factScore * 100).toFixed(0)}%
                   </Text>
                 </View>
                 <View style={styles.aiMetric}>
-                  <Text style={[styles.aiMetricLabel, { color: colors.textSecondary }]}>Morality Score</Text>
+                  <Text style={[styles.aiMetricLabel, { color: colors.textSecondary }]}>{t('morality_score')}</Text>
                   <Text style={[styles.aiMetricValue, { color: moralityScore > 0.8 ? colors.success : colors.text }]}>
                     {(moralityScore * 100).toFixed(0)}%
                   </Text>
@@ -824,7 +827,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
                 onPress={() => setShowLocationSearch(true)}
               >
                 <Ionicons name="location-outline" size={20} color={colors.tint} />
-                <Text style={[styles.addLocationText, { color: colors.tint }]}>Add location</Text>
+                <Text style={[styles.addLocationText, { color: colors.tint }]}>{t('add_location')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -834,7 +837,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
             <View style={styles.warningContainer}>
               <Ionicons name="alert-circle" size={20} color="#FF9500" />
               <Text style={styles.warningText}>
-                Videos longer than 2 minutes need to be trimmed before posting
+                {t('long_video_warning')}
               </Text>
             </View>
           )}
@@ -857,7 +860,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
                             </Text>
                             {item.startTime !== undefined && (
                               <View style={styles.trimmedBadgeTiny}>
-                                <Text style={styles.trimmedTextTiny}>Trimmed</Text>
+                                <Text style={styles.trimmedTextTiny}>{t('trimmed')}</Text>
                               </View>
                             )}
                           </View>
@@ -870,7 +873,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
                           >
                             <View style={styles.trimBadge}>
                               <Ionicons name="cut" size={16} color="#fff" />
-                              <Text style={styles.trimText}>Cut to 2m</Text>
+                              <Text style={styles.trimText}>{t('cut_to_2m')}</Text>
                             </View>
                           </TouchableOpacity>
                         )}
@@ -882,7 +885,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
                           >
                             <View style={styles.trimBadgeActive}>
                               <Ionicons name="checkmark-circle" size={16} color="#fff" />
-                              <Text style={styles.trimText}>Trimmed</Text>
+                              <Text style={styles.trimText}>{t('trimmed')}</Text>
                             </View>
                           </TouchableOpacity>
                         )}
@@ -921,7 +924,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
               onPress={pickMedia}
             >
               <Ionicons name="image" size={24} color={colors.tint} />
-              <Text style={[styles.mediaButtonText, { color: colors.tint }]}>Library</Text>
+              <Text style={[styles.mediaButtonText, { color: colors.tint }]}>{t('library')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -929,7 +932,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
               onPress={() => setCameraVisible(true)}
             >
               <Ionicons name="camera" size={24} color={colors.tint} />
-              <Text style={[styles.mediaButtonText, { color: colors.tint }]}>Camera</Text>
+              <Text style={[styles.mediaButtonText, { color: colors.tint }]}>{t('camera')}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

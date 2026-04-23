@@ -5,10 +5,11 @@ import {
     Text,
     StyleSheet,
     Button,
-    TouchableOpacity,
+    Alert,
     Platform,
-    Alert
+    TouchableOpacity
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import * as Localization from 'expo-localization';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -23,8 +24,9 @@ import { BackButton } from "@/components/ui/IconButton";
 import { useTranslation } from "@/constants/i18n";
 
 const RegisterUser: React.FC = () => {
-    const { colors } = useAppTheme();
+    const { colors, activeScheme } = useAppTheme();
     const { t, isRTL } = useTranslation();
+    const styles = getStyles(colors, activeScheme, isRTL);
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -32,7 +34,7 @@ const RegisterUser: React.FC = () => {
     const [errors, setErrors] = useState<any>({});
     const [loading, setLoading] = useState(false);
 
-    const { setUser } = useContext(AuthContext); // Get setUser from context
+    const { setUser } = useContext(AuthContext);
 
     async function handleRegister() {
         setErrors({});
@@ -48,53 +50,34 @@ const RegisterUser: React.FC = () => {
                 locale: Localization.getLocales()[0]?.languageCode || 'en',
             });
 
-            console.log('Register response:', response);
-
-            // Save the token from registration response
             if (response.token) {
                 await setToken(response.token);
-                console.log('Token saved during registration');
             }
 
-            // Save the user to context
             if (response.user) {
                 setUser(response.user);
-                console.log('User saved to context:', response.user);
             }
 
-            // Check if verification is required
             if (response.requires_verification && response.user_id) {
-                console.log('Navigation params:', {
-                    userId: response.user_id,
-                    email: email,
-                    token: response.token,
-                    user: response.user // Pass user object too
-                });
-
-                // Navigate to VerificationScreen with all data
                 router.push({
                     pathname: '/VerificationScreen',
                     params: {
                         userId: String(response.user_id),
                         email: email,
                         token: response.token,
-                        user: JSON.stringify(response.user) // Stringify user object
+                        user: JSON.stringify(response.user)
                     }
                 });
             } else if (response.token && response.user.email_verified_at) {
-                // If auto-verified or no verification needed
                 router.replace('/(tabs)');
             }
 
-            // Reset form
             setName("");
             setEmail("");
             setPassword("");
             setPasswordConfirmation("");
 
         } catch (e: any) {
-            console.error('Registration error:', e.response?.data);
-
             if (e.response?.status === 422) {
                 setErrors(e.response.data.errors || {});
             } else if (e.response?.data?.message) {
@@ -108,16 +91,21 @@ const RegisterUser: React.FC = () => {
     }
 
     return (
-        <SafeAreaView style={[styles.wrapper, { backgroundColor: colors.background }]}>
-            <View style={{ position: 'absolute', top: 10, left: 10, zIndex: 10 }}>
+        <SafeAreaView style={styles.wrapper}>
+            <View style={{ position: 'absolute', top: 10, [isRTL ? 'right' : 'left']: 10, zIndex: 10 }}>
                 <Link href={'/'} asChild>
                     <BackButton />
                 </Link>
             </View>
 
-            <View style={[styles.container, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
-                <Text style={[styles.title, { color: colors.text }]}>{t('create_account')}</Text>
+            <View style={styles.headerIcon}>
+                <Ionicons name="person-add-outline" size={40} color={colors.tint} />
+            </View>
 
+            <Text style={styles.title}>{t('create_account')}</Text>
+            <Text style={styles.subtitle}>{t('register_subtitle')}</Text>
+
+            <View style={styles.container}>
                 <FormTextField
                     label={t('name') + ":"}
                     value={name}
@@ -149,21 +137,23 @@ const RegisterUser: React.FC = () => {
                     errors={errors.password_confirmation}
                 />
 
-                <Button
-                    title={loading ? t('registering') : t('register')}
-                    onPress={handleRegister}
-                    disabled={loading}
-                />
-
                 {errors.general && (
-                    <Text style={[styles.errorText, { color: colors.error }]}>{errors.general}</Text>
+                    <Text style={styles.errorText}>{errors.general}</Text>
                 )}
 
-                <View style={[styles.loginLink, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                <TouchableOpacity 
+                    style={[styles.button, loading && { opacity: 0.7 }]} 
+                    onPress={handleRegister}
+                    disabled={loading}
+                >
+                    <Text style={styles.buttonText}>{loading ? t('registering') : t('register')}</Text>
+                </TouchableOpacity>
+
+                <View style={styles.loginLink}>
                     <Text style={{ color: colors.textSecondary }}>{t('already_account')}</Text>
                     <Link href="/LoginScreen" asChild>
                         <TouchableOpacity>
-                            <Text style={[styles.linkText, { color: colors.tint }]}>{t('login_btn')}</Text>
+                            <Text style={styles.linkText}>{t('login_btn')}</Text>
                         </TouchableOpacity>
                     </Link>
                 </View>
@@ -173,50 +163,77 @@ const RegisterUser: React.FC = () => {
 };
 
 
-const styles = StyleSheet.create({
+function getStyles(colors: any, activeScheme: string, isRTL: boolean) {
+  return StyleSheet.create({
     wrapper: {
         flex: 1,
+        padding: 24,
         justifyContent: 'center',
-        alignItems: 'center',
+        backgroundColor: colors.background,
     },
-    container: {
-        padding: 20,
-        rowGap: 16,
-        width: 300,
+    headerIcon: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: colors.surface,
+        alignItems: 'center',
+        justifyContent: 'center',
+        alignSelf: 'center',
+        marginBottom: 24,
+        borderWidth: 1,
+        borderColor: colors.border,
     },
     title: {
-        fontSize: 24,
-        fontWeight: 'bold',
+        fontSize: 28,
+        fontWeight: '900',
+        color: colors.text,
+        marginBottom: 8,
         textAlign: 'center',
-        marginBottom: 20,
+        letterSpacing: -0.5,
     },
-    button: {
-        top: 0,
-        left: 0,
+    subtitle: {
+        fontSize: 16,
+        color: colors.textSecondary,
+        marginBottom: 32,
+        textAlign: 'center',
+        lineHeight: 24,
+    },
+    container: {
         width: '100%',
-        textAlign: 'left',
-        marginBottom: 20,
-    },
-    buttonText: {
-        textAlign: "center",
-        color: "blue",
-        fontSize: 22,
-        fontWeight: '500',
+        maxWidth: 400,
+        alignSelf: 'center',
     },
     errorText: {
-        color: 'red',
         textAlign: 'center',
-        marginTop: 10,
-    },
-    loginLink: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        marginTop: 20,
-    },
-    linkText: {
-        color: 'blue',
+        marginBottom: 10,
+        color: colors.error,
         fontWeight: '600',
     },
-});
+    button: {
+        backgroundColor: colors.tint,
+        height: 56,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 16,
+    },
+    buttonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '800',
+    },
+    loginLink: {
+        flexDirection: isRTL ? 'row-reverse' : 'row',
+        justifyContent: 'center',
+        marginTop: 24,
+        gap: 8,
+    },
+    linkText: {
+        fontWeight: '700',
+        color: colors.tint,
+        fontSize: 15,
+    },
+  });
+}
 
 export default RegisterUser;

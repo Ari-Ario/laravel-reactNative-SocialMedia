@@ -12,6 +12,7 @@ import { MotiView } from 'moti';
 import { Ionicons } from '@expo/vector-icons';
 import { createShadow } from '@/utils/styles';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 
 export interface AttachmentPickerProps {
     isVisible: boolean;
@@ -46,6 +47,7 @@ const AttachmentPicker: React.FC<AttachmentPickerProps> = ({
     onSelectAction,
 }) => {
     const { colors, activeScheme } = useAppTheme();
+    const { t } = useTranslation();
     const styles = getStyles(colors, activeScheme);
 
     if (!isVisible) return null;
@@ -64,12 +66,12 @@ const AttachmentPicker: React.FC<AttachmentPickerProps> = ({
             >
                 <View style={styles.handle} />
                 <View style={styles.grid}>
-                    <ActionBtn icon="document-text" label="Document" color="#7F66FF" onPress={() => onSelectAction('document')} styles={styles} />
-                    <ActionBtn icon="camera" label="Camera" color="#FF4567" onPress={() => onSelectAction('camera')} styles={styles} />
-                    <ActionBtn icon="images" label="Gallery" color="#BF59CF" onPress={() => onSelectAction('gallery')} styles={styles} />
-                    <ActionBtn icon="location" label="Location" color="#02B558" onPress={() => onSelectAction('location')} styles={styles} />
-                    <ActionBtn icon="person" label="Contact" color="#009DE2" onPress={() => onSelectAction('contact')} styles={styles} />
-                    <ActionBtn icon="bar-chart" label="Poll" color="#00A884" onPress={() => onSelectAction('poll')} styles={styles} />
+                    <ActionBtn icon="document-text" label={t('document')} color="#7F66FF" onPress={() => onSelectAction('document')} styles={styles} />
+                    <ActionBtn icon="camera" label={t('camera')} color="#FF4567" onPress={() => onSelectAction('camera')} styles={styles} />
+                    <ActionBtn icon="images" label={t('gallery')} color="#BF59CF" onPress={() => onSelectAction('gallery')} styles={styles} />
+                    <ActionBtn icon="location" label={t('location')} color="#02B558" onPress={() => onSelectAction('location')} styles={styles} />
+                    <ActionBtn icon="person" label={t('contact')} color="#009DE2" onPress={() => onSelectAction('contact')} styles={styles} />
+                    <ActionBtn icon="bar-chart" label={t('poll')} color="#00A884" onPress={() => onSelectAction('poll')} styles={styles} />
                 </View>
             </MotiView>
         </View>

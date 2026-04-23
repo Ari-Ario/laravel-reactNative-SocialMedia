@@ -32,6 +32,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
 import EmojiKeyboard from 'rn-emoji-keyboard';
+import { useTranslation } from '@/constants/i18n';
 import { createShadow } from '@/utils/styles';
 
 const { width: SW, height: SH } = Dimensions.get('window');
@@ -130,6 +131,7 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
     onEditPoll,
     onSharePollResults,
 }) => {
+    const { t } = useTranslation();
     const scaleAnim = useRef(new Animated.Value(0.88)).current;
     const opacityAnim = useRef(new Animated.Value(0)).current;
     const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
@@ -172,7 +174,7 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
         if (!isPoll && onReply) {
             actions.push({
                 id: 'reply',
-                label: 'Reply',
+                label: t('reply'),
                 icon: 'arrow-undo-outline',
                 onPress: () => { onClose(); onReply(message); },
             });
@@ -182,7 +184,7 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
         if (isText && message.content && onCopy) {
             actions.push({
                 id: 'copy',
-                label: 'Copy Text',
+                label: t('copy_text'),
                 icon: 'copy-outline',
                 onPress: () => {
                     onClose();
@@ -196,7 +198,7 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
         if (isText && message.content && onTranslate) {
             actions.push({
                 id: 'translate',
-                label: 'Translate',
+                label: t('translate'),
                 icon: 'language-outline',
                 color: '#5856D6',
                 onPress: () => { onClose(); onTranslate(message); },
@@ -207,7 +209,7 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
         if (!isPoll && onForward) {
             actions.push({
                 id: 'forward',
-                label: 'Forward',
+                label: t('forward'),
                 icon: 'arrow-redo-outline',
                 onPress: () => { onClose(); onForward(message); },
             });
@@ -217,7 +219,7 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
         if (!isPoll && isModerator && onPin) {
             actions.push({
                 id: 'pin',
-                label: 'Pin Message',
+                label: t('pin_message'),
                 icon: 'pin-outline',
                 color: '#FF9500',
                 onPress: () => { onClose(); onPin(message); },
@@ -228,7 +230,7 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
         if (!isPoll && onSelect) {
             actions.push({
                 id: 'select',
-                label: 'Select',
+                label: t('select'),
                 icon: 'checkmark-circle-outline',
                 onPress: () => { onClose(); onSelect(message); },
             });
@@ -245,7 +247,7 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
             if (onSharePollResults) {
                 actions.push({
                     id: 'poll_share_results',
-                    label: 'Share Results',
+                    label: t('share_results'),
                     icon: 'share-social-outline',
                     color: '#9C27B0',
                     onPress: () => { onClose(); onSharePollResults(message); },
@@ -256,7 +258,7 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
             if (pollActive && (isCurrentUser || isModerator) && onForwardPoll) {
                 actions.push({
                     id: 'poll_forward',
-                    label: 'Forward to Spaces',
+                    label: t('forward_to_spaces_label'),
                     icon: 'share-outline',
                     color: '#4CAF50',
                     onPress: () => { onClose(); onForwardPoll(message); },
@@ -267,7 +269,7 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
             if (pollActive && isCurrentUser && !hasVotes && onEditPoll) {
                 actions.push({
                     id: 'poll_edit',
-                    label: 'Edit Poll',
+                    label: t('edit_poll_label'),
                     icon: 'create-outline',
                     color: '#007AFF',
                     onPress: () => { onClose(); onEditPoll(message); },
@@ -278,7 +280,7 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
             if (pollActive && (isCurrentUser || isModerator) && onClosePoll) {
                 actions.push({
                     id: 'poll_close',
-                    label: 'Close Poll',
+                    label: t('close_poll_label'),
                     icon: 'close-circle-outline',
                     color: '#FF9500',
                     onPress: () => { onClose(); onClosePoll(message); },
@@ -295,23 +297,23 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
         if (canDeleteForAll && onDeleteForAll) {
             actions.push({
                 id: 'delete_all',
-                label: isPoll ? 'Delete Poll' : 'Delete for Everyone',
+                label: isPoll ? t('delete_poll_label') : t('delete_for_everyone'),
                 icon: 'trash',
                 destructive: true,
                 onPress: () => {
                     onClose();
 
                     if (Platform.OS === 'web') {
-                        if (window.confirm(`Delete ${isPoll ? 'Poll' : 'Message'}\n\nThis will remove it for everyone.`)) {
+                        if (window.confirm(`${t('delete')} ${isPoll ? t('poll') : t('message')}\n\n${t('delete_message_confirm')}`)) {
                             onDeleteForAll(message);
                         }
                     } else {
                         Alert.alert(
-                            `Delete ${isPoll ? 'Poll' : 'Message'}`,
-                            'This will remove it for everyone.',
+                            `${t('delete')} ${isPoll ? t('poll') : t('message')}`,
+                            t('delete_message_confirm'),
                             [
-                                { text: 'Cancel', style: 'cancel' },
-                                { text: 'Delete', style: 'destructive', onPress: () => onDeleteForAll(message) },
+                                { text: t('cancel'), style: 'cancel' },
+                                { text: t('delete'), style: 'destructive', onPress: () => onDeleteForAll(message) },
                             ]
                         );
                     }
@@ -323,23 +325,23 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
         if (!isPoll && onDeleteForMe) {
             actions.push({
                 id: 'delete_me',
-                label: 'Delete for Me',
+                label: t('delete_for_me'),
                 icon: 'trash-outline',
                 destructive: true,
                 onPress: () => {
                     onClose();
 
                     if (Platform.OS === 'web') {
-                        if (window.confirm('Delete Message\n\nRemove this message from your view only?')) {
+                        if (window.confirm(`${t('delete')} ${t('message')}\n\n${t('delete_message_for_me_confirm')}`)) {
                             onDeleteForMe(message);
                         }
                     } else {
                         Alert.alert(
-                            'Delete Message',
-                            'Remove this message from your view only?',
+                            `${t('delete')} ${t('message')}`,
+                            t('delete_message_for_me_confirm'),
                             [
-                                { text: 'Cancel', style: 'cancel' },
-                                { text: 'Delete', style: 'destructive', onPress: () => onDeleteForMe(message) },
+                                { text: t('cancel'), style: 'cancel' },
+                                { text: t('delete'), style: 'destructive', onPress: () => onDeleteForMe(message) },
                             ]
                         );
                     }
@@ -499,7 +501,7 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                             {/* Meta footer */}
                             <View style={styles.metaRow}>
                                 <Text style={styles.metaText} numberOfLines={1}>
-                                    {message.user?.name ?? 'Unknown'} · {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    {message.user?.name ?? t('unknown_user')} · {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </Text>
                             </View>
 

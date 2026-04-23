@@ -30,6 +30,7 @@ import Avatar from '@/components/Image/Avatar';
 import { useRouter } from 'expo-router';
 import { safeHaptics } from '@/utils/haptics';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 import { GlobalStyles } from '@/styles/GlobalStyles';
 import AddStory from '@/components/AddStory';
 import CreatePost from '@/components/CreatePost';
@@ -76,6 +77,7 @@ const PollVotersModal: React.FC<PollVotersModalProps> = ({
     spaceId,
 }) => {
     const { colors: themeColors, activeScheme } = useAppTheme();
+    const { t } = useTranslation();
     const styles = getStyles(themeColors, activeScheme);
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'voters' | 'bars' | 'grid'>('voters');
@@ -103,7 +105,7 @@ const PollVotersModal: React.FC<PollVotersModalProps> = ({
             const votes = opt.votes || [];
             const allVoters = [...voters, ...votes.map((v: any) => ({
                 userId: v.user_id || v.userId,
-                name: v.name || 'User',
+                name: v.name || t('user'),
                 avatar: v.avatar,
             }))];
             const uniqueVoters = Array.from(new Map(allVoters.map(v => [v.userId, v])).values());
@@ -124,9 +126,9 @@ const PollVotersModal: React.FC<PollVotersModalProps> = ({
     const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#D4A5A5', '#9B59B6', '#3498DB'];
 
     const getResultsText = React.useCallback(() => {
-        return `📊 Poll Results: ${poll.question}\n\n` +
-            optionsWithVoters.map((opt: any) => `${opt.text}: ${opt.voteCount} votes`).join('\n') +
-            `\n\nTotal votes: ${totalVotes}`;
+        return t('poll_results_title').replace('{question}', poll.question) + '\n\n' +
+            optionsWithVoters.map((opt: any) => `${opt.text}: ${opt.voteCount} ${opt.voteCount !== 1 ? t('votes_plural') : t('votes_singular')}`).join('\n') +
+            `\n\n${t('total_votes_label').replace('{count}', String(totalVotes))}`;
     }, [poll.question, optionsWithVoters, totalVotes]);
 
     const toggleOption = (optionId: string) => {
@@ -166,18 +168,18 @@ const PollVotersModal: React.FC<PollVotersModalProps> = ({
                         {isExpanded && (
                             <Animated.View entering={FadeIn} style={styles.votersList}>
                                 {option.voters.length === 0 ? (
-                                    <Text style={styles.noVoters}>No votes yet</Text>
+                                    <Text style={styles.noVoters}>{t('no_votes_yet')}</Text>
                                 ) : (
                                     displayVoters.map((voter: any) => (
                                         <View key={voter.userId} style={styles.voterItem}>
                                             <Avatar source={voter.avatar} size={32} name={voter.name} />
-                                            <Text style={styles.voterName}>{voter.name}{voter.userId === currentUserId && ' (You)'}</Text>
+                                            <Text style={styles.voterName}>{voter.name}{voter.userId === currentUserId && ` (${t('you')})`}</Text>
                                         </View>
                                     ))
                                 )}
                                 {hasMore && !isExpanded && (
                                     <TouchableOpacity style={styles.viewMore} onPress={() => toggleOption(option.id)}>
-                                        <Text style={styles.viewMoreText}>View all {option.voters.length} voters</Text>
+                                        <Text style={styles.viewMoreText}>{t('view_all_voters_btn').replace('{count}', String(option.voters.length))}</Text>
                                     </TouchableOpacity>
                                 )}
                             </Animated.View>
@@ -191,7 +193,7 @@ const PollVotersModal: React.FC<PollVotersModalProps> = ({
     const renderBarChart = () => {
         return (
             <ScrollView style={styles.chartScroll} contentContainerStyle={styles.chartContent} showsVerticalScrollIndicator={false}>
-                <Text style={styles.chartTitle}>Vote Distribution</Text>
+                <Text style={styles.chartTitle}>{t('vote_distribution_title')}</Text>
                 {optionsWithVoters.map((option: any, idx: number) => (
                     <BarItem
                         key={option.id}
@@ -203,7 +205,7 @@ const PollVotersModal: React.FC<PollVotersModalProps> = ({
                         styles={styles}
                     />
                 ))}
-                <View style={styles.totalContainer}><Text style={styles.totalText}>Total votes: {totalVotes}</Text></View>
+                <View style={styles.totalContainer}><Text style={styles.totalText}>{t('total_votes_label').replace('{count}', String(totalVotes))}</Text></View>
             </ScrollView>
         );
     };
@@ -213,7 +215,7 @@ const PollVotersModal: React.FC<PollVotersModalProps> = ({
             return (
                 <View style={styles.emptyGrid}>
                     <Ionicons name="grid-outline" size={48} color="#ccc" />
-                    <Text style={styles.emptyGridText}>No votes yet</Text>
+                    <Text style={styles.emptyGridText}>{t('no_votes_yet')}</Text>
                 </View>
             );
         }
@@ -271,7 +273,7 @@ const PollVotersModal: React.FC<PollVotersModalProps> = ({
                 <View style={styles.modalOverlay}>
                     <Animated.View entering={SlideInDown.springify().damping(15)} exiting={Platform.OS === 'web' ? undefined : SlideOutDown} style={[styles.modalContent, GlobalStyles.popupContainer]}>
                         <LinearGradient colors={['#007AFF', '#005BB5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.headerGradient}>
-                            <Text style={styles.title}>Poll Results</Text>
+                            <Text style={styles.title}>{t('poll_results_title_simple')}</Text>
                             <View style={styles.headerActions}>
                                 <TouchableOpacity onPress={handleShareText} style={styles.headerButton}><Ionicons name="share-outline" size={22} color="#fff" /></TouchableOpacity>
                                 <TouchableOpacity onPress={handleShareToStory} style={styles.headerButton}><Ionicons name="paper-plane-outline" size={22} color="#fff" /></TouchableOpacity>
@@ -284,7 +286,7 @@ const PollVotersModal: React.FC<PollVotersModalProps> = ({
                             {['voters', 'bars', 'grid'].map((tab) => (
                                 <TouchableOpacity key={tab} style={[styles.tab, activeTab === tab && styles.activeTab]} onPress={() => setActiveTab(tab as any)}>
                                     <Ionicons name={tab === 'voters' ? 'people' : tab === 'bars' ? 'bar-chart' : 'grid'} size={18} color={activeTab === tab ? '#007AFF' : '#999'} />
-                                    <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>{tab.charAt(0).toUpperCase() + tab.slice(1)}</Text>
+                                    <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>{t(`${tab}_tab`)}</Text>
                                 </TouchableOpacity>
                             ))}
                         </View>

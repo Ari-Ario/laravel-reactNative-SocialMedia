@@ -7,6 +7,7 @@ import { useReportedContentStore } from '@/stores/reportedContentStore';
 import { deleteReportByTarget } from '@/services/ReportService';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useToastStore } from '@/stores/toastStore';
+import { useTranslation } from '@/constants/i18n';
 
 interface PostActionButtonsProps {
   post: {
@@ -21,8 +22,8 @@ interface PostActionButtonsProps {
   onReact: (emoji: string) => void;
   onDeleteReaction: () => void;
   onRepost: () => void;
-  onShare: () => void;
-  onBookmark: () => void;
+  onShare: (postId: number) => void;
+  onBookmark: (postId: number) => void;
   onCommentPress: () => void;
   currentReactingItem: {
     postId: number;
@@ -57,6 +58,7 @@ const PostActionButtonsBase = ({
   isDark,
 }: PostActionButtonsProps) => {
   const { colors } = useAppTheme();
+  const { t, isRTL } = useTranslation();
   const { user } = React.useContext(AuthContext);
   const reactionsToShow = getGroupedReactions(post, Number(user?.id) || undefined);
 
@@ -67,11 +69,13 @@ const PostActionButtonsBase = ({
   const reactionBorder = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)';
 
   return (
-    <View style={[styles.actionBar, compact && styles.compactActionBar]}>
+    <View style={[styles.actionBar, compact && styles.compactActionBar, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
       {/* Comment button */}
       <TouchableOpacity
-        style={[styles.actionButton, compact && styles.compactActionButton]}
+        style={[styles.actionButton, compact && styles.compactActionButton, { [isRTL ? 'marginLeft' : 'marginRight']: compact ? 12 : 20, flexDirection: isRTL ? 'row-reverse' : 'row' }]}
         onPress={onCommentPress}
+        accessibilityLabel={t('comment_count_label', { count: post.comments_count })}
+        accessibilityRole="button"
       >
         <Ionicons
           name="chatbubble-outline"
@@ -83,14 +87,16 @@ const PostActionButtonsBase = ({
           }
         />
         {post.comments_count > 0 && (
-          <Text style={[styles.actionCount, { color: secondaryColor }]}>{post.comments_count}</Text>
+          <Text style={[styles.actionCount, { color: secondaryColor, [isRTL ? 'marginRight' : 'marginLeft']: 5, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}>{post.comments_count}</Text>
         )}
       </TouchableOpacity>
 
       {/* Repost button */}
       <TouchableOpacity
-        style={[styles.actionButton, compact && styles.compactActionButton]}
+        style={[styles.actionButton, compact && styles.compactActionButton, { [isRTL ? 'marginLeft' : 'marginRight']: compact ? 12 : 20, flexDirection: isRTL ? 'row-reverse' : 'row' }]}
         onPress={onRepost}
+        accessibilityLabel={post.is_reposted ? t('undo_repost') : t('repost')}
+        accessibilityRole="button"
       >
         <Feather
           name="repeat"
@@ -101,7 +107,7 @@ const PostActionButtonsBase = ({
         {(post.reposts_count ?? 0) > 0 && (
           <Text style={[
             styles.actionCount,
-            { color: secondaryColor },
+            { color: secondaryColor, [isRTL ? 'marginRight' : 'marginLeft']: 5, [isRTL ? 'marginLeft' : 'marginRight']: 0 },
             post.is_reposted && styles.activeActionCount
           ]}>
             {post.reposts_count}
@@ -111,8 +117,10 @@ const PostActionButtonsBase = ({
 
       {/* Share button */}
       <TouchableOpacity
-        style={[styles.actionButton, compact && styles.compactActionButton]}
-        onPress={onShare}
+        style={[styles.actionButton, compact && styles.compactActionButton, { [isRTL ? 'marginLeft' : 'marginRight']: compact ? 12 : 20, flexDirection: isRTL ? 'row-reverse' : 'row' }]}
+        onPress={() => onShare(post.id)}
+        accessibilityLabel={t('share_action')}
+        accessibilityRole="button"
       >
         <Feather 
           name="send" 
@@ -127,7 +135,7 @@ const PostActionButtonsBase = ({
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[styles.reactionBar, compact && styles.compactReactionBar]}
+          contentContainerStyle={[styles.reactionBar, compact && styles.compactReactionBar, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
         >
           {reactionsToShow.map((reaction, idx) => {
             const isMyReaction = reaction.user_ids?.includes(Number(user?.id) || 0);
@@ -139,7 +147,8 @@ const PostActionButtonsBase = ({
                   styles.reactionItem,
                   compact && styles.compactReactionItem,
                   isMyReaction ? styles.reactionItemMine : { borderColor: reactionBorder },
-                  isDark && !isMyReaction && { backgroundColor: 'rgba(255,255,255,0.1)' }
+                  isDark && !isMyReaction && { backgroundColor: 'rgba(255,255,255,0.1)' },
+                  { flexDirection: isRTL ? 'row-reverse' : 'row' }
                 ]}
               >
                 <TouchableOpacity
@@ -154,7 +163,7 @@ const PostActionButtonsBase = ({
                 {reaction.count > 0 && (
                   <Text style={[
                     styles.reactionCount,
-                    { color: secondaryColor },
+                    { color: secondaryColor, [isRTL ? 'marginRight' : 'marginLeft']: compact ? 2 : 4, [isRTL ? 'marginLeft' : 'marginRight']: 0 },
                     compact && styles.compactReactionCount,
                     isMyReaction && styles.reactionCountMine
                   ]}>
@@ -168,7 +177,7 @@ const PostActionButtonsBase = ({
       </View>
 
       {/* Bookmark button */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 'auto', gap: 12 }}>
+      <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', [isRTL ? 'marginRight' : 'marginLeft']: 'auto', [isRTL ? 'marginLeft' : 'marginRight']: 0, gap: 12 }}>
           {useReportedContentStore.getState().isReported('post', post.id) && (
             <TouchableOpacity
               onPress={async () => {
@@ -176,12 +185,10 @@ const PostActionButtonsBase = ({
                   const { removeReportedItem } = useReportedContentStore.getState();
                   await deleteReportByTarget('post', post.id);
                   removeReportedItem('post', post.id);
-                  // @ts-ignore
-                  useToastStore.getState().showToast('Report removed successfully', 'success');
+                  useToastStore.getState().showToast(t('report_removed_msg'), 'success');
                 } catch (error) {
                   console.error('Failed to delete report:', error);
-                  // @ts-ignore
-                  useToastStore.getState().showToast('Failed to remove report', 'error');
+                  useToastStore.getState().showToast(t('failed_remove_report_msg'), 'error');
                 }
               }}
             >
@@ -194,8 +201,10 @@ const PostActionButtonsBase = ({
           )}
 
           <TouchableOpacity
-            style={[styles.actionButton, { marginRight: 0 }]}
-            onPress={onBookmark}
+            style={[styles.actionButton, { [isRTL ? 'marginLeft' : 'marginRight']: 0, flexDirection: isRTL ? 'row-reverse' : 'row' }]}
+            onPress={() => onBookmark(post.id)}
+            accessibilityLabel={t('bookmark_action')}
+            accessibilityRole="button"
           >
             <Ionicons 
               name={isBookmarked ? "bookmark" : "bookmark-outline"} 
@@ -222,10 +231,10 @@ const styles = StyleSheet.create({
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 20,
+    // margin removed here, handled dynamically in component
   },
   actionCount: {
-    marginLeft: 5,
+    // margin removed here, handled dynamically in component
     fontSize: 12,
   },
   darkActionCount: {
@@ -264,7 +273,7 @@ const styles = StyleSheet.create({
   },
   reactionCount: {
     fontSize: 12,
-    marginLeft: 4,
+    // margin removed here, handled dynamically in component
   },
   activeActionCount: {
     color: '#10b981',
@@ -275,7 +284,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   compactActionButton: {
-    marginRight: 12,
+    // margin removed here, handled dynamically in component
   },
   compactReactionBar: {
     gap: 4,
@@ -290,6 +299,6 @@ const styles = StyleSheet.create({
   },
   compactReactionCount: {
     fontSize: 10,
-    marginLeft: 2,
+    // margin removed here, handled dynamically in component
   },
 });

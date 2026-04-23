@@ -341,6 +341,55 @@ class SpaceController extends Controller
     }
 
     /**
+     * Create a space automatically from a story
+     */
+    public function createSpaceFromStory(Story $story, array $data)
+    {
+        DB::beginTransaction();
+        
+        try {
+            /** @var User $user */
+            $user = Auth::user();
+            
+            $space = CollaborationSpace::create([
+                'id' => (string) Str::uuid(),
+                'creator_id' => $user->id,
+                'space_type' => 'chat',
+                'title' => 'Space for: ' . ($story->caption ?: 'Story ' . $story->id),
+                'description' => $data['description'] ?? 'Collaboration space for story content',
+                'linked_story_id' => $story->id,
+                'settings' => $this->getDefaultSettings('chat'),
+                'content_state' => $this->getInitialContentState('chat'),
+                'has_ai_assistant' => false,
+                'activity_metrics' => [
+                    'total_interactions' => 0,
+                    'energy_level' => 50,
+                ],
+            ]);
+
+            SpaceParticipation::create([
+                'space_id' => $space->id,
+                'user_id' => $user->id,
+                'role' => 'owner',
+                'permissions' => $this->getOwnerPermissions(),
+                'presence_data' => [
+                    'is_online' => true,
+                    'device' => 'app',
+                    'last_seen' => now(),
+                ],
+            ]);
+
+            DB::commit();
+            return $space;
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error creating space from story: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
      * Get space details
      */
     public function show($id)
@@ -2248,6 +2297,38 @@ public function endCall(Request $request, $id)
             'space' => $space->fresh(),
             'message' => 'Magic event triggered'
         ]);
+    }
+
+    /**
+     * Mark a magic event as discovered
+     */
+    public function discoverMagic($eventId)
+    {
+        try {
+            $event = MagicEvent::findOrFail($eventId);
+            
+            if (!$event->has_been_discovered) {
+                $event->update([
+                    'has_been_discovered' => true,
+                    'discovery_path' => array_merge($event->discovery_path ?? [], [
+                        'discovered_by' => auth()->id(),
+                        'discovered_at' => now()->toDateTimeString(),
+                        'discovery_method' => 'manual_tap'
+                    ])
+                ]);
+            }
+            
+            return response()->json([
+                'message' => 'Magic event discovered',
+                'event' => $event
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error discovering magic event: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Error discovering magic event',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function getAISuggestions($id)

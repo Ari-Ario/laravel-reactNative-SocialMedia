@@ -19,6 +19,7 @@ import {
     Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from '@/constants/i18n';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import { createShadow } from '@/utils/styles';
 
@@ -194,6 +195,7 @@ const InlinePollCard: React.FC<InlinePollCardProps> = ({
     createdAt,
     isCurrentUser = false,
 }) => {
+    const { t } = useTranslation();
     const collaborationService = CollaborationService.getInstance();
 
     // Local poll state (for optimistic updates)
@@ -257,7 +259,7 @@ const InlinePollCard: React.FC<InlinePollCardProps> = ({
                         return {
                             ...o,
                             votes_count: (o.votes_count ?? o.votes?.length ?? 0) + 1,
-                            voters: [...(o.voters ?? []), { userId: currentUserId, name: 'You' }],
+                            voters: [...(o.voters ?? []), { userId: currentUserId, name: t('you') }],
                         };
                     }
                     return o;
@@ -279,9 +281,9 @@ const InlinePollCard: React.FC<InlinePollCardProps> = ({
             setHasVoted(!!didUserVote(pollProp.options, currentUserId));
             if (err.response?.status === 422) {
                 const msgs = Object.values(err.response.data.errors ?? {}).flat().join('\n');
-                Alert.alert('Vote error', msgs);
+                Alert.alert(t('vote_error_title'), msgs);
             } else {
-                Alert.alert('Vote failed', 'Please try again.');
+                Alert.alert(t('vote_failed_title'), t('vote_failed_msg'));
             }
         } finally {
             setVoting(false);
@@ -290,8 +292,8 @@ const InlinePollCard: React.FC<InlinePollCardProps> = ({
 
     // ── Status badge ─────────────────────────────────────────────────────────
     const statusLabel = isEffectivelyClosed
-        ? (isPast ? 'Expired' : 'Closed')
-        : 'Active';
+        ? (isPast ? t('expired_label') : t('closed_label_simple'))
+        : t('active_label');
 
     const deadline = poll.deadline
         ? new Date(poll.deadline).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -305,7 +307,7 @@ const InlinePollCard: React.FC<InlinePollCardProps> = ({
                     <View style={styles.pollIcon}>
                         <Ionicons name="bar-chart" size={14} color="#007AFF" />
                     </View>
-                    <Text style={styles.pollLabel}>POLL</Text>
+                    <Text style={styles.pollLabel}>{t('poll_label')}</Text>
                     <View style={[styles.statusDot, isEffectivelyClosed && styles.statusDotClosed]} />
                     <Text style={[styles.statusText, isEffectivelyClosed && styles.statusTextClosed]}>
                         {statusLabel}
@@ -319,7 +321,7 @@ const InlinePollCard: React.FC<InlinePollCardProps> = ({
             {/* ── Creator / time ── */}
             {(creatorName || createdAt) && (
                 <Text style={styles.meta}>
-                    {creatorName ? `By ${creatorName}` : ''}
+                    {creatorName ? t('by_prefix').replace('{name}', creatorName) : ''}
                     {creatorName && createdAt ? '  ·  ' : ''}
                     {createdAt ? formatTime(createdAt) : ''}
                 </Text>
@@ -353,16 +355,16 @@ const InlinePollCard: React.FC<InlinePollCardProps> = ({
                     onPress={() => selectedId ? submitVote([selectedId]) : undefined}
                     activeOpacity={0.8}
                 >
-                    <Text style={styles.submitBtnText}>Submit Vote</Text>
+                    <Text style={styles.submitBtnText}>{t('submit_vote_btn')}</Text>
                 </TouchableOpacity>
             )}
 
             {/* ── Footer: vote count + deadline ── */}
             <View style={styles.footer}>
                 <Text style={styles.footerText}>
-                    {totalVotes} {totalVotes === 1 ? 'vote' : 'votes'}
+                    {totalVotes} {totalVotes === 1 ? t('votes_singular') : t('votes_plural')}
                     {poll.unique_voters != null && poll.unique_voters !== totalVotes
-                        ? `  ·  ${poll.unique_voters} voters`
+                        ? `  ·  ${t('voters_count_label').replace('{count}', String(poll.unique_voters))}`
                         : ''}
                 </Text>
                 {deadline && (
@@ -371,7 +373,7 @@ const InlinePollCard: React.FC<InlinePollCardProps> = ({
                     </Text>
                 )}
                 {hasVoted && !isEffectivelyClosed && poll.settings?.allowVoteChange && (
-                    <Text style={styles.changeVoteHint}>Tap to change</Text>
+                    <Text style={styles.changeVoteHint}>{t('tap_to_change_hint')}</Text>
                 )}
             </View>
         </View>

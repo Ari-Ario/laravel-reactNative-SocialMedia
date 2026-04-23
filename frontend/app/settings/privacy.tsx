@@ -30,6 +30,7 @@ import { createShadow } from '@/utils/styles';
 import * as Haptics from 'expo-haptics';
 import GlobalStyles from '@/styles/GlobalStyles';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -111,6 +112,7 @@ const PrivacyToggle = ({
 };
 
 export default function PrivacySettingsScreen() {
+    const { t } = useTranslation();
     const { colors, activeScheme } = useAppTheme();
     const styles = getStyles(colors, activeScheme);
     const insets = useSafeAreaInsets();
@@ -169,7 +171,7 @@ export default function PrivacySettingsScreen() {
             await unblockUser(targetId);
             setBlockedUsers(prev => prev.filter(u => String(u.id) !== String(targetId)));
         } catch (error) {
-            Alert.alert('Error', 'Failed to unblock user');
+            Alert.alert(t('error'), t('failed_update'));
         }
     };
 
@@ -194,7 +196,7 @@ export default function PrivacySettingsScreen() {
             if (!isWeb) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         } catch (error) {
             console.error('Export failed:', error);
-            Alert.alert('Error', 'Failed to export data. Please try again on a web browser.');
+            Alert.alert(t('error'), t('failed_update'));
         } finally {
             setIsExporting(false);
         }
@@ -202,17 +204,17 @@ export default function PrivacySettingsScreen() {
 
     const handleUpdatePassword = async () => {
         if (!currentPassword || !newPassword || !confirmPassword) {
-            Alert.alert('Missing Info', 'Please fill in all password fields.');
+            Alert.alert(t('error'), t('failed_update'));
             return;
         }
 
         if (newPassword !== confirmPassword) {
-            Alert.alert('Error', 'New passwords do not match.');
+            Alert.alert(t('error'), t('failed_update'));
             return;
         }
 
         if (newPassword.length < 8) {
-            Alert.alert('Too Short', 'Password must be at least 8 characters.');
+            Alert.alert(t('error'), t('failed_update'));
             return;
         }
 
@@ -224,7 +226,7 @@ export default function PrivacySettingsScreen() {
                 password_confirmation: confirmPassword
             });
 
-            Alert.alert('Success', 'Your password has been updated securely.');
+            Alert.alert(t('success'), t('save'));
             setShowPasswordModal(false);
             setCurrentPassword('');
             setNewPassword('');
@@ -232,8 +234,8 @@ export default function PrivacySettingsScreen() {
             
             if (!isWeb) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         } catch (error: any) {
-            const errorMessage = error.response?.data?.message || 'Failed to update password. Check your current password.';
-            Alert.alert('Error', errorMessage);
+            const errorMessage = error.response?.data?.message || t('failed_update');
+            Alert.alert(t('error'), errorMessage);
         } finally {
             setIsUpdatingPassword(false);
         }
@@ -248,7 +250,7 @@ export default function PrivacySettingsScreen() {
             }
         } catch (error) {
             setPreferences((prev: any) => ({ ...prev, [field]: preferences?.[field] }));
-            Alert.alert('Error', 'Failed to update preference');
+            Alert.alert(t('error'), t('failed_update'));
         }
     };
 
@@ -304,9 +306,9 @@ export default function PrivacySettingsScreen() {
     };
 
     const privacyScoreLabel = (score: number) => {
-        if (score >= 80) return 'Well protected! Keep it up.';
-        if (score >= 60) return 'Good protection. Consider more restrictions.';
-        return 'Low protection. Review your privacy settings.';
+        if (score >= 80) return t('privacy');
+        if (score >= 60) return t('privacy');
+        return t('privacy');
     };
 
     const handleTogglePreference2 = (field: string, value: boolean) => {
@@ -314,10 +316,10 @@ export default function PrivacySettingsScreen() {
     };
 
     const sections = [
-        { id: 'visibility', label: 'Visibility', icon: 'eye', color: '#1063FD' },
-        { id: 'sharing', label: 'Sharing', icon: 'share', color: '#4CAF50' },
-        { id: 'interactions', label: 'Interactions', icon: 'chatbubbles', color: '#FF9800' },
-        { id: 'security', label: 'Security', icon: 'shield', color: '#9C27B0' },
+        { id: 'visibility', label: t('privacy'), icon: 'eye', color: '#1063FD' },
+        { id: 'sharing', label: t('share'), icon: 'share', color: '#4CAF50' },
+        { id: 'interactions', label: t('connect'), icon: 'chatbubbles', color: '#FF9800' },
+        { id: 'security', label: t('security'), icon: 'shield', color: '#9C27B0' },
     ];
 
     const SectionButton = ({ id, label, icon, color }: any) => (
@@ -351,12 +353,12 @@ export default function PrivacySettingsScreen() {
                 <StatusBar barStyle="dark-content" />
                 <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
                     <BackButton onPress={() => router.back()} />
-                    <Text style={styles.headerTitle}>Privacy Vault</Text>
+                    <Text style={styles.headerTitle}>{t('privacy')}</Text>
                     <View style={{ width: 44 }} />
                 </View>
                 <View style={styles.center}>
                     <ActivityIndicator size="large" color="#1063FD" />
-                    <Text style={styles.loadingText}>Loading your privacy settings...</Text>
+                    <Text style={styles.loadingText}>{t('loading')}</Text>
                 </View>
             </View>
         );
@@ -373,14 +375,13 @@ export default function PrivacySettingsScreen() {
                 <BackButton onPress={() => router.back()} />
 
                 <View style={styles.headerCenter}>
-                    <Text style={styles.headerTitle}>Privacy Vault</Text>
+                    <Text style={styles.headerTitle}>{t('privacy')}</Text>
                     <Animated.View style={[styles.headerUnderline, { opacity: headerOpacity }]} />
                 </View>
 
                 <View style={{ width: 44 }} />
             </LinearGradient>
 
-            {/* Section Navigation */}
             <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -402,7 +403,6 @@ export default function PrivacySettingsScreen() {
                 scrollEventThrottle={16}
             >
                 <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }}>
-                    {/* Privacy Score Card — Dynamic */}
                     {(() => { const score = privacyScore(); const color = privacyScoreColor(score); return (
                     <LinearGradient
                         colors={[color, color + 'CC']}
@@ -410,7 +410,7 @@ export default function PrivacySettingsScreen() {
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                     >
-                        <Text style={styles.privacyScoreLabel}>Privacy Score</Text>
+                        <Text style={styles.privacyScoreLabel}>{t('privacy')}</Text>
                         <Text style={styles.privacyScore}>{score}/100</Text>
                         <View style={styles.privacyScoreBar}>
                             <Animated.View style={[styles.privacyScoreFill, { width: `${score}%` as any }]} />
@@ -425,11 +425,11 @@ export default function PrivacySettingsScreen() {
                         <>
                             <View style={styles.sectionTitleRow}>
                                 <Ionicons name="eye" size={14} color="#1063FD" />
-                                <Text style={styles.sectionTitle}>Account Visibility</Text>
+                                <Text style={styles.sectionTitle}>{t('privacy')}</Text>
                             </View>
                             <PrivacyToggle
-                                label="Private Account"
-                                description="Only followers you approve will see your posts and content."
+                                label={t('privacy')}
+                                description={t('privacy')}
                                 value={!!settings?.is_private}
                                 onValueChange={(val) => handleToggleSetting('is_private', val)}
                                 icon="lock-closed"
@@ -443,27 +443,27 @@ export default function PrivacySettingsScreen() {
                         <>
                             <View style={styles.sectionTitleRow}>
                                 <Ionicons name="share" size={14} color="#4CAF50" />
-                                <Text style={styles.sectionTitle}>Information Sharing</Text>
+                                <Text style={styles.sectionTitle}>{t('share')}</Text>
                             </View>
                             <PrivacyToggle
-                                label="Share Birthday"
-                                description="Show your date of birth on your profile."
+                                label={t('birthday')}
+                                description={t('birthday')}
                                 value={!!preferences?.show_birthday}
                                 onValueChange={(val) => handleTogglePreference('show_birthday', val)}
                                 icon="gift-outline"
                                 color="#FF9800"
                             />
                             <PrivacyToggle
-                                label="Share Email"
-                                description="Make your email visible to followers."
+                                label={t('email_address')}
+                                description={t('email_address')}
                                 value={!!preferences?.show_email}
                                 onValueChange={(val) => handleTogglePreference('show_email', val)}
                                 icon="mail-outline"
                                 color="#4CAF50"
                             />
                             <PrivacyToggle
-                                label="Share Phone"
-                                description="Make your phone number visible to followers."
+                                label={t('phone_number')}
+                                description={t('phone_number')}
                                 value={!!preferences?.show_phone}
                                 onValueChange={(val) => handleTogglePreference('show_phone', val)}
                                 icon="call-outline"
@@ -476,18 +476,17 @@ export default function PrivacySettingsScreen() {
                         <>
                             <View style={styles.sectionTitleRow}>
                                 <Ionicons name="chatbubbles" size={14} color="#FF9800" />
-                                <Text style={styles.sectionTitle}>Interaction Controls</Text>
+                                <Text style={styles.sectionTitle}>{t('connect')}</Text>
                             </View>
 
-                            {/* Blocked Users List */}
                             <View style={styles.actionCardCol}>
                                 <View style={styles.actionHeader}>
                                     <View style={[styles.actionIcon, { backgroundColor: '#FF3B3015' }]}>
                                         <Ionicons name="hand-left-outline" size={22} color="#FF3B30" />
                                     </View>
                                     <View style={styles.actionTextContainer}>
-                                        <Text style={styles.actionLabel}>Blocked Users</Text>
-                                        <Text style={styles.actionDescription}>Manage the people you want to restrict.</Text>
+                                        <Text style={styles.actionLabel}>{t('unblock')}</Text>
+                                        <Text style={styles.actionDescription}>{t('unblock')}</Text>
                                     </View>
                                 </View>
                                 
@@ -510,7 +509,7 @@ export default function PrivacySettingsScreen() {
                                                     style={styles.unblockBtn}
                                                     onPress={() => handleUnblock(u.id)}
                                                 >
-                                                    <Text style={styles.unblockBtnText}>Unblock</Text>
+                                                    <Text style={styles.unblockBtnText}>{t('unblock')}</Text>
                                                 </TouchableOpacity>
                                             </View>
                                         ))}
@@ -520,17 +519,15 @@ export default function PrivacySettingsScreen() {
                                 )}
                             </View>
 
-                            {/* Muted Keywords — Tag Chip System */}
                             <View style={styles.actionCard}>
                                 <View style={[styles.actionIcon, { backgroundColor: '#9C27B015' }]}>
                                     <Ionicons name="volume-mute" size={22} color="#9C27B0" />
                                 </View>
                                 <View style={{ flex: 1 }}>
-                                    <Text style={styles.actionLabel}>Muted Keywords</Text>
+                                    <Text style={styles.actionLabel}>{t('privacy')}</Text>
                                     <Text style={styles.actionDescription}>
-                                        Content containing these words will be hidden from your feed.
+                                        {t('privacy')}
                                     </Text>
-                                    {/* Chips */}
                                     {mutedKeywords.length > 0 && (
                                         <View style={styles.chipsContainer}>
                                             {mutedKeywords.map(kw => (
@@ -543,7 +540,6 @@ export default function PrivacySettingsScreen() {
                                             ))}
                                         </View>
                                     )}
-                                    {/* Input row */}
                                     <View style={styles.keywordInputRow}>
                                         <TextInput
                                             ref={keywordInputRef}
@@ -554,7 +550,7 @@ export default function PrivacySettingsScreen() {
                                                 else { setKeywordInput(v); }
                                             }}
                                             onSubmitEditing={() => addKeyword(keywordInput)}
-                                            placeholder="Type and press Enter..."
+                                            placeholder={t('enter_placeholder')}
                                             placeholderTextColor="rgba(0,0,0,0.3)"
                                             returnKeyType="done"
                                         />
@@ -575,7 +571,7 @@ export default function PrivacySettingsScreen() {
                         <>
                             <View style={styles.sectionTitleRow}>
                                 <Ionicons name="shield" size={14} color="#9C27B0" />
-                                <Text style={styles.sectionTitle}>Security Settings</Text>
+                                <Text style={styles.sectionTitle}>{t('security')}</Text>
                             </View>
                             
                             <PrivacyToggle
@@ -599,8 +595,8 @@ export default function PrivacySettingsScreen() {
                                         <Ionicons name="lock-closed" size={22} color="#9C27B0" />
                                     </View>
                                     <View style={styles.actionTextContainer}>
-                                        <Text style={styles.actionLabel}>Change Password</Text>
-                                        <Text style={styles.actionDescription}>Update your credentials for better security.</Text>
+                                        <Text style={styles.actionLabel}>{t('security')}</Text>
+                                        <Text style={styles.actionDescription}>{t('security')}</Text>
                                     </View>
                                 </View>
                                 <Ionicons name="chevron-forward" size={20} color="#999" />
@@ -620,9 +616,9 @@ export default function PrivacySettingsScreen() {
                                         )}
                                     </View>
                                     <View style={styles.actionTextContainer}>
-                                        <Text style={styles.actionLabel}>Data Export</Text>
+                                        <Text style={styles.actionLabel}>{t('share')}</Text>
                                         <Text style={styles.actionDescription}>
-                                            {isExporting ? 'Preparing your package...' : 'Download a copy of your data.'}
+                                            {isExporting ? t('loading') : t('share')}
                                         </Text>
                                     </View>
                                 </View>
@@ -631,7 +627,6 @@ export default function PrivacySettingsScreen() {
                         </>
                     )}
 
-                    {/* Privacy Info Box */}
                     <View style={styles.infoBox}>
                         <Ionicons name="shield-checkmark" size={20} color="#1063FD" />
                         <Text style={styles.infoText}>
@@ -658,8 +653,8 @@ export default function PrivacySettingsScreen() {
                                 <Ionicons name="lock-closed" size={24} color="#9C27B0" />
                             </View>
                             <View style={{ flex: 1 }}>
-                                <Text style={styles.modalTitle}>Change Password</Text>
-                                <Text style={styles.modalSubtitle}>Please enter your credentials below</Text>
+                                <Text style={styles.modalTitle}>{t('security')}</Text>
+                                <Text style={styles.modalSubtitle}>{t('security')}</Text>
                             </View>
                             <TouchableOpacity 
                                 onPress={() => setShowPasswordModal(false)}
@@ -715,7 +710,7 @@ export default function PrivacySettingsScreen() {
                                     <ActivityIndicator color="#fff" />
                                 ) : (
                                     <>
-                                        <Text style={styles.updateButtonText}>Update Password</Text>
+                                        <Text style={styles.updateButtonText}>{t('save')}</Text>
                                         <Ionicons name="shield-checkmark" size={18} color="#fff" />
                                     </>
                                 )}

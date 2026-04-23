@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native
 import { Ionicons } from '@expo/vector-icons';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import getApiBaseImage from '@/services/getApiBaseImage';
+import AudioSeeker from './AudioSeeker';
 
 interface VoiceMessagePlayerProps {
     file_path: string | null;
@@ -12,7 +13,7 @@ interface VoiceMessagePlayerProps {
     metadata?: any;
 }
 
-import AudioSeeker from './AudioSeeker';
+import { useTranslation } from '@/constants/i18n';
 
 const VoiceMessagePlayer: React.FC<VoiceMessagePlayerProps> = ({
     file_path,
@@ -21,6 +22,7 @@ const VoiceMessagePlayer: React.FC<VoiceMessagePlayerProps> = ({
     isOptimistic,
     metadata
 }) => {
+    const { t } = useTranslation();
     const audioUrl = useMemo(() => {
         if (!file_path) return null;
         if (file_path.startsWith('http')) return file_path;
@@ -139,7 +141,7 @@ const VoiceMessagePlayer: React.FC<VoiceMessagePlayerProps> = ({
 
                 <View style={styles.metaRow}>
                     <Text style={[styles.timeText, isCurrentUser ? styles.currentUserMetaText : styles.otherUserMetaText]}>
-                        {isOptimistic ? 'Sending...' : displayTime}
+                        {isOptimistic ? t('sending_status') : displayTime}
                     </Text>
                     {(status.isBuffering || isOptimistic) && (
                         <View style={[styles.bufferingDot, isOptimistic && { backgroundColor: '#FFD60A' }]} />

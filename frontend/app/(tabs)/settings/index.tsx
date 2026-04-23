@@ -419,7 +419,7 @@ const Page = () => {
     }
 
     return sections;
-  }, [user, unreadModerationCount, bookmarks?.length, pushEnabled]);
+  }, [user, unreadModerationCount, bookmarks?.length, pushEnabled, t]);
 
   return (
     <View style={[styles.mainContainer, { backgroundColor: colors.background }]}>
@@ -478,7 +478,6 @@ const Page = () => {
             anchorPosition={photoMenuPosition}
           />
 
-          {/* Web Camera Modal */}
           {isWeb && (
             <Modal
               visible={isCameraVisible}
@@ -567,7 +566,6 @@ const Page = () => {
                 </View>
               ))}
 
-              {/* iOS Web App Tip */}
               {isWeb && /iPhone|iPad|iPod/.test(navigator.userAgent) && (
                 <View style={styles.tipCard}>
                   <Ionicons name="information-circle-outline" size={20} color="#0084ff" style={styles.tipIcon} />

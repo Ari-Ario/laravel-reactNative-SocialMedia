@@ -26,6 +26,7 @@ import { useRouter } from 'expo-router';
 import Avatar from '@/components/Image/Avatar';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 
 export interface PollOption {
     id: string;
@@ -96,6 +97,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
     isEditing = false,
 }) => {
     const { colors, activeScheme } = useAppTheme();
+    const { t } = useTranslation();
     const styles = getStyles(colors, activeScheme);
 
     const [question, setQuestion] = useState('');
@@ -258,7 +260,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
         }
 
         if (changes.length === 0) {
-            return "No significant changes detected.";
+            return t('no_significant_changes_detected');
         }
 
         return changes.join('\n');
@@ -289,30 +291,30 @@ const PollComponent: React.FC<PollComponentProps> = ({
 
     const validatePoll = (): boolean => {
         if (!question.trim()) {
-            Alert.alert('Error', 'Please enter a question');
+            Alert.alert(t('error'), t('please_enter_question'));
             return false;
         }
 
         const validOptions = options.filter(o => o.trim().length > 0);
         if (validOptions.length < 2) {
-            Alert.alert('Error', 'Please add at least 2 options');
+            Alert.alert(t('error'), t('please_add_two_options'));
             return false;
         }
 
         if (pollType === 'multiple' && maxSelections) {
             const max = parseInt(maxSelections);
             if (isNaN(max) || max < 1) {
-                Alert.alert('Error', 'Max selections must be a positive number');
+                Alert.alert(t('error'), t('max_selections_positive'));
                 return false;
             }
             if (max > validOptions.length) {
-                Alert.alert('Error', 'Max selections cannot exceed number of options');
+                Alert.alert(t('error'), t('max_selections_exceed'));
                 return false;
             }
         }
 
         if (hasDeadline && deadline <= new Date()) {
-            Alert.alert('Error', 'Deadline must be in the future');
+            Alert.alert(t('error'), t('deadline_future'));
             return false;
         }
 
@@ -331,7 +333,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
             spaceId,
             createdBy: {
                 id: currentUserId,
-                name: 'Current User', // This should come from context
+                name: t('current_user'), // This should come from context
                 avatar: undefined,
             },
             question: question.trim(),
@@ -401,15 +403,15 @@ const PollComponent: React.FC<PollComponentProps> = ({
                 // Check if forwarded polls were deleted
                 if (savedPoll.forwarded_polls_deleted) {
                     Alert.alert(
-                        'Forwarded Polls Deleted',
-                        `This poll was forwarded to ${savedPoll.forwarded_polls_deleted.length} other space(s). Those copies have been deleted. You can share the updated poll again if needed.`,
-                        [{ text: 'OK' }]
+                        t('forwarded_polls_deleted_title'),
+                        t('forwarded_polls_deleted_msg').replace('{count}', String(savedPoll.forwarded_polls_deleted.length)),
+                        [{ text: t('ok') }]
                     );
                 }
 
                 // Send update notification to chat (simplified)
                 await collaborationService.sendMessage(spaceId, {
-                    content: `📊 Poll "${pollData.question}" has been updated`,
+                    content: t('poll_updated_notif').replace('{question}', pollData.question),
                     type: 'text',  // ✅ This is correct (already 'text')
                     metadata: {
                         isPollNotification: true,
@@ -439,7 +441,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
                     // Send real-time messages to all forwarded spaces so it appears in chat
                     for (const targetSpaceId of forwardTo) {
                         await collaborationService.sendMessage(targetSpaceId, {
-                            content: `📊 Poll forwarded from another space: "${savedPoll.question}"`,
+                            content: t('poll_forwarded_notif').replace('{question}', savedPoll.question),
                             type: 'poll', // Changed from text to poll
                             metadata: {
                                 isPoll: true,
@@ -472,16 +474,16 @@ const PollComponent: React.FC<PollComponentProps> = ({
 
             if (error.response?.status === 400 && error.response.data?.has_votes) {
                 Alert.alert(
-                    'Cannot Edit',
-                    'This poll already has votes and cannot be edited. You can close it instead.',
-                    [{ text: 'OK' }]
+                    t('cannot_edit_title'),
+                    t('cannot_edit_votes_msg'),
+                    [{ text: t('ok') }]
                 );
             } else if (error.response?.status === 422) {
                 const errors = error.response.data.errors;
                 const messages = Object.values(errors).flat().join('\n');
-                Alert.alert('Validation Error', messages);
+                Alert.alert(t('validation_error'), messages);
             } else {
-                Alert.alert('Error', error.response?.data?.message || 'Failed to save poll. Please try again.');
+                Alert.alert(t('error'), error.response?.data?.message || t('failed_save_poll_msg'));
             }
         } finally {
             setIsSubmitting(false);
@@ -497,7 +499,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
             setAvailableSpaces(filtered);
         } catch (error) {
             console.error('Error loading spaces:', error);
-            Alert.alert('Error', 'Could not load spaces');
+            Alert.alert(t('error'), t('could_not_load_spaces'));
         } finally {
             setIsLoadingSpaces(false);
         }
@@ -510,17 +512,17 @@ const PollComponent: React.FC<PollComponentProps> = ({
 
     const renderStep1 = () => (
         <View style={styles.stepContainer}>
-            <Text style={styles.sectionTitle}>Poll Question</Text>
+            <Text style={styles.sectionTitle}>{t('poll_question_title')}</Text>
             <TextInput
                 style={styles.questionInput}
-                placeholder="Ask your question..."
+                placeholder={t('ask_question_placeholder')}
                 value={question}
                 onChangeText={setQuestion}
                 multiline
                 maxLength={200}
             />
 
-            <Text style={styles.sectionTitle}>Options</Text>
+            <Text style={styles.sectionTitle}>{t('options_title')}</Text>
             {options.map((option, index) => (
                 <View key={index} style={styles.optionRow}>
                     <View style={styles.optionNumber}>
@@ -528,7 +530,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
                     </View>
                     <TextInput
                         style={styles.optionInput}
-                        placeholder={`Option ${index + 1}`}
+                        placeholder={t('option_placeholder').replace('{index}', String(index + 1))}
                         value={option}
                         onChangeText={(text) => updateOption(text, index)}
                         maxLength={100}
@@ -544,7 +546,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
             {options.length < 10 && (
                 <TouchableOpacity style={styles.addOptionButton} onPress={addOption}>
                     <Ionicons name="add-circle" size={24} color="#007AFF" />
-                    <Text style={styles.addOptionText}>Add Option</Text>
+                    <Text style={styles.addOptionText}>{t('add_option_btn')}</Text>
                 </TouchableOpacity>
             )}
         </View>
@@ -552,10 +554,10 @@ const PollComponent: React.FC<PollComponentProps> = ({
 
     const renderStep2 = () => (
         <View style={styles.stepContainer}>
-            <Text style={styles.sectionTitle}>Poll Settings</Text>
+            <Text style={styles.sectionTitle}>{t('poll_settings_title')}</Text>
 
             <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>Poll Type</Text>
+                <Text style={styles.settingLabel}>{t('poll_type_label')}</Text>
                 <View style={styles.typeSelector}>
                     {['single', 'multiple', 'ranked', 'weighted'].map((type) => (
                         <TouchableOpacity
@@ -572,7 +574,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
                                     pollType === type && styles.typeButtonTextActive,
                                 ]}
                             >
-                                {type.charAt(0).toUpperCase() + type.slice(1)}
+                                {t(`${type}_choice`)}
                             </Text>
                         </TouchableOpacity>
                     ))}
@@ -581,19 +583,19 @@ const PollComponent: React.FC<PollComponentProps> = ({
 
             {pollType === 'multiple' && (
                 <View style={styles.settingRow}>
-                    <Text style={styles.settingLabel}>Max Selections</Text>
+                    <Text style={styles.settingLabel}>{t('max_selections_label')}</Text>
                     <TextInput
                         style={styles.numberInput}
                         value={maxSelections}
                         onChangeText={setMaxSelections}
                         keyboardType="numeric"
-                        placeholder="Unlimited"
+                        placeholder={t('unlimited_placeholder')}
                     />
                 </View>
             )}
 
             <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>Allow Multiple Votes</Text>
+                <Text style={styles.settingLabel}>{t('allow_multiple_votes_label')}</Text>
                 <Switch
                     value={allowMultipleVotes}
                     onValueChange={setAllowMultipleVotes}
@@ -602,7 +604,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
             </View>
 
             <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>Allow Vote Change</Text>
+                <Text style={styles.settingLabel}>{t('allow_vote_change_label')}</Text>
                 <Switch
                     value={allowVoteChange}
                     onValueChange={setAllowVoteChange}
@@ -611,7 +613,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
             </View>
 
             <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>Show Results</Text>
+                <Text style={styles.settingLabel}>{t('show_results_label')}</Text>
                 <View style={styles.resultsSelector}>
                     {['always', 'after_vote', 'after_deadline', 'creator_only'].map((option) => (
                         <TouchableOpacity
@@ -628,7 +630,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
                                     showResults === option && styles.resultsButtonTextActive,
                                 ]}
                             >
-                                {option.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                                {t(`${option}_show_results`)}
                             </Text>
                         </TouchableOpacity>
                     ))}
@@ -636,7 +638,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
             </View>
 
             <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>Anonymous Voting</Text>
+                <Text style={styles.settingLabel}>{t('anonymous_voting_label')}</Text>
                 <Switch
                     value={anonymous}
                     onValueChange={setAnonymous}
@@ -645,7 +647,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
             </View>
 
             <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>Weighted Voting</Text>
+                <Text style={styles.settingLabel}>{t('weighted_voting_label')}</Text>
                 <Switch
                     value={weightedVoting}
                     onValueChange={setWeightedVoting}
@@ -657,10 +659,10 @@ const PollComponent: React.FC<PollComponentProps> = ({
 
     const renderStep3 = () => (
         <View style={styles.stepContainer}>
-            <Text style={styles.sectionTitle}>Advanced Options</Text>
+            <Text style={styles.sectionTitle}>{t('advanced_options_title')}</Text>
 
             <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>Has Deadline</Text>
+                <Text style={styles.settingLabel}>{t('has_deadline_label')}</Text>
                 <Switch
                     value={hasDeadline}
                     onValueChange={setHasDeadline}
@@ -692,23 +694,23 @@ const PollComponent: React.FC<PollComponentProps> = ({
             )}
 
             <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>Quorum (min. participants)</Text>
+                <Text style={styles.settingLabel}>{t('quorum_min_participants_label')}</Text>
                 <TextInput
                     style={styles.numberInput}
                     value={quorum}
                     onChangeText={setQuorum}
                     keyboardType="numeric"
-                    placeholder="No minimum"
+                    placeholder={t('no_minimum_placeholder')}
                 />
             </View>
 
             <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>Tags (comma separated)</Text>
+                <Text style={styles.settingLabel}>{t('tags_comma_separated_label')}</Text>
                 <TextInput
                     style={styles.tagsInput}
                     value={tags}
                     onChangeText={setTags}
-                    placeholder="e.g. decision, planning, fun"
+                    placeholder={t('tags_placeholder')}
                 />
             </View>
         </View>
@@ -716,7 +718,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
 
     const renderStep4 = () => (
         <View style={styles.stepContainer}>
-            <Text style={styles.sectionTitle}>Forward to Spaces</Text>
+            <Text style={styles.sectionTitle}>{t('forward_to_spaces_title')}</Text>
 
             <TouchableOpacity
                 style={styles.forwardButton}
@@ -725,18 +727,18 @@ const PollComponent: React.FC<PollComponentProps> = ({
                 <Ionicons name="share-social" size={20} color="#007AFF" />
                 <Text style={styles.forwardButtonText}>
                     {selectedForwardSpaces.size > 0
-                        ? `Forwarding to ${selectedForwardSpaces.size} space(s)`
-                        : 'Select spaces to forward this poll'}
+                        ? t('forwarding_to_spaces_msg').replace('{count}', String(selectedForwardSpaces.size))
+                        : t('select_spaces_forward_msg')}
                 </Text>
             </TouchableOpacity>
 
             <View style={styles.previewContainer}>
-                <Text style={styles.previewTitle}>Preview</Text>
+                <Text style={styles.previewTitle}>{t('preview_title')}</Text>
                 <View style={styles.pollPreview}>
-                    <Text style={styles.previewQuestion}>{question || 'Your poll question'}</Text>
+                    <Text style={styles.previewQuestion}>{question || t('your_poll_question_placeholder')}</Text>
                     {options.filter(o => o.trim()).map((opt, idx) => (
                         <View key={idx} style={styles.previewOption}>
-                            <Text style={styles.previewOptionText}>• {opt || `Option ${idx + 1}`}</Text>
+                            <Text style={styles.previewOptionText}>• {opt || t('option_placeholder').replace('{index}', String(idx + 1))}</Text>
                         </View>
                     ))}
                 </View>
@@ -758,7 +760,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
                             <Ionicons name="close" size={24} color="#666" />
                         </TouchableOpacity>
                         <Text style={styles.modalTitle}>
-                            {editPoll ? 'Edit Poll' : 'Create Poll'}
+                            {editPoll ? t('edit_poll_title') : t('create_poll_title')}
                         </Text>
                         <View style={{ width: 24 }} />
                     </View>
@@ -796,7 +798,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
                             onPress={onClose}
                             disabled={isSubmitting}
                         >
-                            <Text style={styles.cancelButtonText}>Cancel</Text>
+                            <Text style={styles.cancelButtonText}>{t('cancel')}</Text>
                         </TouchableOpacity>
 
                         {currentStep < 4 ? (
@@ -804,7 +806,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
                                 style={[styles.footerButton, styles.nextButton]}
                                 onPress={() => setCurrentStep(currentStep + 1)}
                             >
-                                <Text style={styles.nextButtonText}>Next</Text>
+                                <Text style={styles.nextButtonText}>{t('next')}</Text>
                                 <Ionicons name="arrow-forward" size={20} color="#fff" />
                             </TouchableOpacity>
                         ) : (
@@ -823,7 +825,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
                                     <>
                                         <Ionicons name="checkmark" size={20} color="#fff" />
                                         <Text style={styles.createButtonText}>
-                                            {editPoll ? 'Update Poll' : 'Create Poll'}
+                                            {editPoll ? t('update_poll') : t('create_poll')}
                                         </Text>
                                     </>
                                 )}
@@ -843,7 +845,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
                 <View style={styles.modalOverlay}>
                     <View style={styles.forwardModalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Forward to Spaces</Text>
+                            <Text style={styles.modalTitle}>{t('forward_to_spaces_title')}</Text>
                             <TouchableOpacity onPress={() => setShowForwardModal(false)}>
                                 <Ionicons name="close" size={24} color="#666" />
                             </TouchableOpacity>
@@ -851,7 +853,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
 
                         <TextInput
                             style={styles.searchInput}
-                            placeholder="Search spaces..."
+                            placeholder={t('search_spaces_placeholder')}
                             value={searchQuery}
                             onChangeText={setSearchQuery}
                             clearButtonMode="while-editing"
@@ -860,7 +862,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
                         {isLoadingSpaces ? (
                             <View style={styles.loadingContainer}>
                                 <ActivityIndicator size="large" color="#007AFF" />
-                                <Text style={styles.loadingText}>Loading spaces...</Text>
+                                <Text style={styles.loadingText}>{t('loading_spaces_msg')}</Text>
                             </View>
                         ) : (
                             <FlatList
@@ -900,7 +902,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
                                     </TouchableOpacity>
                                 )}
                                 ListEmptyComponent={
-                                    <Text style={styles.emptyText}>No spaces available</Text>
+                                    <Text style={styles.emptyText}>{t('no_spaces_available')}</Text>
                                 }
                             />
                         )}
@@ -929,7 +931,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
                                 disabled={selectedForwardSpaces.size === 0}
                             >
                                 <Text style={styles.modalButtonTextConfirm}>
-                                    Done ({selectedForwardSpaces.size})
+                                    {t('done_count').replace('{count}', selectedForwardSpaces.size.toString())}
                                 </Text>
                             </TouchableOpacity>
                         </View>

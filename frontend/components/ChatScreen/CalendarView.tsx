@@ -32,6 +32,7 @@ import { safeHaptics } from '@/utils/haptics';
 import CreateActivityModal from './CreateActivityModal';
 import AuthContext from '@/context/AuthContext';
 import { useToastStore } from '@/stores/toastStore';
+import { useTranslation } from '@/constants/i18n';
 
 const { width, height } = Dimensions.get('window');
 const HOUR_HEIGHT = 80;
@@ -51,6 +52,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   onCreateActivity,
   onJoinSession,
 }) => {
+  const { t } = useTranslation();
   const { user } = useContext(AuthContext);
   const { showToast } = useToastStore();
   const router = useRouter();
@@ -244,34 +246,34 @@ const CalendarView: React.FC<CalendarViewProps> = ({
         setSelectedActivity(null);
 
         // Store will update automatically via real-time event
-        useToastStore.getState().showToast('Activity deleted successfully', 'success');
+        useToastStore.getState().showToast(t('activity_deleted_success'), 'success');
 
         if (Platform.OS !== 'web') {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
       } catch (error: any) {
         console.error('Error deleting activity:', error);
-        const errorMessage = error.message || 'Failed to delete activity';
+        const errorMessage = error.message || t('failed_delete_activity');
         if (Platform.OS === 'web') {
           window.alert(errorMessage);
         } else {
-          Alert.alert('Error', errorMessage);
+          Alert.alert(t('error'), errorMessage);
         }
       }
     };
 
     if (Platform.OS === 'web') {
-      if (window.confirm('Are you sure you want to delete this activity? This action cannot be undone and will notify all participants.')) {
+      if (window.confirm(t('delete_activity_confirm'))) {
         await performDeletion();
       }
     } else {
       Alert.alert(
-        'Delete Activity',
-        'Are you sure you want to delete this activity? This action cannot be undone and will notify all participants.',
+        t('delete_activity_title'),
+        t('delete_activity_confirm'),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('cancel'), style: 'cancel' },
           {
-            text: 'Delete',
+            text: t('delete'),
             style: 'destructive',
             onPress: performDeletion
           }
@@ -303,7 +305,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
       }
     } catch (error) {
       console.error('Error updating participants:', error);
-      Alert.alert('Error', 'Failed to update participants');
+      Alert.alert(t('error'), t('failed_update_participants'));
     } finally {
       setIsUpdatingParticipants(false);
     }
@@ -346,7 +348,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           contentContainerStyle={styles.weekContent}
         >
           <View style={{ flex: 1 }}>
-            {/* Header Row */}
             <View style={{ flexDirection: 'row', backgroundColor: '#fff', zIndex: 10 }}>
               <View style={[styles.timeColumn, { height: 90, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' }]}>
                 <View style={styles.timeHeader} />
@@ -365,7 +366,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                   >
                     <View style={[styles.dayHeader, isSelected && styles.dayHeaderSelected, { height: '100%', borderBottomWidth: 0 }]}>
                       <Text style={[styles.dayName, isSelected && styles.dayNameSelected]}>
-                        {format(day.date, 'EEE')}
+                        {t('day_' + format(day.date, 'eee').toLowerCase() + '_s')}
                       </Text>
                       <Text style={[styles.dayNumber, isSelected && styles.dayNumberSelected]}>
                         {format(day.date, 'd')}
@@ -376,7 +377,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
               })}
             </View>
 
-            {/* Shared Vertical Scroll Area */}
             <ScrollView
               showsVerticalScrollIndicator={false}
               style={{ flex: 1 }}
@@ -490,7 +490,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#4B53BC" />
         }
       >
-        {/* Current Time Indicator */}
         {isToday(selectedDate) && (
           <View
             style={[
@@ -547,13 +546,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                             styles.dayActivityType,
                             { color: getStatusColor(activity.status) }
                           ]}>
-                            {activity.activity_type}
+                            {t(activity.activity_type)}
                           </Text>
                         </View>
                         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(activity.status) + '20' }]}>
                           <View style={[styles.statusDot, { backgroundColor: getStatusColor(activity.status) }]} />
                           <Text style={[styles.statusText, { color: getStatusColor(activity.status) }]}>
-                            {activity.status}
+                            {t(activity.status)}
                           </Text>
                         </View>
                       </View>
@@ -570,13 +569,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                         <View style={styles.dayActivityDuration}>
                           <Ionicons name="timer-outline" size={14} color="#666" />
                           <Text style={styles.dayActivityMetaText}>
-                            {activity.duration_minutes || 60} min
+                            {activity.duration_minutes || 60} {t('min')}
                           </Text>
                         </View>
                         <View style={styles.dayActivityParticipants}>
                           <Ionicons name="people-outline" size={14} color="#666" />
                           <Text style={styles.dayActivityMetaText}>
-                            {activity.confirmed_participants || 0} participants
+                            {t('participants_count').replace('{count}', String(activity.confirmed_participants || 0))}
                           </Text>
                         </View>
                       </View>
@@ -587,14 +586,14 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                           onPress={() => handleAddToDeviceCalendar(activity)}
                         >
                           <Ionicons name="calendar-outline" size={16} color="#4B53BC" />
-                          <Text style={[styles.dayActionText, { color: '#4B53BC' }]}>Add</Text>
+                          <Text style={[styles.dayActionText, { color: '#4B53BC' }]}>{t('add')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                           style={styles.dayAction}
                           onPress={() => handleExportICS(activity)}
                         >
                           <Ionicons name="download-outline" size={16} color="#666" />
-                          <Text style={styles.dayActionText}>Export</Text>
+                          <Text style={styles.dayActionText}>{t('export')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                           style={[styles.dayAction, styles.dayActionJoin]}
@@ -607,7 +606,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                             style={styles.joinButtonGradient}
                           >
                             <Ionicons name="enter-outline" size={14} color="#fff" />
-                            <Text style={styles.joinButtonText}>Join</Text>
+                            <Text style={styles.joinButtonText}>{t('join')}</Text>
                           </LinearGradient>
                         </TouchableOpacity>
                       </View>
@@ -713,35 +712,35 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
               <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.modalSection}>
-                  <Text style={styles.modalSectionTitle}>Details</Text>
-                  <Text style={styles.modalText}>{selectedActivity.description || 'No description'}</Text>
+                  <Text style={styles.modalSectionTitle}>{t('details')}</Text>
+                  <Text style={styles.modalText}>{selectedActivity.description || t('no_description')}</Text>
                 </View>
 
                 <View style={styles.modalSection}>
-                  <Text style={styles.modalSectionTitle}>Time</Text>
+                  <Text style={styles.modalSectionTitle}>{t('time')}</Text>
                   <View style={styles.modalTimeRow}>
                     <Ionicons name="time-outline" size={20} color="#007AFF" />
                     <Text style={styles.modalText}>
                       {selectedActivity.scheduled_start
                         ? format(parseISO(selectedActivity.scheduled_start), 'EEEE, MMMM d, h:mm a')
-                        : 'Not scheduled'}
+                        : t('not_scheduled')}
                     </Text>
                   </View>
                   <View style={styles.modalTimeRow}>
                     <Ionicons name="timer-outline" size={20} color="#007AFF" />
                     <Text style={styles.modalText}>
-                      Duration: {selectedActivity.duration_minutes || 60} minutes
+                      {t('duration_label').replace('{duration}', String(selectedActivity.duration_minutes || 60))}
                     </Text>
                   </View>
                 </View>
 
                 <View style={styles.modalSection}>
-                  <Text style={styles.modalSectionTitle}>Participants</Text>
+                  <Text style={styles.modalSectionTitle}>{t('participants_title')}</Text>
                   <View style={styles.sectionHeaderRow}>
                     <View style={styles.modalParticipantsRow}>
                       <Ionicons name="people" size={18} color="#007AFF" />
                       <Text style={styles.modalText}>
-                        {selectedActivity.participants?.length || 0} participants
+                        {t('participants_count').replace('{count}', String(selectedActivity.participants?.length || 0))}
                       </Text>
                     </View>
                     {(String(selectedActivity.created_by || selectedActivity.creator?.id) === String(user?.id)) && (
@@ -750,7 +749,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                         style={styles.manageButton}
                       >
                         <Text style={styles.manageButtonText}>
-                          {isManagingParticipants ? 'Done' : 'Manage'}
+                          {isManagingParticipants ? t('done') : t('manage')}
                         </Text>
                       </TouchableOpacity>
                     )}
@@ -873,7 +872,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Header with View Toggle */}
       <View style={styles.header}>
         <View style={styles.viewToggle}>
           {[
@@ -918,7 +916,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* Navigation Bar */}
       {(viewMode === 'week' || viewMode === 'day') && (
         <View style={styles.navBar}>
           <TouchableOpacity
@@ -956,14 +953,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({
         </View>
       )}
 
-      {/* Main Content */}
       <View style={styles.content}>
         {viewMode === 'day' && <DayView />}
         {viewMode === 'week' && <WeekView />}
         {viewMode === 'month' && <MonthView />}
       </View>
 
-      {/* Activity Detail Modal */}
       <ActivityDetailModal />
 
       <CreateActivityModal

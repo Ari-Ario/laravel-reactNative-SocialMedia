@@ -29,6 +29,7 @@ import { useToastStore } from '@/stores/toastStore';
 import AuthContext from '@/context/AuthContext';
 import { useContext } from 'react';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 
 interface PostShareModalProps {
   visible: boolean;
@@ -50,7 +51,8 @@ interface PostShareModalProps {
 export default function PostShareModal({ visible, onClose, post, story, location, initialRecipient }: PostShareModalProps) {
   const insets = useSafeAreaInsets();
   const { colors, activeScheme } = useAppTheme();
-  const styles = getStyles(colors, activeScheme);
+  const { t, isRTL } = useTranslation();
+  const styles = getStyles(colors, activeScheme, isRTL);
   const { user: currentUser } = useContext(AuthContext);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState<string | null>(null); // spaceId if sending
@@ -120,7 +122,7 @@ export default function PostShareModal({ visible, onClose, post, story, location
 
       // Final privacy check before creating space
       if (initialRecipient && initialRecipient.is_private && !initialRecipient.is_following) {
-        useToastStore.getState().showToast("This profile is private", "error");
+        useToastStore.getState().showToast(t('profile_private_msg'), "error");
         setLoading(null);
         return;
       }
@@ -139,7 +141,7 @@ export default function PostShareModal({ visible, onClose, post, story, location
         }
       } catch (err) {
         console.error("Space creation failed", err);
-        useToastStore.getState().showToast("Failed to start conversation", "error");
+        useToastStore.getState().showToast(t('failed_start_conversation'), "error");
         setLoading(null);
         return;
       }
@@ -241,22 +243,25 @@ export default function PostShareModal({ visible, onClose, post, story, location
 
       if (isLocation) {
         shareUrl = `https://maps.google.com/?q=${location.latitude},${location.longitude}`;
-        message = `📍 *${location.name || 'Location'}*\n${location.address || ''}\n\n🗺️ ${shareUrl}`;
-        title = 'Share Location';
+        message = `📍 *${location.name || t('share_location')}*\n${location.address || ''}\n\n🗺️ ${shareUrl}`;
+        title = t('share_location');
       } else {
         shareUrl = isStory
           ? `${baseUrl}/story/${story.id}`
           : `${baseUrl}/post/${post.id}`;
 
         const caption = isStory ? story.caption : post.caption;
-        message = `${caption ? caption + '\n\n' : ''}Check out this ${isStory ? 'story' : 'post'}: ${shareUrl}`;
-        title = `Share ${isStory ? 'Story' : 'Post'}`;
+        message = isStory 
+          ? t('check_out_story', { url: shareUrl }) 
+          : t('check_out_post', { url: shareUrl });
+        if (caption) message = `${caption}\n\n${message}`;
+        title = isStory ? t('share_story') : t('share_post');
       }
 
       if (Platform.OS === 'web' && !navigator.share) {
         // Web fallback: Copy to clipboard
         Clipboard.setString(message);
-        alert('Link copied to clipboard!');
+        alert(t('link_copied_clipboard'));
         onClose();
         return;
       }
@@ -371,7 +376,7 @@ export default function PostShareModal({ visible, onClose, post, story, location
           </View>
         ) : (
           <View style={styles.sendButton}>
-            <Text style={styles.sendButtonText}>Send</Text>
+            <Text style={styles.sendButtonText}>{t('send')}</Text>
           </View>
         )}
       </TouchableOpacity>
@@ -399,7 +404,9 @@ export default function PostShareModal({ visible, onClose, post, story, location
           <View style={[styles.handle, { backgroundColor: colors.border }]} />
 
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.title, { color: colors.text }]}>Share {location ? 'Location' : story ? 'Story' : 'Post'}</Text>
+            <Text style={[styles.title, { color: colors.text }]}>
+              {location ? t('share_location') : story ? t('share_story') : t('share_post')}
+            </Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
@@ -410,8 +417,8 @@ export default function PostShareModal({ visible, onClose, post, story, location
           <View style={[styles.searchContainer, { backgroundColor: colors.background }]}>
             <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
             <TextInput
-              style={[styles.searchInput, { color: colors.text }]}
-              placeholder="Search spaces or contacts..."
+              style={[styles.searchInput, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}
+              placeholder={t('search_spaces_contacts')}
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholderTextColor={colors.textSecondary}
@@ -420,8 +427,8 @@ export default function PostShareModal({ visible, onClose, post, story, location
 
           <View style={styles.messageInputContainer}>
             <TextInput
-              style={[styles.messageInput, { backgroundColor: colors.background, color: colors.text }]}
-              placeholder="Add a message..."
+              style={[styles.messageInput, { backgroundColor: colors.background, color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}
+              placeholder={t('add_message_placeholder')}
               value={additionalMessage}
               onChangeText={setAdditionalMessage}
               multiline
@@ -437,7 +444,7 @@ export default function PostShareModal({ visible, onClose, post, story, location
             style={styles.list}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No spaces or contacts found</Text>
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('no_spaces_contacts_found')}</Text>
               </View>
             }
           />
@@ -451,8 +458,8 @@ export default function PostShareModal({ visible, onClose, post, story, location
               <View style={styles.externalIconBackground}>
                 <Feather name="share" size={20} color="white" />
               </View>
-              <Text style={[styles.externalButtonText, { color: colors.text }]}>Other Messaging Apps</Text>
-              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+              <Text style={[styles.externalButtonText, { color: colors.text }]}>{t('other_apps')}</Text>
+              <Ionicons name={isRTL ? "chevron-back" : "chevron-forward"} size={18} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -463,7 +470,7 @@ export default function PostShareModal({ visible, onClose, post, story, location
 
 const { width } = Dimensions.get('window');
 
-const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
+const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => StyleSheet.create({
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -495,7 +502,7 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     marginTop: 10,
   },
   header: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 15,
@@ -509,11 +516,12 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
   },
   closeButton: {
     position: 'absolute',
-    right: 15,
+    right: isRTL ? undefined : 15,
+    left: isRTL ? 15 : undefined,
     top: 15,
   },
   searchContainer: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     margin: 15,
     paddingHorizontal: 12,
@@ -521,12 +529,14 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     height: 44,
   },
   searchIcon: {
-    marginRight: 10,
+    marginRight: isRTL ? 0 : 10,
+    marginLeft: isRTL ? 10 : 0,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
     color: colors.text,
+    textAlign: isRTL ? 'right' : 'left',
   },
   list: {
     flexGrow: 0,
@@ -537,7 +547,7 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     paddingBottom: 20,
   },
   spaceItem: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -568,17 +578,21 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
   },
   spaceInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: isRTL ? 0 : 12,
+    marginRight: isRTL ? 12 : 0,
+    alignItems: isRTL ? 'flex-end' : 'flex-start',
   },
   spaceName: {
     fontSize: 16,
     fontWeight: '600',
+    textAlign: isRTL ? 'right' : 'left',
   },
   spaceType: {
     fontSize: 11,
     color: colors.textSecondary,
     marginTop: 2,
     letterSpacing: 0.5,
+    textAlign: isRTL ? 'right' : 'left',
   },
   sendButton: {
     paddingHorizontal: 16,
@@ -603,7 +617,7 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   externalButton: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     padding: 12,
     borderRadius: 12,
@@ -615,12 +629,14 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     backgroundColor: colors.tint,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: isRTL ? 0 : 12,
+    marginLeft: isRTL ? 12 : 0,
   },
   externalButtonText: {
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
+    textAlign: isRTL ? 'right' : 'left',
   },
   messageInputContainer: {
     paddingHorizontal: 15,
@@ -631,6 +647,7 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     padding: 12,
     fontSize: 16,
     maxHeight: 100,
+    textAlignVertical: 'top',
   },
   sharedSpaceItem: {
     opacity: 0.8,
@@ -647,7 +664,7 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   previewContent: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     padding: 10,
     borderRadius: 12,
@@ -675,15 +692,18 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
   },
   previewTextContainer: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: isRTL ? 0 : 12,
+    marginRight: isRTL ? 12 : 0,
   },
   previewTitle: {
     fontSize: 15,
     fontWeight: '700',
+    textAlign: isRTL ? 'right' : 'left',
   },
   previewSubtitle: {
     fontSize: 13,
     color: colors.textSecondary,
     marginTop: 2,
+    textAlign: isRTL ? 'right' : 'left',
   },
 });

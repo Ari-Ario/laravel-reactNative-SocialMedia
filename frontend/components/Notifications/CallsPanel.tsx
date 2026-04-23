@@ -15,8 +15,11 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { createShadow } from '@/utils/styles';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { Notification } from '@/types/Notification';
+import Avatar from '../Image/Avatar';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { router } from 'expo-router';
+import { useTranslation } from '@/constants/i18n';
+import { formatTimeAgo } from '@/utils/dateUtils';
 
 type CallsPanelProps = {
     visible: boolean;
@@ -26,6 +29,7 @@ type CallsPanelProps = {
 
 const CallsPanel = ({ visible, onClose, anchorPosition }: CallsPanelProps) => {
     const { colors, activeScheme } = useAppTheme();
+    const { t } = useTranslation();
     const {
         getCalls,
         markAsRead,
@@ -70,11 +74,10 @@ const CallsPanel = ({ visible, onClose, anchorPosition }: CallsPanelProps) => {
                 onPress={() => handleCallPress(item)}
             >
                 <View style={styles.Foto}>
-                    <Image
-                        source={{
-                            uri: item.avatar ? `${getApiBaseImage()}/storage/${item.avatar}` : undefined
-                        }}
-                        defaultSource={require('@/assets/images/favicon.png')}
+                    <Avatar
+                        source={item.avatar}
+                        name={item.title}
+                        size={48}
                         style={[styles.avatar, { borderColor: colors.surface, backgroundColor: colors.muted }]}
                     />
                 </View>
@@ -107,20 +110,7 @@ const CallsPanel = ({ visible, onClose, anchorPosition }: CallsPanelProps) => {
         );
     };
 
-    const formatTimeAgo = (dateString: string) => {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMins / 60);
-        const diffDays = Math.floor(diffHours / 24);
-
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffHours < 24) return `${diffHours}h ago`;
-        if (diffDays < 7) return `${diffDays}d ago`;
-        return date.toLocaleDateString();
-    };
+    // formatTimeAgo removed as it is now imported from utils/dateUtils
 
     return (
         <Modal
@@ -164,7 +154,7 @@ const CallsPanel = ({ visible, onClose, anchorPosition }: CallsPanelProps) => {
                 <View style={styles.contentWrapper}>
                     <View style={[styles.panelHeader, { borderBottomColor: colors.border, backgroundColor: colors.surface }]}>
                         <Text style={[styles.panelTitle, { color: colors.text }]}>
-                            Calls {calls.length > 0 ? `(${calls.length})` : ''}
+                            {t('calls_count', { count: calls.length })}
                         </Text>
                         <TouchableOpacity onPress={onClose} style={[styles.closeButton, { backgroundColor: colors.muted }]}>
                             <Ionicons name="close" size={20} color={colors.textSecondary} />
@@ -174,9 +164,9 @@ const CallsPanel = ({ visible, onClose, anchorPosition }: CallsPanelProps) => {
                         {calls.length === 0 ? (
                             <View style={styles.emptyState}>
                                 <Ionicons name="call-outline" size={48} color={colors.textSecondary + '40'} />
-                                <Text style={[styles.emptyText, { color: colors.text }]}>No call history</Text>
+                                <Text style={[styles.emptyText, { color: colors.text }]}>{t('no_calls')}</Text>
                                 <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
-                                    Your recent calls will appear here
+                                    {t('no_calls_desc')}
                                 </Text>
                             </View>
                         ) : (

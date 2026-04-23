@@ -19,10 +19,9 @@ import { MotiView, AnimatePresence } from 'moti';
 import EmojiPicker from 'rn-emoji-keyboard';
 import { createShadow } from '@/utils/styles';
 import { GlobalStyles } from '@/styles/GlobalStyles';
+import { useTranslation } from '@/constants/i18n';
 
 const { width } = Dimensions.get('window');
-
-
 
 interface ContextTagSelectorProps {
   visible: boolean;
@@ -35,6 +34,8 @@ export const ContextTagSelector = ({ visible, onClose, onConfirm }: ContextTagSe
   const [tagLabel, setTagLabel] = useState('');
   const [note, setNote] = useState('');
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const { t, isRTL } = useTranslation();
+  const styles = getStyles(isRTL);
 
   const handleEmojiSelect = (emoji: any) => {
     setSelectedEmoji(emoji.emoji);
@@ -44,7 +45,7 @@ export const ContextTagSelector = ({ visible, onClose, onConfirm }: ContextTagSe
   const handleConfirm = () => {
     let finalTag = '';
     if (selectedEmoji) {
-      finalTag = `${selectedEmoji} ${tagLabel || 'Thought'}`;
+      finalTag = `${selectedEmoji} ${tagLabel || t('default_context_tag')}`;
     } else if (tagLabel) {
       finalTag = tagLabel;
     }
@@ -110,8 +111,8 @@ export const ContextTagSelector = ({ visible, onClose, onConfirm }: ContextTagSe
                   
                   <View style={styles.tagLabelContainer}>
                     <TextInput
-                      style={styles.labelInput}
-                      placeholder="Context Tag..."
+                      style={[styles.labelInput, { textAlign: isRTL ? 'right' : 'left' }]}
+                      placeholder={t('context_tag_placeholder')}
                       placeholderTextColor="#666"
                       value={tagLabel}
                       onChangeText={setTagLabel}
@@ -127,8 +128,8 @@ export const ContextTagSelector = ({ visible, onClose, onConfirm }: ContextTagSe
               <View style={styles.section}>
                 <View style={styles.inputContainer}>
                   <TextInput
-                    style={styles.input}
-                    placeholder="Write a personal note..."
+                    style={[styles.input, { textAlign: isRTL ? 'right' : 'left' }]}
+                    placeholder={t('personal_note_placeholder')}
                     placeholderTextColor="#666"
                     multiline
                     value={note}
@@ -149,7 +150,7 @@ export const ContextTagSelector = ({ visible, onClose, onConfirm }: ContextTagSe
                 onPress={handleConfirm}
                 activeOpacity={0.8}
               >
-                <Text style={styles.confirmText}>Repost Now</Text>
+                <Text style={styles.confirmText}>{t('repost_now')}</Text>
                 <Ionicons name="repeat" size={20} color="#fff" />
               </TouchableOpacity>
             </View>
@@ -186,7 +187,7 @@ export const ContextTagSelector = ({ visible, onClose, onConfirm }: ContextTagSe
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isRTL: boolean) => StyleSheet.create({
   backdrop: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -244,7 +245,7 @@ const styles = StyleSheet.create({
   },
 
   tagInputRow: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     gap: 12,
     backgroundColor: 'rgba(255,255,255,0.05)',
@@ -268,7 +269,8 @@ const styles = StyleSheet.create({
   emojiEditBadge: {
     position: 'absolute',
     bottom: 0,
-    right: 0,
+    right: isRTL ? undefined : 0,
+    left: isRTL ? 0 : undefined,
     backgroundColor: '#766dfc',
     width: 20,
     height: 20,
@@ -312,7 +314,8 @@ const styles = StyleSheet.create({
   charCount: {
     position: 'absolute',
     bottom: 12,
-    right: 12,
+    right: isRTL ? undefined : 12,
+    left: isRTL ? 12 : undefined,
     fontSize: 11,
     color: '#666',
   },
@@ -321,7 +324,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   confirmButton: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#766dfc',

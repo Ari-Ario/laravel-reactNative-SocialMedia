@@ -23,6 +23,7 @@ import { MotiView, AnimatePresence } from 'moti';
 import LocationPreview from './LocationPreview';
 import { createShadow } from '@/utils/styles';
 import { useModal } from '@/context/ModalContext';
+import { useTranslation } from '@/constants/i18n';
 
 import { fetchPostById } from '@/services/PostService';
 import { fetchStory } from '@/services/StoryService';
@@ -99,7 +100,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   highlighted,
   onJumpToMessage,
 }) => {
-
+  const { t } = useTranslation();
   const { colors, activeScheme } = useAppTheme();
   const styles = getStyles(colors, activeScheme);
   const { openModal } = useModal();
@@ -163,7 +164,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Unable to save media without gallery access.');
+        Alert.alert(t('permission_denied'), t('gallery_permission_msg'));
         return;
       }
 
@@ -171,12 +172,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       const downloadRes = await FileSystem.downloadAsync(url, fileUri);
 
       await MediaLibrary.saveToLibraryAsync(downloadRes.uri);
-      Alert.alert('Success', 'Saved to your gallery!');
+      Alert.alert(t('success'), t('saved_to_gallery'));
 
       await FileSystem.deleteAsync(fileUri, { idempotent: true });
     } catch (err) {
       console.error('Download failed:', err);
-      Alert.alert('Error', 'Failed to download media.');
+      Alert.alert(t('error'), t('failed_download_media'));
     }
   };
 
@@ -343,7 +344,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           <View style={styles.pollFallback}>
             <Ionicons name="bar-chart" size={14} color={colors.tint} />
             <Text style={[styles.pollFallbackText, { color: colors.tint }]}>
-              {pollData?.question || 'Poll'}
+              {pollData?.question || t('poll')}
             </Text>
           </View>
         );
@@ -359,7 +360,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           ? rawUrl
           : (rawUrl ? `${getApiBaseImage()}/storage/${rawUrl}` : '');
 
-        const fileName = message.metadata?.file_name || message.metadata?.name || 'Document';
+        const fileName = message.metadata?.file_name || message.metadata?.name || t('document_fallback');
         const fileSize = message.metadata?.file_size;
 
         return (
@@ -423,7 +424,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             </View>
             <View style={styles.locationInfo}>
               <Text style={[styles.locationName, { color: colors.text }, isCurrentUser && { color: '#fff' }]} numberOfLines={1}>
-                {name || 'Selected Location'}
+                {name || t('selected_location')}
               </Text>
               {address && (
                 <Text style={[styles.locationAddress, isCurrentUser ? { color: 'rgba(255,255,255,1)' } : { color: colors.tint, fontWeight: '500' }]} numberOfLines={2}>
@@ -514,12 +515,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               <View style={styles.liveHeader}>
                 <View style={[styles.liveIndicator, isExpired && { backgroundColor: '#8E8E93' }]} />
                 <Text style={[styles.locationName, { color: colors.text }, isCurrentUser && { color: '#fff' }]}>
-                  {isExpired ? 'Live location ended' : 'Live Location'}
+                  {isExpired ? t('live_location_ended') : t('live_location_label')}
                 </Text>
               </View>
               {!isExpired && (
                 <Text style={[styles.locationAddress, isCurrentUser && { color: 'rgba(255,255,255,0.7)' }]}>
-                  Sharing until {expiresAt ? new Date(expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '...'}
+                  {t('sharing_until').replace('{time}', expiresAt ? new Date(expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '...')}
                 </Text>
               )}
             </View>
@@ -554,10 +555,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             {translatedContent && (
               <TouchableOpacity onPress={onToggleTranslation} style={styles.translatedContainer}>
                 <Text style={[styles.translatedLabel, { color: colors.textSecondary }, isCurrentUser ? styles.currentUserText : styles.otherUserText]}>
-                  (Translated)
+                  {t('translated_label')}
                 </Text>
                 <Text style={[styles.seeOriginalLink, isCurrentUser ? styles.currentUserText : { color: colors.tint }]}>
-                  See Original
+                  {t('see_original')}
                 </Text>
               </TouchableOpacity>
             )}
@@ -606,7 +607,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         <View style={[styles.replyHeaderBar, isCurrentUser && { backgroundColor: activeScheme === 'dark' ? 'rgba(255,255,255,0.7)' : '#fff' }]} />
         <View style={styles.replyHeaderContent}>
           <Text style={[styles.replyHeaderName, isCurrentUser && { color: '#fff' }]} numberOfLines={1}>
-            {repliedToMessage.user?.name || repliedToMessage.user_name || 'User'}
+            {repliedToMessage.user?.name || repliedToMessage.user_name || t('user_fallback')}
           </Text>
           <Text style={[styles.replyHeaderText, { color: colors.textSecondary }, isCurrentUser && { color: 'rgba(255,255,255,0.8)' }]} numberOfLines={1}>
             {repliedToMessage.type === 'text' ? repliedToMessage.content : `[${repliedToMessage.type}]`}
@@ -696,7 +697,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     const isStory = message.type === 'story_share';
     const metadata = message.metadata || {};
     const itemId = isStory ? metadata.story_id : metadata.post_id;
-    const creatorName = metadata.creator_name || 'Anonymous';
+    const creatorName = metadata.creator_name || t('unknown_user');
     const creatorAvatar = metadata.creator_avatar;
     const allMedia = isStory ? [{ file_path: metadata.media_url, type: metadata.media_type }] : (metadata.media || []);
     const caption = metadata.caption;
@@ -716,19 +717,19 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         const isNotFound = error?.response?.status === 404 || error?.status === 404 || error?.message?.includes('404');
         
         if (isNotFound) {
-          const alertMsg = `This ${isStory ? 'story' : 'post'} has been deleted and is no longer available.`;
+          const alertMsg = isStory ? t('story_deleted_msg') : t('post_deleted_msg');
           if (Platform.OS === 'web') {
             alert(alertMsg);
           } else {
-            Alert.alert("Content Unavailable", alertMsg, [{ text: "OK" }]);
+            Alert.alert(t('content_unavailable'), alertMsg, [{ text: t('ok') }]);
           }
         } else {
           console.error(`Error checking shared ${isStory ? 'story' : 'post'}:`, error);
-          const errorMsg = `Could not load this ${isStory ? 'story' : 'post'}. Please try again later.`;
+          const errorMsg = isStory ? t('could_not_load_story') : t('could_not_load_post');
           if (Platform.OS === 'web') {
             alert(errorMsg);
           } else {
-            Alert.alert("Error", errorMsg);
+            Alert.alert(t('error'), errorMsg);
           }
         }
       }
@@ -770,7 +771,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             )}
             {isStory && (
               <View style={styles.storyOverlayBadge}>
-                <Text style={styles.storyOverlayText}>STORY</Text>
+                <Text style={styles.storyOverlayText}>{t('story_badge')}</Text>
               </View>
             )}
           </View>

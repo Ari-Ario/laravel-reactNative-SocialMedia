@@ -29,6 +29,7 @@ import getApiBase from '@/services/getApiBase';
 import { getToken } from '@/services/TokenService';
 import GlobalStyles from '@/styles/GlobalStyles';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -103,6 +104,7 @@ const StorageOption = ({
 };
 
 export default function StorageSettingsScreen() {
+    const { t } = useTranslation();
     const { colors, activeScheme } = useAppTheme();
     const styles = getStyles(colors, activeScheme);
     const insets = useSafeAreaInsets();
@@ -141,11 +143,10 @@ export default function StorageSettingsScreen() {
                         const val = localStorage.getItem(key) || '';
                         total += (key.length + val.length) * 2;
                     }
-                    const mb = (total / 1024 / 1024).toFixed(2);
                     setCacheSize(`${mb} MB`);
-                } catch { setCacheSize('< 1 MB'); }
+                } catch { setCacheSize(t('less_than_1mb')); }
             } else {
-                setCacheSize('Varies by device');
+                setCacheSize(t('varies_by_device'));
             }
         } catch (error) {
             console.error('Failed to load storage settings:', error);
@@ -165,7 +166,7 @@ export default function StorageSettingsScreen() {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             }
         } catch (error) {
-            Alert.alert('Error', 'Failed to save storage preference.');
+            Alert.alert(t('error'), t('failed_update'));
         }
     };
 
@@ -191,25 +192,25 @@ export default function StorageSettingsScreen() {
                     if (!isWeb) {
                         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                     }
-                    Alert.alert('Success', 'Local cache cleared successfully.');
+                    Alert.alert(t('success'), t('save'));
                 }, 800);
             } catch (error) {
                 setClearing(false);
-                Alert.alert('Error', 'Failed to clear some local data.');
+                Alert.alert(t('error'), t('failed_update'));
             }
         };
 
         if (isWeb) {
-            if (window.confirm('Clear all cached data? This will free up space without deleting your account data.')) {
+            if (window.confirm(t('clear_cache'))) {
                 confirmClear();
             }
         } else {
             Alert.alert(
-                'Clear Cache',
-                'This will remove temporary files and free up storage space.',
+                t('clear_cache'),
+                t('auto_clear_desc'),
                 [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Clear', style: 'destructive', onPress: confirmClear }
+                    { text: t('cancel'), style: 'cancel' },
+                    { text: t('clear_cache'), style: 'destructive', onPress: confirmClear }
                 ]
             );
         }
@@ -232,7 +233,7 @@ export default function StorageSettingsScreen() {
                 <BackButton onPress={() => router.back()} />
 
                 <View style={styles.headerCenter}>
-                    <Text style={styles.headerTitle}>Storage Manager</Text>
+                    <Text style={styles.headerTitle}>{t('storage_data')}</Text>
                     <Animated.View style={[styles.headerUnderline, { opacity: headerOpacity }]} />
                 </View>
 
@@ -242,7 +243,7 @@ export default function StorageSettingsScreen() {
             {loading ? (
                 <View style={styles.loaderContainer}>
                     <ActivityIndicator size="large" color={colors.tint} />
-                    <Text style={styles.loaderText}>Analyzing storage...</Text>
+                    <Text style={styles.loaderText}>{t('loading')}</Text>
                 </View>
             ) : (
                 <Animated.ScrollView
@@ -255,67 +256,64 @@ export default function StorageSettingsScreen() {
                     scrollEventThrottle={16}
                 >
                     <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }}>
-                        {/* Storage Overview Card */}
                         <LinearGradient
                             colors={['#1063FD', '#0050CC']}
                             style={styles.storageOverview}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}
                         >
-                            <Text style={styles.storageTitle}>Account Storage</Text>
+                            <Text style={styles.storageTitle}>{t('storage_usage')}</Text>
                             <Text style={styles.storageSize}>45.2 GB</Text>
-                            <Text style={styles.storageSubtext}>of 128 GB used</Text>
+                            <Text style={styles.storageSubtext}>{t('manage_storage_desc')}</Text>
                             <View style={styles.storageBar}>
                                 <View style={[styles.storageBarFill, { width: '35%' }]} />
                             </View>
                             <View style={styles.storageStats}>
                                 <View style={styles.storageStat}>
                                     <View style={[styles.storageDot, { backgroundColor: '#4CAF50' }]} />
-                                    <Text style={styles.storageStatText}>Media: 32.4 GB</Text>
+                                    <Text style={styles.storageStatText}>{t('media')}: 32.4 GB</Text>
                                 </View>
                                 <View style={styles.storageStat}>
                                     <View style={[styles.storageDot, { backgroundColor: '#FF9800' }]} />
-                                    <Text style={styles.storageStatText}>Other: 12.8 GB</Text>
+                                    <Text style={styles.storageStatText}>{t('other') || 'Other'}: 12.8 GB</Text>
                                 </View>
                             </View>
                         </LinearGradient>
 
-                        {/* Media Quality Section */}
-                        <Text style={styles.sectionTitle}>Media Quality</Text>
+                        <Text style={styles.sectionTitle}>{t('media_quality')}</Text>
                         <StorageOption
-                            label="Standard"
+                            label={t('standard_quality')}
                             value="standard"
                             isSelected={mediaQuality === 'standard'}
                             onPress={() => { setMediaQuality('standard'); updateStoragePref('media_quality', 'standard'); }}
                             icon="image-outline"
-                            description="Uses less data, faster loading"
+                            description={t('standard_quality_desc')}
                             color="#4CAF50"
                         />
                         <StorageOption
-                            label="High Definition (HD)"
+                            label={t('hd_quality')}
                             value="hd"
                             isSelected={mediaQuality === 'hd'}
                             onPress={() => { setMediaQuality('hd'); updateStoragePref('media_quality', 'hd'); }}
                             icon="sparkles-outline"
-                            description="Crisp quality, balanced data"
+                            description={t('hd_quality_desc')}
                             color="#FF9800"
                         />
                         <StorageOption
-                            label="Full Original"
+                            label={t('original_quality')}
                             value="original"
                             isSelected={mediaQuality === 'original'}
                             onPress={() => { setMediaQuality('original'); updateStoragePref('media_quality', 'original'); }}
                             icon="star-outline"
-                            description="Highest possible resolution"
+                            description={t('original_quality_desc')}
                             color="#1063FD"
                         />
 
-                        {/* Cache Management */}
-                        <Text style={styles.sectionTitle}>Cache Management</Text>
+                        <Text style={styles.sectionTitle}>{t('cache_label')}</Text>
                         <View style={styles.cacheCard}>
                             <View style={styles.cacheInfoRow}>
                                 <View>
-                                    <Text style={styles.cacheLabel}>Local Cache</Text>
+                                    <Text style={styles.cacheLabel}>{t('cache_label')}</Text>
                                     <Text style={styles.cacheValue}>{cacheSize}</Text>
                                 </View>
                                 <TouchableOpacity
@@ -331,7 +329,7 @@ export default function StorageSettingsScreen() {
                                         ) : (
                                             <>
                                                 <Ionicons name="trash-outline" size={16} color={colors.surface} />
-                                                <Text style={styles.clearButtonText}>Clear</Text>
+                                                <Text style={styles.clearButtonText}>{t('clear_cache')}</Text>
                                             </>
                                         )}
                                     </View>
@@ -339,44 +337,42 @@ export default function StorageSettingsScreen() {
                             </View>
                         </View>
 
-                        {/* Auto-Cleanup Section */}
-                        <Text style={styles.sectionTitle}>Auto-Cleanup</Text>
+                        <Text style={styles.sectionTitle}>{t('auto_clear')}</Text>
                         <StorageOption
-                            label="Weekly"
+                            label={t('weekly')}
                             value="weekly"
                             isSelected={autoClear === 'weekly'}
                             onPress={() => { setAutoClear('weekly'); updateStoragePref('auto_clear', 'weekly'); }}
                             icon="repeat-outline"
                             color="#34C759"
-                            description="Every 7 days automatically"
+                            description={t('auto_clear_desc')}
                         />
                         <StorageOption
-                            label="Monthly"
+                            label={t('monthly')}
                             value="monthly"
                             isSelected={autoClear === 'monthly'}
                             onPress={() => { setAutoClear('monthly'); updateStoragePref('auto_clear', 'monthly'); }}
                             icon="calendar-outline"
                             color="#9C27B0"
-                            description="Once per month automatically"
+                            description={t('auto_clear_desc')}
                         />
                         <StorageOption
-                            label="Never"
+                            label={t('never')}
                             value="never"
                             isSelected={autoClear === 'never'}
                             onPress={() => { setAutoClear('never'); updateStoragePref('auto_clear', 'never'); }}
                             icon="infinite-outline"
                             color="#666"
-                            description="Manual clearing only"
+                            description={t('auto_clear_desc')}
                         />
 
-                        {/* Download Preferences */}
-                        <Text style={styles.sectionTitle}>Download Settings</Text>
+                        <Text style={styles.sectionTitle}>{t('wifi_only_title')}</Text>
                         <View style={styles.cacheCard}>
                             <View style={styles.cacheInfoRow}>
                                 <View>
-                                    <Text style={styles.cacheLabel}>Wi-Fi Only Downloads</Text>
+                                    <Text style={styles.cacheLabel}>{t('wifi_only_title')}</Text>
                                     <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
-                                        Only auto-download media on Wi-Fi
+                                        {t('wifi_only_desc')}
                                     </Text>
                                 </View>
                                 <Switch

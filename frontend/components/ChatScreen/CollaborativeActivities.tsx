@@ -1,5 +1,6 @@
 // components/ChatScreen/CollaborativeActivities.tsx
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, useContext } from 'react';
+import { useTranslation } from '@/constants/i18n';
 import { useCollaborationStore } from '@/stores/collaborationStore';
 import {
   View,
@@ -80,7 +81,14 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors, activeScheme } = useAppTheme();
-  const styles = getStyles(colors, activeScheme);
+  const { t, isRTL } = useTranslation();
+  const getLocalizedDay = (date: Date, short = true) => {
+    const dayKey = 'day_' + format(date, 'eee').toLowerCase();
+    const shortKey = dayKey + '_s';
+    return t(short ? shortKey : dayKey);
+  };
+
+  const styles = getStyles(colors, activeScheme, isRTL);
   const isDark = activeScheme === 'dark';
 
   const storeSpaces = useCollaborationStore(state => state.spaces);
@@ -107,7 +115,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
   const [isManagingParticipants, setIsManagingParticipants] = useState(false);
   const [isUpdatingParticipants, setIsUpdatingParticipants] = useState(false);
   const [preselectedTime, setPreselectedTime] = useState<Date | undefined>(undefined);
-  const { user } = React.useContext(AuthContext);
+  const { user } = useContext(AuthContext);
   const weekScrollRef = useRef<ScrollView>(null);
   const dayScrollRef = useRef<ScrollView>(null);
 
@@ -235,7 +243,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
   }, [updateCalendarMarks]);
 
   const getStatusColor = (status: string): string => {
-    const colors: Record<string, string> = {
+    const statusColors: Record<string, string> = {
       scheduled: '#4B53BC',
       proposed: '#FFA726',
       active: '#4CAF50',
@@ -243,7 +251,19 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
       cancelled: '#F44336',
       archived: '#9E9E9E',
     };
-    return colors[status] || '#666';
+    return statusColors[status] || '#666';
+  };
+ 
+  const getStatusLabel = (status: string): string => {
+    const statusLabels: Record<string, string> = {
+      scheduled: t('scheduled'),
+      proposed: t('proposed'),
+      active: t('active'),
+      completed: t('completed'),
+      cancelled: t('cancelled'),
+      archived: t('archived'),
+    };
+    return statusLabels[status] || status;
   };
 
   const getActivityIcon = (type: string): keyof typeof Ionicons.glyphMap => {
@@ -260,11 +280,26 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
     };
     return icons[type] || 'cube';
   };
+ 
+  const getActivityLabel = (type: string): string => {
+    const labels: Record<string, string> = {
+      brainstorm: t('brainstorm'),
+      discussion: t('discussion'),
+      workshop: t('workshop'),
+      meeting: t('meeting'),
+      'problem-solving': t('problem_solving'),
+      planning: t('planning'),
+      review: t('review'),
+      retrospective: t('retrospective'),
+      social: t('social'),
+    };
+    return labels[type] || type;
+  };
 
   const getSpaceInfo = (spaceId: string) => {
     const space = spaces.find(s => s.id === spaceId);
     return {
-      name: space?.title || 'Unknown Space',
+      name: space?.title || t('unknown_space'),
       type: space?.space_type || 'chat',
       color: getSpaceColor(space?.space_type),
     };
@@ -321,7 +356,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
       }
     } catch (error) {
       console.error('Error updating participants:', error);
-      Alert.alert('Error', 'Failed to update participants');
+      Alert.alert(t('error'), t('failed_update_participants'));
     } finally {
       setIsUpdatingParticipants(false);
     }
@@ -412,14 +447,14 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
             >
               <View style={[styles.dayHeader, isSelected && styles.dayHeaderSelected]}>
                 <Text style={[styles.dayName, isSelected && styles.dayNameSelected]}>
-                  {format(day.date, 'EEE')}
+                  {getLocalizedDay(day.date)}
                 </Text>
                 <Text style={[styles.dayNumber, isSelected && styles.dayNumberSelected]}>
                   {format(day.date, 'd')}
                 </Text>
                 {isToday(day.date) && (
                   <View style={styles.todayBadge}>
-                    <Text style={styles.todayBadgeText}>Today</Text>
+                    <Text style={styles.todayBadgeText}>{t('today')}</Text>
                   </View>
                 )}
               </View>
@@ -462,10 +497,10 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
                               style={styles.weekActivityTouchable}
                               onPress={() => handleActivityPress(activity)}
                             >
-                              <Text style={styles.weekActivityTitle} numberOfLines={1}>
+                              <Text style={[styles.weekActivityTitle, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>
                                 {activity.title}
                               </Text>
-                              <View style={styles.weekActivityMeta}>
+                              <View style={[styles.weekActivityMeta, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                                 <Ionicons
                                   name={getActivityIcon(activity.activity_type)}
                                   size={10}
@@ -559,55 +594,55 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
                               styles.dayActivityType,
                               { color: getStatusColor(activity.status) }
                             ]}>
-                              {activity.activity_type}
+                              {getActivityLabel(activity.activity_type)}
                             </Text>
                           </View>
-                          <View style={[styles.spaceBadge, { backgroundColor: spaceInfo.color + '20' }]}>
+                          <View style={[styles.spaceBadge, { flexDirection: isRTL ? 'row-reverse' : 'row', backgroundColor: spaceInfo.color + '20' }]}>
                             <View style={[styles.spaceDot, { backgroundColor: spaceInfo.color }]} />
                             <Text style={styles.spaceBadgeText}>{spaceInfo.name}</Text>
                           </View>
                         </View>
 
-                        <Text style={styles.dayActivityTitle}>{activity.title}</Text>
+                        <Text style={[styles.dayActivityTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{activity.title}</Text>
 
                         {activity.description && (
-                          <Text style={styles.dayActivityDescription} numberOfLines={2}>
+                          <Text style={[styles.dayActivityDescription, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={2}>
                             {activity.description}
                           </Text>
                         )}
 
-                        <View style={styles.dayActivityMeta}>
-                          <View style={styles.dayActivityDuration}>
+                        <View style={[styles.dayActivityMeta, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                          <View style={[styles.dayActivityDuration, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                             <Ionicons name="timer-outline" size={14} color="#666" />
                             <Text style={styles.dayActivityMetaText}>
-                              {activity.duration_minutes || 60} min
+                              {t('duration_minutes').replace('{count}', (activity.duration_minutes || 60).toString())}
                             </Text>
                           </View>
-                          <View style={styles.dayActivityStatus}>
+                          <View style={[styles.dayActivityStatus, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                             <View style={[styles.statusDot, { backgroundColor: getStatusColor(activity.status) }]} />
                             <Text style={styles.dayActivityMetaText}>
-                              {activity.status}
+                              {getStatusLabel(activity.status)}
                             </Text>
                           </View>
                         </View>
 
-                        <View style={styles.dayActivityActions}>
+                        <View style={[styles.dayActivityActions, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                           <TouchableOpacity
-                            style={styles.dayAction}
+                            style={[styles.dayAction, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
                             onPress={() => handleAddToCalendar(activity)}
                           >
                             <Ionicons name="calendar-outline" size={16} color="#007AFF" />
-                            <Text style={styles.dayActionText}>Calendar</Text>
+                            <Text style={styles.dayActionText}>{t('calendar')}</Text>
                           </TouchableOpacity>
                           <TouchableOpacity
-                            style={styles.dayAction}
+                            style={[styles.dayAction, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
                             onPress={() => handleExportICS(activity)}
                           >
                             <Ionicons name="download-outline" size={16} color="#666" />
-                            <Text style={styles.dayActionText}>Export</Text>
+                            <Text style={styles.dayActionText}>{t('export')}</Text>
                           </TouchableOpacity>
                           <TouchableOpacity
-                            style={[styles.dayAction, styles.dayActionJoin]}
+                            style={[styles.dayAction, styles.dayActionJoin, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
                             onPress={() => {
                               onClose();
                               router.push(`/(spaces)/${activity.space_id}?tab=meeting&activity=${activity.id}`);
@@ -615,10 +650,10 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
                           >
                             <LinearGradient
                               colors={['#007AFF', '#0056CC']}
-                              style={styles.joinButtonGradient}
+                              style={[styles.joinButtonGradient, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
                             >
                               <Ionicons name="enter-outline" size={14} color="#fff" />
-                              <Text style={styles.joinButtonText}>Join</Text>
+                              <Text style={styles.joinButtonText}>{t('join')}</Text>
                             </LinearGradient>
                           </TouchableOpacity>
                         </View>
@@ -685,9 +720,9 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
         >
           {selectedActivity && (
             <>
-              <View style={styles.modalHeader}>
-                <View style={styles.modalHeaderTitleRow}>
-                  <Text style={styles.modalTitle}>{selectedActivity.title}</Text>
+              <View style={[styles.modalHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                <View style={[styles.modalHeaderTitleRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                  <Text style={[styles.modalTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{selectedActivity.title || t('untitled')}</Text>
                   <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 8 }}>U:{String(user?.id)} C:{String(selectedActivity.created_by)}</Text>
                   {(String(selectedActivity.created_by || selectedActivity.creator?.id) === String(user?.id)) && (
                     <TouchableOpacity
@@ -710,33 +745,33 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
 
               <ScrollView style={styles.modalContent}>
                 <View style={styles.modalSection}>
-                  <Text style={styles.modalSectionTitle}>Details</Text>
-                  <Text style={styles.modalText}>{selectedActivity.description || 'No description'}</Text>
+                  <Text style={[styles.modalSectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t('details')}</Text>
+                  <Text style={[styles.modalText, { textAlign: isRTL ? 'right' : 'left' }]}>{selectedActivity.description || t('no_description')}</Text>
                 </View>
 
                 <View style={styles.modalSection}>
-                  <Text style={styles.modalSectionTitle}>Time</Text>
-                  <View style={styles.modalTimeRow}>
+                  <Text style={[styles.modalSectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t('time')}</Text>
+                  <View style={[styles.modalTimeRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                     <Ionicons name="time-outline" size={20} color="#007AFF" />
-                    <Text style={styles.modalText}>
+                    <Text style={[styles.modalText, { textAlign: isRTL ? 'right' : 'left' }]}>
                       {selectedActivity.scheduled_start
                         ? format(parseISO(selectedActivity.scheduled_start), 'EEEE, MMMM d, h:mm a')
-                        : 'Not scheduled'}
+                        : t('not_scheduled')}
                     </Text>
                   </View>
-                  <View style={styles.modalTimeRow}>
+                  <View style={[styles.modalTimeRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                     <Ionicons name="timer-outline" size={20} color="#007AFF" />
-                    <Text style={styles.modalText}>
-                      Duration: {selectedActivity.duration_minutes || 60} minutes
+                    <Text style={[styles.modalText, { textAlign: isRTL ? 'right' : 'left' }]}>
+                      {t('duration_minutes').replace('{count}', (selectedActivity.duration_minutes || 60).toString())}
                     </Text>
                   </View>
                 </View>
 
                 <View style={styles.modalSection}>
-                  <Text style={styles.modalSectionTitle}>Space</Text>
-                  <View style={styles.modalSpaceRow}>
+                  <Text style={[styles.modalSectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t('space')}</Text>
+                  <View style={[styles.modalSpaceRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                     <View style={[styles.modalSpaceDot, { backgroundColor: getSpaceInfo(selectedActivity.space_id).color }]} />
-                    <Text style={styles.modalText}>
+                    <Text style={[styles.modalText, { textAlign: isRTL ? 'right' : 'left' }]}>
                       {getSpaceInfo(selectedActivity.space_id).name}
                     </Text>
                   </View>
@@ -744,8 +779,8 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
 
                 {/* Participants Section */}
                 <View style={styles.modalSection}>
-                  <View style={styles.sectionHeaderRow}>
-                    <Text style={styles.modalSectionTitle}>Participants</Text>
+                  <View style={[styles.sectionHeaderRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                    <Text style={[styles.modalSectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t('participants')}</Text>
                     {(selectedActivity.created_by === useCollaborationStore.getState().spaces.find(s => s.id === selectedActivity.space_id)?.creator_id ||
                       selectedActivity.created_by === Number(useCollaborationStore.getState().spaces.find(s => s.id === selectedActivity.space_id)?.creator_id)) && (
                         <TouchableOpacity
@@ -753,7 +788,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
                           style={styles.manageButton}
                         >
                           <Text style={styles.manageButtonText}>
-                            {isManagingParticipants ? 'Done' : 'Manage'}
+                            {isManagingParticipants ? t('done') : t('manage')}
                           </Text>
                         </TouchableOpacity>
                       )}
@@ -761,12 +796,12 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
 
                   <View style={styles.participantsList}>
                     {selectedActivity.participants?.map((p: any) => (
-                      <View key={p.id} style={styles.participantItem}>
-                        <View style={styles.participantInfo}>
+                      <View key={p.id} style={[styles.participantItem, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                        <View style={[styles.participantInfo, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                           <View style={styles.participantAvatar}>
                             <Text style={styles.avatarText}>{p.name?.charAt(0).toUpperCase()}</Text>
                           </View>
-                          <Text style={styles.participantName}>{p.name}</Text>
+                          <Text style={[styles.participantName, { textAlign: isRTL ? 'right' : 'left' }]}>{p.name}</Text>
                         </View>
                         {isManagingParticipants && (
                           <TouchableOpacity
@@ -782,12 +817,12 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
                     {isManagingParticipants && spaceParticipants
                       .filter(sp => !selectedActivity.participant_ids?.includes(sp.user_id) && !selectedActivity.participants?.some((p: any) => p.id === sp.user_id))
                       .map((sp: any) => (
-                        <View key={sp.user_id} style={styles.participantItem}>
-                          <View style={styles.participantInfo}>
+                        <View key={sp.user_id} style={[styles.participantItem, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                          <View style={[styles.participantInfo, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                             <View style={[styles.participantAvatar, { backgroundColor: '#E0E0E0' }]}>
                               <Text style={styles.avatarText}>{sp.user?.name?.charAt(0).toUpperCase()}</Text>
                             </View>
-                            <Text style={[styles.participantName, { color: '#888' }]}>{sp.user?.name}</Text>
+                            <Text style={[styles.participantName, { textAlign: isRTL ? 'right' : 'left', color: '#888' }]}>{sp.user?.name}</Text>
                           </View>
                           <TouchableOpacity
                             onPress={() => handleUpdateParticipant(sp.user_id, 'add')}
@@ -801,20 +836,20 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
                   </View>
                 </View>
 
-                <View style={styles.modalActions}>
+                <View style={[styles.modalActions, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                   <TouchableOpacity
                     style={styles.modalAction}
                     onPress={() => handleAddToCalendar(selectedActivity)}
                   >
                     <Ionicons name="calendar" size={20} color="#007AFF" />
-                    <Text style={styles.modalActionText}>Add to Calendar</Text>
+                    <Text style={styles.modalActionText}>{t('add_to_calendar')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.modalAction}
                     onPress={() => handleExportICS(selectedActivity)}
                   >
                     <Ionicons name="download" size={20} color="#666" />
-                    <Text style={styles.modalActionText}>Export ICS</Text>
+                    <Text style={styles.modalActionText}>{t('export_ics')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.modalAction}
@@ -822,12 +857,12 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
                       const frontendHost = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
                       const deepLink = `${frontendHost}/${selectedActivity.space_id}?activity=${selectedActivity.id}`;
                       require('expo-clipboard').setStringAsync(deepLink);
-                      try { require('@/stores/toastStore').useToastStore.getState().showToast('Session link copied to clipboard!', 'success'); } catch (e) { }
+                      try { require('@/stores/toastStore').useToastStore.getState().showToast(t('session_link_copied'), 'success'); } catch (e) { }
                       if (Platform.OS !== 'web') try { require('expo-haptics').notificationAsync(require('expo-haptics').NotificationFeedbackType.Success); } catch (e) { }
                     }}
                   >
                     <Ionicons name="link" size={20} color="#666" />
-                    <Text style={styles.modalActionText}>Copy Link</Text>
+                    <Text style={styles.modalActionText}>{t('copy_link')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.modalAction, styles.modalActionJoin]}
@@ -842,10 +877,10 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
                   >
                     <LinearGradient
                       colors={['#007AFF', '#0056CC']}
-                      style={styles.modalJoinGradient}
+                      style={[styles.modalJoinGradient, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
                     >
                       <Ionicons name="enter" size={20} color="#fff" />
-                      <Text style={styles.modalJoinText}>Join Session</Text>
+                      <Text style={styles.modalJoinText}>{t('join_session')}</Text>
                     </LinearGradient>
                   </TouchableOpacity>
                 </View>
@@ -862,17 +897,17 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
 
       {/* Header */}
-      <BlurView intensity={90} tint={isDark ? 'dark' : 'light'} style={styles.header}>
+      <BlurView intensity={90} tint={isDark ? 'dark' : 'light'} style={[styles.header, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
         <TouchableOpacity onPress={onClose} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+          <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={24} color={colors.text} />
         </TouchableOpacity>
 
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>
-            {spaceId ? 'Space Sessions' : 'Collaborative Sessions'}
+            {spaceId ? t('space_sessions') : t('collaborative_sessions')}
           </Text>
           <Text style={styles.headerSubtitle}>
-            {filteredActivities.length} total • {filteredActivities.filter(a => a.status === 'scheduled').length} upcoming
+            {t('total_activities').replace('{count}', filteredActivities.length.toString())} • {t('upcoming_activities').replace('{count}', filteredActivities.filter(a => a.status === 'scheduled').length.toString())}
           </Text>
         </View>
 
@@ -890,11 +925,11 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
       </BlurView>
 
       {/* View Toggle */}
-      <View style={styles.viewToggle}>
+      <View style={[styles.viewToggle, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
         {[
-          { id: 'day', label: 'Day', icon: 'today' },
-          { id: 'week', label: 'Week', icon: 'calendar' },
-          { id: 'month', label: 'Month', icon: 'calendar-outline' },
+          { id: 'day', label: t('day'), icon: 'today' },
+          { id: 'week', label: t('week'), icon: 'calendar' },
+          { id: 'month', label: t('month'), icon: 'calendar-outline' },
         ].map((mode) => (
           <TouchableOpacity
             key={mode.id}
@@ -922,12 +957,12 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
 
       {/* Navigation Bar */}
       {(viewMode === 'week' || viewMode === 'day') && (
-        <View style={styles.navBar}>
+        <View style={[styles.navBar, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
           <TouchableOpacity
             style={styles.navButton}
-            onPress={() => viewMode === 'week' ? navigateWeek('prev') : navigateDay('prev')}
+            onPress={() => viewMode === 'week' ? navigateWeek(isRTL ? 'next' : 'prev') : navigateDay(isRTL ? 'next' : 'prev')}
           >
-            <Ionicons name="chevron-back" size={20} color={colors.tint} />
+            <Ionicons name={isRTL ? "chevron-forward" : "chevron-back"} size={20} color={colors.tint} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -944,9 +979,9 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
 
           <TouchableOpacity
             style={styles.navButton}
-            onPress={() => viewMode === 'week' ? navigateWeek('next') : navigateDay('next')}
+            onPress={() => viewMode === 'week' ? navigateWeek(isRTL ? 'prev' : 'next') : navigateDay(isRTL ? 'prev' : 'next')}
           >
-            <Ionicons name="chevron-forward" size={20} color={colors.tint} />
+            <Ionicons name={isRTL ? "chevron-back" : "chevron-forward"} size={20} color={colors.tint} />
           </TouchableOpacity>
         </View>
       )}
@@ -990,8 +1025,8 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
     </Animated.View>
   );
 };
-
-const getStyles = (colors: any, activeScheme: string) => {
+ 
+const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => {
   const isDark = activeScheme === 'dark';
   return StyleSheet.create({
     container: {
@@ -1198,7 +1233,7 @@ const getStyles = (colors: any, activeScheme: string) => {
       backgroundColor: isDark ? colors.card : '#FFFFFF',
       borderRadius: 6,
       padding: 4,
-      borderLeftWidth: 3,
+      [isRTL ? 'borderRightWidth' : 'borderLeftWidth']: 3,
       ...createShadow({
         width: 0,
         height: 1,
@@ -1274,7 +1309,7 @@ const getStyles = (colors: any, activeScheme: string) => {
       backgroundColor: colors.card,
       borderRadius: 12,
       marginBottom: 8,
-      borderLeftWidth: 4,
+      [isRTL ? 'borderRightWidth' : 'borderLeftWidth']: 4,
       ...createShadow({
         width: 0,
         height: 2,

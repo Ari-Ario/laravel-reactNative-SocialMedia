@@ -25,10 +25,12 @@ import { createShadow } from '@/utils/styles';
 import * as Haptics from 'expo-haptics';
 import GlobalStyles from '@/styles/GlobalStyles';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 
 const isWeb = Platform.OS === 'web';
 
 export default function AiSafetyScreen() {
+    const { t } = useTranslation();
     const { colors, activeScheme } = useAppTheme();
     const styles = getStyles(colors, activeScheme);
     const insets = useSafeAreaInsets();
@@ -68,7 +70,7 @@ export default function AiSafetyScreen() {
             }
         } catch (error) {
             setPreferences((prev: any) => ({ ...prev, [field]: !value }));
-            Alert.alert('Error', 'Failed to update safety preference');
+            Alert.alert(t('error'), t('failed_update'));
         }
     };
 
@@ -79,9 +81,9 @@ export default function AiSafetyScreen() {
     };
 
     const getStatusLabel = (score: number) => {
-        if (score > 0.8) return 'EXCELLENT';
-        if (score > 0.5) return 'GOOD';
-        return 'REDUCING';
+        if (score > 0.8) return t('privacy');
+        if (score > 0.5) return t('privacy');
+        return t('privacy');
     };
 
     const SafetyToggle = ({ label, description, icon, value, onToggle, color = "#0084ff" }: any) => (
@@ -124,7 +126,7 @@ export default function AiSafetyScreen() {
             >
                 <BackButton onPress={() => router.back()} />
                 <View style={styles.headerCenter}>
-                    <Text style={styles.headerTitle}>AI Safety & Trust</Text>
+                    <Text style={styles.headerTitle}>{t('security')}</Text>
                     <View style={styles.headerUnderline} />
                 </View>
                 <TouchableOpacity onPress={loadData} style={styles.refreshButton}>
@@ -135,7 +137,7 @@ export default function AiSafetyScreen() {
             {loading ? (
                 <View style={styles.loaderContainer}>
                     <ActivityIndicator size="large" color="#0084ff" />
-                    <Text style={styles.loaderText}>Assessing your trust level...</Text>
+                    <Text style={styles.loaderText}>{t('loading')}</Text>
                 </View>
             ) : (
                 <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -146,7 +148,7 @@ export default function AiSafetyScreen() {
                         >
                             <View style={[styles.scoreCircle, { borderColor: getStatusColor(compliance?.trust_score ?? 1) }]}>
                                 <Text style={styles.scorePercent}>{((compliance?.trust_score ?? 1) * 100).toFixed(0)}%</Text>
-                                <Text style={styles.scoreLabel}>Trust Score</Text>
+                                <Text style={styles.scoreLabel}>{t('privacy')}</Text>
                             </View>
                             <View style={[styles.statusBadge, { backgroundColor: getStatusColor(compliance?.trust_score ?? 1) }]}>
                                 <Text style={styles.statusText}>{getStatusLabel(compliance?.trust_score ?? 1)}</Text>
@@ -155,23 +157,23 @@ export default function AiSafetyScreen() {
                     </MotiView>
 
                     <View style={styles.statsGrid}>
-                        <StatutoryItem label="Violations" value={compliance?.violation_count ?? 0} icon="alert-circle" color="#F44336" />
-                        <StatutoryItem label="Integrity" value={((compliance?.reporting_integrity ?? 1) * 100).toFixed(0) + '%'} icon="shield-checkmark" color="#4CAF50" />
-                        <StatutoryItem label="False Reports" value={compliance?.false_report_count ?? 0} icon="flag" color="#FF9800" />
+                        <StatutoryItem label={t('unblock')} value={compliance?.violation_count ?? 0} icon="alert-circle" color="#F44336" />
+                        <StatutoryItem label={t('security')} value={((compliance?.reporting_integrity ?? 1) * 100).toFixed(0) + '%'} icon="shield-checkmark" color="#4CAF50" />
+                        <StatutoryItem label={t('unblock')} value={compliance?.false_report_count ?? 0} icon="flag" color="#FF9800" />
                     </View>
 
-                    <Text style={styles.sectionTitle}>Safety Controls</Text>
+                    <Text style={styles.sectionTitle}>{t('security')}</Text>
                     <SafetyToggle
-                        label="Content Filters"
-                        description="Automatically filter sensitive or offensive content from your feed."
+                        label={t('privacy')}
+                        description={t('privacy')}
                         icon="alert-outline"
                         value={preferences?.content_filters}
                         onToggle={(val: boolean) => handleTogglePreference('content_filters', val)}
                         color="#1063FD"
                     />
                     <SafetyToggle
-                        label="AI Portals"
-                        description="Allow AI to assist in connecting you with relevant community spaces."
+                        label={t('connect')}
+                        description={t('connect')}
                         icon="planet-outline"
                         value={preferences?.enable_web_portals}
                         onToggle={(val: boolean) => handleTogglePreference('enable_web_portals', val)}
@@ -181,23 +183,22 @@ export default function AiSafetyScreen() {
                     <View style={styles.infoBox}>
                         <View style={styles.infoTitleRow}>
                             <Ionicons name="information-circle" size={20} color="#0084ff" />
-                            <Text style={styles.infoTitle}>About Your Trust Score</Text>
+                            <Text style={styles.infoTitle}>{t('privacy')}</Text>
                         </View>
                         <Text style={styles.infoText}>
-                            Your trust score is calculated based on your content history and reporting accuracy.
-                            A high score ensures your reports are prioritized and gives you a "Verified Contributor" standing.
+                            {t('privacy')}
                         </Text>
 
                         <View style={styles.divider} />
 
-                        <Text style={styles.infoSubtitle}>How to maintain a high score:</Text>
+                        <Text style={styles.infoSubtitle}>{t('privacy')}</Text>
                         <View style={styles.tipRow}>
                             <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
-                            <Text style={styles.tipText}>Follow community guidelines consistently.</Text>
+                            <Text style={styles.tipText}>{t('privacy')}</Text>
                         </View>
                         <View style={styles.tipRow}>
                             <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
-                            <Text style={styles.tipText}>Only report content that clearly violates rules.</Text>
+                            <Text style={styles.tipText}>{t('privacy')}</Text>
                         </View>
                     </View>
                 </ScrollView>

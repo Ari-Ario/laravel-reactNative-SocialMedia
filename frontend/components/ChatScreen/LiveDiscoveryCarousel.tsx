@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { useCollaborationStore } from '@/stores/collaborationStore';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 import { createShadow } from '@/utils/styles';
 import Avatar from '@/components/Image/Avatar';
 import AuthContext from '@/context/AuthContext';
@@ -42,7 +43,8 @@ const CARD_HEIGHT = 65; // High-density thin design
  */
 const LiveDiscoveryCarousel = () => {
   const { colors, activeScheme } = useAppTheme();
-  const styles = getStyles(colors, activeScheme);
+  const { t, isRTL } = useTranslation();
+  const styles = getStyles(colors, activeScheme, isRTL);
   const { user } = useContext(AuthContext);
   const { spaces, activeListeningSpaceId, setListeningSpaceId } = useCollaborationStore();
   const scrollX = useSharedValue(0);
@@ -190,7 +192,7 @@ const LiveDiscoveryCarousel = () => {
                 >
                   <View style={styles.liveBadge}>
                     <View style={styles.liveDot} />
-                    <Text style={styles.liveText}>LIVE</Text>
+                    <Text style={styles.liveText}>{t('live')}</Text>
                   </View>
 
                   <Avatar
@@ -202,7 +204,7 @@ const LiveDiscoveryCarousel = () => {
 
                   <View style={styles.infoContainer}>
                     <Text style={styles.channelName} numberOfLines={1}>
-                      {space.title || 'Live Channel'}
+                      {space.title || t('live_channel')}
                     </Text>
                     <View style={styles.participantsRow}>
                       <Ionicons name="people" size={10} color={colors.textSecondary} />
@@ -243,7 +245,7 @@ const LiveDiscoveryCarousel = () => {
                 >
                   <View style={styles.liveBadge}>
                     <View style={styles.liveDot} />
-                    <Text style={styles.liveText}>LIVE</Text>
+                    <Text style={styles.liveText}>{t('live')}</Text>
                   </View>
 
                   <Avatar
@@ -255,7 +257,7 @@ const LiveDiscoveryCarousel = () => {
 
                   <View style={styles.infoContainer}>
                     <Text style={styles.channelName} numberOfLines={1}>
-                      {space.title || 'Live Channel'}
+                      {space.title || t('live_channel')}
                     </Text>
                     <View style={styles.participantsRow}>
                       <Ionicons name="people" size={10} color={colors.textSecondary} />
@@ -338,8 +340,8 @@ const LiveDiscoveryCarousel = () => {
     </Animated.View>
   );
 };
-
-const getStyles = (colors: any, activeScheme: 'light' | 'dark') => StyleSheet.create({
+ 
+const getStyles = (colors: any, activeScheme: 'light' | 'dark', isRTL: boolean) => StyleSheet.create({
   container: {
     paddingVertical: 5,
     borderBottomWidth: 1,
@@ -368,14 +370,14 @@ const getStyles = (colors: any, activeScheme: 'light' | 'dark') => StyleSheet.cr
   },
   cardContent: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
     gap: 8,
   },
   mainActionTouch: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     gap: 8,
   },

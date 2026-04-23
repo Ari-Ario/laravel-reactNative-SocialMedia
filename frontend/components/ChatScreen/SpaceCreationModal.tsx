@@ -25,6 +25,7 @@ import getApiBase from '@/services/getApiBase';
 import { getToken } from '@/services/TokenService';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import Avatar from '@/components/Image/Avatar';
+import { useTranslation } from '@/constants/i18n';
 
 type Step = 'CONTACTS' | 'DETAILS';
 type PrivacyTier = 'general' | 'protected' | 'channel';
@@ -44,7 +45,8 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
 }) => {
     const insets = useSafeAreaInsets();
     const { colors, activeScheme } = useAppTheme();
-    const styles = getStyles(colors, activeScheme);
+    const { t, isRTL } = useTranslation();
+    const styles = getStyles(colors, activeScheme, isRTL);
     const [step, setStep] = useState<Step>('CONTACTS');
 
     // Contacts Step State
@@ -115,27 +117,27 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
             const isSelected = selectedContacts.has(item.user_id);
             return (
                 <TouchableOpacity
-                    style={styles.contactRow}
+                    style={[styles.contactRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
                     onPress={() => toggleContactSelection(item.user_id)}
                     activeOpacity={0.7}
                 >
-                    <View style={styles.contactAvatarContainer}>
+                    <View style={[styles.contactAvatarContainer, { [isRTL ? 'marginLeft' : 'marginRight']: 12 }]}>
                         <Avatar
                             source={item.avatar || null}
                             name={item.name}
                             size={44}
                         />
                         {isSelected && (
-                            <View style={[styles.contactSelectedBadge, { borderColor: colors.background }]}>
+                            <View style={[styles.contactSelectedBadge, { borderColor: colors.background, [isRTL ? 'left' : 'right']: -2 }]}>
                                 <Ionicons name="checkmark" size={14} color="#fff" />
                             </View>
                         )}
                     </View>
-                    <View style={styles.contactInfo}>
+                    <View style={[styles.contactInfo, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
                         <Text style={styles.contactName}>{item.name}</Text>
                         {item.username && <Text style={styles.contactUsername}>@{item.username}</Text>}
                     </View>
-                    <View style={styles.checkboxContainer}>
+                    <View style={[styles.checkboxContainer, { [isRTL ? 'marginRight' : 'marginLeft']: 10 }]}>
                         <Ionicons
                             name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
                             size={24}
@@ -187,7 +189,7 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
         try {
             const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (!perm.granted) {
-                Alert.alert('Permission Required', 'Allow access to your photo library.');
+                Alert.alert(t('permission_required'), t('allow_photo_access'));
                 return;
             }
             const result = await ImagePicker.launchImageLibraryAsync({
@@ -214,13 +216,13 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
             }
         } catch (err) {
             console.error('Gallery pick error:', err);
-            Alert.alert('Error', 'Could not open gallery.');
+            Alert.alert(t('error'), t('error'));
         }
     };
 
     const handleCreateSpace = async () => {
         if (!spaceName.trim()) {
-            Alert.alert('Required', 'Please enter a space name.');
+            Alert.alert(t('required'), t('space_name_required'));
             return;
         }
 
@@ -283,10 +285,10 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
                 const failedCount = failedInvites.length;
                 const totalCount = participantIds.length;
                 Alert.alert(
-                    'Partial Success',
-                    `Space created, but could not invite ${failedCount} out of ${totalCount} people. They can be invited later from space settings.`,
+                    t('partial_success'),
+                    t('space_created_invite_error').replace('{count}', failedCount.toString()).replace('{total}', totalCount.toString()),
                     [{
-                        text: 'OK', onPress: () => {
+                        text: t('ok'), onPress: () => {
                             onSpaceCreated(response);
                             onClose();
                         }
@@ -299,7 +301,7 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
             }
         } catch (error: any) {
             console.error('Failed to create space:', error);
-            Alert.alert('Creation Failed', error.message || 'Could not create the space.');
+            Alert.alert(t('creation_failed'), error.message || t('could_not_create_space'));
         } finally {
             setIsCreating(false);
             setIsUploadingPhoto(false);
@@ -380,12 +382,12 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
                 style={[GlobalStyles.popupContainer, { paddingTop: insets.top, backgroundColor: activeScheme === 'dark' ? colors.background : '#F2F2F7' }]}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             >
-                <View style={styles.header}>
+                <View style={[styles.header, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                     <TouchableOpacity onPress={step === 'CONTACTS' ? onClose : () => setStep('CONTACTS')} style={styles.headerButton}>
-                        <Text style={styles.headerButtonText}>{step === 'CONTACTS' ? 'Cancel' : 'Back'}</Text>
+                        <Text style={[styles.headerButtonText, { textAlign: isRTL ? 'right' : 'left' }]}>{step === 'CONTACTS' ? t('cancel') : t('back')}</Text>
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>
-                        {step === 'CONTACTS' ? 'New Space' : 'Space Details'}
+                        {step === 'CONTACTS' ? t('new_space') : t('space_details')}
                     </Text>
                     <TouchableOpacity
                         onPress={step === 'CONTACTS' ? handleNextStep : handleCreateSpace}
@@ -395,8 +397,8 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
                         {isCreating ? (
                             <ActivityIndicator size="small" color={colors.tint} />
                         ) : (
-                            <Text style={[styles.headerButtonText, { fontWeight: '600', textAlign: 'right', color: colors.tint }]}>
-                                {step === 'CONTACTS' ? 'Next' : 'Create'}
+                            <Text style={[styles.headerButtonText, { fontWeight: '600', textAlign: isRTL ? 'left' : 'right', color: colors.tint }]}>
+                                {step === 'CONTACTS' ? t('next') : t('create')}
                             </Text>
                         )}
                     </TouchableOpacity>
@@ -404,11 +406,11 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
 
                 {step === 'CONTACTS' && (
                     <View style={styles.stepContainer}>
-                        <View style={styles.searchContainer}>
-                            <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
+                        <View style={[styles.searchContainer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                            <Ionicons name="search" size={20} color={colors.textSecondary} style={[styles.searchIcon, { [isRTL ? 'marginLeft' : 'marginRight']: 8 }]} />
                             <TextInput
-                                style={styles.searchInput}
-                                placeholder="Search contacts..."
+                                style={[styles.searchInput, { textAlign: isRTL ? 'right' : 'left' }]}
+                                placeholder={t('search_contacts_placeholder')}
                                 placeholderTextColor={colors.textSecondary}
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
@@ -417,9 +419,9 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
                             />
                         </View>
 
-                        <View style={styles.selectionSummary}>
+                        <View style={[styles.selectionSummary, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
                             <Text style={styles.selectionText}>
-                                {selectedContacts.size} selected
+                                {selectedContacts.size} {t('selected')}
                             </Text>
                         </View>
 
@@ -461,7 +463,8 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
 
                             <View style={styles.nameInputContainer}>
                                 <TextInput
-                                    style={styles.nameInput}
+                                    style={[styles.nameInput, { textAlign: isRTL ? 'right' : 'left' }]}
+                                    placeholder={t('name')}
                                     placeholderTextColor={colors.textSecondary}
                                     value={spaceName}
                                     onChangeText={setSpaceName}
@@ -472,9 +475,10 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
                         </View>
 
                         <View style={styles.formSection}>
-                            <Text style={styles.sectionLabel}>Description (Optional)</Text>
+                            <Text style={[styles.sectionLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t('description_optional')}</Text>
                             <TextInput
-                                style={styles.descriptionInput}
+                                style={[styles.descriptionInput, { textAlign: isRTL ? 'right' : 'left' }]}
+                                placeholder={t('bio')}
                                 placeholderTextColor={colors.textSecondary}
                                 value={spaceDescription}
                                 onChangeText={setSpaceDescription}
@@ -484,43 +488,43 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
                         </View>
 
                         <View style={styles.formSection}>
-                            <Text style={styles.sectionLabel}>Privacy Tier</Text>
+                            <Text style={[styles.sectionLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t('privacy_tier')}</Text>
 
-                            <TouchableOpacity style={[styles.tierOption, privacyTier === 'general' && styles.tierOptionSelected]} onPress={() => setPrivacyTier('general')}>
+                            <TouchableOpacity style={[styles.tierOption, { flexDirection: isRTL ? 'row-reverse' : 'row' }, privacyTier === 'general' && styles.tierOptionSelected]} onPress={() => setPrivacyTier('general')}>
                                 <Ionicons name="globe-outline" size={24} color={privacyTier === 'general' ? '#007AFF' : '#666'} />
-                                <View style={styles.tierTextContainer}>
-                                    <Text style={[styles.tierTitle, privacyTier === 'general' && styles.tierTitleSelected]}>General</Text>
-                                    <Text style={styles.tierDescription}>Open group. Anyone can find and join.</Text>
+                                <View style={[styles.tierTextContainer, { [isRTL ? 'marginRight' : 'marginLeft']: 16 }]}>
+                                    <Text style={[styles.tierTitle, { textAlign: isRTL ? 'right' : 'left' }, privacyTier === 'general' && styles.tierTitleSelected]}>{t('tier_general')}</Text>
+                                    <Text style={[styles.tierDescription, { textAlign: isRTL ? 'right' : 'left' }]}>{t('tier_general_desc')}</Text>
                                 </View>
                                 {privacyTier === 'general' && <Ionicons name="checkmark" size={20} color={colors.tint} />}
                             </TouchableOpacity>
 
-                            <TouchableOpacity style={[styles.tierOption, privacyTier === 'protected' && styles.tierOptionSelected]} onPress={() => setPrivacyTier('protected')}>
+                            <TouchableOpacity style={[styles.tierOption, { flexDirection: isRTL ? 'row-reverse' : 'row' }, privacyTier === 'protected' && styles.tierOptionSelected]} onPress={() => setPrivacyTier('protected')}>
                                 <Ionicons name="shield-checkmark-outline" size={24} color={privacyTier === 'protected' ? '#34C759' : '#666'} />
-                                <View style={styles.tierTextContainer}>
-                                    <Text style={[styles.tierTitle, privacyTier === 'protected' && { color: '#34C759' }]}>Protected</Text>
-                                    <Text style={styles.tierDescription}>Private group. Invite only. Hidden from search.</Text>
+                                <View style={[styles.tierTextContainer, { [isRTL ? 'marginRight' : 'marginLeft']: 16 }]}>
+                                    <Text style={[styles.tierTitle, { textAlign: isRTL ? 'right' : 'left' }, privacyTier === 'protected' && { color: '#34C759' }]}>{t('tier_protected')}</Text>
+                                    <Text style={[styles.tierDescription, { textAlign: isRTL ? 'right' : 'left' }]}>{t('tier_protected_desc')}</Text>
                                 </View>
                                 {privacyTier === 'protected' && <Ionicons name="checkmark" size={20} color="#34C759" />}
                             </TouchableOpacity>
 
-                            <TouchableOpacity style={[styles.tierOption, privacyTier === 'channel' && styles.tierOptionSelected]} onPress={() => setPrivacyTier('channel')}>
+                            <TouchableOpacity style={[styles.tierOption, { flexDirection: isRTL ? 'row-reverse' : 'row' }, privacyTier === 'channel' && styles.tierOptionSelected]} onPress={() => setPrivacyTier('channel')}>
                                 <Ionicons name="megaphone-outline" size={24} color={privacyTier === 'channel' ? '#FF9500' : '#666'} />
-                                <View style={styles.tierTextContainer}>
-                                    <Text style={[styles.tierTitle, privacyTier === 'channel' && { color: '#FF9500' }]}>Channel</Text>
-                                    <Text style={styles.tierDescription}>Broadcast only. Participants cannot chat.</Text>
+                                <View style={[styles.tierTextContainer, { [isRTL ? 'marginRight' : 'marginLeft']: 16 }]}>
+                                    <Text style={[styles.tierTitle, { textAlign: isRTL ? 'right' : 'left' }, privacyTier === 'channel' && { color: '#FF9500' }]}>{t('tier_channel')}</Text>
+                                    <Text style={[styles.tierDescription, { textAlign: isRTL ? 'right' : 'left' }]}>{t('tier_channel_desc')}</Text>
                                 </View>
                                 {privacyTier === 'channel' && <Ionicons name="checkmark" size={20} color="#FF9500" />}
                             </TouchableOpacity>
                         </View>
 
                         <View style={styles.formSection}>
-                            <Text style={styles.sectionLabel}>Capabilities</Text>
-                            <TouchableOpacity style={[styles.tierOption, enableAI && styles.tierOptionSelected]} onPress={() => setEnableAI(!enableAI)}>
+                            <Text style={[styles.sectionLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t('capabilities')}</Text>
+                            <TouchableOpacity style={[styles.tierOption, { flexDirection: isRTL ? 'row-reverse' : 'row' }, enableAI && styles.tierOptionSelected]} onPress={() => setEnableAI(!enableAI)}>
                                 <Ionicons name="sparkles-outline" size={24} color={enableAI ? '#AF52DE' : '#666'} />
-                                <View style={styles.tierTextContainer}>
-                                    <Text style={[styles.tierTitle, enableAI && { color: '#AF52DE' }]}>AI Ghost Insights</Text>
-                                    <Text style={styles.tierDescription}>Enable AI summaries and creative suggestions.</Text>
+                                <View style={[styles.tierTextContainer, { [isRTL ? 'marginRight' : 'marginLeft']: 16 }]}>
+                                    <Text style={[styles.tierTitle, { textAlign: isRTL ? 'right' : 'left' }, enableAI && { color: '#AF52DE' }]}>{t('ai_ghost_insights')}</Text>
+                                    <Text style={[styles.tierDescription, { textAlign: isRTL ? 'right' : 'left' }]}>{t('ai_ghost_insights_desc')}</Text>
                                 </View>
                                 {enableAI && <Ionicons name="checkmark" size={20} color="#AF52DE" />}
                             </TouchableOpacity>
@@ -531,8 +535,8 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
         </Modal>
     );
 };
-
-const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
+ 
+const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',

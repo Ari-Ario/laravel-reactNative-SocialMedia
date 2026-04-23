@@ -24,6 +24,8 @@ import { fetchProfile } from '@/services/UserService';
 import PushNotificationService from '@/services/PushNotificationService';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import AuthContext from '@/context/AuthContext';
+import { useTranslation } from '@/constants/i18n';
+import { formatTimeAgo } from '@/utils/dateUtils';
 
 interface NotificationPanelProps {
     visible: boolean;
@@ -40,6 +42,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
 }) => {
     const { colors, activeScheme } = useAppTheme();
     const { user } = useContext(AuthContext);
+    const { t, locale } = useTranslation();
     const {
         getRegularNotifications,
         markAsRead,
@@ -103,7 +106,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                     ...(user?.ai_admin ? getChatbotNotifications() : []),
                     ...getAdminNotifications(),
                 ];
-                return allNotifications.sort((a, b) =>
+                return allNotifications.sort((a: Notification, b: Notification) =>
                     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
                 );
         }
@@ -195,7 +198,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 // Fallback: DM chat — only if no spaceId found
                 const userId = item.userId || item.data?.user?.id || item.data?.userId;
                 if (userId) {
-                    router.push({ pathname: '/(tabs)/chats/[id]', params: { id: userId.toString() } });
+                    router.push({ pathname: '/(tabs)/chats', params: { id: userId.toString() } } as any);
                     onClose();
                     return;
                 }
@@ -313,9 +316,9 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 const postData = await fetchPostById(item.postId);
                 if (postData?.data) addPost(postData.data);
                 router.push({
-                    pathname: `/post/${item.postId}`,
-                    params: { highlightCommentId: item.commentId.toString() },
-                });
+                    pathname: '/post/[id]',
+                    params: { id: item.postId.toString(), highlightCommentId: item.commentId.toString() },
+                } as any);
                 onClose();
                 return;
             }
@@ -408,7 +411,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                         {item.type === NOTIFICATION_TYPES.SPACE_INVITATION && item.data?.space?.title && (
                             <View style={[styles.metadataContainer, { backgroundColor: colors.background }]}>
                                 <Ionicons name="people" size={12} color={colors.textSecondary} />
-                                <Text style={[styles.metadataText, { color: colors.textSecondary }]}>Space: {item.data.space.title}</Text>
+                                <Text style={[styles.metadataText, { color: colors.textSecondary }]}>{t('space_metadata', { title: item.data.space.title })}</Text>
                             </View>
                         )}
 
@@ -416,7 +419,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                             <View style={[styles.metadataContainer, { backgroundColor: colors.background }]}>
                                 <Ionicons name={item.data.call.type === 'video' ? 'videocam' : 'call'} size={12} color="#4CD964" />
                                 <Text style={[styles.metadataText, { color: colors.textSecondary }]}>
-                                    {item.data.call.type === 'video' ? 'Video call' : 'Audio call'} started
+                                    {item.data.call.type === 'video' ? t('video_call_started') : t('audio_call_started')}
                                 </Text>
                             </View>
                         )}
@@ -424,7 +427,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                         {item.type === NOTIFICATION_TYPES.MAGIC_EVENT && (
                             <View style={[styles.metadataContainer, { backgroundColor: colors.background }]}>
                                 <Ionicons name="sparkles" size={12} color="#FF2D55" />
-                                <Text style={[styles.metadataText, { color: colors.textSecondary }]}>✨ Magic discovered!</Text>
+                                <Text style={[styles.metadataText, { color: colors.textSecondary }]}>{t('magic_discovered')}</Text>
                             </View>
                         )}
                     </View>
@@ -443,19 +446,6 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         );
     };
 
-    const formatTimeAgo = (date: Date) => {
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
-
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffHours < 24) return `${diffHours}h ago`;
-        if (diffDays < 7) return `${diffDays}d ago`;
-        return date.toLocaleDateString();
-    };
 
     const renderFilterTabs = () => (
         <ScrollView
@@ -468,55 +458,55 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             {/* All tabs (same as before) */}
             <TouchableOpacity style={[styles.filterTab, { backgroundColor: colors.muted }, activeFilter === 'all' && styles.activeFilterTab, activeFilter === 'all' && { borderColor: colors.primary }]} onPress={() => setActiveFilter('all')}>
                 <Ionicons name="apps" size={16} color={activeFilter === 'all' ? colors.primary : colors.textSecondary} />
-                <Text style={[styles.filterTabText, { color: colors.textSecondary }, activeFilter === 'all' && { color: colors.primary, fontWeight: '600' }]}>All</Text>
+                <Text style={[styles.filterTabText, { color: colors.textSecondary }, activeFilter === 'all' && { color: colors.primary, fontWeight: '600' }]}>{t('all')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={[styles.filterTab, { backgroundColor: colors.muted }, activeFilter === 'calls' && styles.activeFilterTab]} onPress={() => setActiveFilter('calls')}>
                 <Ionicons name="call" size={16} color={activeFilter === 'calls' ? '#4CD964' : colors.textSecondary} />
-                <Text style={[styles.filterTabText, { color: colors.textSecondary }, activeFilter === 'calls' && { color: '#4CD964', fontWeight: '600' }]}>Calls</Text>
-                {getCalls().filter(n => !n.isRead).length > 0 && (
+                <Text style={[styles.filterTabText, { color: colors.textSecondary }, activeFilter === 'calls' && { color: '#4CD964', fontWeight: '600' }]}>{t('calls')}</Text>
+                {getCalls().filter((n: Notification) => !n.isRead).length > 0 && (
                     <View style={[styles.filterBadge, { backgroundColor: '#4CD964', borderColor: colors.surface }]}>
-                        <Text style={styles.filterBadgeText}>{getCalls().filter(n => !n.isRead).length}</Text>
+                        <Text style={styles.filterBadgeText}>{getCalls().filter((n: Notification) => !n.isRead).length}</Text>
                     </View>
                 )}
             </TouchableOpacity>
 
             <TouchableOpacity style={[styles.filterTab, { backgroundColor: colors.muted }, activeFilter === 'messages' && styles.activeFilterTab, activeFilter === 'messages' && { borderColor: colors.primary }]} onPress={() => setActiveFilter('messages')}>
                 <Ionicons name="chatbubble" size={16} color={activeFilter === 'messages' ? colors.primary : colors.textSecondary} />
-                <Text style={[styles.filterTabText, { color: colors.textSecondary }, activeFilter === 'messages' && { color: colors.primary, fontWeight: '600' }]}>Messages</Text>
-                {getMessages().filter(n => !n.isRead).length > 0 && (
+                <Text style={[styles.filterTabText, { color: colors.textSecondary }, activeFilter === 'messages' && { color: colors.primary, fontWeight: '600' }]}>{t('messages')}</Text>
+                {getMessages().filter((n: Notification) => !n.isRead).length > 0 && (
                     <View style={[styles.filterBadge, { backgroundColor: colors.primary, borderColor: colors.surface }]}>
-                        <Text style={styles.filterBadgeText}>{getMessages().filter(n => !n.isRead).length}</Text>
+                        <Text style={styles.filterBadgeText}>{getMessages().filter((n: Notification) => !n.isRead).length}</Text>
                     </View>
                 )}
             </TouchableOpacity>
 
             <TouchableOpacity style={[styles.filterTab, { backgroundColor: colors.muted }, activeFilter === 'spaces' && styles.activeFilterTab]} onPress={() => setActiveFilter('spaces')}>
                 <Ionicons name="cube" size={16} color={activeFilter === 'spaces' ? '#5856D6' : colors.textSecondary} />
-                <Text style={[styles.filterTabText, { color: colors.textSecondary }, activeFilter === 'spaces' && { color: '#5856D6', fontWeight: '600' }]}>Spaces</Text>
-                {getSpaces().filter(n => !n.isRead).length > 0 && (
+                <Text style={[styles.filterTabText, { color: colors.textSecondary }, activeFilter === 'spaces' && { color: '#5856D6', fontWeight: '600' }]}>{t('spaces')}</Text>
+                {getSpaces().filter((n: Notification) => !n.isRead).length > 0 && (
                     <View style={[styles.filterBadge, { backgroundColor: '#5856D6', borderColor: colors.surface }]}>
-                        <Text style={styles.filterBadgeText}>{getSpaces().filter(n => !n.isRead).length}</Text>
+                        <Text style={styles.filterBadgeText}>{getSpaces().filter((n: Notification) => !n.isRead).length}</Text>
                     </View>
                 )}
             </TouchableOpacity>
 
             <TouchableOpacity style={[styles.filterTab, { backgroundColor: colors.muted }, activeFilter === 'activities' && styles.activeFilterTab]} onPress={() => setActiveFilter('activities')}>
                 <Ionicons name="sparkles" size={16} color={activeFilter === 'activities' ? '#FF2D55' : colors.textSecondary} />
-                <Text style={[styles.filterTabText, { color: colors.textSecondary }, activeFilter === 'activities' && { color: '#FF2D55', fontWeight: '600' }]}>Activities</Text>
-                {getActivities().filter(n => !n.isRead).length > 0 && (
+                <Text style={[styles.filterTabText, { color: colors.textSecondary }, activeFilter === 'activities' && { color: '#FF2D55', fontWeight: '600' }]}>{t('activities')}</Text>
+                {getActivities().filter((n: Notification) => !n.isRead).length > 0 && (
                     <View style={[styles.filterBadge, { backgroundColor: '#FF2D55', borderColor: colors.surface }]}>
-                        <Text style={styles.filterBadgeText}>{getActivities().filter(n => !n.isRead).length}</Text>
+                        <Text style={styles.filterBadgeText}>{getActivities().filter((n: Notification) => !n.isRead).length}</Text>
                     </View>
                 )}
             </TouchableOpacity>
 
             <TouchableOpacity style={[styles.filterTab, { backgroundColor: colors.muted }, activeFilter === 'regular' && styles.activeFilterTab]} onPress={() => setActiveFilter('regular')}>
                 <Ionicons name="notifications" size={16} color={activeFilter === 'regular' ? colors.text : colors.textSecondary} />
-                <Text style={[styles.filterTabText, { color: colors.textSecondary }, activeFilter === 'regular' && { color: colors.text, fontWeight: '600' }]}>Regular</Text>
-                {getRegularNotifications().filter(n => !n.isRead).length > 0 && (
+                <Text style={[styles.filterTabText, { color: colors.textSecondary }, activeFilter === 'regular' && { color: colors.text, fontWeight: '600' }]}>{t('regular')}</Text>
+                {getRegularNotifications().filter((n: Notification) => !n.isRead).length > 0 && (
                     <View style={[styles.filterBadge, { backgroundColor: '#FF9500', borderColor: colors.surface }]}>
-                        <Text style={styles.filterBadgeText}>{getRegularNotifications().filter(n => !n.isRead).length}</Text>
+                        <Text style={styles.filterBadgeText}>{getRegularNotifications().filter((n: Notification) => !n.isRead).length}</Text>
                     </View>
                 )}
             </TouchableOpacity>
@@ -524,7 +514,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             {!!user?.ai_admin && (
                 <TouchableOpacity style={[styles.filterTab, { backgroundColor: colors.muted }, activeFilter === 'chatbot' && styles.activeFilterTab]} onPress={() => setActiveFilter('chatbot')}>
                     <Ionicons name="school" size={16} color={activeFilter === 'chatbot' ? colors.tint : colors.textSecondary} />
-                    <Text style={[styles.filterTabText, { color: colors.textSecondary }, activeFilter === 'chatbot' && { color: colors.tint, fontWeight: '600' }]}>AI Training</Text>
+                    <Text style={[styles.filterTabText, { color: colors.textSecondary }, activeFilter === 'chatbot' && { color: colors.tint, fontWeight: '600' }]}>{t('ai_training')}</Text>
                     {unreadChatbotTrainingCount > 0 && (
                         <View style={[styles.filterBadge, { backgroundColor: colors.tint, borderColor: colors.surface }]}>
                             <Text style={styles.filterBadgeText}>{unreadChatbotTrainingCount}</Text>
@@ -535,7 +525,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
 
             <TouchableOpacity style={[styles.filterTab, { backgroundColor: colors.muted }, activeFilter === 'admin' && styles.activeFilterTab]} onPress={() => setActiveFilter('admin')}>
                 <Ionicons name="shield-checkmark" size={16} color={activeFilter === 'admin' ? '#FF3B30' : colors.textSecondary} />
-                <Text style={[styles.filterTabText, { color: colors.textSecondary }, activeFilter === 'admin' && { color: '#FF3B30', fontWeight: '600' }]}>Administration</Text>
+                <Text style={[styles.filterTabText, { color: colors.textSecondary }, activeFilter === 'admin' && { color: '#FF3B30', fontWeight: '600' }]}>{t('administration')}</Text>
                 {useNotificationStore.getState().unreadModerationCount > 0 && (
                     <View style={[styles.filterBadge, { backgroundColor: '#FF3B30', borderColor: colors.surface }]}>
                         <Text style={styles.filterBadgeText}>{useNotificationStore.getState().unreadModerationCount}</Text>
@@ -576,7 +566,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 <View style={styles.contentWrapper}>
                     <View style={[styles.panelHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
                         <Text style={[styles.panelTitle, { color: colors.text }]}>
-                            Notifications {totalCount > 0 ? `(${totalCount})` : ''}
+                            {t('notifications_count', { count: totalCount })}
                         </Text>
                         <TouchableOpacity onPress={onClose} style={[styles.closeButton, { backgroundColor: colors.muted }]}>
                             <Ionicons name="close" size={20} color={colors.textSecondary} />
@@ -601,7 +591,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                         ) : (
                             <View style={styles.emptyState}>
                                 <Ionicons name="notifications-off-outline" size={48} color={colors.textSecondary} />
-                                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No notifications yet</Text>
+                                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('no_notifications')}</Text>
                             </View>
                         )}
                     </View>
@@ -610,7 +600,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                     <View style={[styles.panelFooter, { backgroundColor: colors.muted, borderTopColor: colors.border }]}>
                         <View style={styles.pushToggleRow}>
                             <Ionicons name="notifications-outline" size={16} color={colors.textSecondary} />
-                            <Text style={[styles.pushToggleText, { color: colors.textSecondary }]}>Push Notifications</Text>
+                            <Text style={[styles.pushToggleText, { color: colors.textSecondary }]}>{t('push_notifications')}</Text>
                             <Switch
                                 value={pushEnabled}
                                 onValueChange={handlePushToggle}
@@ -622,7 +612,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                         {Platform.OS === 'web' && /iPhone|iPad|iPod/.test(navigator.userAgent) && (
                             <View style={styles.iosWebTip}>
                                 <Text style={styles.iosWebTipText}>
-                                    Tap "Share" → "Add to Home Screen" for background alerts
+                                    {t('ios_pwa_tip')}
                                 </Text>
                             </View>
                         )}
@@ -709,7 +699,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
         paddingVertical: 8,
         borderRadius: 24,
-        marginRight: 8,
+        marginEnd: 8,
         gap: 6,
     },
 
@@ -741,12 +731,12 @@ const styles = StyleSheet.create({
     },
     unreadNotification: { borderLeftWidth: 3 },
     notificationContent: { flex: 1, flexDirection: 'row', alignItems: 'flex-start' },
-    textContent: { flex: 1, marginLeft: 12 },
+    textContent: { flex: 1, marginStart: 12 },
     titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
     titleWithIcon: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
     notificationTitle: { fontWeight: '600', fontSize: 15, flex: 1 },
     notificationMessage: { fontSize: 13, marginBottom: 6, lineHeight: 18 },
-    notificationTime: { fontSize: 11, marginLeft: 8 },
+    notificationTime: { fontSize: 11, marginStart: 8 },
     metadataContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -761,7 +751,7 @@ const styles = StyleSheet.create({
     metadataText: { fontSize: 11, fontWeight: '500' },
     deleteButton: {
         padding: 6,
-        marginLeft: 8,
+        marginStart: 8,
         borderRadius: 16,
         width: 28,
         height: 28,
@@ -782,7 +772,7 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 24,
-        marginRight: 12,
+        marginStart: 12,
         borderWidth: 2,
         justifyContent: 'center',
         alignItems: 'center',

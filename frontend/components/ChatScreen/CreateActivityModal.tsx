@@ -23,6 +23,7 @@ import { useToastStore } from '@/stores/toastStore';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -58,7 +59,14 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
   const { showToast } = useToastStore();
   const insets = useSafeAreaInsets();
   const { colors, activeScheme } = useAppTheme();
-  const styles = getStyles(colors, activeScheme);
+  const { t, isRTL } = useTranslation();
+  const getLocalizedDay = (date: Date, short = true) => {
+    const dayKey = 'day_' + format(date, 'eee').toLowerCase();
+    const shortKey = dayKey + '_s';
+    return t(short ? shortKey : dayKey);
+  };
+
+  const styles = getStyles(colors, activeScheme, isRTL);
   const isDark = activeScheme === 'dark';
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState('');
@@ -131,35 +139,35 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
   }, [visible, initialTime, spaceId, defaultDate, isEditing, activityToEdit]);
 
   const activityTypes = [
-    { id: 'meeting', name: 'Team Meeting', icon: 'people', color: '#6366f1' },
-    { id: 'brainstorm', name: 'Brainstorm', icon: 'bulb', color: '#10b981' },
-    { id: 'workshop', name: 'Workshop', icon: 'school', color: '#f59e0b' },
-    { id: 'review', name: 'Review', icon: 'checkmark-circle', color: '#8b5cf6' },
-    { id: 'planning', name: 'Planning', icon: 'calendar', color: '#3b82f6' },
-    { id: 'social', name: 'Social', icon: 'wine', color: '#ec4899' },
+    { id: 'meeting', name: t('team_meeting'), icon: 'people', color: '#6366f1' },
+    { id: 'brainstorm', name: t('brainstorm'), icon: 'bulb', color: '#10b981' },
+    { id: 'workshop', name: t('workshop'), icon: 'school', color: '#f59e0b' },
+    { id: 'review', name: t('review'), icon: 'checkmark-circle', color: '#8b5cf6' },
+    { id: 'planning', name: t('planning'), icon: 'calendar', color: '#3b82f6' },
+    { id: 'social', name: t('social'), icon: 'wine', color: '#ec4899' },
   ];
 
   const durationOptions = [15, 30, 45, 60, 90, 120];
   const quickTimes = [
-    { label: 'Morning', time: '09:00' },
-    { label: 'Lunch', time: '12:00' },
-    { label: 'Afternoon', time: '14:00' },
-    { label: 'Late', time: '16:00' },
+    { label: t('morning'), time: '09:00' },
+    { label: t('lunch'), time: '12:00' },
+    { label: t('afternoon'), time: '14:00' },
+    { label: t('late'), time: '16:00' },
   ];
 
   const handleNext = () => {
     if (step === 1) {
       if (!title.trim()) {
-        showToast('Please enter a title for your session', 'error');
+        showToast(t('enter_session_title'), 'error');
         return;
       }
       if (!selectedSpaceId && !spaceId) {
-        showToast('Please select a space for this activity', 'error');
+        showToast(t('select_space_activity'), 'error');
         return;
       }
     }
     if (step === 2 && !scheduledStart) {
-      showToast('Please select a date and time', 'error');
+      showToast(t('select_date_time'), 'error');
       return;
     }
     if (step < 3) {
@@ -209,7 +217,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
       // Check for conflicts
       const conflictTitle = checkConflicts(scheduledStart, duration);
       if (conflictTitle) {
-        showToast(`Time conflict with session: "${conflictTitle}". Please adjust the time.`, 'error');
+        showToast(t('time_conflict').replace('{title}', conflictTitle), 'error');
         setIsSubmitting(false);
         return;
       }
@@ -233,14 +241,14 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
       if (updatedActivity) {
         const { useCollaborationStore } = require('@/stores/collaborationStore');
         useCollaborationStore.getState().updateActivity(updatedActivity);
-        showToast('Session updated successfully!', 'success');
+        showToast(t('session_updated'), 'success');
       }
 
       onActivityCreated();
       onClose();
     } catch (error) {
       console.error('Error updating activity:', error);
-      showToast('Failed to update activity. Please try again.', 'error');
+      showToast(t('error_update'), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -254,7 +262,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
       // Check for conflicts
       const conflictTitle = checkConflicts(scheduledStart, duration);
       if (conflictTitle) {
-        showToast(`Time conflict with session: "${conflictTitle}". Please adjust the time.`, 'error');
+        showToast(t('time_conflict').replace('{title}', conflictTitle), 'error');
         setIsSubmitting(false);
         return;
       }
@@ -275,7 +283,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
       };
 
       if (!activityData.space_id) {
-        showToast('Please select a space for this activity', 'error');
+        showToast(t('select_space_activity'), 'error');
         setIsSubmitting(false);
         return;
       }
@@ -286,14 +294,14 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
       if (newActivity) {
         const { useCollaborationStore } = require('@/stores/collaborationStore');
         useCollaborationStore.getState().addActivity(newActivity);
-        showToast('Session scheduled successfully!', 'success');
+        showToast(t('session_scheduled'), 'success');
       }
 
       onActivityCreated();
       onClose();
     } catch (error) {
       console.error('Error creating activity:', error);
-      showToast('Failed to create activity. Please try again.', 'error');
+      showToast(t('error'), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -338,7 +346,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
           />
         ))}
       </View>
-      <Text style={styles.stepText}>Step {step} of 3</Text>
+      <Text style={styles.stepText}>{t('step_of').replace('{step}', step.toString()).replace('{total}', '3')}</Text>
     </View>
   );
 
@@ -354,12 +362,12 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
         style={[GlobalStyles.popupContainer, { paddingTop: insets.top || 20, backgroundColor: colors.background }]}
       >
         {/* Header */}
-        <Animated.View style={[styles.header, animatedHeaderStyle]}>
+        <Animated.View style={[styles.header, { flexDirection: isRTL ? 'row-reverse' : 'row' }, animatedHeaderStyle]}>
           <TouchableOpacity
             onPress={step > 1 ? () => setStep(step - 1) : onClose}
             hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
           >
-            <Ionicons name={step > 1 ? 'chevron-back' : 'close'} size={28} color={colors.text} />
+            <Ionicons name={step > 1 ? (isRTL ? 'chevron-forward' : 'chevron-back') : 'close'} size={28} color={colors.text} />
           </TouchableOpacity>
 
           {renderStepIndicator()}
@@ -374,15 +382,15 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
         >
           {step === 1 && (
             <Animated.View entering={FadeIn.duration(300)}>
-              <Text style={styles.heroTitle}>{isEditing ? 'Edit Session' : 'Create Session'}</Text>
-              <Text style={styles.heroSubtitle}>
-                {isEditing ? 'Update the details of your activity' : 'Let’s set up your collaborative activity'}
+              <Text style={[styles.heroTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{isEditing ? t('edit_session') : t('create_session')}</Text>
+              <Text style={[styles.heroSubtitle, { textAlign: isRTL ? 'right' : 'left' }]}>
+                {isEditing ? t('update_details') : t('setup_activity')}
               </Text>
 
               <View style={styles.card}>
                 <TextInput
                   style={styles.titleInput}
-                  placeholder="Session title"
+                  placeholder={t('session_title')}
                   placeholderTextColor={colors.textSecondary}
                   value={title}
                   onChangeText={setTitle}
@@ -390,7 +398,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
                 />
                 <TextInput
                   style={styles.descriptionInput}
-                  placeholder="Add description (optional)"
+                  placeholder={t('description_placeholder')}
                   placeholderTextColor={colors.textSecondary}
                   value={description}
                   onChangeText={setDescription}
@@ -399,8 +407,8 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
                 />
               </View>
 
-              <Text style={styles.sectionLabel}>Activity Type</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
+              <Text style={[styles.sectionLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t('activity_type')}</Text>
+              <ScrollView horizontal={!isRTL} showsHorizontalScrollIndicator={false} style={styles.typeScroll} contentContainerStyle={isRTL && { flexDirection: 'row-reverse' }}>
                 {activityTypes.map((type) => (
                   <TouchableOpacity
                     key={type.id}
@@ -433,8 +441,8 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
                 ))}
               </ScrollView>
 
-              <Text style={styles.sectionLabel}>Target Space</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
+              <Text style={[styles.sectionLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t('target_space')}</Text>
+              <ScrollView horizontal={!isRTL} showsHorizontalScrollIndicator={false} style={styles.typeScroll} contentContainerStyle={isRTL && { flexDirection: 'row-reverse' }}>
                 {spaces
                   .filter((s: any) => s && s.id && (spaceId ? s.id === spaceId : true)) // 🛡️ Filter nulls and restrict if spaceId is provided
                   .map((s: any) => (
@@ -462,7 +470,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
 
           {step === 2 && (
             <Animated.View entering={FadeIn.duration(300)}>
-              <Text style={styles.heroTitle}>When?</Text>
+              <Text style={[styles.heroTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t('when')}</Text>
 
               <View style={styles.card}>
                 <TouchableOpacity
@@ -471,7 +479,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
                 >
                   <Ionicons name="calendar-outline" size={22} color={colors.textSecondary} />
                   <Text style={styles.dateTimeValue}>
-                    {format(scheduledStart, 'EEEE, MMMM d, yyyy')}
+                    {getLocalizedDay(scheduledStart, false) + format(scheduledStart, ', MMMM d, yyyy')}
                   </Text>
                 </TouchableOpacity>
 
@@ -511,8 +519,8 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
                 />
               )}
 
-              <Text style={styles.sectionLabel}>Quick start times</Text>
-              <View style={styles.quickGrid}>
+              <Text style={[styles.sectionLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t('quick_start_times')}</Text>
+              <View style={[styles.quickGrid, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                 {quickTimes.map((qt) => (
                   <TouchableOpacity
                     key={qt.time}
@@ -525,13 +533,13 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
                 ))}
               </View>
 
-              <Text style={styles.sectionLabel}>Quick dates</Text>
-              <View style={styles.quickGrid}>
+              <Text style={[styles.sectionLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t('quick_dates')}</Text>
+              <View style={[styles.quickGrid, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                 {[
-                  { label: 'Today', days: 0 },
-                  { label: 'Tomorrow', days: 1 },
-                  { label: 'Next Mon', days: (1 - new Date().getDay() + 7) % 7 || 7 },
-                  { label: 'Next week', days: 7 },
+                  { label: t('today'), days: 0 },
+                  { label: t('tomorrow'), days: 1 },
+                  { label: t('next_mon'), days: (1 - new Date().getDay() + 7) % 7 || 7 },
+                  { label: t('next_week'), days: 7 },
                 ].map((item) => (
                   <TouchableOpacity
                     key={item.label}
@@ -543,8 +551,8 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
                 ))}
               </View>
 
-              <Text style={styles.sectionLabel}>Duration</Text>
-              <View style={styles.durationGrid}>
+              <Text style={[styles.sectionLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t('duration')}</Text>
+              <View style={[styles.durationGrid, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                 {durationOptions.map((mins) => (
                   <TouchableOpacity
                     key={mins}
@@ -563,7 +571,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
                         duration === mins && styles.durationTextActive,
                       ]}
                     >
-                      {mins} min
+                      {mins} {t('min')}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -573,13 +581,13 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
 
           {step === 3 && (
             <Animated.View entering={FadeIn.duration(300)}>
-              <Text style={styles.heroTitle}>Almost done!</Text>
+              <Text style={[styles.heroTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t('almost_done')}</Text>
 
               <LinearGradient
                 colors={isDark ? [colors.card, colors.card] : ['#ffffff', '#f8fafc']}
                 style={styles.summaryCard}
               >
-                <View style={styles.summaryHeader}>
+                <View style={[styles.summaryHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                   <LinearGradient
                     colors={[activityTypes.find(t => t.id === activityType)?.color + '80' || '#6366f180', activityTypes.find(t => t.id === activityType)?.color || '#6366f1']}
                     style={styles.summaryIcon}
@@ -590,40 +598,40 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
                       color="#fff"
                     />
                   </LinearGradient>
-                  <Text style={styles.summaryTitle} numberOfLines={1}>
-                    {title || 'Untitled Session'}
+                  <Text style={[styles.summaryTitle, { textAlign: isRTL ? 'right' : 'left', [isRTL ? 'marginRight' : 'marginLeft']: 12 }]} numberOfLines={1}>
+                    {title || t('untitled_session')}
                   </Text>
                 </View>
-                <View style={styles.summaryRow}>
+                <View style={[styles.summaryRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                   <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
-                  <Text style={styles.summaryValue}>
-                    {format(scheduledStart, 'EEE, MMM d • h:mm a')}
+                  <Text style={[styles.summaryValue, { [isRTL ? 'marginRight' : 'marginLeft']: 10 }]}>
+                    {getLocalizedDay(scheduledStart) + format(scheduledStart, ', MMM d • h:mm a')}
                   </Text>
                 </View>
-                <View style={styles.summaryRow}>
+                <View style={[styles.summaryRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                   <Ionicons name="time-outline" size={18} color={colors.textSecondary} />
-                  <Text style={styles.summaryValue}>{duration} minutes</Text>
+                  <Text style={[styles.summaryValue, { [isRTL ? 'marginRight' : 'marginLeft']: 10 }]}>{duration} {t('minutes')}</Text>
                 </View>
-                <View style={styles.summaryRow}>
+                <View style={[styles.summaryRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                   <Ionicons name="people-outline" size={18} color={colors.textSecondary} />
-                  <Text style={styles.summaryValue}>
-                    {maxParticipants ? `Max ${maxParticipants} people` : 'Open to all'}
+                  <Text style={[styles.summaryValue, { [isRTL ? 'marginRight' : 'marginLeft']: 10 }]}>
+                    {maxParticipants ? t('max_people').replace('{count}', maxParticipants.toString()) : t('open_to_all')}
                   </Text>
                 </View>
                 {isRecurring && (
-                  <View style={styles.summaryRow}>
+                  <View style={[styles.summaryRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                     <Ionicons name="repeat-outline" size={18} color={colors.textSecondary} />
-                    <Text style={styles.summaryValue}>
-                      Repeats {recurrencePattern === 'weekly' ? 'weekly' : recurrencePattern === 'biweekly' ? 'every 2 weeks' : 'monthly'}
+                    <Text style={[styles.summaryValue, { [isRTL ? 'marginRight' : 'marginLeft']: 10 }]}>
+                      {t('repeats')} {recurrencePattern === 'weekly' ? t('repeats_weekly') : recurrencePattern === 'biweekly' ? t('repeats_biweekly') : t('repeats_monthly')}
                     </Text>
                   </View>
                 )}
               </LinearGradient>
 
-              <View style={styles.settingCard}>
-                <View style={styles.settingLeft}>
-                  <Text style={styles.settingTitle}>Recurring</Text>
-                  <Text style={styles.settingDesc}>Repeat this event</Text>
+              <View style={[styles.settingCard, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                <View style={[styles.settingLeft, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+                  <Text style={styles.settingTitle}>{t('recurring')}</Text>
+                  <Text style={styles.settingDesc}>{t('repeat_event')}</Text>
                 </View>
                 <Switch
                   value={isRecurring}
@@ -638,8 +646,8 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
 
               {isRecurring && (
                 <Animated.View entering={FadeIn.duration(200)} style={{ marginTop: 16 }}>
-                  <Text style={styles.sectionLabelSmall}>Repeat every</Text>
-                  <View style={styles.recurrenceRow}>
+                  <Text style={[styles.sectionLabelSmall, { textAlign: isRTL ? 'right' : 'left' }]}>{t('repeat_every')}</Text>
+                  <View style={[styles.recurrenceRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                     {['weekly', 'biweekly', 'monthly'].map((p) => (
                       <TouchableOpacity
                         key={p}
@@ -655,7 +663,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
                             recurrencePattern === p && styles.recurrenceTextActive,
                           ]}
                         >
-                          {p === 'biweekly' ? '2 weeks' : p}
+                          {p === 'biweekly' ? t('two_weeks') : t(`repeats_${p}`)}
                         </Text>
                       </TouchableOpacity>
                     ))}
@@ -664,11 +672,11 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
               )}
 
               <View style={{ marginTop: 24 }}>
-                <Text style={styles.sectionLabel}>Participant Limit (optional)</Text>
+                <Text style={[styles.sectionLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t('participant_limit')}</Text>
                 <View style={styles.participantInputWrapper}>
                   <TextInput
-                    style={styles.participantInput}
-                    placeholder="Unlimited"
+                    style={[styles.participantInput, { textAlign: isRTL ? 'right' : 'left' }]}
+                    placeholder={t('unlimited')}
                     placeholderTextColor={colors.textSecondary}
                     value={maxParticipants?.toString() ?? ''}
                     onChangeText={(txt) => setMaxParticipants(txt ? Number(txt) : undefined)}
@@ -700,9 +708,9 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
                 ) : (
                   <>
                     <Text style={styles.buttonText}>
-                      {step === 3 ? (isEditing ? 'Update Session' : 'Schedule Session') : 'Continue'}
+                      {step === 3 ? (isEditing ? t('update_session') : t('schedule_session')) : t('continue')}
                     </Text>
-                    <Ionicons name="arrow-forward" size={20} color="#fff" />
+                    <Ionicons name={isRTL ? "arrow-back" : "arrow-forward"} size={20} color="#fff" />
                   </>
                 )}
               </LinearGradient>
@@ -713,8 +721,8 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
     </Modal>
   );
 };
-
-const getStyles = (colors: any, activeScheme: string) => {
+ 
+const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => {
   const isDark = activeScheme === 'dark';
   const SHADOW = createShadow({ 
     height: 6, 
@@ -854,7 +862,7 @@ const getStyles = (colors: any, activeScheme: string) => {
       fontSize: 16,
       fontWeight: '600',
       color: colors.text,
-      marginLeft: 14,
+      [isRTL ? 'marginRight' : 'marginLeft']: 14,
       flex: 1,
     },
     separator: {
@@ -932,7 +940,7 @@ const getStyles = (colors: any, activeScheme: string) => {
       borderRadius: 24,
       justifyContent: 'center',
       alignItems: 'center',
-      marginRight: 12,
+      [isRTL ? 'marginLeft' : 'marginRight']: 12,
     },
     summaryTitle: {
       fontSize: 20,
@@ -948,7 +956,7 @@ const getStyles = (colors: any, activeScheme: string) => {
     summaryValue: {
       fontSize: 15,
       color: colors.textSecondary,
-      marginLeft: 12,
+      [isRTL ? 'marginRight' : 'marginLeft']: 12,
       flex: 1,
     },
     settingCard: {
@@ -1060,7 +1068,7 @@ const getStyles = (colors: any, activeScheme: string) => {
       backgroundColor: colors.border,
       justifyContent: 'center',
       alignItems: 'center',
-      marginRight: 8,
+      [isRTL ? 'marginLeft' : 'marginRight']: 8,
     },
     spaceAvatarText: {
       fontSize: 10,

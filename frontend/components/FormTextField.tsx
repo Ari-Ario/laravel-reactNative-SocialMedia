@@ -1,6 +1,7 @@
 import React, { memo } from "react";
 import { View, Text, TextInput, StyleSheet, TextInputProps } from "react-native"
 import { useAppTheme } from "@/hooks/useAppTheme";
+import { useTranslation } from "@/constants/i18n";
 
 interface FormTextFieldProps extends TextInputProps {
     label?: string;
@@ -9,17 +10,19 @@ interface FormTextFieldProps extends TextInputProps {
 
 const FormTextField = memo(({ label, errors = [], ...rest }: FormTextFieldProps) => {
     const { colors, activeScheme } = useAppTheme();
+    const { isRTL } = useTranslation();
     
     return (
         <View style={styles.container}>
-            {label && <Text style={[styles.label, { color: colors.textSecondary }]}>{label}</Text>}
+            {label && <Text style={[styles.label, { color: colors.textSecondary, textAlign: isRTL ? 'right' : 'left' }]}>{label}</Text>}
             <TextInput 
                 style={[
                     styles.textInput, 
                     { 
                         backgroundColor: colors.surface, 
                         borderColor: colors.border,
-                        color: colors.text
+                        color: colors.text,
+                        textAlign: isRTL ? 'right' : 'left'
                     }
                 ]} 
                 autoCapitalize='none' 
@@ -28,7 +31,7 @@ const FormTextField = memo(({ label, errors = [], ...rest }: FormTextFieldProps)
                 {...rest} 
             />
             {Array.isArray(errors) && errors.map((err) => {
-                return <Text key={err} style={[styles.error, { color: colors.error }]}>{err}</Text>
+                return <Text key={err} style={[styles.error, { color: colors.error, textAlign: isRTL ? 'right' : 'left' }]}>{err}</Text>
             })}
         </View>
     );

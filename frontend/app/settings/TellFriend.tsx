@@ -42,6 +42,7 @@ import getApiBaseImage from '@/services/getApiBaseImage';
 import { useProfileView } from '@/context/ProfileViewContext';
 import SearchService from '@/services/ChatScreen/SearchServiceChat';
 import { fetchSocialFriends } from '@/services/SettingService';
+import { useTranslation } from '@/constants/i18n';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -69,27 +70,16 @@ const SOCIAL_PLATFORMS: SocialLink[] = [
     { platform: 'Facebook', url: 'https://www.facebook.com/sharer/sharer.php?u=', icon: 'logo-facebook', color: '#1877F2' },
     { platform: 'Instagram', url: 'https://www.instagram.com/', icon: 'logo-instagram', color: '#E4405F' },
     { platform: 'LinkedIn', url: 'https://www.linkedin.com/sharing/share-offsite/?url=', icon: 'logo-linkedin', color: '#0077B5' },
-    { platform: 'Email', url: 'mailto:', icon: 'mail', color: '#EA4335' },
-    { platform: 'SMS', url: 'sms:', icon: 'chatbubble', color: '#34B7F1' },
+    { platform: 'support', url: 'mailto:', icon: 'mail', color: '#EA4335' },
+    { platform: 'messages', url: 'sms:', icon: 'chatbubble', color: '#34B7F1' },
 ];
 
 const APP_STORE_LINKS = {
     web: 'https://zmzir.com',
 };
 
-const SHARE_MESSAGE = `🚀 Join me on Zmzir - The Ultimate Social Platform!
-
-Hey! I've been using Zmzir and it's amazing. You can:
-✨ Share moments with photos and videos
-💬 Chat with friends in real-time
-🎨 Customize your profile
-🔒 Control your privacy
-
-Download now: ${APP_STORE_LINKS.web}
-
-See you there! 👋`;
-
 export default function TellFriendScreen() {
+    const { t } = useTranslation();
     const { colors, activeScheme } = useAppTheme();
     const styles = getStyles(colors, activeScheme);
     const insets = useSafeAreaInsets();
@@ -106,7 +96,7 @@ export default function TellFriendScreen() {
     const [searching, setSearching] = useState(false);
     const [sendingInvite, setSendingInvite] = useState(false);
     const [socialFriends, setSocialFriends] = useState<any[]>([]);
-    const [customMessage, setCustomMessage] = useState(SHARE_MESSAGE);
+    const [customMessage, setCustomMessage] = useState(t('market_hero_subtitle_invite'));
 
     // Pagination states
     const [page, setPage] = useState(1);
@@ -217,11 +207,11 @@ export default function TellFriendScreen() {
                 if (!isWeb) {
                     await Clipboard.setStringAsync(message);
                     Alert.alert(
-                        'Message Copied!',
-                        'Instagram does not allow pre-filling text automatically. We have copied the invitation to your clipboard - you can paste it into your post or story!',
+                        t('success'),
+                        t('save'),
                         [
                             { 
-                                text: 'Open Instagram', 
+                                text: t('save'), 
                                 onPress: async () => {
                                     const instaUrl = 'instagram://library';
                                     const canOpen = await Linking.canOpenURL(instaUrl);
@@ -269,9 +259,9 @@ export default function TellFriendScreen() {
             } else {
                 // Final fallback to native share
                 if (!isWeb) {
-                    await Share.share({ message, title: 'Join me on Zmzir' });
+                    await Share.share({ message, title: t('join_zmzir') });
                 } else {
-                    Alert.alert('Sharing', 'Please copy the message and share it manually or try our Email/Link options.');
+                    Alert.alert(t('share_link'), t('save'));
                 }
             }
         } catch (error) {
@@ -349,7 +339,7 @@ export default function TellFriendScreen() {
 
     const handleSendInvite = async () => {
         if (!inviteEmail || !inviteEmail.includes('@')) {
-            Alert.alert('Invalid Email', 'Please enter a valid email address.');
+            Alert.alert(t('error'), t('failed_update'));
             return;
         }
 
@@ -363,24 +353,24 @@ export default function TellFriendScreen() {
                     Animated.timing(confettiAnim, { toValue: 0, duration: 500, delay: 1000, useNativeDriver: true }),
                 ]).start();
 
-                Alert.alert('Invitation Sent!', `We've sent a premium invitation to ${inviteEmail}.`);
+                Alert.alert(t('success'), t('invite_success'));
                 setInviteEmail('');
                 if (!isWeb) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             } else {
-                Alert.alert('Error', response.message || 'Failed to send invitation');
+                Alert.alert(t('error'), response.message || t('failed_update'));
             }
         } catch (error) {
-            Alert.alert('Error', 'Could not send invite. Please try again later.');
+            Alert.alert(t('error'), t('failed_update'));
         } finally {
             setSendingInvite(false);
         }
     };
 
     const tabs = [
-        { id: 'contacts', label: 'Contacts', icon: 'people', color: '#4CAF50' },
-        { id: 'social', label: 'Social', icon: 'share-social', color: '#1DA1F2' },
-        { id: 'search', label: 'Search', icon: 'search', color: '#FF9800' },
-        { id: 'invite', label: 'Invite', icon: 'mail', color: '#1063FD' },
+        { id: 'contacts', label: t('contacts_tab'), icon: 'people', color: '#4CAF50' },
+        { id: 'social', label: t('social_tab'), icon: 'share-social', color: '#1DA1F2' },
+        { id: 'search', label: t('search'), icon: 'search', color: '#FF9800' },
+        { id: 'invite', label: t('invite_tab'), icon: 'mail', color: '#1063FD' },
     ];
 
     const TabButton = ({ tab }: { tab: typeof tabs[0] }) => {
@@ -432,12 +422,12 @@ export default function TellFriendScreen() {
                 </View>
                 <View style={styles.contactActions}>
                     {contact.phoneNumbers?.[0] && (
-                        <TouchableOpacity
-                            style={styles.contactAction}
-                            onPress={() => handleSocialShare(SOCIAL_PLATFORMS.find(p => p.platform === 'WhatsApp')!, contact)}
-                        >
-                            <Ionicons name="logo-whatsapp" size={22} color="#25D366" />
-                        </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.contactAction}
+                                onPress={() => handleSocialShare(SOCIAL_PLATFORMS.find(p => p.platform === 'WhatsApp')!, contact)}
+                            >
+                                <Ionicons name="logo-whatsapp" size={22} color="#25D366" />
+                            </TouchableOpacity>
                     )}
                     {contact.emails?.[0] && (
                         <TouchableOpacity
@@ -463,7 +453,7 @@ export default function TellFriendScreen() {
             <LinearGradient colors={[platform.color, platform.color + '80']} style={styles.socialIconGradient}>
                 <Ionicons name={platform.icon as any} size={24} color="#fff" />
             </LinearGradient>
-            <Text style={[styles.socialName, { color: platform.color }]}>{platform.platform}</Text>
+            <Text style={[styles.socialName, { color: platform.color }]}>{['Email', 'SMS', 'support', 'messages'].includes(platform.platform) ? t(platform.platform) : platform.platform}</Text>
         </TouchableOpacity>
     );
 
@@ -512,7 +502,7 @@ export default function TellFriendScreen() {
                             // Local update state is handled by DeviceEventEmitter listener in parent
                             if (!isWeb) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                         } catch (error) {
-                            Alert.alert('Error', `Could not ${action} user`);
+                            Alert.alert(t('error'), t('failed_update'));
                         } finally {
                             setLocalLoading(false);
                         }
@@ -526,7 +516,7 @@ export default function TellFriendScreen() {
                         {localLoading ? (
                             <ActivityIndicator size="small" color="#fff" />
                         ) : (
-                            <Text style={styles.followButtonText}>{isFollowing ? 'Unfollow' : 'Follow'}</Text>
+                            <Text style={styles.followButtonText}>{isFollowing ? t('unfollow') : t('follow')}</Text>
                         )}
                     </LinearGradient>
                 </TouchableOpacity>
@@ -540,26 +530,23 @@ export default function TellFriendScreen() {
             <LinearGradient colors={activeScheme === 'dark' ? ['#1a1a2e', '#16213e', '#0f3460'] : [colors.background, colors.surface]} style={StyleSheet.absoluteFill} />
             <BlurView intensity={activeScheme === 'dark' ? 20 : 10} style={StyleSheet.absoluteFill} />
 
-            {/* Header */}
             <LinearGradient colors={activeScheme === 'dark' ? ['rgba(0,0,0,0.3)', 'transparent'] : [colors.surface, 'transparent']} style={[styles.header, { paddingTop: insets.top + 10 }]}>
                 <BackButton onPress={() => router.back()} />
                 <View style={styles.headerCenter}>
-                    <Text style={styles.headerTitle}>Invite Friends</Text>
+                    <Text style={styles.headerTitle}>{t('tell_friend')}</Text>
                     <View style={styles.headerUnderline} />
                 </View>
                 <View style={{ width: 44 }} />
             </LinearGradient>
 
-            {/* Hero Section */}
             <MotiView from={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={styles.heroSection}>
                 <LinearGradient colors={['#1063FD', '#00c6ff']} style={styles.heroGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
                     <View style={styles.heroIcon}><Ionicons name="gift" size={40} color={colors.surface} /></View>
-                    <Text style={styles.heroTitle}>Invite & Connect</Text>
-                    <Text style={styles.heroSubtitle}>Bring your friends to Zmzir and build your community together.</Text>
+                    <Text style={styles.heroTitle}>{t('tell_friend_hero')}</Text>
+                    <Text style={styles.heroSubtitle}>{t('tell_friend_subtitle')}</Text>
                 </LinearGradient>
             </MotiView>
 
-            {/* Tabs */}
             <View style={styles.tabsWrapper}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsContainer}>
                     {tabs.map(tab => <TabButton key={tab.id} tab={tab} />)}
@@ -578,7 +565,7 @@ export default function TellFriendScreen() {
                                         <View style={{ marginBottom: 25 }}>
                                             <View style={styles.sectionHeader}>
                                                 <Ionicons name="sparkles" size={18} color="#FF9800" />
-                                                <Text style={styles.sectionTitle}>Found on Social Media</Text>
+                                                <Text style={styles.sectionTitle}>{t('social')}</Text>
                                             </View>
                                             {socialFriends.map(friend => (
                                                 <SearchResultCard key={`social-${friend.id}`} result={{
@@ -592,24 +579,24 @@ export default function TellFriendScreen() {
 
                                     <View style={styles.sectionHeader}>
                                         <Ionicons name="phone-portrait-outline" size={18} color="#4CAF50" />
-                                        <Text style={styles.sectionTitle}>Phone Contacts</Text>
+                                        <Text style={styles.sectionTitle}>{t('contacts_tab')}</Text>
                                     </View>
 
                                     {contacts.length === 0 ? (
                                         <View style={styles.emptyContainer}>
                                             <Ionicons name="people" size={60} color={colors.border} />
                                             <Text style={styles.emptyTitle}>
-                                                {isWeb && !('contacts' in navigator) ? 'Not Available on this Browser' : 'No contacts found'}
+                                                {isWeb && !('contacts' in navigator) ? t('failed_update') : t('contacts_tab')}
                                             </Text>
                                             <Text style={styles.emptyText}>
                                                 {isWeb && !('contacts' in navigator) 
-                                                    ? 'Your browser does not support contact selection. Try the Social or Invite tabs.' 
-                                                    : 'Select contacts from your phone to invite them to Zmzir.'}
+                                                    ? t('failed_update') 
+                                                    : t('contacts_tab')}
                                             </Text>
                                             {( !isWeb || ('contacts' in navigator) ) && (
                                                 <TouchableOpacity style={styles.allowButton} onPress={loadContacts}>
                                                     <Text style={styles.allowButtonText}>
-                                                        {isWeb ? 'Select Contacts' : 'Allow Access'}
+                                                        {isWeb ? t('save') : t('save')}
                                                     </Text>
                                                 </TouchableOpacity>
                                             )}
@@ -631,7 +618,7 @@ export default function TellFriendScreen() {
                     {activeTab === 'invite' && (
                         <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }}>
                             <View style={styles.inviteForm}>
-                                <Text style={styles.sectionTitle}>Direct Branded Invitation</Text>
+                                <Text style={styles.sectionTitle}>{t('invite_tab')}</Text>
                                 <View style={styles.inputWrapper}>
                                     <Ionicons name="mail-outline" size={20} color={colors.tint} style={styles.inputIcon} />
                                     <TextInput
@@ -647,12 +634,12 @@ export default function TellFriendScreen() {
 
                                 <TouchableOpacity style={[styles.primaryButton, sendingInvite && { opacity: 0.7 }]} onPress={handleSendInvite} disabled={sendingInvite}>
                                     <LinearGradient colors={[colors.tint, colors.tint + 'CC']} style={styles.primaryButtonGradient}>
-                                        {sendingInvite ? <ActivityIndicator color={colors.surface} /> : <><Ionicons name="paper-plane" size={18} color={colors.surface} /><Text style={styles.primaryButtonText}>Send Invite via SMTP</Text></>}
+                                        {sendingInvite ? <ActivityIndicator color={colors.surface} /> : <><Ionicons name="paper-plane" size={18} color={colors.surface} /><Text style={styles.primaryButtonText}>{t('invite_tab')}</Text></>}
                                     </LinearGradient>
                                 </TouchableOpacity>
 
                                 <View style={styles.editorContainer}>
-                                    <Text style={styles.invitePreviewLabel}>Invitation Message Preview:</Text>
+                                    <Text style={styles.invitePreviewLabel}>{t('invite_tab')}</Text>
                                     <TextInput style={styles.messageEditor} multiline value={customMessage} onChangeText={setCustomMessage} placeholderTextColor={colors.textSecondary + '4D'} />
                                 </View>
                             </View>
@@ -667,7 +654,7 @@ export default function TellFriendScreen() {
                                 <Ionicons name="search-outline" size={20} color={colors.tint} style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Search by name, username or email..."
+                                    placeholder={t('search_placeholder')}
                                     placeholderTextColor={colors.textSecondary + '60'}
                                     value={searchQuery}
                                     onChangeText={(t) => {
@@ -695,7 +682,7 @@ export default function TellFriendScreen() {
                             {searching && (
                                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 8, paddingHorizontal: 5 }}>
                                     <ActivityIndicator size="small" color={colors.tint} />
-                                    <Text style={{ color: colors.textSecondary, fontSize: 12 }}>Searching...</Text>
+                                    <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{t('loading')}</Text>
                                 </View>
                             )}
                         </View>
@@ -712,9 +699,9 @@ export default function TellFriendScreen() {
                                     return (
                                         <View style={styles.emptyContainer}>
                                             <Ionicons name="person-add-outline" size={48} color={colors.border} />
-                                            <Text style={styles.emptyTitle}>No users found</Text>
+                                            <Text style={styles.emptyTitle}>{t('failed_update')}</Text>
                                             <Text style={styles.emptyText}>
-                                                Try a different name or invite them via the Invite tab.
+                                                {t('invite_tab')}
                                             </Text>
                                         </View>
                                     );
@@ -725,7 +712,7 @@ export default function TellFriendScreen() {
                                 loadingMore ? (
                                     <View style={{ paddingVertical: 20, alignItems: 'center' }}>
                                         <ActivityIndicator color={colors.tint} />
-                                        <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 10 }}>Loading more...</Text>
+                                        <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 10 }}>{t('loading')}</Text>
                                     </View>
                                 ) : null
                             )}
@@ -735,7 +722,6 @@ export default function TellFriendScreen() {
                 </View>
             )}
 
-            {/* Confetti Animation */}
             <Animated.View 
                 style={[
                     styles.confetti, 

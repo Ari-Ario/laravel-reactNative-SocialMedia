@@ -18,6 +18,8 @@ import { Notification } from '@/types/Notification';
 import Avatar from '../Image/Avatar';
 import { router } from 'expo-router';
 import { useProfileView } from '@/context/ProfileViewContext';
+import { useTranslation } from '@/constants/i18n';
+import { formatTimeAgo } from '@/utils/dateUtils';
 
 type MessagesPanelProps = {
     visible: boolean;
@@ -27,6 +29,7 @@ type MessagesPanelProps = {
 
 const MessagesPanel = ({ visible, onClose, anchorPosition }: MessagesPanelProps) => {
     const { colors, activeScheme } = useAppTheme();
+    const { t } = useTranslation();
     const {
         getMessages,
         markAsRead,
@@ -37,7 +40,7 @@ const MessagesPanel = ({ visible, onClose, anchorPosition }: MessagesPanelProps)
     const messages = getMessages();
 
     // Calculate unread count for messages
-    const unreadMessageCount = messages.filter(n => !n.isRead).length;
+    const unreadMessageCount = messages.filter((n: Notification) => !n.isRead).length;
 
     const handleMessagePress = (item: Notification) => {
         if (!item.isRead) {
@@ -63,20 +66,7 @@ const MessagesPanel = ({ visible, onClose, anchorPosition }: MessagesPanelProps)
         onClose();
     };
 
-    const formatTimeAgo = (dateString: string) => {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMins / 60);
-        const diffDays = Math.floor(diffHours / 24);
-
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffHours < 24) return `${diffHours}h ago`;
-        if (diffDays < 7) return `${diffDays}d ago`;
-        return date.toLocaleDateString();
-    };
+    // formatTimeAgo removed as it is now imported from utils/dateUtils
 
     const renderMessageItem = ({ item }: { item: Notification }) => {
         const iconName = getNotificationIcon(item.type);
@@ -94,7 +84,7 @@ const MessagesPanel = ({ visible, onClose, anchorPosition }: MessagesPanelProps)
             >
                 <TouchableOpacity onPress={() => handleAvatarPress(item.fromUserId || '')}>
                     <Avatar
-                        uri={item.avatar}
+                        source={item.avatar}
                         size={48}
                         style={[styles.avatar, { borderColor: colors.surface, backgroundColor: colors.muted }]}
                     />
@@ -172,7 +162,7 @@ const MessagesPanel = ({ visible, onClose, anchorPosition }: MessagesPanelProps)
                 <View style={styles.contentWrapper}>
                     <View style={[styles.panelHeader, { borderBottomColor: colors.border, backgroundColor: colors.surface }]}>
                         <Text style={[styles.panelTitle, { color: colors.text }]}>
-                            Messages {unreadMessageCount > 0 ? `(${unreadMessageCount})` : ''}
+                            {t('messages_count', { count: unreadMessageCount })}
                         </Text>
                         <TouchableOpacity onPress={onClose} style={[styles.closeButton, { backgroundColor: colors.muted }]}>
                             <Ionicons name="close" size={20} color={colors.textSecondary} />
@@ -182,9 +172,9 @@ const MessagesPanel = ({ visible, onClose, anchorPosition }: MessagesPanelProps)
                         {messages.length === 0 ? (
                             <View style={styles.emptyState}>
                                 <Ionicons name="mail-outline" size={48} color={colors.textSecondary + '40'} />
-                                <Text style={[styles.emptyText, { color: colors.text }]}>No messages yet</Text>
+                                <Text style={[styles.emptyText, { color: colors.text }]}>{t('no_messages')}</Text>
                                 <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
-                                    When you receive messages, they will appear here
+                                    {t('no_messages_desc')}
                                 </Text>
                             </View>
                         ) : (

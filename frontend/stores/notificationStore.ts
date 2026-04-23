@@ -25,6 +25,7 @@ export interface Notification {
   callId?: string;
   activityId?: number;
   avatar?: string;
+  fromUserId?: string; // ✅ ADDED
 }
 
 // Notification type constants
@@ -151,6 +152,13 @@ export const isChatNotification = (type: string): boolean => {
   ].includes(type);
 };
 
+const isAdminNotification = (type: string): boolean => {
+  return [
+    NOTIFICATION_TYPES.MODERATION_ACTION,
+    NOTIFICATION_TYPES.VIOLATION_REPORTED,
+  ].includes(type);
+};
+
 interface NotificationStore {
   notifications: Notification[];
   followerNotifications: Notification[];
@@ -209,6 +217,10 @@ interface NotificationStore {
   getActivities: () => Notification[];
   getChatbotNotifications: () => Notification[];
   getAdminNotifications: () => Notification[];
+  getCalls: () => Notification[];
+  getMessages: () => Notification[];
+  getSpaces: () => Notification[];
+  getRegularNotifications: () => Notification[];
   reset: () => void;
 }
 

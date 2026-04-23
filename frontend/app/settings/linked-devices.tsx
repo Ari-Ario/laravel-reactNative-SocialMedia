@@ -24,6 +24,7 @@ import { fetchFullSettings, updateFullSettings } from '@/services/SettingService
 import GlobalStyles from '@/styles/GlobalStyles';
 import { createShadow } from '@/utils/styles';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -60,6 +61,7 @@ interface Device {
 }
 
 const DeviceCard = ({ device, index, onLogout }: { device: Device; index: number; onLogout: (token: string) => void }) => {
+    const { t } = useTranslation();
     const { colors, activeScheme } = useAppTheme();
     const styles = getStyles(colors, activeScheme);
     const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -127,7 +129,7 @@ const DeviceCard = ({ device, index, onLogout }: { device: Device; index: number
                                 {device.isCurrent && (
                                     <View style={styles.currentBadge}>
                                         <Ionicons name="checkmark-circle" size={12} color={colors.surface} />
-                                        <Text style={styles.currentBadgeText}>Current</Text>
+                                        <Text style={styles.currentBadgeText}>{t('privacy')}</Text>
                                     </View>
                                 )}
                             </View>
@@ -136,7 +138,7 @@ const DeviceCard = ({ device, index, onLogout }: { device: Device; index: number
                                 <View style={styles.metaItem}>
                                     <Ionicons name="location-outline" size={12} color={device.isCurrent ? colors.surface + 'B3' : colors.textSecondary} />
                                     <Text style={[styles.metaText, device.isCurrent && styles.metaTextLight]}>
-                                        {device.location || 'Unknown Location'}
+                                        {device.location || t('failed_update')}
                                     </Text>
                                 </View>
                                 <View style={styles.metaDot} />
@@ -185,13 +187,13 @@ const DeviceCard = ({ device, index, onLogout }: { device: Device; index: number
                             style={styles.logoutButton}
                             onPress={() => onLogout(device.token)}
                         >
-                            <LinearGradient
-                                colors={[colors.error, colors.error + 'CC']}
-                                style={styles.logoutGradient}
-                            >
-                                <Ionicons name="log-out-outline" size={16} color={colors.surface} />
-                                <Text style={styles.logoutText}>Log Out This Device</Text>
-                            </LinearGradient>
+                                <LinearGradient
+                                    colors={[colors.error, colors.error + 'CC']}
+                                    style={styles.logoutGradient}
+                                >
+                                    <Ionicons name="log-out-outline" size={16} color={colors.surface} />
+                                    <Text style={styles.logoutText}>{t('logout')}</Text>
+                                </LinearGradient>
                         </TouchableOpacity>
                     )}
                 </LinearGradient>
@@ -201,6 +203,7 @@ const DeviceCard = ({ device, index, onLogout }: { device: Device; index: number
 };
 
 export default function LinkedDevicesScreen() {
+    const { t } = useTranslation();
     const { colors, activeScheme } = useAppTheme();
     const styles = getStyles(colors, activeScheme);
     const insets = useSafeAreaInsets();
@@ -255,21 +258,21 @@ export default function LinkedDevicesScreen() {
                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 }
             } catch (error) {
-                Alert.alert('Error', 'Failed to revoke device session.');
+                Alert.alert(t('error'), t('failed_update'));
             }
         };
 
         if (isWeb) {
-            if (window.confirm('Log out this device? It will be immediately disconnected.')) {
+            if (window.confirm(t('logout'))) {
                 confirmAction();
             }
         } else {
             Alert.alert(
-                'Log Out Device',
-                'This device will be immediately disconnected from your account.',
+                t('logout'),
+                t('logout'),
                 [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Log Out', style: 'destructive', onPress: confirmAction }
+                    { text: t('cancel'), style: 'cancel' },
+                    { text: t('logout'), style: 'destructive', onPress: confirmAction }
                 ]
             );
         }
@@ -292,21 +295,21 @@ export default function LinkedDevicesScreen() {
                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 }
             } catch (error) {
-                Alert.alert('Error', 'Failed to log out other devices.');
+                Alert.alert(t('error'), t('failed_update'));
             }
         };
 
         if (isWeb) {
-            if (window.confirm('Log out all other devices? This will disconnect all sessions except this one.')) {
+            if (window.confirm(t('logout'))) {
                 confirmAction();
             }
         } else {
             Alert.alert(
-                'Log Out All Devices',
-                'This will log you out of all other active sessions and devices.',
+                t('logout'),
+                t('logout'),
                 [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Log Out All', style: 'destructive', onPress: confirmAction }
+                    { text: t('cancel'), style: 'cancel' },
+                    { text: t('logout'), style: 'destructive', onPress: confirmAction }
                 ]
             );
         }
@@ -329,7 +332,7 @@ export default function LinkedDevicesScreen() {
                 <BackButton onPress={() => router.back()} />
 
                 <View style={styles.headerCenter}>
-                    <Text style={styles.headerTitle}>Active Sessions</Text>
+                    <Text style={styles.headerTitle}>{t('security')}</Text>
                     <Animated.View style={[styles.headerUnderline, { opacity: headerOpacity }]} />
                 </View>
 
@@ -348,7 +351,6 @@ export default function LinkedDevicesScreen() {
                 scrollEventThrottle={16}
             >
                 <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }}>
-                    {/* Security Banner */}
                     <LinearGradient
                         colors={[colors.success + '15', colors.success + '08']}
                         style={styles.securityBanner}
@@ -359,10 +361,9 @@ export default function LinkedDevicesScreen() {
                             <Ionicons name="shield-checkmark" size={28} color={colors.success} />
                         </View>
                         <View style={styles.bannerText}>
-                            <Text style={styles.bannerTitle}>Account Security</Text>
+                            <Text style={styles.bannerTitle}>{t('security')}</Text>
                             <Text style={styles.bannerDescription}>
-                                Monitor all devices where your account is currently logged in.
-                                If you see anything suspicious, revoke access immediately.
+                                {t('security')}
                             </Text>
                         </View>
                     </LinearGradient>
@@ -370,38 +371,36 @@ export default function LinkedDevicesScreen() {
                     {loading ? (
                         <View style={styles.loaderContainer}>
                             <ActivityIndicator size="large" color={colors.tint} />
-                            <Text style={styles.loaderText}>Scanning connected devices...</Text>
+                            <Text style={styles.loaderText}>{t('loading')}</Text>
                         </View>
                     ) : (
                         <>
-                            {/* Stats Cards */}
                             <View style={styles.statsContainer}>
                                 <View style={styles.statCard}>
                                     <Text style={styles.statNumber}>{devices.length}</Text>
-                                    <Text style={styles.statLabel}>Total Devices</Text>
+                                    <Text style={styles.statLabel}>{t('linked_devices')}</Text>
                                 </View>
                                 <View style={styles.statCard}>
                                     <Text style={styles.statNumber}>1</Text>
-                                    <Text style={styles.statLabel}>This Device</Text>
+                                    <Text style={styles.statLabel}>{t('home')}</Text>
                                 </View>
                                 <View style={styles.statCard}>
                                     <Text style={styles.statNumber}>
                                         {devices.filter(d => !d.isCurrent).length}
                                     </Text>
-                                    <Text style={styles.statLabel}>Others</Text>
+                                    <Text style={styles.statLabel}>{t('social')}</Text>
                                 </View>
                             </View>
 
-                            {/* Devices List */}
                             <View style={styles.sectionTitleRow}>
                                 <Ionicons name="hardware-chip" size={14} color={colors.tint} />
-                                <Text style={styles.sectionTitle}>Authorized Devices</Text>
+                                <Text style={styles.sectionTitle}>{t('security')}</Text>
                             </View>
 
                             {devices.length === 0 ? (
                                 <View style={styles.emptyState}>
                                     <Ionicons name="phone-portrait-outline" size={48} color={colors.border} />
-                                    <Text style={styles.emptyText}>No other linked devices found.</Text>
+                                    <Text style={styles.emptyText}>{t('failed_update')}</Text>
                                 </View>
                             ) : (
                                 devices.map((device, index) => (
@@ -414,7 +413,6 @@ export default function LinkedDevicesScreen() {
                                 ))
                             )}
 
-                            {/* Logout All Button */}
                             {devices.filter(d => !d.isCurrent).length > 0 && (
                                 <TouchableOpacity
                                     style={styles.logoutAllCard}
@@ -425,27 +423,26 @@ export default function LinkedDevicesScreen() {
                                         style={styles.logoutAllGradient}
                                     >
                                         <Ionicons name="log-out-outline" size={22} color={colors.error} />
-                                        <Text style={styles.logoutAllText}>Log Out All Other Sessions</Text>
+                                        <Text style={styles.logoutAllText}>{t('logout')}</Text>
                                     </LinearGradient>
                                 </TouchableOpacity>
                             )}
                         </>
                     )}
 
-                    {/* Security Tips */}
                     <View style={styles.tipsSection}>
-                        <Text style={styles.tipsTitle}>🔒 Security Tips</Text>
+                        <Text style={styles.tipsTitle}>🔒 {t('security')}</Text>
                         <View style={styles.tipItem}>
                             <View style={styles.tipIcon}>
                                 <Ionicons name="key" size={14} color={colors.tint} />
                             </View>
-                            <Text style={styles.tipText}>Change your password regularly</Text>
+                            <Text style={styles.tipText}>{t('security')}</Text>
                         </View>
                         <View style={styles.tipItem}>
                             <View style={styles.tipIcon}>
                                 <Ionicons name="shield-half" size={14} color={colors.tint} />
                             </View>
-                            <Text style={styles.tipText}>Revoke access to devices you no longer use</Text>
+                            <Text style={styles.tipText}>{t('security')}</Text>
                         </View>
                     </View>
                 </MotiView>

@@ -14,6 +14,7 @@ import { BlurView } from 'expo-blur';
 import { getMyCompliance } from '@/services/ModerationService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlobalStyles } from '@/styles/GlobalStyles';
+import { useTranslation } from '@/constants/i18n';
 
 interface ModerationComplianceModalProps {
     visible: boolean;
@@ -21,6 +22,7 @@ interface ModerationComplianceModalProps {
 }
 
 export default function ModerationComplianceModal({ visible, onClose }: ModerationComplianceModalProps) {
+    const { t } = useTranslation();
     const insets = useSafeAreaInsets();
     const [compliance, setCompliance] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -50,9 +52,9 @@ export default function ModerationComplianceModal({ visible, onClose }: Moderati
     };
 
     const getStatusLabel = (score: number) => {
-        if (score > 0.8) return 'EXCELLENT';
-        if (score > 0.5) return 'GOOD';
-        return 'REDUCING';
+        if (score > 0.8) return t('excellent');
+        if (score > 0.5) return t('good');
+        return t('reducing');
     };
 
     return (
@@ -65,7 +67,7 @@ export default function ModerationComplianceModal({ visible, onClose }: Moderati
             <View style={styles.overlay}>
                 <BlurView intensity={90} tint="dark" style={[styles.container, { paddingTop: insets.top + 20 }]}>
                     <View style={styles.header}>
-                        <Text style={styles.headerTitle}>Account Compliance</Text>
+                        <Text style={styles.headerTitle}>{t('account_compliance')}</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <Ionicons name="close" size={28} color="#fff" />
                         </TouchableOpacity>
@@ -78,7 +80,7 @@ export default function ModerationComplianceModal({ visible, onClose }: Moderati
                             <View style={styles.scoreCircleContainer}>
                                 <View style={[styles.scoreCircle, { borderColor: getStatusColor(compliance?.trust_score ?? 1) }]}>
                                     <Text style={styles.scorePercent}>{( (compliance?.trust_score ?? 1) * 100).toFixed(0)}%</Text>
-                                    <Text style={styles.scoreLabel}>Trust Score</Text>
+                                    <Text style={styles.scoreLabel}>{t('trust_score')}</Text>
                                 </View>
                                 <View style={[styles.statusBadge, { backgroundColor: getStatusColor(compliance?.trust_score ?? 1) }]}>
                                     <Text style={styles.statusText}>{getStatusLabel(compliance?.trust_score ?? 1)}</Text>
@@ -86,28 +88,27 @@ export default function ModerationComplianceModal({ visible, onClose }: Moderati
                             </View>
 
                             <View style={styles.statsGrid}>
-                                <StatItem label="Violations" value={compliance?.violation_count ?? 0} icon="alert-circle" color="#F44336" />
-                                <StatItem label="Integrity" value={((compliance?.reporting_integrity ?? 1) * 100).toFixed(0) + '%'} icon="shield-checkmark" color="#4CAF50" />
-                                <StatItem label="Reports" value={compliance?.false_report_count ?? 0} icon="flag" color="#FF9800" sublabel="False flags" />
+                                <StatItem label={t('violations')} value={compliance?.violation_count ?? 0} icon="alert-circle" color="#F44336" />
+                                <StatItem label={t('integrity')} value={((compliance?.reporting_integrity ?? 1) * 100).toFixed(0) + '%'} icon="shield-checkmark" color="#4CAF50" />
+                                <StatItem label={t('reports')} value={compliance?.false_report_count ?? 0} icon="flag" color="#FF9800" sublabel={t('false_flags')} />
                             </View>
 
                             <View style={styles.infoBox}>
-                                <Text style={styles.infoTitle}>About Your Trust Score</Text>
+                                <Text style={styles.infoTitle}>{t('about_trust_score')}</Text>
                                 <Text style={styles.infoText}>
-                                    Your trust score is calculated based on your content history and reporting accuracy. 
-                                    A high score ensures your reports are prioritized and gives you a "Verified Contributor" standing.
+                                    {t('trust_score_desc')}
                                 </Text>
                                 
                                 <View style={styles.divider} />
                                 
-                                <Text style={styles.infoTitle}>Tips for Improving</Text>
+                                <Text style={styles.infoTitle}>{t('tips_for_improving')}</Text>
                                 <View style={styles.tipRow}>
                                     <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
-                                    <Text style={styles.tipText}>Follow community guidelines consistently.</Text>
+                                    <Text style={styles.tipText}>{t('follow_guidelines_tip')}</Text>
                                 </View>
                                 <View style={styles.tipRow}>
                                     <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
-                                    <Text style={styles.tipText}>Only report content that clearly violates rules.</Text>
+                                    <Text style={styles.tipText}>{t('report_correctly_tip')}</Text>
                                 </View>
                             </View>
                         </ScrollView>

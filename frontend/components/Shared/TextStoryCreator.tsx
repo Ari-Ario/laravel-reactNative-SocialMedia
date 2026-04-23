@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { GradientPreset } from './StoryTypes';
 import { createTextShadow } from '@/utils/styles';
+import { useTranslation } from '@/constants/i18n';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -83,6 +84,7 @@ export const TextStoryCreator: React.FC<TextStoryCreatorProps> = React.memo(({
   onSetMedia,
   onClose,
 }) => {
+  const { t } = useTranslation();
   const [currentGradientIndex, setCurrentGradientIndex] = useState(0);
   const [useGradient, setUseGradient] = useState(true);
   const [solidColor, setSolidColor] = useState('#000000');
@@ -158,7 +160,7 @@ export const TextStoryCreator: React.FC<TextStoryCreatorProps> = React.memo(({
 
         <View style={styles.bottomWrapper}>
           <View style={styles.paletteLabelContainer}>
-             <Text style={styles.paletteLabel}>Choose Background</Text>
+             <Text style={styles.paletteLabel}>{t('choose_background')}</Text>
           </View>
           <View style={styles.colorPaletteContainer}>
             <View style={styles.colorPaletteWrapper}>
@@ -193,7 +195,7 @@ export const TextStoryCreator: React.FC<TextStoryCreatorProps> = React.memo(({
               >
                 <View style={styles.captureInner} />
               </TouchableOpacity>
-              <Text style={styles.modeText}>Tap to Capture</Text>
+              <Text style={styles.modeText}>{t('tap_to_capture')}</Text>
             </View>
 
             <View style={{ width: 44, opacity: 0 }} />

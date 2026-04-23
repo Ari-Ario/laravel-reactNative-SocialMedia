@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import * as Haptics from 'expo-haptics';
 import getApiBase from '@/services/getApiBase';
+import { useTranslation } from '@/constants/i18n';
 
 interface AIAssistantProps {
   spaceId: string;
@@ -14,6 +15,7 @@ interface AIAssistantProps {
   currentContent: any;
   visible: boolean;
   onClose: () => void;
+  embedded?: boolean;
 }
 
 export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
@@ -25,6 +27,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
   visible,
   onClose
 }) => {
+  const { t } = useTranslation();
   const [aiThinking, setAiThinking] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
   const [chatHistory, setChatHistory] = useState<any[]>([]);
@@ -205,9 +208,9 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
         <View style={styles.aiHeader}>
           <View style={styles.aiTitle}>
             <Ionicons name="sparkles" size={20} color="#667EEA" />
-            <Text style={styles.aiTitleText}>Collaboration Assistant</Text>
+            <Text style={styles.aiTitleText}>{t('collaboration_assistant')}</Text>
             <View style={[styles.personalityBadge, (styles as any)[aiPersonality]]}>
-              <Text style={styles.personalityText}>{aiPersonality}</Text>
+              <Text style={styles.personalityText}>{t(`personality_${aiPersonality}`)}</Text>
             </View>
           </View>
           <Pressable onPress={() => { hideAssistant(); onClose(); }}>
@@ -218,7 +221,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
         {/* Proactive Suggestions */}
         {aiSuggestions.length > 0 && (
           <View style={styles.suggestionsSection}>
-            <Text style={styles.sectionTitle}>Suggestions</Text>
+            <Text style={styles.sectionTitle}>{t('suggestions')}</Text>
             {aiSuggestions.map((suggestion, index) => (
               <Pressable
                 key={index}
@@ -234,30 +237,30 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
 
         {/* Quick Actions based on space type */}
         <View style={styles.quickActions}>
-          <Text style={styles.sectionTitle}>Quick Help</Text>
+          <Text style={styles.sectionTitle}>{t('quick_help')}</Text>
           <View style={styles.actionGrid}>
             {aiCapabilities.includes('summarize') && (
               <Pressable style={styles.actionButton} onPress={generateSummary}>
                 <Ionicons name="document-text" size={20} color="#fff" />
-                <Text style={styles.actionButtonText}>Summarize</Text>
+                <Text style={styles.actionButtonText}>{t('summarize')}</Text>
               </Pressable>
             )}
             {aiCapabilities.includes('suggest') && (
               <Pressable style={styles.actionButton} onPress={suggestAlternatives}>
                 <Ionicons name="bulb" size={20} color="#fff" />
-                <Text style={styles.actionButtonText}>Suggest Ideas</Text>
+                <Text style={styles.actionButtonText}>{t('suggest_ideas')}</Text>
               </Pressable>
             )}
             {aiCapabilities.includes('moderate') && (
               <Pressable style={styles.actionButton} onPress={() => queryAI("Check for consensus")}>
                 <Ionicons name="people" size={20} color="#fff" />
-                <Text style={styles.actionButtonText}>Check Consensus</Text>
+                <Text style={styles.actionButtonText}>{t('check_consensus')}</Text>
               </Pressable>
             )}
             {aiCapabilities.includes('inspire') && (
               <Pressable style={styles.actionButton} onPress={generateIcebreaker}>
                 <Ionicons name="color-wand" size={20} color="#fff" />
-                <Text style={styles.actionButtonText}>Inspire</Text>
+                <Text style={styles.actionButtonText}>{t('inspire')}</Text>
               </Pressable>
             )}
           </View>
@@ -265,7 +268,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
 
         {/* Chat with AI */}
         <View style={styles.chatSection}>
-          <Text style={styles.sectionTitle}>Ask Assistant</Text>
+          <Text style={styles.sectionTitle}>{t('ask_assistant')}</Text>
           <View style={styles.chatContainer}>
             {chatHistory.map((msg, index) => (
               <View
@@ -278,7 +281,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
                 <Text style={styles.chatText}>{msg.text}</Text>
                 {msg.metadata?.confidence && (
                   <Text style={styles.confidenceText}>
-                    Confidence: {Math.round(msg.metadata.confidence * 100)}%
+                    {t('confidence_label', { value: Math.round(msg.metadata.confidence * 100) })}
                   </Text>
                 )}
               </View>
@@ -286,7 +289,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
 
             {aiThinking && (
               <View style={styles.thinkingBubble}>
-                <Text style={styles.thinkingText}>Thinking</Text>
+                <Text style={styles.thinkingText}>{t('thinking')}</Text>
                 <View style={styles.thinkingDots}>
                   <View style={styles.dot} />
                   <View style={styles.dot} />
@@ -299,7 +302,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.input}
-              placeholder="Ask about collaboration, ideas, or help..."
+              placeholder={t('ask_assistant_placeholder')}
               value={userInput}
               onChangeText={setUserInput}
               onSubmitEditing={async () => {

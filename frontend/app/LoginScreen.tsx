@@ -8,11 +8,13 @@ import { Link, useRouter } from 'expo-router';
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { BackButton } from "@/components/ui/IconButton";
+import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "@/constants/i18n";
 
 export default function LoginScreen() {
-    const { colors } = useAppTheme();
+    const { colors, activeScheme } = useAppTheme();
     const { t, isRTL } = useTranslation();
+    const styles = getStyles(colors, activeScheme, isRTL);
     const router = useRouter();
     const authStore = useAuthStore();
 
@@ -30,7 +32,6 @@ export default function LoginScreen() {
                 device_name: `${Platform.OS} ${Platform.Version}`,
             });
 
-            // response.data contains { token, user }
             const userData = response.user || response.data?.user || response;
             const token = response.token || response.data?.token;
 
@@ -38,7 +39,6 @@ export default function LoginScreen() {
                throw new Error("Invalid login response: Missing token or user data");
             }
 
-            // Centralized login in Zustand (automatically persists to storage)
             await authStore.login(userData, token);
             
             console.log("✅ [LoginScreen] Login successful, redirecting...");
@@ -67,14 +67,21 @@ export default function LoginScreen() {
     }
 
     return (
-        <SafeAreaView style={[styles.wrapper, { backgroundColor: colors.background }]}>
-            <View style={{ position: 'absolute', top: 10, left: 10, zIndex: 10 }}>
+        <SafeAreaView style={styles.wrapper}>
+            <View style={{ position: 'absolute', top: 10, [isRTL ? 'right' : 'left']: 10, zIndex: 10 }}>
                 <Link href={'/'} asChild>
                     <BackButton />
                 </Link>
             </View>
 
-            <View style={[styles.container, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+            <View style={styles.headerIcon}>
+                <Ionicons name="log-in-outline" size={40} color={colors.tint} />
+            </View>
+
+            <Text style={styles.title}>{t('login_btn')}</Text>
+            <Text style={styles.subtitle}>{t('login_subtitle')}</Text>
+
+            <View style={styles.container}>
                 <FormTextField 
                     label={t('email_address') + ":"}
                     value={email}
@@ -92,23 +99,25 @@ export default function LoginScreen() {
                     errors={errors.password}
                 />
 
-                <Button title={t('login_btn')} onPress={handleLogin} />
-
                 {errors.general && (
-                    <Text style={[styles.errorText, { color: colors.error }]}>{errors.general}</Text>
+                    <Text style={styles.errorText}>{errors.general}</Text>
                 )}
+
+                <TouchableOpacity style={styles.button} onPress={handleLogin}>
+                    <Text style={styles.buttonText}>{t('login_btn')}</Text>
+                </TouchableOpacity>
 
                 <Link href={'/ForgotPasswordScreen'} asChild>
                     <TouchableOpacity>
-                        <Text style={[styles.buttonText, { color: colors.tint, fontSize: 16, marginTop: 10, textAlign: isRTL ? 'right' : 'center' }]}>{t('forgot_password')}</Text>
+                        <Text style={styles.forgotPasswordText}>{t('forgot_password')}</Text>
                     </TouchableOpacity>
                 </Link>
 
-                <View style={[styles.loginLink, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                <View style={styles.loginLink}>
                     <Text style={{ color: colors.textSecondary }}>{t('no_account')}</Text>
                     <Link href="/RegisterScreen" asChild>
                         <TouchableOpacity>
-                            <Text style={[styles.linkText, { color: colors.tint }]}>{t('register')}</Text>
+                            <Text style={styles.linkText}>{t('register')}</Text>
                         </TouchableOpacity>
                     </Link>
                 </View>
@@ -117,36 +126,82 @@ export default function LoginScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+function getStyles(colors: any, activeScheme: string, isRTL: boolean) {
+  return StyleSheet.create({
     wrapper: {
         flex: 1,
+        padding: 24,
         justifyContent: 'center',
+        backgroundColor: colors.background,
+    },
+    headerIcon: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: colors.surface,
         alignItems: 'center',
-        padding: 20,
+        justifyContent: 'center',
+        alignSelf: 'center',
+        marginBottom: 24,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    title: {
+        fontSize: 28,
+        fontWeight: '900',
+        color: colors.text,
+        marginBottom: 8,
+        textAlign: 'center',
+        letterSpacing: -0.5,
+    },
+    subtitle: {
+        fontSize: 16,
+        color: colors.textSecondary,
+        marginBottom: 32,
+        textAlign: 'center',
+        lineHeight: 24,
     },
     container: {
-        padding: 20,
-        rowGap: 16,
-        width: 300,
-    },
-    button: {
-        marginBottom: 20,
-    },
-    buttonText: {
-        textAlign: "center",
-        fontSize: 22,
-        fontWeight: '500',
+        width: '100%',
+        maxWidth: 400,
+        alignSelf: 'center',
     },
     errorText: {
         textAlign: 'center',
-        marginTop: 10,
-    },
-    loginLink: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        marginTop: 20,
-    },
-    linkText: {
+        marginBottom: 10,
+        color: colors.error,
         fontWeight: '600',
     },
-});
+    button: {
+        backgroundColor: colors.tint,
+        height: 56,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 16,
+    },
+    buttonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '800',
+    },
+    forgotPasswordText: {
+        color: colors.tint,
+        fontSize: 15,
+        marginTop: 16,
+        textAlign: isRTL ? 'right' : 'center',
+        fontWeight: '700',
+    },
+    loginLink: {
+        flexDirection: isRTL ? 'row-reverse' : 'row',
+        justifyContent: 'center',
+        marginTop: 24,
+        gap: 8,
+    },
+    linkText: {
+        fontWeight: '700',
+        color: colors.tint,
+        fontSize: 15,
+    },
+  });
+}

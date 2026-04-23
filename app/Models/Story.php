@@ -26,6 +26,8 @@ class Story extends Model
         'stickers' => 'array',
     ];
 
+    protected $appends = ['views_count'];
+
     protected static function boot()
     {
         parent::boot();
@@ -64,10 +66,16 @@ class Story extends Model
         $expiredStories = self::where('expires_at', '<=', now())->get();
 
         foreach ($expiredStories as $story) {
+            /** @var Story $story */
             $story->delete(); // This will trigger the deleting event
         }
 
         return $expiredStories->count();
     }
 
+
+    public function getViewsCountAttribute()
+    {
+        return $this->viewers_count ?? $this->viewers()->count();
+    }
 }

@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import debounce from 'lodash/debounce';
 import axios from '@/services/axios';
+import { useTranslation } from '@/constants/i18n';
 import { getToken } from '@/services/TokenService';
 import getApiBase from '@/services/getApiBase';
 import Avatar from '@/components/Image/Avatar';
@@ -48,6 +49,7 @@ const EnhancedInviteModal: React.FC<EnhancedInviteModalProps> = ({
     onClose,
     onInvite,
 }) => {
+    const { t, isRTL } = useTranslation();
     const [inputText, setInputText] = useState('');
     const [recipients, setRecipients] = useState<InviteRecipient[]>([]);
     const [suggestions, setSuggestions] = useState<any[]>([]);
@@ -59,6 +61,8 @@ const EnhancedInviteModal: React.FC<EnhancedInviteModalProps> = ({
 
     const searchInputRef = useRef<TextInput>(null);
     const API_BASE = getApiBase();
+
+    const styles = React.useMemo(() => getStyles(isRTL), [isRTL]);
 
     // Parse input into recipients when comma is typed or on blur
     const parseInput = (text: string) => {
@@ -265,8 +269,8 @@ const EnhancedInviteModal: React.FC<EnhancedInviteModalProps> = ({
 
             if (validRecipients.length === 0) {
                 Alert.alert(
-                    'No Valid Recipients',
-                    'None of the entered identifiers could be found. Please check and try again.',
+                    t('no_valid_recipients'),
+                    t('no_valid_recipients_desc'),
                     [{ text: 'OK' }]
                 );
                 setIsInviting(false);
@@ -288,17 +292,19 @@ const EnhancedInviteModal: React.FC<EnhancedInviteModalProps> = ({
             if (invalidRecipients.length > 0) {
                 setFailedInvites(invalidRecipients);
                 Alert.alert(
-                    'Partial Success',
-                    `${validRecipients.length} invite(s) sent successfully. ${invalidRecipients.length} could not be found.`,
+                    t('partial_success'),
+                    t('invites_sent_partial_success')
+                        .replace('{validCount}', validRecipients.length.toString())
+                        .replace('{invalidCount}', invalidRecipients.length.toString()),
                     [
-                        { text: 'View Failed', onPress: () => setFailedInvites(invalidRecipients) },
+                        { text: t('view_failed'), onPress: () => setFailedInvites(invalidRecipients) },
                         { text: 'OK' }
                     ]
                 );
             } else {
                 Alert.alert(
-                    'Success',
-                    `${validRecipients.length} invite(s) sent successfully!`,
+                    t('success'),
+                    t('invites_sent_success_msg').replace('{count}', validRecipients.length.toString()),
                     [
                         {
                             text: 'OK',
@@ -316,7 +322,7 @@ const EnhancedInviteModal: React.FC<EnhancedInviteModalProps> = ({
 
         } catch (error) {
             console.error('Error sending invites:', error);
-            Alert.alert('Error', 'Failed to send invites. Please try again.');
+            Alert.alert(t('error'), t('failed_to_send_invites'));
         } finally {
             setIsInviting(false);
         }
@@ -361,13 +367,13 @@ const EnhancedInviteModal: React.FC<EnhancedInviteModalProps> = ({
                 <View style={styles.modalContent}>
                     {/* Header */}
                     <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>Invite to Space</Text>
+                        <Text style={styles.modalTitle}>{t('invite_to_space')}</Text>
                         <TouchableOpacity onPress={onClose}>
                             <Ionicons name="close" size={24} color="#666" />
                         </TouchableOpacity>
                     </View>
 
-                    <Text style={styles.spaceTitle}>Inviting to: {spaceTitle}</Text>
+                    <Text style={styles.spaceTitle}>{t('inviting_to')}: {spaceTitle}</Text>
 
                     {/* Recipients Chips */}
                     {recipients.length > 0 && (
@@ -408,7 +414,7 @@ const EnhancedInviteModal: React.FC<EnhancedInviteModalProps> = ({
                         <TextInput
                             ref={searchInputRef}
                             style={styles.input}
-                            placeholder="Enter email, phone, user ID, or space ID (comma separated)"
+                            placeholder={t('invite_placeholder')}
                             value={inputText}
                             onChangeText={handleInputChange}
                             onSubmitEditing={handleInputSubmit}
@@ -425,7 +431,7 @@ const EnhancedInviteModal: React.FC<EnhancedInviteModalProps> = ({
                     </View>
 
                     <Text style={styles.hintText}>
-                        Press comma (,) or Enter to add multiple
+                        {t('invite_hint')}
                     </Text>
 
                     {/* Search Results / Suggestions */}
@@ -440,11 +446,11 @@ const EnhancedInviteModal: React.FC<EnhancedInviteModalProps> = ({
                                 {isSearching ? (
                                     <View style={styles.loadingContainer}>
                                         <ActivityIndicator size="small" color="#007AFF" />
-                                        <Text style={styles.loadingText}>Searching...</Text>
+                                        <Text style={styles.loadingText}>{t('searching')}</Text>
                                     </View>
                                 ) : suggestions.length > 0 ? (
                                     <>
-                                        <Text style={styles.suggestionsTitle}>Suggestions:</Text>
+                                        <Text style={styles.suggestionsTitle}>{t('suggestions')}:</Text>
                                         {suggestions.map((user) => (
                                             <TouchableOpacity
                                                 key={user.id}
@@ -463,7 +469,7 @@ const EnhancedInviteModal: React.FC<EnhancedInviteModalProps> = ({
                                         ))}
                                     </>
                                 ) : inputText.length >= 2 ? (
-                                    <Text style={styles.noResultsText}>No users found</Text>
+                                    <Text style={styles.noResultsText}>{t('no_users_found')}</Text>
                                 ) : null}
                             </ScrollView>
                         </View>
@@ -472,12 +478,12 @@ const EnhancedInviteModal: React.FC<EnhancedInviteModalProps> = ({
                     {/* Failed Invites Section */}
                     {failedInvites.length > 0 && (
                         <View style={styles.failedContainer}>
-                            <Text style={styles.failedTitle}>Failed Invites:</Text>
+                            <Text style={styles.failedTitle}>{t('failed_invites')}:</Text>
                             {failedInvites.map((invite, index) => (
                                 <View key={index} style={styles.failedItem}>
                                     <Ionicons name="alert-circle" size={16} color="#FF6B6B" />
                                     <Text style={styles.failedText}>{invite.identifier}</Text>
-                                    <Text style={styles.failedReason}>(not found)</Text>
+                                    <Text style={styles.failedReason}>({t('not_found')})</Text>
                                 </View>
                             ))}
                         </View>
@@ -493,7 +499,7 @@ const EnhancedInviteModal: React.FC<EnhancedInviteModalProps> = ({
                             }}
                             disabled={isInviting}
                         >
-                            <Text style={styles.modalButtonTextCancel}>Cancel</Text>
+                            <Text style={styles.modalButtonTextCancel}>{t('cancel')}</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
@@ -509,7 +515,7 @@ const EnhancedInviteModal: React.FC<EnhancedInviteModalProps> = ({
                                 <ActivityIndicator size="small" color="#fff" />
                             ) : (
                                 <Text style={styles.modalButtonTextConfirm}>
-                                    Send Invites ({recipients.length})
+                                    {t('send_invites_count').replace('{count}', recipients.length.toString())}
                                 </Text>
                             )}
                         </TouchableOpacity>
@@ -520,7 +526,7 @@ const EnhancedInviteModal: React.FC<EnhancedInviteModalProps> = ({
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isRTL: boolean) => StyleSheet.create({
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -537,7 +543,7 @@ const styles = StyleSheet.create({
         maxHeight: '80%',
     },
     modalHeader: {
-        flexDirection: 'row',
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 8,
@@ -593,7 +599,7 @@ const styles = StyleSheet.create({
         borderColor: '#e0e0e0',
     },
     addButton: {
-        marginLeft: 8,
+        [isRTL ? 'marginRight' : 'marginLeft']: 8,
     },
     hintText: {
         fontSize: 12,
@@ -625,7 +631,7 @@ const styles = StyleSheet.create({
     },
     suggestionInfo: {
         flex: 1,
-        marginLeft: 12,
+        [isRTL ? 'marginRight' : 'marginLeft']: 12,
     },
     suggestionName: {
         fontSize: 16,

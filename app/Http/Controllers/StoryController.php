@@ -41,6 +41,7 @@ class StoryController extends Controller
             return Story::with(['user', 'viewers' => function ($query) use ($user) {
                 $query->where('user_id', $user->id);
             }])
+                ->withCount('viewers')
                 ->where('expires_at', '>', now())
                 ->latest()
                 ->get()
@@ -91,6 +92,7 @@ class StoryController extends Controller
         $stories = Story::with(['user', 'viewers' => function ($query) use ($user) {
             $query->where('user_id', $user->id);
         }])
+            ->withCount('viewers')
             ->where('user_id', $userId)
             ->where('expires_at', '>', now())
             ->orderBy('created_at', 'asc')
@@ -162,6 +164,7 @@ class StoryController extends Controller
     public function show($id)
     {
         $story = Story::with('user')
+            ->withCount('viewers')
             ->where('id', $id)
             ->where('expires_at', '>', now())
             ->firstOrFail();

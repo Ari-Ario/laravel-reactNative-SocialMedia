@@ -342,10 +342,10 @@ const HomePage = () => {
             )}
 
             {/* Header */}
-            <View style={[styles.header, { backgroundColor: colors.background, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                <View style={[styles.headerContent, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+            <View style={styles.header}>
+                <View style={styles.headerContent}>
                     <Text style={[styles.headerTitle, { color: colors.text }]}>{t('home')}</Text>
-                    <View style={[styles.headerIcons, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                    <View style={styles.headerIcons}>
                         <TouchableOpacity
                             ref={callsIconRef}
                             style={styles.notificationIconContainer}
@@ -559,9 +559,9 @@ function getStyles(colors: any, activeScheme: string, isRTL: boolean): any {
 
         header: {
             width: '100%',
-            // maxWidth: 500,
-            alignSelf: 'center',
-            padding: 5,
+            paddingTop: Platform.OS === 'ios' ? 50 : (Platform.OS === 'android' ? 35 : 10),
+            paddingBottom: 10,
+            zIndex: 100,
         },
         photoContainer: {
             position: 'relative',
@@ -670,17 +670,20 @@ function getStyles(colors: any, activeScheme: string, isRTL: boolean): any {
 
 
         headerContent: {
-            flexDirection: 'row',
+            width: '100%',
+            flexDirection: isRTL ? 'row-reverse' : 'row',
             justifyContent: 'space-between',
             alignItems: 'center',
             paddingHorizontal: 16,
         },
         headerTitle: {
+            flex: 1,
             fontSize: 24,
-            fontWeight: 'bold',
+            fontWeight: '900',
+            textAlign: isRTL ? 'right' : 'left',
         },
         headerIcons: {
-            flexDirection: 'row',
+            flexDirection: isRTL ? 'row-reverse' : 'row',
             alignItems: 'center',
         },
         notificationBell: {
@@ -689,12 +692,12 @@ function getStyles(colors: any, activeScheme: string, isRTL: boolean): any {
         },
         notificationIconContainer: {
             position: 'relative',
-            marginLeft: 12,
+            marginHorizontal: 6,
         },
         badge: {
             position: 'absolute',
             top: -4,
-            right: -6,
+            [isRTL ? 'left' : 'right']: -6,
             minWidth: 18,
             height: 18,
             borderRadius: 9,

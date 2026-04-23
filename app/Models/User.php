@@ -91,6 +91,8 @@ class User extends Authenticatable
             'email_verified_at' => $this->email_verified_at,
             'profile_photo' => $this->profile_photo,
             'is_guest' => $this->is_guest,
+            'locale' => $this->locale,
+            'username' => $this->username,
             // Add other safe-to-expose fields
         ];
     }

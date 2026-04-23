@@ -19,6 +19,7 @@ import { BlurView } from 'expo-blur';
 import { GoogleMap, useJsApiLoader, MarkerF } from '@react-google-maps/api';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
+import { useTranslation } from '@/constants/i18n';
 
 const { width, height } = Dimensions.get('window');
 
@@ -141,6 +142,7 @@ const SearchBox = memo(({
     onFocus: () => void;
     onBlur: () => void;
 }) => {
+    const { t } = useTranslation();
     const [query, setQuery] = useState('');
     const [predictions, setPredictions] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -231,7 +233,7 @@ const SearchBox = memo(({
                             onBlur();
                         }, 200);
                     }}
-                    placeholder="Search location..."
+                    placeholder={t('search_location_placeholder')}
                     style={{
                         flex: 1,
                         height: 48,
@@ -295,6 +297,7 @@ const ShareLocation: React.FC<ShareLocationProps> = ({
     onShareLiveLocation,
     googlePlacesApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '',
 }) => {
+    const { t } = useTranslation();
     const insets = useSafeAreaInsets();
     const [selectedPos, setSelectedPos] = useState({ lat: 37.78825, lng: -122.4324 });
     const [map, setMap] = useState<google.maps.Map | null>(null);
@@ -495,7 +498,7 @@ const ShareLocation: React.FC<ShareLocationProps> = ({
                         transition={{ type: 'spring' }}
                     >
                         <ActivityIndicator size="large" color="#007AFF" />
-                        <Text style={styles.loadingText}>Loading Maps...</Text>
+                        <Text style={styles.loadingText}>{t('loading_maps')}</Text>
                     </MotiView>
                 </View>
             );
@@ -521,7 +524,6 @@ const ShareLocation: React.FC<ShareLocationProps> = ({
                     <MarkerF position={selectedPos} />
                 </GoogleMap>
 
-                {/* Animated live toggle */}
                 <MotiView
                     from={{ opacity: 0, translateY: -10 }}
                     animate={{ opacity: 1, translateY: 0 }}
@@ -538,12 +540,11 @@ const ShareLocation: React.FC<ShareLocationProps> = ({
                     >
                         <BlurView intensity={80} tint="dark" style={styles.liveToggleContent}>
                             <View style={[styles.liveIndicator, { backgroundColor: '#FF3B30' }]} />
-                            <Text style={styles.liveToggleText}>Live</Text>
+                            <Text style={styles.liveToggleText}>{t('live_label')}</Text>
                         </BlurView>
                     </TouchableOpacity>
                 </MotiView>
 
-                {/* Live options panel */}
                 {showLiveOptions && (
                     <MotiView
                         from={{ opacity: 0, translateY: 20 }}
@@ -552,7 +553,7 @@ const ShareLocation: React.FC<ShareLocationProps> = ({
                         style={styles.liveOptions}
                     >
                         <BlurView intensity={90} tint="dark" style={styles.liveOptionsContent}>
-                            <Text style={styles.liveOptionsTitle}>Share live for:</Text>
+                            <Text style={styles.liveOptionsTitle}>{t('share_live_duration_title')}</Text>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                                 {LIVE_DURATIONS.map((dur) => (
                                     <TouchableOpacity
@@ -573,13 +574,12 @@ const ShareLocation: React.FC<ShareLocationProps> = ({
                                 style={styles.startLiveButton}
                                 onPress={handleShareLive}
                             >
-                                <Text style={styles.startLiveText}>Start Sharing</Text>
+                                <Text style={styles.startLiveText}>{t('start_sharing')}</Text>
                             </TouchableOpacity>
                         </BlurView>
                     </MotiView>
                 )}
 
-                {/* Bottom panel */}
                 <MotiView
                     from={{ opacity: 0, translateY: 100 }}
                     animate={{ opacity: 1, translateY: 0 }}
@@ -594,7 +594,7 @@ const ShareLocation: React.FC<ShareLocationProps> = ({
                         >
                             <PlaceTypeChip
                                 icon="apps"
-                                name="All"
+                                name={t('all')}
                                 selected={!selectedPlaceType}
                                 onPress={() => {
                                     setSelectedPlaceType(null);
@@ -642,7 +642,7 @@ const ShareLocation: React.FC<ShareLocationProps> = ({
                                 )}
                                 ListEmptyComponent={() => (
                                     <View style={styles.nearbyLoading}>
-                                        <Text style={styles.loadingText}>No places found nearby</Text>
+                                        <Text style={styles.loadingText}>{t('no_nearby_places')}</Text>
                                     </View>
                                 )}
                                 maxToRenderPerBatch={5}
@@ -665,7 +665,6 @@ const ShareLocation: React.FC<ShareLocationProps> = ({
         >
             <StatusBar barStyle="light-content" />
             <SafeAreaView style={styles.container}>
-                {/* Header */}
                 <MotiView
                     from={{ opacity: 0, translateY: -20 }}
                     animate={{ opacity: 1, translateY: 0 }}
@@ -674,17 +673,16 @@ const ShareLocation: React.FC<ShareLocationProps> = ({
                     <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                         <Ionicons name="close" size={24} color="#007AFF" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Share Location</Text>
+                    <Text style={styles.headerTitle}>{t('share_location_header')}</Text>
                     <TouchableOpacity
                         onPress={handleShare}
                         style={styles.shareButton}
                         activeOpacity={0.7}
                     >
-                        <Text style={styles.shareButtonText}>Share</Text>
+                        <Text style={styles.shareButtonText}>{t('share')}</Text>
                     </TouchableOpacity>
                 </MotiView>
 
-                {/* Search Header */}
                 <View style={styles.searchHeader}>
                     <SearchBox
                         onPlaceSelected={handlePlaceSelect}
@@ -700,7 +698,6 @@ const ShareLocation: React.FC<ShareLocationProps> = ({
                     </TouchableOpacity>
                 </View>
 
-                {/* Content */}
                 <View style={styles.content}>
                     {renderContent()}
                 </View>

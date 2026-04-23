@@ -213,6 +213,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::delete('/{id}/polls/{pollId}', [PollController::class, 'destroy']);
         }
     );
+
+    // Magic Events
+    Route::post('/magic-events/{eventId}/discover', [SpaceController::class, 'discoverMagic']);
+
     // Add to routes/api.php inside auth:sanctum group
     Route::prefix('spaces/{id}/whiteboard')->group(
         function () {

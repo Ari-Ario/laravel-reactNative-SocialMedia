@@ -31,6 +31,7 @@ import Avatar from '@/components/Image/Avatar';
 import AuthContext from '@/context/AuthContext';
 import { useCall } from '@/context/CallContext';
 import { createShadow } from '@/utils/styles';
+import { useTranslation } from '@/constants/i18n';
 
 let RTCView: any;
 if (Platform.OS !== 'web') {
@@ -173,7 +174,7 @@ const VideoTile = React.memo(({
                 style={styles.waitingIndicator}
               >
                 <Ionicons name="hand-left" size={24} color="#FFD700" />
-                <Text style={styles.waitingText}>Awaiting Stage...</Text>
+                <Text style={styles.waitingText}>{t('awaiting_stage')}</Text>
               </MotiView>
             )}
           </View>
@@ -188,7 +189,7 @@ const VideoTile = React.memo(({
             <View style={styles.nameBadge}>
               {isHost && <Ionicons name="ribbon" size={14} color="#FFD700" style={{ marginRight: 4 }} />}
               <Text style={styles.tileName} numberOfLines={1}>{name}</Text>
-              {isLocal && <Text style={styles.youBadge}>(You)</Text>}
+              {isLocal && <Text style={styles.youBadge}>{t('you_label')}</Text>}
             </View>
             
             <View style={styles.statusIcons}>
@@ -208,7 +209,7 @@ const VideoTile = React.memo(({
           {/* Role Badge */}
           {(isHost || isMod) && (
             <View style={[styles.roleBadge, isHost ? styles.hostBadge : styles.modBadge]}>
-              <Text style={styles.roleText}>{isHost ? 'HOST' : 'MODERATOR'}</Text>
+              <Text style={styles.roleText}>{isHost ? t('host_role') : t('moderator_role')}</Text>
             </View>
           )}
         </LinearGradient>
@@ -221,7 +222,7 @@ const VideoTile = React.memo(({
               style={styles.gridPromoteGradient}
             >
               <Ionicons name="mic" size={16} color="#fff" />
-              <Text style={styles.gridPromoteText}>Bring to Stage</Text>
+              <Text style={styles.gridPromoteText}>{t('bring_to_stage')}</Text>
             </LinearGradient>
           </TouchableOpacity>
         )}
@@ -238,6 +239,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({
   isMinimized = false,
   onToggleMinimize
 }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const isLandscape = windowWidth > windowHeight;
@@ -312,7 +314,9 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({
   const handleShare = async () => {
     const baseUrl = Platform.OS === 'web' ? window.location.origin : 'https://zmzir.com';
     const shareUrl = `${baseUrl}/spaces/${spaceId}`;
-    const message = `📺 Watch my live broadcast on Zmzir: ${currentSpace?.title || 'Live Broadcast'}\n\nJoin now: ${shareUrl}`;
+    const message = t('watch_broadcast_msg')
+      .replace('{title}', currentSpace?.title || t('untitled'))
+      .replace('{url}', shareUrl);
 
     try {
       if (Platform.OS === 'web') {
@@ -324,13 +328,13 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({
           });
         } else {
           await Clipboard.setStringAsync(message);
-          Alert.alert('Link Copied!', 'The broadcast link has been copied to your clipboard.');
+          Alert.alert(t('link_copied_title'), t('link_copied_msg'));
         }
       } else {
         await Share.share({
           message,
           url: shareUrl,
-          title: 'Join Broadcast'
+          title: t('join_broadcast_title')
         });
       }
       if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -354,7 +358,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({
       broadcasterList.push({
         id: 'local',
         user_id: currentUserId || 0,
-        name: user?.name || 'You',
+        name: user?.name || t('you'),
         avatar: user?.profile_photo,
         role: isAdmin ? 'moderator' : 'participant',
         stream: localStream || undefined,
@@ -439,7 +443,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({
             .map((p: any) => ({
               id: (p.user_id || p.user?.id).toString(),
               user_id: p.user_id || p.user?.id,
-              name: p.user?.name || 'Broadcaster',
+              name: p.user?.name || t('broadcaster_fallback'),
               avatar: p.user?.profile_photo,
               role: p.role || 'moderator',
               hasVideo: false,
@@ -492,7 +496,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({
 
     const call = await findActiveCall();
     if (!call) {
-      Alert.alert('Broadcast Ended', 'The owner is no longer live.');
+      Alert.alert(t('broadcast_ended_title'), t('owner_not_live_msg'));
       setCallStatus('waiting');
       return;
     }
@@ -534,7 +538,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({
       await webRTCService.notifyCallActive();
     } catch (e) {
       console.error('Failed to start broadcast:', e);
-      Alert.alert('Error', 'Failed to start broadcast.');
+      Alert.alert(t('error'), t('failed_start_broadcast'));
       setCallStatus('waiting');
     }
   };
@@ -548,7 +552,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({
         (p.user_id?.toString() === userId) || (p.user?.id?.toString() === userId)
       );
 
-      const userName = (participation?.user?.name || (isCreator ? currentSpace?.creator?.name : 'Broadcaster')) || 'Unknown';
+      const userName = (participation?.user?.name || (isCreator ? currentSpace?.creator?.name : t('broadcaster_fallback'))) || t('unknown_user');
       const userAvatar = participation?.user?.profile_photo || (isCreator ? currentSpace?.creator?.profile_photo : null);
       const userRole = isCreator ? 'owner' : (participation?.role || 'moderator');
 
@@ -657,7 +661,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({
     });
 
     webRTCService.onPromoted(async (incomingCallId?: string) => {
-      console.log('🎉 I have been promoted to speaker! Going live immediately.');
+      console.log(t('promoted_to_speaker_msg'));
       if (Platform.OS !== 'web') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });
       }
@@ -701,7 +705,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({
     });
 
     webRTCService.onDemoted(async () => {
-      console.log('📉 I have been demoted to listener.');
+      console.log(t('demoted_to_listener_msg'));
       await webRTCService.endCall();
       setIsJoined(false);
       setLocalStream(null);
@@ -996,11 +1000,11 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({
                       <Ionicons name="videocam" size={56} color="#fff" />
                     </MotiView>
                   </View>
-                  <Text style={styles.lobbyTitle}>Studio Setup</Text>
+                  <Text style={styles.lobbyTitle}>{t('studio_setup')}</Text>
                   <Text style={styles.lobbyText}>Prepare your broadcast and go live to your channel.</Text>
                   <TouchableOpacity style={styles.actionButton} onPress={handleStartBroadcast}>
                     <LinearGradient colors={['#fff', '#f0f0f0']} style={styles.actionButtonGradient}>
-                      <Text style={[styles.actionButtonText, { color: '#4f46e5' }]}>Start Broadcasting</Text>
+                      <Text style={[styles.actionButtonText, { color: '#4f46e5' }]}>{t('start_broadcasting')}</Text>
                       <Ionicons name="arrow-forward" size={20} color="#4f46e5" />
                     </LinearGradient>
                   </TouchableOpacity>
@@ -1016,7 +1020,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({
                   <Text style={styles.lobbyText}>A broadcast is starting soon or currently live. Tune in now to join the audience.</Text>
                   <TouchableOpacity style={styles.actionButton} onPress={handleTuneIn}>
                     <LinearGradient colors={['#4f46e5', '#7c3aed']} style={styles.actionButtonGradient}>
-                      <Text style={styles.actionButtonText}>Tune In Now</Text>
+                      <Text style={styles.actionButtonText}>{t('tune_in_now')}</Text>
                       <Ionicons name="play-circle" size={20} color="#fff" />
                     </LinearGradient>
                   </TouchableOpacity>
@@ -1113,7 +1117,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({
                 <View style={styles.emptyIcon}>
                   <Ionicons name="tv-outline" size={56} color="rgba(255,255,255,0.2)" />
                 </View>
-                <Text style={styles.emptyTitle}>Broadcasting Studio</Text>
+                <Text style={styles.emptyTitle}>{t('broadcasting_studio')}</Text>
                 <Text style={styles.emptyText}>
                   {isAdmin 
                     ? "You are the stage manager. Wait for speakers to join or start broadcasting yourself!"
@@ -1199,7 +1203,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({
                       ) : (
                         <>
                           <Ionicons name="hand-left" size={20} color="#fff" />
-                          <Text style={styles.participateText}>Request to Speak</Text>
+                          <Text style={styles.participateText}>{t('request_to_speak')}</Text>
                         </>
                       )}
                     </LinearGradient>

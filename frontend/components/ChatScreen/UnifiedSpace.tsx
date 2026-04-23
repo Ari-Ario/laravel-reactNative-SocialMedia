@@ -17,6 +17,7 @@ import { router } from 'expo-router';
 import axios from 'axios';
 import { useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import pusher from 'pusher-js';
+import { useTranslation } from '@/constants/i18n';
 
 interface UnifiedSpaceProps {
   spaceId: string;
@@ -24,6 +25,7 @@ interface UnifiedSpaceProps {
 }
 
 export const UnifiedSpace: React.FC<UnifiedSpaceProps> = ({ spaceId, initialType = 'chat' }) => {
+  const { t } = useTranslation();
   const [spaceType, setSpaceType] = useState(initialType);
   const [spaceData, setSpaceData] = useState<any>(null);
   const [magicEvents, setMagicEvents] = useState<any[]>([]);
@@ -156,12 +158,12 @@ export const UnifiedSpace: React.FC<UnifiedSpaceProps> = ({ spaceId, initialType
       {
         condition: () => participants.length >= 3 && spaceEnergy > 70,
         magic: 'collective_breakthrough',
-        message: 'The group energy is high! Something amazing might happen...'
+        message: t('high_energy_magic_msg')
       },
       {
         condition: () => spaceData?.activity_metrics?.total_edits > 50,
         magic: 'evolution_unlock',
-        message: 'Your persistent work is paying off!'
+        message: t('persistent_work_magic_msg')
       },
       {
         condition: () => {
@@ -169,12 +171,12 @@ export const UnifiedSpace: React.FC<UnifiedSpaceProps> = ({ spaceId, initialType
           return hour >= 22 || hour <= 6; // Late night
         },
         magic: 'dream_insight',
-        message: 'The space is quiet... perfect for inspiration'
+        message: t('quiet_space_magic_msg')
       },
       {
         condition: () => participants.some(p => p.reaction_stream?.includes('❤️')),
         magic: 'heart_resonance',
-        message: 'Love is in the air!'
+        message: t('love_is_in_air_msg')
       }
     ];
 
@@ -228,7 +230,7 @@ export const UnifiedSpace: React.FC<UnifiedSpaceProps> = ({ spaceId, initialType
       getSpacesSection: async (userId: string) => {
         const spaces = await axios.get(`/api/users/${userId}/spaces`);
         return {
-          title: 'Active Spaces',
+          title: t('active_spaces_title'),
           data: spaces.data.map((space: any) => ({
             id: space.id,
             name: space.title,

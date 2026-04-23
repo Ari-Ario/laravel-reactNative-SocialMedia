@@ -30,6 +30,7 @@ import { createShadow } from '@/utils/styles';
 import ShareLocation from '@/components/ChatScreen/ShareLocation';
 import GlobalStyles from '@/styles/GlobalStyles';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 
 const SOCIAL_PLATFORMS = [
     { id: 'whatsapp', platform: 'WhatsApp', icon: 'logo-whatsapp', color: '#25D366' },
@@ -42,18 +43,7 @@ const SOCIAL_PLATFORMS = [
     { id: 'youtube', platform: 'YouTube', icon: 'logo-youtube', color: '#FF0000' },
 ];
 
-const GENDER_OPTIONS = [
-    { value: 'male', label: 'Male', icon: '👨' },
-    { value: 'female', label: 'Female', icon: '👩' },
-    { value: 'non_binary', label: 'Non-binary', icon: '🧑' },
-    { value: 'prefer_not', label: 'Prefer not to say', icon: '🔒' },
-    { value: 'other', label: 'Other', icon: '✨' },
-];
-
-const EDUCATION_LEVELS = [
-    'High School', "Associate's Degree", "Bachelor's Degree", "Master's Degree",
-    'Doctorate / PhD', 'Professional Degree', 'Trade / Vocational', 'Self-taught', 'Other'
-];
+// Moved inside components
 
 const isWeb = Platform.OS === 'web';
 const { width } = Dimensions.get('window');
@@ -182,6 +172,7 @@ interface DatePickerModalProps {
     onClose: () => void;
 }
 const DatePickerModal = ({ visible, value, onConfirm, onClose }: DatePickerModalProps) => {
+    const { t } = useTranslation();
     const { colors, activeScheme } = useAppTheme();
     const modalStyles = getModalStyles(colors, activeScheme);
     const parsed = value ? new Date(value) : new Date(1995, 0, 1);
@@ -197,15 +188,17 @@ const DatePickerModal = ({ visible, value, onConfirm, onClose }: DatePickerModal
             const iso = `${year}-${month}-${day}`;
             const d = new Date(iso);
             if (isNaN(d.getTime())) {
-                Alert.alert('Invalid Date', 'Please enter a valid date.');
+                Alert.alert(t('error'), t('failed_update'));
                 return;
             }
             onConfirm(iso);
         }
     };
 
-    const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const MONTHS = [
+        t('month_jan'), t('month_feb'), t('month_mar'), t('month_apr'), t('month_may'), t('month_jun'),
+        t('month_jul'), t('month_aug'), t('month_sep'), t('month_oct'), t('month_nov'), t('month_dec')
+    ];
 
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -220,18 +213,17 @@ const DatePickerModal = ({ visible, value, onConfirm, onClose }: DatePickerModal
                         <View style={modalStyles.handle} />
                         <View style={modalStyles.header}>
                             <TouchableOpacity onPress={onClose}>
-                                <Text style={modalStyles.cancelBtn}>Cancel</Text>
+                                <Text style={modalStyles.cancelBtn}>{t('cancel')}</Text>
                             </TouchableOpacity>
-                            <Text style={modalStyles.title}>Date of Birth</Text>
+                            <Text style={modalStyles.title}>{t('date_of_birth')}</Text>
                             <TouchableOpacity onPress={handleConfirm}>
-                                <Text style={modalStyles.doneBtn}>Done</Text>
+                                <Text style={modalStyles.doneBtn}>{t('save')}</Text>
                             </TouchableOpacity>
                         </View>
 
                         {isWeb ? (
                             <View style={modalStyles.webDateContainer}>
-                                <Text style={modalStyles.webDateLabel}>Select your birthday</Text>
-                                {/* Use a hidden HTML input on web */}
+                                <Text style={modalStyles.webDateLabel}>{t('select_birthday')}</Text>
                                 <input
                                     type="date"
                                     value={webDate}
@@ -253,9 +245,8 @@ const DatePickerModal = ({ visible, value, onConfirm, onClose }: DatePickerModal
                             </View>
                         ) : (
                             <View style={modalStyles.pickerRow}>
-                                {/* Day */}
                                 <View style={modalStyles.pickerCol}>
-                                    <Text style={modalStyles.pickerLabel}>Day</Text>
+                                    <Text style={modalStyles.pickerLabel}>{t('day')}</Text>
                                     <TextInput
                                         style={modalStyles.pickerInput}
                                         value={day}
@@ -266,9 +257,8 @@ const DatePickerModal = ({ visible, value, onConfirm, onClose }: DatePickerModal
                                         placeholderTextColor="#ccc"
                                     />
                                 </View>
-                                {/* Month */}
                                 <View style={modalStyles.pickerCol}>
-                                    <Text style={modalStyles.pickerLabel}>Month</Text>
+                                    <Text style={modalStyles.pickerLabel}>{t('month')}</Text>
                                     <ScrollView style={modalStyles.monthScroll} showsVerticalScrollIndicator={false}>
                                         {MONTHS.map((m, i) => (
                                             <TouchableOpacity
@@ -283,9 +273,8 @@ const DatePickerModal = ({ visible, value, onConfirm, onClose }: DatePickerModal
                                         ))}
                                     </ScrollView>
                                 </View>
-                                {/* Year */}
                                 <View style={modalStyles.pickerCol}>
-                                    <Text style={modalStyles.pickerLabel}>Year</Text>
+                                    <Text style={modalStyles.pickerLabel}>{t('year')}</Text>
                                     <TextInput
                                         style={modalStyles.pickerInput}
                                         value={year}
@@ -315,7 +304,15 @@ interface GenderPickerModalProps {
     onClose: () => void;
 }
 const GenderPickerModal = ({ visible, value, onSelect, onClose }: GenderPickerModalProps) => {
+    const { t } = useTranslation();
     const { colors, activeScheme } = useAppTheme();
+    const GENDER_OPTIONS = [
+        { value: 'male', label: t('gender_male'), icon: '👨' },
+        { value: 'female', label: t('gender_female'), icon: '👩' },
+        { value: 'non_binary', label: t('gender_non_binary'), icon: '🧑' },
+        { value: 'prefer_not', label: t('gender_prefer_not'), icon: '🔒' },
+        { value: 'other', label: t('gender_other'), icon: '✨' },
+    ];
     const modalStyles = getModalStyles(colors, activeScheme);
     return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -329,7 +326,7 @@ const GenderPickerModal = ({ visible, value, onSelect, onClose }: GenderPickerMo
                 <TouchableOpacity activeOpacity={1}>
                     <View style={modalStyles.handle} />
                     <View style={modalStyles.header}>
-                        <Text style={modalStyles.title}>Gender Identity</Text>
+                        <Text style={modalStyles.title}>{t('gender_identity')}</Text>
                         <TouchableOpacity onPress={onClose}>
                             <Ionicons name="close" size={22} color="#666" />
                         </TouchableOpacity>
@@ -365,7 +362,12 @@ interface EducationPickerModalProps {
     onClose: () => void;
 }
 const EducationPickerModal = ({ visible, value, onSelect, onClose }: EducationPickerModalProps) => {
+    const { t } = useTranslation();
     const { colors, activeScheme } = useAppTheme();
+    const EDUCATION_LEVELS = [
+        t('edu_high_school'), t('edu_associates'), t('edu_bachelors'), t('edu_masters'),
+        t('edu_doctorate'), t('edu_professional'), t('edu_trade'), t('edu_self_taught'), t('edu_other')
+    ];
     const modalStyles = getModalStyles(colors, activeScheme);
     return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -379,7 +381,7 @@ const EducationPickerModal = ({ visible, value, onSelect, onClose }: EducationPi
                 <TouchableOpacity activeOpacity={1}>
                     <View style={modalStyles.handle} />
                     <View style={modalStyles.header}>
-                        <Text style={modalStyles.title}>Education Level</Text>
+                        <Text style={modalStyles.title}>{t('education_level')}</Text>
                         <TouchableOpacity onPress={onClose}>
                             <Ionicons name="close" size={22} color="#666" />
                         </TouchableOpacity>
@@ -423,6 +425,7 @@ interface EditableFieldProps {
 }
 
 const EditableField = ({ label, value, icon, onSave, multiline, keyboardType = 'default', hint, maxLength = 255, prefix }: EditableFieldProps) => {
+    const { t } = useTranslation();
     const { colors, activeScheme } = useAppTheme();
     const styles = getStyles(colors, activeScheme);
     const [isEditing, setIsEditing] = useState(false);
@@ -456,7 +459,7 @@ const EditableField = ({ label, value, icon, onSave, multiline, keyboardType = '
                 Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, friction: 3 }),
             ]).start();
         } catch (error) {
-            Alert.alert('Error', 'Failed to update ' + label);
+            Alert.alert(t('error'), t('failed_update') + ' ' + label);
             setTempValue(value);
         } finally {
             setLoading(false);
@@ -517,7 +520,7 @@ const EditableField = ({ label, value, icon, onSave, multiline, keyboardType = '
                                     onSubmitEditing={handleSave}
                                     multiline={multiline}
                                     keyboardType={keyboardType}
-                                    placeholder={`Enter ${label.toLowerCase()}...`}
+                                    placeholder={`${t('enter_placeholder')} ${label}...`}
                                     placeholderTextColor={colors.textSecondary + '60'}
                                     maxLength={maxLength}
                                 />
@@ -530,7 +533,7 @@ const EditableField = ({ label, value, icon, onSave, multiline, keyboardType = '
                     ) : (
                         <View>
                             <Text style={[styles.fieldValue, !value && styles.placeholderValue]}>
-                                {value ? (prefix ? `${prefix}${value}` : value) : `Tap to set ${label.toLowerCase()}`}
+                                {value ? (prefix ? `${prefix}${value}` : value) : t('tap_to_set')}
                             </Text>
                             {hint && !value && (
                                 <Text style={styles.hintText}>{hint}</Text>
@@ -564,6 +567,7 @@ interface CountryPickerModalProps {
     onClose: () => void;
 }
 const CountryPickerModal = ({ visible, onSelect, onClose }: CountryPickerModalProps) => {
+    const { t } = useTranslation();
     const { colors, activeScheme } = useAppTheme();
     const styles = getStyles(colors, activeScheme);
     const modalStyles = getModalStyles(colors, activeScheme);
@@ -584,7 +588,7 @@ const CountryPickerModal = ({ visible, onSelect, onClose }: CountryPickerModalPr
                     <TouchableOpacity activeOpacity={1} style={{ flex: 1 }}>
                         <View style={modalStyles.handle} />
                         <View style={modalStyles.header}>
-                            <Text style={modalStyles.title}>Select Country</Text>
+                            <Text style={modalStyles.title}>{t('select_country')}</Text>
                             <TouchableOpacity onPress={onClose}>
                                 <Ionicons name="close" size={24} color={colors.textSecondary} />
                             </TouchableOpacity>
@@ -594,7 +598,7 @@ const CountryPickerModal = ({ visible, onSelect, onClose }: CountryPickerModalPr
                             <Ionicons name="search" size={18} color={colors.textSecondary} />
                             <TextInput
                                 style={styles.searchInput}
-                                placeholder="Search country or code..."
+                                placeholder={t('search_country_placeholder')}
                                 value={search}
                                 onChangeText={setSearch}
                                 autoFocus={!isWeb}
@@ -628,6 +632,7 @@ interface PhoneInputProps {
     onSave: (val: string) => Promise<void>;
 }
 const PremiumPhoneInput = ({ value, onSave }: PhoneInputProps) => {
+    const { t } = useTranslation();
     const { colors, activeScheme } = useAppTheme();
     const styles = getStyles(colors, activeScheme);
     const [isEditing, setIsEditing] = useState(false);
@@ -668,7 +673,7 @@ const PremiumPhoneInput = ({ value, onSave }: PhoneInputProps) => {
     const handleSave = async () => {
         const cleanNumber = localNumber.replace(/\D/g, '');
         if (cleanNumber.length < 7) {
-            Alert.alert('Invalid Number', 'Please enter a valid phone number (at least 7 digits).');
+            Alert.alert(t('error'), t('invalid_phone_number'));
             return;
         }
         
@@ -679,7 +684,7 @@ const PremiumPhoneInput = ({ value, onSave }: PhoneInputProps) => {
             await onSave(fullNumber);
             setIsEditing(false);
         } catch (error) {
-            Alert.alert('Error', 'Failed to update phone number');
+            Alert.alert(t('error'), t('failed_update'));
         } finally {
             setLoading(false);
         }
@@ -692,7 +697,7 @@ const PremiumPhoneInput = ({ value, onSave }: PhoneInputProps) => {
                     <View style={styles.iconContainer}>
                         <Ionicons name="call-outline" size={18} color={colors.tint} />
                     </View>
-                    <Text style={styles.fieldLabel}>Phone Number</Text>
+                    <Text style={styles.fieldLabel}>{t('phone_number')}</Text>
                 </View>
                 {!isEditing && (
                     <TouchableOpacity onPress={() => setIsEditing(true)}>
@@ -716,7 +721,7 @@ const PremiumPhoneInput = ({ value, onSave }: PhoneInputProps) => {
                         style={styles.phoneNumberInput}
                         value={localNumber}
                         onChangeText={v => setLocalNumber(v.replace(/\D/g, ''))}
-                        placeholder="Phone number"
+                        placeholder={t('phone_number')}
                         keyboardType="phone-pad"
                         autoFocus
                     />
@@ -735,7 +740,7 @@ const PremiumPhoneInput = ({ value, onSave }: PhoneInputProps) => {
             ) : (
                 <TouchableOpacity onPress={() => setIsEditing(true)}>
                     <Text style={[styles.fieldValue, !value && styles.placeholderValue]}>
-                        {value ? `(${country.code}) ${localNumber}` : 'Tap to set phone number'}
+                        {value ? `(${country.code}) ${localNumber}` : t('tap_to_set')}
                     </Text>
                 </TouchableOpacity>
             )}
@@ -762,6 +767,7 @@ interface PickerFieldProps {
     empty?: boolean;
 }
 const PickerField = ({ label, displayValue, icon, onPress, color = '#0084ff', empty }: PickerFieldProps) => {
+    const { t } = useTranslation();
     const { colors, activeScheme } = useAppTheme();
     const styles = getStyles(colors, activeScheme);
     return (
@@ -785,7 +791,7 @@ const PickerField = ({ label, displayValue, icon, onPress, color = '#0084ff', em
                 <Ionicons name="chevron-down" size={18} color={colors.textSecondary + 'B3'} />
             </View>
             <Text style={[styles.fieldValue, empty && styles.placeholderValue]}>
-                {empty ? `Tap to select ${label.toLowerCase()}` : displayValue}
+                {empty ? t('tap_to_select') : displayValue}
             </Text>
         </LinearGradient>
     </TouchableOpacity>
@@ -800,6 +806,7 @@ interface SocialLinkItemProps {
     index: number;
 }
 const SocialLinkItem = ({ platform, value, onSave, index }: SocialLinkItemProps) => {
+    const { t } = useTranslation();
     const { colors, activeScheme } = useAppTheme();
     const styles = getStyles(colors, activeScheme);
     const [isEditing, setIsEditing] = useState(false);
@@ -818,7 +825,7 @@ const SocialLinkItem = ({ platform, value, onSave, index }: SocialLinkItemProps)
             await onSave(tempValue);
             setIsEditing(false);
         } catch (error) {
-            Alert.alert('Error', 'Failed to update ' + platform.platform);
+            Alert.alert(t('error'), t('failed_update'));
             setTempValue(value);
         } finally {
             setLoading(false);
@@ -842,7 +849,7 @@ const SocialLinkItem = ({ platform, value, onSave, index }: SocialLinkItemProps)
                 </View>
                 {!isEditing && (
                     <Text style={[styles.socialValue, !value && styles.placeholderSocial]} numberOfLines={1}>
-                        {value || 'Add link'}
+                        {value || t('save')}
                     </Text>
                 )}
                 {isEditing && (
@@ -852,7 +859,7 @@ const SocialLinkItem = ({ platform, value, onSave, index }: SocialLinkItemProps)
                         value={tempValue}
                         onChangeText={setTempValue}
                         onSubmitEditing={handleSave}
-                        placeholder="@username or URL"
+                        placeholder={t('enter_placeholder')}
                         placeholderTextColor={colors.textSecondary + '60'}
                         autoCapitalize="none"
                         selectTextOnFocus // Better for mobile editing
@@ -886,7 +893,21 @@ export default function AccountSettingsScreen() {
     const styles = getStyles(colors, activeScheme);
     const modalStyles = getModalStyles(colors, activeScheme);
     const insets = useSafeAreaInsets();
+    const { t } = useTranslation();
     const { user, setUser } = useContext(AuthContext);
+
+    const GENDER_OPTIONS = [
+        { value: 'male', label: t('gender_male'), icon: '👨' },
+        { value: 'female', label: t('gender_female'), icon: '👩' },
+        { value: 'non_binary', label: t('gender_non_binary'), icon: '🧑' },
+        { value: 'prefer_not', label: t('gender_prefer_not'), icon: '🔒' },
+        { value: 'other', label: t('gender_other'), icon: '✨' },
+    ];
+
+    const EDUCATION_LEVELS = [
+        t('edu_high_school'), t('edu_associates'), t('edu_bachelors'), t('edu_masters'),
+        t('edu_doctorate'), t('edu_professional'), t('edu_trade'), t('edu_self_taught'), t('edu_other')
+    ];
     const [fullSettings, setFullSettings] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [activeSection, setActiveSection] = useState('identity');
@@ -915,7 +936,7 @@ export default function AccountSettingsScreen() {
             else if (data.user) setFullSettings(data.user); // Fallback if user context is lost
         } catch (error) {
             console.error('Failed to load settings:', error);
-            Alert.alert('Error', 'Could not refresh settings. Please check your connection.');
+            Alert.alert(t('error'), t('failed_update'));
         } finally {
             setLoading(false);
         }
@@ -962,9 +983,9 @@ export default function AccountSettingsScreen() {
             
             if (isFirstTime) {
                 Alert.alert(
-                    'Discovery Activated!',
-                    `Your ${platformId} handle has been linked. You can now discover friends from this platform in the Invite section.`,
-                    [{ text: 'Great!' }]
+                    t('success'),
+                    t('connect'),
+                    [{ text: t('save') }]
                 );
             }
         } catch (error) {
@@ -974,21 +995,21 @@ export default function AccountSettingsScreen() {
 
     const handleDeleteAccount = () => {
         Alert.alert(
-            'Delete Account',
-            'This action is permanent. All your data will be lost forever.',
+            t('logout'),
+            t('logout_confirm'),
             [
-                { text: 'Cancel', style: 'cancel' },
+                { text: t('cancel'), style: 'cancel' },
                 {
-                    text: 'Delete',
+                    text: t('logout'),
                     style: 'destructive',
                     onPress: () => {
                         Alert.prompt(
-                            'Confirm Password',
-                            'Please enter your password to confirm account deletion',
+                            t('logout'),
+                            t('logout_confirm'),
                             [
-                                { text: 'Cancel', style: 'cancel' },
+                                { text: t('cancel'), style: 'cancel' },
                                 {
-                                    text: 'Delete',
+                                    text: t('logout'),
                                     style: 'destructive',
                                     onPress: async (password?: string) => {
                                         if (!password) return;
@@ -997,7 +1018,7 @@ export default function AccountSettingsScreen() {
                                             setUser(null);
                                             router.replace('/LoginScreen');
                                         } catch (error) {
-                                            Alert.alert('Error', 'Incorrect password or deletion failed.');
+                                            Alert.alert(t('error'), t('failed_update'));
                                         }
                                     }
                                 }
@@ -1025,10 +1046,10 @@ export default function AccountSettingsScreen() {
     };
 
     const sections = [
-        { id: 'identity', label: 'Identity', icon: 'person', color: '#0084ff' },
-        { id: 'contact', label: 'Contact', icon: 'call', color: '#4CAF50' },
-        { id: 'social', label: 'Social', icon: 'share-social', color: '#FF2D55' },
-        { id: 'professional', label: 'Professional', icon: 'briefcase', color: '#FF9800' },
+        { id: 'identity', label: t('profile'), icon: 'person', color: '#0084ff' },
+        { id: 'contact', label: t('connect'), icon: 'call', color: '#4CAF50' },
+        { id: 'social', label: t('social'), icon: 'share-social', color: '#FF2D55' },
+        { id: 'professional', label: t('professional'), icon: 'briefcase', color: '#FF9800' },
     ];
 
     const SectionButton = ({ id, label, icon, color }: any) => (
@@ -1054,7 +1075,6 @@ export default function AccountSettingsScreen() {
         <View style={[styles.container, GlobalStyles.popupContainer]}>
             <StatusBar barStyle="dark-content" />
 
-            {/* Pickers */}
             <GenderPickerModal
                 visible={showGenderPicker}
                 value={fullSettings?.gender || ''}
@@ -1074,7 +1094,6 @@ export default function AccountSettingsScreen() {
                 onClose={() => setShowEducationPicker(false)}
             />
 
-            {/* Header */}
             <LinearGradient
                 colors={[colors.surface, colors.background]}
                 style={[styles.header, { paddingTop: insets.top + 10 }]}
@@ -1082,7 +1101,7 @@ export default function AccountSettingsScreen() {
                 <BackButton onPress={() => router.navigate('/(tabs)/settings')} />
 
                 <View style={styles.headerCenter}>
-                    <Text style={styles.headerTitle}>Account Identity</Text>
+                    <Text style={styles.headerTitle}>{t('account')}</Text>
                     <Animated.View style={[styles.headerUnderline, { opacity: headerOpacity }]} />
                 </View>
 
@@ -1091,7 +1110,6 @@ export default function AccountSettingsScreen() {
                 </TouchableOpacity>
             </LinearGradient>
 
-            {/* Section Navigation */}
             <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -1106,7 +1124,7 @@ export default function AccountSettingsScreen() {
             {loading ? (
                 <View style={styles.center}>
                     <ActivityIndicator size="large" color={colors.tint} />
-                    <Text style={styles.loadingText}>Loading your profile...</Text>
+                    <Text style={styles.loadingText}>{t('loading')}</Text>
                 </View>
             ) : (
                 <Animated.ScrollView
@@ -1120,37 +1138,32 @@ export default function AccountSettingsScreen() {
                 >
                     <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }}>
 
-                        {/* ── Identity Section ── */}
                         {activeSection === 'identity' && (
                             <>
-                                <Text style={styles.sectionTitle}>Identity</Text>
+                                <Text style={styles.sectionTitle}>{t('profile')}</Text>
                                 <EditableField
-                                    label="Full Name"
+                                    label={t('name')}
                                     value={fullSettings?.name || ''}
                                     icon="person-outline"
                                     onSave={val => handleUpdate('name', val)}
-                                    hint="Your real name helps people find you"
                                 />
                                 <EditableField
-                                    label="Username"
+                                    label={t('username')}
                                     value={fullSettings?.username || ''}
                                     icon="at-outline"
                                     onSave={val => handleUpdate('username', val)}
-                                    hint="Unique handle for @mentions"
                                     prefix="@"
                                     maxLength={30}
                                 />
-                                {/* Birthday — Date Picker */}
                                 <PickerField
-                                    label="Birthday"
+                                    label={t('birthday')}
                                     displayValue={birthdayDisplayValue()}
                                     icon="calendar-outline"
                                     onPress={() => setShowDatePicker(true)}
                                     empty={!fullSettings?.birthday}
                                 />
-                                {/* Gender — Picker */}
                                 <PickerField
-                                    label="Gender Identity"
+                                    label={t('gender_identity')}
                                     displayValue={genderDisplayValue()}
                                     icon="transgender-outline"
                                     onPress={() => setShowGenderPicker(true)}
@@ -1158,22 +1171,20 @@ export default function AccountSettingsScreen() {
                                     color="#9C27B0"
                                 />
                                 <EditableField
-                                    label="Bio"
+                                    label={t('bio')}
                                     value={fullSettings?.bio || ''}
                                     icon="book-outline"
                                     multiline
                                     maxLength={150}
                                     onSave={val => handleUpdate('bio', val)}
-                                    hint="Tell the world about yourself"
                                 />
                             </>
                         )}
 
-                        {/* ── Social Section ── */}
                         {activeSection === 'social' && (
                             <>
                                 <View style={styles.sectionHeaderRow}>
-                                    <Text style={styles.sectionTitle}>Social Profiles</Text>
+                                    <Text style={styles.sectionTitle}>{t('social')}</Text>
                                     <View style={styles.premiumBadge}>
                                         <Ionicons name="sparkles" size={10} color="#fff" />
                                         <Text style={styles.premiumText}>Verified</Text>
@@ -1192,17 +1203,16 @@ export default function AccountSettingsScreen() {
                                 </View>
                                 <View style={styles.socialTip}>
                                     <Ionicons name="information-circle-outline" size={14} color={colors.textSecondary} />
-                                    <Text style={styles.socialTipText}>Enter your username or full profile URL for each platform.</Text>
+                                    <Text style={styles.socialTipText}>{t('connect')}</Text>
                                 </View>
                             </>
                         )}
 
-                        {/* ── Contact Section ── */}
                         {activeSection === 'contact' && (
                             <>
-                                <Text style={styles.sectionTitle}>Contact Information</Text>
+                                <Text style={styles.sectionTitle}>{t('connect')}</Text>
                                 <EditableField
-                                    label="Email Address"
+                                    label={t('email_address')}
                                     value={fullSettings?.email || ''}
                                     icon="mail-outline"
                                     keyboardType="email-address"
@@ -1214,7 +1224,7 @@ export default function AccountSettingsScreen() {
                                     onSave={val => handleUpdate('phone', val)}
                                 />
                                 <PickerField
-                                    label="Location"
+                                    label={t('about')}
                                     displayValue={getLocationDisplay(fullSettings?.location || '')}
                                     icon="location-outline"
                                     onPress={() => setShowLocationPicker(true)}
@@ -1223,27 +1233,25 @@ export default function AccountSettingsScreen() {
                             </>
                         )}
 
-                        {/* ── Professional Section ── */}
                         {activeSection === 'professional' && (
                             <>
-                                <Text style={styles.sectionTitle}>Professional Details</Text>
+                                <Text style={styles.sectionTitle}>{t('professional')}</Text>
                                 <EditableField
-                                    label="Job Title"
+                                    label={t('professional')}
                                     value={fullSettings?.job_title || ''}
                                     icon="briefcase-outline"
                                     onSave={val => handleUpdate('job_title', val)}
-                                    hint="e.g. Senior Developer, Designer, CEO"
+                                    hint={t('professional')}
                                 />
                                 <EditableField
-                                    label="Company / Organization"
+                                    label={t('professional')}
                                     value={fullSettings?.company || ''}
                                     icon="business-outline"
                                     onSave={val => handleUpdate('company', val)}
-                                    hint="Where you currently work"
+                                    hint={t('professional')}
                                 />
-                                {/* Education — Picker */}
                                 <PickerField
-                                    label="Education Level"
+                                    label={t('education_level')}
                                     displayValue={fullSettings?.education || ''}
                                     icon="school-outline"
                                     onPress={() => setShowEducationPicker(true)}
@@ -1251,7 +1259,7 @@ export default function AccountSettingsScreen() {
                                     color="#FF9800"
                                 />
                                 <EditableField
-                                    label="Personal Website"
+                                    label={t('about')}
                                     value={fullSettings?.website || ''}
                                     icon="globe-outline"
                                     keyboardType="url"
@@ -1262,7 +1270,6 @@ export default function AccountSettingsScreen() {
                             </>
                         )}
 
-                        {/* Delete Account Section */}
                         <MotiView
                             from={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
@@ -1271,7 +1278,7 @@ export default function AccountSettingsScreen() {
                         >
                             <View style={styles.deleteWarning}>
                                 <Ionicons name="warning" size={20} color="#FF3B30" />
-                                <Text style={styles.deleteWarningText}>Danger Zone</Text>
+                                <Text style={styles.deleteWarningText}>{t('logout')}</Text>
                             </View>
                             <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAccount}>
                                 <LinearGradient
@@ -1279,11 +1286,11 @@ export default function AccountSettingsScreen() {
                                     style={styles.deleteButtonGradient}
                                 >
                                     <Ionicons name="trash-outline" size={20} color="#FF3B30" />
-                                    <Text style={styles.deleteButtonText}>Delete Account Permanently</Text>
+                                    <Text style={styles.deleteButtonText}>{t('logout')}</Text>
                                 </LinearGradient>
                             </TouchableOpacity>
                             <Text style={styles.deleteNote}>
-                                This action cannot be undone. All your data will be permanently removed.
+                                {t('logout_confirm')}
                             </Text>
                         </MotiView>
                     </MotiView>

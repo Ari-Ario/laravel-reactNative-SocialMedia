@@ -12,6 +12,8 @@ import axios from "@/services/axios";
 import { getToken } from "@/services/TokenService";
 import getApiBase from "@/services/getApiBase";
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
+import { formatTimeAgo } from '@/utils/dateUtils';
 
 const API_BASE = getApiBase();
 
@@ -23,6 +25,7 @@ type FollowersPanelProps = {
 
 const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProps) => {
   const { colors, activeScheme } = useAppTheme();
+  const { t, locale } = useTranslation();
   const {
     followerNotifications,
     unreadFollowerCount,
@@ -92,7 +95,7 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
   // Handle follow back (only for new_follower notifications)
   const handleFollowBack = async (item: Notification) => {
     if (!item.userId) {
-      Alert.alert('Error', 'User ID not found');
+      Alert.alert(t('error'), t('user_id_not_found'));
       return;
     }
 
@@ -105,15 +108,15 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
       setIsFollowingMap(prev => ({ ...prev, [item.userId!]: true }));
       markAsRead(item.id);
 
-      Alert.alert('Success', `You are now following ${item.title || 'this user'}`);
+      Alert.alert(t('success'), t('follow_success_msg').replace('{name}', item.title || t('this_user')));
 
     } catch (error: any) {
       console.error('Follow back failed:', error);
       Alert.alert(
-        'Failed to Follow Back',
+        t('follow_failed_title'),
         error.response?.data?.message ||
         error.message ||
-        'Please try again later.'
+        t('try_again_later')
       );
     } finally {
       setLoading(prev => ({ ...prev, [item.id]: false }));
@@ -173,7 +176,7 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
               />
                 <Text style={[styles.followerTitle, { color: colors.text }]}>{item.title}</Text>
                 <Text style={[styles.followerTime, { color: colors.textSecondary }]}>
-                  {formatTimeAgo(item.createdAt)}
+                  {formatTimeAgo(item.createdAt, locale)}
                 </Text>
               </View>
               <Text style={[styles.followerMessage, { color: colors.textSecondary }]}>{item.message}</Text>
@@ -206,7 +209,7 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
                     { color: '#fff' },
                     isFollowing && [styles.followingButtonText, { color: colors.text }]
                   ]}>
-                    {isFollowing ? 'Following' : 'Follow Back'}
+                    {isFollowing ? t('following_state') : t('follow_back')}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -224,19 +227,6 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
     );
   };
 
-  const formatTimeAgo = (date: Date) => {
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
-  };
 
   return (
     <Modal
@@ -280,7 +270,7 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
         <View style={styles.contentWrapper}>
           <View style={[styles.panelHeader, { borderBottomColor: colors.border, backgroundColor: colors.surface }]}>
             <Text style={[styles.panelTitle, { color: colors.text }]}>
-              Followers {followerNotifications.length > 0 ? `(${followerNotifications.length})` : ''}
+              {t('followers_count').replace('{count}', followerNotifications.length.toString())}
             </Text>
             <TouchableOpacity
               onPress={() => {
@@ -297,9 +287,9 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
             {followerNotifications.length === 0 ? (
               <View style={[styles.emptyState, { backgroundColor: colors.surface }]}>
                 <Ionicons name="person-add-outline" size={48} color={colors.textSecondary + '40'} />
-                <Text style={[styles.emptyText, { color: colors.text }]}>No follower notifications</Text>
+                <Text style={[styles.emptyText, { color: colors.text }]}>{t('no_followers')}</Text>
                 <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
-                  New follower notifications will appear here in real-time
+                  {t('no_followers_desc')}
                 </Text>
               </View>
             ) : (
@@ -405,7 +395,7 @@ const styles = StyleSheet.create({
   },
   textContent: {
     flex: 1,
-    marginLeft: 12,
+    marginStart: 12,
   },
   titleRow: {
     flexDirection: 'row',
@@ -424,10 +414,10 @@ const styles = StyleSheet.create({
   },
   followerTime: {
     fontSize: 11,
-    marginLeft: 8,
+    marginStart: 8,
   },
   buttonContainer: {
-    marginLeft: 8,
+    marginStart: 8,
   },
   followButton: {
     backgroundColor: '#007AFF',
@@ -448,7 +438,7 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     padding: 6,
-    marginLeft: 8,
+    marginStart: 8,
     borderRadius: 16,
     width: 28,
     height: 28,
@@ -480,7 +470,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    marginRight: 12,
+    marginEnd: 12,
     borderWidth: 2,
   },
 });

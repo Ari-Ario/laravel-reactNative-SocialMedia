@@ -39,6 +39,7 @@ import Avatar from '@/components/Image/Avatar';
 import AuthContext from '@/context/AuthContext';
 import { useCall } from '@/context/CallContext';
 import { createShadow, createTextShadow } from '@/utils/styles';
+import { useTranslation } from '@/constants/i18n';
 
 let RTCView: any;
 if (Platform.OS !== 'web') {
@@ -201,6 +202,7 @@ const VideoTile = React.memo(({
 
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
   const [autoplayFailed, setAutoplayFailed] = useState(false);
+  const { t } = useTranslation();
 
   // Consolidate stream assignment in ref callback for better reliability
   useEffect(() => {
@@ -307,8 +309,8 @@ const VideoTile = React.memo(({
             alignItems: 'center'
           }}>
             <Ionicons name="play" size={48} color="#fff" style={{ marginLeft: 6 }} />
-            <Text style={{ color: '#fff', marginTop: 16, fontSize: 16, fontWeight: '600' }}>Tap to Join Call</Text>
-            <Text style={{ color: 'rgba(255,255,255,0.6)', marginTop: 4, fontSize: 12 }}>Browser restricted media autoplay</Text>
+            <Text style={{ color: '#fff', marginTop: 16, fontSize: 16, fontWeight: '600' }}>{t('tap_to_join_call')}</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.6)', marginTop: 4, fontSize: 12 }}>{t('browser_restricted_autoplay')}</Text>
           </View>
         </TouchableOpacity>
       )}
@@ -316,7 +318,7 @@ const VideoTile = React.memo(({
       <View style={styles.tileOverlay}>
         <View style={styles.tileBadge}>
           <Text style={styles.tileBadgeText} numberOfLines={1}>{name}</Text>
-          {isLocal && <Text style={styles.youBadge}>(You)</Text>}
+          {isLocal && <Text style={styles.youBadge}>{t('you_label')}</Text>}
         </View>
         <View style={styles.tileStatus}>
           {isHandRaised && (
@@ -345,7 +347,9 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
   onToggleMinimize,
   type,
 }) => {
+  const { t, isRTL } = useTranslation();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const styles = getStyles(isRTL);
   const isLandscape = windowWidth > windowHeight;
   // Mobile view is strictly smaller screens OR landscape mobile
   const isMobileView = isWeb && (windowWidth <= 768 || (windowWidth <= 932 && isLandscape));
@@ -474,7 +478,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
     const localParticipant: Participant = {
       id: 'local',
       user_id: parseInt(user?.id?.toString() || '0', 10),
-      name: user?.name || 'You',
+      name: user?.name || t('you_label'),
       avatar: user?.profile_photo,
       role: 'host',
       isMuted,
@@ -594,7 +598,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
         return [...prev, {
           id: userId,
           user_id: parseInt(userId, 10),
-          name: 'Remote User',
+          name: t('broadcaster_fallback'),
           avatar: undefined,
           role: 'participant',
           isMuted: false,
@@ -649,7 +653,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
         return [...prev, {
           id: userId,
           user_id: parseInt(userId, 10),
-          name: participation?.user?.name || 'Joining...',
+          name: participation?.user?.name || t('connecting'),
           avatar: participation?.user?.profile_photo,
           role: participation?.role || 'participant',
           isMuted: false,
@@ -700,7 +704,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
           .map((u: any) => ({
             id: u.id.toString(),
             user_id: u.id,
-            name: u.name || 'Participant',
+            name: u.name || t('participant_singular'),
             avatar: u.profile_photo,
             role: 'participant',
             isMuted: false,
@@ -747,7 +751,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
             .map((u: any) => ({
               id: u.id.toString(),
               user_id: u.id,
-              name: u.name || 'Participant',
+              name: u.name || t('participant_singular'),
               avatar: u.profile_photo,
               role: 'participant',
               isMuted: false,
@@ -775,7 +779,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
       }
     } catch (error) {
       console.error('Error initializing call:', error);
-      Alert.alert('Error', 'Failed to start call. Please try again.');
+      Alert.alert(t('error'), t('failed_start_call_msg'));
       router.back();
     }
   }, [spaceId, spaceType, initialCallType, isJoiningExisting, existingCallId, user, hasVideo, currentSpace, isInitiator, setupCallbacks, webRTCService, collaborationService, router]);
@@ -1134,7 +1138,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
           {remoteParticipant.handRaised && (
             <View style={styles.pipRemoteHandBadge}>
               <Ionicons name="hand-left" size={20} color="#FFCC00" />
-              <Text style={styles.pipRemoteHandText}>Raised Hand</Text>
+              <Text style={styles.pipRemoteHandText}>{t('raised_hand')}</Text>
             </View>
           )}
           {/* Local hand raise indicator (so YOU know your hand is up) */}
@@ -1200,7 +1204,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
 
             {/* "You" label */}
             <View style={styles.pipLocalBadge}>
-              <Text style={styles.pipLocalBadgeText}>You</Text>
+              <Text style={styles.pipLocalBadgeText}>{t('you_label')}</Text>
             </View>
 
             {/* Expand / collapse indicator */}
@@ -1247,12 +1251,12 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
       <View style={styles.waitingIcon}>
         <Ionicons name="videocam" size={48} color="#999" />
       </View>
-      <Text style={styles.waitingTitle}>Connecting...</Text>
+      <Text style={styles.waitingTitle}>{t('connecting')}</Text>
       <Text style={styles.waitingText}>
-        Please wait while we set up your secure connection
+        {t('wait_setup_connection')}
       </Text>
       <View style={styles.participantsPreview}>
-        <Text style={styles.previewTitle}>In this space ({waitingParticipants?.filter(p => !participants.some(active => active.id === p.id)).length || 0})</Text>
+        <Text style={styles.previewTitle}>{t('in_this_space').replace('{count}', (waitingParticipants?.filter(p => !participants.some(active => active.id === p.id)).length || 0).toString())}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {waitingParticipants
             ?.filter(p => !participants.some(active => active.id === p.id))
@@ -1318,7 +1322,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
     <TouchableOpacity style={styles.modalOverlay} onPress={() => setShowParticipantsModal(false)}>
       <BlurView intensity={80} tint="dark" style={styles.modalContainer}>
         <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Participants ({allParticipants.length})</Text>
+          <Text style={styles.modalTitle}>{t('participants_title')} ({allParticipants.length})</Text>
           {/* <TouchableOpacity onPress={() => setShowParticipantsModal(false)}>
             <Ionicons name="close" size={24} color="#fff" />
           </TouchableOpacity> */}
@@ -1330,7 +1334,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
                 <Avatar source={participant.avatar} size={40} name={participant.name} />
                 <View style={styles.participantText}>
                   <Text style={styles.participantName}>
-                    {participant.name} {participant.id === 'local' ? '(You)' : ''}
+                    {participant.name} {participant.id === 'local' ? `(${t('you_label')})` : ''}
                   </Text>
                   <Text style={styles.participantRole}>{participant.role}</Text>
                 </View>
@@ -1353,9 +1357,9 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
         </ScrollView>
         <TouchableOpacity
           style={styles.inviteButton}
-          onPress={() => Alert.alert('Invite', 'Invitation feature coming soon')}
+          onPress={() => Alert.alert(t('invite'), t('coming_soon'))}
         >
-          <Text style={styles.inviteButtonText}>Invite People</Text>
+          <Text style={styles.inviteButtonText}>{t('invite_people')}</Text>
         </TouchableOpacity>
       </BlurView>
     </TouchableOpacity>
@@ -1373,9 +1377,9 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
         </View>
         <ScrollView horizontal={false} showsVerticalScrollIndicator={false}>
           {[
-            { icon: "share-social", label: "Share Screen", onPress: toggleScreenShare, color: isSharingScreen ? "#007AFF" : "#fff" },
-            { icon: "hand-left", label: handRaised ? "Lower Hand" : "Raise Hand", onPress: toggleHandRaise, color: handRaised ? "#FFCC00" : "#fff" },
-            ...(!isWeb ? [{ icon: "camera-reverse", label: "Flip Camera", onPress: flipCamera, color: "#fff" }] : []),
+            { icon: "share-social", label: t('share_screen'), onPress: toggleScreenShare, color: isSharingScreen ? "#007AFF" : "#fff" },
+            { icon: "hand-left", label: handRaised ? t('lower_hand') : t('raise_hand'), onPress: toggleHandRaise, color: handRaised ? "#FFCC00" : "#fff" },
+            ...(!isWeb ? [{ icon: "camera-reverse", label: t('flip_camera'), onPress: flipCamera, color: "#fff" }] : []),
           ].map((item, idx) => (
 
             <TouchableOpacity key={idx} style={styles.moreMenuItem} onPress={() => { item.onPress(); setShowMoreMenu(false); }}>
@@ -1429,11 +1433,11 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
         </TouchableOpacity>
 
         <View style={styles.headerInfo}>
-          <Text style={styles.spaceTitle} numberOfLines={1}>{currentSpace?.title || 'Call'}</Text>
+          <Text style={styles.spaceTitle} numberOfLines={1}>{currentSpace?.title || t('audio_call_label')}</Text>
           <View style={styles.callInfo}>
             <View style={[styles.callStatusDot, callStatus === 'connected' ? styles.statusConnected : styles.statusConnecting]} />
             <Text style={styles.callDuration}>
-              {callStatus === 'waiting' ? 'Waiting' : formatDuration(callDuration)}
+              {callStatus === 'waiting' ? t('waiting') : formatDuration(callDuration)}
             </Text>
             {callStatus === 'connected' && (
               <Text style={styles.participantCount}>• {allParticipants.length}</Text>
@@ -1556,7 +1560,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
               >
                 <Ionicons name={isMuted ? "mic-off" : "mic"} size={isMobileView ? 22 : 24} color="#fff" />
               </LinearGradient>
-              <Text style={styles.controlLabel}>{isMuted ? 'Unmute' : 'Mute'}</Text>
+              <Text style={styles.controlLabel}>{isMuted ? t('unmute') : t('mute')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -1573,7 +1577,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
               >
                 <Ionicons name={hasVideo ? "videocam" : "videocam-off"} size={isMobileView ? 22 : 24} color="#fff" />
               </LinearGradient>
-              <Text style={styles.controlLabel}>{hasVideo ? 'Video' : 'Off'}</Text>
+              <Text style={styles.controlLabel}>{hasVideo ? t('video_label') : t('video_off')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -1590,7 +1594,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
               >
                 <Ionicons name="call" size={isMobileWeb ? 26 : 28} color="#fff" style={{ transform: [{ rotate: '135deg' }] }} />
               </LinearGradient>
-              <Text style={[styles.controlLabel, styles.endCallLabel]}>Leave</Text>
+              <Text style={[styles.controlLabel, styles.endCallLabel]}>{t('leave')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1602,7 +1606,8 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+function getStyles(isRTL: boolean) {
+  return StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0a0a0a',
@@ -1612,16 +1617,13 @@ const styles = StyleSheet.create({
   },
   header: {
     position: 'absolute',
-    top: 0,
     left: 0,
     right: 0,
-    flexDirection: 'row',
+    zIndex: 100,
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 50 : 16,
-    paddingBottom: 16,
-    zIndex: 10,
+    paddingHorizontal: 20,
+    height: 70,
   },
   backButton: { width: 40, height: 40 },
   blurButton: {
@@ -1633,15 +1635,31 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
-  headerInfo: { flex: 1, alignItems: 'center' },
+  headerInfo: { 
+    flex: 1, 
+    alignItems: 'center',
+    marginLeft: isRTL ? 0 : 15,
+    marginRight: isRTL ? 15 : 0,
+  },
   spaceTitle: { color: '#fff', fontSize: 16, fontWeight: '600', marginBottom: 4 },
-  callInfo: { flexDirection: 'row', alignItems: 'center' },
-  callStatusDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
+  callInfo: { flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center' },
+  callStatusDot: { 
+    width: 6, 
+    height: 6, 
+    borderRadius: 3, 
+    marginRight: isRTL ? 0 : 6,
+    marginLeft: isRTL ? 6 : 0,
+  },
   statusConnected: { backgroundColor: '#4CAF50' },
   statusConnecting: { backgroundColor: '#FFA726' },
   callDuration: { color: '#4CAF50', fontSize: 12, fontWeight: '500' },
   participantCount: { color: '#999', fontSize: 12, marginLeft: 8 },
-  moreButton: { width: 40, height: 40 },
+  moreButton: { 
+    width: 40, 
+    height: 40,
+    marginLeft: isRTL ? 0 : 10,
+    marginRight: isRTL ? 10 : 0,
+  },
   content: {
     flex: 1,
     backgroundColor: '#000',
@@ -1706,7 +1724,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  tileBadge: { flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, gap: 4 },
+  tileBadge: { 
+    flexDirection: isRTL ? 'row-reverse' : 'row',
+    alignItems: 'center', 
+    backgroundColor: 'rgba(0,0,0,0.5)', 
+    paddingHorizontal: 8, 
+    paddingVertical: 4, 
+    borderRadius: 12, 
+    maxWidth: '70%',
+    gap: 4 
+  },
   tileBadgeText: { color: '#fff', fontSize: 11, fontWeight: '500' },
   youBadge: { color: '#4CAF50', fontSize: 10 },
   tileStatus: { flexDirection: 'row', gap: 6 },
@@ -1837,8 +1864,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 16,
     left: 16,
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
+    marginTop: 2,
     gap: 6,
   },
   pipRemoteNameTagText: {
@@ -1889,11 +1917,12 @@ const styles = StyleSheet.create({
   viewButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
   viewButtonActive: { backgroundColor: '#007AFF' },
   headerActions: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
   },
   headerIconButton: {
-    marginRight: 8,
+    marginLeft: isRTL ? 0 : 10,
+    marginRight: isRTL ? 10 : 0,
   },
   blurButtonSmall: {
     padding: 8,
@@ -1914,10 +1943,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   controlsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
+    alignItems: 'flex-end',
     justifyContent: 'center',
-    paddingVertical: 10,
     paddingHorizontal: 20,
   },
   controlButton: {
@@ -1968,11 +1996,11 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
-    marginBottom: 20,
-    paddingBottom: 15,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.1)',
   },
@@ -1991,11 +2019,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   participantInfo: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
   },
   participantText: {
-    marginLeft: 12,
+    marginLeft: isRTL ? 0 : 12,
+    marginRight: isRTL ? 12 : 0,
   },
   participantName: {
     color: '#fff',
@@ -2009,11 +2038,12 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
   },
   participantActions: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
   },
   actionIcon: {
-    marginRight: 15,
+    marginRight: isRTL ? 0 : 15,
+    marginLeft: isRTL ? 15 : 0,
   },
   inviteButton: {
     backgroundColor: '#007AFF',
@@ -2052,11 +2082,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.3)',
   },
   moreMenuItem: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    paddingHorizontal: 20,
   },
   moreMenuIconBox: {
     width: 40,
@@ -2071,6 +2100,8 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '500',
+    marginLeft: isRTL ? 0 : 15,
+    marginRight: isRTL ? 15 : 0,
   },
   additionalControls: { flexDirection: 'row', justifyContent: 'space-around', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', paddingTop: 16 },
   additionalButton: { alignItems: 'center', paddingVertical: 8 },
@@ -2118,5 +2149,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
+}
 
 export default ImmersiveCallView;

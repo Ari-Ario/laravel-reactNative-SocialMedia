@@ -22,6 +22,7 @@ export const Colors = {
     error: '#FF3B30',
     success: '#34C759',
     warning: '#FF9500',
+    primary: '#1063FD',
   },
   dark: {
     text: '#ECEDEE',
@@ -38,6 +39,7 @@ export const Colors = {
     error: '#FF453A',
     success: '#32D74B',
     warning: '#FF9F0A',
+    primary: '#0A84FF',
   },
   primary: '#1063FD',
   secondary: '#3A5A92',

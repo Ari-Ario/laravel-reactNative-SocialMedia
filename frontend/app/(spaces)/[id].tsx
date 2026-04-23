@@ -57,16 +57,19 @@ import SpaceExportModal from '@/components/ChatScreen/SpaceExportModal';
 import SpaceSettingsModal from '@/components/ChatScreen/SpaceSettingsModal';
 import { createShadow } from '@/utils/styles';
 import React from 'react';
+import { MagicEventModal } from '@/components/Spaces/MagicEventModal';
 const WhiteboardCanvas = React.lazy(() => import('@/components/ChatScreen/WhiteboardCanvas'));
 import * as FileSystem from 'expo-file-system/legacy';
 import getApiBase from '@/services/getApiBase';
 import ReportPost from '@/components/ReportPost';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 import Colors from '@/constants/Colors';
 
 const SpaceDetailScreen = () => {
   const { colors, activeScheme } = useAppTheme();
-  const styles = getStyles(colors, activeScheme);
+  const { t, isRTL } = useTranslation();
+  const styles = getStyles(colors, activeScheme, isRTL);
   const { showToast } = useToastStore();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user, setUser, logout } = useContext(AuthContext);
@@ -83,6 +86,8 @@ const SpaceDetailScreen = () => {
   const [showMediaUploader, setShowMediaUploader] = useState(false);
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [selectedMagicEvent, setSelectedMagicEvent] = useState<any>(null);
+  const [showMagicModal, setShowMagicModal] = useState(false);
   const { unreadModerationCount } = useNotificationStore();
   
   const isSystemRoute = ['login', 'loginscreen', 'registerscreen', 'verificationscreen', 'forgotpasswordscreen', 'resetpasswordscreen', 'index', '+not-found']
@@ -109,7 +114,7 @@ const SpaceDetailScreen = () => {
     if (!id) return;
     console.log('[SpaceDetail] handleWhiteboardShare received data, length:', base64Data.length);
     try {
-      showToast('Preparing snapshot...', 'info');
+      showToast(t('preparing_snapshot'), 'info');
       
       const fileName = `whiteboard_${Date.now()}.png`;
       const token = await getToken();
@@ -123,7 +128,7 @@ const SpaceDetailScreen = () => {
           formData.append('file', file);
         } catch (e) {
           console.error('[SpaceDetail] Web blob conversion failed:', e);
-          showToast('Failed to process image on web', 'error');
+          showToast(t('failed_process_image_web'), 'error');
           return;
         }
       } else {
@@ -170,13 +175,13 @@ const SpaceDetailScreen = () => {
 
       if (imageUrl) {
         await collaborationService.sendMessage(id as string, {
-          content: '🎨 Shared a whiteboard snapshot',
+          content: t('shared_whiteboard_snapshot'),
           type: 'image',
           file_path: imageUrl,
           metadata: { is_whiteboard_snapshot: true }
         });
         
-        showToast('Snapshot shared to chat!', 'success');
+        showToast(t('snapshot_shared_chat'), 'success');
         if (Platform.OS !== 'web') {
           await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
@@ -187,7 +192,7 @@ const SpaceDetailScreen = () => {
       }
     } catch (err) {
       console.error('Whiteboard sharing failed:', err);
-      showToast('Failed to share snapshot.', 'error');
+      showToast(t('failed_share_snapshot'), 'error');
     }
   }, [id, showToast, collaborationService]);
   const windowHeight = Dimensions.get('window').height;
@@ -209,7 +214,7 @@ const SpaceDetailScreen = () => {
       }
     } else {
       Alert.alert(title, message, [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         { text: confirmText, onPress: onConfirm, style: 'destructive' }
       ]);
     }
@@ -238,13 +243,13 @@ const SpaceDetailScreen = () => {
         store.setActiveSpace(null);
       }
 
-      const title = status === 404 || isModelNotFound ? 'Space Deleted' : 'Access Denied';
+      const title = status === 404 || isModelNotFound ? t('space_deleted_title') : t('access_denied_title');
       const msg = status === 404 || isModelNotFound
-        ? 'This space no longer exists and has been removed from your list.'
-        : 'You are no longer a participant in this space.';
+        ? t('space_no_longer_exists_msg')
+        : t('no_longer_participant_msg');
 
       Alert.alert(title, msg, [
-        { text: 'OK', onPress: () => router.replace('/(tabs)/chats') }
+        { text: t('ok'), onPress: () => router.replace('/(tabs)/chats') }
       ]);
       return true; // Error was handled by cleanup/redirect
     }
@@ -387,7 +392,7 @@ const SpaceDetailScreen = () => {
       if (handleSpaceSecurityFallback(error, 'loadSpaceDetails')) return;
 
       if (user) {
-         Alert.alert('Error', 'Failed to load space details');
+         Alert.alert(t('error'), t('failed_load_space_details_msg'));
       }
     } finally {
       setLoading(false);
@@ -455,7 +460,7 @@ const SpaceDetailScreen = () => {
         onSpaceDeleted: () => {
           console.log('🗑️ Space deleted event received, redirecting...');
           router.replace('/(tabs)/chats');
-          simpleAlert('Space Deleted', 'This space has been deleted by the owner.');
+          simpleAlert(t('space_deleted_title'), t('space_deleted_by_owner_msg'));
         },
         onParticipantUpdate: (participant) => {
           setParticipants(prev => {
@@ -476,9 +481,8 @@ const SpaceDetailScreen = () => {
 
           if (`${participant.user_id}` !== `${user?.id}`) {
             useNotificationStore.getState().addNotification({
-              type: 'participant_joined',
-              title: 'New Participant',
-              message: `${participant.user?.name || 'Someone'} joined the space`,
+              title: t('new_participant_title'),
+              message: t('joined_the_space_msg').replace('{name}', participant.user?.name || 'Someone'),
               data: participant,
               spaceId: id,
               userId: participant.user_id,
@@ -614,8 +618,8 @@ const SpaceDetailScreen = () => {
 
           useNotificationStore.getState().addNotification({
             type: 'poll_created',
-            title: '📊 New Poll',
-            message: `${poll.creator?.name || 'Someone'} created a poll: ${poll.question.substring(0, 50)}${poll.question.length > 50 ? '...' : ''}`,
+            title: t('new_poll_title'),
+            message: t('new_poll_title') + ': ' + poll.question.substring(0, 50) + (poll.question.length > 50 ? '...' : ''),
             data: poll,
             spaceId: id,
             userId: poll.created_by,
@@ -644,8 +648,8 @@ const SpaceDetailScreen = () => {
           // Optional: Show a notification
           useNotificationStore.getState().addNotification({
             type: 'poll_deleted',
-            title: '🗑️ Poll Deleted',
-            message: `A poll has been deleted`,
+            title: t('poll_deleted_title'),
+            message: t('poll_deleted_msg'),
             data: { pollId },
             spaceId: id,
             createdAt: new Date()
@@ -675,8 +679,8 @@ const SpaceDetailScreen = () => {
 
           useNotificationStore.getState().addNotification({
             type: 'magic_event',
-            title: '✨ Magic Event!',
-            message: `A magical event occurred in the space`,
+            title: t('magic_event_title'),
+            message: t('magic_event_msg'),
             data: event,
             spaceId: id,
             userId: event.triggered_by,
@@ -693,8 +697,8 @@ const SpaceDetailScreen = () => {
 
           useNotificationStore.getState().addNotification({
             type: 'call_started',
-            title: 'Call Started',
-            message: `${data.user?.name || 'Someone'} started a call`,
+            title: t('call_started_title'),
+            message: t('started_a_call_msg').replace('{name}', data.user?.name || 'Someone'),
             data: data,
             spaceId: id,
             userId: data.user?.id,
@@ -712,8 +716,8 @@ const SpaceDetailScreen = () => {
 
           useNotificationStore.getState().addNotification({
             type: 'call_ended',
-            title: 'Call Ended',
-            message: `The call has ended`,
+            title: t('call_ended_title'),
+            message: t('call_ended_msg'),
             data: data,
             spaceId: id,
             userId: data.user?.id || data.user_id,
@@ -724,8 +728,8 @@ const SpaceDetailScreen = () => {
           console.log('Screen share started:', data);
           useNotificationStore.getState().addNotification({
             type: 'screen_share',
-            title: 'Screen Sharing',
-            message: `${data.user?.name || 'Someone'} started sharing screen`,
+            title: t('screen_sharing_title'),
+            message: t('started_sharing_screen_msg').replace('{name}', data.user?.name || 'Someone'),
             data: data,
             spaceId: id,
             userId: data.user?.id,
@@ -781,10 +785,10 @@ const SpaceDetailScreen = () => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
 
-      Alert.alert('Success', 'Space updated successfully');
+      Alert.alert(t('success'), t('space_updated_success_msg'));
     } catch (error) {
       console.error('Error updating space:', error);
-      Alert.alert('Error', 'Failed to update space');
+      Alert.alert(t('error'), t('failed_update_space_msg'));
     }
   };
 
@@ -806,21 +810,21 @@ const SpaceDetailScreen = () => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
 
-      Alert.alert('Success', `Role updated to ${newRole}`);
+      Alert.alert(t('success'), t('role_updated_to_msg').replace('{role}', newRole));
     } catch (error) {
       console.error('Error updating role:', error);
-      Alert.alert('Error', 'Failed to update role');
+      Alert.alert(t('error'), t('failed_update_role_msg'));
     }
   };
 
   const handleRemoveParticipant = async (participantId: number) => {
     Alert.alert(
-      'Remove Participant',
-      'Are you sure you want to remove this participant?',
+      t('remove_participant_title'),
+      t('confirm_remove_participant_msg'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Remove',
+          text: t('remove'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -832,7 +836,7 @@ const SpaceDetailScreen = () => {
               }
             } catch (error) {
               console.error('Error removing participant:', error);
-              Alert.alert('Error', 'Failed to remove participant');
+              Alert.alert(t('error'), t('failed_remove_participant_msg'));
             }
           }
         }
@@ -843,9 +847,9 @@ const SpaceDetailScreen = () => {
   const handleLeaveSpace = async () => {
     setShowSpaceMenu(false);
     confirmAction(
-      'Leave Space',
-      'Are you sure you want to leave this space?',
-      'Leave',
+      t('leave_space'),
+      t('confirm_leave_space'),
+      t('leave'),
       async () => {
         try {
           await collaborationService.leaveSpace(id as string);
@@ -853,9 +857,9 @@ const SpaceDetailScreen = () => {
         } catch (error: any) {
           console.error('Error leaving space:', error);
           if (error.response?.status === 403 && error.response?.data?.message) {
-            simpleAlert('Cannot Leave', error.response.data.message);
+            simpleAlert(t('cannot_leave_title'), error.response.data.message);
           } else {
-            simpleAlert('Error', 'Failed to leave space');
+            simpleAlert(t('error'), t('failed_leave_space_msg'));
           }
         }
       }
@@ -864,21 +868,20 @@ const SpaceDetailScreen = () => {
 
   const handleDeleteSpace = async () => {
     setShowSpaceMenu(false);
-    const warningMessage = 'The space will be deleted forever for all participants with all messages and belongings. Proceed?';
 
     confirmAction(
-      'Delete Space Forever',
-      warningMessage,
-      'Delete',
+      t('delete_space_forever_title'),
+      t('space_delete_warning'),
+      t('delete'),
       async () => {
         setIsDeleting(true);
         try {
           await collaborationService.deleteSpace(id as string);
           router.replace('/(tabs)/chats');
-          simpleAlert('Success', 'Space deleted forever.');
+          simpleAlert(t('success'), t('space_deleted_forever_msg'));
         } catch (error) {
           console.error('Error deleting space:', error);
-          simpleAlert('Error', 'Failed to delete space');
+          simpleAlert(t('error'), t('failed_delete_space_msg'));
         } finally {
           setIsDeleting(false);
         }
@@ -915,7 +918,7 @@ const SpaceDetailScreen = () => {
       });
     } catch (error) {
       console.error('Error starting call:', error);
-      Alert.alert('Error', 'Failed to start call');
+      Alert.alert(t('error'), t('failed_start_call_msg'));
     }
   };
 
@@ -982,7 +985,7 @@ const SpaceDetailScreen = () => {
       subscribeToSpace();
     } catch (error) {
       console.error('Guest join failed:', error);
-      showToast('Failed to join as guest', 'error');
+      showToast(t('failed_join_guest_msg'), 'error');
     }
   };
 
@@ -1017,7 +1020,7 @@ const SpaceDetailScreen = () => {
       subscribeToSpace();
     } catch (error) {
       console.error('Error joining space:', error);
-      showToast('Failed to join space. Please try again.', 'error');
+      showToast(t('failed_join_space_msg'), 'error');
     } finally {
       setIsJoining(false);
     }
@@ -1041,21 +1044,26 @@ const SpaceDetailScreen = () => {
         console.log('Would link spaces:', spaceIds);
       }
 
-      showToast(`Invited ${userIds.length} user(s) to the space${spaceIds.length > 0 ? ` and linked ${spaceIds.length} space(s)` : ''}`, 'success');
+      showToast(t('invited_users_msg').replace('{count}', String(userIds.length)), 'success');
     } catch (error) {
       console.error('Error inviting users:', error);
-      showToast('Failed to send some invites. Please try again.', 'error');
+      showToast(t('failed_send_invites_msg'), 'error');
       throw error;
     }
   };
 
   const handleDiscoverMagic = async (eventId: string) => {
     try {
+      const event = magicEvents.find(e => e.id === eventId);
+      if (event) {
+        setSelectedMagicEvent(event);
+        setShowMagicModal(true);
+      }
+      
       await collaborationService.discoverMagicEvent(eventId);
       setMagicEvents(prev => prev.map(event =>
         event.id === eventId ? { ...event, has_been_discovered: true } : event
       ));
-      showToast('Magic Discovered! You found a hidden surprise!', 'success');
     } catch (error) {
       console.error('Error discovering magic:', error);
     }
@@ -1150,14 +1158,16 @@ const SpaceDetailScreen = () => {
   const handleShare = async () => {
     const baseUrl = Platform.OS === 'web' ? window.location.origin : 'https://zmzir.com';
     const shareUrl = `${baseUrl}/spaces/${id}`;
-    const message = `📺 Join our live space on Zmzir: ${space?.title || 'Live Space'}\n\nJoin now: ${shareUrl}`;
+    const message = t('share_space_message')
+      .replace('{title}', space?.title || t('space_fallback_title'))
+      .replace('{url}', shareUrl);
 
     try {
       if (Platform.OS === 'web') {
         if (navigator.share) {
           try {
             await navigator.share({
-              title: space?.title || 'Live Space',
+              title: space?.title || t('space_fallback_title'),
               text: message,
               url: shareUrl,
             });
@@ -1167,14 +1177,14 @@ const SpaceDetailScreen = () => {
         } else {
           await Clipboard.setStringAsync(message);
           if (typeof window !== 'undefined') {
-            window.alert('Link Copied!\n\nThe space link has been copied to your clipboard.');
+            window.alert(`${t('link_copied_title')}\n\n${t('link_copied_msg')}`);
           }
         }
       } else {
         await Share.share({
           message,
           url: shareUrl,
-          title: 'Join Space'
+          title: t('join_space')
         });
       }
       if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -1248,12 +1258,36 @@ const SpaceDetailScreen = () => {
     }
   }, [activeCall, activeTab, id]);
 
+  // ✅ Handle highlightMagic param
+  useEffect(() => {
+    if (params.highlightMagic && magicEvents.length > 0) {
+      const targetId = params.highlightMagic;
+      const eventId = targetId === 'true' 
+        ? magicEvents.find(e => !e.has_been_discovered)?.id 
+        : targetId;
+        
+      if (eventId) {
+        const event = magicEvents.find(e => e.id === eventId);
+        if (event) {
+          setSelectedMagicEvent(event);
+          setShowMagicModal(true);
+          // Auto-discover if not discovered yet
+          if (!event.has_been_discovered) {
+            handleDiscoverMagic(eventId as string);
+          }
+        }
+      }
+      // Clear param
+      router.setParams({ highlightMagic: undefined });
+    }
+  }, [params.highlightMagic, magicEvents.length]);
+
   const renderContent = () => {
     if (loading) {
       return (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.tint} />
-          <Text style={styles.loadingText}>Loading space...</Text>
+          <Text style={styles.loadingText}>{t('loading_space_msg')}</Text>
         </View>
       );
     }
@@ -1311,7 +1345,7 @@ const SpaceDetailScreen = () => {
               }}
               onError={(error) => {
                 console.error('Whiteboard error:', error);
-                showToast('Whiteboard something went wrong. Please try again.', 'error');
+                showToast(t('whiteboard_error'), 'error');
               }}
             />
             </React.Suspense>
@@ -1326,15 +1360,15 @@ const SpaceDetailScreen = () => {
               onPress={() => setShowPollCreator(true)}
             >
               <Ionicons name="add-circle" size={24} color={colors.tint} />
-              <Text style={styles.createPollText}>Create New Poll</Text>
+              <Text style={styles.createPollText}>{t('create_new_poll_btn')}</Text>
             </TouchableOpacity>
 
             {polls.length === 0 ? (
               <View style={styles.emptyPolls}>
                 <Ionicons name="bar-chart" size={64} color={colors.border} />
-                <Text style={styles.emptyPollsTitle}>No polls yet</Text>
+                <Text style={styles.emptyPollsTitle}>{t('no_polls_yet_title')}</Text>
                 <Text style={styles.emptyPollsSubtext}>
-                  Create your first poll to gather opinions
+                  {t('no_polls_subtext')}
                 </Text>
               </View>
             ) : (
@@ -1374,9 +1408,9 @@ const SpaceDetailScreen = () => {
         return (
           <View style={styles.meetingContainer}>
             <Ionicons name="videocam" size={64} color={colors.tint} />
-            <Text style={styles.placeholderText}>Video Meeting Room</Text>
+            <Text style={styles.placeholderText}>{t('video_meeting_room_title')}</Text>
             <Text style={styles.placeholderSubtext}>
-              Start a video call with {participants.length} participants
+              {t('video_meeting_subtext').replace('{count}', String(participants.length))}
             </Text>
             <View style={styles.meetingActions}>
               <TouchableOpacity
@@ -1384,7 +1418,7 @@ const SpaceDetailScreen = () => {
                 onPress={() => handleStartCall('video')}
               >
                 <Ionicons name="videocam" size={24} color={colors.surface} />
-                <Text style={styles.callButtonText}>Start Video Call</Text>
+                <Text style={styles.callButtonText}>{t('start_video_call_btn')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1392,7 +1426,7 @@ const SpaceDetailScreen = () => {
                 onPress={() => handleStartCall('audio')}
               >
                 <Ionicons name="call" size={24} color={colors.surface} />
-                <Text style={styles.callButtonText}>Start Audio Call</Text>
+                <Text style={styles.callButtonText}>{t('start_audio_call_btn')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1413,12 +1447,12 @@ const SpaceDetailScreen = () => {
         return (
           <View style={styles.documentContainer}>
             <Ionicons name="document-text" size={64} color={colors.tint} />
-            <Text style={styles.placeholderText}>Document Collaboration</Text>
+            <Text style={styles.placeholderText}>{t('document_collaboration_title')}</Text>
             <Text style={styles.placeholderSubtext}>
-              Edit documents together in real-time
+              {t('edit_documents_realtime_msg')}
             </Text>
             <TouchableOpacity style={styles.placeholderButton}>
-              <Text style={styles.placeholderButtonText}>Create Document</Text>
+              <Text style={styles.placeholderButtonText}>{t('create_document_btn')}</Text>
             </TouchableOpacity>
           </View>
         );
@@ -1427,12 +1461,12 @@ const SpaceDetailScreen = () => {
         return (
           <View style={styles.brainstormContainer}>
             <Ionicons name="bulb" size={64} color={colors.tint} />
-            <Text style={styles.placeholderText}>Brainstorming Session</Text>
+            <Text style={styles.placeholderText}>{t('brainstorming_session_title')}</Text>
             <Text style={styles.placeholderSubtext}>
-              Generate and organize ideas together
+              {t('generate_ideas_together_msg')}
             </Text>
             <TouchableOpacity style={styles.placeholderButton}>
-              <Text style={styles.placeholderButtonText}>Start Brainstorming</Text>
+              <Text style={styles.placeholderButtonText}>{t('start_brainstorming_btn')}</Text>
             </TouchableOpacity>
           </View>
         );
@@ -1441,9 +1475,9 @@ const SpaceDetailScreen = () => {
         return (
           <View style={styles.defaultContainer}>
             <Ionicons name="cube" size={64} color={colors.tint} />
-            <Text style={styles.placeholderText}>{activeTab.toUpperCase()} Collaboration</Text>
+            <Text style={styles.placeholderText}>{activeTab.toUpperCase()} {t('collaboration')}</Text>
             <Text style={styles.placeholderSubtext}>
-              {space?.description || 'Work together in real-time'}
+              {space?.description || t('work_together_realtime_msg')}
             </Text>
           </View>
         );
@@ -1455,7 +1489,7 @@ const SpaceDetailScreen = () => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.tint} />
-        <Text style={styles.loadingText}>Loading space...</Text>
+        <Text style={styles.loadingText}>{t('loading_space_msg')}</Text>
       </View>
     );
   }
@@ -1468,15 +1502,15 @@ const SpaceDetailScreen = () => {
           <View style={styles.lockedIconBg}>
             <Ionicons name="lock-closed" size={40} color={colors.error} />
           </View>
-          <Text style={styles.lockedTitle}>Login Required</Text>
+          <Text style={styles.lockedTitle}>{t('login_required_title')}</Text>
           <Text style={styles.lockedDescription}>
-            This type of space is private and only accessible to registered members.
+            {t('private_space_guest_desc')}
           </Text>
           <TouchableOpacity 
             style={styles.joinSpaceButton}
             onPress={() => router.replace('/LoginScreen')}
           >
-            <Text style={styles.joinSpaceButtonText}>Go to Login</Text>
+            <Text style={styles.joinSpaceButtonText}>{t('go_to_login_btn')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -1493,11 +1527,11 @@ const SpaceDetailScreen = () => {
 
   const displayTitle = isDirectChat && otherParticipant
     ? (otherParticipant?.name || otherParticipant?.username)
-    : (space?.title && space.title !== 'Direct Message' ? space.title : (loading ? 'Loading...' : 'Space Detail'));
+    : (space?.title && space.title !== 'Direct Message' && space.title !== t('direct_message_title') ? space.title : (loading ? t('loading') : t('space_detail')));
 
   const displaySubtitle = isDirectChat && otherParticipant
-    ? (otherParticipant?.is_online ? 'Online' : 'Direct Message')
-    : `${participants.length} ${participants.length === 1 ? 'participant' : 'participants'}`;
+    ? (otherParticipant?.is_online ? t('online_status') : t('direct_message_status'))
+    : `${participants.length} ${participants.length === 1 ? t('participant_singular') : t('participants_plural')}`;
 
   const displayPhoto = isDirectChat && otherParticipant
     ? ((otherParticipant?.profile_photo_url || otherParticipant?.profile_photo) as string)
@@ -1537,8 +1571,12 @@ const SpaceDetailScreen = () => {
         <TouchableOpacity
           style={styles.headerContent}
           onPress={() => Alert.alert(
-            'Space Info',
-            `Title: ${displayTitle} \nType: ${space?.space_type || 'chat'} \nParticipants: ${participants.length} \nCreated: ${space?.created_at ? new Date(space.created_at).toLocaleDateString() : 'N/A'} `
+            t('space_info_title'),
+            t('space_info_details_msg')
+              .replace('{title}', displayTitle)
+              .replace('{type}', space?.space_type || 'chat')
+              .replace('{count}', String(participants.length))
+              .replace('{date}', space?.created_at ? new Date(space.created_at).toLocaleDateString() : 'N/A')
           )}
         >
           {displayPhoto ? (
@@ -1591,7 +1629,7 @@ const SpaceDetailScreen = () => {
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Ionicons name="radio" size={18} color="#ff4444" />
-                    <Text style={{ color: '#ff4444', fontSize: 10, fontWeight: '900', marginLeft: 2 }}>LIVE</Text>
+                    <Text style={{ color: '#ff4444', fontSize: 10, fontWeight: '900', marginLeft: 2 }}>{t('live_status')}</Text>
                   </View>
                 </TouchableOpacity>
               );
@@ -1681,7 +1719,7 @@ const SpaceDetailScreen = () => {
         >
           <Ionicons name="return-up-back" size={18} color={colors.text} />
           <Text style={{ marginLeft: 8, fontSize: 13, fontWeight: '600', color: colors.text }}>
-            Back to Conversation
+            {t('back_to_conversation_btn')}
           </Text>
           <View style={{ flex: 1 }} />
           <Ionicons name="chatbubbles-outline" size={18} color={colors.textSecondary} />
@@ -1692,7 +1730,7 @@ const SpaceDetailScreen = () => {
       {isArchived && (
         <View style={styles.archivedBanner}>
           <Ionicons name="archive" size={16} color={colors.tint} />
-          <Text style={styles.archivedBannerText}>This chat is archived</Text>
+          <Text style={styles.archivedBannerText}>{t('chat_archived_banner')}</Text>
         </View>
       )}
 
@@ -1704,13 +1742,13 @@ const SpaceDetailScreen = () => {
         items={[
           {
             icon: 'videocam',
-            label: 'Video Call',
+            label: t('video_call_label'),
             color: colors.tint,
             onPress: () => handleStartCall('video'),
           },
           {
             icon: 'call',
-            label: 'Audio Call',
+            label: t('audio_call_label'),
             color: colors.success,
             onPress: () => handleStartCall('audio'),
           },
@@ -1724,32 +1762,32 @@ const SpaceDetailScreen = () => {
         items={[
           ...(canEditSpace ? [{
             icon: 'settings-outline',
-            label: 'Space Settings',
+            label: t('space_settings_label'),
             onPress: handleOpenSettings,
           } as MenuItem] : []),
           {
             icon: 'people-outline',
-            label: 'View Participants',
+            label: t('view_participants_label'),
             onPress: () => setShowParticipantsModal(true),
           } as MenuItem,
           ...((space?.space_type === 'general' || space?.space_type === 'channel') ? [{
             icon: 'share-social-outline',
-            label: 'Share Space',
+            label: t('share_space_label'),
             onPress: handleShare,
           } as MenuItem] : []),
           ...(canEditSpace ? [{
             icon: 'shield-outline',
-            label: 'Manage Admins',
+            label: t('manage_admins_label'),
             onPress: () => setShowAdminsModal(true),
           } as MenuItem] : []),
           ...(myPermissions.write !== false ? [{
             icon: 'bar-chart-outline',
-            label: 'Create Poll',
+            label: t('create_poll_label'),
             onPress: () => setShowPollCreator(true),
           } as MenuItem] : []),
           {
             icon: 'easel-outline',
-            label: 'Whiteboard',
+            label: t('whiteboard_label'),
             onPress: () => {
               setActiveTab('whiteboard');
               setShowSpaceMenu(false);
@@ -1757,7 +1795,7 @@ const SpaceDetailScreen = () => {
           } as MenuItem,
           {
             icon: 'calendar-outline',
-            label: 'Calendar',
+            label: t('calendar_label'),
             badge: spaceUpcomingCounts[id as string] || 0,
             onPress: () => {
               setShowActivitiesModal(true);
@@ -1766,24 +1804,24 @@ const SpaceDetailScreen = () => {
           } as MenuItem,
           {
             icon: 'download-outline',
-            label: 'Export Content',
+            label: t('export_content_label'),
             onPress: handleExportContentClick,
           } as MenuItem,
           ...(myParticipation?.role !== 'owner' ? [{
             icon: 'exit-outline',
-            label: 'Leave Space',
+            label: t('leave_space'),
             destructive: true,
             onPress: handleLeaveSpace,
           } as MenuItem] : []),
           ...(myParticipation?.role === 'owner' ? [{
             icon: 'trash-outline',
-            label: 'Delete Space',
+            label: t('delete_space_forever_title'),
             destructive: true,
             onPress: handleDeleteSpace,
           } as MenuItem] : []),
           {
             icon: 'flag-outline',
-            label: useReportedContentStore.getState().isReported('space', id as string) ? 'Un-report Space' : 'Report Space',
+            label: useReportedContentStore.getState().isReported('space', id as string) ? t('unreport_space_label') : t('report_space_label'),
             color: useReportedContentStore.getState().isReported('space', id as string) ? '#ff4444' : undefined,
             onPress: async () => {
               setShowSpaceMenu(false);
@@ -1792,9 +1830,9 @@ const SpaceDetailScreen = () => {
                 try {
                   await deleteReportByTarget('space', id as string);
                   useReportedContentStore.getState().removeReportedItem('space', id as string);
-                  showToast('Report removed', 'success');
+                  showToast(t('report_removed_msg'), 'success');
                 } catch (error) {
-                  showToast('Failed to remove report', 'error');
+                  showToast(t('failed_remove_report_msg'), 'error');
                 }
               } else {
                 setShowReportModal(true);
@@ -1831,9 +1869,9 @@ const SpaceDetailScreen = () => {
                   <View style={styles.lockedIconBg}>
                     <Ionicons name="lock-closed" size={40} color={colors.tint} />
                   </View>
-                  <Text style={styles.lockedTitle}>Private Space</Text>
+                  <Text style={styles.lockedTitle}>{t('private_space_title')}</Text>
                   <Text style={styles.lockedDescription}>
-                    This is a protected space. You must join to see the conversation and participate.
+                    {t('protected_space_desc')}
                   </Text>
                   <TouchableOpacity
                     style={styles.joinSpaceButton}
@@ -1845,7 +1883,7 @@ const SpaceDetailScreen = () => {
                     ) : (
                       <>
                         <Ionicons name="enter-outline" size={20} color="#fff" />
-                        <Text style={styles.joinSpaceButtonText}>Join Space</Text>
+                        <Text style={styles.joinSpaceButtonText}>{t('join_space')}</Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -1860,8 +1898,8 @@ const SpaceDetailScreen = () => {
           <View style={styles.deletingOverlay}>
             <View style={styles.deletingContent}>
               <ActivityIndicator size="large" color="#007AFF" />
-              <Text style={styles.deletingText}>Deleting space...</Text>
-              <Text style={styles.deletingSubtext}>Permanently removing all messages and media</Text>
+              <Text style={styles.deletingText}>{t('deleting_space_loader')}</Text>
+              <Text style={styles.deletingSubtext}>{t('deleting_space_subtext')}</Text>
             </View>
           </View>
         )}
@@ -1940,6 +1978,13 @@ const SpaceDetailScreen = () => {
         }}
       />
 
+      {/* Magic Event Discovery Modal */}
+      <MagicEventModal
+        visible={showMagicModal}
+        event={selectedMagicEvent}
+        onClose={() => setShowMagicModal(false)}
+      />
+
       {/* Participants Modal */}
       <Modal
         visible={showParticipantsModal}
@@ -1950,7 +1995,7 @@ const SpaceDetailScreen = () => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContentLarge}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Participants ({participants.length})</Text>
+              <Text style={styles.modalTitle}>{t('participants_count_title').replace('{count}', String(participants.length))}</Text>
               <TouchableOpacity onPress={() => setShowParticipantsModal(false)}>
                 <Ionicons name="close" size={24} color="#666" />
               </TouchableOpacity>
@@ -1977,7 +2022,7 @@ const SpaceDetailScreen = () => {
                   <View style={styles.participantInfo}>
                     <Text style={styles.participantName}>
                       {participant.user?.name}
-                      {participant.user_id === user?.id && ' (You)'}
+                      {participant.user_id === user?.id && ` (${t('you_indicator')})`}
                     </Text>
                     <View style={styles.participantMeta}>
                       <View style={[styles.roleBadge, {
@@ -1988,7 +2033,7 @@ const SpaceDetailScreen = () => {
                           color: participant.role === 'owner' ? '#B8860B' :
                             participant.role === 'moderator' ? '#007AFF' : '#666'
                         }]}>
-                          {participant.role}
+                          {t(`role_${participant.role}_label`)}
                         </Text>
                       </View>
                       {participant.presence_data?.is_online && (
@@ -2012,7 +2057,7 @@ const SpaceDetailScreen = () => {
               }}
             >
               <Ionicons name="person-add" size={20} color="#007AFF" />
-              <Text style={styles.inviteButtonText}>Invite People</Text>
+              <Text style={styles.inviteButtonText}>{t('invite_people')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -2027,7 +2072,7 @@ const SpaceDetailScreen = () => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContentLarge}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Manage Admins</Text>
+              <Text style={styles.modalTitle}>{t('manage_admins_label')}</Text>
               <TouchableOpacity onPress={() => setShowAdminsModal(false)}>
                 <Ionicons name="close" size={24} color="#666" />
               </TouchableOpacity>
@@ -2054,7 +2099,7 @@ const SpaceDetailScreen = () => {
                   <View style={styles.participantInfo}>
                     <Text style={styles.participantName}>
                       {participant.user?.name}
-                      {participant.user_id === user?.id && ' (You)'}
+                      {participant.user_id === user?.id && ` (${t('you_indicator')})`}
                     </Text>
                     <View style={styles.participantMeta}>
                       <View style={[styles.roleBadge, {
@@ -2063,7 +2108,7 @@ const SpaceDetailScreen = () => {
                         <Text style={[styles.roleText, {
                           color: participant.role === 'owner' ? '#B8860B' : '#007AFF'
                         }]}>
-                          {participant.role}
+                          {t(`role_${participant.role}_label`)}
                         </Text>
                       </View>
                     </View>
@@ -2075,7 +2120,7 @@ const SpaceDetailScreen = () => {
               ))}
               {participants.filter(p => p.role === 'owner' || p.role === 'moderator').length === 0 && (
                 <View style={{ padding: 20, alignItems: 'center' }}>
-                  <Text style={{ color: '#666' }}>No admins found.</Text>
+                  <Text style={{ color: '#666' }}>{t('no_admins_found_msg')}</Text>
                 </View>
               )}
             </ScrollView>
@@ -2086,11 +2131,11 @@ const SpaceDetailScreen = () => {
                 onPress={() => {
                   setShowAdminsModal(false);
                   setShowParticipantsModal(true);
-                  Alert.alert("Manage Admins", "To add an admin, select a Participant and change their role.");
+                  Alert.alert(t('manage_admins_label'), t('add_admin_instructions'));
                 }}
               >
                 <Ionicons name="person-add" size={20} color="#007AFF" />
-                <Text style={styles.inviteButtonText}>Add Admin</Text>
+                <Text style={styles.inviteButtonText}>{t('add_admin_btn')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -2106,7 +2151,7 @@ const SpaceDetailScreen = () => {
         <View style={styles.modalOverlay}>
           <View style={styles.roleModal}>
             <Text style={styles.roleModalTitle}>
-              Change role for {selectedParticipant?.user?.name}
+              {t('change_role_for_title').replace('{name}', selectedParticipant?.user?.name || '')}
             </Text>
 
             {['participant', 'moderator', 'owner'].map((role) => (
@@ -2132,12 +2177,12 @@ const SpaceDetailScreen = () => {
                   />
                   <View style={styles.roleOptionText}>
                     <Text style={styles.roleOptionTitle}>
-                      {role.charAt(0).toUpperCase() + role.slice(1)}
+                      {t(`role_${role}_label`)}
                     </Text>
                     <Text style={styles.roleOptionDescription}>
-                      {role === 'owner' ? 'Full control over space' :
-                        role === 'moderator' ? 'Can manage participants and content' :
-                          'Can participate and send messages'}
+                      {role === 'owner' ? t('role_owner_desc') :
+                        role === 'moderator' ? t('role_moderator_desc') :
+                          t('role_participant_desc')}
                     </Text>
                   </View>
                 </View>
@@ -2155,14 +2200,14 @@ const SpaceDetailScreen = () => {
               }}
             >
               <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
-              <Text style={styles.removeButtonText}>Remove from Space</Text>
+              <Text style={styles.removeButtonText}>{t('remove_from_space_btn')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.cancelRoleButton}
               onPress={() => setShowRoleModal(false)}
             >
-              <Text style={styles.cancelRoleText}>Cancel</Text>
+              <Text style={styles.cancelRoleText}>{t('cancel')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -2237,7 +2282,7 @@ const SpaceDetailScreen = () => {
         onClose={() => setShowReportModal(false)}
         onReportSubmitted={(reportId) => {
           console.log('Report submitted for space:', reportId);
-          useToastStore.getState().showToast('Report Received: Our AI is analyzing this space.', 'success');
+          useToastStore.getState().showToast(t('report_received_msg'), 'success');
           setShowReportModal(false);
         }}
       />
@@ -2246,7 +2291,7 @@ const SpaceDetailScreen = () => {
 };
 
 
-function getStyles(colors: any, activeScheme: string): any {
+function getStyles(colors: any, activeScheme: string, isRTL: boolean): any {
   return StyleSheet.create({
   container: {
     flex: 1,
@@ -2294,6 +2339,7 @@ function getStyles(colors: any, activeScheme: string): any {
     fontWeight: '600',
     color: colors.text,
     marginBottom: 2,
+    textAlign: 'left',
   },
   subtitleRow: {
     flexDirection: 'row',
@@ -2369,11 +2415,12 @@ function getStyles(colors: any, activeScheme: string): any {
     paddingVertical: 8,
   },
   tab: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    marginRight: 8,
+    marginLeft: isRTL ? 8 : 0,
+    marginRight: isRTL ? 0 : 8,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: colors.border,
@@ -2385,7 +2432,8 @@ function getStyles(colors: any, activeScheme: string): any {
   tabText: {
     fontSize: 14,
     color: colors.textSecondary,
-    marginLeft: 6,
+    marginLeft: isRTL ? 0 : 6,
+    marginRight: isRTL ? 6 : 0,
     fontWeight: '500',
   },
   activeTabText: {

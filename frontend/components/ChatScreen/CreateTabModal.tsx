@@ -16,6 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
+import { useTranslation } from '../../constants/i18n';
 import { Chat } from '../../app/(tabs)/chats/index';
 
 interface CreateTabModalProps {
@@ -43,6 +44,8 @@ const CreateTabModal: React.FC<CreateTabModalProps> = ({
   const [name, setName] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const { t, isRTL } = useTranslation();
+  const styles = getStyles(isRTL);
 
   useEffect(() => {
     if (visible) {
@@ -86,8 +89,8 @@ const CreateTabModal: React.FC<CreateTabModalProps> = ({
 
   const renderStep1 = () => (
     <View style={styles.stepContainer}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{mode === 'create' ? 'New Tab' : 'Rename Tab'}</Text>
+      <View style={[styles.header, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+        <Text style={styles.title}>{mode === 'create' ? t('new_tab') : t('rename_tab')}</Text>
         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
           <Ionicons name="close" size={24} color="#666" />
         </TouchableOpacity>
@@ -95,8 +98,8 @@ const CreateTabModal: React.FC<CreateTabModalProps> = ({
 
       <View style={styles.inputWrapper}>
         <TextInput
-          style={styles.input}
-          placeholder="Tab Name (e.g. Work, Family)"
+          style={[styles.input, { textAlign: isRTL ? 'right' : 'left', paddingRight: isRTL ? 18 : 60, paddingLeft: isRTL ? 60 : 18 }]}
+          placeholder={t('tab_name_placeholder')}
           placeholderTextColor="#999"
           value={name}
           onChangeText={setName}
@@ -105,55 +108,57 @@ const CreateTabModal: React.FC<CreateTabModalProps> = ({
           returnKeyType="next"
           onSubmitEditing={handleNext}
         />
-        <Text style={styles.charCount}>{name.length}/12</Text>
+        <Text style={[styles.charCount, { [isRTL ? 'left' : 'right']: 18 }]}>{name.length}/12</Text>
       </View>
-
-      <Text style={styles.description}>
-        Give your tab a name to organize your collaboration spaces.
+ 
+      <Text style={[styles.description, { textAlign: isRTL ? 'right' : 'left' }]}>
+        {t('tab_name_description')}
       </Text>
 
       <TouchableOpacity
-        style={[styles.primaryButton, !name.trim() && styles.disabledButton]}
+        style={[styles.primaryButton, { flexDirection: isRTL ? 'row-reverse' : 'row' }, !name.trim() && styles.disabledButton]}
         onPress={mode === 'create' ? handleNext : handleFinish}
         disabled={!name.trim()}
       >
-        <Text style={styles.buttonText}>{mode === 'create' ? 'Next' : 'Save Name'}</Text>
-        {mode === 'create' && <Ionicons name="arrow-forward" size={18} color="#fff" style={{ marginLeft: 8 }} />}
+        <Text style={styles.buttonText}>{mode === 'create' ? t('next') : t('save_name')}</Text>
+        {mode === 'create' && <Ionicons name={isRTL ? "arrow-back" : "arrow-forward"} size={18} color="#fff" style={{ [isRTL ? 'marginRight' : 'marginLeft']: 8 }} />}
       </TouchableOpacity>
     </View>
   );
 
   const renderStep2 = () => (
     <View style={[styles.stepContainer, { height: height * 0.8, paddingHorizontal: 0 }]}>
-      <View style={[styles.header, { paddingHorizontal: 24 }]}>
-        <View style={styles.headerTitleRow}>
+      <View style={[styles.header, { paddingHorizontal: 24, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+        <View style={[styles.headerTitleRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
           <TouchableOpacity onPress={() => mode === 'create' ? setStep(1) : onClose()} style={styles.backButton}>
-            <Ionicons name={mode === 'create' ? "arrow-back" : "close"} size={24} color="#007AFF" />
+            <Ionicons name={mode === 'create' ? (isRTL ? "arrow-forward" : "arrow-back") : "close"} size={24} color="#007AFF" />
           </TouchableOpacity>
-          <View>
-            <Text style={styles.title}>{mode === 'create' ? 'Select Content' : 'Edit Tab'}</Text>
+          <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
+            <Text style={styles.title}>{mode === 'create' ? t('select_content') : t('edit_tab')}</Text>
             <Text style={styles.subtitle}>{name}</Text>
           </View>
         </View>
         <TouchableOpacity onPress={handleFinish} style={styles.doneButton}>
-          <Text style={styles.doneText}>Done</Text>
+          <Text style={styles.doneText}>{t('done')}</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={18} color="#999" style={styles.searchIcon} />
+      <View style={[styles.searchContainer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+        <Ionicons name="search" size={18} color="#999" style={[styles.searchIcon, { [isRTL ? 'marginLeft' : 'marginRight']: 10, marginRight: isRTL ? 0 : 10 }]} />
         <TextInput
-          style={styles.searchInput}
-          placeholder="Search spaces or people..."
+          style={[styles.searchInput, { textAlign: isRTL ? 'right' : 'left' }]}
+          placeholder={t('search_spaces_people')}
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholderTextColor="#999"
         />
       </View>
 
-      <View style={styles.selectionSummary}>
+      <View style={[styles.selectionSummary, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
         <Text style={styles.selectionText}>
-          {selectedIds.length} {selectedIds.length === 1 ? 'item' : 'items'} selected
+          {selectedIds.length === 1 
+            ? t('item_selected').replace('{count}', selectedIds.length.toString())
+            : t('items_selected').replace('{count}', selectedIds.length.toString())}
         </Text>
       </View>
 
@@ -183,10 +188,10 @@ const CreateTabModal: React.FC<CreateTabModalProps> = ({
                 )}
               </View>
               
-              <View style={styles.itemInfo}>
-                <Text style={styles.itemName}>{item.name}</Text>
-                <Text style={styles.itemType}>
-                  {item.type === 'space' ? 'Collaboration Space' : 'Direct Message'}
+              <View style={[styles.itemInfo, { [isRTL ? 'marginRight' : 'marginLeft']: 16, alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+                <Text style={[styles.itemName, { textAlign: isRTL ? 'right' : 'left' }]}>{item.name}</Text>
+                <Text style={[styles.itemType, { textAlign: isRTL ? 'right' : 'left' }]}>
+                  {item.type === 'space' ? t('collaboration_space') : t('direct_message')}
                 </Text>
               </View>
 
@@ -229,7 +234,7 @@ const CreateTabModal: React.FC<CreateTabModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isRTL: boolean) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
@@ -276,7 +281,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backButton: {
-    marginRight: 12,
+    [isRTL ? 'marginLeft' : 'marginRight']: 12,
     padding: 4,
   },
   title: {
@@ -311,7 +316,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F7FA',
     borderRadius: 14,
     padding: 18,
-    paddingRight: 60,
+    [isRTL ? 'paddingLeft' : 'paddingRight']: 60,
     fontSize: 17,
     color: '#000',
     borderWidth: 1.5,
@@ -365,7 +370,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   searchIcon: {
-    marginRight: 10,
+    [isRTL ? 'marginLeft' : 'marginRight']: 10,
   },
   searchInput: {
     flex: 1,
@@ -385,7 +390,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   itemContainer: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     paddingVertical: 14,
     paddingHorizontal: 24,
@@ -418,7 +423,7 @@ const styles = StyleSheet.create({
   },
   itemInfo: {
     flex: 1,
-    marginLeft: 16,
+    [isRTL ? 'marginRight' : 'marginLeft']: 16,
   },
   itemName: {
     fontSize: 16,
@@ -446,7 +451,7 @@ const styles = StyleSheet.create({
   separator: {
     height: 1,
     backgroundColor: '#F0F2F5',
-    marginLeft: 92,
+    [isRTL ? 'marginRight' : 'marginLeft']: 92,
   },
 });
 

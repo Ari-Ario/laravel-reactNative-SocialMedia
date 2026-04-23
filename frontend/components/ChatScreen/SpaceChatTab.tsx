@@ -24,6 +24,7 @@ import { createShadow } from '@/utils/styles';
 import { useToastStore } from '@/stores/toastStore';
 import { useAudioRecording } from '@/hooks/useAudioRecording';
 import AudioSeeker from './AudioSeeker';
+import { useTranslation } from '@/constants/i18n';
 
 interface SpaceChatTabProps {
     spaceId: string;
@@ -55,6 +56,8 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
     onStartCall,
 }) => {
     const { colors, activeScheme } = useAppTheme();
+    const { t, isRTL } = useTranslation();
+    const styles = getStyles(colors, activeScheme, isRTL);
     const { showToast } = useToastStore();
     const [content, setContent] = useState<string>('');
     const [showMediaUploader, setShowMediaUploader] = useState(false);
@@ -105,7 +108,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
             id: tempId,
             user_id: currentUserId,
             type: 'voice',
-            content: 'Voice message',
+            content: t('voice_message_label'),
             file_path: uri,
             metadata: {
                 duration: Math.round(duration),
@@ -165,10 +168,10 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                 }
             }));
 
-            showToast('Audio message sent', 'success');
+            showToast(t('audio_message_sent_msg'), 'success');
         } catch (error) {
             console.error('Failed to send audio message:', error);
-            showToast('Failed to send audio message', 'error');
+            showToast(t('failed_send_audio_msg'), 'error');
 
             // Remove optimistic message on error
             setSpace((prev: any) => ({
@@ -321,7 +324,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
             // No alert needed for success if participation is instant
         } catch (error) {
             console.error('Error joining space:', error);
-            showToast('Failed to join space.', 'error');
+            showToast(t('failed_join_space_msg'), 'error');
         } finally {
             setIsJoining(false);
         }
@@ -330,7 +333,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
     const handleShareLocation = async (location: LocationData) => {
         try {
             const message = await collaborationService.sendMessage(spaceId, {
-                content: location.address || 'Shared location',
+                content: location.address || t('shared_location'),
                 type: 'location',
                 metadata: {
                     latitude: location.latitude,
@@ -352,14 +355,14 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
             }));
         } catch (error) {
             console.error('Error sharing location:', error);
-            showToast('Failed to share location.', 'error');
+            showToast(t('failed_share_location_msg'), 'error');
         }
     };
 
     const handleShareLiveLocation = async (location: LocationData, duration: number) => {
         try {
             const message = await collaborationService.sendMessage(spaceId, {
-                content: `Live location for ${duration} min`,
+                content: t('live_location_duration').replace('{duration}', duration.toString()),
                 type: 'live_location',
                 metadata: {
                     latitude: location.latitude,
@@ -381,7 +384,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
             }));
         } catch (error) {
             console.error('Error sharing live location:', error);
-            showToast('Failed to share live location.', 'error');
+            showToast(t('failed_share_live_location_msg'), 'error');
         }
     };
 
@@ -401,11 +404,11 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                         <View style={styles.pollsBannerLeft}>
                             <Ionicons name="bar-chart" size={16} color={colors.tint} />
                             <Text style={[styles.pollsBannerText, { color: colors.tint }]}>
-                                {pollCount} active poll{pollCount !== 1 ? 's' : ''}
+                                {pollCount} {pollCount !== 1 ? t('active_polls_plural') : t('active_poll_singular')}
                             </Text>
                         </View>
                         <View style={styles.pollsBannerRight}>
-                            <Text style={[styles.pollsBannerCta, { color: colors.tint }]}>View all</Text>
+                            <Text style={[styles.pollsBannerCta, { color: colors.tint }]}>{t('view_all_btn')}</Text>
                             <Ionicons name="chevron-forward" size={14} color={colors.tint} />
                         </View>
                     </TouchableOpacity>
@@ -445,7 +448,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                         <View style={styles.replyPreviewBar} />
                         <View style={styles.replyPreviewContent}>
                             <Text style={styles.replyPreviewName} numberOfLines={1}>
-                                {(replyingTo as any).user_name || replyingTo.user?.name || 'User'}
+                                {(replyingTo as any).user_name || replyingTo.user?.name || t('user_fallback')}
                             </Text>
                             <Text style={[styles.replyPreviewText, { color: colors.text }]} numberOfLines={1}>
                                 {replyingTo.content}
@@ -474,8 +477,8 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
 
                     // Case 1: Not joined a public space or Pending participation
                     if ((!myParticipation && (isChannel || isGeneral)) || isPending) {
-                        const btnText = isDirect ? "Accept Message Request" : isChannel ? "Join Channel" : "Join Space";
-                        const hintText = isDirect ? "Accept this request to start chatting." : isChannel ? "Join to receive updates and participate." : "You must join to send messages.";
+                        const btnText = isDirect ? t('accept_message_request_btn') : isChannel ? t('join_channel_btn') : t('join_space');
+                        const hintText = isDirect ? t('accept_request_hint') : isChannel ? t('join_channel_hint') : t('must_join_to_send_msg');
 
                         return (
                             <View style={styles.joinBarContainer}>
@@ -504,7 +507,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
 
                     // Case 2: Joined but no write permission (Muted/Channel non-admin)
                     if (!canWrite || (isChannel && !isAdmin)) {
-                        const readonlyText = isChannel ? "Only admins can post messages in this channel" : "You do not have permission to send messages in this space";
+                        const readonlyText = isChannel ? t('only_admins_post_msg') : t('no_permission_send_msg');
                         return (
                             <View style={styles.adminOnlyBar}>
                                 <Ionicons name="lock-closed" size={16} color="#8E8E93" />
@@ -602,8 +605,8 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                                 </View>
 
                                 <TextInput
-                                    style={[styles.messageInput, { backgroundColor: colors.muted, color: colors.text }]}
-                                    placeholder={isRecording ? "Recording..." : `Message in ${space?.title || 'space'}...`}
+                                    style={[styles.messageInput, { backgroundColor: colors.muted, color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}
+                                    placeholder={isRecording ? t('recording_status_dot') : t('message_in_space_placeholder').replace('{title}', space?.title || t('space_fallback'))}
                                     value={content}
                                     onChangeText={setContent}
                                     multiline
@@ -661,7 +664,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                     } else if (action === 'location') {
                         setShowLocationPicker(true);
                     } else {
-                        showToast(`Coming Soon: ${action} features are coming soon!`, 'info');
+                        showToast(t('coming_soon_action').replace('{action}', action), 'info');
                     }
                 }}
             />
@@ -730,13 +733,14 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
     );
 };
 
-const styles = RNStyleSheet.create({
+function getStyles(colors: any, activeScheme: string, isRTL: boolean) {
+    return RNStyleSheet.create({
     chatContainer: {
         flex: 1,
     },
     /* ── Polls banner ── */
     pollsBanner: {
-        flexDirection: 'row',
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 14,
@@ -744,7 +748,7 @@ const styles = RNStyleSheet.create({
         borderBottomWidth: 1,
     },
     pollsBannerLeft: {
-        flexDirection: 'row',
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         alignItems: 'center',
         gap: 6,
     },
@@ -754,7 +758,7 @@ const styles = RNStyleSheet.create({
         color: '#007AFF',
     },
     pollsBannerRight: {
-        flexDirection: 'row',
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         alignItems: 'center',
         gap: 2,
     },
@@ -765,7 +769,7 @@ const styles = RNStyleSheet.create({
     },
     /* ── Input area ── */
     chatInputContainer: {
-        flexDirection: 'row',
+        flexDirection: 'row', // Always keep send on right
         alignItems: 'flex-end',
         paddingHorizontal: 8,
         paddingVertical: 8,
@@ -834,7 +838,7 @@ const styles = RNStyleSheet.create({
         marginBottom: 12,
     },
     sheetTitleRow: {
-        flexDirection: 'row',
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         alignItems: 'center',
         gap: 8,
     },
@@ -851,7 +855,7 @@ const styles = RNStyleSheet.create({
     },
     /* ── Reply Preview Styles ── */
     replyPreviewContainer: {
-        flexDirection: 'row',
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         backgroundColor: '#f9f9f9',
         borderTopWidth: 1,
         borderTopColor: '#eee',
@@ -879,6 +883,7 @@ const styles = RNStyleSheet.create({
     replyPreviewText: {
         fontSize: 13,
         color: '#666',
+        textAlign: isRTL ? 'right' : 'left',
     },
     replyPreviewClose: {
         padding: 4,
@@ -894,7 +899,7 @@ const styles = RNStyleSheet.create({
     },
     joinButton: {
         backgroundColor: '#007AFF',
-        flexDirection: 'row',
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         alignItems: 'center',
         justifyContent: 'center',
         paddingVertical: 12,
@@ -915,7 +920,7 @@ const styles = RNStyleSheet.create({
         textAlign: 'center',
     },
     adminOnlyBar: {
-        flexDirection: 'row',
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#F2F2F7',
@@ -991,5 +996,6 @@ const styles = RNStyleSheet.create({
         alignItems: 'center',
     },
 });
+}
 
 export default React.memo(SpaceChatTab);

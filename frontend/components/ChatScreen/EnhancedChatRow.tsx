@@ -4,7 +4,8 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import * as Haptics from 'expo-haptics';
 import { Link, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useContext } from 'react';
+import { useState, useContext, useMemo } from 'react';
+import { useTranslation } from '@/constants/i18n';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import CollaborationService, { CollaborationSpace } from '@/services/ChatScreen/CollaborationService';
 import AuthContext from '@/context/AuthContext';
@@ -64,6 +65,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
   onDelete,
 }) => {
   const { colors, activeScheme } = useAppTheme();
+  const { t, isRTL } = useTranslation();
   const [showCollaborationMenu, setShowCollaborationMenu] = useState(false);
   const [showContactMenu, setShowContactMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState<AnchorPosition>();
@@ -83,6 +85,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
   const { user } = useContext(AuthContext);
   const API_BASE = getApiBase();
   const token = getToken();
+  const styles = useMemo(() => getStyles(colors, activeScheme, isRTL), [colors, activeScheme, isRTL]);
 
   // ✅ Web-compatible alert/confirm helpers
   const simpleAlert = (title: string, message: string) => {
@@ -120,7 +123,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       setShowContactMenu(false);
     } catch (error) {
       console.error('Error starting chat:', error);
-      simpleAlert('Error', 'Failed to start chat');
+      simpleAlert(t('error'), t('failed_start_chat'));
     }
   };
 
@@ -147,8 +150,8 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       setShowContactMenu(false);
     } catch (error: any) {
       console.error('Error starting video call:', error);
-      const errorMessage = 'Failed to start video call.';
-      simpleAlert('Error', errorMessage);
+      const errorMessage = t('failed_start_video');
+      simpleAlert(t('error'), errorMessage);
     }
   };
 
@@ -175,7 +178,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       setShowContactMenu(false);
     } catch (error) {
       console.error('Error starting voice call:', error);
-      simpleAlert('Error', 'Failed to start voice call');
+      simpleAlert(t('error'), t('failed_start_voice'));
     }
   };
 
@@ -190,7 +193,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       setShowContactMenu(false);
     } catch (error) {
       console.error('Error starting whiteboard:', error);
-      simpleAlert('Error', 'Failed to start whiteboard');
+      simpleAlert(t('error'), t('failed_start_whiteboard'));
     }
   };
 
@@ -218,7 +221,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       switch (collabType) {
         case 'whiteboard':
           space = await collaborationService.createSpace({
-            title: `Whiteboard with ${name}`,
+            title: t('whiteboard_with_name').replace('{name}', name),
             space_type: 'whiteboard',
             linked_conversation_id: conversationId,
           });
@@ -226,7 +229,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
 
         case 'meeting':
           space = await collaborationService.createSpace({
-            title: `Meeting with ${name}`,
+            title: t('meeting_with_name').replace('{name}', name),
             space_type: 'meeting',
             linked_conversation_id: conversationId,
           });
@@ -234,7 +237,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
 
         case 'brainstorm':
           space = await collaborationService.createSpace({
-            title: `Brainstorm with ${name}`,
+            title: t('brainstorm_with_name').replace('{name}', name),
             space_type: 'brainstorm',
             linked_conversation_id: conversationId,
           });
@@ -242,7 +245,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
 
         case 'document':
           space = await collaborationService.createSpace({
-            title: `Document: ${name}`,
+            title: t('document_with_name').replace('{name}', name),
             space_type: 'document',
             linked_post_id: postId,
           });
@@ -250,7 +253,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
 
         case 'story':
           space = await collaborationService.createSpace({
-            title: `Story: ${name}`,
+            title: t('story_with_name').replace('{name}', name),
             space_type: 'story',
             linked_story_id: storyId,
           });
@@ -258,7 +261,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
 
         case 'voice':
           space = await collaborationService.createSpace({
-            title: `Voice chat with ${name}`,
+            title: t('voice_chat_with_name').replace('{name}', name),
             space_type: 'voice_channel',
             linked_conversation_id: conversationId,
           });
@@ -346,7 +349,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       console.error('Error muting space:', error);
       // Revert if failed
       setLocalIsMuted(previousState);
-      simpleAlert('Error', 'Failed to toggle mute status');
+      simpleAlert(t('error'), t('failed_to_update'));
     }
   };
 
@@ -356,20 +359,20 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
     }
     
     const warningMessage = type === 'space' 
-      ? 'The space will be deleted forever for all participants with all messages and belongings. Proceed?'
-      : 'Are you sure you want to delete this chat?';
-
-    confirmAction('Delete Chat', warningMessage, 'Delete', async () => {
+      ? t('space_delete_warning')
+      : t('delete_chat_confirm');
+ 
+    confirmAction(t('delete_chat'), warningMessage, t('delete'), async () => {
       try {
         if (type === 'space') {
           await collaborationService.deleteSpace(id);
-          simpleAlert('Success', 'Space deleted forever.');
+          simpleAlert(t('success'), t('success'));
           if (onDelete) onDelete(id);
         }
         setShowCollaborationMenu(false);
       } catch (error) {
         console.error('Error deleting space:', error);
-        simpleAlert('Error', 'Failed to delete space');
+        simpleAlert(t('error'), t('error'));
       }
     });
   };
@@ -379,19 +382,19 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     }
     
-    confirmAction('Leave Space', 'Are you sure you want to leave this space?', 'Leave', async () => {
+    confirmAction(t('leave_space'), t('leave_space_confirm'), t('leave'), async () => {
       try {
         await collaborationService.leaveSpace(id);
-        simpleAlert('Success', 'You have left the space.');
+        simpleAlert(t('success'), t('success'));
         setShowCollaborationMenu(false);
         if (onLeave) onLeave(id);
       } catch (error: any) {
         console.error('Error leaving space:', error);
         // Handle sole owner warning from backend
         if (error.response?.status === 403 && error.response?.data?.message) {
-          simpleAlert('Cannot Leave', error.response.data.message);
+          simpleAlert(t('cannot_leave'), error.response.data.message);
         } else {
-          simpleAlert('Error', 'Failed to leave space');
+          simpleAlert(t('error'), t('error'));
         }
       }
     });
@@ -406,11 +409,11 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       if (userIds.length > 0) {
         await collaborationService.inviteToSpace(id, userIds, 'participant');
       }
-      Alert.alert('Success', `Invited ${userIds.length} user(s) successfully!`);
+      simpleAlert(t('success'), t('invited_success').replace('{count}', userIds.length.toString()));
       setShowInviteModal(false);
     } catch (error) {
       console.error('Error inviting users:', error);
-      simpleAlert('Error', 'Failed to send invites.');
+      simpleAlert(t('error'), t('failed_start_chat'));
     }
   };
 
@@ -436,7 +439,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       if (type === 'space') {
         useCollaborationStore.getState().updateSpacePermissions(id, { is_pinned: previousState });
       }
-      simpleAlert('Error', 'Failed to toggle pin status');
+      simpleAlert(t('error'), t('failed_to_update'));
     }
   };
 
@@ -462,7 +465,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       if (type === 'space') {
         useCollaborationStore.getState().updateSpacePermissions(id, { is_archived: previousState });
       }
-      simpleAlert('Error', 'Failed to toggle archive status');
+      simpleAlert(t('error'), t('failed_to_update'));
     }
   };
 
@@ -488,7 +491,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       if (type === 'space') {
         useCollaborationStore.getState().updateSpacePermissions(id, { is_unread: previousState });
       }
-      simpleAlert('Error', 'Failed to toggle read status');
+      simpleAlert(t('error'), t('failed_to_update'));
     }
   };
 
@@ -514,7 +517,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       if (type === 'space') {
         useCollaborationStore.getState().updateSpacePermissions(id, { is_favorite: previousState });
       }
-      simpleAlert('Error', 'Failed to toggle favorite status');
+      simpleAlert(t('error'), t('failed_to_update'));
     }
   };
 
@@ -524,17 +527,17 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
     }
     
     confirmAction(
-      'Clear Chat', 
-      'Are you sure you want to clear all messages in this chat for you? This cannot be undone.', 
-      'Clear',
+      t('clear_chat'), 
+      t('clear_chat_confirm'), 
+      t('clear'),
       async () => {
         try {
           await collaborationService.clearChat(id);
           setShowCollaborationMenu(false);
-          simpleAlert('Success', 'Chat history cleared for you.');
+          simpleAlert(t('success'), t('success'));
         } catch (error) {
           console.error('Error clearing chat:', error);
-          simpleAlert('Error', 'Failed to clear chat');
+          simpleAlert(t('error'), t('error'));
         }
       }
     );
@@ -553,20 +556,20 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
     }
 
     confirmAction(
-      'Block User',
-      `Are you sure you want to block ${name}? They will not be able to message you or call you.`,
-      'Block',
+      t('block_user'),
+      t('block_user_confirm').replace('{name}', name),
+      t('block'),
       async () => {
         try {
           // Real-time: ideally we would remove them from list or mark them
           await blockUser(user_id);
-          simpleAlert('Success', `${name} has been blocked.`);
+          simpleAlert(t('success'), t('blocked_success').replace('{name}', name));
           setShowContactMenu(false);
           // If we want to remove them from contacts list immediately:
           // onDelete && onDelete(id);
         } catch (error) {
           console.error('Error blocking user:', error);
-          simpleAlert('Error', 'Failed to block user');
+          simpleAlert(t('error'), t('error'));
         }
       }
     );
@@ -590,7 +593,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
   const renderContactContent = () => (
     <Pressable
       ref={containerRef}
-      style={styles.container}
+      style={[styles.container, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
       onPress={handlePress}
       onLongPress={handleLongPress}
     >
@@ -605,32 +608,32 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       </Pressable>
 
       <View style={styles.content}>
-        <View style={styles.header}>
-          <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
+        <View style={[styles.header, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+          <Text style={[styles.name, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>
             {name}
             {username && (
               <Text style={[styles.username, { color: colors.textSecondary }]}> @{username}</Text>
             )}
           </Text>
-          <Text style={[styles.timestamp, { color: colors.textSecondary }]}>{timestamp}</Text>
+          <Text style={[styles.timestamp, { color: colors.textSecondary, textAlign: isRTL ? 'left' : 'right' }]}>{timestamp}</Text>
         </View>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
           <Text
-            style={[styles.lastMessage, styles.contactMessage, { color: colors.tint }]}
+            style={[styles.lastMessage, styles.contactMessage, { color: colors.tint, textAlign: isRTL ? 'right' : 'left' }]}
             numberOfLines={1}
           >
-            {lastMessage || 'Available for chat'}
+            {lastMessage || t('available_chat')}
           </Text>
 
-          <View style={styles.contactActions}>
+          <View style={[styles.contactActions, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
             <TouchableOpacity
               style={styles.contactActionButton}
               onPress={handleStartVideoCall}
             >
               <Ionicons name="videocam" size={18} color={colors.tint} />
             </TouchableOpacity>
-
+ 
             <TouchableOpacity
               style={styles.contactActionButton}
               onPress={handleStartVoiceCall}
@@ -667,7 +670,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
     return (
       <Pressable
         ref={containerRef}
-        style={styles.container}
+        style={[styles.container, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
         onPress={handlePress}
         onLongPress={handleLongPress}
       >
@@ -687,62 +690,62 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
           )}
 
           {type === 'space' && spaceData?.is_live && (
-            <View style={styles.liveIndicator}>
+            <View style={[styles.liveIndicator, { [isRTL ? 'left' : 'right']: -4 }]}>
               <View style={styles.liveDot} />
-              <Text style={styles.liveText}>LIVE</Text>
+              <Text style={styles.liveText}>{t('live')}</Text>
             </View>
           )}
         </View>
 
         <View style={styles.content}>
-          <View style={styles.header}>
-            <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
+          <View style={[styles.header, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+            <Text style={[styles.name, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>
               {type === 'space' && spaceData?.has_ai_assistant && (
                 <Ionicons name="sparkles" size={14} color={colors.tint} style={styles.aiIcon} />
               )}
               {displayTitle}
             </Text>
-            <Text style={[styles.timestamp, { color: colors.textSecondary }]}>{timestamp}</Text>
+            <Text style={[styles.timestamp, { color: colors.textSecondary, textAlign: isRTL ? 'left' : 'right' }]}>{timestamp}</Text>
           </View>
 
-          <View style={styles.footer}>
+          <View style={[styles.footer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
             <Text
               style={[
                 styles.lastMessage,
-                { color: colors.textSecondary },
+                { color: colors.textSecondary, textAlign: isRTL ? 'right' : 'left' },
                 type === 'contact' && [styles.contactMessage, { color: colors.tint }]
               ]}
               numberOfLines={1}
             >
               {type === 'space' ? (
                 <>
-                  {spaceType === 'chat' && 'Chat space'}
-                  {spaceType === 'whiteboard' && 'Whiteboard collaboration'}
-                  {spaceType === 'meeting' && 'Video meeting room'}
-                  {spaceType === 'document' && 'Document collaboration'}
-                  {spaceType === 'brainstorm' && 'Brainstorming session'}
-                  {spaceType === 'story' && 'Collaborative story'}
-                  {spaceType === 'voice_channel' && 'Voice channel'}
-                  {spaceData?.participants_count && ` • ${spaceData.participants_count} participants`}
+                  {spaceType === 'chat' && t('chat_space')}
+                  {spaceType === 'whiteboard' && t('whiteboard_collab')}
+                  {spaceType === 'meeting' && t('video_meeting_room')}
+                  {spaceType === 'document' && t('document_collab')}
+                  {spaceType === 'brainstorm' && t('brainstorm_session')}
+                  {spaceType === 'story' && t('collaborative_story')}
+                  {spaceType === 'voice_channel' && t('voice_channel')}
+                  {spaceData?.participants_count && t('participants_count').replace('{count}', spaceData.participants_count.toString())}
                 </>
               ) : (
-                lastMessage || (type === 'contact' ? 'Available for chat' : 'Start a conversation...')
+                lastMessage || (type === 'contact' ? t('available_chat') : t('start_conversation'))
               )}
             </Text>
 
-            <View style={styles.indicatorRow}>
+            <View style={[styles.indicatorRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
               {localIsMuted && (
-                <Ionicons name="volume-mute" size={14} color="#999" style={styles.indicatorIcon} />
+                <Ionicons name="volume-mute" size={14} color="#999" style={[styles.indicatorIcon, { [isRTL ? 'marginRight' : 'marginLeft']: 4 }]} />
               )}
               {(localIsPinned || isPinned) && (
-                <Ionicons name="pin" size={16} color="#b1b1b1" style={styles.pinIcon} />
+                <Ionicons name="pin" size={16} color="#b1b1b1" style={[styles.pinIcon, { [isRTL ? 'marginRight' : 'marginLeft']: 4 }]} />
               )}
               {localIsFavorite && (
-                <Ionicons name="heart" size={16} color="#FF3B30" style={styles.indicatorIcon} />
+                <Ionicons name="heart" size={16} color="#FF3B30" style={[styles.indicatorIcon, { [isRTL ? 'marginRight' : 'marginLeft']: 4 }]} />
               )}
-
+ 
               {unreadCount > 0 ? (
-                <View style={[styles.badge, { backgroundColor: '#25D366' }]}>
+                <View style={[styles.badge, { backgroundColor: '#25D366', [isRTL ? 'marginRight' : 'marginLeft']: 8 }]}>
                   <Text style={styles.badgeText}>
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </Text>
@@ -751,7 +754,8 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
                 <Ionicons 
                   name={type === 'space' && !isDirectSpace ? getSpaceIcon() as any : "chatbubble-outline"} 
                   size={20} 
-                  color={colors.tint} 
+                  color={colors.tint}
+                  style={{ [isRTL ? 'marginRight' : 'marginLeft']: 8 }}
                 />
               )}
             </View>
@@ -759,10 +763,10 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
 
           {/* Evolution level indicator for spaces */}
           {type === 'space' && (spaceData?.evolution_level ?? 0) > 1 && (
-            <View style={styles.evolutionIndicator}>
-              <Text style={[styles.evolutionText, { color: colors.textSecondary }]}>Level {spaceData?.evolution_level}</Text>
+            <View style={[styles.evolutionIndicator, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+              <Text style={[styles.evolutionText, { color: colors.textSecondary }]}>{t('level')} {spaceData?.evolution_level}</Text>
               {spaceData?.unlocked_features?.slice(0, 3).map((feature: string, index: number) => (
-                <Ionicons key={index} name="checkmark-circle" size={12} color="#4CAF50" />
+                <Ionicons key={index} name="checkmark-circle" size={12} color="#4CAF50" style={{ [isRTL ? 'marginRight' : 'marginLeft']: 4 }} />
               ))}
             </View>
           )}
@@ -787,27 +791,27 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
             const menuItems: MenuItem[] = [
               {
                 icon: (localIsPinned ? "pin-outline" : "pin") as any,
-                label: localIsPinned ? "Unpin Chat" : "Pin Chat",
+                label: localIsPinned ? t("unpin_chat") : t("pin_chat"),
                 onPress: handlePinSpace,
               },
               {
                 icon: (localIsUnread ? "mail-open-outline" : "mail-unread-outline") as any,
-                label: localIsUnread ? "Mark as Read" : "Mark as Unread",
+                label: localIsUnread ? t("mark_as_read") : t("mark_as_unread"),
                 onPress: handleMarkUnread,
               },
               {
                 icon: (localIsArchived ? "archive" : "archive-outline") as any,
-                label: localIsArchived ? "Unarchive Chat" : "Archive Chat",
+                label: localIsArchived ? t("unarchive_chat") : t("archive_chat"),
                 onPress: handleArchiveSpace,
               },
               {
                 icon: (localIsMuted ? "volume-high-outline" : "volume-mute-outline") as any,
-                label: localIsMuted ? "Unmute Notifications" : "Mute Notifications",
+                label: localIsMuted ? t("unmute_notifications") : t("mute_notifications"),
                 onPress: handleMuteSpace,
               },
               {
                 icon: (localIsFavorite ? "heart-dislike-outline" : "heart-outline") as any,
-                label: localIsFavorite ? "Remove from Favorites" : "Add to Favorites",
+                label: localIsFavorite ? t("remove_from_favorites") : t("add_to_favorites"),
                 onPress: handleFavoriteSpace,
               }
             ];
@@ -816,7 +820,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
               if (spaceData?.my_role === 'owner' || spaceData?.my_role === 'moderator') {
                 menuItems.push({
                   icon: "person-add-outline" as any,
-                  label: "Invite People",
+                  label: t("invite_people"),
                   onPress: () => {
                     setShowInviteModal(true);
                     setShowCollaborationMenu(false);
@@ -827,7 +831,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
               if (spaceData?.my_role !== 'owner') {
                 menuItems.push({
                   icon: "exit-outline" as any,
-                  label: "Leave Space",
+                  label: t("leave_space"),
                   onPress: handleLeaveSpace,
                   destructive: true,
                 });
@@ -836,14 +840,14 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
 
             menuItems.push({
               icon: "remove-circle-outline" as any,
-              label: "Clear Chat",
+              label: t("clear_chat"),
               onPress: handleClearChat,
             });
 
             if (spaceData?.my_role === 'owner' || isDirectSpace) {
               menuItems.push({
                 icon: "trash-outline" as any,
-                label: "Delete Chat",
+                label: t("delete_chat"),
                 onPress: handleDeleteSpace,
                 destructive: true,
               });
@@ -861,12 +865,12 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
         items={[
           {
             icon: 'chatbubble-ellipses-outline',
-            label: 'Message',
+            label: t('message'),
             onPress: handleStartChat,
           },
           {
             icon: 'ban-outline',
-            label: 'Block User',
+            label: t('block_user'),
             onPress: handleBlockUser,
             destructive: true,
           },
@@ -884,9 +888,9 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => StyleSheet.create({
   container: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -895,7 +899,7 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     position: 'relative',
-    marginRight: 16,
+    [isRTL ? 'marginLeft' : 'marginRight']: 16,
   },
   avatar: {
     width: 60,
@@ -918,12 +922,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#4CAF50',
     borderWidth: 2,
+    borderColor: colors.surface,
   },
   liveIndicator: {
     position: 'absolute',
     top: -4,
-    right: -4,
-    flexDirection: 'row',
+    [isRTL ? 'left' : 'right']: -4,
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     backgroundColor: '#FF3B30',
     paddingHorizontal: 6,
@@ -935,7 +940,7 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     backgroundColor: '#fff',
-    marginRight: 4,
+    [isRTL ? 'marginLeft' : 'marginRight']: 4,
   },
   liveText: {
     color: '#fff',
@@ -945,48 +950,57 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     minWidth: 0,
+    alignItems: isRTL ? 'flex-end' : 'flex-start',
   },
   header: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 4,
+    width: '100%',
   },
   name: {
     fontSize: 17,
     fontWeight: '700',
     flex: 1,
-    marginRight: 8,
+    color: colors.text,
+    textAlign: isRTL ? 'right' : 'left',
+    [isRTL ? 'marginLeft' : 'marginRight']: 8,
   },
   aiIcon: {
-    marginRight: 4,
+    [isRTL ? 'marginLeft' : 'marginRight']: 4,
   },
   pinIcon: {
-    marginLeft: 0,
+    [isRTL ? 'marginRight' : 'marginLeft']: 4,
   },
   indicatorRow: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     gap: 6,
   },
   indicatorIcon: {
-    marginLeft: 0,
+    [isRTL ? 'marginRight' : 'marginLeft']: 4,
   },
   timestamp: {
     fontSize: 12,
+    color: colors.textSecondary,
+    textAlign: isRTL ? 'left' : 'right',
   },
   footer: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    width: '100%',
   },
   lastMessage: {
     fontSize: 14,
     flex: 1,
-    marginRight: 8,
+    color: colors.textSecondary,
+    textAlign: isRTL ? 'right' : 'left',
+    [isRTL ? 'marginLeft' : 'marginRight']: 8,
   },
   contactMessage: {
-    color: '#007AFF',
+    color: colors.tint,
     fontWeight: '500',
   },
   badge: {
@@ -997,6 +1011,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 6,
+    [isRTL ? 'marginRight' : 'marginLeft']: 8,
   },
   badgeText: {
     color: '#fff',
@@ -1004,18 +1019,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   evolutionIndicator: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     marginTop: 4,
   },
   evolutionText: {
     fontSize: 11,
-    marginRight: 4,
+    color: colors.textSecondary,
+    [isRTL ? 'marginLeft' : 'marginRight']: 4,
   },
   collaborationMenu: {
     position: 'absolute',
-    right: 16,
+    [isRTL ? 'left' : 'right']: 16,
     top: 60,
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 8,
     ...createShadow({
@@ -1029,34 +1046,33 @@ const styles = StyleSheet.create({
     minWidth: 150,
   },
   collabMenuItem: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     padding: 8,
     paddingHorizontal: 12,
   },
   collabMenuText: {
-    marginLeft: 8,
+    [isRTL ? 'marginRight' : 'marginLeft']: 8,
     fontSize: 14,
+    color: colors.text,
   },
-
   username: {
     fontSize: 13,
     fontWeight: '400',
+    color: colors.textSecondary,
   },
-
   contactActions: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
   },
-
   contactActionButton: {
-    marginLeft: 8,
+    [isRTL ? 'marginRight' : 'marginLeft']: 8,
   },
-
   contactMenu: {
     position: 'absolute',
     top: 70,
-    right: 16,
+    [isRTL ? 'left' : 'right']: 16,
+    backgroundColor: colors.surface,
     borderRadius: 12,
     paddingVertical: 8,
     paddingHorizontal: 4,
@@ -1070,24 +1086,22 @@ const styles = StyleSheet.create({
     zIndex: 2000,
     minWidth: 180,
   },
-
   contactMenuItem: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 12,
   },
-
   contactMenuText: {
-    marginLeft: 10,
+    [isRTL ? 'marginRight' : 'marginLeft']: 10,
     fontSize: 14,
+    color: colors.text,
   },
-
   contactMenuClose: {
     borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
     marginTop: 4,
   },
-
 });
 
 export default EnhancedChatRow;

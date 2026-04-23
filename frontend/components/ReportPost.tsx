@@ -24,6 +24,7 @@ import { createShadow } from '@/utils/styles';
 import AuthContext from '@/context/AuthContext';
 import { useReportedContentStore } from '@/stores/reportedContentStore';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 
 // Professional, education-focused reporting categories
 const REPORT_CATEGORIES = {
@@ -31,13 +32,13 @@ const REPORT_CATEGORIES = {
         {
             id: 'information_integrity',
             icon: '🔬',
-            title: 'Information Integrity',
-            description: 'Scientific accuracy or factual integrity',
+            title: 'information_integrity',
+            description: 'information_integrity_desc',
             subcategories: [
-                { id: 'scientific_accuracy', label: 'Scientific / Biological Fact' },
-                { id: 'misinformation', label: 'General Misinformation' },
-                { id: 'manipulated_media', label: 'AI Manipulated / Deepfake' },
-                { id: 'source_verification', label: 'Unverified / Fake Sources' },
+                { id: 'scientific_accuracy', label: 'scientific_accuracy' },
+                { id: 'misinformation', label: 'misinformation' },
+                { id: 'manipulated_media', label: 'manipulated_media' },
+                { id: 'source_verification', label: 'source_verification' },
             ],
             severity: 'high',
             action: 'ai_verification',
@@ -45,13 +46,13 @@ const REPORT_CATEGORIES = {
         {
             id: 'criminality',
             icon: '🚨',
-            title: 'Criminal Activity',
-            description: 'Illegal acts, scams, or extremism',
+            title: 'criminality',
+            description: 'criminality_desc',
             subcategories: [
-                { id: 'illegal_acts', label: 'Illegal Acts / Activities' },
-                { id: 'scams_fraud', label: 'Scams or Fraud' },
-                { id: 'drug_trafficking', label: 'Drug / Weapon Trafficking' },
-                { id: 'extremism', label: 'Violent Extremism' },
+                { id: 'illegal_acts', label: 'illegal_acts' },
+                { id: 'scams_fraud', label: 'scams_fraud' },
+                { id: 'drug_trafficking', label: 'drug_trafficking' },
+                { id: 'extremism', label: 'extremism' },
             ],
             severity: 'critical',
             action: 'urgent_removal',
@@ -59,12 +60,12 @@ const REPORT_CATEGORIES = {
         {
             id: 'sexual_content',
             icon: '🔞',
-            title: 'Sexual Content',
-            description: 'Nudity, sexual acts, or pornography',
+            title: 'sexual_content',
+            description: 'sexual_content_desc',
             subcategories: [
-                { id: 'nudity', label: 'Nudity or Partial Nudity' },
-                { id: 'sexual_acts', label: 'Sexual Acts or Pornography' },
-                { id: 'solicitation', label: 'Sexual Solicitation' },
+                { id: 'nudity', label: 'nudity' },
+                { id: 'sexual_acts', label: 'sexual_acts' },
+                { id: 'solicitation', label: 'solicitation' },
             ],
             severity: 'high',
             action: 'urgent_removal',
@@ -72,26 +73,26 @@ const REPORT_CATEGORIES = {
         {
             id: 'ethical_violation',
             icon: '⚖️',
-            title: 'Ethical Violation',
-            description: 'Insults, hate speech, or malicious intent',
+            title: 'ethical_violation',
+            description: 'ethical_violation_desc',
             subcategories: [
-                { id: 'hate_speech', label: 'Ethnic / Cultural Hate Speech' },
-                { id: 'targeted_insult', label: 'Personal Insult / Harassment' },
-                { id: 'malicious_narrative', label: 'Harmful Social Narrative' },
-                { id: 'bullying', label: 'Bullying or Intimidation' },
+                { id: 'hate_speech', label: 'hate_speech' },
+                { id: 'targeted_insult', label: 'targeted_insult' },
+                { id: 'malicious_narrative', label: 'malicious_narrative' },
+                { id: 'bullying', label: 'bullying' },
             ],
             severity: 'high',
             action: 'immediate_restriction',
         },
         {
-            id: 'safety',
+            id: 'safety_rights',
             icon: '🛡️',
-            title: 'Safety & Rights',
-            description: 'Physical safety or individual rights',
+            title: 'safety_rights',
+            description: 'safety_rights_desc',
             subcategories: [
-                { id: 'violence', label: 'Violence or Graphic Content' },
-                { id: 'impersonation', label: 'Identity Theft / Impersonation' },
-                { id: 'privacy', label: 'Privacy / Doxxing' },
+                { id: 'violence', label: 'violence' },
+                { id: 'impersonation', label: 'impersonation' },
+                { id: 'privacy_doxxing', label: 'privacy_doxxing' },
             ],
             severity: 'critical',
             action: 'urgent_removal',
@@ -101,12 +102,12 @@ const REPORT_CATEGORIES = {
         {
             id: 'criminality',
             icon: '🚨',
-            title: 'Criminal Activity',
-            description: 'Illegal acts, scams, or extremism',
+            title: 'criminality',
+            description: 'criminality_desc',
             subcategories: [
-                { id: 'illegal_acts', label: 'Illegal Acts / Activities' },
-                { id: 'scams_fraud', label: 'Scams or Fraud' },
-                { id: 'extremism', label: 'Violent Extremism' },
+                { id: 'illegal_acts', label: 'illegal_acts' },
+                { id: 'scams_fraud', label: 'scams_fraud' },
+                { id: 'extremism', label: 'extremism' },
             ],
             severity: 'critical',
             action: 'global_ban',
@@ -114,12 +115,12 @@ const REPORT_CATEGORIES = {
         {
             id: 'sexual_content',
             icon: '🔞',
-            title: 'Sexual Content',
-            description: 'Nudity, sexual acts, or pornography',
+            title: 'sexual_content',
+            description: 'sexual_content_desc',
             subcategories: [
-                { id: 'nudity', label: 'Nudity or Partial Nudity' },
-                { id: 'sexual_acts', label: 'Sexual Acts or Pornography' },
-                { id: 'solicitation', label: 'Sexual Solicitation' },
+                { id: 'nudity', label: 'nudity' },
+                { id: 'sexual_acts', label: 'sexual_acts' },
+                { id: 'solicitation', label: 'solicitation' },
             ],
             severity: 'high',
             action: 'global_ban',
@@ -127,11 +128,11 @@ const REPORT_CATEGORIES = {
         {
             id: 'bias_reporting',
             icon: '🎯',
-            title: 'Bias & Targeted Reporting',
-            description: 'Using reporting as a tool for harassment',
+            title: 'bias_reporting',
+            description: 'bias_reporting_desc',
             subcategories: [
-                { id: 'false_flagging', label: 'Mass / Automated False Reporting' },
-                { id: 'ethnic_targeting', label: 'Ethnic / Cultural Targeting' },
+                { id: 'false_flagging', label: 'false_flagging' },
+                { id: 'ethnic_targeting', label: 'ethnic_targeting' },
             ],
             severity: 'high',
             action: 'investigate_bias',
@@ -139,11 +140,11 @@ const REPORT_CATEGORIES = {
         {
             id: 'malicious_behavior',
             icon: '⚠️',
-            title: 'Malicious Behavior',
-            description: 'Intentional harm or platform abuse',
+            title: 'malicious_behavior',
+            description: 'malicious_behavior_desc',
             subcategories: [
-                { id: 'coordinated_attack', label: 'Coordinated Harassment' },
-                { id: 'bot_activity', label: 'Automated Platform Abuse' },
+                { id: 'coordinated_attack', label: 'coordinated_attack' },
+                { id: 'bot_activity', label: 'bot_activity' },
             ],
             severity: 'critical',
             action: 'global_ban',
@@ -153,11 +154,11 @@ const REPORT_CATEGORIES = {
         {
             id: 'criminality',
             icon: '🚨',
-            title: 'Criminal Activity',
-            description: 'Illegal acts, scams, or extremism',
+            title: 'criminality',
+            description: 'criminality_desc',
             subcategories: [
-                { id: 'illegal_acts', label: 'Illegal Acts / Activities' },
-                { id: 'scams_fraud', label: 'Scams or Fraud' },
+                { id: 'illegal_acts', label: 'illegal_acts' },
+                { id: 'scams_fraud', label: 'scams_fraud' },
             ],
             severity: 'critical',
             action: 'urgent_removal',
@@ -165,11 +166,11 @@ const REPORT_CATEGORIES = {
         {
             id: 'sexual_content',
             icon: '🔞',
-            title: 'Sexual Content',
-            description: 'Nudity, sexual acts, or pornography',
+            title: 'sexual_content',
+            description: 'sexual_content_desc',
             subcategories: [
-                { id: 'nudity', label: 'Nudity or Partial Nudity' },
-                { id: 'sexual_acts', label: 'Sexual Acts or Pornography' },
+                { id: 'nudity', label: 'nudity' },
+                { id: 'sexual_acts', label: 'sexual_acts' },
             ],
             severity: 'high',
             action: 'urgent_removal',
@@ -177,13 +178,13 @@ const REPORT_CATEGORIES = {
         {
             id: 'ethical_violation',
             icon: '⚖️',
-            title: 'Ethical Violation',
-            description: 'Insults, hate speech, or malicious intent',
+            title: 'ethical_violation',
+            description: 'ethical_violation_desc',
             subcategories: [
-                { id: 'hate_speech', label: 'Ethnic / Cultural Hate Speech' },
-                { id: 'targeted_insult', label: 'Personal Insult / Harassment' },
-                { id: 'malicious_narrative', label: 'Harmful Social Narrative' },
-                { id: 'bullying', label: 'Bullying or Intimidation' },
+                { id: 'hate_speech', label: 'hate_speech' },
+                { id: 'targeted_insult', label: 'targeted_insult' },
+                { id: 'malicious_narrative', label: 'malicious_narrative' },
+                { id: 'bullying', label: 'bullying' },
             ],
             severity: 'high',
             action: 'immediate_restriction',
@@ -193,11 +194,11 @@ const REPORT_CATEGORIES = {
         {
             id: 'information_integrity',
             icon: '🔬',
-            title: 'Information Integrity',
-            description: 'Scientific accuracy or factual integrity',
+            title: 'information_integrity',
+            description: 'information_integrity_desc',
             subcategories: [
-                { id: 'scientific_accuracy', label: 'Scientific / Biological Fact' },
-                { id: 'misinformation', label: 'General Misinformation' },
+                { id: 'scientific_accuracy', label: 'scientific_accuracy' },
+                { id: 'misinformation', label: 'misinformation' },
             ],
             severity: 'high',
             action: 'ai_verification',
@@ -205,12 +206,12 @@ const REPORT_CATEGORIES = {
         {
             id: 'criminality',
             icon: '🚨',
-            title: 'Criminal Activity',
-            description: 'Illegal acts, scams, or extremism',
+            title: 'criminality',
+            description: 'criminality_desc',
             subcategories: [
-                { id: 'illegal_acts', label: 'Illegal Acts / Activities' },
-                { id: 'drug_trafficking', label: 'Drug / Weapon Trafficking' },
-                { id: 'extremism', label: 'Violent Extremism' },
+                { id: 'illegal_acts', label: 'illegal_acts' },
+                { id: 'drug_trafficking', label: 'drug_trafficking' },
+                { id: 'extremism', label: 'extremism' },
             ],
             severity: 'critical',
             action: 'urgent_removal',
@@ -218,11 +219,11 @@ const REPORT_CATEGORIES = {
         {
             id: 'sexual_content',
             icon: '🔞',
-            title: 'Sexual Content',
-            description: 'Nudity, sexual acts, or pornography',
+            title: 'sexual_content',
+            description: 'sexual_content_desc',
             subcategories: [
-                { id: 'nudity', label: 'Nudity or Partial Nudity' },
-                { id: 'sexual_acts', label: 'Sexual Acts or Pornography' },
+                { id: 'nudity', label: 'nudity' },
+                { id: 'sexual_acts', label: 'sexual_acts' },
             ],
             severity: 'high',
             action: 'urgent_removal',
@@ -232,12 +233,12 @@ const REPORT_CATEGORIES = {
         {
             id: 'information_integrity',
             icon: '🔬',
-            title: 'Information Integrity',
-            description: 'Scientific accuracy or factual integrity',
+            title: 'information_integrity',
+            description: 'information_integrity_desc',
             subcategories: [
-                { id: 'scientific_accuracy', label: 'Scientific / Biological Fact' },
-                { id: 'misinformation', label: 'General Misinformation' },
-                { id: 'manipulated_media', label: 'AI Manipulated / Deepfake' },
+                { id: 'scientific_accuracy', label: 'scientific_accuracy' },
+                { id: 'misinformation', label: 'misinformation' },
+                { id: 'manipulated_media', label: 'manipulated_media' },
             ],
             severity: 'high',
             action: 'ai_verification',
@@ -245,11 +246,11 @@ const REPORT_CATEGORIES = {
         {
             id: 'criminality',
             icon: '🚨',
-            title: 'Criminal Activity',
-            description: 'Illegal acts, scams, or extremism',
+            title: 'criminality',
+            description: 'criminality_desc',
             subcategories: [
-                { id: 'illegal_acts', label: 'Illegal Acts / Activities' },
-                { id: 'scams_fraud', label: 'Scams or Fraud' },
+                { id: 'illegal_acts', label: 'illegal_acts' },
+                { id: 'scams_fraud', label: 'scams_fraud' },
             ],
             severity: 'critical',
             action: 'urgent_removal',
@@ -257,11 +258,11 @@ const REPORT_CATEGORIES = {
         {
             id: 'sexual_content',
             icon: '🔞',
-            title: 'Sexual Content',
-            description: 'Nudity, sexual acts, or pornography',
+            title: 'sexual_content',
+            description: 'sexual_content_desc',
             subcategories: [
-                { id: 'nudity', label: 'Nudity or Partial Nudity' },
-                { id: 'sexual_acts', label: 'Sexual Acts or Pornography' },
+                { id: 'nudity', label: 'nudity' },
+                { id: 'sexual_acts', label: 'sexual_acts' },
             ],
             severity: 'high',
             action: 'urgent_removal',
@@ -269,12 +270,12 @@ const REPORT_CATEGORIES = {
         {
             id: 'ethical_violation',
             icon: '⚖️',
-            title: 'Ethical Violation',
-            description: 'Insults, hate speech, or malicious intent',
+            title: 'ethical_violation',
+            description: 'ethical_violation_desc',
             subcategories: [
-                { id: 'hate_speech', label: 'Ethnic / Cultural Hate Speech' },
-                { id: 'targeted_insult', label: 'Personal Insult / Harassment' },
-                { id: 'bullying', label: 'Bullying or Intimidation' },
+                { id: 'hate_speech', label: 'hate_speech' },
+                { id: 'targeted_insult', label: 'targeted_insult' },
+                { id: 'bullying', label: 'bullying' },
             ],
             severity: 'high',
             action: 'immediate_restriction',
@@ -322,7 +323,8 @@ export default function ReportPost({
 }: ReportPostProps) {
     const insets = useSafeAreaInsets();
     const { colors, activeScheme } = useAppTheme();
-    const styles = getStyles(colors, activeScheme);
+    const { t, isRTL } = useTranslation();
+    const styles = getStyles(colors, activeScheme, isRTL);
     const { showToast } = useToastStore();
     const { user } = React.useContext(AuthContext);
 
@@ -391,7 +393,7 @@ export default function ReportPost({
 
     const handleSubmitReport = async () => {
         if (!selectedCategory || !selectedSubcategory) {
-            showToast('Please select a specific reason', 'error');
+            showToast(t('select_issue_area'), 'error');
             return;
         }
 
@@ -429,7 +431,7 @@ export default function ReportPost({
 
         } catch (error: any) {
             setStep('details');
-            showToast(error.response?.data?.error || 'Failed to submit report. Please try again.', 'error');
+            showToast(error.response?.data?.error || t('failed_process_request'), 'error');
         } finally {
             setLoading(false);
         }
@@ -458,9 +460,9 @@ export default function ReportPost({
                         color={colors.tint}
                     />
                 </BlurView>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>Information Integrity</Text>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>{t('information_integrity')}</Text>
                 <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
-                    Select the area that best describes the issue. Use 'Scientific Accuracy' for factual biology or science claims.
+                    {t('select_issue_area')}
                 </Text>
             </View>
 
@@ -474,8 +476,8 @@ export default function ReportPost({
                     <View style={styles.categoryInfo}>
                         <Text style={styles.categoryEmoji}>{category.icon}</Text>
                         <View style={{ flex: 1 }}>
-                            <Text style={[styles.categoryLabel, { color: colors.text }]}>{category.title}</Text>
-                            <Text style={[styles.categoryDesc, { color: colors.textSecondary }]}>{category.description}</Text>
+                            <Text style={[styles.categoryLabel, { color: colors.text }]}>{t(category.title)}</Text>
+                            <Text style={[styles.categoryDesc, { color: colors.textSecondary }]}>{t(category.description)}</Text>
                         </View>
                         <Ionicons name="chevron-forward" size={18} color={colors.border} />
                     </View>
@@ -498,12 +500,12 @@ export default function ReportPost({
                 }}
             >
                 <Ionicons name="arrow-back" size={20} color={colors.text} />
-                <Text style={[styles.backText, { color: colors.textSecondary }]}>Back to Categories</Text>
+                <Text style={[styles.backText, { color: colors.textSecondary }]}>{t('back_to_categories')}</Text>
             </TouchableOpacity>
 
             <View style={styles.detailsHeader}>
-                <Text style={[styles.selectedTitle, { color: colors.text }]}>{selectedCategory.title}</Text>
-                <Text style={[styles.detailsSubtitle, { color: colors.textSecondary }]}>Specify the exact nature of the violation</Text>
+                <Text style={[styles.selectedTitle, { color: colors.text }]}>{t(selectedCategory.title)}</Text>
+                <Text style={[styles.detailsSubtitle, { color: colors.textSecondary }]}>{t('specify_violation_nature')}</Text>
             </View>
 
             <View style={styles.subcategoryGrid}>
@@ -520,17 +522,17 @@ export default function ReportPost({
                             styles.subOptionText,
                             { color: selectedSubcategory === sub.id ? '#fff' : colors.text }
                         ]}>
-                            {sub.label}
+                            {t(sub.label)}
                         </Text>
                     </TouchableOpacity>
                 ))}
             </View>
 
             <View style={styles.inputSection}>
-                <Text style={[styles.inputLabel, { color: colors.text }]}>Additional Context</Text>
+                <Text style={[styles.inputLabel, { color: colors.text }]}>{t('additional_context')}</Text>
                 <TextInput
                     style={[styles.textArea, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                    placeholder="Provide details to assist the AI verification..."
+                    placeholder={t('assist_ai_verification_placeholder')}
                     placeholderTextColor={colors.textSecondary}
                     multiline
                     value={description}
@@ -540,8 +542,8 @@ export default function ReportPost({
 
             <View style={[styles.urgentSection, { backgroundColor: colors.muted }]}>
                 <View style={styles.urgentTextContainer}>
-                    <Text style={styles.urgentLabel}>Urgent Review Required</Text>
-                    <Text style={[styles.urgentDesc, { color: colors.textSecondary }]}>Flag this for immediate human intervention if physical safety is at risk.</Text>
+                    <Text style={styles.urgentLabel}>{t('urgent_review_required')}</Text>
+                    <Text style={[styles.urgentDesc, { color: colors.textSecondary }]}>{t('flag_physical_safety')}</Text>
                 </View>
                 <Switch 
                     value={isUrgent}
@@ -557,7 +559,7 @@ export default function ReportPost({
                 onPress={handleSubmitReport}
                 disabled={!selectedSubcategory || loading}
             >
-                <Text style={styles.submitButtonText}>{isUpdate ? 'Update AI Report' : 'Generate AI Report'}</Text>
+                <Text style={styles.submitButtonText}>{isUpdate ? t('update_ai_report') : t('generate_ai_report')}</Text>
                 <Ionicons name={isUpdate ? "refresh" : "shield-checkmark"} size={20} color="#fff" />
             </TouchableOpacity>
         </ScrollView>
@@ -566,17 +568,17 @@ export default function ReportPost({
     const renderAiAnalysisStep = () => (
         <View style={styles.aiStepContainer}>
             <ActivityIndicator size="large" color={colors.success} />
-            <Text style={[styles.aiStatusText, { color: colors.text }]}>Pure AI Analysis in Progress...</Text>
-            <Text style={[styles.aiStepSub, { color: colors.textSecondary }]}>Distinguishing scientific context from malicious intent</Text>
+            <Text style={[styles.aiStatusText, { color: colors.text }]}>{t('ai_analysis_progress')}</Text>
+            <Text style={[styles.aiStepSub, { color: colors.textSecondary }]}>{t('distinguishing_context')}</Text>
             
             <View style={styles.aiProcessingList}>
                 <View style={[styles.aiBullet, { opacity: 0.8 }]}>
                     <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-                    <Text style={styles.aiBulletText}>Cross-referencing scientific databases</Text>
+                    <Text style={styles.aiBulletText}>{t('cross_referencing_databases')}</Text>
                 </View>
                 <View style={[styles.aiBullet, { opacity: 0.6 }]}>
                     <ActivityIndicator size="small" color={colors.text} style={{ transform: [{ scale: 0.6 }] }} />
-                    <Text style={[styles.aiBulletText, { color: colors.text }]}>Analyzing reporting bias and targeting patterns</Text>
+                    <Text style={[styles.aiBulletText, { color: colors.text }]}>{t('analyzing_reporting_bias')}</Text>
                 </View>
             </View>
         </View>
@@ -585,20 +587,20 @@ export default function ReportPost({
     const renderSubmittedStep = () => (
         <View style={styles.submittedContainer}>
             <Ionicons name="checkmark-done-circle" size={80} color={colors.success} />
-            <Text style={[styles.submittedTitle, { color: colors.text }]}>Report Authenticated</Text>
+            <Text style={[styles.submittedTitle, { color: colors.text }]}>{t('report_authenticated')}</Text>
             <Text style={[styles.submittedText, { color: colors.textSecondary }]}>
-                Your report has been analyzed by our Pure AI moderation engine.
+                {t('ai_moderation_engine_desc')}
             </Text>
 
             {aiSignature && (
                 <BlurView intensity={30} tint={activeScheme === 'dark' ? 'dark' : 'light'} style={[styles.aiAnalysisCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-                    <Text style={styles.signatureTitle}>AI Moderate Signature</Text>
+                    <Text style={styles.signatureTitle}>{t('ai_moderate_signature')}</Text>
                     <View style={styles.statRow}>
-                        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Science Accuracy</Text>
+                        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('science_accuracy_label')}</Text>
                         <Text style={[styles.statValue, { color: colors.text }]}>{(aiSignature.fact_score * 100).toFixed(1)}%</Text>
                     </View>
                     <View style={styles.statRow}>
-                        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Malicious Intent</Text>
+                        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('malicious_intent_label')}</Text>
                         <Text style={[styles.statValue, { color: aiSignature.malicious_intent_score > 0.5 ? colors.error : colors.success }]}>
                             {(aiSignature.malicious_intent_score * 100).toFixed(1)}%
                         </Text>
@@ -607,7 +609,7 @@ export default function ReportPost({
             )}
 
             <TouchableOpacity style={[styles.finalButton, { backgroundColor: colors.tint }]} onPress={handleClose}>
-                <Text style={[styles.finalButtonText, { color: '#fff' }]}>Return to Platform</Text>
+                <Text style={[styles.finalButtonText, { color: '#fff' }]}>{t('return_to_platform')}</Text>
             </TouchableOpacity>
         </View>
     );
@@ -633,7 +635,7 @@ export default function ReportPost({
                         <View style={styles.dragIndicator} />
                         
                         <View style={styles.topNav}>
-                            <Text style={[styles.modalTitle, { color: colors.text }]}>Trust Center</Text>
+                            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('trust_center')}</Text>
                             <TouchableOpacity onPress={handleClose} style={[styles.closeBtn, { backgroundColor: colors.muted, borderRadius: 20 }]}>
                                 <Ionicons name="close" size={24} color={colors.text} />
                             </TouchableOpacity>
@@ -650,7 +652,7 @@ export default function ReportPost({
     );
 }
 
-const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
+const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => StyleSheet.create({
     overlay: {
         flex: 1,
         justifyContent: 'flex-end',
@@ -683,7 +685,7 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
         marginBottom: 16,
     },
     topNav: {
-        flexDirection: 'row',
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 24,
@@ -732,7 +734,7 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
         borderColor: colors.border,
     },
     categoryInfo: {
-        flexDirection: 'row',
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         alignItems: 'center',
         gap: 16,
     },
@@ -744,13 +746,15 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
         fontWeight: '600',
         color: colors.text,
         marginBottom: 2,
+        textAlign: isRTL ? 'right' : 'left',
     },
     categoryDesc: {
         fontSize: 13,
         color: colors.textSecondary,
+        textAlign: isRTL ? 'right' : 'left',
     },
     backButton: {
-        flexDirection: 'row',
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         alignItems: 'center',
         gap: 8,
         marginBottom: 24,
@@ -767,13 +771,15 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
         fontWeight: '800',
         color: colors.text,
         marginBottom: 4,
+        textAlign: isRTL ? 'right' : 'left',
     },
     detailsSubtitle: {
         fontSize: 14,
         color: colors.textSecondary,
+        textAlign: isRTL ? 'right' : 'left',
     },
     subcategoryGrid: {
-        flexDirection: 'row',
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         flexWrap: 'wrap',
         gap: 10,
         marginBottom: 32,
@@ -806,6 +812,7 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
         fontWeight: '600',
         color: colors.text,
         marginBottom: 12,
+        textAlign: isRTL ? 'right' : 'left',
     },
     textArea: {
         backgroundColor: colors.background,
@@ -822,7 +829,7 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
         backgroundColor: colors.success,
         borderRadius: 20,
         padding: 18,
-        flexDirection: 'row',
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         justifyContent: 'center',
         alignItems: 'center',
         gap: 12,
@@ -864,13 +871,14 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
         gap: 12,
     },
     aiBullet: {
-        flexDirection: 'row',
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         alignItems: 'center',
         gap: 10,
     },
     aiBulletText: {
         color: colors.text,
         fontSize: 13,
+        textAlign: isRTL ? 'right' : 'left',
     },
     submittedContainer: {
         alignItems: 'center',
@@ -910,7 +918,7 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
         textAlign: 'center',
     },
     statRow: {
-        flexDirection: 'row',
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         justifyContent: 'space-between',
         paddingVertical: 8,
     },
@@ -936,7 +944,7 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
         fontWeight: '700',
     },
     urgentSection: {
-        flexDirection: 'row',
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         backgroundColor: colors.error + '10',
@@ -955,11 +963,13 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
         fontWeight: '700',
         color: colors.error,
         marginBottom: 2,
+        textAlign: isRTL ? 'right' : 'left',
     },
     urgentDesc: {
         fontSize: 12,
         color: colors.textSecondary,
         lineHeight: 16,
+        textAlign: isRTL ? 'right' : 'left',
     },
 });
 

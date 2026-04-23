@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import { useTranslation } from '@/constants/i18n';
 import { createShadow } from '@/utils/styles';
 
 interface GuestJoinViewProps {
@@ -22,6 +23,7 @@ interface GuestJoinViewProps {
 }
 
 export const GuestJoinView: React.FC<GuestJoinViewProps> = ({ space, onJoin, onLogin, activityId }) => {
+    const { t } = useTranslation();
     const [name, setName] = useState('');
     const [isJoining, setIsJoining] = useState(false);
 
@@ -50,20 +52,20 @@ export const GuestJoinView: React.FC<GuestJoinViewProps> = ({ space, onJoin, onL
                         <Ionicons name="people-circle" size={80} color="#007AFF" />
                     </View>
 
-                    <Text style={styles.title}>Join as Guest</Text>
+                    <Text style={styles.title}>{t('join_as_guest_title')}</Text>
                     <Text style={styles.subtitle}>
                         {activityId 
-                            ? `You've been invited to join a session in `
-                            : `You've been invited to join `}
-                        <Text style={styles.spaceName}>{space?.title || 'this space'}</Text>. 
-                        Enter your name to participate.
+                            ? t('invited_to_session_msg')
+                            : t('invited_to_join_msg')}
+                        <Text style={styles.spaceName}>{space?.title || t('this_space_label')}</Text>. 
+                        {t('enter_name_to_participate_msg')}
                     </Text>
 
                     <View style={styles.inputWrapper}>
                         <Ionicons name="person-outline" size={20} color="#999" style={styles.inputIcon} />
                         <TextInput
                             style={styles.input}
-                            placeholder="Your Name"
+                            placeholder={t('your_name_placeholder')}
                             value={name}
                             onChangeText={setName}
                             placeholderTextColor="#999"
@@ -80,7 +82,7 @@ export const GuestJoinView: React.FC<GuestJoinViewProps> = ({ space, onJoin, onL
                             <ActivityIndicator color="#fff" size="small" />
                         ) : (
                             <>
-                                <Text style={styles.joinButtonText}>Enter Space</Text>
+                                <Text style={styles.joinButtonText}>{t('enter_space_btn')}</Text>
                                 <Ionicons name="arrow-forward" size={20} color="#fff" />
                             </>
                         )}
@@ -88,12 +90,12 @@ export const GuestJoinView: React.FC<GuestJoinViewProps> = ({ space, onJoin, onL
 
                     <View style={styles.divider}>
                         <View style={styles.dividerLine} />
-                        <Text style={styles.dividerText}>OR</Text>
+                        <Text style={styles.dividerText}>{t('or_divider')}</Text>
                         <View style={styles.dividerLine} />
                     </View>
 
                     <TouchableOpacity style={styles.loginButton} onPress={onLogin}>
-                        <Text style={styles.loginButtonText}>Sign in to your account</Text>
+                        <Text style={styles.loginButtonText}>{t('signin_to_account_btn')}</Text>
                     </TouchableOpacity>
                 </View>
             </ScrollView>

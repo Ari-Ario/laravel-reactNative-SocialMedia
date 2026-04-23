@@ -13,6 +13,7 @@ import { useProfileView } from '@/context/ProfileViewContext';
 import { useModal } from '@/context/ModalContext';
 import { createShadow } from '@/utils/styles';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 
 const { width } = Dimensions.get('window');
 
@@ -42,6 +43,7 @@ export const CuratorCircle = ({ reposters, postId, postContent, post }: CuratorC
   const [sendingTo, setSendingTo] = useState<number | null>(null);
 
   const { colors, activeScheme } = useAppTheme();
+  const { t, isRTL } = useTranslation();
   const styles = getStyles(colors, activeScheme);
 
   if (!reposters || reposters.length === 0) return null;
@@ -58,7 +60,7 @@ export const CuratorCircle = ({ reposters, postId, postContent, post }: CuratorC
     // Check privacy
     const userToMessage = reposter as any;
     if (userToMessage.is_private && !userToMessage.is_following) {
-      showToast("This profile is private", "error");
+      showToast(t('private_profile_msg'), "error");
       return;
     }
 
@@ -75,16 +77,16 @@ export const CuratorCircle = ({ reposters, postId, postContent, post }: CuratorC
   };
 
   const formatDate = (date?: string) => {
-    if (!date) return 'Recently';
+    if (!date) return t('recently');
     const now = new Date();
     const then = new Date(date);
     const diff = now.getTime() - then.getTime();
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
 
-    if (days === 0) return 'Today';
-    if (days === 1) return 'Yesterday';
-    if (days < 7) return `${days}d ago`;
-    return `${Math.floor(days / 7)}w ago`;
+    if (days === 0) return t('today');
+    if (days === 1) return t('yesterday');
+    if (days < 7) return t('days_ago', { days });
+    return t('weeks_ago', { weeks: Math.floor(days / 7) });
   };
 
   const getTagColor = (tag?: string) => {
@@ -110,24 +112,24 @@ export const CuratorCircle = ({ reposters, postId, postContent, post }: CuratorC
         onPress={() => handleOpenProfile(reposter.id)}
         style={styles.cardTouchable}
       >
-        <View style={styles.cardHeader}>
+        <View style={[styles.cardHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
           {reposter.profile_photo ? (
             <Image
               source={{ uri: `${getApiBaseImage()}/storage/${reposter.profile_photo}` }}
-              style={styles.cardAvatar}
+              style={[styles.cardAvatar, { [isRTL ? 'marginLeft' : 'marginRight']: 12, [isRTL ? 'marginRight' : 'marginLeft']: 0 }]}
             />
           ) : (
-            <View style={[styles.cardAvatar, styles.avatarPlaceholder]}>
+            <View style={[styles.cardAvatar, styles.avatarPlaceholder, { [isRTL ? 'marginLeft' : 'marginRight']: 12, [isRTL ? 'marginRight' : 'marginLeft']: 0 }]}>
               <Text style={styles.avatarInitials}>{getInitials(reposter.name)}</Text>
             </View>
           )}
-          <View style={styles.cardInfo}>
-            <Text style={styles.cardName}>{reposter.name}</Text>
-            <Text style={styles.cardTime}>{formatDate(reposter.created_at)}</Text>
+          <View style={[styles.cardInfo, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+            <Text style={[styles.cardName, { textAlign: isRTL ? 'right' : 'left' }]}>{reposter.name}</Text>
+            <Text style={[styles.cardTime, { textAlign: isRTL ? 'right' : 'left' }]}>{formatDate(reposter.created_at)}</Text>
           </View>
-          <View style={[styles.tagPill, { backgroundColor: getTagColor(reposter.context_tag) + '20' }]}>
-            <Text style={[styles.tagText, { color: getTagColor(reposter.context_tag) }]}>
-              {reposter.context_tag || '📌 Shared'}
+          <View style={[styles.tagPill, { backgroundColor: getTagColor(reposter.context_tag) + '20', [isRTL ? 'marginLeft' : 'marginRight']: 8, [isRTL ? 'marginRight' : 'marginLeft']: 0 }]}>
+            <Text style={[styles.tagText, { color: getTagColor(reposter.context_tag), textAlign: isRTL ? 'right' : 'left' }]}>
+              {reposter.context_tag || t('📌 Shared')}
             </Text>
           </View>
 
@@ -149,11 +151,11 @@ export const CuratorCircle = ({ reposters, postId, postContent, post }: CuratorC
         </View>
 
         {reposter.personal_note && (
-          <View style={styles.noteContainer}>
-            <View style={styles.quoteMark}>
+          <View style={[styles.noteContainer, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+            <View style={[styles.quoteMark, { [isRTL ? 'right' : 'left']: 8, [isRTL ? 'left' : 'right']: undefined }]}>
               <Text style={styles.quoteText}>"</Text>
             </View>
-            <Text style={styles.noteText} numberOfLines={2}>
+            <Text style={[styles.noteText, { textAlign: isRTL ? 'right' : 'left', [isRTL ? 'marginRight' : 'marginLeft']: 12, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]} numberOfLines={2}>
               {reposter.personal_note}
             </Text>
           </View>
@@ -167,7 +169,7 @@ export const CuratorCircle = ({ reposters, postId, postContent, post }: CuratorC
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={() => setShowGallery(true)}
-        style={styles.circleContainer}
+        style={[styles.circleContainer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
       >
         {/* Animated Ripple Effect */}
         <View style={styles.rippleContainer}>
@@ -186,7 +188,7 @@ export const CuratorCircle = ({ reposters, postId, postContent, post }: CuratorC
         </View>
 
         {/* Stacked Avatars */}
-        <View style={styles.avatarStack}>
+        <View style={[styles.avatarStack, { flexDirection: isRTL ? 'row-reverse' : 'row', [isRTL ? 'marginLeft' : 'marginRight']: 12, [isRTL ? 'marginRight' : 'marginLeft']: 0 }]}>
           {reposters.slice(0, 4).map((reposter, index) => {
             const rotation = (index - 2) * 3;
             return (
@@ -197,7 +199,7 @@ export const CuratorCircle = ({ reposters, postId, postContent, post }: CuratorC
                 transition={{ delay: index * 50, type: 'spring' }}
                 style={[
                   styles.avatarWrapper,
-                  { marginLeft: index > 0 ? -15 : 0, zIndex: 4 - index }
+                  { [isRTL ? 'marginRight' : 'marginLeft']: index > 0 ? -15 : 0, [isRTL ? 'marginLeft' : 'marginRight']: 0, zIndex: 4 - index }
                 ]}
               >
                 {reposter.profile_photo ? (
@@ -219,7 +221,7 @@ export const CuratorCircle = ({ reposters, postId, postContent, post }: CuratorC
               from={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: 'spring' }}
-              style={[styles.avatarWrapper, styles.moreBadge, { marginLeft: -15 }]}
+              style={[styles.avatarWrapper, styles.moreBadge, { [isRTL ? 'marginRight' : 'marginLeft']: -15, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}
             >
               <Text style={styles.moreText}>+{reposters.length - 4}</Text>
             </MotiView>
@@ -227,19 +229,19 @@ export const CuratorCircle = ({ reposters, postId, postContent, post }: CuratorC
         </View>
 
         {/* Context Text */}
-        <View style={styles.textContainer}>
-          <Text style={styles.circleText} numberOfLines={1}>
+        <View style={[styles.textContainer, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+          <Text style={[styles.circleText, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>
             <Text style={styles.boldText}>{reposters[0].name}</Text>
-            {reposters.length > 1 && ` and ${reposters.length - 1} ${reposters.length === 2 ? 'other' : 'others'}`}
+            {reposters.length > 1 && ` ${t('and')} ${reposters.length - 1} ${reposters.length === 2 ? t('other') : t('others')}`}
           </Text>
-          <Text style={styles.circleSubtext}>
-            shared this {reposters.length > 1 ? 'post' : 'with context'}
+          <Text style={[styles.circleSubtext, { textAlign: isRTL ? 'right' : 'left' }]}>
+            {reposters.length > 1 ? t('shared_this_post') : t('shared_with_context')}
           </Text>
         </View>
 
         {/* Interactive Chevron */}
-        <View style={styles.chevronContainer}>
-          <Ionicons name="chevron-forward-circle" size={24} color="#0084ff" />
+        <View style={[styles.chevronContainer, { [isRTL ? 'marginRight' : 'marginLeft']: 8, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}>
+          <Ionicons name={isRTL ? "chevron-back-circle" : "chevron-forward-circle"} size={24} color="#0084ff" />
         </View>
       </TouchableOpacity>
 
@@ -251,8 +253,8 @@ export const CuratorCircle = ({ reposters, postId, postContent, post }: CuratorC
         onRequestClose={() => setShowGallery(false)}
       >
         <BlurView intensity={90} tint={activeScheme as any} style={styles.galleryOverlay}>
-          <View style={styles.galleryHeader}>
-            <Text style={[styles.galleryTitle, { color: colors.text }]}>Who Shared This</Text>
+          <View style={[styles.galleryHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+            <Text style={[styles.galleryTitle, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}>{t('who_shared_this')}</Text>
             <TouchableOpacity onPress={() => setShowGallery(false)}>
               <Ionicons name="close" size={28} color={colors.text} />
             </TouchableOpacity>
@@ -267,9 +269,9 @@ export const CuratorCircle = ({ reposters, postId, postContent, post }: CuratorC
           />
 
           {postContent && (
-            <View style={styles.previewBar}>
-              <Text style={styles.previewText} numberOfLines={1}>
-                Replying to: {postContent}
+            <View style={[styles.previewBar, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+              <Text style={[styles.previewText, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>
+                {t('replying_to', { content: postContent })}
               </Text>
             </View>
           )}

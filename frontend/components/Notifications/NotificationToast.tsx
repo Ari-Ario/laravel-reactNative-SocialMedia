@@ -12,6 +12,7 @@ import { usePostStore } from '@/stores/postStore';
 import { useProfileView } from '@/context/ProfileViewContext';
 import { fetchPostById } from '@/services/PostService';
 import { fetchProfile } from '@/services/UserService';
+import { useTranslation } from '@/constants/i18n';
 
 interface NotificationToastProps {
   notification: Notification | null;
@@ -29,7 +30,8 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
   const [slideAnim] = useState(new Animated.Value(-150));
   const [opacityAnim] = useState(new Animated.Value(0));
   const { width } = useWindowDimensions();
-  
+  const { t, isRTL } = useTranslation();
+
   const { addPost } = usePostStore();
   const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
 
@@ -132,9 +134,9 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
       } else if (item.type === NOTIFICATION_TYPES.ACTIVITY_CREATED || item.type === NOTIFICATION_TYPES.ACTIVITY_UPDATED) {
         const spaceId = resolveSpaceId();
         const activityId = item.data?.activity?.id || item.data?.activity_id;
-        if (spaceId) router.replace({ 
-          pathname: '/(spaces)/[id]', 
-          params: { id: spaceId, tab: 'calendar', activity: activityId ? activityId.toString() : undefined } 
+        if (spaceId) router.replace({
+          pathname: '/(spaces)/[id]',
+          params: { id: spaceId, tab: 'calendar', activity: activityId ? activityId.toString() : undefined }
         });
       } else if (item.type === NOTIFICATION_TYPES.SPACE_UPDATED) {
         const spaceId = resolveSpaceId();
@@ -160,7 +162,7 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
         if (postData?.data) addPost(postData.data);
         router.push(`/post/${item.postId}`);
       } else if (item.userId && !isChatNotification(item.type) && !['new_follower', 'user_unfollowed', 'new-follower', 'user-unfollowed'].includes(item.type)) {
-        try { await fetchProfile(item.userId.toString()); } catch (err) {}
+        try { await fetchProfile(item.userId.toString()); } catch (err) { }
         setProfileViewUserId(item.userId.toString());
         setProfilePreviewVisible(true);
       } else {
@@ -190,51 +192,55 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
     ]}>
       {Platform.OS === 'web' ? (
         <View style={styles.blurFallback}>
-           <TouchableOpacity style={styles.toastContent} onPress={handleToastPress} activeOpacity={0.8}>
-             <Avatar 
-                source={notification.avatar} 
-                name={notification.title} 
-                size={44} 
-                showStatus={false} 
-             />
-             <View style={[styles.iconBadge, { backgroundColor: iconColor }]}>
-               <Ionicons name={iconName as any} size={11} color="#fff" />
-             </View>
-             
-             <View style={styles.textContainer}>
-               <Text style={styles.title} numberOfLines={1}>{notification.title}</Text>
-               <Text style={styles.message} numberOfLines={2}>
-                 {typeof notification.message === 'object' ? JSON.stringify(notification.message) : notification.message}
-               </Text>
-             </View>
-             <TouchableOpacity style={styles.closeButton} onPress={(e) => { e.stopPropagation(); hideToast(); }}>
-                <Ionicons name="chevron-up" size={18} color="#999" />
-             </TouchableOpacity>
-           </TouchableOpacity>
+          <TouchableOpacity style={styles.toastContent} onPress={handleToastPress} activeOpacity={0.8}>
+            <Avatar
+              source={notification.avatar}
+              name={notification.title}
+              size={44}
+              showStatus={false}
+            />
+            <View style={[styles.iconBadge, { backgroundColor: iconColor }]}>
+              <Ionicons name={iconName as any} size={11} color="#fff" />
+            </View>
+
+            <View style={[styles.textContainer, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+              <Text style={[styles.title, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>
+                {notification.title || t('new_notification')}
+              </Text>
+              <Text style={styles.message} numberOfLines={2}>
+                {typeof notification.message === 'object' ? JSON.stringify(notification.message) : notification.message}
+              </Text>
+            </View>
+            <TouchableOpacity style={styles.closeButton} onPress={(e) => { e.stopPropagation(); hideToast(); }}>
+              <Ionicons name="chevron-up" size={18} color="#999" />
+            </TouchableOpacity>
+          </TouchableOpacity>
         </View>
       ) : (
         <BlurView intensity={80} tint="light" style={styles.blurView}>
-           <TouchableOpacity style={styles.toastContent} onPress={handleToastPress} activeOpacity={0.8}>
-             <Avatar 
-                source={notification.avatar} 
-                name={notification.title} 
-                size={44} 
-                showStatus={false} 
-             />
-             <View style={[styles.iconBadge, { backgroundColor: iconColor }]}>
-               <Ionicons name={iconName as any} size={11} color="#fff" />
-             </View>
+          <TouchableOpacity style={styles.toastContent} onPress={handleToastPress} activeOpacity={0.8}>
+            <Avatar
+              source={notification.avatar}
+              name={notification.title}
+              size={44}
+              showStatus={false}
+            />
+            <View style={[styles.iconBadge, { backgroundColor: iconColor }]}>
+              <Ionicons name={iconName as any} size={11} color="#fff" />
+            </View>
 
-             <View style={styles.textContainer}>
-               <Text style={styles.title} numberOfLines={1}>{notification.title}</Text>
-               <Text style={styles.message} numberOfLines={2}>
-                 {typeof notification.message === 'object' ? JSON.stringify(notification.message) : notification.message}
-               </Text>
-             </View>
-             <TouchableOpacity style={styles.closeButton} onPress={(e) => { e.stopPropagation(); hideToast(); }}>
-                <Ionicons name="chevron-up" size={18} color="#666" />
-             </TouchableOpacity>
-           </TouchableOpacity>
+            <View style={[styles.textContainer, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+              <Text style={[styles.title, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>
+                {notification.title || t('new_notification')}
+              </Text>
+              <Text style={[styles.message, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={2}>
+                {typeof notification.message === 'object' ? JSON.stringify(notification.message) : (notification.message || t('new_notification_message'))}
+              </Text>
+            </View>
+            <TouchableOpacity style={styles.closeButton} onPress={(e) => { e.stopPropagation(); hideToast(); }}>
+              <Ionicons name="chevron-up" size={18} color="#666" />
+            </TouchableOpacity>
+          </TouchableOpacity>
         </BlurView>
       )}
     </Animated.View>
@@ -283,7 +289,7 @@ const styles = StyleSheet.create({
   iconBadge: {
     position: 'absolute',
     bottom: 8,
-    left: 40,
+    start: 40,
     width: 20,
     height: 20,
     borderRadius: 10,
@@ -294,7 +300,7 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     flex: 1,
-    marginLeft: 16,
+    marginHorizontal: 16,
     justifyContent: 'center',
   },
   title: {

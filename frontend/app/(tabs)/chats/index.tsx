@@ -35,7 +35,7 @@ import CreateTabModal from '@/components/ChatScreen/CreateTabModal';
 import { useSpaceStore } from "@/stores/spaceStore";
 import { useTranslation } from '@/constants/i18n';
 
-interface Chat {
+export interface Chat {
   id: string;
   name: string;
   lastMessage?: string;
@@ -57,51 +57,36 @@ interface Chat {
   searchType?: string;
 }
 
-interface SectionData {
+export interface SectionData {
   title: string;
   data: Chat[];
   type: 'spaces' | 'contacts' | 'search';
   isSearchSection?: boolean;
 }
 
-// ============ HELPER FUNCTIONS (DEFINE OUTSIDE COMPONENT) ============
-
-const getSpaceDescription = (space: CollaborationSpace): string => {
-  const descriptions: Record<string, string> = {
-    chat: `💬 Chat with ${space.participants_count || 0} people`,
-    whiteboard: `🎨 Whiteboard collaboration`,
-    meeting: `📹 Meeting room`,
-    document: `📄 Document collaboration`,
-    brainstorm: `💡 Brainstorming session`,
-    story: `📖 Collaborative story`,
-    voice_channel: `🎤 Voice channel`,
-  };
-
-  return descriptions[space.space_type] || 'Collaboration space';
-};
-
-const formatTimestamp = (timestamp: string | Date): string => {
-  const date = new Date(timestamp);
-  const now = new Date();
-  const diffTime = Math.abs(now.getTime() - date.getTime());
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  } else if (diffDays === 1) {
-    return 'Yesterday'; // Note: This will be handled inside the component or we need to pass t
-  } else if (diffDays < 7) {
-    return date.toLocaleDateString([], { weekday: 'short' });
-  } else {
-    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-  }
-};
+// ============ HELPER FUNCTIONS (MOVED INSIDE OR REMOVED) ============
 
 
 const ChatPage = () => {
   const { colors, activeScheme } = useAppTheme();
   const { t, isRTL, locale } = useTranslation();
-  const styles = getStyles(colors, activeScheme);
+  const { user } = useContext(AuthContext);
+  const styles = useMemo(() => getStyles(colors, activeScheme, isRTL), [colors, activeScheme, isRTL]);
+
+  // Localized helper functions
+  const getSpaceDescription = useCallback((space: CollaborationSpace): string => {
+    const descriptions: Record<string, string> = {
+      chat: `💬 ${t('participants_count').replace('{count}', (space.participants_count || 0).toString())}`,
+      whiteboard: `🎨 ${t('whiteboard_collab')}`,
+      meeting: `📹 ${t('video_meeting_room')}`,
+      document: `📄 ${t('document_collab')}`,
+      brainstorm: `💡 ${t('brainstorm_session')}`,
+      story: `📖 ${t('collaborative_story')}`,
+      voice_channel: `🎤 ${t('voice_channel')}`,
+    };
+
+    return descriptions[space.space_type] || t('collaboration_space');
+  }, [t]);
   const notificationService = NotificationService.getInstance();
   const searchService = SearchService.getInstance();
   const realTimeService = RealTimeService.getInstance();
@@ -110,7 +95,7 @@ const ChatPage = () => {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  const { user } = useContext(AuthContext);
+
 
   // ✅ Unified Space Store
   const {
@@ -148,19 +133,19 @@ const ChatPage = () => {
       const user = item.follower || item.following || item.user || item;
       return {
         id: user.id.toString(),
-        name: user.name || 'User',
-        lastMessage: 'Tap to start a conversation',
-        timestamp: 'Recently active',
+        name: user.name || t('user'),
+        lastMessage: t('start_chatting'),
+        timestamp: t('active'),
         avatar: user.profile_photo,
-        isOnline: Math.random() > 0.5,
+        isOnline: false,
         user_id: user.id.toString(),
         type: 'contact' as const,
         email: user.email,
         username: user.username,
-        updatedAt: new Date(0).toISOString(), // Contacts always at bottom
+        updatedAt: new Date(0).toISOString(),
       };
     });
-  }, []);
+  }, [t]);
 
 
   // Fallback contacts when API fails
@@ -235,7 +220,7 @@ const ChatPage = () => {
       const isDirect = space.settings?.is_direct || space.space_type === 'direct';
       const otherUser = space.other_participant;
 
-      let chatName = space.title || 'Direct Message';
+      let chatName = space.title || t('direct_message');
       const chatAvatar = (isDirect && otherUser) ? (otherUser.profile_photo || undefined) : (space.creator?.profile_photo || undefined);
 
       if (isDirect && otherUser) {
@@ -274,7 +259,7 @@ const ChatPage = () => {
       return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
     return items as Chat[];
-  }, [storeSpaces, spaceUnreadCounts]);
+  }, [storeSpaces, spaceUnreadCounts, t, locale]);
 
   // Space Tabs state
   const handleSearch = async (query: string) => {
@@ -396,9 +381,9 @@ const ChatPage = () => {
 
       if (fallbackUsed) {
         Alert.alert(
-          'Limited Mode',
-          'Using demo contacts. Check your backend is running.',
-          [{ text: 'OK' }]
+          t('limited_mode'),
+          t('limited_mode_desc'),
+          [{ text: t('done') }]
         );
       }
 
@@ -427,9 +412,9 @@ const ChatPage = () => {
 
       let suggestion = '';
       if (spaces.length === 0) {
-        suggestion = 'Try creating your first collaboration space! Start with a brainstorming session.';
+        suggestion = t('ai_suggestion_new_space');
       } else if (activeSpaces === 0) {
-        suggestion = 'None of your spaces are currently live. Start a real-time session to collaborate instantly!';
+        suggestion = t('ai_suggestion_no_live');
       }
 
       setAiSuggestion(suggestion || null);
@@ -618,7 +603,7 @@ const ChatPage = () => {
         if (customTab) {
           data.push({
             id: 'add-to-tab',
-            name: 'Add or Remove Items',
+            name: t('add_remove_items'),
             type: 'space',
             timestamp: '',
             user_id: '',
@@ -690,7 +675,7 @@ const ChatPage = () => {
     }
 
     return sections;
-  }, [searchQuery, contacts, spaces, searchResults, activeTab, customTabs, spaceUnreadCounts]);
+  }, [searchQuery, contacts, spaces, searchResults, activeTab, customTabs, spaceUnreadCounts, t]);
 
 
   const handleCreateSpaceFlow = useCallback(() => {
@@ -882,7 +867,7 @@ const ChatPage = () => {
           }
         } catch (error) {
           console.error('Failed to create or fetch direct space from search:', error);
-          Alert.alert('Error', 'Could not start chat with this contact.');
+          Alert.alert(t('error'), t('failed_start_chat'));
         }
       }
     };
@@ -896,15 +881,15 @@ const ChatPage = () => {
         onPress={handlePress}
         activeOpacity={0.7}
       >
-        <View style={styles.searchResultContent}>
+        <View style={[styles.searchResultContent, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
           <View style={[
             styles.searchResultIcon,
-            { backgroundColor: `${getSearchColor(item.searchType || '')}15` }
+            { backgroundColor: `${getSearchColor(item.searchType || '')}15`, [isRTL ? 'marginLeft' : 'marginRight']: 12 }
           ]}>
             {item.avatar ? (
               <Image
                 source={{ uri: `${getApiBaseImage()}/storage/${item.avatar}` }}
-                style={[styles.searchResultIcon, { marginRight: 0 }]}
+                style={[styles.searchResultIcon, { [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}
               />
             ) : (
               <Ionicons
@@ -925,18 +910,18 @@ const ChatPage = () => {
               </Text>
             )}
             <View style={styles.searchResultMeta}>
-              <Text style={styles.searchResultType}>
-                {item.searchType ? item.searchType.charAt(0).toUpperCase() + item.searchType.slice(1) : ''}
+              <Text style={[styles.searchResultType, { textAlign: isRTL ? 'right' : 'left' }]}>
+                {item.searchType ? t(item.searchType.toLowerCase()) : ''}
               </Text>
-              <View style={styles.relevanceBadge}>
+              <View style={[styles.relevanceBadge, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                 <Text style={styles.relevanceText}>
-                  {Math.round((item.searchRelevance || 0) * 100)}% match
+                  {Math.round((item.searchRelevance || 0) * 100)}% {t('match')}
                 </Text>
               </View>
             </View>
           </View>
 
-          <Ionicons name="chevron-forward" size={20} color="#ccc" />
+          <Ionicons name={isRTL ? "chevron-back" : "chevron-forward"} size={20} color="#ccc" />
         </View>
       </TouchableOpacity>
     );
@@ -971,7 +956,7 @@ const ChatPage = () => {
         <TouchableOpacity
           style={styles.aiSuggestionContainer}
           onPress={() => {
-            Alert.alert('AI Suggestion', aiSuggestion);
+            Alert.alert(t('ai_suggestion_title'), aiSuggestion);
           }}
         >
           <Ionicons name="sparkles" size={16} color="#FFD700" />
@@ -988,7 +973,7 @@ const ChatPage = () => {
         <TextInput
           ref={searchInputRef}
           style={styles.searchInput}
-          placeholder="Search chats, spaces, contacts..."
+          placeholder={t('search_chats_placeholder')}
           value={searchQuery}
           onChangeText={handleSearch}
           clearButtonMode="while-editing"
@@ -1009,7 +994,7 @@ const ChatPage = () => {
       {isSearching && (
         <View style={styles.searchingContainer}>
           <ActivityIndicator size="small" color="#007AFF" />
-          <Text style={styles.searchingText}>Searching...</Text>
+          <Text style={styles.searchingText}>{t('searching')}</Text>
         </View>
       )}
 
@@ -1020,7 +1005,7 @@ const ChatPage = () => {
           onPress={handleCreateSpaceFlow}
         >
           <Ionicons name="create-outline" size={20} color="#fff" />
-          <Text style={styles.actionButtonText}>New Chat</Text>
+          <Text style={styles.actionButtonText}>{t('new_chat')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -1028,7 +1013,7 @@ const ChatPage = () => {
           onPress={() => setShowCreativeGenerator(true)}
         >
           <Ionicons name="bulb" size={20} color="#007AFF" />
-          <Text style={styles.actionButtonText}>Ideas</Text>
+          <Text style={styles.actionButtonText}>{t('ideas')}</Text>
         </TouchableOpacity>
 
         {/* Activities Button with Badge */}
@@ -1046,7 +1031,7 @@ const ChatPage = () => {
               </View>
             )}
           </View>
-          <Text style={styles.actionButtonText}>Activities</Text>
+          <Text style={styles.actionButtonText}>{t('activities')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -1088,7 +1073,7 @@ const ChatPage = () => {
             if (space) {
               router.push(`/(spaces)/${activity.space_id}?activity=${activity.id}`);
             } else {
-              Alert.alert('Error', 'Could not find the space for this activity');
+              Alert.alert(t('error'), t('failed_to_update'));
             }
           }}
         />
@@ -1115,23 +1100,23 @@ const ChatPage = () => {
           if (item.type === 'section-header') {
             if (item.isSearchSection) {
               return (
-                <View style={styles.searchSectionHeader}>
-                  <View style={styles.searchSectionHeaderContent}>
+                <View style={[styles.searchSectionHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                  <View style={[styles.searchSectionHeaderContent, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                     <Ionicons name="search" size={18} color="#007AFF" />
-                    <Text style={styles.searchSectionHeaderText}>{item.title}</Text>
+                    <Text style={[styles.searchSectionHeaderText, { textAlign: isRTL ? 'right' : 'left', [isRTL ? 'marginRight' : 'marginLeft']: 8 }]}>{item.title}</Text>
                     <TouchableOpacity
                       onPress={handleClearSearch}
                       style={styles.clearSearchButton}
                     >
-                      <Text style={styles.clearSearchText}>Clear</Text>
+                      <Text style={styles.clearSearchText}>{t('clear')}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
               );
             }
             return (
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionHeaderText}>{item.title}</Text>
+              <View style={[styles.sectionHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                <Text style={[styles.sectionHeaderText, { textAlign: isRTL ? 'right' : 'left' }]}>{item.title}</Text>
               </View>
             );
           }
@@ -1150,7 +1135,7 @@ const ChatPage = () => {
           if (item.id === 'add-to-tab') {
             return (
               <TouchableOpacity
-                style={styles.addSpaceRow}
+                style={[styles.addSpaceRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
                 onPress={() => {
                   const currentCustomTab = customTabs.find(t => t.id === activeTab);
                   if (currentCustomTab) {
@@ -1161,10 +1146,10 @@ const ChatPage = () => {
                   }
                 }}
               >
-                <View style={styles.addSpaceIconContainer}>
+                <View style={[styles.addSpaceIconContainer, { [isRTL ? 'marginLeft' : 'marginRight']: 12 }]}>
                   <Ionicons name="add" size={24} color="#007AFF" />
                 </View>
-                <Text style={styles.addSpaceText}>Add or Remove Spaces</Text>
+                <Text style={[styles.addSpaceText, { textAlign: isRTL ? 'right' : 'left' }]}>{t('add_remove_items')}</Text>
               </TouchableOpacity>
             );
           }
@@ -1197,15 +1182,15 @@ const ChatPage = () => {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="chatbubbles-outline" size={80} color="#ddd" />
-            <Text style={styles.emptyTitle}>No conversations yet</Text>
+            <Text style={styles.emptyTitle}>{t('no_conversations_title')}</Text>
             <Text style={styles.emptySubtitle}>
-              Start by creating a space or messaging a contact
+              {t('no_conversations_subtitle')}
             </Text>
             <TouchableOpacity
               style={styles.emptyButton}
               onPress={handleCreateSpaceFlow}
             >
-              <Text style={styles.emptyButtonText}>Start Chatting</Text>
+              <Text style={styles.emptyButtonText}>{t('start_chatting')}</Text>
             </TouchableOpacity>
           </View>
         }
@@ -1239,7 +1224,7 @@ const ChatPage = () => {
         items={[
           {
             icon: 'pencil',
-            label: 'Rename Tab',
+            label: t('rename_tab'),
             onPress: () => {
               setTabModalMode('edit');
               setTabModalStep(1);
@@ -1249,7 +1234,7 @@ const ChatPage = () => {
           },
           {
             icon: 'list',
-            label: 'Edit Items',
+            label: t('edit_items'),
             onPress: () => {
               setTabModalMode('edit');
               setTabModalStep(2);
@@ -1259,7 +1244,7 @@ const ChatPage = () => {
           },
           {
             icon: 'trash',
-            label: 'Delete Tab',
+            label: t('delete_tab'),
             destructive: true,
             onPress: () => {
               const tabToDelete = menuTargetTab;
@@ -1272,17 +1257,17 @@ const ChatPage = () => {
                 };
 
                 if (Platform.OS === 'web') {
-                  if (window.confirm(`Are you sure you want to delete "${tabToDelete.name}"?`)) {
+                  if (window.confirm(t('delete_tab_confirm').replace('{name}', tabToDelete.name))) {
                     performDelete();
                   }
                 } else {
                   Alert.alert(
-                    'Delete Tab',
-                    `Are you sure you want to delete "${tabToDelete.name}"?`,
+                    t('delete_tab'),
+                    t('delete_tab_confirm').replace('{name}', tabToDelete.name),
                     [
-                      { text: 'Cancel', style: 'cancel' },
+                      { text: t('cancel'), style: 'cancel' },
                       {
-                        text: 'Delete',
+                        text: t('delete'),
                         style: 'destructive',
                         onPress: performDelete
                       }
@@ -1307,7 +1292,7 @@ const ChatPage = () => {
   );
 };
 
-function getStyles(colors: any, activeScheme: string): any {
+function getStyles(colors: any, activeScheme: string, isRTL: boolean): any {
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -1347,7 +1332,7 @@ function getStyles(colors: any, activeScheme: string): any {
       fontWeight: '700',
     },
     aiSuggestionContainer: {
-      flexDirection: 'row',
+      flexDirection: isRTL ? 'row-reverse' : 'row',
       alignItems: 'center',
       backgroundColor: activeScheme === 'dark' ? colors.surface : '#F0F7FF',
       marginHorizontal: 16,

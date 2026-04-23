@@ -19,6 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { createShadow } from '@/utils/styles';
 import { MotiView, MotiText } from 'moti';
+import { useTranslation } from '@/constants/i18n';
 
 const { width, height } = Dimensions.get('window');
 
@@ -35,10 +36,11 @@ const CalendarPrompt: React.FC<CalendarPromptProps> = ({
   visible,
   onClose,
   onScheduleNow,
-  spaceTitle = 'this space',
+  spaceTitle,
   spaceType = 'collaboration',
   participantCount = 0,
 }) => {
+  const { t } = useTranslation();
   const [neverShowAgain, setNeverShowAgain] = useState(false);
   const [slideAnim] = useState(new Animated.Value(height));
   const [fadeAnim] = useState(new Animated.Value(0));
@@ -159,9 +161,9 @@ const CalendarPrompt: React.FC<CalendarPromptProps> = ({
     if (neverShowAgain) {
       AsyncStorage.setItem('calendar_prompt_disabled', 'true');
       Alert.alert(
-        'Preferences Saved',
-        'You won\'t see this prompt again. You can re-enable it in settings.',
-        [{ text: 'OK' }]
+        t('preferences_saved'),
+        t('preferences_saved_desc'),
+        [{ text: t('ok') }]
       );
     }
 
@@ -196,11 +198,11 @@ const CalendarPrompt: React.FC<CalendarPromptProps> = ({
 
   const getRecommendationText = () => {
     if (participantCount > 5) {
-      return 'With your team size, scheduling helps coordinate everyone\'s availability.';
+      return t('team_size_scheduling_recommendation');
     } else if (participantCount >= 2) {
-      return 'Scheduling ensures all participants can join at a convenient time.';
+      return t('participant_scheduling_recommendation');
     } else {
-      return 'Schedule sessions to build momentum and maintain progress.';
+      return t('momentum_scheduling_recommendation');
     }
   };
 
@@ -217,19 +219,19 @@ const CalendarPrompt: React.FC<CalendarPromptProps> = ({
 
     return [
       {
-        label: 'Tomorrow 10 AM',
+        label: t('tomorrow_10am'),
         time: tomorrow,
         icon: 'sunny',
         color: '#FFD700',
       },
       {
-        label: 'Friday 3 PM',
+        label: t('friday_3pm'),
         time: friday,
         icon: 'cafe',
         color: '#FF6B6B',
       },
       {
-        label: 'Next Week',
+        label: t('next_week'),
         time: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
         icon: 'calendar',
         color: '#4ECDC4',
@@ -322,7 +324,7 @@ const CalendarPrompt: React.FC<CalendarPromptProps> = ({
                 transition={{ type: 'timing', duration: 500, delay: 200 }}
                 style={styles.title}
               >
-                Schedule Your First Session?
+                {t('schedule_first_session_title')}
               </MotiText>
 
               <MotiText
@@ -331,7 +333,7 @@ const CalendarPrompt: React.FC<CalendarPromptProps> = ({
                 transition={{ type: 'timing', duration: 500, delay: 300 }}
                 style={styles.subtitle}
               >
-                <Text style={styles.highlight}>{spaceTitle}</Text> is ready for collaboration
+                <Text style={styles.highlight}>{spaceTitle || t('this_space')}</Text> {t('ready_for_collaboration_suffix')}
               </MotiText>
 
               <MotiText
@@ -350,7 +352,7 @@ const CalendarPrompt: React.FC<CalendarPromptProps> = ({
                 transition={{ type: 'spring', delay: 500 }}
                 style={styles.suggestionsContainer}
               >
-                <Text style={styles.suggestionsTitle}>Quick suggestions:</Text>
+                <Text style={styles.suggestionsTitle}>{t('quick_suggestions_title')}</Text>
                 <View style={styles.suggestionsGrid}>
                   {getQuickSuggestions().map((suggestion, index) => (
                     <TouchableOpacity
@@ -380,15 +382,15 @@ const CalendarPrompt: React.FC<CalendarPromptProps> = ({
               >
                 <View style={styles.statItem}>
                   <Ionicons name="people" size={16} color="#007AFF" />
-                  <Text style={styles.statText}>{participantCount} participants</Text>
+                  <Text style={styles.statText}>{t('participants_count').replace('{count}', String(participantCount))}</Text>
                 </View>
                 <View style={styles.statItem}>
                   <Ionicons name="time" size={16} color="#007AFF" />
-                  <Text style={styles.statText}>45 min recommended</Text>
+                  <Text style={styles.statText}>45 {t('min_recommended')}</Text>
                 </View>
                 <View style={styles.statItem}>
                   <Ionicons name="trending-up" size={16} color="#007AFF" />
-                  <Text style={styles.statText}>+87% completion rate</Text>
+                  <Text style={styles.statText}>{t('completion_rate_stat').replace('{rate}', '+87%')}</Text>
                 </View>
               </MotiView>
 
@@ -400,7 +402,7 @@ const CalendarPrompt: React.FC<CalendarPromptProps> = ({
                   activeOpacity={0.7}
                 >
                   <Ionicons name="time-outline" size={20} color="#666" />
-                  <Text style={styles.secondaryButtonText}>Maybe Later</Text>
+                  <Text style={styles.secondaryButtonText}>{t('maybe_later')}</Text>
                 </TouchableOpacity>
 
                 <Animated.View style={{ transform: [{ scale: buttonScaleAnim }] }}>
@@ -416,7 +418,7 @@ const CalendarPrompt: React.FC<CalendarPromptProps> = ({
                       style={styles.buttonGradient}
                     >
                       <Ionicons name="add-circle" size={22} color="#fff" />
-                      <Text style={styles.primaryButtonText}>Schedule Now</Text>
+                      <Text style={styles.primaryButtonText}>{t('schedule_now')}</Text>
                       <View style={styles.badge}>
                         <Text style={styles.badgeText}>✨</Text>
                       </View>
@@ -435,7 +437,7 @@ const CalendarPrompt: React.FC<CalendarPromptProps> = ({
                 <View style={styles.preferenceRow}>
                   <View style={styles.preferenceTextContainer}>
                     <Ionicons name="notifications-off" size={16} color="#666" />
-                    <Text style={styles.preferenceText}>Don't show this again</Text>
+                    <Text style={styles.preferenceText}>{t('dont_show_again')}</Text>
                   </View>
                   <Switch
                     value={neverShowAgain}
@@ -447,7 +449,7 @@ const CalendarPrompt: React.FC<CalendarPromptProps> = ({
                 </View>
                 {neverShowAgain && (
                   <Text style={styles.preferenceHint}>
-                    You can re-enable this in space settings
+                    {t('reenable_in_settings_hint')}
                   </Text>
                 )}
               </MotiView>

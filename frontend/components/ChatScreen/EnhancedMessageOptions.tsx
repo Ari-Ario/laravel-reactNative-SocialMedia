@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { createShadow } from '@/utils/styles';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from '@/constants/i18n';
 
 const { width, height } = Dimensions.get('window');
 
@@ -45,6 +46,7 @@ const EnhancedMessageOptions: React.FC<EnhancedMessageOptionsProps> = ({
     onDelete,
     isCurrentUser,
 }) => {
+    const { t } = useTranslation();
     const slideAnim = useRef(new Animated.Value(0)).current;
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const scaleAnim = useRef(new Animated.Value(0.8)).current;
@@ -134,7 +136,7 @@ const EnhancedMessageOptions: React.FC<EnhancedMessageOptionsProps> = ({
                     {/* Message Preview */}
                     <View style={styles.messagePreview}>
                         <Text style={styles.previewSender}>
-                            {message?.user_name || message?.user?.name || 'User'}
+                            {message?.user_name || message?.user?.name || t('user_label')}
                         </Text>
                         <Text style={styles.previewText} numberOfLines={2}>
                             {message?.content || ''}
@@ -143,7 +145,7 @@ const EnhancedMessageOptions: React.FC<EnhancedMessageOptionsProps> = ({
 
                     {/* Quick Reactions */}
                     <View style={styles.quickReactions}>
-                        <Text style={styles.reactionTitle}>Quick React</Text>
+                        <Text style={styles.reactionTitle}>{t('quick_react_title')}</Text>
                         <View style={styles.emojiGrid}>
                             {EMOJI_LIST.map((emoji) => (
                                 <TouchableOpacity
@@ -170,7 +172,7 @@ const EnhancedMessageOptions: React.FC<EnhancedMessageOptionsProps> = ({
                             <View style={[styles.actionIcon, { backgroundColor: '#4CAF5020' }]}>
                                 <Ionicons name="arrow-undo" size={20} color="#4CAF50" />
                             </View>
-                            <Text style={styles.actionText}>Reply</Text>
+                            <Text style={styles.actionText}>{t('reply')}</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
@@ -184,7 +186,7 @@ const EnhancedMessageOptions: React.FC<EnhancedMessageOptionsProps> = ({
                             <View style={[styles.actionIcon, { backgroundColor: '#2196F320' }]}>
                                 <Ionicons name="copy" size={20} color="#2196F3" />
                             </View>
-                            <Text style={styles.actionText}>Copy</Text>
+                            <Text style={styles.actionText}>{t('copy')}</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
@@ -198,7 +200,7 @@ const EnhancedMessageOptions: React.FC<EnhancedMessageOptionsProps> = ({
                             <View style={[styles.actionIcon, { backgroundColor: '#9C27B020' }]}>
                                 <Ionicons name="arrow-redo" size={20} color="#9C27B0" />
                             </View>
-                            <Text style={styles.actionText}>Forward</Text>
+                            <Text style={styles.actionText}>{t('forward')}</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
@@ -212,7 +214,7 @@ const EnhancedMessageOptions: React.FC<EnhancedMessageOptionsProps> = ({
                             <View style={[styles.actionIcon, { backgroundColor: '#FF980020' }]}>
                                 <Ionicons name="flag" size={20} color="#FF9800" />
                             </View>
-                            <Text style={styles.actionText}>Report</Text>
+                            <Text style={styles.actionText}>{t('report')}</Text>
                         </TouchableOpacity>
 
                         {isCurrentUser && onDelete && (
@@ -227,7 +229,7 @@ const EnhancedMessageOptions: React.FC<EnhancedMessageOptionsProps> = ({
                                 <View style={[styles.actionIcon, { backgroundColor: '#FF6B6B20' }]}>
                                     <Ionicons name="trash" size={20} color="#FF6B6B" />
                                 </View>
-                                <Text style={[styles.actionText, styles.deleteText]}>Delete</Text>
+                                <Text style={[styles.actionText, styles.deleteText]}>{t('delete')}</Text>
                             </TouchableOpacity>
                         )}
                     </View>

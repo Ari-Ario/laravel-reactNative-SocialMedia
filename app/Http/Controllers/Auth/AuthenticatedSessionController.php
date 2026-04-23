@@ -73,6 +73,8 @@ class AuthenticatedSessionController extends Controller
                 'ai_admin' => $request->user()->ai_admin,
                 'email_verified_at' => $request->user()->email_verified_at,
                 'is_guest' => $request->user()->is_guest,
+                'locale' => $request->user()->locale,
+                'username' => $request->user()->username,
             ]
         ]);
     }

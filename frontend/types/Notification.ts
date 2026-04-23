@@ -14,6 +14,7 @@ export interface Notification {
   callId?: string;
   activityId?: number;
   avatar?: string;
+  fromUserId?: string;
 }
 
 export const NOTIFICATION_TYPES = {

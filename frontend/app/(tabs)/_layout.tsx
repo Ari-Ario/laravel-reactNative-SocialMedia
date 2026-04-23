@@ -11,7 +11,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 
 export default function TabLayout() {
   const { colors, activeScheme } = useAppTheme();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   // Use useAuthStore for logic, but keep AuthContext for compatibility if needed
   // RootLayout already provides AuthContext bridged to useAuthStore.
@@ -30,6 +30,7 @@ export default function TabLayout() {
     <>
 
       <Tabs
+        key={locale}
         sceneContainerStyle={{ backgroundColor: colors.background }}
         screenOptions={{
           tabBarActiveTintColor: colors.tint,

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useContext } from 'react';
+import { useTranslation } from '@/constants/i18n';
 import {
   View,
   Text,
@@ -26,6 +27,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 const { width } = Dimensions.get('window');
 
 const ChatHighlightsScreen = () => {
+  const { t } = useTranslation();
   const { colors, activeScheme } = useAppTheme();
   const styles = getStyles(colors, activeScheme);
   const insets = useSafeAreaInsets();
@@ -59,7 +61,7 @@ const ChatHighlightsScreen = () => {
       setError(null);
     } catch (error: any) {
       console.error('Failed to fetch highlights:', error);
-      setError('Failed to load highlights. Please try again.');
+      setError(t('failed_update'));
       setHasMore(false); // Stop infinite loading on error
     } finally {
       setLoading(false);
@@ -93,16 +95,16 @@ const ChatHighlightsScreen = () => {
 
   const renderEngagementBadge = (message: any) => {
     const score = (message.replies_count || 0) + (message.reactions_count || 0);
-    let label = "Trending";
+    let label = t('social');
     let icon = "flash";
     let color = "#FFD700";
 
     if (message.replies_count > message.reactions_count) {
-      label = "Active Discussion";
+      label = t('social');
       icon = "chatbubbles";
       color = "#0084ff";
     } else if (message.reactions_count > 5) {
-      label = "Most Loved";
+      label = t('social');
       icon = "heart";
       color = "#FF3B30";
     }
@@ -112,9 +114,9 @@ const ChatHighlightsScreen = () => {
         <Ionicons name={icon as any} size={12} color={color} />
         <Text style={[styles.engagementLabel, { color }]}>{label}</Text>
         <View style={styles.statDot} />
-        <Text style={styles.statText}>{message.reactions_count || 0} reactions</Text>
+        <Text style={styles.statText}>{message.reactions_count || 0} {t('privacy')}</Text>
         <View style={styles.statDot} />
-        <Text style={styles.statText}>{message.replies_count || 0} replies</Text>
+        <Text style={styles.statText}>{message.replies_count || 0} {t('privacy')}</Text>
       </View>
     );
   };
@@ -154,7 +156,7 @@ const ChatHighlightsScreen = () => {
             colors={[colors.tint + '15', colors.tint + '05']}
             style={styles.jumpGradient}
           >
-            <Text style={styles.jumpText}>Jump to Conversation</Text>
+            <Text style={styles.jumpText}>{t('social')}</Text>
             <Ionicons name="arrow-forward" size={14} color={colors.tint} />
           </LinearGradient>
         </TouchableOpacity>
@@ -182,7 +184,7 @@ const ChatHighlightsScreen = () => {
         <BackButton onPress={() => router.back()} />
 
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Chat Highlights</Text>
+          <Text style={styles.headerTitle}>{t('social')}</Text>
           <View style={styles.headerUnderline} />
         </View>
 
@@ -192,7 +194,7 @@ const ChatHighlightsScreen = () => {
       {loading ? (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color="#1063FD" />
-          <Text style={styles.loadingText}>Fetching trending moments...</Text>
+          <Text style={styles.loadingText}>{t('loading')}</Text>
         </View>
       ) : (
         <FlatList
@@ -208,9 +210,9 @@ const ChatHighlightsScreen = () => {
               <View style={styles.emptyIcon}>
                 <Ionicons name="flash-outline" size={48} color={colors.textSecondary + '40'} />
               </View>
-              <Text style={styles.emptyTitle}>No highlights yet</Text>
+              <Text style={styles.emptyTitle}>{t('failed_update')}</Text>
               <Text style={styles.emptySubtitle}>
-                Keep chatting and reacting to messages. Trending moments will automatically appear here!
+                {t('social')}
               </Text>
             </View>
           }
@@ -220,9 +222,9 @@ const ChatHighlightsScreen = () => {
                 <Ionicons name="flash" size={20} color="#FFD700" />
               </View>
               <View style={styles.infoContent}>
-                <Text style={styles.infoTitle}>Automated Highlights</Text>
+                <Text style={styles.infoTitle}>{t('social')}</Text>
                 <Text style={styles.infoText}>
-                  Your most engaging conversations across all spaces are automatically ranked here.
+                  {t('social')}
                 </Text>
               </View>
             </View>

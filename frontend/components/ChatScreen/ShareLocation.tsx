@@ -111,6 +111,8 @@ const webMapContainerStyle = {
 // Google Maps library array
 const googleMapsLibraries = ['places'];
 
+import { useTranslation } from '@/constants/i18n';
+
 export const ShareLocation: React.FC<ShareLocationProps> = ({
     visible,
     onClose,
@@ -118,6 +120,7 @@ export const ShareLocation: React.FC<ShareLocationProps> = ({
     onShareLiveLocation,
     googlePlacesApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY',
 }) => {
+    const { t } = useTranslation();
     const insets = useSafeAreaInsets();
     const { colors, activeScheme } = useAppTheme();
 
@@ -200,12 +203,6 @@ export const ShareLocation: React.FC<ShareLocationProps> = ({
                 fetchNearbyPlaces(currentLocation.coords.latitude, currentLocation.coords.longitude);
             } else if (status === 'denied') {
                 setLocationStatus('denied');
-                setRegion({
-                    latitude: 20,
-                    longitude: 0,
-                    latitudeDelta: 100,
-                    longitudeDelta: 50,
-                });
             } else {
                 setLocationStatus('unavailable');
             }
@@ -435,20 +432,20 @@ export const ShareLocation: React.FC<ShareLocationProps> = ({
             <View style={[styles.permissionIcon, { backgroundColor: colors.tint + '20' }]}>
                 <Ionicons name="location-outline" size={48} color={colors.tint} />
             </View>
-            <Text style={[styles.permissionTitle, { color: colors.text }]}>Share Your Location</Text>
+            <Text style={[styles.permissionTitle, { color: colors.text }]}>{t('share_location_title')}</Text>
             <Text style={[styles.permissionText, { color: colors.textSecondary }]}>
-                Allow access to your location to share where you are, find nearby places, and get directions.
+                {t('share_location_permission_desc')}
             </Text>
             <View style={styles.permissionOptions}>
                 <TouchableOpacity style={[styles.permissionButton, styles.allowOnceButton, { backgroundColor: colors.muted }]} onPress={() => requestLocationPermission()}>
-                    <Text style={[styles.allowOnceText, { color: colors.text }]}>Allow Once</Text>
+                    <Text style={[styles.allowOnceText, { color: colors.text }]}>{t('allow_once')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.permissionButton, styles.allowAlwaysButton, { backgroundColor: colors.tint }]} onPress={() => requestLocationPermission()}>
-                    <Text style={styles.allowAlwaysText}>While Using App</Text>
+                    <Text style={styles.allowAlwaysText}>{t('while_using_app')}</Text>
                 </TouchableOpacity>
             </View>
             <TouchableOpacity style={styles.notNowButton} onPress={() => setLocationStatus('denied')}>
-                <Text style={[styles.notNowText, { color: colors.tint }]}>Not Now</Text>
+                <Text style={[styles.notNowText, { color: colors.tint }]}>{t('not_now')}</Text>
             </TouchableOpacity>
         </MotiView>
     );
@@ -525,9 +522,9 @@ export const ShareLocation: React.FC<ShareLocationProps> = ({
                     <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                         <Ionicons name="arrow-back" size={24} color={colors.tint} />
                     </TouchableOpacity>
-                    <Text style={[styles.headerTitle, { color: colors.text }]}>Share Location</Text>
+                    <Text style={[styles.headerTitle, { color: colors.text }]}>{t('share_location_header')}</Text>
                     <TouchableOpacity onPress={handleShare} disabled={!selectedLocation} style={[styles.shareButton, !selectedLocation && styles.shareButtonDisabled]}>
-                        <Text style={[styles.shareButtonText, { color: selectedLocation ? colors.tint : colors.textSecondary }]}>Share</Text>
+                        <Text style={[styles.shareButtonText, { color: selectedLocation ? colors.tint : colors.textSecondary }]}>{t('share')}</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -536,7 +533,7 @@ export const ShareLocation: React.FC<ShareLocationProps> = ({
                     <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
                     <GooglePlacesAutocomplete
                         ref={searchRef}
-                        placeholder="Search for a place"
+                        placeholder={t('search_place_placeholder')}
                         onPress={handlePlaceSelect}
                         query={{ key: googlePlacesApiKey, language: 'en', ...(location && { location: `${location.coords.latitude},${location.coords.longitude}`, radius: 50000 }) }}
                         styles={{
@@ -561,7 +558,7 @@ export const ShareLocation: React.FC<ShareLocationProps> = ({
                     <TouchableOpacity style={styles.liveToggle} onPress={() => setShowLiveOptions(!showLiveOptions)}>
                         <BlurView intensity={80} tint={activeScheme as any} style={[styles.liveToggleContent, { borderColor: colors.border + '40' }]}>
                             <Ionicons name="radio-outline" size={20} color={showLiveOptions ? '#FF3B30' : colors.text} />
-                            <Text style={[styles.liveToggleText, { color: colors.text }, showLiveOptions && { color: '#FF3B30' }]}>Live Location</Text>
+                            <Text style={[styles.liveToggleText, { color: colors.text }, showLiveOptions && { color: '#FF3B30' }]}>{t('live_location')}</Text>
                         </BlurView>
                     </TouchableOpacity>
 
@@ -570,7 +567,7 @@ export const ShareLocation: React.FC<ShareLocationProps> = ({
                         {showLiveOptions && (
                             <MotiView from={{ opacity: 0, translateY: -20 }} animate={{ opacity: 1, translateY: 0 }} exit={{ opacity: 0, translateY: -20 }} style={styles.liveOptions}>
                                 <BlurView intensity={90} tint={activeScheme as any} style={[styles.liveOptionsContent, { borderColor: colors.border + '40' }]}>
-                                    <Text style={[styles.liveOptionsTitle, { color: colors.textSecondary }]}>Share your live location for:</Text>
+                                    <Text style={[styles.liveOptionsTitle, { color: colors.textSecondary }]}>{t('share_live_duration_title')}</Text>
                                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                                         {LIVE_DURATIONS.map(dur => (
                                             <TouchableOpacity key={dur} style={[styles.durationOption, { backgroundColor: colors.muted }, selectedDuration === dur && { backgroundColor: colors.tint }]} onPress={() => setSelectedDuration(dur)}>
@@ -596,7 +593,7 @@ export const ShareLocation: React.FC<ShareLocationProps> = ({
                             </ScrollView>
 
                             {loadingNearby ? (
-                                <View style={styles.nearbyLoading}><ActivityIndicator color={colors.tint} /><Text style={[styles.nearbyLoadingText, { color: colors.textSecondary }]}>Finding nearby places...</Text></View>
+                                <View style={styles.nearbyLoading}><ActivityIndicator color={colors.tint} /><Text style={[styles.nearbyLoadingText, { color: colors.textSecondary }]}>{t('finding_nearby_places')}</Text></View>
                             ) : (
                                 <FlatList
                                     data={nearbyPlaces}
@@ -608,7 +605,7 @@ export const ShareLocation: React.FC<ShareLocationProps> = ({
                                             <Text style={[styles.placeDistance, { color: colors.textSecondary }]}>{item.distance}</Text>
                                         </TouchableOpacity>
                                     )}
-                                    ListEmptyComponent={<View style={styles.emptyContainer}><Text style={[styles.emptyText, { color: colors.textSecondary }]}>No nearby places found</Text></View>}
+                                    ListEmptyComponent={<View style={styles.emptyContainer}><Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('no_nearby_places')}</Text></View>}
                                 />
                             )}
                         </BlurView>

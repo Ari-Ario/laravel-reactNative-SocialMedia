@@ -81,8 +81,8 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
   const { profilePreviewVisible, setProfilePreviewVisible } = useProfileView();
   const { showToast } = useToastStore();
   const { colors, activeScheme } = useAppTheme();
-  const { t, isRTL } = useTranslation();
-  const styles = getStyles(colors, activeScheme);
+  const { t, isRTL, locale } = useTranslation();
+  const styles = getStyles(colors, activeScheme, isRTL);
   const { user } = useContext(AuthContext);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -452,7 +452,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
             transition={{ delay: sIndex * 100 }}
             style={styles.aboutSection}
           >
-            <View style={[styles.sectionHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+            <View style={styles.sectionHeader}>
               <Ionicons name={section.icon as any} size={18} color={colors.tint} />
               <Text style={[styles.sectionTitleText, { color: colors.text, textAlign: isRTL ? 'right' : 'left', marginHorizontal: 8 }]}>{section.title}</Text>
             </View>
@@ -481,7 +481,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
                     }
                   }
                 }}
-                style={[styles.aboutItem, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
+                style={styles.aboutItem}
               >
                 <View style={[styles.aboutIconCircle, { backgroundColor: colors.muted }]}>
                   <Ionicons name={item.icon as any} size={16} color={colors.textSecondary} />
@@ -543,7 +543,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
           {renderProfilePhoto()}
         </Animated.View>
 
-        <View style={[styles.statsRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+        <View style={styles.statsRow}>
           <StatCard value={profile.posts_count || 0} label="Posts" icon="document-text-outline" />
           <StatCard value={profile.followers_count || 0} label="Followers" icon="people-outline" />
           <StatCard value={profile.following_count || 0} label="Following" icon="person-add-outline" />
@@ -597,7 +597,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
         </TouchableOpacity>
       )}
 
-      <View style={[styles.tabsContainer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+      <View style={styles.tabsContainer}>
         {[
           { id: 'posts', label: t('posts'), icon: 'grid-outline' },
           { id: 'about', label: t('about'), icon: 'information-circle-outline' },
@@ -701,9 +701,9 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
     >
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
         <View
-          style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border, flexDirection: isRTL ? 'row-reverse' : 'row' }]}
+          style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}
         >
-          <View style={[styles.headerTop, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+          <View style={styles.headerTop}>
             <TouchableOpacity
               style={styles.headerButton}
               onPress={() => setProfilePreviewVisible(false)}
@@ -891,7 +891,7 @@ const ProfilePreview = ({ userId, visible, onClose }: ProfilePreviewProps) => {
   );
 };
 
-const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
+const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -902,7 +902,7 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     borderBottomWidth: 1,
   },
   headerTop: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
@@ -934,7 +934,7 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     flex: 1,
   },
   profileHeader: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 20,
@@ -943,7 +943,7 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    marginRight: 20,
+    [isRTL ? 'marginLeft' : 'marginRight']: 20,
   },
   initialsContainer: {
     justifyContent: 'center',
@@ -956,7 +956,7 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
   },
   statsRow: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     justifyContent: 'space-around',
   },
   statCard: {
@@ -1036,7 +1036,7 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     borderColor: '#e0e0e0',
   },
   tabsContainer: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     borderBottomWidth: 1,
     marginBottom: 16,
   },
@@ -1075,7 +1075,7 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     paddingBottom: 20,
   },
   aboutItem: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     marginBottom: 20,
   },
   aboutIcon: {
@@ -1174,7 +1174,7 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     color: '#fff',
   },
   footerLoader: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 20,
@@ -1199,7 +1199,7 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     borderWidth: 1,
   },
   sectionHeader: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     marginBottom: 16,
     gap: 8,
@@ -1216,7 +1216,7 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    [isRTL ? 'marginLeft' : 'marginRight']: 12,
   },
   socialGrid: {
     flexDirection: 'row',
@@ -1266,13 +1266,13 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     lineHeight: 20,
   },
   privateBadge: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     backgroundColor: '#FFF3E0',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
-    marginLeft: 8,
+    [isRTL ? 'marginRight' : 'marginLeft']: 8,
     gap: 3,
   },
   privateBadgeText: {

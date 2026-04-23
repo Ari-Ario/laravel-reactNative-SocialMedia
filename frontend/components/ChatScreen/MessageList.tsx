@@ -17,6 +17,7 @@ import * as Haptics from 'expo-haptics';
 import MessageBubble from './MessageBubble';
 import MessageContextMenu from './MessageContextMenu';
 import PollComponent from './PollComponent';
+import { useTranslation } from '@/constants/i18n';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import { MediaViewer } from '@/components/MediaViewer';
 import getApiBaseImage from '@/services/getApiBaseImage';
@@ -83,6 +84,7 @@ const MessageList: React.FC<MessageListProps> = ({
   spaceType,
   messages: messagesProp = [],
 }) => {
+  const { t } = useTranslation();
   const { colors, activeScheme } = useAppTheme();
   const [messages, setMessages] = useState<Message[]>(messagesProp);
 
@@ -334,7 +336,7 @@ const MessageList: React.FC<MessageListProps> = ({
       }
     } catch (error) {
       console.error('Translation failed:', error);
-      Alert.alert('Translation Error', 'Could not translate this message at the moment.');
+      Alert.alert(t('translation_error'), t('could_not_translate'));
     } finally {
       setTranslatingMessageId(null);
     }
@@ -507,7 +509,7 @@ const MessageList: React.FC<MessageListProps> = ({
       return {
         ...msg,
         user: {
-          ...(msg.user ?? { id: msg.user_id, name: msg.user_name || 'User' }),
+          ...(msg.user ?? { id: msg.user_id, name: msg.user_name || t('user_fallback') }),
           profile_photo: sender.user.profile_photo
         }
       };
@@ -754,8 +756,8 @@ const MessageList: React.FC<MessageListProps> = ({
   const showReactionPicker = (message: Message) => {
     const reactions = ['❤️', '😂', '😮', '😢', '👏', '🔥'];
     Alert.alert(
-      'React to Message',
-      'Choose a reaction:',
+      t('react_to_message'),
+      t('choose_reaction'),
       reactions.map(reaction => ({
         text: reaction,
         onPress: () => handleReact(message, reaction),

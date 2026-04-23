@@ -11,6 +11,7 @@ import {
     StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from '@/constants/i18n';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useWindowDimensions } from 'react-native';
 import { BlurView } from 'expo-blur';
@@ -56,6 +57,7 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
     onSave,
     isStory = false,
 }) => {
+    const { t } = useTranslation();
     // Determine max duration based on context
     const maxDuration = isStory ? 10 : propMaxDuration;
 
@@ -496,7 +498,7 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                         </TouchableOpacity>
 
                         <Text style={styles.headerTitle}>
-                            {isStory ? 'Edit Story' : 'Trim Video'}
+                            {isStory ? t('edit_story') : t('trim_video')}
                         </Text>
 
                         <Animated.View style={saveButtonStyle}>
@@ -526,7 +528,7 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                         {isLoading && (
                             <BlurView intensity={60} style={[styles.loadingOverlay, StyleSheet.absoluteFill]}>
                                 <ActivityIndicator size="large" color="#FF9F0A" />
-                                <Text style={styles.loadingText}>Preparing video...</Text>
+                                <Text style={styles.loadingText}>{t('preparing_video')}</Text>
                             </BlurView>
                         )}
 
@@ -581,7 +583,7 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                                         styles.selectionText,
                                         ((trimDuration > maxDuration) || isUnderMin) && styles.selectionTextWarning
                                     ]}>
-                                        {isStory ? 'max 10s' : 'max 2min'}
+                                        {isStory ? t('max_10s') : t('max_2min')}
                                     </Text>
                                 </BlurView>
                             </>
@@ -745,7 +747,7 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                                 >
                                     <BlurView intensity={40} style={styles.actionButtonInner}>
                                         <Ionicons name="refresh" size={18} color="#FF9F0A" />
-                                        <Text style={styles.actionButtonText}>Reset</Text>
+                                        <Text style={styles.actionButtonText}>{t('reset')}</Text>
                                     </BlurView>
                                 </TouchableOpacity>
 
@@ -774,8 +776,8 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                             <BlurView intensity={40} style={styles.instructionContainer}>
                                 <Text style={styles.instruction}>
                                     {isStory
-                                        ? 'Drag handles to select up to 10 seconds'
-                                        : 'Drag handles to select up to 2 minutes'
+                                        ? t('drag_handles_10s')
+                                        : t('drag_handles_2min')
                                     }
                                 </Text>
                             </BlurView>

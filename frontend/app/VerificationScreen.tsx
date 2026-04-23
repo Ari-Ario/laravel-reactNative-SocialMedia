@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { Ionicons } from '@expo/vector-icons';
 import { BackButton } from '@/components/ui/IconButton';
 
 import { router, useLocalSearchParams } from 'expo-router';
@@ -243,21 +244,26 @@ const VerificationScreen = () => {
     // }
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={styles.wrapper}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.content}
             >
-                <View style={{ position: 'absolute', top: 10, left: 10, zIndex: 10 }}>
+                <View style={{ position: 'absolute', top: 10, [isRTL ? 'right' : 'left']: 10, zIndex: 10 }}>
                     <BackButton onPress={() => router.push('/RegisterScreen')} />
                 </View>
-                <View style={styles.formContainer}>
-                    <Text style={styles.title}>{t('verify_email_title')}</Text>
-                    <Text style={styles.subtitle}>
-                        {t('enter_code_sent')}
-                    </Text>
-                    <Text style={styles.email}>{email}</Text>
 
+                <View style={styles.headerIcon}>
+                    <Ionicons name="shield-checkmark-outline" size={40} color={colors.tint} />
+                </View>
+
+                <Text style={styles.title}>{t('verify_email_title')}</Text>
+                <Text style={styles.subtitle}>
+                    {t('enter_code_sent')}
+                </Text>
+                <Text style={styles.email}>{email}</Text>
+
+                <View style={styles.container}>
                     <View style={[styles.codeContainer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                         {[0, 1, 2, 3, 4, 5].map((index) => (
                             <TextInput
@@ -290,18 +296,16 @@ const VerificationScreen = () => {
                         </Text>
                     ) : null}
 
-                    <View style={styles.buttonContainer}>
-                        <TouchableOpacity
-                            style={[
-                                styles.button,
-                                (loading || code.join('').length !== 6) && styles.buttonDisabled
-                            ]}
-                            onPress={verifyCode}
-                            disabled={loading || code.join('').length !== 6}
-                        >
-                            <Text style={styles.buttonText}>{loading ? t('verifying') : t('verify_email_btn')}</Text>
-                        </TouchableOpacity>
-                    </View>
+                    <TouchableOpacity
+                        style={[
+                            styles.button,
+                            (loading || code.join('').length !== 6) && styles.buttonDisabled
+                        ]}
+                        onPress={verifyCode}
+                        disabled={loading || code.join('').length !== 6}
+                    >
+                        <Text style={styles.buttonText}>{loading ? t('verifying') : t('verify_email_btn')}</Text>
+                    </TouchableOpacity>
 
                     <TouchableOpacity
                         style={[
@@ -327,29 +331,26 @@ const VerificationScreen = () => {
 
 function getStyles(colors: any, activeScheme: string, isRTL: boolean) {
     return StyleSheet.create({
-    container: {
+    wrapper: {
         flex: 1,
+        padding: 24,
         backgroundColor: colors.background,
     },
     content: {
         flex: 1,
-    },
-    header: {
-        padding: 20,
-        alignItems: 'flex-start',
-    },
-    backButton: {
-        padding: 8,
-    },
-    backButtonText: {
-        color: colors.tint,
-        fontWeight: '700',
-        fontSize: 16,
-    },
-    formContainer: {
-        flex: 1,
-        padding: 30,
         justifyContent: 'center',
+    },
+    headerIcon: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: colors.surface,
+        alignItems: 'center',
+        justifyContent: 'center',
+        alignSelf: 'center',
+        marginBottom: 24,
+        borderWidth: 1,
+        borderColor: colors.border,
     },
     title: {
         fontSize: 28,
@@ -357,31 +358,39 @@ function getStyles(colors: any, activeScheme: string, isRTL: boolean) {
         color: colors.text,
         textAlign: 'center',
         marginBottom: 8,
+        letterSpacing: -0.5,
     },
     subtitle: {
         fontSize: 16,
         textAlign: 'center',
         color: colors.textSecondary,
         marginBottom: 4,
+        lineHeight: 24,
     },
     email: {
         fontSize: 16,
         textAlign: 'center',
         fontWeight: '800',
         color: colors.text,
-        marginBottom: 40,
+        marginBottom: 32,
+    },
+    container: {
+        width: '100%',
+        maxWidth: 400,
+        alignSelf: 'center',
     },
     codeContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 40,
+        marginBottom: 32,
+        gap: 8,
     },
     codeInput: {
-        width: 48,
+        flex: 1,
         height: 64,
         borderWidth: 2,
         borderColor: colors.border,
-        borderRadius: 12,
+        borderRadius: 16,
         textAlign: 'center',
         fontSize: 28,
         fontWeight: '800',
@@ -392,9 +401,6 @@ function getStyles(colors: any, activeScheme: string, isRTL: boolean) {
         borderColor: colors.tint,
         backgroundColor: colors.tint + '10',
     },
-    buttonContainer: {
-        marginBottom: 20,
-    },
     button: {
         backgroundColor: colors.tint,
         height: 56,
@@ -404,7 +410,6 @@ function getStyles(colors: any, activeScheme: string, isRTL: boolean) {
     },
     buttonDisabled: {
         opacity: 0.5,
-        backgroundColor: colors.textSecondary,
     },
     buttonText: {
         color: '#fff',
@@ -412,8 +417,9 @@ function getStyles(colors: any, activeScheme: string, isRTL: boolean) {
         fontWeight: '800',
     },
     resendButton: {
-        padding: 12,
+        padding: 16,
         alignItems: 'center',
+        marginTop: 8,
     },
     resendButtonDisabled: {
         opacity: 0.6,
@@ -427,8 +433,8 @@ function getStyles(colors: any, activeScheme: string, isRTL: boolean) {
         textAlign: 'center',
         marginBottom: 24,
         fontSize: 14,
-        padding: 12,
-        borderRadius: 12,
+        padding: 16,
+        borderRadius: 16,
         fontWeight: '600',
     },
     successMessage: {

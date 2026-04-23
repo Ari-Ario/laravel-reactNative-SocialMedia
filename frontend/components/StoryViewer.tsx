@@ -36,6 +36,7 @@ import ReportPost from './ReportPost';
 import { useToastStore } from '@/stores/toastStore';
 import { useReportedContentStore } from '@/stores/reportedContentStore';
 import { createTextShadow } from '@/utils/styles';
+import { useTranslation } from '@/constants/i18n';
 
 const { width, height } = Dimensions.get('window');
 const STORY_DURATION = 10000; // 10 seconds
@@ -105,6 +106,7 @@ const StoryVideoContent = ({
 };
 
 const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }: StoryViewerProps) => {
+  const { t, isRTL } = useTranslation();
   const { showToast } = useToastStore();
   const { colors, activeScheme } = useAppTheme();
   const insets = useSafeAreaInsets();
@@ -148,19 +150,19 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
   const { user } = useContext(AuthContext);
 
   const formatTimeAgo = (timestamp: string) => {
-    if (!timestamp) return 'Just now';
+    if (!timestamp) return t('just_now');
     try {
       const date = new Date(timestamp);
       const now = new Date();
       const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-      if (seconds < 60) return 'Just now';
-      if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-      if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
-      if (seconds < 2592000) return `${Math.floor(seconds / 86400)}d`;
+      if (seconds < 60) return t('just_now');
+      if (seconds < 3600) return `${Math.floor(seconds / 60)}${t('m_short')}`;
+      if (seconds < 86400) return `${Math.floor(seconds / 3600)}${t('h_short')}`;
+      if (seconds < 2592000) return `${Math.floor(seconds / 86400)}${t('d_short')}`;
       return date.toLocaleDateString();
     } catch {
-      return 'Just now';
+      return t('just_now');
     }
   };
 
@@ -412,10 +414,10 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
         safeHaptics.success();
       }
       
-      showToast('Reply sent!', 'success');
+      showToast(t('reply_sent'), 'success');
     } catch (error) {
       console.error('Error sending reply:', error);
-      showToast('Failed to send reply. Please try again.', 'error');
+      showToast(t('failed_send_reply'), 'error');
       safeHaptics.error();
     } finally {
       setIsSendingReply(false);
@@ -441,7 +443,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
         safeHaptics.success();
 
         // Show success message
-        showToast('Story deleted successfully', 'success');
+        showToast(t('story_deleted_success'), 'success');
         
         // INSTANT LOCAL UPDATE: Update the store immediately for the owner
         // This makes the transition "spring" instantly without waiting for Pusher
@@ -452,7 +454,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
 
       } catch (error) {
         console.error('❌ Failed to delete story:', error);
-        showToast('Could not delete story. Please try again.', 'error');
+        showToast(t('could_not_delete_story'), 'error');
       } finally {
         setIsSendingReply(false);
       }
@@ -460,19 +462,19 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
 
     if (Platform.OS === 'web') {
       console.log('🖥️ Web: Showing browser confirmation');
-      if (window.confirm('Are you sure you want to delete this story?')) {
+      if (window.confirm(t('delete_story_confirm'))) {
         await performDelete();
       } else {
         console.log('❌ Web: Deletion cancelled');
       }
     } else {
       Alert.alert(
-        'Delete Story',
-        'Are you sure you want to delete this story?',
+        t('delete_story_title'),
+        t('delete_story_confirm'),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('cancel'), style: 'cancel' },
           {
-            text: 'Delete',
+            text: t('delete'),
             style: 'destructive',
             onPress: performDelete
           }
@@ -636,9 +638,9 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                       try {
                         await deleteReportByTarget('story', currentStory.id);
                         useReportedContentStore.getState().removeReportedItem('story', currentStory.id);
-                        showToast('Report removed', 'success');
+                        showToast(t('report_removed_msg'), 'success');
                       } catch {
-                        showToast('Failed to remove report', 'error');
+                        showToast(t('failed_remove_report_msg'), 'error');
                       }
                     } else {
                       setShowReportModal(true);
@@ -818,7 +820,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                   <TextInput
                     ref={replyInputRef}
                     style={[styles.replyInput, { color: '#fff' }]}
-                    placeholder="Send message..."
+                    placeholder={t('send_message_placeholder')}
                     placeholderTextColor="rgba(255,255,255,0.6)"
                     value={replyText}
                     onChangeText={setReplyText}
@@ -874,7 +876,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                 ]}
               >
                 <View style={styles.reactionsHeader}>
-                  <Text style={[styles.reactionsTitle, { color: colors.text }]}>React to story</Text>
+                  <Text style={[styles.reactionsTitle, { color: colors.text }]}>{t('react_to_story')}</Text>
                   <TouchableOpacity onPress={() => {
                     reactionPanelY.value = withSpring(height);
                     setTimeout(() => setShowReactions(false), 200);
@@ -913,44 +915,44 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                 <View
                   style={[styles.infoContent, { backgroundColor: colors.surface }]}
                 >
-                  <View style={styles.infoHeader}>
-                    <Text style={[styles.infoTitle, { color: colors.text }]}>Story Info</Text>
+                  <View style={[styles.infoHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <Text style={[styles.infoTitle, { color: colors.text }, isRTL && { textAlign: 'right' }]}>{t('story_info')}</Text>
                     <TouchableOpacity onPress={() => setShowInfo(false)}>
                       <Ionicons name="close" size={24} color={colors.text} />
                     </TouchableOpacity>
                   </View>
 
-                  <View style={[styles.infoItem, { borderBottomColor: colors.border }]}>
+                  <View style={[styles.infoItem, { borderBottomColor: colors.border }, isRTL && { flexDirection: 'row-reverse' }]}>
                     <Ionicons name="calendar-outline" size={20} color={colors.tint} />
-                    <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Posted:</Text>
-                    <Text style={[styles.infoValue, { color: colors.text }]}>{new Date(currentStory.created_at).toLocaleString()}</Text>
+                    <Text style={[styles.infoLabel, { color: colors.textSecondary }, isRTL && { marginLeft: 0, marginRight: 12, textAlign: 'right' }]}>{t('posted_label')}</Text>
+                    <Text style={[styles.infoValue, { color: colors.text }, isRTL && { textAlign: 'right' }]}>{new Date(currentStory.created_at).toLocaleString()}</Text>
                   </View>
 
-                  <View style={[styles.infoItem, { borderBottomColor: colors.border }]}>
+                  <View style={[styles.infoItem, { borderBottomColor: colors.border }, isRTL && { flexDirection: 'row-reverse' }]}>
                     <Ionicons name="eye-outline" size={20} color={colors.tint} />
-                    <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Views:</Text>
-                    <Text style={[styles.infoValue, { color: colors.text }]}>{currentStory.views_count || 0}</Text>
+                    <Text style={[styles.infoLabel, { color: colors.textSecondary }, isRTL && { marginLeft: 0, marginRight: 12, textAlign: 'right' }]}>{t('views_label')}</Text>
+                    <Text style={[styles.infoValue, { color: colors.text }, isRTL && { textAlign: 'right' }]}>{currentStory.views_count || 0}</Text>
                   </View>
 
-                  <View style={[styles.infoItem, { borderBottomColor: colors.border }]}>
+                  <View style={[styles.infoItem, { borderBottomColor: colors.border }, isRTL && { flexDirection: 'row-reverse' }]}>
                     <Ionicons name={currentStory.type === 'video' ? "videocam-outline" : "image-outline"} size={20} color={colors.tint} />
-                    <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Type:</Text>
-                    <Text style={[styles.infoValue, { color: colors.text }]}>{currentStory.type === 'video' ? 'Video' : 'Photo'}</Text>
+                    <Text style={[styles.infoLabel, { color: colors.textSecondary }, isRTL && { marginLeft: 0, marginRight: 12, textAlign: 'right' }]}>{t('type_label')}</Text>
+                    <Text style={[styles.infoValue, { color: colors.text }, isRTL && { textAlign: 'right' }]}>{currentStory.type === 'video' ? t('video_label') : t('photo_label')}</Text>
                   </View>
 
                   {currentStory.caption && (
-                    <View style={[styles.infoItem, { borderBottomColor: colors.border }]}>
+                    <View style={[styles.infoItem, { borderBottomColor: colors.border }, isRTL && { flexDirection: 'row-reverse' }]}>
                       <Ionicons name="chatbubble-outline" size={20} color={colors.tint} />
-                      <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Caption:</Text>
-                      <Text style={[styles.infoValue, { color: colors.text }]} numberOfLines={2}>{currentStory.caption}</Text>
+                      <Text style={[styles.infoLabel, { color: colors.textSecondary }, isRTL && { marginLeft: 0, marginRight: 12, textAlign: 'right' }]}>{t('caption_label')}</Text>
+                      <Text style={[styles.infoValue, { color: colors.text }, isRTL && { textAlign: 'right' }]} numberOfLines={2}>{currentStory.caption}</Text>
                     </View>
                   )}
 
                   {storyLocation && (
-                    <View style={[styles.infoItem, { borderBottomWidth: 0 }]}>
+                    <View style={[styles.infoItem, { borderBottomWidth: 0 }, isRTL && { flexDirection: 'row-reverse' }]}>
                       <Ionicons name="location-outline" size={20} color={colors.tint} />
-                      <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Location:</Text>
-                      <Text style={[styles.infoValue, { color: colors.text }]}>{storyLocation.name}</Text>
+                      <Text style={[styles.infoLabel, { color: colors.textSecondary }, isRTL && { marginLeft: 0, marginRight: 12, textAlign: 'right' }]}>{t('location_label')}</Text>
+                      <Text style={[styles.infoValue, { color: colors.text }, isRTL && { textAlign: 'right' }]}>{storyLocation.name}</Text>
                     </View>
                   )}
                 </View>
@@ -969,7 +971,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
             type="story"
             onClose={() => setShowReportModal(false)}
             onReportSubmitted={() => {
-              useToastStore.getState().showToast('Report Submitted: Our AI is reviewing this story.', 'success');
+              useToastStore.getState().showToast(t('report_story_ai_review'), 'success');
               setShowReportModal(false);
             }}
           />
@@ -1259,7 +1261,7 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontSize: 14,
     marginLeft: 12,
-    width: 80,
+    width: 100,
   },
   infoValue: {
     fontSize: 14,

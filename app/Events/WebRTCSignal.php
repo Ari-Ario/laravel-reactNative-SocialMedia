@@ -6,7 +6,7 @@ use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 // NOTE: SerializesModels intentionally REMOVED — it causes Eloquent model data
 // to bloat the serialized event payload, easily exceeding Reverb/Pusher's 10KB limit.
@@ -14,7 +14,7 @@ use Illuminate\Foundation\Events\Dispatchable;
 use App\Models\CollaborationSpace;
 use App\Models\User;
 
-class WebRTCSignal implements ShouldBroadcast
+class WebRTCSignal implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets;
 

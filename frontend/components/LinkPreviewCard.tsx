@@ -25,13 +25,14 @@ import { BlurView } from 'expo-blur';
 import { createShadow } from '@/utils/styles';
 import axios from 'axios';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 
 const { width, height } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
 
 // --- Styles ---
 
-const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
+const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => StyleSheet.create({
   container: {
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -469,7 +470,8 @@ const SkeletonItem = ({ style }: { style?: any }) => {
 
 const AnimatedWaveformBar = ({ index }: { index: number }) => {
   const { colors, activeScheme } = useAppTheme();
-  const styles = getStyles(colors, activeScheme);
+  const { t, isRTL } = useTranslation();
+  const styles = getStyles(colors, activeScheme, isRTL);
   return (
     <MotiView
       animate={{
@@ -591,8 +593,9 @@ const MediaViewerModal = ({
   mediaType: 'image' | 'video' | 'audio';
   title?: string;
 }) => {
+  const { t, isRTL } = useTranslation();
   const { colors, activeScheme } = useAppTheme();
-  const styles = getStyles(colors, activeScheme);
+  const styles = getStyles(colors, activeScheme, isRTL);
 
   const videoPlayer = useVideoPlayer(mediaUrl, (player) => {
     player.loop = true;
@@ -619,8 +622,8 @@ const MediaViewerModal = ({
       onRequestClose={onClose}
     >
       <BlurView intensity={90} tint="dark" style={styles.mediaModal}>
-        <View style={styles.mediaModalHeader}>
-          <Text style={styles.mediaModalTitle}>{title || 'Media Preview'}</Text>
+        <View style={[styles.mediaModalHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+          <Text style={[styles.mediaModalTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{title || t('media_preview')}</Text>
           <TouchableOpacity onPress={onClose} style={styles.mediaModalClose}>
             <Ionicons name="close" size={24} color="#fff" />
           </TouchableOpacity>
@@ -647,8 +650,8 @@ const MediaViewerModal = ({
               <View style={styles.audioArtwork}>
                 <Ionicons name="musical-notes" size={80} color="#3498db" />
               </View>
-              <Text style={styles.audioTitle}>{title || 'Audio Preview'}</Text>
-              <View style={styles.audioControls}>
+              <Text style={[styles.audioTitle, { textAlign: 'center' }]}>{title || t('audio_preview')}</Text>
+              <View style={[styles.audioControls, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                 <TouchableOpacity
                   style={styles.audioControl}
                   onPress={() => audioPlayer.pause()}
@@ -698,8 +701,9 @@ export const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const [isHovered, setIsHovered] = useState(false);
 
+  const { t, isRTL } = useTranslation();
   const { colors, activeScheme } = useAppTheme();
-  const styles = getStyles(colors, activeScheme);
+  const styles = getStyles(colors, activeScheme, isRTL);
 
   const domain = extractDomain(url);
   const platformIcon = getPlatformIcon(domain);
@@ -717,8 +721,8 @@ export const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({
     const directType = getDirectMediaType(url);
     if (directType) {
       const mediaData: LinkPreviewData = {
-        title: propTitle || url.split('/').pop()?.split(/[?#]/)[0] || 'Media Preview',
-        description: propDescription || `Direct ${directType} file`,
+        title: propTitle || url.split('/').pop()?.split(/[?#]/)[0] || t('media_preview'),
+        description: propDescription || t('direct_media_file', { type: t(directType) }),
         image: directType === 'image' ? url : propImage || null,
         video: directType === 'video' ? url : null,
         audio: directType === 'audio' ? url : null,
@@ -744,8 +748,8 @@ export const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({
     if (youtubeId) {
       const youtubeThumbnail = getYouTubeThumbnail(youtubeId);
       const mediaData: LinkPreviewData = {
-        title: propTitle || 'YouTube Video',
-        description: propDescription || 'Watch this video on YouTube',
+        title: propTitle || t('youtube_video'),
+        description: propDescription || t('watch_on_youtube'),
         image: youtubeThumbnail,
         video: url,
         audio: null,
@@ -818,7 +822,7 @@ export const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({
       const fallbackImage = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
       const fallbackData: LinkPreviewData = {
         title: propTitle || url,
-        description: propDescription || `Click to visit ${domain}`,
+        description: propDescription || t('visit_domain', { domain }),
         image: fallbackImage,
         video: null,
         audio: null,
@@ -843,7 +847,7 @@ export const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({
       const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
       const errorData: LinkPreviewData = {
         title: propTitle || url,
-        description: propDescription || `Click to visit ${domain}`,
+        description: propDescription || t('visit_domain', { domain }),
         image: faviconUrl,
         video: null,
         audio: null,
@@ -859,7 +863,7 @@ export const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({
         embedCode: null,
       };
       setPreviewData(errorData);
-      setError('Basic preview mode');
+      setError(t('basic_preview_mode'));
       onError?.(err as Error);
     } finally {
       setLoading(false);
@@ -883,7 +887,7 @@ export const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({
         });
       }
     } catch (err) {
-      Alert.alert('Error', 'Could not open link');
+      Alert.alert(t('error'), t('error_opening_link'));
     }
   };
 
@@ -907,19 +911,20 @@ export const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.loadingContainer, style]}>
-        <View style={styles.skeletonHeader}>
+      <View style={[styles.container, styles.loadingContainer, style, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+        <View style={[styles.skeletonHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
           <SkeletonItem style={styles.skeletonCircle} />
           <SkeletonItem style={styles.skeletonLineShort} />
         </View>
-        <View style={styles.skeletonBody}>
+        <View style={[styles.skeletonBody, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
           <SkeletonItem style={styles.skeletonMedia} />
-          <View style={styles.skeletonTextContainer}>
+          <View style={[styles.skeletonTextContainer, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
             <SkeletonItem style={styles.skeletonLineLong} />
             <SkeletonItem style={[styles.skeletonLineLong, { width: '80%' }]} />
             <SkeletonItem style={[styles.skeletonLineLong, { width: '60%' }]} />
           </View>
         </View>
+        <Text style={[styles.loadingText, { textAlign: isRTL ? 'right' : 'left', marginTop: 10 }]}>{t('loading_preview')}</Text>
       </View>
     );
   }
@@ -927,14 +932,14 @@ export const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({
   if (error && !previewData) {
     return (
       <TouchableOpacity
-        style={[styles.container, styles.errorContainer, style]}
+        style={[styles.container, styles.errorContainer, style, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}
         onPress={handlePress}
         activeOpacity={0.9}
       >
-        <View style={styles.errorContent}>
+        <View style={[styles.errorContent, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
           <Ionicons name="alert-circle" size={24} color="#FF3B30" />
-          <Text style={styles.errorText}>{error}</Text>
-          <Text style={styles.fallbackUrl} numberOfLines={1}>{url}</Text>
+          <Text style={[styles.errorText, { textAlign: isRTL ? 'right' : 'left' }]}>{t('error_loading_preview')}</Text>
+          <Text style={[styles.fallbackUrl, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>{url}</Text>
         </View>
       </TouchableOpacity>
     );
@@ -973,23 +978,23 @@ export const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({
             end={{ x: 1, y: 1 }}
           >
             {/* Header with Platform Icon */}
-            <View style={styles.header}>
-              <View style={[styles.platformIcon, { backgroundColor: platformColor + '15' }]}>
+            <View style={[styles.header, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+              <View style={[styles.platformIcon, { backgroundColor: platformColor + '15', [isRTL ? 'marginLeft' : 'marginRight']: 0, [isRTL ? 'marginRight' : 'marginLeft']: 0 }]}>
                 <Ionicons name={platformIcon as any} size={16} color={platformColor} />
               </View>
-              <Text style={[styles.domain, { color: colors.textSecondary }]} numberOfLines={1}>
+              <Text style={[styles.domain, { color: colors.textSecondary, textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>
                 {previewData.siteName || domain}
               </Text>
               {previewData.publishedDate && (
-                <Text style={[styles.date, { color: colors.textSecondary }]}>{formatDate(previewData.publishedDate)}</Text>
+                <Text style={[styles.date, { color: colors.textSecondary, textAlign: isRTL ? 'right' : 'left' }]}>{formatDate(previewData.publishedDate)}</Text>
               )}
             </View>
 
             {/* Main Content */}
-            <View style={[styles.content, compact && styles.contentCompact]}>
+            <View style={[styles.content, compact && styles.contentCompact, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
               {/* Media Container - Always show something */}
               <TouchableOpacity
-                style={[styles.mediaContainer, compact && styles.mediaContainerCompact]}
+                style={[styles.mediaContainer, compact && styles.mediaContainerCompact, { [isRTL ? 'marginLeft' : 'marginRight']: 0, [isRTL ? 'marginRight' : 'marginLeft']: 0 }]}
                 onPress={() => {
                   if (previewData.video) handleMediaPress(previewData.video, 'video');
                   else if (previewData.audio) handleMediaPress(previewData.audio, 'audio');
@@ -1052,36 +1057,36 @@ export const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({
               </TouchableOpacity>
 
               <View style={[styles.textContainer, compact && styles.textContainerCompact]}>
-                <Text style={styles.title} numberOfLines={compact ? 2 : 3}>
+                <Text style={[styles.title, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={compact ? 2 : 3}>
                   {previewData.title}
                 </Text>
 
                 {previewData.description && !compact ? (
-                  <Text style={styles.description} numberOfLines={showFullPreview ? undefined : 2}>
+                  <Text style={[styles.description, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={showFullPreview ? undefined : 2}>
                     {previewData.description}
                   </Text>
                 ) : !compact && !previewData.description && previewData.siteName ? (
-                  <Text style={styles.description} numberOfLines={1}>
+                  <Text style={[styles.description, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>
                     {previewData.siteName}
                   </Text>
                 ) : null}
 
                 {previewData.author && !compact ? (
-                  <View style={styles.authorContainer}>
+                  <View style={[styles.authorContainer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                     <Ionicons name="person-outline" size={12} color={colors.textSecondary} />
-                    <Text style={styles.authorText}>by {previewData.author}</Text>
+                    <Text style={[styles.authorText, { textAlign: isRTL ? 'right' : 'left' }]}>{t('by_prefix', { name: previewData.author })}</Text>
                   </View>
                 ) : null}
 
                 {/* Type Badges */}
                 {previewData.type !== 'unknown' && !compact ? (
-                  <View style={styles.typeBadge}>
-                    <Text style={styles.typeText}>
-                      {previewData.type === 'video' ? '🎬 Video' :
-                        previewData.type === 'audio' ? '🎵 Audio' :
-                          previewData.type === 'article' ? '📄 Article' :
-                            previewData.type === 'product' ? '🛍️ Product' :
-                              previewData.type === 'social' ? '💬 Social Post' : '🔗 Link'}
+                  <View style={[styles.typeBadge, { alignSelf: isRTL ? 'flex-end' : 'flex-start' }]}>
+                    <Text style={[styles.typeText, { textAlign: 'center' }]}>
+                      {previewData.type === 'video' ? `🎬 ${t('video')}` :
+                        previewData.type === 'audio' ? `🎵 ${t('audio')}` :
+                          previewData.type === 'article' ? `📄 ${t('article')}` :
+                            previewData.type === 'product' ? `🛍️ ${t('product')}` :
+                              previewData.type === 'social' ? `💬 ${t('social')}` : `🔗 ${t('link')}`}
                     </Text>
                   </View>
                 ) : null}
@@ -1090,10 +1095,10 @@ export const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({
 
             {/* Footer Actions */}
             {!compact ? (
-              <View style={styles.footer}>
-                <View style={styles.actionButtons}>
+              <View style={[styles.footer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                <View style={[styles.actionButtons, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                   <TouchableOpacity
-                    style={styles.actionButton}
+                    style={[styles.actionButton, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
                     onPress={(e) => {
                       e.stopPropagation();
                       setShowFullPreview(!showFullPreview);
@@ -1104,14 +1109,14 @@ export const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({
                       size={16}
                       color="#3498db"
                     />
-                    <Text style={styles.actionText}>
-                      {showFullPreview ? "Show less" : "Show more"}
+                    <Text style={[styles.actionText, { textAlign: isRTL ? 'right' : 'left' }]}>
+                      {showFullPreview ? t('less') : t('more')}
                     </Text>
                   </TouchableOpacity>
 
                   {hasMedia ? (
                     <TouchableOpacity
-                      style={styles.actionButton}
+                      style={[styles.actionButton, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
                       onPress={(e) => {
                         e.stopPropagation();
                         if (previewData.video) handleMediaPress(previewData.video, 'video');
@@ -1121,14 +1126,14 @@ export const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({
                       }}
                     >
                       <Ionicons name="expand-outline" size={16} color="#3498db" />
-                      <Text style={styles.actionText}>Expand</Text>
+                      <Text style={[styles.actionText, { textAlign: isRTL ? 'right' : 'left' }]}>{t('preview')}</Text>
                     </TouchableOpacity>
                   ) : null}
                 </View>
 
-                <View style={styles.openContainer}>
-                  <Text style={styles.openText}>Open link</Text>
-                  <Ionicons name="open-outline" size={14} color="#1DA1F2" />
+                <View style={[styles.openContainer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                  <Text style={[styles.openText, { textAlign: isRTL ? 'right' : 'left' }]}>{t('open_link')}</Text>
+                  <Ionicons name={isRTL ? "open-outline" : "open-outline"} size={14} color="#1DA1F2" />
                 </View>
               </View>
             ) : null}
@@ -1143,14 +1148,14 @@ export const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({
                   style={styles.expandedContent}
                 >
                   <View style={styles.expandedDivider} />
-                  <Text style={styles.expandedDescription}>
+                  <Text style={[styles.expandedDescription, { textAlign: isRTL ? 'right' : 'left' }]}>
                     {previewData.description}
                   </Text>
 
                   {previewData.embedUrl && (
-                    <View style={styles.embedContainer}>
-                      <Text style={styles.embedTitle}>Embedded Content</Text>
-                      <Text style={styles.embedUrl} numberOfLines={1}>
+                    <View style={[styles.embedContainer, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+                      <Text style={[styles.embedTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t('embed')}</Text>
+                      <Text style={[styles.embedUrl, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>
                         {previewData.embedUrl}
                       </Text>
                     </View>

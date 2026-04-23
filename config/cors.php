@@ -15,11 +15,19 @@ return [
     |
     */
 
-    'paths' => [],
-
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'login', 'register', 'logout', 'broadcasting/auth'],
+    
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['https://zmzir.com', 'https://www.zmzir.com', 'https://laravel-reactnative-socialmedia-qcx2q9ci.on-forge.com', 'http://localhost:8081'],
+    'allowed_origins' => [
+        'https://zmzir.com', 
+        'https://www.zmzir.com', 
+        'https://laravel-reactnative-socialmedia-qcx2q9ci.on-forge.com', 
+        'http://localhost:8081',
+        'http://127.0.0.1:8081',
+        'http://localhost:19006',
+        'http://localhost:3000'
+    ],
 
     'allowed_origins_patterns' => [],
 

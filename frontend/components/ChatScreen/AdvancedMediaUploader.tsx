@@ -31,6 +31,7 @@ import { MediaCompressor } from '@/utils/mediaCompressor';
 import { getToken } from '@/services/TokenService';
 import getApiBase from '@/services/getApiBase';
 import { createShadow, createTextShadow } from '@/utils/styles';
+import { useTranslation } from '@/constants/i18n';
 
 export interface UploadedMedia {
   id: number;
@@ -136,6 +137,7 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
   onClose,
   onUploadComplete,
 }, ref) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   // Navigation State
   const [viewState, setViewState] = useState<'preview' | 'grid'>('preview');
@@ -205,8 +207,8 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
 
       if (size > 20 * 1024 * 1024) {
         Alert.alert(
-          'File Too Large',
-          'Files must be less than 20 MB. Please choose a smaller file.',
+          t('file_too_large_title'),
+          t('file_too_large_msg'),
           [{ text: 'OK' }]
         );
         return;
@@ -226,7 +228,7 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
       setCameraVisible(true);
     } catch (err) {
       console.error('Camera err:', err);
-      Alert.alert('Error', 'Failed to launch camera.');
+      Alert.alert(t('error'), t('failed_launch_camera'));
     }
   }, []);
 
@@ -380,7 +382,7 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
 
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Permission Required', 'Please allow photo library access.');
+      Alert.alert(t('permission_required'), t('photo_library_permission_msg'));
       return;
     }
 
@@ -444,7 +446,7 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
       input.click();
       return;
     }
-    Alert.alert('File Picker', 'Native file document picking requires a specialized library. Proceeding to Gallery instead.', [
+    Alert.alert(t('file_picker'), t('file_picker_native_msg'), [
       { text: 'OK', onPress: openGallery }
     ]);
   }, [openGallery]);
@@ -500,7 +502,7 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
 
     } catch (err: any) {
       console.error('Upload error:', err);
-      Alert.alert('Upload Failed', err?.message ?? 'Please try again.');
+      Alert.alert(t('upload_failed_title'), t('please_try_again'));
       setUploading(false);
       setProgress(0);
     }
@@ -591,8 +593,8 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
                   </TouchableOpacity>
                   <Text style={styles.cameraHint}>
                     {cameraMode === 'video'
-                      ? isRecording ? `Recording ${Math.floor(recordingProgress * RECORDING_LIMIT_MS / 1000)}s` : 'Hold for Video'
-                      : 'Tap for Photo'}
+                      ? isRecording ? t('recording_duration_status').replace('{duration}', Math.floor(recordingProgress * RECORDING_LIMIT_MS / 1000).toString()) : t('hold_for_video')
+                      : t('tap_for_photo')}
                   </Text>
                 </View>
 
@@ -606,13 +608,13 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
                   onPress={() => setCameraMode('picture')}
                   style={[styles.cameraModeBtn, cameraMode === 'picture' && styles.activeCameraModeBtn]}
                 >
-                  <Text style={[styles.cameraModeTxt, cameraMode === 'picture' && styles.activeCameraModeTxt]}>PHOTO</Text>
+                  <Text style={[styles.cameraModeTxt, cameraMode === 'picture' && styles.activeCameraModeTxt]}>{t('photo_label')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setCameraMode('video')}
                   style={[styles.cameraModeBtn, cameraMode === 'video' && styles.activeCameraModeBtn]}
                 >
-                  <Text style={[styles.cameraModeTxt, cameraMode === 'video' && styles.activeCameraModeTxt]}>VIDEO</Text>
+                  <Text style={[styles.cameraModeTxt, cameraMode === 'video' && styles.activeCameraModeTxt]}>{t('video_label')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -643,7 +645,7 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
               </TouchableOpacity>
               <View style={styles.headerIndicator}>
                 <Text style={styles.headerTitle}>
-                  {selectedAssets.length} Selected
+                  {t('selected_count').replace('{count}', selectedAssets.length.toString())}
                 </Text>
               </View>
               <View style={{ width: 44 }} />
@@ -693,13 +695,13 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
               {uploading ? (
                 <View style={styles.uploadingState}>
                   <ActivityIndicator size="small" color="#fff" />
-                  <Text style={styles.uploadingText}>Sending... {progress}%</Text>
+                  <Text style={styles.uploadingText}>{t('sending_status').replace('{progress}', progress.toString())}</Text>
                 </View>
               ) : (
                 <>
                   <TextInput
                     style={styles.captionInput}
-                    placeholder="Add a caption..."
+                    placeholder={t('add_caption_placeholder')}
                     placeholderTextColor="rgba(255,255,255,0.6)"
                     value={caption}
                     onChangeText={setCaption}
@@ -767,13 +769,13 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
               {uploading ? (
                 <View style={styles.uploadingState}>
                   <ActivityIndicator size="small" color="#fff" />
-                  <Text style={styles.uploadingText}>Sending... {progress}%</Text>
+                  <Text style={styles.uploadingText}>{t('sending_status').replace('{progress}', progress.toString())}</Text>
                 </View>
               ) : (
                 <>
                   <TextInput
                     style={styles.captionInputImmersive}
-                    placeholder="Add a caption..."
+                    placeholder={t('add_caption_placeholder')}
                     placeholderTextColor="rgba(255,255,255,0.6)"
                     value={caption}
                     onChangeText={setCaption}

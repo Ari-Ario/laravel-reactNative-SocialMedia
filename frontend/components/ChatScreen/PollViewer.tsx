@@ -33,6 +33,7 @@ import PollVotersModal from './PollVotersModal';
 import GenericMenu, { MenuItem } from '../GenericMenu';
 import { calculateAnchor, AnchorPosition } from '@/utils/layout';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 import { GlobalStyles } from '@/styles/GlobalStyles';
 
 const { width, height } = Dimensions.get('window');
@@ -68,7 +69,8 @@ const PollViewer: React.FC<PollViewerProps> = ({
     inChatMode = false,
 }) => {
     const { colors, activeScheme } = useAppTheme();
-    const styles = getStyles(colors, activeScheme);
+    const { t, isRTL } = useTranslation();
+    const styles = getStyles(colors, activeScheme, isRTL);
 
     // State
     const [selectedOptions, setSelectedOptions] = useState<Set<string>>(new Set());
@@ -153,7 +155,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
         if (votingInProgress) return;
 
         if (isPreview) {
-            Alert.alert('Preview Mode', 'Voting is disabled while previewing the poll.');
+            Alert.alert(t('preview_mode'), t('voting_disabled_preview'));
             return;
         }
 
@@ -170,7 +172,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
             } else {
                 if (localPoll.settings?.maxSelections &&
                     newSelected.size >= localPoll.settings.maxSelections) {
-                    Alert.alert('Max Selections', `You can only select up to ${localPoll.settings.maxSelections} options`);
+                    Alert.alert(t('max_selections_title'), t('max_selections_msg').replace('{count}', String(localPoll.settings.maxSelections)));
                     return;
                 }
                 newSelected.add(optionId);
@@ -186,7 +188,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
     const submitVote = async (optionIds: string[]) => {
         if (optionIds.length === 0) return;
         if (isPreview) {
-            Alert.alert('Preview Mode', 'Voting is disabled while previewing the poll.');
+            Alert.alert(t('preview_mode'), t('voting_disabled_preview'));
             return;
         }
 
@@ -226,7 +228,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
 
                 option.voters.push({
                     userId: currentUserId,
-                    name: 'You',
+                    name: t('you'),
                 });
             }
         });
@@ -257,9 +259,9 @@ const PollViewer: React.FC<PollViewerProps> = ({
             if (error.response?.status === 422) {
                 const errors = error.response.data.errors;
                 const messages = Object.values(errors).flat().join('\n');
-                Alert.alert('Validation Error', messages);
+                Alert.alert(t('validation_error'), messages);
             } else {
-                Alert.alert('Error', 'Failed to submit vote. Please try again.');
+                Alert.alert(t('error'), t('failed_submit_vote'));
             }
         } finally {
             setVotingInProgress(false);
@@ -281,8 +283,8 @@ const PollViewer: React.FC<PollViewerProps> = ({
     // Close poll
     const handleClosePoll = useCallback(() => {
         setShowMenu(false);
-        const title = 'Close Poll';
-        const message = 'Are you sure you want to close this poll? No more votes will be accepted.';
+        const title = t('close_poll_title');
+        const message = t('confirm_close_poll_msg');
 
         const executeClose = async () => {
             try {
@@ -299,7 +301,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
                 }
 
                 await collaborationService.sendMessage(spaceId, {
-                    content: `📊 Poll "${localPoll.question}" has been closed`,
+                    content: t('poll_closed_notif').replace('{question}', localPoll.question),
                     type: 'text',
                     metadata: {
                         isPollNotification: true,
@@ -310,9 +312,9 @@ const PollViewer: React.FC<PollViewerProps> = ({
             } catch (error) {
                 console.error('Error closing poll:', error);
                 if (Platform.OS === 'web') {
-                    window.alert('Failed to close poll');
+                    window.alert(t('failed_close_poll'));
                 } else {
-                    Alert.alert('Error', 'Failed to close poll');
+                    Alert.alert(t('error'), t('failed_close_poll'));
                 }
             }
         };
@@ -329,7 +331,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
                 [
                     { text: 'Cancel', style: 'cancel' },
                     {
-                        text: 'Close',
+                        text: t('close'),
                         style: 'destructive',
                         onPress: executeClose,
                     },
@@ -345,13 +347,13 @@ const PollViewer: React.FC<PollViewerProps> = ({
         const isCreator = String(localPoll?.created_by) === String(currentUserId);
         const isModerator = currentUserRole === 'owner' || currentUserRole === 'moderator';
 
-        const title = 'Delete Poll';
+        const title = t('delete_poll_title');
         let message = '';
 
         if (isCreator) {
-            message = 'As the creator, deleting this poll will remove it from ALL spaces it was shared to. This action cannot be undone.';
+            message = t('creator_delete_poll_msg');
         } else if (isModerator) {
-            message = 'As a moderator, you can only delete this poll from the current space. The original creator\'s copy in other spaces will remain. This action cannot be undone.';
+            message = t('moderator_delete_poll_msg');
         }
 
         const executeDelete = async () => {
@@ -363,15 +365,15 @@ const PollViewer: React.FC<PollViewerProps> = ({
                 // Show appropriate message
                 if (Platform.OS === 'web') {
                     if (result && result.deleted_by === 'creator' && result.total_copies_deleted > 0) {
-                        window.alert(`Poll deleted. ${result.total_copies_deleted} copies removed from other spaces.`);
+                        window.alert(t('poll_deleted_copies_msg').replace('{count}', String(result.total_copies_deleted)));
                     } else {
-                        window.alert('Poll deleted successfully');
+                        window.alert(t('poll_deleted_success'));
                     }
                 } else {
                     if (result && result.deleted_by === 'creator' && result.total_copies_deleted > 0) {
-                        Alert.alert('Success', `Poll deleted. ${result.total_copies_deleted} copies removed from other spaces.`);
+                        Alert.alert(t('success'), t('poll_deleted_copies_msg').replace('{count}', String(result.total_copies_deleted)));
                     } else {
-                        Alert.alert('Success', 'Poll deleted successfully');
+                        Alert.alert(t('success'), t('poll_deleted_success'));
                     }
                 }
 
@@ -379,9 +381,9 @@ const PollViewer: React.FC<PollViewerProps> = ({
             } catch (error: any) {
                 console.error('❌ Delete failed:', error);
                 if (Platform.OS === 'web') {
-                    window.alert(error.response?.data?.message || 'Failed to delete poll');
+                    window.alert(error.response?.data?.message || t('failed_delete_poll_msg'));
                 } else {
-                    Alert.alert('Error', error.response?.data?.message || 'Failed to delete poll');
+                    Alert.alert(t('error'), error.response?.data?.message || t('failed_delete_poll_msg'));
                 }
             }
         };
@@ -398,7 +400,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
                 [
                     { text: 'Cancel', style: 'cancel' },
                     {
-                        text: 'Delete',
+                        text: t('delete'),
                         style: 'destructive',
                         onPress: executeDelete,
                     },
@@ -423,9 +425,8 @@ const PollViewer: React.FC<PollViewerProps> = ({
         }
 
         try {
-            // Send update notification to chat
             await collaborationService.sendMessage(spaceId, {
-                content: `📊 Poll "${updatedPoll.question}" has been updated`,
+                content: t('poll_updated_notif').replace('{question}', updatedPoll.question),
                 type: 'text',
                 metadata: {
                     isPollNotification: true,
@@ -463,11 +464,11 @@ const PollViewer: React.FC<PollViewerProps> = ({
     const handleShareResults = useCallback(() => {
         setShowMenu(false);
 
-        const message = `📊 Poll Results: ${localPoll.question}\n\n` +
+        const message = t('poll_results_title').replace('{question}', localPoll.question) + '\n\n' +
             calculatedOptions.map((opt: any) =>
-                `${opt.text}: ${opt.voteCount} votes (${opt.percentage}%)`
+                `${opt.text}: ${opt.voteCount} ${opt.voteCount !== 1 ? t('votes_plural') : t('votes_singular')} (${opt.percentage}%)`
             ).join('\n') +
-            `\n\nTotal votes: ${localPoll.total_votes || 0}`;
+            `\n\n${t('total_votes_label').replace('{count}', String(localPoll.total_votes || 0))}`;
 
         setShareMessage(message);
         setShowShareResultsModal(true);
@@ -486,11 +487,11 @@ const PollViewer: React.FC<PollViewerProps> = ({
             });
 
             await safeHaptics.success();
-            Alert.alert('Success', 'Results shared to chat');
+            Alert.alert(t('success'), t('results_shared_chat'));
             setShowShareResultsModal(false);
         } catch (error) {
             console.error('Error sharing results:', error);
-            Alert.alert('Error', 'Failed to share results');
+            Alert.alert(t('error'), t('failed_share_results'));
         }
     }, [spaceId, shareMessage, localPoll.id, collaborationService]);
 
@@ -504,7 +505,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
             setAvailableSpaces(filtered);
         } catch (error) {
             console.error('Error loading spaces:', error);
-            Alert.alert('Error', 'Could not load spaces for forwarding');
+            Alert.alert(t('error'), t('failed_load_spaces_msg'));
         } finally {
             setIsLoadingSpaces(false);
         }
@@ -520,7 +521,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
     // Handle forward with notifications
     const handleForward = useCallback(async () => {
         if (selectedSpaces.size === 0) {
-            Alert.alert('Error', 'Please select at least one space');
+            Alert.alert(t('error'), t('select_one_space_error'));
             return;
         }
 
@@ -530,7 +531,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
 
             for (const targetSpaceId of targetSpaceIds) {
                 await collaborationService.sendMessage(targetSpaceId, {
-                    content: `📊 Poll forwarded from another space: "${localPoll.question}"`,
+                    content: t('poll_forwarded_notif').replace('{question}', localPoll.question),
                     type: 'poll', // Changed from 'text' to 'poll'
                     metadata: {
                         isPoll: true,      // Added so MessageList recognizes it
@@ -544,9 +545,9 @@ const PollViewer: React.FC<PollViewerProps> = ({
 
             await safeHaptics.success();
             Alert.alert(
-                'Success',
-                `Poll forwarded to ${targetSpaceIds.length} space(s)`,
-                [{ text: 'OK' }]
+                t('success'),
+                t('poll_forwarded_success').replace('{count}', String(targetSpaceIds.length)),
+                [{ text: t('ok') }]
             );
 
             setShowForwardModal(false);
@@ -557,7 +558,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
             }
         } catch (error) {
             console.error('Error forwarding poll:', error);
-            Alert.alert('Error', 'Failed to forward poll');
+            Alert.alert(t('error'), t('failed_forward_poll'));
         }
     }, [selectedSpaces, localPoll.id, localPoll.question, spaceId, onForward, collaborationService]);
 
@@ -613,7 +614,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
                             </View>
                             <View style={styles.voteInfo}>
                                 <Text style={styles.voteCount}>
-                                    {option.voteCount || 0} vote{option.voteCount !== 1 ? 's' : ''}
+                                    {option.voteCount || 0} {option.voteCount !== 1 ? t('votes_plural') : t('votes_singular')}
                                 </Text>
                                 <Text style={styles.percentageText}>
                                     {option.percentage || 0}%
@@ -648,16 +649,16 @@ const PollViewer: React.FC<PollViewerProps> = ({
                             <Avatar
                                 source={localPoll?.creator?.profile_photo}
                                 size={32}
-                                name={localPoll?.creator?.name || 'User'}
+                                name={localPoll?.creator?.name || t('user')}
                             />
                             <View style={styles.creatorText}>
                                 <Text style={styles.creatorName}>
-                                    {localPoll?.creator?.name || 'User'}
+                                    {localPoll?.creator?.name || t('user')}
                                 </Text>
                                 <Text style={styles.timestamp}>
                                     {localPoll?.created_at
                                         ? new Date(localPoll.created_at).toLocaleString()
-                                        : 'Just now'}
+                                        : t('just_now')}
                                 </Text>
                             </View>
                         </TouchableOpacity>
@@ -672,11 +673,11 @@ const PollViewer: React.FC<PollViewerProps> = ({
                                         styles.statusText,
                                         { color: localPoll?.status === 'active' ? '#4CAF50' : '#FF6B6B' }
                                     ]}>
-                                        {localPoll?.status?.toUpperCase() || 'ACTIVE'}
+                                        {t(`poll_status_${localPoll?.status || 'active'}`)}
                                     </Text>
                                 </View>
                                 <View style={styles.typeBadge}>
-                                    <Text style={styles.typeText}>{localPoll?.type}</Text>
+                                    <Text style={styles.typeText}>{t(`${localPoll?.type || 'single'}_choice`)}</Text>
                                 </View>
                             </View>
 
@@ -710,8 +711,8 @@ const PollViewer: React.FC<PollViewerProps> = ({
                             new Date(localPoll.deadline) < new Date() && styles.deadlinePassed
                         ]}>
                             {new Date(localPoll.deadline) < new Date()
-                                ? `Closed: ${new Date(localPoll.deadline).toLocaleString()}`
-                                : `Closes: ${new Date(localPoll.deadline).toLocaleString()}`}
+                                ? t('closed_label_colon').replace('{time}', new Date(localPoll.deadline).toLocaleString())
+                                : t('clozes_label_colon').replace('{time}', new Date(localPoll.deadline).toLocaleString())}
                         </Text>
                     </View>
                 )}
@@ -724,16 +725,16 @@ const PollViewer: React.FC<PollViewerProps> = ({
                 {/* Stats - now clickable to open voters modal */}
                 <TouchableOpacity style={styles.statsContainer} onPress={() => setShowVotersModal(true)}>
                     <Text style={styles.statsText}>
-                        <Ionicons name="people" size={14} color="#666" /> {localPoll?.unique_voters || 0} participant{(localPoll?.unique_voters || 0) !== 1 ? 's' : ''}
+                        <Ionicons name="people" size={14} color="#666" /> {localPoll?.unique_voters || 0} { (localPoll?.unique_voters || 0) !== 1 ? t('participants_plural') : t('participant_singular')}
                         {' • '}
-                        <Ionicons name="checkbox" size={14} color="#666" /> {localPoll?.total_votes || 0} total votes
+                        <Ionicons name="checkbox" size={14} color="#666" /> {localPoll?.total_votes || 0} { (localPoll?.total_votes || 0) !== 1 ? t('votes_plural') : t('votes_singular')}
                     </Text>
                     {localPoll?.settings?.quorum && (
                         <Text style={[
                             styles.quorumText,
                             (localPoll?.unique_voters || 0) >= localPoll.settings.quorum && styles.quorumMet
                         ]}>
-                            Quorum: {localPoll?.unique_voters || 0}/{localPoll.settings.quorum}
+                            {t('quorum_label')}: {localPoll?.unique_voters || 0}/{localPoll.settings.quorum}
                             {(localPoll?.unique_voters || 0) >= localPoll.settings.quorum && ' ✓'}
                         </Text>
                     )}
@@ -763,7 +764,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
                             <>
                                 <Ionicons name="checkmark-circle" size={20} color="#fff" />
                                 <Text style={styles.submitButtonText}>
-                                    Submit Vote ({selectedOptions.size})
+                                    {t('submit_vote_btn').replace('{count}', String(selectedOptions.size))}
                                 </Text>
                             </>
                         )}
@@ -775,7 +776,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
                     <View style={styles.forwardedContainer}>
                         <Ionicons name="share-social" size={14} color="#999" />
                         <Text style={styles.forwardedText}>
-                            Forwarded from {localPoll.forwarded_from.length} other space(s)
+                            {t('forwarded_from_msg').replace('{count}', String(localPoll.forwarded_from.length))}
                         </Text>
                     </View>
                 )}
@@ -789,37 +790,37 @@ const PollViewer: React.FC<PollViewerProps> = ({
                 items={useMemo(() => [
                     ...(!canViewResults() && !hasVoted ? [{
                         icon: 'bar-chart',
-                        label: 'View Results',
+                        label: t('view_results_label'),
                         onPress: handleViewResults,
                         color: '#007AFF'
                     }] : []),
                     ...(canShareResults ? [{
                         icon: 'share-social',
-                        label: 'Share Results',
+                        label: t('share_results_label'),
                         onPress: handleShareResults,
                         color: '#9C27B0'
                     }] : []),
                     ...(canForward ? [{
                         icon: 'share',
-                        label: 'Forward to Spaces',
+                        label: t('forward_to_spaces_label'),
                         onPress: handleForwardPress,
                         color: '#4CAF50'
                     }] : []),
                     ...(canEdit ? [{
                         icon: 'create',
-                        label: 'Edit Poll',
+                        label: t('edit_poll_label'),
                         onPress: handleEditPoll,
                         color: '#FFA726'
                     }] : []),
                     ...(canClose ? [{
                         icon: 'lock-closed',
-                        label: 'Close Poll',
+                        label: t('close_poll_label'),
                         onPress: handleClosePoll,
                         color: '#FF6B6B'
                     }] : []),
                     ...(canDelete ? [{
                         icon: 'trash',
-                        label: 'Delete Poll',
+                        label: t('delete_poll_label'),
                         onPress: handleDeletePoll,
                         destructive: true
                     }] : [])
@@ -866,14 +867,14 @@ const PollViewer: React.FC<PollViewerProps> = ({
                         style={[styles.modalContent, GlobalStyles.popupContainer]}
                     >
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Share Poll Results</Text>
+                            <Text style={styles.modalTitle}>{t('share_poll_results_title')}</Text>
                             <TouchableOpacity onPress={() => setShowShareResultsModal(false)}>
                                 <Ionicons name="close" size={24} color="#666" />
                             </TouchableOpacity>
                         </View>
 
                         <Text style={styles.modalDescription}>
-                            Share results as a message in this space
+                            {t('share_results_description')}
                         </Text>
 
                         <TextInput
@@ -890,14 +891,14 @@ const PollViewer: React.FC<PollViewerProps> = ({
                                 style={[styles.modalButton, styles.modalButtonCancel]}
                                 onPress={() => setShowShareResultsModal(false)}
                             >
-                                <Text style={styles.modalButtonTextCancel}>Cancel</Text>
+                                <Text style={styles.modalButtonTextCancel}>{t('cancel')}</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
                                 style={[styles.modalButton, styles.modalButtonConfirm]}
                                 onPress={handleSendResults}
                             >
-                                <Text style={styles.modalButtonTextConfirm}>Send to Chat</Text>
+                                <Text style={styles.modalButtonTextConfirm}>{t('send_to_chat_btn')}</Text>
                             </TouchableOpacity>
                         </View>
                     </Animated.View>
@@ -918,19 +919,19 @@ const PollViewer: React.FC<PollViewerProps> = ({
                         style={[styles.modalContent, GlobalStyles.popupContainer]}
                     >
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Forward Poll</Text>
+                            <Text style={styles.modalTitle}>{t('forward_poll_title')}</Text>
                             <TouchableOpacity onPress={() => setShowForwardModal(false)}>
                                 <Ionicons name="close" size={24} color="#666" />
                             </TouchableOpacity>
                         </View>
 
                         <Text style={styles.modalDescription}>
-                            Select spaces to forward this poll
+                            {t('forward_poll_description')}
                         </Text>
 
                         <TextInput
                             style={styles.searchInput}
-                            placeholder="Search spaces..."
+                            placeholder={t('search_spaces_placeholder')}
                             value={searchQuery}
                             onChangeText={setSearchQuery}
                             clearButtonMode="while-editing"
@@ -939,7 +940,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
                         {isLoadingSpaces ? (
                             <View style={styles.loadingContainer}>
                                 <ActivityIndicator size="large" color="#007AFF" />
-                                <Text style={styles.loadingText}>Loading spaces...</Text>
+                                <Text style={styles.loadingText}>{t('loading_spaces_msg')}</Text>
                             </View>
                         ) : (
                             <FlatList
@@ -979,7 +980,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
                                     </TouchableOpacity>
                                 )}
                                 ListEmptyComponent={
-                                    <Text style={styles.emptyText}>No spaces available</Text>
+                                    <Text style={styles.emptyText}>{t('no_spaces_available')}</Text>
                                 }
                             />
                         )}
@@ -992,7 +993,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
                                     setSelectedSpaces(new Set());
                                 }}
                             >
-                                <Text style={styles.modalButtonTextCancel}>Cancel</Text>
+                                <Text style={styles.modalButtonTextCancel}>{t('cancel')}</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
@@ -1005,7 +1006,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
                                 disabled={selectedSpaces.size === 0}
                             >
                                 <Text style={styles.modalButtonTextConfirm}>
-                                    Forward ({selectedSpaces.size})
+                                    {t('forward_count_btn').replace('{count}', String(selectedSpaces.size))}
                                 </Text>
                             </TouchableOpacity>
                         </View>
@@ -1026,7 +1027,8 @@ const PollViewer: React.FC<PollViewerProps> = ({
 };
 
 
-const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
+function getStyles(colors: any, activeScheme: string, isRTL: boolean) {
+    return StyleSheet.create({
     container: {
         backgroundColor: activeScheme === 'dark' ? colors.surface : '#fff',
         borderRadius: 16,
@@ -1046,18 +1048,19 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
         backgroundColor: 'transparent',
     },
     header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         alignItems: 'center',
-        marginBottom: 12,
+        justifyContent: 'space-between',
+        marginBottom: 16,
     },
     creatorInfo: {
-        flexDirection: 'row',
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         alignItems: 'center',
         flex: 1,
     },
     creatorText: {
-        marginLeft: 8,
+        marginLeft: isRTL ? 0 : 10,
+        marginRight: isRTL ? 10 : 0,
     },
     creatorName: {
         fontSize: 14,
@@ -1069,7 +1072,7 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
         color: colors.textSecondary,
     },
     headerRight: {
-        flexDirection: 'row',
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         alignItems: 'center',
         gap: 8,
     },
@@ -1102,20 +1105,22 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     },
     question: {
         fontSize: 18,
-        fontWeight: '600',
+        fontWeight: '700',
         color: colors.text,
         marginBottom: 12,
         lineHeight: 24,
+        textAlign: isRTL ? 'right' : 'left',
     },
     deadlineContainer: {
-        flexDirection: 'row',
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: 16,
     },
     deadlineText: {
-        marginLeft: 6,
         fontSize: 12,
         color: colors.textSecondary,
+        marginLeft: isRTL ? 0 : 6,
+        marginRight: isRTL ? 6 : 0,
     },
     deadlinePassed: {
         color: '#FF6B6B',
@@ -1139,7 +1144,8 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
         opacity: 0.6,
     },
     optionContent: {
-        gap: 8,
+        flex: 1,
+        alignItems: isRTL ? 'flex-end' : 'flex-start',
     },
     optionHeader: {
         flexDirection: 'row',
@@ -1147,9 +1153,10 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
         alignItems: 'center',
     },
     optionText: {
-        fontSize: 15,
+        fontSize: 16,
         color: colors.text,
         flex: 1,
+        textAlign: isRTL ? 'right' : 'left',
     },
     optionTextSelected: {
         fontWeight: '500',
@@ -1176,8 +1183,9 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
         backgroundColor: '#4CAF50',
     },
     voteInfo: {
-        flexDirection: 'row',
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         justifyContent: 'space-between',
+        marginTop: 4,
         alignItems: 'center',
     },
     voteCount: {
@@ -1199,8 +1207,9 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
         borderTopColor: colors.border,
     },
     statsText: {
-        fontSize: 12,
+        fontSize: 13,
         color: colors.textSecondary,
+        textAlign: isRTL ? 'right' : 'left',
     },
     quorumText: {
         fontSize: 12,
@@ -1210,10 +1219,10 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
         color: '#4CAF50',
     },
     tagsContainer: {
-        flexDirection: 'row',
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         flexWrap: 'wrap',
-        gap: 6,
-        marginBottom: 12,
+        marginTop: 12,
+        gap: 8,
     },
     tag: {
         backgroundColor: activeScheme === 'dark' ? colors.muted : '#f0f0f0',
@@ -1226,33 +1235,33 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
         color: colors.textSecondary,
     },
     submitButton: {
-        flexDirection: 'row',
+        flexDirection: isRTL ? 'row-reverse' : 'row',
+        backgroundColor: colors.tint,
+        borderRadius: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#4CAF50',
-        paddingVertical: 12,
-        borderRadius: 8,
+        marginTop: 20,
         gap: 8,
-        marginBottom: 8,
     },
     submitButtonDisabled: {
         opacity: 0.6,
     },
     submitButtonText: {
         color: '#fff',
-        fontSize: 14,
+        fontSize: 16,
         fontWeight: '600',
+        marginLeft: isRTL ? 0 : 8,
+        marginRight: isRTL ? 8 : 0,
     },
     forwardedContainer: {
-        flexDirection: 'row',
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         alignItems: 'center',
-        marginTop: 8,
-        paddingTop: 8,
-        borderTopWidth: 1,
-        borderTopColor: colors.border,
+        marginTop: 12,
+        gap: 6,
     },
     forwardedText: {
-        marginLeft: 4,
         fontSize: 11,
         color: colors.textSecondary,
     },
@@ -1390,5 +1399,6 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
         color: activeScheme === 'dark' ? '#000' : '#fff',
     },
 });
+}
 
 export default PollViewer;

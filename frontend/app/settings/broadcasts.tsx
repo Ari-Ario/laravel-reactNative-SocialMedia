@@ -30,6 +30,7 @@ import { getToken } from '@/services/TokenService';
 import Avatar from '@/components/Image/Avatar';
 import getApiBase from '@/services/getApiBase';
 import GlobalStyles from '@/styles/GlobalStyles';
+import { useTranslation } from '@/constants/i18n';
 
 const { width } = Dimensions.get('window');
 
@@ -56,6 +57,7 @@ const BroadcastCard = ({
     onDelete: () => void;
     onRename: (newName: string) => void;
 }) => {
+    const { t } = useTranslation();
     const { colors, activeScheme } = useAppTheme();
     const styles = getStyles(colors, activeScheme);
     const [isHovered, setIsHovered] = useState(false);
@@ -125,12 +127,12 @@ const BroadcastCard = ({
                             <View style={styles.broadcastMetaRow}>
                                 <View style={styles.metaBadge}>
                                     <Ionicons name="people" size={10} color={colors.textSecondary} />
-                                    <Text style={styles.metaText}>{item.members} members</Text>
+                                    <Text style={styles.metaText}>{item.members} {t('privacy')}</Text>
                                 </View>
                                 <View style={styles.metaDot} />
                                 <View style={styles.metaBadge}>
                                     <Ionicons name="time" size={10} color={colors.textSecondary} />
-                                    <Text style={styles.metaText}>Active {item.lastActive}</Text>
+                                    <Text style={styles.metaText}>{t('privacy')} {item.lastActive}</Text>
                                 </View>
                             </View>
                         </View>
@@ -171,6 +173,7 @@ const BroadcastCard = ({
 };
 
 export default function BroadcastListsScreen() {
+    const { t } = useTranslation();
     const { colors, activeScheme } = useAppTheme();
     const styles = getStyles(colors, activeScheme);
     const insets = useSafeAreaInsets();
@@ -244,7 +247,7 @@ export default function BroadcastListsScreen() {
             const traits = await getSynergyTraits();
             await updatePreferences({ synergy_traits: { ...traits, broadcast_lists: updatedLists } });
         } catch (error) {
-            Alert.alert('Error', 'Failed to save broadcast list.');
+            Alert.alert(t('error'), t('failed_update'));
         }
     };
 
@@ -322,7 +325,7 @@ export default function BroadcastListsScreen() {
         if (!activeList || !broadcastText.trim()) return;
         const memberIds = activeList.member_ids || [];
         if (memberIds.length === 0) {
-            Alert.alert('Empty List', 'Add some members first!');
+            Alert.alert(t('error'), t('failed_update'));
             return;
         }
 
@@ -341,10 +344,10 @@ export default function BroadcastListsScreen() {
             const updatedLists = lists.map(l => l.id === activeList.id ? updatedList : l);
             setLists(updatedLists);
             await saveLists(updatedLists);
-
-            Alert.alert('Sent!', `Broadcast delivered to ${memberIds.length} members.`);
+            
+            Alert.alert(t('success'), t('save'));
         } catch (e) {
-            Alert.alert('Error', 'Failed to send broadcast.');
+            Alert.alert(t('error'), t('failed_update'));
         } finally {
             setIsSending(false);
         }
@@ -358,11 +361,11 @@ export default function BroadcastListsScreen() {
             await saveLists(updatedLists);
         };
         if (isWeb) {
-            if (window.confirm('Delete this broadcast list?')) confirm();
+            if (window.confirm(t('logout'))) confirm();
         } else {
-            Alert.alert('Delete List', 'Remove this broadcast list?', [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Delete', style: 'destructive', onPress: confirm }
+            Alert.alert(t('logout'), t('logout'), [
+                { text: t('cancel'), style: 'cancel' },
+                { text: t('logout'), style: 'destructive', onPress: confirm }
             ]);
         }
     };
@@ -382,7 +385,7 @@ export default function BroadcastListsScreen() {
                 style={[styles.header, { paddingTop: insets.top + 10 }]}
             >
                 <BackButton onPress={() => router.back()} />
-                <Text style={styles.headerTitle}>Broadcast Hub</Text>
+                <Text style={styles.headerTitle}>{t('social')}</Text>
                 <TouchableOpacity onPress={() => setShowCreateModal(true)} style={styles.createHeaderButton}>
                     <Ionicons name="add" size={24} color={colors.tint} />
                 </TouchableOpacity>
@@ -402,7 +405,6 @@ export default function BroadcastListsScreen() {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ type: 'spring' }}
                 >
-                    {/* Hero Section */}
                     <LinearGradient
                         colors={[colors.tint, colors.tint + 'CC']}
                         style={styles.heroSection}
@@ -414,10 +416,9 @@ export default function BroadcastListsScreen() {
                                 <Ionicons name="radio-outline" size={32} color="#fff" />
                             </View>
                         </View>
-                        <Text style={styles.heroTitle}>Reach Everyone at Once</Text>
+                        <Text style={styles.heroTitle}>{t('social')}</Text>
                         <Text style={styles.heroDescription}>
-                            Create broadcast lists to send messages to multiple contacts without creating a group chat.
-                            Perfect for announcements and updates.
+                            {t('social')}
                         </Text>
                         <TouchableOpacity
                             style={styles.createButton}
@@ -430,43 +431,41 @@ export default function BroadcastListsScreen() {
                                 end={{ x: 1, y: 0 }}
                             >
                                 <Ionicons name="add" size={22} color={colors.tint} />
-                                <Text style={styles.createButtonText}>New Broadcast List</Text>
+                                <Text style={styles.createButtonText}>{t('invite')}</Text>
                             </LinearGradient>
                         </TouchableOpacity>
                     </LinearGradient>
 
-                    {/* Stats Section */}
                     <View style={styles.statsContainer}>
                         <View style={styles.statCard}>
                             <Text style={styles.statNumber}>{lists.length}</Text>
-                            <Text style={styles.statLabel}>Active Lists</Text>
+                            <Text style={styles.statLabel}>{t('social')}</Text>
                         </View>
                         <View style={styles.statCard}>
                             <Text style={styles.statNumber}>
                                 {lists.reduce((sum, list) => sum + list.members, 0)}
                             </Text>
-                            <Text style={styles.statLabel}>Total Members</Text>
+                            <Text style={styles.statLabel}>{t('privacy')}</Text>
                         </View>
                         <View style={styles.statCard}>
                             <Text style={styles.statNumber}>
                                 {lists.filter(l => l.lastActive === 'Just now' || l.lastActive === '2h ago').length}
                             </Text>
-                            <Text style={styles.statLabel}>Active Today</Text>
+                            <Text style={styles.statLabel}>{t('privacy')}</Text>
                         </View>
                     </View>
 
-                    {/* Lists Section */}
                     <View style={styles.listsHeader}>
-                        <Text style={styles.sectionTitle}>Your Broadcast Lists</Text>
+                        <Text style={styles.sectionTitle}>{t('social')}</Text>
                         <TouchableOpacity onPress={() => setShowCreateModal(true)}>
-                            <Text style={styles.viewAllText}>Create New</Text>
+                            <Text style={styles.viewAllText}>{t('invite')}</Text>
                         </TouchableOpacity>
                     </View>
 
                     {loading ? (
                         <View style={{ alignItems: 'center', paddingVertical: 30 }}>
                             <ActivityIndicator size="large" color={colors.tint} />
-                            <Text style={{ marginTop: 12, color: colors.textSecondary, fontSize: 13 }}>Loading your lists...</Text>
+                            <Text style={{ marginTop: 12, color: colors.textSecondary, fontSize: 13 }}>{t('loading')}</Text>
                         </View>
                     ) : lists.length === 0 ? (
                         <MotiView
@@ -477,9 +476,9 @@ export default function BroadcastListsScreen() {
                             <View style={styles.emptyIcon}>
                                 <Ionicons name="megaphone" size={48} color={colors.border} />
                             </View>
-                            <Text style={styles.emptyTitle}>No broadcast lists yet</Text>
+                            <Text style={styles.emptyTitle}>{t('failed_update')}</Text>
                             <Text style={styles.emptyText}>
-                                Create your first broadcast list to start sending announcements
+                                {t('social')}
                             </Text>
                         </MotiView>
                     ) : (
@@ -500,32 +499,30 @@ export default function BroadcastListsScreen() {
                         />
                     )}
 
-                    {/* Tips Section */}
                     <View style={styles.tipsSection}>
-                        <Text style={styles.tipsTitle}>💡 Pro Tips</Text>
+                        <Text style={styles.tipsTitle}>💡 {t('help')}</Text>
                         <View style={styles.tipItem}>
                             <View style={styles.tipIcon}>
                                 <Ionicons name="bulb" size={14} color={colors.warning} />
                             </View>
-                            <Text style={styles.tipText}>Lists are private - members don't see each other</Text>
+                            <Text style={styles.tipText}>{t('help')}</Text>
                         </View>
                         <View style={styles.tipItem}>
                             <View style={styles.tipIcon}>
                                 <Ionicons name="trending-up" size={14} color={colors.success} />
                             </View>
-                            <Text style={styles.tipText}>Track engagement metrics for each broadcast</Text>
+                            <Text style={styles.tipText}>{t('help')}</Text>
                         </View>
                         <View style={styles.tipItem}>
                             <View style={styles.tipIcon}>
                                 <Ionicons name="time" size={14} color={colors.tint} />
                             </View>
-                            <Text style={styles.tipText}>Schedule broadcasts for optimal timing</Text>
+                            <Text style={styles.tipText}>{t('help')}</Text>
                         </View>
                     </View>
                 </MotiView>
             </Animated.ScrollView>
 
-            {/* Create List Modal */}
             <Modal
                 visible={showCreateModal}
                 transparent
@@ -544,17 +541,17 @@ export default function BroadcastListsScreen() {
                             style={styles.modalContent}
                         >
                             <View style={styles.modalHeader}>
-                                <Text style={styles.modalTitle}>Create Broadcast List</Text>
+                                <Text style={styles.modalTitle}>{t('social')}</Text>
                                 <TouchableOpacity onPress={() => setShowCreateModal(false)}>
                                     <Ionicons name="close" size={24} color={colors.text} />
                                 </TouchableOpacity>
                             </View>
 
                             <View style={styles.modalBody}>
-                                <Text style={styles.inputLabel}>List Name</Text>
+                                <Text style={styles.inputLabel}>{t('social')}</Text>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="e.g., Weekly Updates, Announcements"
+                                    placeholder={t('social')}
                                     placeholderTextColor={colors.textSecondary + '60'}
                                     value={newListName}
                                     onChangeText={setNewListName}
@@ -562,11 +559,11 @@ export default function BroadcastListsScreen() {
                                 />
 
                                 <View style={styles.modalPreview}>
-                                    <Text style={styles.previewLabel}>Preview</Text>
+                                    <Text style={styles.previewLabel}>{t('social')}</Text>
                                     <View style={styles.previewCard}>
                                         <Ionicons name="megaphone" size={20} color={colors.tint} />
                                         <Text style={styles.previewName}>
-                                            {newListName || 'New Broadcast List'}
+                                            {newListName || t('social')}
                                         </Text>
                                     </View>
                                 </View>
@@ -580,7 +577,7 @@ export default function BroadcastListsScreen() {
                                         colors={newListName.trim() ? [colors.tint, colors.tint + 'CC'] : [colors.border, colors.border]}
                                         style={styles.modalCreateGradient}
                                     >
-                                        <Text style={styles.modalCreateText}>Create List</Text>
+                                        <Text style={styles.modalCreateText}>{t('invite')}</Text>
                                     </LinearGradient>
                                 </TouchableOpacity>
                             </View>
@@ -589,7 +586,6 @@ export default function BroadcastListsScreen() {
                 </View>
             </Modal>
 
-            {/* List Detail & Sending Modal */}
             <Modal
                 visible={!!activeList}
                 transparent
@@ -608,18 +604,18 @@ export default function BroadcastListsScreen() {
                             </View>
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.detailTitle}>{activeList?.name}</Text>
-                                <Text style={styles.detailSubtitle}>{activeList?.members} Members</Text>
+                                <Text style={styles.detailSubtitle}>{activeList?.members} {t('privacy')}</Text>
                             </View>
                             <TouchableOpacity onPress={() => setActiveList(null)} style={styles.closeBtn}>
                                 <Ionicons name="close" size={24} color="#666" />
                             </TouchableOpacity>
                         </View>
 
-                        <Text style={styles.inputHeading}>Broadcast Message</Text>
+                        <Text style={styles.inputHeading}>{t('social')}</Text>
                         <View style={styles.broadcastInputContainer}>
                             <TextInput
                                 style={styles.broadcastInput}
-                                placeholder="Type your announcement..."
+                                placeholder={t('social')}
                                 placeholderTextColor="#999"
                                 multiline
                                 value={broadcastText}
@@ -640,7 +636,7 @@ export default function BroadcastListsScreen() {
 
                         {activeMemberDetails.length > 0 && (
                             <View style={styles.membersRow}>
-                                <Text style={styles.memberCountLabel}>MEMBERS ({activeMemberDetails.length})</Text>
+                                <Text style={styles.memberCountLabel}>{t('privacy')} ({activeMemberDetails.length})</Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.membersList}>
                                     {activeMemberDetails.map(u => (
                                         <View key={u.id} style={styles.memberAvatarWrapper}>
@@ -659,14 +655,13 @@ export default function BroadcastListsScreen() {
                                 <View style={styles.actionIconCircle}>
                                     <Ionicons name="person-add" size={20} color="#1063FD" />
                                 </View>
-                                <Text style={styles.actionBtnLabel}>Manage Members</Text>
+                                <Text style={styles.actionBtnLabel}>{t('invite')}</Text>
                             </TouchableOpacity>
                         </View>
                     </MotiView>
                 </View>
             </Modal>
 
-            {/* Add Member Modal */}
             <Modal
                 visible={showMemberModal}
                 transparent
@@ -680,7 +675,7 @@ export default function BroadcastListsScreen() {
                         style={styles.memberModalContainer}
                     >
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Find Members</Text>
+                            <Text style={styles.modalTitle}>{t('invite')}</Text>
                             <TouchableOpacity onPress={() => setShowMemberModal(false)}>
                                 <Ionicons name="close" size={24} color="#000" />
                             </TouchableOpacity>
@@ -690,7 +685,7 @@ export default function BroadcastListsScreen() {
                             <Ionicons name="search" size={20} color="#999" style={{ marginLeft: 12 }} />
                             <TextInput
                                 style={styles.searchInput}
-                                placeholder="Search by name or email..."
+                                placeholder={t('search_placeholder')}
                                 placeholderTextColor="#999"
                                 value={searchQuery}
                                 onChangeText={handleSearchUsers}

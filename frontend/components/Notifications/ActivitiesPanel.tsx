@@ -17,6 +17,8 @@ import { useNotificationStore } from '@/stores/notificationStore';
 import { Notification } from '@/types/Notification';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { router } from 'expo-router';
+import { useTranslation } from '@/constants/i18n';
+import { formatTimeAgo } from '@/utils/dateUtils';
 
 type ActivitiesPanelProps = {
     visible: boolean;
@@ -26,6 +28,7 @@ type ActivitiesPanelProps = {
 
 const ActivitiesPanel = ({ visible, onClose, anchorPosition }: ActivitiesPanelProps) => {
     const { colors, activeScheme } = useAppTheme();
+    const { t, locale } = useTranslation();
     const {
         getActivities,
         markAsRead,
@@ -121,7 +124,7 @@ const ActivitiesPanel = ({ visible, onClose, anchorPosition }: ActivitiesPanelPr
                             <Text style={[styles.activityTitle, { color: colors.text }]}>{item.title}</Text>
                         </View>
                         <Text style={[styles.activityTime, { color: colors.textSecondary }]}>
-                            {formatTimeAgo(item.createdAt)}
+                            {formatTimeAgo(item.createdAt, locale)}
                         </Text>
                     </View>
                     <Text style={[styles.activityMessage, { color: colors.textSecondary }]}>{item.message}</Text>
@@ -136,19 +139,6 @@ const ActivitiesPanel = ({ visible, onClose, anchorPosition }: ActivitiesPanelPr
         </TouchableOpacity>
     );
 
-    const formatTimeAgo = (date: Date) => {
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
-
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffHours < 24) return `${diffHours}h ago`;
-        if (diffDays < 7) return `${diffDays}d ago`;
-        return date.toLocaleDateString();
-    };
 
     return (
         <Modal
@@ -192,7 +182,7 @@ const ActivitiesPanel = ({ visible, onClose, anchorPosition }: ActivitiesPanelPr
                 <View style={styles.contentWrapper}>
                     <View style={[styles.panelHeader, { borderBottomColor: colors.border, backgroundColor: colors.surface }]}>
                         <Text style={[styles.panelTitle, { color: colors.text }]}>
-                            Activities {activities.length > 0 ? `(${activities.length})` : ''}
+                            {t('activities_count').replace('{count}', activities.length.toString())}
                         </Text>
                         <TouchableOpacity onPress={onClose} style={[styles.closeButton, { backgroundColor: colors.muted }]}>
                             <Ionicons name="close" size={20} color={colors.textSecondary} />
@@ -202,9 +192,9 @@ const ActivitiesPanel = ({ visible, onClose, anchorPosition }: ActivitiesPanelPr
                         {activities.length === 0 ? (
                             <View style={styles.emptyState}>
                                 <Ionicons name="sparkles-outline" size={48} color={colors.textSecondary + '40'} />
-                                <Text style={[styles.emptyText, { color: colors.text }]}>No activity notifications</Text>
+                                <Text style={[styles.emptyText, { color: colors.text }]}>{t('no_activity')}</Text>
                                 <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
-                                    Magic events and activities will appear here
+                                    {t('no_activity_desc')}
                                 </Text>
                             </View>
                         ) : (
@@ -301,7 +291,7 @@ const styles = StyleSheet.create({
     },
     textContent: {
         flex: 1,
-        marginLeft: 12,
+        marginStart: 12,
     },
     titleRow: {
         flexDirection: 'row',
@@ -327,11 +317,11 @@ const styles = StyleSheet.create({
     },
     activityTime: {
         fontSize: 11,
-        marginLeft: 8,
+        marginStart: 8,
     },
     deleteButton: {
         padding: 6,
-        marginLeft: 8,
+        marginStart: 8,
         borderRadius: 16,
         width: 28,
         height: 28,
@@ -363,7 +353,7 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 24,
-        marginRight: 12,
+        marginEnd: 12,
         borderWidth: 2,
     },
 });

@@ -7,27 +7,29 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { Ionicons } from '@expo/vector-icons';
 import { BackButton } from '@/components/ui/IconButton';
+import { useTranslation } from '@/constants/i18n';
 
 export default function ResetPasswordScreen() {
     const { colors, activeScheme } = useAppTheme();
-    const styles = getStyles(colors, activeScheme);
+    const { isRTL } = useTranslation();
+    const styles = getStyles(colors, activeScheme, isRTL);
     const params = useLocalSearchParams();
-    const setEmail = async () => {
-        const storedEmail = await AsyncStorage.getItem('reset_password_email');
-        return storedEmail || (params.email as string);
-    };
+    
     const [email, setEmailState] = useState<string>('');
+    
     React.useEffect(() => {
-        setEmail().then(emailValue => {
-            setEmailState(emailValue);
-        });
-    }, []);
+        const getEmail = async () => {
+            const storedEmail = await AsyncStorage.getItem('reset_password_email');
+            setEmailState(storedEmail || (params.email as string) || '');
+        };
+        getEmail();
+    }, [params.email]);
     
     const [code, setCode] = useState(['', '', '', '', '', '']);
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [resetToken, setResetToken] = useState('');
-    const [step, setStep] = useState(1); // 1: Enter code, 2: Enter new password
+    const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
     
@@ -87,9 +89,9 @@ export default function ResetPasswordScreen() {
                 alert('Password reset successfully!');
                 router.replace('/LoginScreen');
             } else {
-            Alert.alert('Success', 'Password reset successfully!', [
-                { text: 'OK', onPress: () => router.replace('/LoginScreen') }
-            ]);
+                Alert.alert('Success', 'Password reset successfully!', [
+                    { text: 'OK', onPress: () => router.replace('/LoginScreen') }
+                ]);
             }
         } catch (error: any) {
             setMessage(error.response?.data?.message || 'Failed to reset password');
@@ -101,7 +103,7 @@ export default function ResetPasswordScreen() {
     if (step === 1) {
         return (
             <SafeAreaView style={styles.container}>
-                <View style={{ position: 'absolute', top: 10, left: 10, zIndex: 10 }}>
+                <View style={{ position: 'absolute', top: 10, [isRTL ? 'right' : 'left']: 10, zIndex: 10 }}>
                     <Link href="/ForgotPasswordScreen" asChild>
                         <BackButton />
                     </Link>
@@ -116,48 +118,49 @@ export default function ResetPasswordScreen() {
                     Enter the 6-digit code sent to {email}
                 </Text>
                 
-                <View style={styles.codeContainer}>
-                    {[0, 1, 2, 3, 4, 5].map((index) => (
-                        <TextInput
-                            key={index}
-                            ref={(ref) => { inputRefs.current[index] = ref; }}
-                            style={[
-                                styles.codeInput,
-                                code[index] ? styles.codeInputFilled : null
-                            ]}
-                            value={code[index]}
-                            onChangeText={(text) => {
-                                const numericText = text.replace(/[^0-9]/g, '');
-                                const newCode = [...code];
-                                newCode[index] = numericText;
-                                setCode(newCode);
-                                
-                                if (numericText && index < 5) {
-                                    inputRefs.current[index + 1]?.focus();
-                                }
-                                
-                                if (newCode.every(d => d !== '') && index === 5) {
-                                    verifyCode();
-                                }
-                            }}
-                            keyboardType="number-pad"
-                            maxLength={1}
-                            placeholderTextColor={colors.textSecondary + '40'}
-                            keyboardAppearance={activeScheme}
-                        />
-                    ))}
+                <View style={styles.innerContainer}>
+                    <View style={[styles.codeContainer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                        {[0, 1, 2, 3, 4, 5].map((index) => (
+                            <TextInput
+                                key={index}
+                                ref={(ref) => { inputRefs.current[index] = ref; }}
+                                style={[
+                                    styles.codeInput,
+                                    code[index] ? styles.codeInputFilled : null
+                                ]}
+                                value={code[index]}
+                                onChangeText={(text) => {
+                                    const numericText = text.replace(/[^0-9]/g, '');
+                                    const newCode = [...code];
+                                    newCode[index] = numericText;
+                                    setCode(newCode);
+                                    
+                                    if (numericText && index < 5) {
+                                        inputRefs.current[index + 1]?.focus();
+                                    }
+                                    
+                                    if (newCode.every(d => d !== '') && index === 5) {
+                                        verifyCode();
+                                    }
+                                }}
+                                keyboardType="number-pad"
+                                maxLength={1}
+                                placeholderTextColor={colors.textSecondary + '40'}
+                                keyboardAppearance={activeScheme}
+                            />
+                        ))}
+                    </View>
+                    
+                    {message ? <Text style={styles.message}>{message}</Text> : null}
+                    
+                    <TouchableOpacity 
+                        style={[styles.button, (loading || code.join('').length !== 6) && styles.buttonDisabled]} 
+                        onPress={verifyCode} 
+                        disabled={loading || code.join('').length !== 6}
+                    >
+                        <Text style={styles.buttonText}>{loading ? "Verifying..." : "Verify Code"}</Text>
+                    </TouchableOpacity>
                 </View>
-                
-                {message ? <Text style={styles.message}>{message}</Text> : null}
-                
-                <TouchableOpacity 
-                    style={[styles.button, (loading || code.join('').length !== 6) && styles.buttonDisabled]} 
-                    onPress={verifyCode} 
-                    disabled={loading || code.join('').length !== 6}
-                >
-                    <Text style={styles.buttonText}>{loading ? "Verifying..." : "Verify Code"}</Text>
-                </TouchableOpacity>
-
             </SafeAreaView>
         );
     } 
@@ -171,46 +174,48 @@ export default function ResetPasswordScreen() {
             <Text style={styles.title}>Set New Password</Text>
             <Text style={styles.subtitle}>Create a strong password for your account</Text>
             
-            <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-                <TextInput
-                    style={styles.input}
-                    placeholder="New Password"
-                    placeholderTextColor={colors.textSecondary + '70'}
-                    value={newPassword}
-                    onChangeText={setNewPassword}
-                    secureTextEntry
-                    keyboardAppearance={activeScheme}
-                />
+            <View style={styles.innerContainer}>
+                <View style={styles.inputWrapper}>
+                    <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+                    <TextInput
+                        style={styles.input}
+                        placeholder="New Password"
+                        placeholderTextColor={colors.textSecondary + '70'}
+                        value={newPassword}
+                        onChangeText={setNewPassword}
+                        secureTextEntry
+                        keyboardAppearance={activeScheme}
+                    />
+                </View>
+                
+                <View style={styles.inputWrapper}>
+                    <Ionicons name="checkmark-circle-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Confirm New Password"
+                        placeholderTextColor={colors.textSecondary + '70'}
+                        value={confirmPassword}
+                        onChangeText={setConfirmPassword}
+                        secureTextEntry
+                        keyboardAppearance={activeScheme}
+                    />
+                </View>
+                
+                {message ? <Text style={styles.message}>{message}</Text> : null}
+                
+                <TouchableOpacity 
+                    style={[styles.button, loading && styles.buttonDisabled]} 
+                    onPress={resetPassword} 
+                    disabled={loading}
+                >
+                    <Text style={styles.buttonText}>{loading ? "Resetting..." : "Reset Password"}</Text>
+                </TouchableOpacity>
             </View>
-            
-            <View style={styles.inputWrapper}>
-                <Ionicons name="checkmark-circle-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-                <TextInput
-                    style={styles.input}
-                    placeholder="Confirm New Password"
-                    placeholderTextColor={colors.textSecondary + '70'}
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    secureTextEntry
-                    keyboardAppearance={activeScheme}
-                />
-            </View>
-            
-            {message ? <Text style={styles.message}>{message}</Text> : null}
-            
-            <TouchableOpacity 
-                style={[styles.button, loading && styles.buttonDisabled]} 
-                onPress={resetPassword} 
-                disabled={loading}
-            >
-                <Text style={styles.buttonText}>{loading ? "Resetting..." : "Reset Password"}</Text>
-            </TouchableOpacity>
         </SafeAreaView>
     );
 }
 
-function getStyles(colors: any, activeScheme: string) {
+function getStyles(colors: any, activeScheme: string, isRTL: boolean) {
   return StyleSheet.create({
     container: {
         flex: 1,
@@ -245,17 +250,23 @@ function getStyles(colors: any, activeScheme: string) {
         textAlign: 'center',
         lineHeight: 24,
     },
+    innerContainer: {
+        width: '100%',
+        maxWidth: 400,
+        alignSelf: 'center',
+    },
     codeContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 40,
+        marginBottom: 32,
+        gap: 8,
     },
     codeInput: {
-        width: 48,
+        flex: 1,
         height: 64,
         borderWidth: 2,
         borderColor: colors.border,
-        borderRadius: 12,
+        borderRadius: 16,
         textAlign: 'center',
         fontSize: 28,
         fontWeight: '800',
@@ -286,13 +297,16 @@ function getStyles(colors: any, activeScheme: string) {
         color: colors.text,
         fontSize: 16,
         fontWeight: '600',
+        textAlign: isRTL ? 'right' : 'left',
     },
     message: {
         textAlign: 'center',
         marginBottom: 24,
         color: colors.error,
         fontWeight: '600',
-        paddingHorizontal: 20,
+        padding: 16,
+        backgroundColor: colors.error + '15',
+        borderRadius: 16,
     },
     button: {
         backgroundColor: colors.tint,
@@ -310,19 +324,5 @@ function getStyles(colors: any, activeScheme: string) {
         fontSize: 16,
         fontWeight: '800',
     },
-    backButton: {
-        marginTop: 24,
-        alignItems: 'center',
-    },
-    linkRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    linkText: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: colors.tint,
-    },
-});
+  });
 }

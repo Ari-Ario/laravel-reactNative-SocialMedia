@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 
 interface PostMenuProps {
     visible: boolean;
@@ -22,6 +23,10 @@ export default function PostMenu({
     anchorPosition = { top: 0, left: 0 }
 }: PostMenuProps) {
     const { colors } = useAppTheme();
+    const { t, isRTL } = useTranslation();
+
+    const styles = getStyles(colors, isRTL);
+
     return (
         <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
             <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
@@ -30,7 +35,7 @@ export default function PostMenu({
                     {
                         position: 'absolute',
                         top: Math.max(20, anchorPosition.top - 10),
-                        left: Math.max(20, anchorPosition.left - 180),
+                        left: isRTL ? Math.max(20, anchorPosition.left - 20) : Math.max(20, anchorPosition.left - 180),
                         backgroundColor: colors.surface,
                     }
                 ]}>
@@ -41,7 +46,7 @@ export default function PostMenu({
                                 onPress={onDelete}
                             >
                                 <Ionicons name="trash-outline" size={20} color="red" />
-                                <Text style={[styles.menuText, { color: 'red' }]}>Delete</Text>
+                                <Text style={[styles.menuText, { color: 'red' }]}>{t('delete')}</Text>
                             </TouchableOpacity>
                             
                             <TouchableOpacity 
@@ -49,7 +54,7 @@ export default function PostMenu({
                                 onPress={onEdit}
                             >
                                 <Ionicons name="create-outline" size={20} color={colors.text} />
-                                <Text style={[styles.menuText, { color: colors.text }]}>Edit</Text>
+                                <Text style={[styles.menuText, { color: colors.text }]}>{t('edit')}</Text>
                             </TouchableOpacity>
                         </>
                     )}
@@ -59,7 +64,7 @@ export default function PostMenu({
                         onPress={onReport}
                     >
                         <Ionicons name="flag-outline" size={20} color={colors.text} />
-                        <Text style={[styles.menuText, { color: colors.text }]}>Report</Text>
+                        <Text style={[styles.menuText, { color: colors.text }]}>{t('report')}</Text>
                     </TouchableOpacity>
                 </View>
             </TouchableOpacity>
@@ -67,7 +72,9 @@ export default function PostMenu({
     );
 }
 
-const styles = StyleSheet.create({
+// export const PostMenu = React.memo(PostMenuBase); // Wait, this is a default export
+
+const getStyles = (colors: any, isRTL: boolean) => StyleSheet.create({
     overlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
@@ -81,13 +88,15 @@ const styles = StyleSheet.create({
         borderColor: 'rgba(150,150,150,0.1)',
     },
     menuItem: {
-        flexDirection: 'row',
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         alignItems: 'center',
         paddingHorizontal: 16,
         paddingVertical: 12,
     },
     menuText: {
-        marginLeft: 12,
+        marginLeft: isRTL ? 0 : 12,
+        marginRight: isRTL ? 12 : 0,
         fontSize: 16,
+        textAlign: isRTL ? 'right' : 'left',
     },
 });

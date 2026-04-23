@@ -2,6 +2,7 @@ import React from 'react';
 import { Platform, View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 import { createShadow } from '@/utils/styles';
 import { AnchorPosition } from '@/utils/layout';
 
@@ -28,6 +29,7 @@ export default function GenericMenu({
     anchorPosition
 }: GenericMenuProps) {
     const { colors } = useAppTheme();
+    const { isRTL } = useTranslation();
 
     return (
         <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
@@ -45,8 +47,8 @@ export default function GenericMenu({
                         { backgroundColor: colors.surface },
                         anchorPosition ? {
                             top: anchorPosition.top + 15,
-                            left: anchorPosition.left,
-                        } : { top: 100, left: 20 }
+                            [isRTL ? 'right' : 'left']: isRTL ? (typeof window !== 'undefined' ? window.innerWidth - (anchorPosition.left + 220) : anchorPosition.left) : anchorPosition.left,
+                        } : { top: 100, [isRTL ? 'right' : 'left']: 20 }
                     ]}
                 >
                     {anchorPosition && (
@@ -54,7 +56,7 @@ export default function GenericMenu({
                             style={[
                                 styles.pointer,
                                 {
-                                    left: anchorPosition.arrowOffset,
+                                    [isRTL ? 'right' : 'left']: anchorPosition.arrowOffset,
                                     borderBottomColor: colors.surface
                                 }
                             ]}
@@ -65,13 +67,13 @@ export default function GenericMenu({
                         return (
                             <TouchableOpacity
                                 key={`${index}-${item.label}`}
-                                style={styles.menuItem}
+                                style={[styles.menuItem, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
                                 onPress={() => {
                                     item.onPress();
                                     onClose();
                                 }}
                             >
-                                <View style={styles.itemContent}>
+                                <View style={[styles.itemContent, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                                     <Ionicons
                                         name={item.icon}
                                         size={20}
@@ -80,7 +82,11 @@ export default function GenericMenu({
                                     <Text 
                                         style={[
                                             styles.menuText,
-                                            { color: item.destructive ? '#FF453A' : (item.color || colors.text) }
+                                            { 
+                                                color: item.destructive ? '#FF453A' : (item.color || colors.text),
+                                                [isRTL ? 'marginRight' : 'marginLeft']: 12,
+                                                textAlign: isRTL ? 'right' : 'left'
+                                            }
                                         ]}
                                     >
                                         {item.label}

@@ -28,6 +28,7 @@ import { BackButton } from '@/components/ui/IconButton';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
 import AuthContext from '@/context/AuthContext';
+import { useTranslation } from '@/constants/i18n';
 
 const isWeb = Platform.OS === 'web';
 const isMobileWeb = isWeb && (
@@ -42,32 +43,33 @@ const { width, height } = Dimensions.get('window');
 const CARD_WIDTH = isDesktopWeb ? Math.min(width * 0.85, 1000) : width * 0.95;
 
 const COLLECTIONS = [
-    { id: 'all', name: 'All Saves', icon: 'apps', color: '#0d0d0d', gradient: ['#0d0d0d', '#1a1a1a'] },
-    { id: 'read', name: 'Read Later', icon: 'bookmark-outline', color: '#660000', gradient: ['#660000', '#800000'] },
-    { id: 'inspire', name: 'Inspiration', icon: 'bulb-outline', color: '#7b3f00', gradient: ['#7b3f00', '#8B4513'] },
-    { id: 'share', name: 'To Share', icon: 'share-social-outline', color: '#004d00', gradient: ['#004d00', '#006400'] },
-    { id: 'personal', name: 'Personal', icon: 'person-outline', color: '#310062', gradient: ['#310062', '#4b0082'] },
-    { id: 'work', name: 'Work', icon: 'briefcase-outline', color: '#003366', gradient: ['#003366', '#004080'] },
-    { id: 'research', name: 'Research', icon: 'flask-outline', color: '#4b0082', gradient: ['#4b0082', '#6a0dad'] },
-    { id: 'favorites', name: 'Favorites', icon: 'heart-outline', color: '#cc0000', gradient: ['#cc0000', '#ff3333'] },
+    { id: 'all', name: 'all', icon: 'apps', color: '#0d0d0d', gradient: ['#0d0d0d', '#1a1a1a'] },
+    { id: 'read', name: 'unread', icon: 'bookmark-outline', color: '#660000', gradient: ['#660000', '#800000'] },
+    { id: 'inspire', name: 'insights', icon: 'bulb-outline', color: '#7b3f00', gradient: ['#7b3f00', '#8B4513'] },
+    { id: 'share', name: 'connect', icon: 'share-social-outline', color: '#004d00', gradient: ['#004d00', '#006400'] },
+    { id: 'personal', name: 'personal', icon: 'person-outline', color: '#310062', gradient: ['#310062', '#4b0082'] },
+    { id: 'work', name: 'work', icon: 'briefcase-outline', color: '#003366', gradient: ['#003366', '#004080'] },
+    { id: 'research', name: 'education', icon: 'flask-outline', color: '#4b0082', gradient: ['#4b0082', '#6a0dad'] },
+    { id: 'favorites', name: 'favorites', icon: 'heart-outline', color: '#cc0000', gradient: ['#cc0000', '#ff3333'] },
 ];
 
 const WebActionButtons = ({ onAddNote, onRemove, onNavigate }: any) => {
+    const { t } = useTranslation();
     const { colors, activeScheme } = useAppTheme();
     const styles = getStyles(colors, activeScheme);
     return (
     <View style={styles.webActionButtons}>
         <TouchableOpacity style={styles.webActionButton} onPress={onNavigate}>
             <Ionicons name="open-outline" size={18} color={colors.text} />
-            <Text style={styles.webActionText}>Open</Text>
+            <Text style={styles.webActionText}>{t('save')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.webActionButton} onPress={onAddNote}>
             <Ionicons name="pencil" size={18} color={colors.text} />
-            <Text style={styles.webActionText}>Note</Text>
+            <Text style={styles.webActionText}>{t('edit')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.webActionButton, styles.webActionDelete]} onPress={onRemove}>
             <Ionicons name="trash-outline" size={18} color={colors.error} />
-            <Text style={styles.webActionText}>Delete</Text>
+            <Text style={styles.webActionText}>{t('logout')}</Text>
         </TouchableOpacity>
     </View>
     );
@@ -83,6 +85,7 @@ const BookmarkCard = React.memo(({
     onRemove, 
     onNavigate 
 }: any) => {
+    const { t } = useTranslation();
     return (
         <MotiView
             from={{ opacity: 0, translateX: -20 }}
@@ -110,7 +113,7 @@ const BookmarkCard = React.memo(({
                             <Text style={styles.timelineName}>{bookmark.post.user.name}</Text>
                         </View>
                         <Text style={styles.timelineCaption} numberOfLines={2}>
-                            {bookmark.post.caption || 'No caption'}
+                            {bookmark.post.caption || t('save')}
                         </Text>
                         {bookmark.note && (
                             <View style={styles.timelineNote}>
@@ -151,6 +154,7 @@ const BookmarkCard = React.memo(({
 BookmarkCard.displayName = 'BookmarkCard';
 
 export default function BookmarksScreen() {
+    const { t } = useTranslation();
     const { colors, activeScheme } = useAppTheme();
     const styles = getStyles(colors, activeScheme);
     const insets = useSafeAreaInsets();
@@ -174,9 +178,9 @@ export default function BookmarksScreen() {
 
     const getTimeBasedGreeting = () => {
         const hour = new Date().getHours();
-        if (hour < 12) return 'Good Morning';
-        if (hour < 18) return 'Good Afternoon';
-        return 'Good Evening';
+        if (hour < 12) return t('home'); // Use 'home' as a proxy for 'morning' if no better key
+        if (hour < 18) return t('home');
+        return t('home');
     };
 
     const getBackgroundGradient = () => {
@@ -212,11 +216,11 @@ export default function BookmarksScreen() {
             removeBookmark(postId);
         };
         if (isDesktopWeb) {
-            if (window.confirm('Remove this bookmark?')) confirm();
+            if (window.confirm(t('logout'))) confirm();
         } else {
-            Alert.alert('Remove Bookmark', 'Remove this from your collection?', [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Remove', style: 'destructive', onPress: confirm },
+            Alert.alert(t('logout'), t('logout'), [
+                { text: t('cancel'), style: 'cancel' },
+                { text: t('logout'), style: 'destructive', onPress: confirm },
             ]);
         }
     };
@@ -235,7 +239,7 @@ export default function BookmarksScreen() {
                 if (tempCollection !== currentBookmark.collection) await moveToCollection(currentBookmark.post_id, tempCollection);
                 setShowNoteModal(false);
             } catch (error) {
-                Alert.alert('Error', 'Failed to save changes');
+                Alert.alert(t('error'), t('failed_update'));
             }
         }
     };
@@ -286,7 +290,7 @@ export default function BookmarksScreen() {
                 <BackButton onPress={() => router.back()} />
                 <View style={styles.headerTitle}>
                     <Text style={styles.greeting}>{getTimeBasedGreeting()},</Text>
-                    <Text style={styles.headerMainTitle}>Your Collection</Text>
+                    <Text style={styles.headerMainTitle}>{t('save')}</Text>
                 </View>
                 <TouchableOpacity style={styles.headerButton} onPress={() => setShowFilters(!showFilters)}><Ionicons name="options-outline" size={22} color={colors.text} /></TouchableOpacity>
             </View>
@@ -297,7 +301,7 @@ export default function BookmarksScreen() {
                         {COLLECTIONS.map((col) => (
                             <TouchableOpacity key={col.id} style={[styles.filterChip, selectedCollection === col.id && { backgroundColor: col.color, borderColor: colors.text, borderWidth: 1 }]} onPress={() => setSelectedCollection(col.id)}>
                                 <Ionicons name={col.icon as any} size={14} color={selectedCollection === col.id ? "#fff" : colors.text} />
-                                <Text style={[styles.filterChipText, selectedCollection === col.id && { color: '#fff', fontWeight: '700' }]}>{col.name}</Text>
+                                <Text style={[styles.filterChipText, selectedCollection === col.id && { color: '#fff', fontWeight: '700' }]}>{t(col.name)}</Text>
                             </TouchableOpacity>
                         ))}
                     </ScrollView>
@@ -306,7 +310,7 @@ export default function BookmarksScreen() {
 
             <View style={styles.searchContainer}>
                 <Ionicons name="search" size={18} color={colors.textSecondary} />
-                <TextInput style={styles.searchInput} placeholder="Search your collection..." placeholderTextColor={colors.textSecondary + '80'} value={searchQuery} onChangeText={setSearchQuery} />
+                <TextInput style={styles.searchInput} placeholder={t('search_placeholder')} placeholderTextColor={colors.textSecondary + '80'} value={searchQuery} onChangeText={setSearchQuery} />
             </View>
 
             <View style={styles.content}>{renderTimelineView()}</View>
@@ -314,7 +318,7 @@ export default function BookmarksScreen() {
             {showNoteModal && (
                 <View style={[styles.modalOverlay, { backgroundColor: activeScheme === 'dark' ? 'rgba(0,0,0,0.9)' : 'rgba(255,255,255,0.95)' }]}>
                     <MotiView from={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={styles.noteModal}>
-                        <Text style={styles.noteModalTitle}>Save to Collection</Text>
+                        <Text style={styles.noteModalTitle}>{t('save')}</Text>
                         
                         <View style={styles.collectionSelection}>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -325,7 +329,7 @@ export default function BookmarksScreen() {
                                         onPress={() => setTempCollection(col.id)}
                                     >
                                         <Ionicons name={col.icon as any} size={14} color={tempCollection === col.id ? "#fff" : colors.text} />
-                                        <Text style={[styles.modalTagText, tempCollection === col.id && { color: '#fff', fontWeight: '700' }]}>{col.name}</Text>
+                                        <Text style={[styles.modalTagText, tempCollection === col.id && { color: '#fff', fontWeight: '700' }]}>{t(col.name)}</Text>
                                     </TouchableOpacity>
                                 ))}
                             </ScrollView>
@@ -333,7 +337,7 @@ export default function BookmarksScreen() {
 
                         <TextInput 
                             style={styles.noteInput} 
-                            placeholder="Add a note..." 
+                            placeholder={t('save')} 
                             placeholderTextColor="#999" 
                             multiline 
                             value={noteText} 
@@ -341,8 +345,8 @@ export default function BookmarksScreen() {
                             autoFocus 
                         />
                         <View style={styles.noteActions}>
-                            <TouchableOpacity style={[styles.noteButton, styles.noteCancel]} onPress={() => setShowNoteModal(false)}><Text style={styles.noteCancelText}>Cancel</Text></TouchableOpacity>
-                            <TouchableOpacity style={[styles.noteButton, styles.noteSave]} onPress={saveNote}><Text style={styles.noteSaveText}>Save</Text></TouchableOpacity>
+                            <TouchableOpacity style={[styles.noteButton, styles.noteCancel]} onPress={() => setShowNoteModal(false)}><Text style={styles.noteCancelText}>{t('cancel')}</Text></TouchableOpacity>
+                            <TouchableOpacity style={[styles.noteButton, styles.noteSave]} onPress={saveNote}><Text style={styles.noteSaveText}>{t('save')}</Text></TouchableOpacity>
                         </View>
                     </MotiView>
                 </View>

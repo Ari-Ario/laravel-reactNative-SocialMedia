@@ -7,6 +7,7 @@ import { createShadow } from '@/utils/styles';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 
 const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
   curatorFrame: {
@@ -105,12 +106,12 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
   },
   noteContent: {
     position: 'relative',
-    paddingLeft: 24,
+    // Removed paddingLeft to handle dynamically for RTL
   },
   quoteIcon: {
     position: 'absolute',
-    left: 0,
     top: -8,
+    // left: 0 will be handled dynamically for RTL
   },
   quoteText: {
     fontSize: 40,
@@ -194,6 +195,7 @@ export const CuratorFrame = ({ reposter, children }: CuratorFrameProps) => {
     : (reposter.avatar_url || undefined);
 
   const { colors, activeScheme } = useAppTheme();
+  const { t, isRTL } = useTranslation();
   const styles = getStyles(colors, activeScheme);
 
   const getTagColor = (tag?: string) => {
@@ -248,7 +250,7 @@ export const CuratorFrame = ({ reposter, children }: CuratorFrameProps) => {
       >
         <View style={styles.curatorBadge}>
           {/* Avatar with Ring */}
-          <View style={[styles.avatarRing, { borderColor: tagColor }]}>
+          <View style={[styles.avatarRing, { borderColor: tagColor, [isRTL ? 'marginLeft' : 'marginRight']: 12, [isRTL ? 'marginRight' : 'marginLeft']: 0 }]}>
             <Image
               source={{ uri: avatarUri }}
               style={styles.curatorAvatar}
@@ -256,8 +258,8 @@ export const CuratorFrame = ({ reposter, children }: CuratorFrameProps) => {
           </View>
 
           <View style={styles.curatorInfo}>
-            <View style={styles.nameRow}>
-              <Text style={styles.curatorName}>{reposter.name}</Text>
+            <View style={[styles.nameRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+              <Text style={[styles.curatorName, { textAlign: isRTL ? 'right' : 'left' }]}>{reposter.name}</Text>
               <Ionicons
                 name={isExpanded ? 'chevron-up' : 'chevron-down'}
                 size={16}
@@ -266,8 +268,8 @@ export const CuratorFrame = ({ reposter, children }: CuratorFrameProps) => {
             </View>
 
             {reposter.context_tag && (
-              <View style={[styles.curatorTag, { backgroundColor: tagColor + '15' }]}>
-                <Text style={[styles.curatorTagText, { color: tagColor }]}>
+              <View style={[styles.curatorTag, { backgroundColor: tagColor + '15', alignSelf: isRTL ? 'flex-end' : 'flex-start' }]}>
+                <Text style={[styles.curatorTagText, { color: tagColor, textAlign: isRTL ? 'right' : 'left' }]}>
                   {reposter.context_tag}
                 </Text>
               </View>
@@ -292,18 +294,18 @@ export const CuratorFrame = ({ reposter, children }: CuratorFrameProps) => {
             style={styles.expandableSection}
           >
             <BlurView intensity={20} tint={activeScheme as any} style={styles.noteBlur}>
-              <View style={styles.noteContent}>
-                <View style={styles.quoteIcon}>
+              <View style={[styles.noteContent, { [isRTL ? 'paddingRight' : 'paddingLeft']: 24, [isRTL ? 'paddingLeft' : 'paddingRight']: 0 }]}>
+                <View style={[styles.quoteIcon, { [isRTL ? 'right' : 'left']: 0, [isRTL ? 'left' : 'right']: undefined }]}>
                   <Text style={[styles.quoteText, { color: colors.textSecondary }]}>"</Text>
                 </View>
-                <Text style={styles.personalNote}>{reposter.personal_note}</Text>
-                <View style={styles.noteFooter}>
-                  <Text style={styles.noteTime}>
-                    {reposter.created_at ? new Date(reposter.created_at).toLocaleDateString() : 'Just now'}
+                <Text style={[styles.personalNote, { textAlign: isRTL ? 'right' : 'left' }]}>{reposter.personal_note}</Text>
+                <View style={[styles.noteFooter, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                  <Text style={[styles.noteTime, { textAlign: isRTL ? 'right' : 'left' }]}>
+                    {reposter.created_at ? new Date(reposter.created_at).toLocaleDateString() : t('recently')}
                   </Text>
-                  <TouchableOpacity style={styles.reactButton}>
+                  <TouchableOpacity style={[styles.reactButton, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                     <Ionicons name="heart-outline" size={16} color={colors.textSecondary} />
-                    <Text style={styles.reactCount}>12</Text>
+                    <Text style={[styles.reactCount, { [isRTL ? 'marginRight' : 'marginLeft']: 4, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}>12</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -321,7 +323,10 @@ export const CuratorFrame = ({ reposter, children }: CuratorFrameProps) => {
               from={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: index * 50 }}
-              style={[styles.reactionBubble, { marginLeft: index > 0 ? -8 : 0 }]}
+              style={[
+                styles.reactionBubble, 
+                { [isRTL ? 'marginRight' : 'marginLeft']: index > 0 ? -8 : 0, [isRTL ? 'marginLeft' : 'marginRight']: 0 }
+              ]}
             >
               <Text style={styles.reactionEmoji}>{emoji}</Text>
             </MotiView>

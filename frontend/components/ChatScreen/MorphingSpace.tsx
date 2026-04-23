@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
+import { useTranslation } from '@/constants/i18n';
 
 interface MorphingSpaceProps {
   spaceId: string;
@@ -25,6 +26,7 @@ export const MorphingSpace: React.FC<MorphingSpaceProps> = ({
   currentType,
   onMorphComplete,
 }) => {
+  const { t } = useTranslation();
   const [isMorphing, setIsMorphing] = useState(false);
   const [suggestedTypes, setSuggestedTypes] = useState<string[]>([]);
   const morphAnim = useRef(new Animated.Value(0)).current;
@@ -37,7 +39,7 @@ export const MorphingSpace: React.FC<MorphingSpaceProps> = ({
 
   const checkForMorphSuggestions = async () => {
     const analysis = await collaborationService.queryAI(spaceId,
-      "Analyze current activity and suggest space type morphs", {
+      t('analyze_activity_morph_suggestion'), {
       current_type: currentType,
       action: 'morph_suggestion'
     }
@@ -118,7 +120,7 @@ export const MorphingSpace: React.FC<MorphingSpaceProps> = ({
           onPress={() => initiateMorph(type)}
         >
           <Ionicons name={getIconForType(type)} size={32} color="#fff" />
-          <Text style={styles.morphText}>{type}</Text>
+          <Text style={styles.morphText}>{t(type)}</Text>
         </TouchableOpacity>
       ))}
     </Animated.View>

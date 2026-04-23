@@ -11,6 +11,7 @@ import {
     Linking,
     Dimensions,
     Animated,
+    Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { MotiView, AnimatePresence } from 'moti';
@@ -22,6 +23,7 @@ import { createShadow } from '@/utils/styles';
 import Fuse from 'fuse.js';
 import GlobalStyles from '@/styles/GlobalStyles';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 
 const { width } = Dimensions.get('window');
 
@@ -33,6 +35,7 @@ interface FAQ {
 }
 
 const FAQItem = ({ faq, index, searchQuery }: { faq: FAQ; index: number; searchQuery: string }) => {
+    const { t } = useTranslation();
     const { colors, activeScheme } = useAppTheme();
     const styles = getStyles(colors, activeScheme);
     const [isOpen, setIsOpen] = useState(false);
@@ -95,21 +98,21 @@ const FAQItem = ({ faq, index, searchQuery }: { faq: FAQ; index: number; searchQ
                             <Text style={styles.faqAnswer}>{faq.answer}</Text>
 
                             <View style={styles.helpfulSection}>
-                                <Text style={styles.helpfulLabel}>Was this helpful?</Text>
+                                <Text style={styles.helpfulLabel}>{t('help')}</Text>
                                 <View style={styles.helpfulButtons}>
                                     <TouchableOpacity
                                         style={[styles.helpfulButton, helpful === 1 && { backgroundColor: activeScheme === 'dark' ? '#1b2e1b' : '#E8F5E9' }]}
                                         onPress={() => setHelpful(1)}
                                     >
                                         <Ionicons name="thumbs-up" size={14} color={helpful === 1 ? '#4CAF50' : colors.textSecondary} />
-                                        <Text style={[styles.helpfulButtonText, helpful === 1 && { color: '#4CAF50' }]}>Yes</Text>
+                                        <Text style={[styles.helpfulButtonText, helpful === 1 && { color: '#4CAF50' }]}>{t('save')}</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={[styles.helpfulButton, helpful === 0 && { backgroundColor: activeScheme === 'dark' ? '#2e1b1b' : '#FFEBEE' }]}
                                         onPress={() => setHelpful(0)}
                                     >
                                         <Ionicons name="thumbs-down" size={14} color={helpful === 0 ? '#F44336' : colors.textSecondary} />
-                                        <Text style={[styles.helpfulButtonText, helpful === 0 && { color: '#F44336' }]}>No</Text>
+                                        <Text style={[styles.helpfulButtonText, helpful === 0 && { color: '#F44336' }]}>{t('logout')}</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -122,6 +125,7 @@ const FAQItem = ({ faq, index, searchQuery }: { faq: FAQ; index: number; searchQ
 };
 
 export default function HelpCenterScreen() {
+    const { t } = useTranslation();
     const { colors, activeScheme } = useAppTheme();
     const styles = getStyles(colors, activeScheme);
     const insets = useSafeAreaInsets();
@@ -146,13 +150,13 @@ export default function HelpCenterScreen() {
     ];
 
     const categories = [
-        { id: 'all', label: 'All', icon: 'apps' },
-        { id: 'privacy', label: 'Privacy', icon: 'lock-closed' },
-        { id: 'technical', label: 'Technical', icon: 'hardware-chip' },
-        { id: 'security', label: 'Security', icon: 'shield-checkmark' },
-        { id: 'moderation', label: 'Moderation', icon: 'flag' },
-        { id: 'personalization', label: 'Personalization', icon: 'color-palette' },
-        { id: 'features', label: 'Features', icon: 'sparkles' },
+        { id: 'all', label: t('all'), icon: 'apps' },
+        { id: 'privacy', label: t('privacy'), icon: 'lock-closed' },
+        { id: 'technical', label: t('profile_security'), icon: 'hardware-chip' },
+        { id: 'security', label: t('profile_security'), icon: 'shield-checkmark' },
+        { id: 'moderation', label: t('moderation_panel'), icon: 'flag' },
+        { id: 'personalization', label: t('personal'), icon: 'color-palette' },
+        { id: 'features', label: t('upcoming_features'), icon: 'sparkles' },
     ];
 
     const fuse = new Fuse(faqs, {
@@ -181,7 +185,7 @@ export default function HelpCenterScreen() {
                 style={[styles.header, { paddingTop: insets.top + 10 }]}
             >
                 <BackButton onPress={() => router.back()} />
-                <Text style={styles.headerTitle}>Support Center</Text>
+                <Text style={styles.headerTitle}>{t('help')}</Text>
                 <View style={{ width: 40 }} />
             </LinearGradient>
 
@@ -195,19 +199,18 @@ export default function HelpCenterScreen() {
                 scrollEventThrottle={16}
             >
                 <MotiView from={{ opacity: 0, translateY: 10 }} animate={{ opacity: 1, translateY: 0 }}>
-                    {/* Hero Search Section */}
                     <LinearGradient
                         colors={['#1063FD', '#0050CC']}
                         style={styles.heroSection}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                     >
-                        <Text style={styles.heroTitle}>How can we help?</Text>
+                        <Text style={styles.heroTitle}>{t('help')}</Text>
                         <View style={styles.searchBar}>
                             <Ionicons name="search" size={20} color={colors.textSecondary} />
                             <TextInput
                                 style={styles.searchInput}
-                                placeholder="Search for help articles..."
+                                placeholder={t('search_placeholder')}
                                 placeholderTextColor={colors.textSecondary}
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
@@ -220,12 +223,11 @@ export default function HelpCenterScreen() {
                         </View>
                         {searchQuery && (
                             <Text style={styles.searchResultText}>
-                                Found {filteredFaqs.length} {filteredFaqs.length === 1 ? 'result' : 'results'}
+                                {t('search')} {filteredFaqs.length}
                             </Text>
                         )}
                     </LinearGradient>
 
-                    {/* Category Filters */}
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
@@ -256,10 +258,9 @@ export default function HelpCenterScreen() {
                         ))}
                     </ScrollView>
 
-                    {/* FAQ Section */}
                     <View style={styles.faqSection}>
                         <Text style={styles.sectionTitle}>
-                            {searchQuery ? 'Search Results' : 'Frequently Asked Questions'}
+                            {searchQuery ? t('search') : t('help')}
                         </Text>
 
                         {filteredFaqs.length === 0 ? (
@@ -269,9 +270,9 @@ export default function HelpCenterScreen() {
                                 style={styles.noResults}
                             >
                                 <Ionicons name="search" size={48} color={colors.textSecondary + '40'} />
-                                <Text style={styles.noResultsTitle}>No results found</Text>
+                                <Text style={styles.noResultsTitle}>{t('failed_update')}</Text>
                                 <Text style={styles.noResultsText}>
-                                    Try different keywords or browse categories
+                                    {t('help')}
                                 </Text>
                             </MotiView>
                         ) : (
@@ -281,9 +282,8 @@ export default function HelpCenterScreen() {
                         )}
                     </View>
 
-                    {/* Contact Section */}
                     <View style={styles.contactSection}>
-                        <Text style={styles.sectionTitle}>Still need help?</Text>
+                        <Text style={styles.sectionTitle}>{t('help')}</Text>
                         <View style={styles.contactRow}>
                             <TouchableOpacity
                                 style={styles.contactCard}
@@ -296,8 +296,8 @@ export default function HelpCenterScreen() {
                                     <View style={[styles.contactIcon, { backgroundColor: colors.tint + '15' }]}>
                                         <Ionicons name="mail" size={24} color={colors.tint} />
                                     </View>
-                                    <Text style={styles.contactLabel}>Email Support</Text>
-                                    <Text style={styles.contactDescription}>Response within 24h</Text>
+                                    <Text style={styles.contactLabel}>{t('help')}</Text>
+                                    <Text style={styles.contactDescription}>{t('help')}</Text>
                                 </LinearGradient>
                             </TouchableOpacity>
 
@@ -312,27 +312,26 @@ export default function HelpCenterScreen() {
                                     <View style={[styles.contactIcon, { backgroundColor: '#4CAF5015' }]}>
                                         <Ionicons name="chatbubbles" size={24} color="#4CAF50" />
                                     </View>
-                                    <Text style={styles.contactLabel}>AI Assistant</Text>
-                                    <Text style={styles.contactDescription}>Instant answers 24/7</Text>
+                                    <Text style={styles.contactLabel}>{t('help')}</Text>
+                                    <Text style={styles.contactDescription}>{t('help')}</Text>
                                 </LinearGradient>
                             </TouchableOpacity>
                         </View>
                     </View>
 
-                    {/* Footer */}
                     <View style={styles.footer}>
                         <Text style={styles.versionText}>Application Version 2.4.0 (Build 890)</Text>
                         <View style={styles.linkRow}>
                             <TouchableOpacity onPress={() => Linking.openURL('https://zmzir.com/terms')}>
-                                <Text style={styles.footerLink}>Terms of Service</Text>
+                                <Text style={styles.footerLink}>{t('privacy')}</Text>
                             </TouchableOpacity>
                             <Text style={styles.footerDot}>•</Text>
                             <TouchableOpacity onPress={() => Linking.openURL('https://zmzir.com/privacy')}>
-                                <Text style={styles.footerLink}>Privacy Policy</Text>
+                                <Text style={styles.footerLink}>{t('privacy')}</Text>
                             </TouchableOpacity>
                         </View>
                         <TouchableOpacity style={styles.feedbackButton} onPress={() => Linking.openURL('mailto:support@zmzir.com?subject=App%20Feedback&body=Hi%20Zmzir%20Team%2C%0A%0A')}>
-                            <Text style={styles.feedbackText}>✉️ Send Feedback</Text>
+                            <Text style={styles.feedbackText}>{t('help')}</Text>
                         </TouchableOpacity>
                     </View>
                 </MotiView>

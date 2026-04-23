@@ -27,7 +27,7 @@ import { useIncomingCallBridge } from '@/hooks/useIncomingCallBridge';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { NotificationToast } from '@/components/Notifications/NotificationToast';
 import { setAudioModeAsync } from 'expo-audio';
-import { setLocale, Locale } from '@/constants/i18n';
+import { setLocale, Locale, useTranslation } from '@/constants/i18n';
 
 
 // Set global audio mode for call compatibility
@@ -72,6 +72,7 @@ function NotificationToastBridge() {
 
 export default function RootLayout() {
   const { colors, activeScheme } = useAppTheme();
+  const { locale } = useTranslation();
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
@@ -111,9 +112,15 @@ export default function RootLayout() {
 
   // Sync language preference globally whenever user data changes
   useEffect(() => {
-    if (isAuthInitialized && user?.locale) {
-      setLocale(user.locale as Locale);
-    }
+    const syncLocale = async () => {
+      // ONLY sync if we have a definitive user preference.
+      // Guests will rely on the TranslationStore's internal persistence/device-detection logic.
+      if (isAuthInitialized && user?.locale) {
+        console.log(`[RootLayout] Syncing locale from user profile: ${user.locale}`);
+        await setLocale(user.locale as Locale);
+      }
+    };
+    syncLocale();
   }, [isAuthInitialized, user?.locale]);
 
   // 3. Handle Fonts & Splash Screen
@@ -283,7 +290,7 @@ export default function RootLayout() {
                     edges={['top', 'left', 'right']}
                   >
                     <StatusBar barStyle={activeScheme === 'dark' ? 'light-content' : 'dark-content'} />
-                    <Stack screenOptions={{
+                    <Stack key={locale} screenOptions={{
                       headerShown: false,
                       animation: 'none',
                       gestureEnabled: true,

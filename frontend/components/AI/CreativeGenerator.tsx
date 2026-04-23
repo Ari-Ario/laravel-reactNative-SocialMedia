@@ -18,6 +18,8 @@ import { useRouter } from 'expo-router';
 import { useAudioRecorder, requestRecordingPermissionsAsync, setAudioModeAsync, RecordingPresets } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
+import { useTranslation } from '@/constants/i18n';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 const { width } = Dimensions.get('window');
 
@@ -56,14 +58,17 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
   onClose,
 }) => {
   const router = useRouter();
+  const { t, isRTL } = useTranslation();
+  const { colors, activeScheme } = useAppTheme();
+  const styles = getStyles(colors, activeScheme, isRTL);
 
   const creativeModes: CreativeMode[] = [
-    { id: 'brainstorm', name: 'Brainstorm', icon: 'flash', description: 'Generate creative ideas', color: '#4ECDC4' },
-    { id: 'story-continue', name: 'Story', icon: 'book', description: 'Continue collaborative stories', color: '#F38181' },
-    { id: 'problem-solve', name: 'Solve', icon: 'bulb', description: 'Find solutions to problems', color: '#FFD166' },
-    { id: 'design-thinking', name: 'Design', icon: 'pencil', description: 'Design thinking exercises', color: '#06D6A0' },
-    { id: 'debate', name: 'Debate', icon: 'chatbubbles', description: 'Constructive debate topics', color: '#118AB2' },
-    { id: 'roleplay', name: 'Roleplay', icon: 'person', description: 'Role-playing scenarios', color: '#EF476F' },
+    { id: 'brainstorm', name: t('brainstorm'), icon: 'flash', description: t('brainstorm_desc'), color: '#4ECDC4' },
+    { id: 'story-continue', name: t('story_continue'), icon: 'book', description: t('story_continue_desc'), color: '#F38181' },
+    { id: 'problem-solve', name: t('solve'), icon: 'bulb', description: t('solve_desc'), color: '#FFD166' },
+    { id: 'design-thinking', name: t('design'), icon: 'pencil', description: t('design_desc'), color: '#06D6A0' },
+    { id: 'debate', name: t('debate'), icon: 'chatbubbles', description: t('debate_desc'), color: '#118AB2' },
+    { id: 'roleplay', name: t('roleplay'), icon: 'person', description: t('roleplay_desc'), color: '#EF476F' },
   ];
 
   const [activeMode, setActiveMode] = useState<CreativeMode>(creativeModes[0]);
@@ -124,7 +129,7 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
     try {
       const { granted } = await requestRecordingPermissionsAsync();
       if (!granted) {
-        Alert.alert('Permission required', 'Need microphone access for voice input');
+        Alert.alert(t('permission_required'), t('mic_permission_required'));
         return;
       }
 
@@ -161,7 +166,7 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
 
     } catch (error) {
       console.error('Failed to start recording:', error);
-      Alert.alert('Error', 'Failed to start recording. Please try again.');
+      Alert.alert(t('error'), t('failed_start_recording'));
     }
   };
 
@@ -185,7 +190,7 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
 
     } catch (error) {
       console.error('Failed to stop recording:', error);
-      Alert.alert('Error', 'Failed to process recording');
+      Alert.alert(t('error'), t('failed_process_recording'));
     }
   };
 
@@ -242,7 +247,7 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
 
     } catch (error) {
       console.error('Error generating ideas:', error);
-      Alert.alert('Error', 'Failed to generate ideas from voice');
+      Alert.alert(t('error'), t('failed_generate_voice_ideas'));
     } finally {
       setIsGenerating(false);
     }
@@ -305,7 +310,7 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
 
         const newIdea: Idea = {
           id: `realities_${Date.now()}`,
-          content: response.ai_response || "Alternate perspectives generated",
+          content: response.ai_response || t('alternate_perspectives_generated'),
           type: 'alternate-realities',
           mood: 'analytical',
           timestamp: new Date().toISOString(),
@@ -384,7 +389,7 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
           type: 'story-start',
           mood: 'creative',
           timestamp: new Date().toISOString(),
-          contributors: ['AI'],
+          contributors: [t('ai')],
           metadata: {
             nextPrompt: 'What happens when they touch the artifact?',
             storySeed: 'mysterious_artifact'
@@ -443,7 +448,7 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
 
     } catch (error) {
       console.error('Error starting story:', error);
-      Alert.alert('Error', 'Failed to start collaborative story');
+      Alert.alert(t('error'), t('failed_start_story'));
     } finally {
       setIsGenerating(false);
     }
@@ -511,21 +516,21 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
             style={styles.actionButton}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              Alert.alert('Idea Saved', 'Added to your ideas collection');
+              Alert.alert(t('idea_saved'), t('added_to_collection'));
             }}
           >
             <Ionicons name="heart-outline" size={18} color="#FF6B6B" />
-            <Text style={styles.actionButtonText}>Save</Text>
+            <Text style={styles.actionButtonText}>{t('save')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => {
               // Share idea
-              Alert.alert('Share Idea', 'Share this idea with others?', [
-                { text: 'Cancel', style: 'cancel' },
+              Alert.alert(t('share'), t('share_idea_prompt'), [
+                { text: t('cancel'), style: 'cancel' },
                 {
-                  text: 'Share', onPress: () => {
+                  text: t('share'), onPress: () => {
                     // Implement sharing
                   }
                 }
@@ -533,19 +538,19 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
             }}
           >
             <Ionicons name="arrow-redo-outline" size={18} color="#45B7D1" />
-            <Text style={styles.actionButtonText}>Share</Text>
+            <Text style={styles.actionButtonText}>{t('share')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => {
               Alert.alert(
-                'Create Space',
-                'Create a collaboration space from this idea?',
+                t('use'),
+                t('create_space_from_idea'),
                 [
-                  { text: 'Cancel', style: 'cancel' },
+                  { text: t('cancel'), style: 'cancel' },
                   {
-                    text: 'Create', onPress: () => {
+                    text: t('create'), onPress: () => {
                       router.push({
                         pathname: '/(tabs)/spaces/create' as any,
                         params: {
@@ -561,7 +566,7 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
             }}
           >
             <Ionicons name="cube-outline" size={18} color="#4ECDC4" />
-            <Text style={styles.actionButtonText}>Use</Text>
+            <Text style={styles.actionButtonText}>{t('use')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -585,22 +590,22 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onClose} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={28} color="#fff" />
-          <Text style={styles.backText}>Back</Text>
+      <View style={[styles.header, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+        <TouchableOpacity onPress={onClose} style={[styles.backButton, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+          <Ionicons name={isRTL ? "chevron-forward" : "chevron-back"} size={28} color="#fff" />
+          <Text style={styles.backText}>{t('back')}</Text>
         </TouchableOpacity>
-
+ 
         <View style={styles.headerCenter}>
           <Ionicons name="sparkles" size={24} color="#FFD700" />
-          <Text style={styles.headerTitle}>Creative Generator</Text>
+          <Text style={styles.headerTitle}>{t('creative_generator')}</Text>
         </View>
-
+ 
         <TouchableOpacity
           style={styles.helpButton}
           onPress={() => Alert.alert(
-            'Creative Generator Help',
-            'Generate creative ideas using different modes:\n\n• Voice Ideas: Record your thoughts\n• Perspectives: Get alternate viewpoints\n• Story: Start collaborative narratives\n\nTap any idea to save, share, or create a space from it.'
+            t('creative_help_title'),
+            t('creative_help_desc')
           )}
         >
           <Ionicons name="help-circle" size={24} color="#fff" />
@@ -629,13 +634,10 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
             ]}>
               <Ionicons name={mode.icon as any} size={22} color="#fff" />
             </View>
-            <Text style={[
-              styles.modeText,
-              activeMode.id === mode.id && { color: mode.color, fontWeight: '600' }
-            ]}>
+            <Text style={[styles.modeText, { textAlign: isRTL ? 'right' : 'left' }, activeMode.id === mode.id && { color: mode.color, fontWeight: '600' }]}>
               {mode.name}
             </Text>
-            <Text style={styles.modeDescription} numberOfLines={1}>
+            <Text style={[styles.modeDescription, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>
               {mode.description}
             </Text>
           </TouchableOpacity>
@@ -650,18 +652,18 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
             { transform: [{ scale: pulseAnim }] }
           ]}
         >
-          <View style={styles.recordingInfo}>
+          <View style={[styles.recordingInfo, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
             <View style={styles.recordingDot} />
             <Text style={styles.recordingText}>
-              Recording... {recordingTime}s
+              {t('recording_status')} {recordingTime}s
             </Text>
           </View>
           <TouchableOpacity
             onPress={stopVoiceIdeation}
-            style={styles.stopButton}
+            style={[styles.stopButton, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
           >
             <Ionicons name="stop-circle" size={28} color="#FF6B6B" />
-            <Text style={styles.stopButtonText}>Stop</Text>
+            <Text style={styles.stopButtonText}>{t('stop')}</Text>
           </TouchableOpacity>
         </Animated.View>
       )}
@@ -680,7 +682,7 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
           <View style={styles.generatingContainer}>
             <ActivityIndicator size="large" color={activeMode.color} />
             <Text style={styles.generatingText}>
-              Generating {activeMode.name.toLowerCase()} ideas...
+              {t('generating_ideas').replace('{mode}', activeMode.name)}
             </Text>
           </View>
         )}
@@ -688,15 +690,15 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
         {generatedContent.length === 0 && !isGenerating ? (
           <View style={styles.emptyState}>
             <Ionicons name="bulb-outline" size={80} color="#333" />
-            <Text style={styles.emptyTitle}>No ideas yet</Text>
-            <Text style={styles.emptyDescription}>
-              Tap a mode and generate ideas using voice or AI
+            <Text style={styles.emptyTitle}>{t('no_ideas_title')}</Text>
+            <Text style={[styles.emptyDescription, { textAlign: 'center' }]}>
+              {t('no_ideas_desc')}
             </Text>
-            <View style={styles.emptyTips}>
-              <Text style={styles.emptyTipsTitle}>Tips:</Text>
-              <Text style={styles.emptyTip}>• Use voice for spontaneous ideas</Text>
-              <Text style={styles.emptyTip}>• Try different modes for varied perspectives</Text>
-              <Text style={styles.emptyTip}>• Save ideas you want to revisit</Text>
+            <View style={[styles.emptyTips, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+              <Text style={styles.emptyTipsTitle}>{t('creative_tips_title')}</Text>
+              <Text style={styles.emptyTip}>• {t('tip_voice')}</Text>
+              <Text style={styles.emptyTip}>• {t('tip_modes')}</Text>
+              <Text style={styles.emptyTip}>• {t('tip_save')}</Text>
             </View>
           </View>
         ) : (
@@ -725,7 +727,7 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
             styles.controlText,
             isRecording && { color: '#FF6B6B' }
           ]}>
-            {isRecording ? 'Stop' : 'Voice'}
+            {isRecording ? t('stop') : t('voice')}
           </Text>
         </TouchableOpacity>
 
@@ -735,7 +737,7 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
           disabled={isGenerating || isRecording}
         >
           <Ionicons name="git-branch" size={24} color="#fff" />
-          <Text style={styles.controlText}>Perspectives</Text>
+          <Text style={styles.controlText}>{t('perspectives')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -744,7 +746,7 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
           disabled={isGenerating || isRecording}
         >
           <Ionicons name="book" size={24} color="#fff" />
-          <Text style={styles.controlText}>Story</Text>
+          <Text style={styles.controlText}>{t('story_continue')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -752,12 +754,12 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
           onPress={() => {
             if (generatedContent.length > 0) {
               Alert.alert(
-                'Clear Ideas',
-                'Are you sure you want to clear all generated ideas?',
+                t('clear'),
+                t('clear_ideas_confirm'),
                 [
-                  { text: 'Cancel', style: 'cancel' },
+                  { text: t('cancel'), style: 'cancel' },
                   {
-                    text: 'Clear',
+                    text: t('clear'),
                     style: 'destructive',
                     onPress: () => {
                       setGeneratedContent([]);
@@ -772,17 +774,17 @@ const CreativeGenerator: React.FC<CreativeGeneratorProps> = ({
           disabled={isGenerating || isRecording}
         >
           <Ionicons name="trash" size={24} color="#fff" />
-          <Text style={styles.controlText}>Clear</Text>
+          <Text style={styles.controlText}>{t('clear')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -791,7 +793,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 16,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: '#333',
   },
@@ -800,9 +802,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backText: {
-    color: '#fff',
+    color: colors.text,
     fontSize: 16,
-    marginLeft: 4,
+    [isRTL ? 'marginRight' : 'marginLeft']: 4,
     fontWeight: '500',
   },
   headerCenter: {
@@ -810,16 +812,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    color: '#fff',
+    color: colors.text,
     fontSize: 18,
     fontWeight: '700',
-    marginLeft: 8,
+    [isRTL ? 'marginRight' : 'marginLeft']: 8,
   },
   helpButton: {
     padding: 4,
   },
   modeSelector: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.surface,
     paddingVertical: 12,
   },
   modeSelectorContent: {
@@ -843,13 +845,13 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   modeText: {
-    color: '#fff',
+    color: colors.text,
     fontSize: 14,
     fontWeight: '500',
     marginBottom: 2,
   },
   modeDescription: {
-    color: '#999',
+    color: colors.textSecondary,
     fontSize: 10,
     textAlign: 'center',
   },
@@ -875,7 +877,7 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
     backgroundColor: '#FF6B6B',
-    marginRight: 12,
+    [isRTL ? 'marginLeft' : 'marginRight']: 12,
   },
   recordingText: {
     color: '#FF6B6B',
@@ -909,7 +911,7 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
   },
   generatingText: {
-    color: '#fff',
+    color: colors.text,
     fontSize: 16,
     marginTop: 16,
   },
@@ -919,44 +921,44 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
   },
   emptyTitle: {
-    color: '#fff',
+    color: colors.text,
     fontSize: 22,
     fontWeight: '700',
     marginTop: 20,
     marginBottom: 8,
   },
   emptyDescription: {
-    color: '#999',
+    color: colors.textSecondary,
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 24,
     paddingHorizontal: 32,
   },
   emptyTips: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.surface,
     padding: 16,
     borderRadius: 12,
     width: '80%',
   },
   emptyTipsTitle: {
-    color: '#fff',
+    color: colors.text,
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,
   },
   emptyTip: {
-    color: '#999',
+    color: colors.textSecondary,
     fontSize: 14,
     marginBottom: 4,
-    marginLeft: 8,
+    [isRTL ? 'marginRight' : 'marginLeft']: 8,
   },
   ideaCard: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border,
   },
   ideaHeader: {
     flexDirection: 'row',
@@ -967,21 +969,21 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    marginRight: 8,
+    [isRTL ? 'marginLeft' : 'marginRight']: 8,
   },
   ideaType: {
     flex: 1,
-    color: '#fff',
+    color: colors.text,
     fontSize: 11,
     fontWeight: '600',
     letterSpacing: 0.5,
   },
   ideaTime: {
-    color: '#666',
+    color: colors.textSecondary,
     fontSize: 11,
   },
   ideaText: {
-    color: '#fff',
+    color: colors.text,
     fontSize: 16,
     lineHeight: 24,
     marginBottom: 12,
@@ -992,7 +994,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   contributorText: {
-    color: '#666',
+    color: colors.textSecondary,
     fontSize: 12,
     marginLeft: 6,
   },
@@ -1006,12 +1008,12 @@ const styles = StyleSheet.create({
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 16,
+    [isRTL ? 'marginLeft' : 'marginRight']: 16,
   },
   actionButtonText: {
-    color: '#fff',
+    color: colors.text,
     fontSize: 12,
-    marginLeft: 4,
+    [isRTL ? 'marginRight' : 'marginLeft']: 4,
     fontWeight: '500',
   },
   voiceMetadata: {
@@ -1020,9 +1022,9 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   voiceMetadataText: {
-    color: '#666',
+    color: colors.textSecondary,
     fontSize: 11,
-    marginLeft: 4,
+    [isRTL ? 'marginRight' : 'marginLeft']: 4,
   },
   controls: {
     flexDirection: 'row',
@@ -1030,7 +1032,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 16,
     paddingHorizontal: 16,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderTopColor: '#333',
     position: 'absolute',
@@ -1047,7 +1049,7 @@ const styles = StyleSheet.create({
     minWidth: 70,
   },
   controlText: {
-    color: '#fff',
+    color: colors.text,
     fontSize: 12,
     marginTop: 4,
     fontWeight: '500',

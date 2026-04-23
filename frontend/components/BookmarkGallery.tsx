@@ -25,6 +25,7 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlobalStyles } from '@/styles/GlobalStyles';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 import { createShadow } from '@/utils/styles';
 import getApiBaseImage from '@/services/getApiBaseImage';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
@@ -73,41 +74,44 @@ const COLLECTIONS = [
     { id: 'personal', name: 'Personal', icon: 'person-outline', color: '#310062', gradient: ['#310062', '#4b0082'] },
 ];
 
-// Split styles to avoid prop errors - WebActionButtons now accepts styles
 const WebActionButtons = ({
     onAddNote,
     onRemove,
     onNavigate,
     colors,
-    styles
+    styles,
+    t,
+    isRTL
 }: {
     onAddNote: () => void;
     onRemove: () => void;
     onNavigate: () => void;
     colors: any;
     styles: any;
+    t: any;
+    isRTL: boolean;
 }) => (
-    <View style={[styles.webActionButtons, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+    <View style={[styles.webActionButtons, { backgroundColor: colors.surface, borderTopColor: colors.border, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
         <TouchableOpacity
-            style={[styles.webActionButton, { backgroundColor: colors.muted, borderColor: colors.border }]}
+            style={[styles.webActionButton, { backgroundColor: colors.muted, borderColor: colors.border, flexDirection: isRTL ? 'row-reverse' : 'row' }]}
             onPress={onNavigate}
         >
-            <Ionicons name="open-outline" size={18} color={colors.text} />
-            <Text style={[styles.webActionText, { color: colors.text }]}>Open</Text>
+            <Ionicons name={isRTL ? "open-outline" : "open-outline"} size={18} color={colors.text} />
+            <Text style={[styles.webActionText, { color: colors.text, textAlign: isRTL ? 'right' : 'left', [isRTL ? 'marginRight' : 'marginLeft']: 8, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}>{t('open')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
-            style={[styles.webActionButton, { backgroundColor: colors.muted, borderColor: colors.border }]}
+            style={[styles.webActionButton, { backgroundColor: colors.muted, borderColor: colors.border, flexDirection: isRTL ? 'row-reverse' : 'row' }]}
             onPress={onAddNote}
         >
             <Ionicons name="pencil" size={18} color={colors.text} />
-            <Text style={[styles.webActionText, { color: colors.text }]}>Note</Text>
+            <Text style={[styles.webActionText, { color: colors.text, textAlign: isRTL ? 'right' : 'left', [isRTL ? 'marginRight' : 'marginLeft']: 8, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}>{t('note')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
-            style={[styles.webActionButton, styles.webActionDelete]}
+            style={[styles.webActionButton, styles.webActionDelete, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
             onPress={onRemove}
         >
             <Ionicons name="trash-outline" size={18} color="#ff4444" />
-            <Text style={[styles.webActionText, { color: "#ff4444" }]}>Delete</Text>
+            <Text style={[styles.webActionText, { color: "#ff4444", textAlign: isRTL ? 'right' : 'left', [isRTL ? 'marginRight' : 'marginLeft']: 8, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}>{t('delete')}</Text>
         </TouchableOpacity>
     </View>
 );
@@ -123,14 +127,21 @@ export const BookmarkGallery = ({
 }: BookmarkGalleryProps) => {
     const { width, height } = useWindowDimensions();
     const { colors, activeScheme } = useAppTheme();
+    const { t, isRTL } = useTranslation();
     const insets = useSafeAreaInsets();
     const { user } = React.useContext<any>(AuthContext);
     const { bookmarks, addBookmark, removeBookmark, updateBookmarkNote, moveToCollection } = useBookmarkStore();
 
     // Use memoized styles to prevent unnecessary re-renders
-    const styles = React.useMemo(() => getStyles(colors, activeScheme as string, width, height), [colors, activeScheme, width, height]);
+    const styles = React.useMemo(() => getStyles(colors, activeScheme as string, width, height, isRTL), [colors, activeScheme, width, height, isRTL]);
 
-    const [selectedCollection, setSelectedCollection] = useState('all');
+    const COLLECTIONS = [
+        { id: 'all', name: t('all_saves'), icon: 'apps', color: '#0d0d0d', gradient: ['#0d0d0d', '#1a1a1a'] },
+        { id: 'read', name: t('read_later'), icon: 'bookmark-outline', color: '#660000', gradient: ['#660000', '#800000'] },
+        { id: 'inspire', name: t('inspiration'), icon: 'bulb-outline', color: '#7b3f00', gradient: ['#7b3f00', '#8B4513'] },
+        { id: 'share', name: t('to_share'), icon: 'share-social-outline', color: '#004d00', gradient: ['#004d00', '#006400'] },
+        { id: 'personal', name: t('personal'), icon: 'person-outline', color: '#310062', gradient: ['#310062', '#4b0082'] },
+    ];
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedBookmarks, setSelectedBookmarks] = useState<number[]>([]);
     const [showNoteModal, setShowNoteModal] = useState(false);
@@ -156,9 +167,9 @@ export const BookmarkGallery = ({
     // Get time-based greeting
     const getTimeBasedGreeting = () => {
         const hour = new Date().getHours();
-        if (hour < 12) return 'Good Morning';
-        if (hour < 18) return 'Good Afternoon';
-        return 'Good Evening';
+        if (hour < 12) return t('good_morning');
+        if (hour < 18) return t('good_afternoon');
+        return t('good_evening');
     };
 
     // Get background gradient based on collection and time
@@ -205,19 +216,19 @@ export const BookmarkGallery = ({
     const handleRemoveBookmark = (postId: number) => {
         if (isWeb) {
             // Web: use confirm dialog
-            if (window.confirm('Remove this bookmark?')) {
+            if (window.confirm(t('remove_bookmark_confirm'))) {
                 removeBookmark(postId);
                 onBookmarkRemoved?.(postId);
             }
         } else {
             // Mobile: use Alert
             Alert.alert(
-                'Remove Bookmark',
-                'Remove this from your collection?',
+                t('remove_bookmark_title'),
+                t('remove_bookmark_desc'),
                 [
-                    { text: 'Cancel', style: 'cancel' },
+                    { text: t('cancel'), style: 'cancel' },
                     {
-                        text: 'Remove',
+                        text: t('remove'),
                         style: 'destructive',
                         onPress: () => {
                             removeBookmark(postId);
@@ -256,7 +267,7 @@ export const BookmarkGallery = ({
                 }
                 setShowNoteModal(false);
             } catch (error) {
-                Alert.alert('Error', 'Failed to save changes');
+                Alert.alert(t('error'), t('failed_save_changes'));
             }
         }
     };
@@ -276,9 +287,9 @@ export const BookmarkGallery = ({
             showsVerticalScrollIndicator={false}
             renderItem={({ item: [date, items] }: any) => (
                 <View style={styles.timelineSection}>
-                    <View style={styles.timelineHeader}>
-                        <View style={styles.timelineDot} />
-                        <Text style={styles.timelineDate}>{date}</Text>
+                    <View style={[styles.timelineHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                        <View style={[styles.timelineDot, { [isRTL ? 'marginLeft' : 'marginRight']: 0, [isRTL ? 'marginRight' : 'marginLeft']: 0 }]} />
+                        <Text style={[styles.timelineDate, { textAlign: isRTL ? 'right' : 'left' }]}>{date}</Text>
                     </View>
 
                     {items.map((bookmark: Bookmark, index: number) => (
@@ -303,32 +314,32 @@ export const BookmarkGallery = ({
                                         />
                                     )}
 
-                                    <View style={styles.timelineInfo}>
-                                        <View style={styles.timelineRow}>
+                                    <View style={[styles.timelineInfo, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+                                        <View style={[styles.timelineRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                                             <Image
                                                 source={{
                                                     uri: bookmark.post.user.profile_photo
                                                         ? `${getApiBaseImage()}/storage/${bookmark.post.user.profile_photo}`
                                                         : 'https://via.placeholder.com/20'
                                                 }}
-                                                style={styles.timelineAvatar}
+                                                style={[styles.timelineAvatar, { [isRTL ? 'marginLeft' : 'marginRight']: 8, [isRTL ? 'marginRight' : 'marginLeft']: 0 }]}
                                             />
-                                            <Text style={styles.timelineName}>{bookmark.post.user.name}</Text>
+                                            <Text style={[styles.timelineName, { textAlign: isRTL ? 'right' : 'left' }]}>{bookmark.post.user.name}</Text>
                                         </View>
 
-                                        <Text style={styles.timelineCaption} numberOfLines={2}>
-                                            {bookmark.post.caption || 'No caption provided'}
+                                        <Text style={[styles.timelineCaption, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={2}>
+                                            {bookmark.post.caption || t('no_caption_provided')}
                                         </Text>
 
                                         {bookmark.note && (
-                                            <View style={styles.timelineNote}>
+                                            <View style={[styles.timelineNote, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                                                 <Ionicons name="chatbubble" size={12} color={colors.tint} />
-                                                <Text style={styles.timelineNoteText}>{bookmark.note}</Text>
+                                                <Text style={[styles.timelineNoteText, { textAlign: isRTL ? 'right' : 'left', [isRTL ? 'marginRight' : 'marginLeft']: 6, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}>{bookmark.note}</Text>
                                             </View>
                                         )}
 
                                         {!isWeb && (
-                                            <View style={styles.mobileActionButtons}>
+                                            <View style={[styles.mobileActionButtons, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                                                 <TouchableOpacity
                                                     style={styles.mobileActionButton}
                                                     onPress={() => handleAddNote(bookmark)}
@@ -368,6 +379,8 @@ export const BookmarkGallery = ({
                                         onNavigate={() => navigateToPost(bookmark.post_id)}
                                         colors={colors}
                                         styles={styles}
+                                        t={t}
+                                        isRTL={isRTL}
                                     />
                                 )}
                             </View>
@@ -398,12 +411,12 @@ export const BookmarkGallery = ({
                             style={styles.gridImage}
                         />
                     )}
-                    <View style={styles.gridOverlay}>
-                        <Text style={styles.gridName} numberOfLines={1}>{item.post.user.name}</Text>
+                    <View style={[styles.gridOverlay, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+                        <Text style={[styles.gridName, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>{item.post.user.name}</Text>
                         {item.note && (
-                            <View style={styles.gridNote}>
+                            <View style={[styles.gridNote, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                                 <Ionicons name="chatbubble" size={10} color={colors.text} />
-                                <Text style={styles.gridNoteText} numberOfLines={1}>{item.note}</Text>
+                                <Text style={[styles.gridNoteText, { textAlign: isRTL ? 'right' : 'left', [isRTL ? 'marginRight' : 'marginLeft']: 4, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]} numberOfLines={1}>{item.note}</Text>
                             </View>
                         )}
                     </View>
@@ -419,7 +432,7 @@ export const BookmarkGallery = ({
             keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => (
                 <TouchableOpacity
-                    style={styles.listCard}
+                    style={[styles.listCard, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
                     onPress={() => navigateToPost(item.post_id)}
                     onLongPress={() => setSelectedBookmarks([item.post_id])}
                 >
@@ -429,25 +442,25 @@ export const BookmarkGallery = ({
                             style={styles.listImage}
                         />
                     )}
-                    <View style={styles.listInfo}>
-                        <View style={styles.listHeader}>
+                    <View style={[styles.listInfo, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+                        <View style={[styles.listHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                             <Image
                                 source={{
                                     uri: item.post.user.profile_photo
                                         ? `${getApiBaseImage()}/storage/${item.post.user.profile_photo}`
                                         : 'https://via.placeholder.com/20'
                                 }}
-                                style={styles.listAvatar}
+                                style={[styles.listAvatar, { [isRTL ? 'marginLeft' : 'marginRight']: 8, [isRTL ? 'marginRight' : 'marginLeft']: 0 }]}
                             />
-                            <Text style={styles.listName}>{item.post.user.name}</Text>
+                            <Text style={[styles.listName, { textAlign: isRTL ? 'right' : 'left' }]}>{item.post.user.name}</Text>
                         </View>
-                        <Text style={styles.listCaption} numberOfLines={2}>
-                            {item.post.caption || 'No caption'}
+                        <Text style={[styles.listCaption, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={2}>
+                            {item.post.caption || t('no_caption')}
                         </Text>
                         {item.note && (
-                            <View style={styles.listNote}>
+                            <View style={[styles.listNote, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                                 <Ionicons name="chatbubble" size={12} color={colors.textSecondary} />
-                                <Text style={styles.listNoteText}>{item.note}</Text>
+                                <Text style={[styles.listNoteText, { textAlign: isRTL ? 'right' : 'left', [isRTL ? 'marginRight' : 'marginLeft']: 6, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}>{item.note}</Text>
                             </View>
                         )}
                     </View>
@@ -478,14 +491,14 @@ export const BookmarkGallery = ({
                 />
 
                 {/* Header */}
-                <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+                <View style={[styles.header, { paddingTop: insets.top + 10, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                     <TouchableOpacity onPress={handleClose} style={styles.headerButton}>
-                        <Ionicons name="close" size={24} color={colors.text} />
+                        <Ionicons name={isRTL ? "chevron-forward" : "close"} size={24} color={colors.text} />
                     </TouchableOpacity>
 
-                    <View style={styles.headerTitle}>
-                        <Text style={styles.greeting} numberOfLines={1}>{getTimeBasedGreeting()},</Text>
-                        <Text style={styles.headerMainTitle}>Bookmarked Memories</Text>
+                    <View style={[styles.headerTitle, { alignItems: 'center' }]}>
+                        <Text style={[styles.greeting, { textAlign: 'center' }]} numberOfLines={1}>{getTimeBasedGreeting()},</Text>
+                        <Text style={[styles.headerMainTitle, { textAlign: 'center' }]}>{t('bookmarked_memories')}</Text>
                     </View>
 
                     <TouchableOpacity
@@ -503,7 +516,11 @@ export const BookmarkGallery = ({
                         animate={{ opacity: 1, translateY: 0 }}
                         style={styles.filterBar}
                     >
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScrollContent}>
+                        <ScrollView 
+                            horizontal 
+                            showsHorizontalScrollIndicator={false} 
+                            contentContainerStyle={[styles.filterScrollContent, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
+                        >
                             {COLLECTIONS.map((col) => (
                                 <TouchableOpacity
                                     key={col.id}
@@ -514,9 +531,9 @@ export const BookmarkGallery = ({
                                     onPress={() => setSelectedCollection(col.id)}
                                 >
                                     <Ionicons name={col.icon as any} size={16} color={selectedCollection === col.id ? "#fff" : colors.text} />
-                                    <Text style={[styles.filterChipText, filteredChipTextStyle(col.id)]}>{col.name}</Text>
+                                    <Text style={[styles.filterChipText, filteredChipTextStyle(col.id), { textAlign: isRTL ? 'right' : 'left' }]}>{col.name}</Text>
                                     {col.id === 'all' && (
-                                        <View style={styles.filterBadge}>
+                                        <View style={[styles.filterBadge, { [isRTL ? 'marginRight' : 'marginLeft']: 4, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}>
                                             <Text style={styles.filterBadgeText}>{bookmarks.length}</Text>
                                         </View>
                                     )}
@@ -527,11 +544,11 @@ export const BookmarkGallery = ({
                 )}
 
                 {/* Search Bar */}
-                <View style={styles.searchContainer}>
+                <View style={[styles.searchContainer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                     <Ionicons name="search" size={18} color={colors.text} />
                     <TextInput
-                        style={styles.searchInput}
-                        placeholder="Search your collection..."
+                        style={[styles.searchInput, { textAlign: isRTL ? 'right' : 'left' }]}
+                        placeholder={t('search_collection_placeholder')}
                         placeholderTextColor={colors.textSecondary}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
@@ -544,7 +561,7 @@ export const BookmarkGallery = ({
                 </View>
 
                 {/* View Mode Toggle */}
-                <View style={styles.viewToggle}>
+                <View style={[styles.viewToggle, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                     <TouchableOpacity
                         style={[styles.viewToggleButton, viewMode === 'timeline' && styles.viewToggleActive]}
                         onPress={() => setViewMode('timeline')}
@@ -587,9 +604,9 @@ export const BookmarkGallery = ({
                         <View style={styles.emptyIcon}>
                             <Ionicons name="bookmark" size={60} color={colors.muted} />
                         </View>
-                        <Text style={styles.emptyTitle}>Your collection is empty</Text>
-                        <Text style={styles.emptyText}>
-                            Tap the bookmark icon on any post to start building your memory lane
+                        <Text style={[styles.emptyTitle, { textAlign: 'center' }]}>{t('empty_collection_title')}</Text>
+                        <Text style={[styles.emptyText, { textAlign: 'center' }]}>
+                            {t('empty_collection_desc')}
                         </Text>
                     </MotiView>
                 ) : (
@@ -612,16 +629,16 @@ export const BookmarkGallery = ({
                             from={{ scale: 0.8, opacity: 0, translateY: 50 }}
                             animate={{ scale: 1, opacity: 1, translateY: 0 }}
                             transition={{ type: 'spring' }}
-                            style={[styles.noteModal, GlobalStyles.responsiveModal as any]}
+                             style={[styles.noteModal, GlobalStyles.responsiveModal as any, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}
                         >
-                            <Text style={styles.noteModalTitle}>Add Your Note</Text>
-                            <Text style={styles.noteModalSubtitle}>
-                                What did you love about this?
+                            <Text style={[styles.noteModalTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t('add_your_note')}</Text>
+                            <Text style={[styles.noteModalSubtitle, { textAlign: isRTL ? 'right' : 'left' }]}>
+                                {t('love_about_this')}
                             </Text>
 
                             <TextInput
-                                style={styles.noteInput}
-                                placeholder="Write your thoughts..."
+                                style={[styles.noteInput, { textAlign: isRTL ? 'right' : 'left' }]}
+                                placeholder={t('write_thoughts_placeholder')}
                                 placeholderTextColor={colors.textSecondary}
                                 multiline
                                 value={noteText}
@@ -629,12 +646,13 @@ export const BookmarkGallery = ({
                                 autoFocus
                             />
 
-                            <Text style={[styles.noteModalSubtitle, { marginBottom: 10 }]}>
-                                Select Collection
+                            <Text style={[styles.noteModalSubtitle, { marginBottom: 10, textAlign: isRTL ? 'right' : 'left' }]}>
+                                {t('select_collection')}
                             </Text>
-                            <ScrollView
+                             <ScrollView
                                 horizontal
                                 showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={{ flexDirection: isRTL ? 'row-reverse' : 'row', gap: 10 }}
                                 style={{ marginBottom: 20 }}
                             >
                                 {COLLECTIONS.map((col) => (
@@ -642,28 +660,29 @@ export const BookmarkGallery = ({
                                         key={`note-col-${col.id}`}
                                         style={[
                                             styles.filterChip,
-                                            tempCollection === col.id && { backgroundColor: col.color }
+                                            tempCollection === col.id && { backgroundColor: col.color },
+                                            { flexDirection: isRTL ? 'row-reverse' : 'row' }
                                         ]}
                                         onPress={() => setTempCollection(col.id)}
                                     >
                                         <Ionicons name={col.icon as any} size={14} color={tempCollection === col.id ? "#fff" : colors.text} />
-                                        <Text style={[styles.filterChipText, tempCollection === col.id && { color: '#fff' }]}>{col.name}</Text>
+                                        <Text style={[styles.filterChipText, tempCollection === col.id && { color: '#fff' }, { textAlign: isRTL ? 'right' : 'left' }]}>{col.name}</Text>
                                     </TouchableOpacity>
                                 ))}
                             </ScrollView>
 
-                            <View style={styles.noteActions}>
+                            <View style={[styles.noteActions, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                                 <TouchableOpacity
                                     style={[styles.noteButton, styles.noteCancel]}
                                     onPress={() => setShowNoteModal(false)}
                                 >
-                                    <Text style={styles.noteCancelText}>Cancel</Text>
+                                    <Text style={styles.noteCancelText}>{t('cancel')}</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={[styles.noteButton, styles.noteSave]}
                                     onPress={saveNote}
                                 >
-                                    <Text style={styles.noteSaveText}>Save Note</Text>
+                                    <Text style={styles.noteSaveText}>{t('save_note')}</Text>
                                 </TouchableOpacity>
                             </View>
                         </MotiView>
@@ -680,9 +699,8 @@ const filteredChipTextStyle = (colId: string) => {
     return {};
 };
 
-const getStyles = (colors: any, activeScheme: string, width: number, height: number) => StyleSheet.create({
+const getStyles = (colors: any, activeScheme: string, width: number, height: number, isRTL: boolean) => StyleSheet.create({
     header: {
-        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 20,

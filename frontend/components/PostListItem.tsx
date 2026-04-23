@@ -60,6 +60,7 @@ import { Bookmark } from '@/services/BookmarkService';
 import { GlobalStyles } from '@/styles/GlobalStyles';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { createShadow } from '@/utils/styles';
+import { useTranslation } from '@/constants/i18n';
 
 
 interface PostListItemProps {
@@ -83,10 +84,12 @@ function PostListItem({
   shouldPlay = false,
 }: PostListItemProps) {
   const { colors, activeScheme } = useAppTheme();
-  const styles = getStyles(colors, activeScheme);
+  const { t, isRTL } = useTranslation();
+  const styles = getStyles(colors, activeScheme, isRTL);
   const { user } = useContext(AuthContext);
   const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
   const { openModal } = useModal();
+  const posts = usePostStore(state => state.posts);
   const currentPost = usePostStore(state => state.posts.find(p => p.id === post.id) || post);
   const updatePostInStore = usePostStore(state => state.updatePost);
   const expandedPostId = usePostStore(state => state.expandedPostId);
@@ -170,18 +173,18 @@ function PostListItem({
       const response = await repostPost(post.id, tag, note);
 
       // Update store with new repost count and potentially the new repost data
-      const currentPost = posts.find(p => p.id === post.id);
-      if (currentPost) {
+      const currentPostInStore = posts.find(p => p.id === post.id);
+      if (currentPostInStore) {
         const isCurrentlyReposted = response.reposted;
         const currentUserId = user?.id ? Number(user.id) : null;
 
         updatePostInStore({
-          ...currentPost,
+          ...currentPostInStore,
           reposts_count: response.reposts_count,
           is_reposted: isCurrentlyReposted,
           reposts: isCurrentlyReposted
-            ? (response.repost ? [response.repost, ...(currentPost.reposts || [])] : currentPost.reposts)
-            : (currentPost.reposts || []).filter((r: { user?: { id: number }; user_id?: number }) => {
+            ? (response.repost ? [response.repost, ...(currentPostInStore.reposts || [])] : currentPostInStore.reposts)
+            : (currentPostInStore.reposts || []).filter((r: { user?: { id: number }; user_id?: number }) => {
               const reposterId = r.user?.id || r.user_id;
               return Number(reposterId) !== Number(currentUserId);
             })
@@ -191,7 +194,7 @@ function PostListItem({
       showToast(response.message, 'success');
     } catch (error) {
       console.error("Repost failed:", error);
-      showToast("Failed to process request", 'error');
+      showToast(t("failed_process_request"), 'error');
     }
   };
 
@@ -235,7 +238,7 @@ function PostListItem({
     try {
       const result = await addBookmark(post.id);
       if (result.bookmarked && result.bookmark) {
-        showToast('Post bookmarked!', 'success');
+        showToast(t('post_bookmarked'), 'success');
         
         // If MediaViewer is open, close it so the "popup" navigation is visible
         if (service.mediaViewerVisible) {
@@ -248,11 +251,11 @@ function PostListItem({
           params: { initialPostId: post.id }
         });
       } else {
-        showToast('Bookmark removed', 'info');
+        showToast(t('bookmark_removed'), 'info');
       }
     } catch (error) {
       console.error("Bookmark failed:", error);
-      showToast("Failed to bookmark post", 'error');
+      showToast(t("failed_bookmark_post"), 'error');
     }
   };
 
@@ -294,7 +297,7 @@ function PostListItem({
                 {currentPost.moderation_check?.fact_score > 0.8 && (
                   <View style={styles.verifiedBadge}>
                     <Ionicons name="flask" size={10} color="#4CAF50" />
-                    <Text style={styles.verifiedText}>Scientific Context</Text>
+                    <Text style={styles.verifiedText}>{t('scientific_context')}</Text>
                   </View>
                 )}
               </View>
@@ -575,7 +578,7 @@ function PostListItem({
                   }}
                 />
               ) : (
-                <Text style={[styles.noCommentsText, { color: colors.textSecondary }]}>No comments yet</Text>
+                <Text style={[styles.noCommentsText, { color: colors.textSecondary }]}>{t('no_comments_yet')}</Text>
               )}
             </ScrollView>
 
@@ -589,7 +592,7 @@ function PostListItem({
                 <TextInput
                   style={[styles.commentInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]}
                   placeholder={
-                    service.replyingTo ? "Replying to comment..." : "Write a comment..."
+                    service.replyingTo ? t("replying_to_comment") : t("write_a_comment")
                   }
                   placeholderTextColor={colors.textSecondary + '80'}
                   value={service.commentText}
@@ -684,23 +687,23 @@ function PostListItem({
   );
 }
 
-const getStyles = (colors: any, activeScheme: string): any => ({
+const getStyles = (colors: any, activeScheme: string, isRTL: boolean): any => ({
   container: {
   },
   head: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     padding: 10,
   },
   header: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '100%',
     padding: 10,
   },
   infoFoto: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     width: '92%',
   },
@@ -711,11 +714,11 @@ const getStyles = (colors: any, activeScheme: string): any => ({
     width: 40,
     height: 40,
     borderRadius: 20,
-    marginRight: 10,
+    [isRTL ? 'marginLeft' : 'marginRight']: 10,
     alignSelf: 'flex-start',
   },
   menuContainer: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     width: '80%',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -729,13 +732,13 @@ const getStyles = (colors: any, activeScheme: string): any => ({
     width: '84%'
   },
   usernameRow: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     gap: 8,
     marginBottom: 2,
   },
   locationPill: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -754,6 +757,7 @@ const getStyles = (colors: any, activeScheme: string): any => ({
     minWidth: "90%",
     flexShrink: 1,
     flexWrap: "wrap",
+    textAlign: isRTL ? 'right' : 'left',
     ...Platform.select({
       web: {
         whiteSpace: "pre-wrap",
@@ -799,12 +803,12 @@ const getStyles = (colors: any, activeScheme: string): any => ({
     overflow: 'hidden',
   },
   reactionBar: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     gap: 5,
     alignItems: 'center',
   },
   reactionItem: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     borderWidth: 1,
     borderRadius: 15,
@@ -821,7 +825,7 @@ const getStyles = (colors: any, activeScheme: string): any => ({
   },
   reactionCount: {
     fontSize: 12,
-    marginLeft: 4,
+    [isRTL ? 'marginRight' : 'marginLeft']: 4,
   },
   reactionCountMine: {
     color: '#10b981',
@@ -829,7 +833,7 @@ const getStyles = (colors: any, activeScheme: string): any => ({
   },
   addReactionButton: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     padding: 5,
   },
   addReactionText: {
@@ -837,19 +841,19 @@ const getStyles = (colors: any, activeScheme: string): any => ({
     fontStyle: 'italic',
   },
   actionBar: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
   actionButton: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
-    marginRight: 20,
+    [isRTL ? 'marginLeft' : 'marginRight']: 20,
   },
   actionCount: {
-    marginLeft: 5,
+    [isRTL ? 'marginRight' : 'marginLeft']: 5,
     fontSize: 12,
   },
   commentsBackdrop: {
@@ -903,7 +907,7 @@ const getStyles = (colors: any, activeScheme: string): any => ({
     borderTopWidth: 1,
   },
   commentInputContainer: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 15,
@@ -916,8 +920,9 @@ const getStyles = (colors: any, activeScheme: string): any => ({
     borderRadius: 20,
     padding: 6,
     paddingHorizontal: 10,
-    marginRight: 10,
+    [isRTL ? 'marginLeft' : 'marginRight']: 10,
     marginBottom: 10,
+    textAlign: isRTL ? 'right' : 'left',
   },
   commentSubmitButton: {
     backgroundColor: '#3498db',
@@ -947,22 +952,22 @@ const getStyles = (colors: any, activeScheme: string): any => ({
     position: 'absolute'
   },
   menuButton: {
-    paddingLeft: 8,
+    [isRTL ? 'paddingRight' : 'paddingLeft']: 8,
     alignSelf: 'flex-start'
   },
   repostHeader: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     padding: 10,
     paddingBottom: 0,
   },
   repostText: {
-    marginLeft: 5,
+    [isRTL ? 'marginRight' : 'marginLeft']: 5,
     fontSize: 12,
     color: '#666',
   },
   verifiedBadge: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(76, 175, 80, 0.08)',
     paddingHorizontal: 8,

@@ -12,6 +12,7 @@ import { useToastStore } from '@/stores/toastStore';
 import { useReportedContentStore } from '@/stores/reportedContentStore';
 import { deleteReportByTarget } from '@/services/ReportService';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 
 interface RenderCommentsProps {
   user: any;
@@ -39,6 +40,7 @@ const RenderComments = ({
   onCommentLayout
 }: RenderCommentsProps) => {
   const { colors, activeScheme } = useAppTheme();
+  const { t, isRTL } = useTranslation();
   const { posts } = usePostStore();
   const currentPost = posts.find(p => p.id === postId);
   const comments = currentPost?.comments || [];
@@ -84,7 +86,12 @@ const RenderComments = ({
           styles.commentContainer,
           { borderTopColor: colors.border },
           isHighlighted && styles.highlightedComment,
-          isHighlighted && { backgroundColor: colors.primary + '15', borderLeftColor: colors.primary }
+          isHighlighted && { 
+            backgroundColor: colors.primary + '15', 
+            [isRTL ? 'borderRightColor' : 'borderLeftColor']: colors.primary,
+            [isRTL ? 'borderRightWidth' : 'borderLeftWidth']: 3,
+            [isRTL ? 'borderLeftWidth' : 'borderRightWidth']: 0,
+          }
         ]}
         onLayout={(e) => {
           if (isHighlighted && onCommentLayout) {
@@ -92,33 +99,36 @@ const RenderComments = ({
           }
         }}
       >
-        <View style={styles.commentHeader}>
-          <TouchableOpacity onPress={() => onProfilePress(item.user.id)}>
+        <View style={[styles.commentHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+          <TouchableOpacity 
+            onPress={() => onProfilePress(item.user.id)}
+            style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center' }}
+          >
             <Image
               source={{ uri: `${getApiBaseImage()}/storage/${item.user.profile_photo}` || 'https://picsum.photos/200' }}
-              style={styles.commentAvatar}
+              style={[styles.commentAvatar, { [isRTL ? 'marginLeft' : 'marginRight']: 8, [isRTL ? 'marginRight' : 'marginLeft']: 0 }]}
             />
-            <Text style={[styles.commentUsername, { color: colors.text }]}>{item.user.name}</Text>
+            <Text style={[styles.commentUsername, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}>{item.user.name}</Text>
           </TouchableOpacity>
-          <Text style={[styles.commentContent, { color: colors.text }]}>{item.content}</Text>
+          <Text style={[styles.commentContent, { color: colors.text, textAlign: isRTL ? 'right' : 'left', [isRTL ? 'marginRight' : 'marginLeft']: 40, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}>{item.content}</Text>
           {detectedUrl && (
-            <View style={styles.commentLinkPreview}>
+            <View style={[styles.commentLinkPreview, { [isRTL ? 'marginRight' : 'marginLeft']: 40, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}>
               <LinkPreviewCard url={detectedUrl} compact={true} />
             </View>
           )}
           {!isMyComment && (
             <TouchableOpacity
-              style={styles.headerReportButton}
+              style={[styles.headerReportButton, { [isRTL ? 'marginRight' : 'marginLeft']: 5, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}
               onPress={async () => {
                 const isAlreadyReported = useReportedContentStore.getState().isReported('comment', item.id);
                 if (isAlreadyReported) {
                   try {
                     await deleteReportByTarget('comment', item.id);
                     useReportedContentStore.getState().removeReportedItem('comment', item.id);
-                    useToastStore.getState().showToast('Report removed successfully', 'success');
+                    useToastStore.getState().showToast(t('report_removed_msg'), 'success');
                   } catch (error) {
                     console.error('Failed to delete report:', error);
-                    useToastStore.getState().showToast('Failed to remove report', 'error');
+                    useToastStore.getState().showToast(t('failed_remove_report_msg'), 'error');
                   }
                 } else {
                   setReportingCommentId(item.id);
@@ -135,33 +145,33 @@ const RenderComments = ({
           )}
         </View>
 
-        <View style={styles.commentButtons}>
+        <View style={[styles.commentButtons, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
           <TouchableOpacity
-            style={styles.replyButton}
+            style={[styles.replyButton, { [isRTL ? 'marginRight' : 'marginLeft']: 40, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}
             onPress={() => onReply(item)}
           >
-            <Text style={[styles.replyButtonText, { color: colors.tint }]}>Reply</Text>
+            <Text style={[styles.replyButtonText, { color: colors.tint }]}>{t('reply')}</Text>
           </TouchableOpacity>
 
-          <View style={styles.commentReactionsScrollContainer}>
+          <View style={[styles.commentReactionsScrollContainer, { [isRTL ? 'marginRight' : 'marginLeft']: 10, [isRTL ? 'marginLeft' : 'marginRight']: 10 }]}>
             {groupedReactions.length > 0 ? (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.commentReactionsScrollContent}
+                contentContainerStyle={[styles.commentReactionsScrollContent, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
               >
                 {groupedReactions.map((reaction, idx) => {
                   const isMyReaction = reaction.user_ids?.some(id => String(id) === String(user?.id));
                   return isMyReaction ? (
                     <TouchableOpacity
                       key={`${reaction.emoji}-${idx}`}
-                      style={[styles.reactionItem, styles.reactionItemMine]}
+                      style={[styles.reactionItem, styles.reactionItemMine, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
                       onPress={() => onDeleteCommentReaction(item.id, reaction.emoji)}
                       activeOpacity={0.7}
                     >
                       <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
                       {reaction.count > 1 && (
-                        <Text style={[styles.reactionCount, styles.reactionCountMine]}>
+                        <Text style={[styles.reactionCount, styles.reactionCountMine, { [isRTL ? 'marginRight' : 'marginLeft']: 4, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}>
                           {reaction.count}
                         </Text>
                       )}
@@ -169,7 +179,7 @@ const RenderComments = ({
                   ) : (
                     <TouchableOpacity
                       key={`${reaction.emoji}-${idx}`}
-                      style={[styles.reactionItem, { borderColor: colors.border }]}
+                      style={[styles.reactionItem, { borderColor: colors.border, flexDirection: isRTL ? 'row-reverse' : 'row' }]}
                       onPress={() => {
                         service.setCurrentReactingComment({ postId, commentId: item.id });
                         service.setCurrentReactingItem(null);
@@ -178,7 +188,7 @@ const RenderComments = ({
                     >
                       <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
                       {reaction.count > 1 && (
-                        <Text style={[styles.reactionCount, { color: colors.textSecondary }]}>
+                        <Text style={[styles.reactionCount, { color: colors.textSecondary, [isRTL ? 'marginRight' : 'marginLeft']: 4, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}>
                           {reaction.count}
                         </Text>
                       )}
@@ -188,21 +198,21 @@ const RenderComments = ({
               </ScrollView>
             ) : (
               <TouchableOpacity
-                style={styles.addReactionButton}
+                style={[styles.addReactionButton, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
                 onPress={() => {
                   service.setCurrentReactingComment({ postId, commentId: item.id });
                   service.setIsEmojiPickerOpen(true);
                 }}
               >
                 <Ionicons name="happy-outline" size={16} color={colors.textSecondary} />
-                <Text style={[styles.addReactionText, { color: colors.textSecondary }]}>React</Text>
+                <Text style={[styles.addReactionText, { color: colors.textSecondary, [isRTL ? 'marginRight' : 'marginLeft']: 4, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}>{t('react')}</Text>
               </TouchableOpacity>
             )}
           </View>
 
           {isMyComment && (
             <TouchableOpacity
-              style={styles.deleteButton}
+              style={[styles.deleteButton, { [isRTL ? 'marginRight' : 'marginLeft']: 'auto', [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}
               onPress={() => onDeleteComment(item.id)}
             >
               <Ionicons name="trash-bin-outline" size={18} color="#ff4444" />
@@ -211,7 +221,7 @@ const RenderComments = ({
         </View>
 
         {item.replies?.length > 0 && (
-          <View style={styles.repliesContainer}>
+          <View style={[styles.repliesContainer, { [isRTL ? 'paddingRight' : 'paddingLeft']: 10, [isRTL ? 'paddingLeft' : 'paddingRight']: 0 }]}>
             <FlatList
               data={item.replies}
               renderItem={renderComment}
@@ -224,7 +234,7 @@ const RenderComments = ({
   };
 
   if (comments.length === 0) {
-    return <Text style={[styles.noCommentsText, { color: colors.textSecondary }]}>No comments yet</Text>;
+    return <Text style={[styles.noCommentsText, { color: colors.textSecondary }]}>{t('no_comments_yet')}</Text>;
   }
 
   return (
@@ -242,7 +252,7 @@ const RenderComments = ({
             type="comment"
             onClose={() => setShowReportModal(false)}
             onReportSubmitted={() => {
-              useToastStore.getState().showToast('Report Submitted: Our AI is reviewing this comment.', 'success');
+              useToastStore.getState().showToast(t('report_submitted_ai_review'), 'success');
               setShowReportModal(false);
             }}
           />
@@ -270,8 +280,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   highlightedComment: {
-    borderLeftWidth: 3,
-    marginLeft: -3,
+    // These will be overridden by inline styles to support RTL
   },
   commentHeader: {
     flexDirection: 'row',
