@@ -176,7 +176,7 @@ export default function TellFriendScreen() {
     const handleSocialShare = async (platform: SocialLink, targetContact?: Contact) => {
         try {
             let url = platform.url;
-            const message = customMessage;
+            const message = `${customMessage}\n\n${APP_STORE_LINKS.web}`;
 
             // Platform-specific logic for prefilling and app detection
             if (platform.platform === 'WhatsApp') {
@@ -345,7 +345,8 @@ export default function TellFriendScreen() {
 
         setSendingInvite(true);
         try {
-            const response = await sendEmailInvitation(inviteEmail, customMessage);
+            const finalMessage = `${customMessage}\n\n${APP_STORE_LINKS.web}`;
+            const response = await sendEmailInvitation(inviteEmail, finalMessage);
             if (response.success) {
                 // Animate confetti
                 Animated.sequence([

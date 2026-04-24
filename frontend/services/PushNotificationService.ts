@@ -215,12 +215,31 @@ class PushNotificationService {
     try {
       const headers = await this.getAuthHeaders();
       const apiBase = getApiBase();
+      const getWebDeviceName = () => {
+        const ua = navigator.userAgent;
+        let browser = "Web Browser";
+        let os = "Web";
+        
+        if (ua.includes("Firefox")) browser = "Firefox";
+        else if (ua.includes("Chrome")) browser = "Chrome";
+        else if (ua.includes("Safari")) browser = "Safari";
+        else if (ua.includes("Edge")) browser = "Edge";
+        
+        if (ua.includes("Win")) os = "Windows";
+        else if (ua.includes("Mac")) os = "MacOS";
+        else if (ua.includes("Linux")) os = "Linux";
+        else if (ua.includes("Android")) os = "Android";
+        else if (ua.includes("iPhone") || ua.includes("iPad")) os = "iOS";
+        
+        return `${browser} on ${os}`;
+      };
+
       await axios.post(
         `${apiBase}/notifications/register-device`,
         {
           device_token: token,
           device_type: Platform.OS === 'web' ? 'web' : (Platform.OS === 'ios' ? 'ios' : 'android'),
-          device_name: Platform.OS === 'web' ? (navigator.userAgent.slice(0, 100)) : 'Mobile Device',
+          device_name: Platform.OS === 'web' ? getWebDeviceName() : 'Mobile Device',
         },
         { headers }
       );

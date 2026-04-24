@@ -136,6 +136,15 @@ class ChatbotController extends Controller
             'isdark' => 'isDark',
             'bookmar' => 'bookmark',
             'sent icon' => 'send icon',
+            'birhday' => 'birthday',
+            'calender' => 'calendar',
+            'schedul' => 'schedule',
+            'upcomming' => 'upcoming',
+            'responsve' => 'upcoming',
+            'activites' => 'activities',
+            'realtime' => 'real-time',
+            'blackmodus' => 'dark mode',
+            'zentered' => 'centered',
         ];
 
         // Word boundary replacement for all typos
@@ -249,7 +258,7 @@ class ChatbotController extends Controller
             'polls' => 'Polls allow you to gather feedback in any Space. We support Single, Multiple, Ranked, and Weighted voting styles!',
             'stories' => 'Stories are ephemeral 24h updates. Use Collaborative Stories to invite others to add segments to your story chain.',
             'ai suggestions' => 'Our platform AI can suggest hashtags, questions for your posts, and even how to continue your stories.',
-            'activities' => 'Collaborative Activities are events you can schedule within a Space. Support includes recurring daily, weekly, or monthly events.',
+            'activities' => 'Collaborative Activities are events you can schedule within a Space. Support includes recurring daily, weekly, or monthly events. We now have synchronized badges in the header and settings!',
             'scheduled events' => 'You can propose or schedule activities in any Space. Manage participants, durations, and see activity metrics for your group.',
             'trust score' => 'Your Trust Score is a measure of your community standing. High scores can improve content visibility and reporting integrity.',
             'whiteboard' => 'The Collaborative Whiteboard allows real-time drawing and brainstorming in any Space. You can even see other people cursors!',
@@ -260,7 +269,7 @@ class ChatbotController extends Controller
             'reactions' => 'React to any message with emojis to keep the conversation lively! You can also see who reacted and when.',
             'forwarding' => 'You can forward messages, posts, polls, and documents to any other Space or individual contact easily.',
             'media limits' => 'We support high-quality uploads! You can share videos and files up to 40MB in any chat or post.',
-            'mediaviewer' => 'The MediaViewer is our premium full-screen experience for photos and videos. It uses zIndex: 1000 for layering and supports swipe-to-dismiss. Interaction icons inside are optimized for dark backgrounds with high-contrast white and green colors.',
+            'mediaviewer' => 'The MediaViewer is our premium full-screen experience for photos and videos. It uses zIndex: 1000 for layering. Interaction icons inside are optimized for dark backgrounds with high-contrast white and green colors. Close it with the arrow on the top-left.',
             'interaction layering' => 'Our portal-based layering system ensures all overlays like Comments, Reposts, and Bookmarks consistently stay on top of the MediaViewer. We use zIndex: 6000 for these high-priority interactive components.',
             'web layout' => 'Desktop web views are standardized to a 1440px maximum width and are centered horizontally. This applies to all major overlays including the MediaViewer, Comment Sheets, and Bookmark Gallery.',
             'repost logic' => 'Reposting is now more intuitive! The Repost context popup (ContextTagSelector) can be dismissed instantly by tapping anywhere on the blurred backdrop, removing the need for a manual close button.',
@@ -269,6 +278,9 @@ class ChatbotController extends Controller
             'theme modes' => 'We support 4 premium modes: Light (clean aesthetic), Dark (high-contrast premium experience with #0A84FF tints), Automatic (OS-sync), and Dynamic (Android Material 3 Monet colors).',
             'repost flow' => 'Our 2024 Repost flow features a blurred backdrop that allows instant dismissal by tapping anywhere outside the selector—no close button required!',
             'unified spaces' => 'Direct spaces are now unified and strictly private. They support real-time collaboration features like shared whiteboards with living cursor tracking.',
+            'app guide' => "Follow these 6 steps to master Zmzir:\n1. Register & Verify your email.\n2. Setup Profile (Profile > Edit, now with responsive 98% width birthday picker!).\n3. Create/Join Spaces (Direct or Protected).\n4. Start Collaborating (Whiteboard, Meetings, AI Assistants).\n5. Manage Activities (Schedule events with real-time synchronized badges).\n6. Stay Safe (Privacy Vault & Trust Score).",
+            'date picker' => 'Our date picker for birthdays is now fully responsive for web (98% width) and supports "blackmodus" with a sleek #1A1A1A background.',
+            'activity badge' => 'The activity badge is now synchronized across the app! It appears in the Space header and the Settings menu, showing the exact count of upcoming scheduled activities.',
         ];
 
         // ————————————————————————————————————
@@ -898,15 +910,20 @@ class ChatbotController extends Controller
                 ]
             ],
             'update_info' => [
-                'response' => 'Go to Settings > Profile > Edit',
+                'response' => 'Go to Settings > Profile > Edit. Our date picker is now responsive for web (98% width)!',
                 'next' => null
             ],
             'reset_password' => [
-                'response' => 'Visit example.com/reset or use the "Forgot Password?" link',
+                'response' => 'Visit the "Forgot Password?" link on the login page or check your security settings.',
                 'next' => null
             ],
             'delete_account' => [
                 'response' => 'To delete your account, go to Settings > Privacy > Delete Account. This cannot be undone.',
+                'next' => null
+            ],
+            'app_steps' => [
+                'pattern' => '/\b(step|steps|guide|how to use|tutorial)\b/i',
+                'response' => "Master Zmzir in 6 steps:\n1. Register & Verify.\n2. Setup Profile (new responsive birthday picker!)\n3. Join Spaces.\n4. Collaborate (Whiteboard/Meetings).\n5. Manage Activities (synchronized badges!)\n6. Safety First (Privacy Vault).",
                 'next' => null
             ],
             // --- SPACES BRANCH ---
@@ -1184,7 +1201,7 @@ class ChatbotController extends Controller
         $node = $tree[$state] ?? null;
 
         // Enter tree - Multi-node entry support
-        $startNodes = ['start', 'spaces_start', 'posts_start', 'privacy_start', 'settings_start', 'polls_start', 'stories_platform_start', 'ai_platform_start', 'activities_start', 'safety_trust_start', 'sync_collaboration_start', 'design_layering_start'];
+        $startNodes = ['start', 'spaces_start', 'posts_start', 'privacy_start', 'settings_start', 'polls_start', 'stories_platform_start', 'ai_platform_start', 'activities_start', 'safety_trust_start', 'sync_collaboration_start', 'design_layering_start', 'app_steps'];
 
         if ($state === 'start') {
             foreach ($startNodes as $startNode) {
@@ -1268,7 +1285,7 @@ class ChatbotController extends Controller
 
             case 'payment':
                 if ($this->containsAny($lastMessages, ['refund', 'return'])) {
-                    return 'Refunds take 5–7 days. Contact support@example.com';
+                    return 'Refunds take 5–7 days. Contact our billing team via the Help Center.';
                 }
                 return 'Billing: View invoices in Settings > Billing';
 
@@ -1864,6 +1881,9 @@ class ChatbotController extends Controller
             ['keywords' => ['layering', 'stacking', 'z-index', 'top'], 'response' => 'Interaction Layering: MediaViewer (1000) vs Overlays (6000). High-priority portals ensure popups always stay on top.', 'priority' => 8],
             ['keywords' => ['width', 'desktop', '1440', 'px'], 'response' => 'Unified Layout: Standardized 1440px centered width for all Web UI components for a premium desktop experience.', 'priority' => 8],
             ['keywords' => ['repost', 'outside', 'backdrop', 'dismiss'], 'response' => 'Repost Flow: Tap the blurred backdrop to instantly close the Context Selector. No close button required!', 'priority' => 8],
+            ['keywords' => ['birhday', 'date', 'picker', 'responsve'], 'response' => 'Our birthday picker is now 98% width and responsive on web, with full "blackmodus" support.', 'priority' => 9],
+            ['keywords' => ['badge', 'activites', 'upcomming', 'schedul'], 'response' => 'Activity badges are now synchronized! Check them in the Space header or Settings menu.', 'priority' => 9],
+            ['keywords' => ['step', 'stps', 'giude', 'tutorial'], 'response' => "Master Zmzir in 6 steps: 1. Register, 2. Profile Setup, 3. Join Spaces, 4. Collab, 5. Activities, 6. Privacy.", 'priority' => 10],
         ];
 
         usort($patterns, fn($a, $b) => $b['priority'] <=> $a['priority']);

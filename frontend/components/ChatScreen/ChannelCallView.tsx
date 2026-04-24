@@ -119,6 +119,7 @@ const VideoTile = React.memo(({
   isAdmin = false,
   onPromote
 }: any) => {
+  const { t } = useTranslation();
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
   const isHandRaised = participant.handRaised;
   const role = participant.role?.toLowerCase() || 'participant';

@@ -793,13 +793,27 @@ class PollController extends Controller
                             }
                         }
                     }
+                    
+                    // ✅ Phase 72: Explicit Poll Cache Invalidation by ID and Space Version
+                    // Forcibly update the version to invalidate the entire list cache and remove individual poll keys
+                    \Illuminate\Support\Facades\Cache::put("space_{$sId}_polls_v", time(), 86400);
+                    foreach ($deletedPollIds as $dpid) {
+                        \Illuminate\Support\Facades\Cache::forget("poll_{$dpid}");
+                    }
+                    // Also clear space details cache to ensure fresh content_state
+                    \Illuminate\Support\Facades\Cache::forget("space_{$sId}_details");
                 }
 
                 DB::commit();
 
-                // Broadcast deletion event for the original poll
-                $userIds = SpaceParticipation::where('space_id', $spaceId)->where('user_id', '!=', $user->id)->pluck('user_id')->toArray();
-                broadcast(new PollDeleted($pollId, $spaceId, $userIds))->toOthers();
+                // ✅ Phase 72: Broadcast deletion events to ALL affected spaces
+                foreach (array_unique($deletedSpaces) as $sId) {
+                    $targetPollId = ($sId === $spaceId) ? $pollId : (\App\Models\Poll::where('space_id', $sId)->where('parent_poll_id', $pollId)->value('id') ?? $pollId);
+                    $uIds = SpaceParticipation::where('space_id', $sId)->where('user_id', '!=', $user->id)->pluck('user_id')->toArray();
+                    if (!empty($uIds)) {
+                        broadcast(new \App\Events\PollDeleted($targetPollId, $sId, $uIds))->toOthers();
+                    }
+                }
 
                 $responseData = [
                     'message' => 'Poll deleted successfully',

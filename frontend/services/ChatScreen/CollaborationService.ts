@@ -621,7 +621,9 @@ class CollaborationService {
   // Poll management
   async createPoll(spaceId: string, pollData: Record<string, unknown>): Promise<Record<string, unknown>> {
     try {
-      const response = await axios.post(`/spaces/${spaceId}/polls`, pollData);
+      const response = await axios.post(`${this.baseURL}/spaces/${spaceId}/polls`, pollData, {
+        headers: await this.getHeaders(),
+      });
       await this.triggerHapticSuccess();
       return response.data.poll;
     } catch (error) {
@@ -632,7 +634,9 @@ class CollaborationService {
 
   async updatePoll(spaceId: string, pollId: string, pollData: Record<string, unknown>): Promise<Record<string, unknown>> {
     try {
-      const response = await axios.put(`/spaces/${spaceId}/polls/${pollId}`, pollData);
+      const response = await axios.put(`${this.baseURL}/spaces/${spaceId}/polls/${pollId}`, pollData, {
+        headers: await this.getHeaders(),
+      });
       await this.triggerHapticSuccess();
       return response.data.poll;
     } catch (error) {
@@ -643,7 +647,9 @@ class CollaborationService {
 
   async getPolls(spaceId: string): Promise<Record<string, unknown>[]> {
     try {
-      const response = await axios.get(`/spaces/${spaceId}/polls`);
+      const response = await axios.get(`${this.baseURL}/spaces/${spaceId}/polls`, {
+        headers: await this.getHeaders(),
+      });
       return response.data.polls;
     } catch (error: any) {
       if ((error as AxiosError).response?.status === 403) {
@@ -657,8 +663,10 @@ class CollaborationService {
 
   async voteOnPoll(spaceId: string, pollId: string, optionIds: string[]): Promise<void> {
     try {
-      await axios.post(`/spaces/${spaceId}/polls/${pollId}/vote`, {
+      await axios.post(`${this.baseURL}/spaces/${spaceId}/polls/${pollId}/vote`, {
         option_ids: optionIds,
+      }, {
+        headers: await this.getHeaders(),
       });
       await this.triggerHapticLight();
     } catch (error) {
@@ -669,7 +677,9 @@ class CollaborationService {
 
   async closePoll(spaceId: string, pollId: string): Promise<void> {
     try {
-      await axios.post(`/spaces/${spaceId}/polls/${pollId}/close`, {});
+      await axios.post(`${this.baseURL}/spaces/${spaceId}/polls/${pollId}/close`, {}, {
+        headers: await this.getHeaders(),
+      });
       await this.triggerHapticWarning();
     } catch (error) {
       console.error('Error closing poll:', error);
@@ -679,8 +689,10 @@ class CollaborationService {
 
   async forwardPoll(pollId: string, targetSpaceIds: string[]): Promise<void> {
     try {
-      await axios.post(`/polls/${pollId}/forward`, {
+      await axios.post(`${this.baseURL}/polls/${pollId}/forward`, {
         target_space_ids: targetSpaceIds,
+      }, {
+        headers: await this.getHeaders(),
       });
       await this.triggerHapticSuccess();
     } catch (error) {
@@ -691,7 +703,9 @@ class CollaborationService {
 
   async getPollResults(spaceId: string, pollId: string): Promise<Record<string, unknown>> {
     try {
-      const response = await axios.get(`/spaces/${spaceId}/polls/${pollId}/results`);
+      const response = await axios.get(`${this.baseURL}/spaces/${spaceId}/polls/${pollId}/results`, {
+        headers: await this.getHeaders(),
+      });
       return response.data.results;
     } catch (error) {
       console.error('Error fetching poll results:', error);
@@ -716,7 +730,9 @@ class CollaborationService {
   async deletePoll(spaceId: string, pollId: string): Promise<void> {
     try {
       // Using DELETE HTTP method for deletion
-      const response = await axios.delete(`/spaces/${spaceId}/polls/${pollId}`);
+      const response = await axios.delete(`${this.baseURL}/spaces/${spaceId}/polls/${pollId}`, {
+        headers: await this.getHeaders(),
+      });
 
       // Provide haptic feedback for deletion (warning style)
       await this.triggerHapticWarning();

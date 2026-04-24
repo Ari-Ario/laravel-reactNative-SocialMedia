@@ -60,7 +60,6 @@ import { Bookmark } from '@/services/BookmarkService';
 import { GlobalStyles } from '@/styles/GlobalStyles';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { createShadow } from '@/utils/styles';
-import { useTranslation } from '@/constants/i18n';
 
 
 interface PostListItemProps {
@@ -84,12 +83,10 @@ function PostListItem({
   shouldPlay = false,
 }: PostListItemProps) {
   const { colors, activeScheme } = useAppTheme();
-  const { t, isRTL } = useTranslation();
-  const styles = getStyles(colors, activeScheme, isRTL);
+  const styles = getStyles(colors, activeScheme);
   const { user } = useContext(AuthContext);
   const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
   const { openModal } = useModal();
-  const posts = usePostStore(state => state.posts);
   const currentPost = usePostStore(state => state.posts.find(p => p.id === post.id) || post);
   const updatePostInStore = usePostStore(state => state.updatePost);
   const expandedPostId = usePostStore(state => state.expandedPostId);
@@ -107,46 +104,6 @@ function PostListItem({
 
   const { addBookmark, bookmarks } = useBookmarkStore();
   const isBookmarked = bookmarks.some(b => b && b.post_id === post.id);
-
-  const [translatedCaption, setTranslatedCaption] = useState<string | null>(null);
-  const [isTranslating, setIsTranslating] = useState(false);
-  const { locale } = useTranslation();
-
-  const handleTranslate = React.useCallback(async () => {
-    if (!currentPost.caption) return;
-
-    if (translatedCaption) {
-      setTranslatedCaption(null);
-      return;
-    }
-
-    setIsTranslating(true);
-    try {
-      const targetLang = locale || 'en';
-      const langpair = `autodetect|${targetLang}`;
-      
-      const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(currentPost.caption)}&langpair=${langpair}`);
-      const data = await response.json();
-
-      if (data && data.responseData && data.responseData.translatedText) {
-        const translatedText = data.responseData.translatedText;
-        
-        if (translatedText.toUpperCase().includes('DISTINCT LANGUAGES')) {
-           Alert.alert(t('info'), t('message_already_in_your_language'));
-           return;
-        }
-
-        setTranslatedCaption(translatedText);
-      } else {
-        throw new Error('Invalid translation response');
-      }
-    } catch (error) {
-      console.error('Post translation failed:', error);
-      Alert.alert(t('error'), t('could_not_translate'));
-    } finally {
-      setIsTranslating(false);
-    }
-  }, [currentPost.caption, translatedCaption, locale, t]);
 
   const { showToast } = useToastStore();
   // Use the PostListService
@@ -213,18 +170,18 @@ function PostListItem({
       const response = await repostPost(post.id, tag, note);
 
       // Update store with new repost count and potentially the new repost data
-      const currentPostInStore = posts.find(p => p.id === post.id);
-      if (currentPostInStore) {
+      const currentPost = posts.find(p => p.id === post.id);
+      if (currentPost) {
         const isCurrentlyReposted = response.reposted;
         const currentUserId = user?.id ? Number(user.id) : null;
 
         updatePostInStore({
-          ...currentPostInStore,
+          ...currentPost,
           reposts_count: response.reposts_count,
           is_reposted: isCurrentlyReposted,
           reposts: isCurrentlyReposted
-            ? (response.repost ? [response.repost, ...(currentPostInStore.reposts || [])] : currentPostInStore.reposts)
-            : (currentPostInStore.reposts || []).filter((r: { user?: { id: number }; user_id?: number }) => {
+            ? (response.repost ? [response.repost, ...(currentPost.reposts || [])] : currentPost.reposts)
+            : (currentPost.reposts || []).filter((r: { user?: { id: number }; user_id?: number }) => {
               const reposterId = r.user?.id || r.user_id;
               return Number(reposterId) !== Number(currentUserId);
             })
@@ -234,7 +191,7 @@ function PostListItem({
       showToast(response.message, 'success');
     } catch (error) {
       console.error("Repost failed:", error);
-      showToast(t("failed_process_request"), 'error');
+      showToast("Failed to process request", 'error');
     }
   };
 
@@ -278,7 +235,7 @@ function PostListItem({
     try {
       const result = await addBookmark(post.id);
       if (result.bookmarked && result.bookmark) {
-        showToast(t('post_bookmarked'), 'success');
+        showToast('Post bookmarked!', 'success');
         
         // If MediaViewer is open, close it so the "popup" navigation is visible
         if (service.mediaViewerVisible) {
@@ -291,11 +248,11 @@ function PostListItem({
           params: { initialPostId: post.id }
         });
       } else {
-        showToast(t('bookmark_removed'), 'info');
+        showToast('Bookmark removed', 'info');
       }
     } catch (error) {
       console.error("Bookmark failed:", error);
-      showToast(t("failed_bookmark_post"), 'error');
+      showToast("Failed to bookmark post", 'error');
     }
   };
 
@@ -337,7 +294,7 @@ function PostListItem({
                 {currentPost.moderation_check?.fact_score > 0.8 && (
                   <View style={styles.verifiedBadge}>
                     <Ionicons name="flask" size={10} color="#4CAF50" />
-                    <Text style={styles.verifiedText}>{t('scientific_context')}</Text>
+                    <Text style={styles.verifiedText}>Scientific Context</Text>
                   </View>
                 )}
               </View>
@@ -345,21 +302,12 @@ function PostListItem({
                 {currentPost.caption && (
                   <Pressable onPress={handleToggleExpand}>
                     <Text style={[styles.caption, { color: colors.text }]}>
-                      {isTranslating ? (
-                        <ActivityIndicator size="small" color={colors.tint} />
-                      ) : (
-                        expandedPostId === currentPost.id
-                          ? (translatedCaption || currentPost.caption)
-                          : (translatedCaption || currentPost.caption).length > 60
-                            ? `${(translatedCaption || currentPost.caption).substring(0, 60)} ...`
-                            : (translatedCaption || currentPost.caption)
-                      )}
+                      {expandedPostId === currentPost.id
+                        ? currentPost.caption
+                        : currentPost.caption.length > 60
+                          ? `${currentPost.caption.substring(0, 60)} ...`
+                          : currentPost.caption}
                     </Text>
-                    {translatedCaption && !isTranslating && (
-                      <Text style={[styles.translatedLabel, { color: colors.tint, fontSize: 10, marginTop: 2 }]}>
-                        {t('translated_label')}
-                      </Text>
-                    )}
                   </Pressable>
                 )}
               </View>
@@ -471,12 +419,11 @@ function PostListItem({
   const myReactions = reactions.filter((r: { user_id: number | string }) => Number(r.user_id) === Number(user?.id)).map((r: { reaction: string }) => r.reaction);
 
   return (
-    <View style={styles.container}>
-      <Pressable
-        onLongPress={service.handleMenuPress}
-        delayLongPress={300}
-      >
-
+    <Pressable
+      style={styles.container}
+      onLongPress={service.handleMenuPress}
+      delayLongPress={300}
+    >
 
       {/* Show Grouped Reposts if multiple people shared it */}
       {currentPost.reposts && currentPost.reposts.length > 1 && (
@@ -508,27 +455,6 @@ function PostListItem({
       ) : (
         renderMainContent()
       )}
-
-      {/* Action buttons */}
-      <PostActionButtons
-        post={currentPost}
-        onReact={(emoji) => service.handleReact(emoji, post.id)}
-        onDeleteReaction={() => service.deletePostReaction(post.id)}
-        onRepost={onRepostPress}
-        onShare={() => openModal('share', { post: currentPost })}
-        onBookmark={handleBookmark}
-        isBookmarked={isBookmarked}
-        onCommentPress={() => {
-          if (!service.showComments) hydratePost(post.id);
-          service.setShowComments(!service.showComments);
-        }}
-        currentReactingItem={service.currentReactingItem}
-        setCurrentReactingItem={service.setCurrentReactingItem}
-        setIsEmojiPickerOpen={service.setIsEmojiPickerOpen}
-        getGroupedReactions={service.getGroupedReactions}
-      />
-      </Pressable>
-
       {service.mediaViewerVisible && (
         <MediaViewer
           visible={service.mediaViewerVisible}
@@ -568,6 +494,27 @@ function PostListItem({
         />
       )}
 
+
+      {/* Action buttons */}
+      <PostActionButtons
+        post={currentPost}
+        onReact={(emoji) => service.handleReact(emoji, post.id)}
+        onDeleteReaction={() => service.deletePostReaction(post.id)}
+        onRepost={onRepostPress}
+        onShare={() => openModal('share', { post: currentPost })}
+        onBookmark={handleBookmark}
+        isBookmarked={isBookmarked}
+        onCommentPress={() => {
+          if (!service.showComments) hydratePost(post.id);
+          service.setShowComments(!service.showComments);
+        }}
+        currentReactingItem={service.currentReactingItem}
+        setCurrentReactingItem={service.setCurrentReactingItem}
+        setIsEmojiPickerOpen={service.setIsEmojiPickerOpen}
+        getGroupedReactions={service.getGroupedReactions}
+      />
+
+      {/* Comments section */}
       {service.showComments && (
         <Modal
           visible={service.showComments}
@@ -628,7 +575,7 @@ function PostListItem({
                   }}
                 />
               ) : (
-                <Text style={[styles.noCommentsText, { color: colors.textSecondary }]}>{t('no_comments_yet')}</Text>
+                <Text style={[styles.noCommentsText, { color: colors.textSecondary }]}>No comments yet</Text>
               )}
             </ScrollView>
 
@@ -642,7 +589,7 @@ function PostListItem({
                 <TextInput
                   style={[styles.commentInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]}
                   placeholder={
-                    service.replyingTo ? t("replying_to_comment") : t("write_a_comment")
+                    service.replyingTo ? "Replying to comment..." : "Write a comment..."
                   }
                   placeholderTextColor={colors.textSecondary + '80'}
                   value={service.commentText}
@@ -712,8 +659,6 @@ function PostListItem({
           onReport={service.handleReport}
           isOwner={isOwner}
           anchorPosition={service.menuPosition}
-          onTranslate={handleTranslate}
-          isTranslated={!!translatedCaption}
         />
       )}
 
@@ -733,27 +678,29 @@ function PostListItem({
           onConfirm={handleRepostWithContext}
         />
       )}
-    </View>
+
+
+    </Pressable>
   );
 }
 
-const getStyles = (colors: any, activeScheme: string, isRTL: boolean): any => ({
+const getStyles = (colors: any, activeScheme: string): any => ({
   container: {
   },
   head: {
-    flexDirection: isRTL ? 'row-reverse' : 'row',
+    flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
   },
   header: {
-    flexDirection: isRTL ? 'row-reverse' : 'row',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '100%',
     padding: 10,
   },
   infoFoto: {
-    flexDirection: isRTL ? 'row-reverse' : 'row',
+    flexDirection: 'row',
     alignItems: 'center',
     width: '92%',
   },
@@ -764,11 +711,11 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean): any => ({
     width: 40,
     height: 40,
     borderRadius: 20,
-    [isRTL ? 'marginLeft' : 'marginRight']: 10,
+    marginRight: 10,
     alignSelf: 'flex-start',
   },
   menuContainer: {
-    flexDirection: isRTL ? 'row-reverse' : 'row',
+    flexDirection: 'row',
     width: '80%',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -782,13 +729,13 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean): any => ({
     width: '84%'
   },
   usernameRow: {
-    flexDirection: isRTL ? 'row-reverse' : 'row',
+    flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     marginBottom: 2,
   },
   locationPill: {
-    flexDirection: isRTL ? 'row-reverse' : 'row',
+    flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -807,7 +754,6 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean): any => ({
     minWidth: "90%",
     flexShrink: 1,
     flexWrap: "wrap",
-    textAlign: isRTL ? 'right' : 'left',
     ...Platform.select({
       web: {
         whiteSpace: "pre-wrap",
@@ -853,12 +799,12 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean): any => ({
     overflow: 'hidden',
   },
   reactionBar: {
-    flexDirection: isRTL ? 'row-reverse' : 'row',
+    flexDirection: 'row',
     gap: 5,
     alignItems: 'center',
   },
   reactionItem: {
-    flexDirection: isRTL ? 'row-reverse' : 'row',
+    flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
     borderRadius: 15,
@@ -875,7 +821,7 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean): any => ({
   },
   reactionCount: {
     fontSize: 12,
-    [isRTL ? 'marginRight' : 'marginLeft']: 4,
+    marginLeft: 4,
   },
   reactionCountMine: {
     color: '#10b981',
@@ -883,7 +829,7 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean): any => ({
   },
   addReactionButton: {
     flex: 1,
-    flexDirection: isRTL ? 'row-reverse' : 'row',
+    flexDirection: 'row',
     padding: 5,
   },
   addReactionText: {
@@ -891,19 +837,19 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean): any => ({
     fontStyle: 'italic',
   },
   actionBar: {
-    flexDirection: isRTL ? 'row-reverse' : 'row',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
   actionButton: {
-    flexDirection: isRTL ? 'row-reverse' : 'row',
+    flexDirection: 'row',
     alignItems: 'center',
-    [isRTL ? 'marginLeft' : 'marginRight']: 20,
+    marginRight: 20,
   },
   actionCount: {
-    [isRTL ? 'marginRight' : 'marginLeft']: 5,
+    marginLeft: 5,
     fontSize: 12,
   },
   commentsBackdrop: {
@@ -957,7 +903,7 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean): any => ({
     borderTopWidth: 1,
   },
   commentInputContainer: {
-    flexDirection: isRTL ? 'row-reverse' : 'row',
+    flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 15,
@@ -970,9 +916,8 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean): any => ({
     borderRadius: 20,
     padding: 6,
     paddingHorizontal: 10,
-    [isRTL ? 'marginLeft' : 'marginRight']: 10,
+    marginRight: 10,
     marginBottom: 10,
-    textAlign: isRTL ? 'right' : 'left',
   },
   commentSubmitButton: {
     backgroundColor: '#3498db',
@@ -1002,22 +947,22 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean): any => ({
     position: 'absolute'
   },
   menuButton: {
-    [isRTL ? 'paddingRight' : 'paddingLeft']: 8,
+    paddingLeft: 8,
     alignSelf: 'flex-start'
   },
   repostHeader: {
-    flexDirection: isRTL ? 'row-reverse' : 'row',
+    flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
     paddingBottom: 0,
   },
   repostText: {
-    [isRTL ? 'marginRight' : 'marginLeft']: 5,
+    marginLeft: 5,
     fontSize: 12,
     color: '#666',
   },
   verifiedBadge: {
-    flexDirection: isRTL ? 'row-reverse' : 'row',
+    flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(76, 175, 80, 0.08)',
     paddingHorizontal: 8,
@@ -1031,11 +976,6 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean): any => ({
     fontWeight: 'bold',
     textTransform: 'uppercase',
   },
-  translatedLabel: {
-    fontSize: 10,
-    marginTop: 2,
-    fontWeight: '600',
-  },
 });
 
 const PostListItemMemo = React.memo(PostListItem, (prevProps, nextProps) => {
@@ -1043,7 +983,6 @@ const PostListItemMemo = React.memo(PostListItem, (prevProps, nextProps) => {
     prevProps.post.id === nextProps.post.id &&
     prevProps.post.reactions_count === nextProps.post.reactions_count &&
     prevProps.post.comments_count === nextProps.post.comments_count &&
-    prevProps.post.reposts_count === nextProps.post.reposts_count &&
     prevProps.post.is_reposted === nextProps.post.is_reposted &&
     prevProps.post.updated_at === nextProps.post.updated_at &&
     prevProps.shouldPlay === nextProps.shouldPlay

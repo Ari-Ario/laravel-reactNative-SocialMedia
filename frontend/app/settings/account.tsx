@@ -230,17 +230,19 @@ const DatePickerModal = ({ visible, value, onConfirm, onClose }: DatePickerModal
                                     max={new Date().toISOString().split('T')[0]}
                                     onChange={(e: any) => setWebDate(e.target.value)}
                                     style={{
-                                        width: '100%',
+                                        width: '98%',
                                         padding: 14,
                                         fontSize: 18,
                                         borderRadius: 12,
-                                        border: `2px solid ${colors.border}`,
+                                        border: `2px solid ${activeScheme === 'dark' ? '#333' : colors.border}`,
                                         outline: 'none',
                                         fontFamily: 'inherit',
                                         color: colors.text,
-                                        backgroundColor: colors.surface,
+                                        backgroundColor: activeScheme === 'dark' ? '#1A1A1A' : colors.surface,
                                         marginTop: 8,
-                                    }}
+                                        colorScheme: activeScheme === 'dark' ? 'dark' : 'light',
+                                        boxSizing: 'border-box'
+                                    } as any}
                                 />
                             </View>
                         ) : (
@@ -254,7 +256,7 @@ const DatePickerModal = ({ visible, value, onConfirm, onClose }: DatePickerModal
                                         keyboardType="number-pad"
                                         maxLength={2}
                                         placeholder="DD"
-                                        placeholderTextColor="#ccc"
+                                        placeholderTextColor={colors.textSecondary + '60'}
                                     />
                                 </View>
                                 <View style={modalStyles.pickerCol}>
@@ -282,7 +284,7 @@ const DatePickerModal = ({ visible, value, onConfirm, onClose }: DatePickerModal
                                         keyboardType="number-pad"
                                         maxLength={4}
                                         placeholder="YYYY"
-                                        placeholderTextColor="#ccc"
+                                        placeholderTextColor={colors.textSecondary + '60'}
                                     />
                                 </View>
                             </View>
@@ -315,42 +317,42 @@ const GenderPickerModal = ({ visible, value, onSelect, onClose }: GenderPickerMo
     ];
     const modalStyles = getModalStyles(colors, activeScheme);
     return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-        <TouchableOpacity style={modalStyles.overlay} activeOpacity={1} onPress={onClose}>
-            <MotiView
-                from={{ translateY: 300, opacity: 0 }}
-                animate={{ translateY: 0, opacity: 1 }}
-                transition={{ type: 'spring', damping: 22 }}
-                style={modalStyles.sheet}
-            >
-                <TouchableOpacity activeOpacity={1}>
-                    <View style={modalStyles.handle} />
-                    <View style={modalStyles.header}>
-                        <Text style={modalStyles.title}>{t('gender_identity')}</Text>
-                        <TouchableOpacity onPress={onClose}>
-                            <Ionicons name="close" size={22} color="#666" />
-                        </TouchableOpacity>
-                    </View>
-                    {GENDER_OPTIONS.map(opt => (
-                        <TouchableOpacity
-                            key={opt.value}
-                            style={[modalStyles.genderItem, value === opt.value && modalStyles.genderItemActive]}
-                            onPress={() => { onSelect(opt.value); onClose(); }}
-                        >
-                            <Text style={modalStyles.genderEmoji}>{opt.icon}</Text>
-                            <Text style={[modalStyles.genderLabel, value === opt.value && modalStyles.genderLabelActive]}>
-                                {opt.label}
-                            </Text>
-                            {value === opt.value && (
-                                <Ionicons name="checkmark-circle" size={20} color={colors.tint} />
-                            )}
-                        </TouchableOpacity>
-                    ))}
-                    <View style={{ height: 30 }} />
-                </TouchableOpacity>
-            </MotiView>
-        </TouchableOpacity>
-    </Modal>
+        <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+            <TouchableOpacity style={modalStyles.overlay} activeOpacity={1} onPress={onClose}>
+                <MotiView
+                    from={{ translateY: 300, opacity: 0 }}
+                    animate={{ translateY: 0, opacity: 1 }}
+                    transition={{ type: 'spring', damping: 22 }}
+                    style={modalStyles.sheet}
+                >
+                    <TouchableOpacity activeOpacity={1}>
+                        <View style={modalStyles.handle} />
+                        <View style={modalStyles.header}>
+                            <Text style={modalStyles.title}>{t('gender_identity')}</Text>
+                            <TouchableOpacity onPress={onClose}>
+                                <Ionicons name="close" size={22} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+                        {GENDER_OPTIONS.map(opt => (
+                            <TouchableOpacity
+                                key={opt.value}
+                                style={[modalStyles.genderItem, value === opt.value && modalStyles.genderItemActive]}
+                                onPress={() => { onSelect(opt.value); onClose(); }}
+                            >
+                                <Text style={modalStyles.genderEmoji}>{opt.icon}</Text>
+                                <Text style={[modalStyles.genderLabel, value === opt.value && modalStyles.genderLabelActive]}>
+                                    {opt.label}
+                                </Text>
+                                {value === opt.value && (
+                                    <Ionicons name="checkmark-circle" size={20} color={colors.tint} />
+                                )}
+                            </TouchableOpacity>
+                        ))}
+                        <View style={{ height: 30 }} />
+                    </TouchableOpacity>
+                </MotiView>
+            </TouchableOpacity>
+        </Modal>
     );
 };
 
@@ -370,44 +372,44 @@ const EducationPickerModal = ({ visible, value, onSelect, onClose }: EducationPi
     ];
     const modalStyles = getModalStyles(colors, activeScheme);
     return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-        <TouchableOpacity style={modalStyles.overlay} activeOpacity={1} onPress={onClose}>
-            <MotiView
-                from={{ translateY: 300, opacity: 0 }}
-                animate={{ translateY: 0, opacity: 1 }}
-                transition={{ type: 'spring', damping: 22 }}
-                style={modalStyles.sheet}
-            >
-                <TouchableOpacity activeOpacity={1}>
-                    <View style={modalStyles.handle} />
-                    <View style={modalStyles.header}>
-                        <Text style={modalStyles.title}>{t('education_level')}</Text>
-                        <TouchableOpacity onPress={onClose}>
-                            <Ionicons name="close" size={22} color="#666" />
-                        </TouchableOpacity>
-                    </View>
-                    <ScrollView style={{ maxHeight: 340 }} showsVerticalScrollIndicator={false}>
-                        {EDUCATION_LEVELS.map(lvl => (
-                            <TouchableOpacity
-                                key={lvl}
-                                style={[modalStyles.genderItem, value === lvl && modalStyles.genderItemActive]}
-                                onPress={() => { onSelect(lvl); onClose(); }}
-                            >
-                                <Ionicons name="school-outline" size={18} color={value === lvl ? colors.tint : colors.textSecondary} style={{ marginRight: 12 }} />
-                                <Text style={[modalStyles.genderLabel, value === lvl && modalStyles.genderLabelActive]}>
-                                    {lvl}
-                                </Text>
-                                {value === lvl && (
-                                    <Ionicons name="checkmark-circle" size={20} color={colors.tint} />
-                                )}
+        <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+            <TouchableOpacity style={modalStyles.overlay} activeOpacity={1} onPress={onClose}>
+                <MotiView
+                    from={{ translateY: 300, opacity: 0 }}
+                    animate={{ translateY: 0, opacity: 1 }}
+                    transition={{ type: 'spring', damping: 22 }}
+                    style={modalStyles.sheet}
+                >
+                    <TouchableOpacity activeOpacity={1}>
+                        <View style={modalStyles.handle} />
+                        <View style={modalStyles.header}>
+                            <Text style={modalStyles.title}>{t('education_level')}</Text>
+                            <TouchableOpacity onPress={onClose}>
+                                <Ionicons name="close" size={22} color={colors.textSecondary} />
                             </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                    <View style={{ height: 30 }} />
-                </TouchableOpacity>
-            </MotiView>
-        </TouchableOpacity>
-    </Modal>
+                        </View>
+                        <ScrollView style={{ maxHeight: 340 }} showsVerticalScrollIndicator={false}>
+                            {EDUCATION_LEVELS.map(lvl => (
+                                <TouchableOpacity
+                                    key={lvl}
+                                    style={[modalStyles.genderItem, value === lvl && modalStyles.genderItemActive]}
+                                    onPress={() => { onSelect(lvl); onClose(); }}
+                                >
+                                    <Ionicons name="school-outline" size={18} color={value === lvl ? colors.tint : colors.textSecondary} style={{ marginRight: 12 }} />
+                                    <Text style={[modalStyles.genderLabel, value === lvl && modalStyles.genderLabelActive]}>
+                                        {lvl}
+                                    </Text>
+                                    {value === lvl && (
+                                        <Ionicons name="checkmark-circle" size={20} color={colors.tint} />
+                                    )}
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                        <View style={{ height: 30 }} />
+                    </TouchableOpacity>
+                </MotiView>
+            </TouchableOpacity>
+        </Modal>
     );
 };
 
@@ -572,8 +574,8 @@ const CountryPickerModal = ({ visible, onSelect, onClose }: CountryPickerModalPr
     const styles = getStyles(colors, activeScheme);
     const modalStyles = getModalStyles(colors, activeScheme);
     const [search, setSearch] = useState('');
-    const filtered = COUNTRIES.filter(c => 
-        c.name.toLowerCase().includes(search.toLowerCase()) || 
+    const filtered = COUNTRIES.filter(c =>
+        c.name.toLowerCase().includes(search.toLowerCase()) ||
         c.code.includes(search)
     );
 
@@ -593,7 +595,7 @@ const CountryPickerModal = ({ visible, onSelect, onClose }: CountryPickerModalPr
                                 <Ionicons name="close" size={24} color={colors.textSecondary} />
                             </TouchableOpacity>
                         </View>
-                        
+
                         <View style={styles.searchContainer}>
                             <Ionicons name="search" size={18} color={colors.textSecondary} />
                             <TextInput
@@ -638,18 +640,18 @@ const PremiumPhoneInput = ({ value, onSave }: PhoneInputProps) => {
     const [isEditing, setIsEditing] = useState(false);
     const [showPicker, setShowPicker] = useState(false);
     const [loading, setLoading] = useState(false);
-    
+
     // Parse existing value
     const parsePhone = (phone: string) => {
         if (!phone) return { code: '+41', number: '', flag: '🇨🇭' };
-        
+
         // Remove + if present for matching
         const clean = phone.startsWith('+') ? phone.slice(1) : phone;
-        
+
         // Find matching country (longest code first)
-        const sortedCountries = [...COUNTRIES].sort((a,b) => b.code.length - a.code.length);
+        const sortedCountries = [...COUNTRIES].sort((a, b) => b.code.length - a.code.length);
         const match = sortedCountries.find(c => clean.startsWith(c.code.slice(1)));
-        
+
         if (match) {
             return {
                 code: match.code,
@@ -676,7 +678,7 @@ const PremiumPhoneInput = ({ value, onSave }: PhoneInputProps) => {
             Alert.alert(t('error'), t('invalid_phone_number'));
             return;
         }
-        
+
         setLoading(true);
         try {
             // Save without + prefix to match existing DB format (e.g. 41762166557)
@@ -708,15 +710,15 @@ const PremiumPhoneInput = ({ value, onSave }: PhoneInputProps) => {
 
             {isEditing ? (
                 <View style={styles.phoneInputContainer}>
-                    <TouchableOpacity 
-                        style={styles.countrySelector} 
+                    <TouchableOpacity
+                        style={styles.countrySelector}
                         onPress={() => setShowPicker(true)}
                     >
                         <Text style={styles.flagText}>{country.flag}</Text>
                         <Text style={styles.codeText}>{country.code}</Text>
                         <Ionicons name="chevron-down" size={12} color={colors.textSecondary} />
                     </TouchableOpacity>
-                    
+
                     <TextInput
                         style={styles.phoneNumberInput}
                         value={localNumber}
@@ -725,7 +727,7 @@ const PremiumPhoneInput = ({ value, onSave }: PhoneInputProps) => {
                         keyboardType="phone-pad"
                         autoFocus
                     />
-                    
+
                     {loading ? (
                         <ActivityIndicator size="small" color={colors.tint} />
                     ) : (
@@ -771,30 +773,30 @@ const PickerField = ({ label, displayValue, icon, onPress, color = '#0084ff', em
     const { colors, activeScheme } = useAppTheme();
     const styles = getStyles(colors, activeScheme);
     return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
-        <LinearGradient
-            colors={[colors.surface, colors.surface]}
-            style={styles.fieldCard}
-        >
-            <View style={styles.fieldHeader}>
-                <View style={styles.fieldLabelRow}>
-                    <View style={styles.iconContainer}>
-                        <Ionicons name={icon as any} size={18} color={color} />
-                    </View>
-                    <Text style={styles.fieldLabel}>{label}</Text>
-                    {!empty && (
-                        <View style={styles.verifiedBadge}>
-                            <Ionicons name="checkmark-circle" size={12} color={colors.success} />
+        <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+            <LinearGradient
+                colors={[colors.surface, colors.surface]}
+                style={styles.fieldCard}
+            >
+                <View style={styles.fieldHeader}>
+                    <View style={styles.fieldLabelRow}>
+                        <View style={styles.iconContainer}>
+                            <Ionicons name={icon as any} size={18} color={color} />
                         </View>
-                    )}
+                        <Text style={styles.fieldLabel}>{label}</Text>
+                        {!empty && (
+                            <View style={styles.verifiedBadge}>
+                                <Ionicons name="checkmark-circle" size={12} color={colors.success} />
+                            </View>
+                        )}
+                    </View>
+                    <Ionicons name="chevron-down" size={18} color={colors.textSecondary + 'B3'} />
                 </View>
-                <Ionicons name="chevron-down" size={18} color={colors.textSecondary + 'B3'} />
-            </View>
-            <Text style={[styles.fieldValue, empty && styles.placeholderValue]}>
-                {empty ? t('tap_to_select') : displayValue}
-            </Text>
-        </LinearGradient>
-    </TouchableOpacity>
+                <Text style={[styles.fieldValue, empty && styles.placeholderValue]}>
+                    {empty ? t('tap_to_select') : displayValue}
+                </Text>
+            </LinearGradient>
+        </TouchableOpacity>
     );
 };
 
@@ -833,12 +835,7 @@ const SocialLinkItem = ({ platform, value, onSave, index }: SocialLinkItemProps)
     };
 
     return (
-        <MotiView
-            from={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 400 + index * 50 }}
-            style={[styles.socialItem, isEditing && styles.socialItemEditing]}
-        >
+        <View style={[styles.socialItem, isEditing && styles.socialItemEditing]}>
             <TouchableOpacity
                 style={styles.socialHeader}
                 onPress={() => !isEditing && setIsEditing(true)}
@@ -868,7 +865,7 @@ const SocialLinkItem = ({ platform, value, onSave, index }: SocialLinkItemProps)
                 {loading ? (
                     <ActivityIndicator size="small" color={platform.color} />
                 ) : (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={isEditing ? handleSave : () => setIsEditing(true)}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
@@ -883,7 +880,7 @@ const SocialLinkItem = ({ platform, value, onSave, index }: SocialLinkItemProps)
             {!isEditing && value ? (
                 <Text style={styles.socialPlatformName}>{platform.platform}</Text>
             ) : null}
-        </MotiView>
+        </View>
     );
 };
 
@@ -980,7 +977,7 @@ export default function AccountSettingsScreen() {
         try {
             await updateFullSettings({ social_links: updatedLinks });
             setFullSettings((prev: any) => ({ ...prev, social_links: updatedLinks }));
-            
+
             if (isFirstTime) {
                 Alert.alert(
                     t('success'),
@@ -1058,12 +1055,12 @@ export default function AccountSettingsScreen() {
             onPress={() => setActiveSection(id)}
         >
             <LinearGradient
-                colors={activeSection === id ? [color, color + 'CC'] : [colors.muted, colors.muted]}
+                colors={activeSection === id ? [color, color + '80'] : [colors.background, colors.background]}
                 style={styles.sectionButtonGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
             >
-                <Ionicons name={icon} size={16} color={activeSection === id ? '#fff' : color} />
+                <Ionicons name={icon} size={14} color={activeSection === id ? '#fff' : color} />
                 <Text style={[styles.sectionButtonText, activeSection === id && styles.sectionButtonTextActive]}>
                     {label}
                 </Text>
@@ -1138,164 +1135,140 @@ export default function AccountSettingsScreen() {
                 >
                     <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }}>
 
-                        {activeSection === 'identity' && (
-                            <>
-                                <Text style={styles.sectionTitle}>{t('profile')}</Text>
-                                <EditableField
-                                    label={t('name')}
-                                    value={fullSettings?.name || ''}
-                                    icon="person-outline"
-                                    onSave={val => handleUpdate('name', val)}
-                                />
-                                <EditableField
-                                    label={t('username')}
-                                    value={fullSettings?.username || ''}
-                                    icon="at-outline"
-                                    onSave={val => handleUpdate('username', val)}
-                                    prefix="@"
-                                    maxLength={30}
-                                />
-                                <PickerField
-                                    label={t('birthday')}
-                                    displayValue={birthdayDisplayValue()}
-                                    icon="calendar-outline"
-                                    onPress={() => setShowDatePicker(true)}
-                                    empty={!fullSettings?.birthday}
-                                />
-                                <PickerField
-                                    label={t('gender_identity')}
-                                    displayValue={genderDisplayValue()}
-                                    icon="transgender-outline"
-                                    onPress={() => setShowGenderPicker(true)}
-                                    empty={!fullSettings?.gender}
-                                    color="#9C27B0"
-                                />
-                                <EditableField
-                                    label={t('bio')}
-                                    value={fullSettings?.bio || ''}
-                                    icon="book-outline"
-                                    multiline
-                                    maxLength={150}
-                                    onSave={val => handleUpdate('bio', val)}
-                                />
-                            </>
-                        )}
+                            {activeSection === 'identity' && (
+                                <>
+                                    <Text style={styles.sectionTitle}>{t('profile')}</Text>
+                                    <EditableField
+                                        label={t('name')}
+                                        value={fullSettings?.name || ''}
+                                        icon="person-outline"
+                                        onSave={val => handleUpdate('name', val)}
+                                    />
+                                    <EditableField
+                                        label={t('username')}
+                                        value={fullSettings?.username || ''}
+                                        icon="at-outline"
+                                        onSave={val => handleUpdate('username', val)}
+                                        prefix="@"
+                                        maxLength={30}
+                                    />
+                                    <PickerField
+                                        label={t('birthday')}
+                                        displayValue={birthdayDisplayValue()}
+                                        icon="calendar-outline"
+                                        onPress={() => setShowDatePicker(true)}
+                                        empty={!fullSettings?.birthday}
+                                    />
+                                    <PickerField
+                                        label={t('gender_identity')}
+                                        displayValue={genderDisplayValue()}
+                                        icon="transgender-outline"
+                                        onPress={() => setShowGenderPicker(true)}
+                                        empty={!fullSettings?.gender}
+                                        color="#9C27B0"
+                                    />
+                                    <EditableField
+                                        label={t('bio')}
+                                        value={fullSettings?.bio || ''}
+                                        icon="book-outline"
+                                        multiline
+                                        maxLength={150}
+                                        onSave={val => handleUpdate('bio', val)}
+                                    />
+                                </>
+                            )}
 
-                        {activeSection === 'social' && (
-                            <>
-                                <View style={styles.sectionHeaderRow}>
-                                    <Text style={styles.sectionTitle}>{t('social')}</Text>
-                                    <View style={styles.premiumBadge}>
-                                        <Ionicons name="sparkles" size={10} color="#fff" />
-                                        <Text style={styles.premiumText}>Verified</Text>
+                            {activeSection === 'social' && (
+                                <>
+                                    <View style={styles.sectionHeaderRow}>
+                                        <Text style={styles.sectionTitle}>{t('social')}</Text>
+                                        <View style={styles.premiumBadge}>
+                                            <Ionicons name="sparkles" size={10} color="#fff" />
+                                            <Text style={styles.premiumText}>Verified</Text>
+                                        </View>
                                     </View>
-                                </View>
-                                <View style={styles.socialGrid}>
-                                    {SOCIAL_PLATFORMS.map((platform, index) => (
-                                        <SocialLinkItem
-                                            key={platform.id}
-                                            platform={platform}
-                                            index={index}
-                                            value={fullSettings?.social_links?.[platform.id] || ''}
-                                            onSave={val => handleSocialUpdate(platform.id, val)}
-                                        />
-                                    ))}
-                                </View>
-                                <View style={styles.socialTip}>
-                                    <Ionicons name="information-circle-outline" size={14} color={colors.textSecondary} />
-                                    <Text style={styles.socialTipText}>{t('connect')}</Text>
-                                </View>
-                            </>
-                        )}
+                                    <View style={styles.socialGrid}>
+                                        {SOCIAL_PLATFORMS.map((platform, index) => (
+                                            <SocialLinkItem
+                                                key={platform.id}
+                                                platform={platform}
+                                                index={index}
+                                                value={fullSettings?.social_links?.[platform.id] || ''}
+                                                onSave={val => handleSocialUpdate(platform.id, val)}
+                                            />
+                                        ))}
+                                    </View>
+                                    <View style={styles.socialTip}>
+                                        <Ionicons name="information-circle-outline" size={14} color={colors.textSecondary} />
+                                        <Text style={styles.socialTipText}>{t('connect')}</Text>
+                                    </View>
+                                </>
+                            )}
 
-                        {activeSection === 'contact' && (
-                            <>
-                                <Text style={styles.sectionTitle}>{t('connect')}</Text>
-                                <EditableField
-                                    label={t('email_address')}
-                                    value={fullSettings?.email || ''}
-                                    icon="mail-outline"
-                                    keyboardType="email-address"
-                                    onSave={val => handleUpdate('email', val)}
-                                    hint="Used for login and notifications"
-                                />
-                                <PremiumPhoneInput
-                                    value={fullSettings?.phone || ''}
-                                    onSave={val => handleUpdate('phone', val)}
-                                />
-                                <PickerField
-                                    label={t('about')}
-                                    displayValue={getLocationDisplay(fullSettings?.location || '')}
-                                    icon="location-outline"
-                                    onPress={() => setShowLocationPicker(true)}
-                                    empty={!fullSettings?.location}
-                                />
-                            </>
-                        )}
+                            {activeSection === 'contact' && (
+                                <>
+                                    <Text style={styles.sectionTitle}>{t('connect')}</Text>
+                                    <EditableField
+                                        label={t('email_address')}
+                                        value={fullSettings?.email || ''}
+                                        icon="mail-outline"
+                                        keyboardType="email-address"
+                                        onSave={val => handleUpdate('email', val)}
+                                        hint="Used for login and notifications"
+                                    />
+                                    <PremiumPhoneInput
+                                        value={fullSettings?.phone || ''}
+                                        onSave={val => handleUpdate('phone', val)}
+                                    />
+                                    <PickerField
+                                        label={t('about')}
+                                        displayValue={getLocationDisplay(fullSettings?.location || '')}
+                                        icon="location-outline"
+                                        onPress={() => setShowLocationPicker(true)}
+                                        empty={!fullSettings?.location}
+                                    />
+                                </>
+                            )}
 
-                        {activeSection === 'professional' && (
-                            <>
-                                <Text style={styles.sectionTitle}>{t('professional')}</Text>
-                                <EditableField
-                                    label={t('professional')}
-                                    value={fullSettings?.job_title || ''}
-                                    icon="briefcase-outline"
-                                    onSave={val => handleUpdate('job_title', val)}
-                                    hint={t('professional')}
-                                />
-                                <EditableField
-                                    label={t('professional')}
-                                    value={fullSettings?.company || ''}
-                                    icon="business-outline"
-                                    onSave={val => handleUpdate('company', val)}
-                                    hint={t('professional')}
-                                />
-                                <PickerField
-                                    label={t('education_level')}
-                                    displayValue={fullSettings?.education || ''}
-                                    icon="school-outline"
-                                    onPress={() => setShowEducationPicker(true)}
-                                    empty={!fullSettings?.education}
-                                    color="#FF9800"
-                                />
-                                <EditableField
-                                    label={t('about')}
-                                    value={fullSettings?.website || ''}
-                                    icon="globe-outline"
-                                    keyboardType="url"
-                                    onSave={val => handleUpdate('website', val)}
-                                    hint="https://yourwebsite.com"
-                                    maxLength={255}
-                                />
-                            </>
-                        )}
-
-                        <MotiView
-                            from={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: 300 }}
-                            style={styles.deleteSection}
-                        >
-                            <View style={styles.deleteWarning}>
-                                <Ionicons name="warning" size={20} color="#FF3B30" />
-                                <Text style={styles.deleteWarningText}>{t('logout')}</Text>
-                            </View>
-                            <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAccount}>
-                                <LinearGradient
-                                    colors={['#FFF0F0', '#FFE5E5']}
-                                    style={styles.deleteButtonGradient}
-                                >
-                                    <Ionicons name="trash-outline" size={20} color="#FF3B30" />
-                                    <Text style={styles.deleteButtonText}>{t('logout')}</Text>
-                                </LinearGradient>
-                            </TouchableOpacity>
-                            <Text style={styles.deleteNote}>
-                                {t('logout_confirm')}
-                            </Text>
+                            {activeSection === 'professional' && (
+                                <>
+                                    <Text style={styles.sectionTitle}>{t('professional')}</Text>
+                                    <EditableField
+                                        label={t('professional')}
+                                        value={fullSettings?.job_title || ''}
+                                        icon="briefcase-outline"
+                                        onSave={val => handleUpdate('job_title', val)}
+                                        hint={t('professional')}
+                                    />
+                                    <EditableField
+                                        label={t('professional')}
+                                        value={fullSettings?.company || ''}
+                                        icon="business-outline"
+                                        onSave={val => handleUpdate('company', val)}
+                                        hint={t('professional')}
+                                    />
+                                    <PickerField
+                                        label={t('education_level')}
+                                        displayValue={fullSettings?.education || ''}
+                                        icon="school-outline"
+                                        onPress={() => setShowEducationPicker(true)}
+                                        empty={!fullSettings?.education}
+                                        color="#FF9800"
+                                    />
+                                    <EditableField
+                                        label={t('about')}
+                                        value={fullSettings?.website || ''}
+                                        icon="globe-outline"
+                                        keyboardType="url"
+                                        onSave={val => handleUpdate('website', val)}
+                                        hint="https://yourwebsite.com"
+                                        maxLength={255}
+                                    />
+                                </>
+                            )}
                         </MotiView>
-                    </MotiView>
-                </Animated.ScrollView>
-            )}
+                    </Animated.ScrollView>
+                )}
 
             <ShareLocation
                 visible={showLocationPicker}
@@ -1309,234 +1282,261 @@ export default function AccountSettingsScreen() {
 // ─── Picker Modal Styles ──────────────────────────────────────────────────────
 function getModalStyles(colors: any, activeScheme: string) {
     return StyleSheet.create({
-    overlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.45)',
-        justifyContent: 'flex-end',
-    },
-    sheet: {
-        backgroundColor: colors.surface,
-        borderTopLeftRadius: 28,
-        borderTopRightRadius: 28,
-        paddingHorizontal: 20,
-        paddingTop: 8,
-        maxHeight: '75%',
-        ...Platform.select({
-            web: {
-                maxWidth: 1440,
-                width: '100%',
-                alignSelf: 'center',
-            }
-        })
-    },
-    handle: {
-        width: 40,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: colors.border,
-        alignSelf: 'center',
-        marginBottom: 12,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingBottom: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-        marginBottom: 12,
-    },
-    title: { fontSize: 18, fontWeight: '800', color: colors.text },
-    cancelBtn: { fontSize: 15, color: colors.textSecondary, fontWeight: '600' },
-    doneBtn: { fontSize: 15, color: colors.tint, fontWeight: '800' },
-    pickerRow: {
-        flexDirection: 'row',
-        gap: 12,
-        paddingVertical: 12,
-    },
-    pickerCol: { flex: 1, alignItems: 'center' },
-    pickerLabel: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 8 },
-    pickerInput: {
-        width: '100%',
-        borderWidth: 2,
-        borderColor: colors.border,
-        borderRadius: 12,
-        padding: 12,
-        fontSize: 20,
-        fontWeight: '700',
-        textAlign: 'center',
-        color: colors.text,
-        backgroundColor: colors.background,
-    },
-    monthScroll: { maxHeight: 160, width: '100%' },
-    monthItem: {
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 10,
-        marginBottom: 4,
-        alignItems: 'center',
-    },
-    monthItemActive: { backgroundColor: colors.tint + '20' },
-    monthText: { fontSize: 14, color: colors.textSecondary, fontWeight: '600' },
-    monthTextActive: { color: colors.tint, fontWeight: '800' },
-    webDateContainer: { paddingVertical: 16 },
-    webDateLabel: { fontSize: 14, color: colors.textSecondary, fontWeight: '600', marginBottom: 4 },
-    genderItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 14,
-        paddingHorizontal: 16,
-        borderRadius: 16,
-        marginBottom: 8,
-        backgroundColor: colors.background,
-    },
-    genderItemActive: { backgroundColor: colors.tint + '10', borderWidth: 2, borderColor: colors.tint + '40' },
-    genderEmoji: { fontSize: 20, marginRight: 14 },
-    genderLabel: { flex: 1, fontSize: 16, fontWeight: '600', color: colors.text },
-    genderLabelActive: { color: colors.tint, fontWeight: '800' },
-    countryItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 14,
-        paddingHorizontal: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-    },
-    countryFlag: { fontSize: 24, marginRight: 16 },
-    countryName: { flex: 1, fontSize: 16, color: colors.text, fontWeight: '500' },
-    countryCode: { fontSize: 16, color: colors.tint, fontWeight: '700' },
-});
+        overlay: {
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.45)',
+            justifyContent: 'flex-end',
+        },
+        sheet: {
+            backgroundColor: activeScheme === 'dark' ? '#121212' : colors.surface,
+            borderTopLeftRadius: 28,
+            borderTopRightRadius: 28,
+            paddingHorizontal: 20,
+            paddingTop: 8,
+            maxHeight: '75%',
+            ...Platform.select({
+                web: {
+                    maxWidth: 1440,
+                    width: '95%',
+                    alignSelf: 'center',
+                }
+            })
+        },
+        handle: {
+            width: 40,
+            height: 4,
+            borderRadius: 2,
+            backgroundColor: colors.border,
+            alignSelf: 'center',
+            marginBottom: 12,
+        },
+        header: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingBottom: 16,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
+            marginBottom: 12,
+        },
+        title: { fontSize: 18, fontWeight: '800', color: colors.text },
+        cancelBtn: { fontSize: 15, color: colors.textSecondary, fontWeight: '600' },
+        doneBtn: { fontSize: 15, color: colors.tint, fontWeight: '800' },
+        pickerRow: {
+            flexDirection: 'row',
+            gap: 12,
+            paddingVertical: 12,
+        },
+        pickerCol: { flex: 1, alignItems: 'center' },
+        pickerLabel: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 8 },
+        pickerInput: {
+            width: '100%',
+            borderWidth: 2,
+            borderColor: colors.border,
+            borderRadius: 12,
+            padding: 12,
+            fontSize: 20,
+            fontWeight: '700',
+            textAlign: 'center',
+            color: colors.text,
+            backgroundColor: colors.background,
+        },
+        monthScroll: { maxHeight: 160, width: '100%' },
+        monthItem: {
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            borderRadius: 10,
+            marginBottom: 4,
+            alignItems: 'center',
+        },
+        monthItemActive: { backgroundColor: colors.tint + '20' },
+        monthText: { fontSize: 14, color: colors.textSecondary, fontWeight: '600' },
+        monthTextActive: { color: colors.tint, fontWeight: '800' },
+         webDateContainer: { 
+            paddingVertical: 16,
+            width: '100%',
+            alignItems: 'center',
+            justifyContent: 'center'
+        },
+        webDateLabel: { 
+            fontSize: 14, 
+            color: colors.textSecondary, 
+            fontWeight: '600', 
+            marginBottom: 4,
+            width: '98%',
+            textAlign: 'left'
+        },
+        genderItem: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingVertical: 14,
+            paddingHorizontal: 16,
+            borderRadius: 16,
+            marginBottom: 8,
+            backgroundColor: colors.background,
+        },
+        genderItemActive: { backgroundColor: colors.tint + '10', borderWidth: 2, borderColor: colors.tint + '40' },
+        genderEmoji: { fontSize: 20, marginRight: 14 },
+        genderLabel: { flex: 1, fontSize: 16, fontWeight: '600', color: colors.text },
+        genderLabelActive: { color: colors.tint, fontWeight: '800' },
+        countryItem: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingVertical: 14,
+            paddingHorizontal: 16,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
+        },
+        countryFlag: { fontSize: 24, marginRight: 16 },
+        countryName: { flex: 1, fontSize: 16, color: colors.text, fontWeight: '500' },
+        countryCode: { fontSize: 16, color: colors.tint, fontWeight: '700' },
+    });
 }
 
 // ─── Screen Styles ────────────────────────────────────────────────────────────
 function getStyles(colors: any, activeScheme: string) {
     return StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingBottom: 16,
-        borderBottomWidth:1,
-        borderBottomColor: colors.border,
-    },
-    headerCenter: { alignItems: 'center' },
-    headerTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
-    headerUnderline: { width: 40, height: 3, backgroundColor: colors.tint, borderRadius: 2, marginTop: 4 },
-    backButton: { padding: 4 },
-    refreshButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.muted, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: colors.border },
-    sectionNav: { maxHeight: 50, marginTop: 16 },
-    sectionNavContent: { paddingHorizontal: 20, gap: 8 },
-    sectionButton: { borderRadius: 25, overflow: 'hidden' },
-    sectionButtonActive: { ...createShadow({ opacity: 0.2, radius: 8 }) },
-    sectionButtonGradient: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, gap: 6 },
-    sectionButtonText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
-    sectionButtonTextActive: { color: '#fff' },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    loadingText: { marginTop: 12, color: colors.textSecondary, fontSize: 14 },
-    scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
-    sectionTitle: {
-        fontSize: 13, fontWeight: '800', color: colors.tint, textTransform: 'uppercase',
-        letterSpacing: 1.5, marginTop: 30, marginBottom: 15, marginLeft: 5,
-    },
-    sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 30, marginBottom: 15, paddingHorizontal: 5 },
-    fieldCard: {
-        borderRadius: 20, padding: 18, marginBottom: 12, borderWidth: 1, borderColor: colors.border,
-        backgroundColor: colors.surface,
-        ...createShadow({ opacity: 0.05, radius: 8 }),
-    },
-    fieldCardEditing: { borderColor: colors.tint, borderWidth: 2, ...createShadow({ opacity: 0.1, radius: 12 }) },
-    fieldHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-    fieldLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    iconContainer: { width: 28, height: 28, borderRadius: 8, backgroundColor: colors.tint + '15', justifyContent: 'center', alignItems: 'center' },
-    fieldLabel: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase' },
-    verifiedBadge: { marginLeft: 4 },
-    fieldValue: { fontSize: 17, fontWeight: '600', color: colors.text },
-    placeholderValue: { color: colors.textSecondary + '60', fontStyle: 'italic', fontSize: 15 },
-    hintText: { fontSize: 11, color: colors.textSecondary, marginTop: 4, fontStyle: 'italic' },
-    prefix: { fontSize: 17, fontWeight: '600', color: colors.tint, marginRight: 2 },
-    inputContainer: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
-    input: { flex: 1, fontSize: 17, fontWeight: '600', color: colors.text, padding: 0 },
-    multilineInput: { minHeight: 60, textAlignVertical: 'top' },
-    cancelEdit: { padding: 4 },
-    charCountContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
-    charCountBar: { flex: 1, height: 2, backgroundColor: colors.border, borderRadius: 1, marginRight: 8, overflow: 'hidden' },
-    charCountFill: { height: '100%', backgroundColor: colors.tint, borderRadius: 1 },
-    charCountText: { fontSize: 10, color: colors.textSecondary },
-    // Social list (Formerly grid)
-    premiumBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FF2D55', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, gap: 4 },
-    premiumText: { color: '#fff', fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
-    socialGrid: { flexDirection: 'column', gap: 10 },
-    socialItem: {
-        width: '100%',
-        backgroundColor: colors.surface, 
-        borderRadius: 20, 
-        borderWidth: 1, 
-        borderColor: colors.border, 
-        overflow: 'hidden',
-        ...createShadow({ opacity: 0.04, radius: 10 }),
-    },
-    socialItemEditing: { borderColor: colors.tint, borderWidth: 2, ...createShadow({ opacity: 0.1, radius: 12 }) },
-    socialHeader: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
-    socialIconBg: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-    socialValue: { flex: 1, fontSize: 16, fontWeight: '600', color: colors.text },
-    placeholderSocial: { color: colors.textSecondary + '60', fontSize: 15, fontStyle: 'italic' },
-    socialInput: { flex: 1, fontSize: 16, fontWeight: '600', color: colors.text, padding: 4, backgroundColor: colors.background, borderRadius: 8 },
-    socialPlatformName: { fontSize: 11, color: colors.textSecondary, paddingHorizontal: 16, paddingBottom: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
-    socialTip: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16, paddingHorizontal: 8 },
-    socialTipText: { fontSize: 12, color: colors.textSecondary, fontStyle: 'italic', flex: 1 },
-    // Delete section
-    deleteSection: { 
-        marginTop: 40, 
-        marginBottom: 20, 
-        padding: 16, 
-        borderRadius: 20, 
-        backgroundColor: colors.error + '10', 
-        borderWidth: 1, 
-        borderColor: colors.error + '30' 
-    },
-    deleteWarning: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
-    deleteWarningText: { fontSize: 13, fontWeight: '800', color: colors.error, textTransform: 'uppercase', letterSpacing: 1 },
-    deleteButton: { borderRadius: 16, overflow: 'hidden', marginBottom: 12 },
-    deleteButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, gap: 8 },
-    deleteButtonText: { color: colors.error, fontSize: 15, fontWeight: '700' },
-    deleteNote: { fontSize: 11, color: colors.textSecondary, textAlign: 'center', lineHeight: 16 },
-    // Phone Picker Styles
-    searchContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: colors.background,
-        borderRadius: 12,
-        paddingHorizontal: 12,
-        marginBottom: 16,
-        height: 44,
-        borderWidth: 1,
-        borderColor: colors.border,
-    },
-    searchInput: { flex: 1, marginLeft: 8, fontSize: 16, color: colors.text },
-    phoneInputContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 8 },
-    countrySelector: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: colors.background,
-        paddingHorizontal: 10,
-        paddingVertical: 8,
-        borderRadius: 10,
-        gap: 6,
-        borderWidth: 1,
-        borderColor: colors.border,
-    },
-    flagText: { fontSize: 18 },
-    codeText: { fontSize: 15, fontWeight: '700', color: colors.text },
-    phoneNumberInput: {
-        flex: 1,
-        fontSize: 18,
-        fontWeight: '600',
-        color: colors.text,
-        paddingVertical: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.tint,
-    },
-});
+        container: { flex: 1, backgroundColor: colors.background },
+        header: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: 20,
+            paddingBottom: 16,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
+        },
+        headerCenter: { alignItems: 'center' },
+        headerTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
+        headerUnderline: { width: 40, height: 3, backgroundColor: colors.tint, borderRadius: 2, marginTop: 4 },
+        backButton: { padding: 4 },
+        refreshButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.muted, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: colors.border },
+        sectionNav: {
+            maxHeight: 50,
+            marginTop: 16,
+        },
+        sectionNavContent: {
+            paddingHorizontal: 20,
+            gap: 8,
+        },
+        sectionButton: {
+            borderRadius: 25,
+            overflow: 'hidden',
+        },
+        sectionButtonActive: { ...createShadow({ opacity: 0.2, radius: 8 }) },
+        sectionButtonGradient: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 16,
+            paddingVertical: 8,
+            gap: 6,
+        },
+        sectionButtonText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+        sectionButtonTextActive: { color: '#fff' },
+        center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+        loadingText: { marginTop: 12, color: colors.textSecondary, fontSize: 14 },
+        scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
+        sectionTitle: {
+            fontSize: 13, fontWeight: '800', color: colors.tint, textTransform: 'uppercase',
+            letterSpacing: 1.5, marginTop: 30, marginBottom: 15, marginLeft: 5,
+        },
+        sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 30, marginBottom: 15, paddingHorizontal: 5 },
+        fieldCard: {
+            borderRadius: 20, padding: 18, marginBottom: 12, borderWidth: 1, borderColor: colors.border,
+            backgroundColor: colors.surface,
+            ...createShadow({ opacity: 0.05, radius: 8 }),
+        },
+        fieldCardEditing: { borderColor: colors.tint, borderWidth: 2, ...createShadow({ opacity: 0.1, radius: 12 }) },
+        fieldHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+        fieldLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+        iconContainer: { width: 28, height: 28, borderRadius: 8, backgroundColor: colors.tint + '15', justifyContent: 'center', alignItems: 'center' },
+        fieldLabel: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase' },
+        verifiedBadge: { marginLeft: 4 },
+        fieldValue: { fontSize: 17, fontWeight: '600', color: colors.text },
+        placeholderValue: { color: colors.textSecondary + '60', fontStyle: 'italic', fontSize: 15 },
+        hintText: { fontSize: 11, color: colors.textSecondary, marginTop: 4, fontStyle: 'italic' },
+        prefix: { fontSize: 17, fontWeight: '600', color: colors.tint, marginRight: 2 },
+        inputContainer: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
+        input: { flex: 1, fontSize: 17, fontWeight: '600', color: colors.text, padding: 0 },
+        multilineInput: { minHeight: 60, textAlignVertical: 'top' },
+        cancelEdit: { padding: 4 },
+        charCountContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
+        charCountBar: { flex: 1, height: 2, backgroundColor: colors.border, borderRadius: 1, marginRight: 8, overflow: 'hidden' },
+        charCountFill: { height: '100%', backgroundColor: colors.tint, borderRadius: 1 },
+        charCountText: { fontSize: 10, color: colors.textSecondary },
+        // Social list (Formerly grid)
+        premiumBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FF2D55', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, gap: 4 },
+        premiumText: { color: '#fff', fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
+        socialGrid: { flexDirection: 'column', gap: 10 },
+        socialItem: {
+            width: '100%',
+            backgroundColor: colors.surface,
+            borderRadius: 20,
+            borderWidth: 1,
+            borderColor: colors.border,
+            overflow: 'hidden',
+            ...createShadow({ opacity: 0.04, radius: 10 }),
+        },
+        socialItemEditing: { borderColor: colors.tint, borderWidth: 2, ...createShadow({ opacity: 0.1, radius: 12 }) },
+        socialHeader: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
+        socialIconBg: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+        socialValue: { flex: 1, fontSize: 16, fontWeight: '600', color: colors.text },
+        placeholderSocial: { color: colors.textSecondary + '60', fontSize: 15, fontStyle: 'italic' },
+        socialInput: { flex: 1, fontSize: 16, fontWeight: '600', color: colors.text, padding: 4, backgroundColor: colors.background, borderRadius: 8 },
+        socialPlatformName: { fontSize: 11, color: colors.textSecondary, paddingHorizontal: 16, paddingBottom: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+        socialTip: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16, paddingHorizontal: 8 },
+        socialTipText: { fontSize: 12, color: colors.textSecondary, fontStyle: 'italic', flex: 1 },
+        // Delete section
+        deleteSection: {
+            marginTop: 40,
+            marginBottom: 20,
+            padding: 16,
+            borderRadius: 20,
+            backgroundColor: colors.error + '10',
+            borderWidth: 1,
+            borderColor: colors.error + '30'
+        },
+        deleteWarning: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
+        deleteWarningText: { fontSize: 13, fontWeight: '800', color: colors.error, textTransform: 'uppercase', letterSpacing: 1 },
+        deleteButton: { borderRadius: 16, overflow: 'hidden', marginBottom: 12 },
+        deleteButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, gap: 8 },
+        deleteButtonText: { color: colors.error, fontSize: 15, fontWeight: '700' },
+        deleteNote: { fontSize: 11, color: colors.textSecondary, textAlign: 'center', lineHeight: 16 },
+        // Phone Picker Styles
+        searchContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: colors.background,
+            borderRadius: 12,
+            paddingHorizontal: 12,
+            marginBottom: 16,
+            height: 44,
+            borderWidth: 1,
+            borderColor: colors.border,
+        },
+        searchInput: { flex: 1, marginLeft: 8, fontSize: 16, color: colors.text },
+        phoneInputContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 8 },
+        countrySelector: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: colors.background,
+            paddingHorizontal: 10,
+            paddingVertical: 8,
+            borderRadius: 10,
+            gap: 6,
+            borderWidth: 1,
+            borderColor: colors.border,
+        },
+        flagText: { fontSize: 18 },
+        codeText: { fontSize: 15, fontWeight: '700', color: colors.text },
+        phoneNumberInput: {
+            flex: 1,
+            fontSize: 18,
+            fontWeight: '600',
+            color: colors.text,
+            paddingVertical: 8,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.tint,
+        },
+    });
 }

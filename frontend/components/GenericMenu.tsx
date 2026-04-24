@@ -36,19 +36,26 @@ export default function GenericMenu({
             <TouchableOpacity 
                 style={styles.overlay} 
                 activeOpacity={1} 
-                onPress={onClose}
+                onPress={(e) => {
+                    if (Platform.OS === 'web') {
+                        // 🛡️ Robust propagation control for Web to prevent background interaction leaks
+                        const nativeEvent = e.nativeEvent as any;
+                        if (nativeEvent.stopPropagation) nativeEvent.stopPropagation();
+                        if (nativeEvent.preventDefault) nativeEvent.preventDefault();
+                    }
+                    onClose();
+                }}
             >
-                {Platform.OS === 'web' && (
-                    <View style={[StyleSheet.absoluteFill, styles.webBackdrop]} />
-                )}
                 <View
                     style={[
                         styles.menuContainer,
-                        { backgroundColor: colors.surface },
-                        anchorPosition ? {
-                            top: anchorPosition.top + 15,
-                            [isRTL ? 'right' : 'left']: isRTL ? (typeof window !== 'undefined' ? window.innerWidth - (anchorPosition.left + 220) : anchorPosition.left) : anchorPosition.left,
-                        } : { top: 100, [isRTL ? 'right' : 'left']: 20 }
+                        { 
+                            backgroundColor: colors.surface,
+                            top: anchorPosition ? anchorPosition.top - 12 : 100,
+                            // Use absolute left for reliable cross-platform positioning
+                            left: anchorPosition ? anchorPosition.left : (isRTL ? undefined : 20),
+                            right: !anchorPosition && isRTL ? 20 : undefined,
+                        }
                     ]}
                 >
                     {anchorPosition && (
@@ -56,7 +63,7 @@ export default function GenericMenu({
                             style={[
                                 styles.pointer,
                                 {
-                                    [isRTL ? 'right' : 'left']: anchorPosition.arrowOffset,
+                                    left: anchorPosition.arrowOffset,
                                     borderBottomColor: colors.surface
                                 }
                             ]}
@@ -118,34 +125,21 @@ const isMobileWeb = Platform.OS === 'web' && (
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.35)',
-        width: '100%',
-        height: '100%',
-        zIndex: 9999,
+        backgroundColor: 'rgba(0,0,0,0.5)',
     },
-    webBackdrop: {
-        backgroundColor: 'rgba(0,0,0,0.45)',
-        ...Platform.select({
-            web: {
-                // ✅ Optimized: Remove backdropFilter on mobile web to avoid "blurry screen" bugs
-                // Only apply blur on desktop browsers where it's more stable
-                backdropFilter: isMobileWeb ? 'none' : 'blur(8px)',
-            }
-        })
-    } as any,
     menuContainer: {
         position: 'absolute',
-        borderRadius: 18,
+        borderRadius: 12,
         width: 220,
-        paddingVertical: 8,
+        paddingVertical: 6,
         borderWidth: 1,
-        borderColor: 'rgba(128,128,128,0.1)',
+        borderColor: 'rgba(128,128,128,0.15)',
         ...createShadow({
             width: 0,
-            height: 8,
-            opacity: 0.36,
-            radius: 24,
-            elevation: 20,
+            height: 12,
+            opacity: 0.3,
+            radius: 16,
+            elevation: 10,
         }),
         zIndex: 10000,
     },
@@ -161,8 +155,8 @@ const styles = StyleSheet.create({
         borderBottomWidth: 10,
         borderLeftColor: 'transparent',
         borderRightColor: 'transparent',
-        borderBottomColor: '#1C1C1E',
-        marginLeft: -10,
+        marginLeft: 0,
+        transform: [{ translateX: -10 }],
     },
     menuItem: {
         flexDirection: 'row',

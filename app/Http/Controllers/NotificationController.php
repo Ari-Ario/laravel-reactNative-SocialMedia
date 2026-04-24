@@ -77,6 +77,20 @@ class NotificationController extends Controller
             }
         }
 
+        // Detect location from IP
+        $ip = $request->ip();
+        $location = 'Unknown';
+        
+        try {
+            // Use a free GeoIP service (limited but works for basic country detection)
+            $response = \Illuminate\Support\Facades\Http::timeout(2)->get("http://ip-api.com/json/{$ip}?fields=status,message,country,city");
+            if ($response->successful() && $response->json('status') === 'success') {
+                $location = $response->json('city') . ', ' . $response->json('country');
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("GeoIP lookup failed for IP {$ip}: " . $e->getMessage());
+        }
+
         // Always store in device_tokens for backward compatibility and Expo
         $tokens = $user->device_tokens ?? [];
         $found = false;
@@ -85,19 +99,35 @@ class NotificationController extends Controller
                 $tokenData['type'] = $request->device_type;
                 $tokenData['name'] = $request->device_name ?? ($tokenData['name'] ?? null);
                 $tokenData['last_registered_at'] = now()->toISOString();
+                $tokenData['ip'] = $ip;
+                $tokenData['location'] = $location;
                 $found = true;
                 break;
             }
         }
 
         if (!$found) {
+            // To prevent "reload bloat", check if we have another token with the SAME name and type
+            // and update it instead of adding a new one IF the token looks like it changed
+            // Or just limit the total count.
+            
             $tokens[] = [
                 'token' => $newToken,
                 'type' => $request->device_type,
                 'name' => $request->device_name,
+                'ip' => $ip,
+                'location' => $location,
                 'registered_at' => now()->toISOString(),
                 'last_registered_at' => now()->toISOString(),
             ];
+        }
+
+        // Cleanup: Only keep the 10 most recently active tokens
+        if (count($tokens) > 10) {
+            usort($tokens, function($a, $b) {
+                return strtotime($b['last_registered_at']) - strtotime($a['last_registered_at']);
+            });
+            $tokens = array_slice($tokens, 0, 10);
         }
 
         $user->update(['device_tokens' => $tokens]);

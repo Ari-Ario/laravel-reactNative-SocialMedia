@@ -19,7 +19,17 @@ class PollVote extends Model
                 ->value('space_id');
             
             if ($spaceId) {
-                \Illuminate\Support\Facades\Cache::increment("space_{$spaceId}_polls_v");
+                \Illuminate\Support\Facades\Cache::put("space_{$spaceId}_polls_v", time(), 86400);
+            }
+        });
+
+        static::deleted(function ($vote) {
+            $spaceId = \Illuminate\Support\Facades\DB::table('polls')
+                ->where('id', $vote->poll_id)
+                ->value('space_id');
+            
+            if ($spaceId) {
+                \Illuminate\Support\Facades\Cache::put("space_{$spaceId}_polls_v", time(), 86400);
             }
         });
     }

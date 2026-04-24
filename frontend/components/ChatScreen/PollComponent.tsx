@@ -1,5 +1,5 @@
 // components/ChatScreen/PollComponent.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     View,
     Text,
@@ -13,20 +13,23 @@ import {
     ActivityIndicator,
     Switch,
     Animated,
-    FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-// Conditionally import DateTimePicker only on native platforms
-const DateTimePicker: any = null;
-// if (Platform.OS !== 'web') {
-//     DateTimePicker = require('@react-native-community/datetimepicker').default;
-// }
-import { useRouter } from 'expo-router';
+import { format } from 'date-fns';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MotiView } from 'moti';
+import { FadeIn } from 'react-native-reanimated';
+
 import Avatar from '@/components/Image/Avatar';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useTranslation } from '@/constants/i18n';
+import { GlobalStyles } from '@/styles/GlobalStyles';
+import { safeHaptics } from '@/utils/haptics';
+import { createShadow } from '@/utils/styles';
+
+// ─── Types & Props ───────────────────────────────────────────────────────────
 
 export interface PollOption {
     id: string;
@@ -53,8 +56,8 @@ export interface Poll {
         showResults: 'always' | 'after_vote' | 'after_deadline' | 'creator_only';
         anonymous: boolean;
         weightedVoting: boolean;
-        quorum?: number; // Minimum participants needed
-        maxSelections?: number; // For multiple choice
+        quorum?: number;
+        maxSelections?: number;
     };
     deadline?: Date;
     status: 'draft' | 'active' | 'closed' | 'archived';
@@ -62,10 +65,6 @@ export interface Poll {
     uniqueVoters: number;
     createdAt: Date;
     updatedAt: Date;
-    closedAt?: Date;
-    closedBy?: number;
-    forwardedFrom?: string[]; // Space IDs where this poll was forwarded
-    parentPollId?: string; // For poll chains/threads
     tags?: string[];
 }
 
@@ -73,15 +72,170 @@ interface PollComponentProps {
     spaceId: string;
     currentUserId: number;
     currentUserRole: string;
-    onPollCreated?: (poll: Poll) => void;
-    onPollUpdated?: (poll: Poll) => void;
+    onPollCreated?: (poll: Poll, message?: any) => void;
+    onPollUpdated?: (poll: Poll, message?: any) => void;
     onPollClosed?: (pollId: string, results: any) => void;
     onPollForwarded?: (pollId: string, targetSpaceIds: string[]) => void;
     isVisible: boolean;
     onClose: () => void;
-    editPoll?: Poll; // For editing existing poll
-    isEditing?: boolean; // New prop to differentiate
+    editPoll?: Poll;
+    isEditing?: boolean;
 }
+
+// ─── Deadline Picker Modal (Activity Pattern) ───────────────────────────────
+
+const DeadlinePickerModal = ({ visible, value, onConfirm, onClose }: { visible: boolean, value: Date, onConfirm: (date: Date) => void, onClose: () => void }) => {
+    const { t } = useTranslation();
+    const { colors, activeScheme } = useAppTheme();
+    const modalStyles = getDatePickerStyles(colors, activeScheme);
+
+    const baseDate = value || new Date(Date.now() + 86400000);
+    const [year, setYear] = useState(String(baseDate.getFullYear()));
+    const [month, setMonth] = useState(String(baseDate.getMonth() + 1).padStart(2, '0'));
+    const [day, setDay] = useState(String(baseDate.getDate()).padStart(2, '0'));
+    const [hour, setHour] = useState(String(baseDate.getHours()).padStart(2, '0'));
+    const [minute, setMinute] = useState(String(baseDate.getMinutes()).padStart(2, '0'));
+
+    const [webDateTime, setWebDateTime] = useState(baseDate.toISOString().slice(0, 16));
+
+    const handleConfirm = () => {
+        if (Platform.OS === 'web') {
+            onConfirm(new Date(webDateTime));
+        } else {
+            const d = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute));
+            if (isNaN(d.getTime())) {
+                Alert.alert(t('error'), t('invalid_date'));
+                return;
+            }
+            onConfirm(d);
+        }
+    };
+
+    const MONTHS = [
+        t('month_jan'), t('month_feb'), t('month_mar'), t('month_apr'), t('month_may'), t('month_jun'),
+        t('month_jul'), t('month_aug'), t('month_sep'), t('month_oct'), t('month_nov'), t('month_dec')
+    ];
+
+    return (
+        <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+            <TouchableOpacity style={modalStyles.overlay} activeOpacity={1} onPress={onClose}>
+                <MotiView
+                    from={{ translateY: 300, opacity: 0 }}
+                    animate={{ translateY: 0, opacity: 1 }}
+                    transition={{ type: 'spring', damping: 22 }}
+                    style={modalStyles.sheet}
+                >
+                    <TouchableOpacity activeOpacity={1}>
+                        <View style={modalStyles.handle} />
+                        <View style={modalStyles.header}>
+                            <TouchableOpacity onPress={onClose}>
+                                <Text style={modalStyles.cancelBtn}>{t('cancel')}</Text>
+                            </TouchableOpacity>
+                            <Text style={modalStyles.title}>{t('poll_deadline')}</Text>
+                            <TouchableOpacity onPress={handleConfirm}>
+                                <Text style={modalStyles.doneBtn}>{t('save')}</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {Platform.OS === 'web' ? (
+                            <View style={modalStyles.webDateContainer}>
+                                <Text style={modalStyles.webDateLabel}>{t('select_deadline')}</Text>
+                                <input
+                                    type="datetime-local"
+                                    value={webDateTime}
+                                    min={new Date().toISOString().slice(0, 16)}
+                                    onChange={(e: any) => setWebDateTime(e.target.value)}
+                                    style={{
+                                        width: '85%',
+                                        alignSelf: 'center',
+                                        padding: 14,
+                                        fontSize: 18,
+                                        borderRadius: 12,
+                                        border: `2px solid ${activeScheme === 'dark' ? '#333' : colors.border}`,
+                                        outline: 'none',
+                                        fontFamily: 'inherit',
+                                        color: colors.text,
+                                        backgroundColor: activeScheme === 'dark' ? '#1A1A1A' : colors.surface,
+                                        marginTop: 8,
+                                        colorScheme: activeScheme === 'dark' ? 'dark' : 'light',
+                                    } as any}
+                                />
+                            </View>
+                        ) : (
+                            <View style={{ flexShrink: 1 }}>
+                                <Text style={[modalStyles.webDateLabel, { paddingHorizontal: 20 }]}>{t('select_deadline')}</Text>
+                                <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 400 }}>
+                                    <View style={modalStyles.pickerRow}>
+                                        <View style={modalStyles.pickerCol}>
+                                            <Text style={modalStyles.pickerLabel}>{t('day')}</Text>
+                                            <TextInput
+                                                style={modalStyles.pickerInput}
+                                                value={day}
+                                                onChangeText={v => setDay(v.replace(/\D/g, '').slice(0, 2))}
+                                                keyboardType="number-pad"
+                                                maxLength={2}
+                                            />
+                                        </View>
+                                        <View style={modalStyles.pickerCol}>
+                                            <Text style={modalStyles.pickerLabel}>{t('month')}</Text>
+                                            <ScrollView style={modalStyles.monthScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+                                                {MONTHS.map((m, i) => (
+                                                    <TouchableOpacity
+                                                        key={m}
+                                                        style={[modalStyles.monthItem, month === String(i + 1).padStart(2, '0') && modalStyles.monthItemActive]}
+                                                        onPress={() => setMonth(String(i + 1).padStart(2, '0'))}
+                                                    >
+                                                        <Text style={[modalStyles.monthText, month === String(i + 1).padStart(2, '0') && modalStyles.monthTextActive]}>
+                                                            {m}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </ScrollView>
+                                        </View>
+                                        <View style={modalStyles.pickerCol}>
+                                            <Text style={modalStyles.pickerLabel}>{t('year')}</Text>
+                                            <TextInput
+                                                style={modalStyles.pickerInput}
+                                                value={year}
+                                                onChangeText={v => setYear(v.replace(/\D/g, '').slice(0, 4))}
+                                                keyboardType="number-pad"
+                                                maxLength={4}
+                                            />
+                                        </View>
+                                    </View>
+                                    <View style={[modalStyles.pickerRow, { borderTopWidth: 1, borderTopColor: colors.border, marginTop: 10 }]}>
+                                        <View style={modalStyles.pickerCol}>
+                                            <Text style={modalStyles.pickerLabel}>{t('hour')}</Text>
+                                            <TextInput
+                                                style={modalStyles.pickerInput}
+                                                value={hour}
+                                                onChangeText={v => setHour(v.replace(/\D/g, '').slice(0, 2))}
+                                                keyboardType="number-pad"
+                                                maxLength={2}
+                                            />
+                                        </View>
+                                        <View style={modalStyles.pickerCol}>
+                                            <Text style={modalStyles.pickerLabel}>{t('minute')}</Text>
+                                            <TextInput
+                                                style={modalStyles.pickerInput}
+                                                value={minute}
+                                                onChangeText={v => setMinute(v.replace(/\D/g, '').slice(0, 2))}
+                                                keyboardType="number-pad"
+                                                maxLength={2}
+                                            />
+                                        </View>
+                                    </View>
+                                </ScrollView>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+                </MotiView>
+            </TouchableOpacity>
+        </Modal>
+    );
+};
+
+// ─── Main Poll Component ───────────────────────────────────────────────────
 
 const PollComponent: React.FC<PollComponentProps> = ({
     spaceId,
@@ -97,9 +251,12 @@ const PollComponent: React.FC<PollComponentProps> = ({
     isEditing = false,
 }) => {
     const { colors, activeScheme } = useAppTheme();
-    const { t } = useTranslation();
-    const styles = getStyles(colors, activeScheme);
+    const { t, isRTL } = useTranslation();
+    const insets = useSafeAreaInsets();
+    const styles = getStyles(colors, activeScheme, isRTL);
+    const isDark = activeScheme === 'dark';
 
+    // State
     const [question, setQuestion] = useState('');
     const [options, setOptions] = useState<string[]>(['', '']);
     const [pollType, setPollType] = useState<'single' | 'multiple' | 'ranked' | 'weighted'>('single');
@@ -109,55 +266,29 @@ const PollComponent: React.FC<PollComponentProps> = ({
     const [anonymous, setAnonymous] = useState(false);
     const [weightedVoting, setWeightedVoting] = useState(false);
     const [hasDeadline, setHasDeadline] = useState(false);
-    const [deadline, setDeadline] = useState<Date>(new Date(Date.now() + 86400000)); // Default 24h
+    const [deadline, setDeadline] = useState<Date>(new Date(Date.now() + 86400000));
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [quorum, setQuorum] = useState<string>('');
     const [maxSelections, setMaxSelections] = useState<string>('');
     const [tags, setTags] = useState<string>('');
-    const [forwardToSpaces, setForwardToSpaces] = useState<string[]>([]);
+    
     const [availableSpaces, setAvailableSpaces] = useState<any[]>([]);
-    const [showForwardModal, setShowForwardModal] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
     const [selectedForwardSpaces, setSelectedForwardSpaces] = useState<Set<string>>(new Set());
-    const [currentStep, setCurrentStep] = useState(1);
     const [searchQuery, setSearchQuery] = useState('');
-    const [isLoadingSpaces, setIsLoadingSpaces] = useState(false);
-
-    const router = useRouter();
-    const fadeAnim = useState(new Animated.Value(0))[0];
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showForwardSection, setShowForwardSection] = useState(false);
 
     const collaborationService = CollaborationService.getInstance();
 
-    // ============ PERMISSION SYSTEM ============
-    // Determine user permissions based on role and poll data
+    // Permissions & Validation
     const isCreator = editPoll?.createdBy?.id === currentUserId;
-    const isModerator = currentUserRole === 'owner' || currentUserRole === 'moderator';
     const hasVotes = (editPoll?.totalVotes || 0) > 0;
-
-    // Permission matrix:
-    // | User Role        | Can Edit | Can Close | Can Forward | Can Delete (this space) | Can Delete (all spaces) |
-    // |------------------|----------|-----------|-------------|------------------------|-------------------------|
-    // | Creator          | ✅      | ✅       | ✅         | ✅                     | ✅                      |
-    // | Owner/Moderator  | ❌      | ✅       | ✅         | ✅                     | ❌                      |
-    // | Participant      | ❌      | ❌       | ❌         | ❌                     | ❌                      |
-
-    const canEdit = isCreator && !hasVotes && editPoll?.status === 'active';
-    const canClose = (isCreator || isModerator) && editPoll?.status === 'active';
-    const canForward = (isCreator || isModerator) && editPoll?.status === 'active';
-    const canDeleteInThisSpace = isCreator || isModerator;
-    const canDeleteAllSpaces = isCreator;
-    // ===========================================
+    const canEdit = !editPoll || (isCreator && !hasVotes && editPoll?.status === 'active');
+    const isValid = question.trim().length > 0 && options.filter(o => o.trim().length > 0).length >= 2;
 
     useEffect(() => {
         if (isVisible) {
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 300,
-                useNativeDriver: true,
-            }).start();
-
             if (editPoll) {
-                // Load existing poll for editing
                 setQuestion(editPoll.question);
                 setOptions(editPoll.options.map(o => o.text));
                 setPollType(editPoll.type);
@@ -174,9 +305,9 @@ const PollComponent: React.FC<PollComponentProps> = ({
                 if (editPoll.settings.maxSelections) setMaxSelections(editPoll.settings.maxSelections.toString());
                 if (editPoll.tags) setTags(editPoll.tags.join(', '));
             } else {
-                // Reset form
                 resetForm();
             }
+            loadAvailableSpaces();
         }
     }, [isVisible, editPoll]);
 
@@ -195,82 +326,24 @@ const PollComponent: React.FC<PollComponentProps> = ({
         setMaxSelections('');
         setTags('');
         setSelectedForwardSpaces(new Set());
-        setCurrentStep(1);
+        setShowForwardSection(false);
     };
 
-    const safeHaptics = {
-        impact: async (style: any = Haptics.ImpactFeedbackStyle.Light) => {
-            if (Platform.OS !== 'web') {
-                try {
-                    await Haptics.impactAsync(style);
-                } catch (error) {
-                    console.warn('Haptics not available:', error);
-                }
-            }
-        },
-        notification: async (type: any = Haptics.NotificationFeedbackType.Success) => {
-            if (Platform.OS !== 'web') {
-                try {
-                    await Haptics.notificationAsync(type);
-                } catch (error) {
-                    console.warn('Haptics not available:', error);
-                }
-            }
+    const loadAvailableSpaces = async () => {
+        try {
+            const result = await collaborationService.fetchUserSpaces(currentUserId);
+            // Filter out direct spaces and the current space as per common collaborative patterns
+            const filtered = result.spaces.filter(s => s.id !== spaceId && s.space_type !== 'direct' && s.space_type !== 'chat');
+            setAvailableSpaces(filtered);
+        } catch (error) {
+            console.error('Error loading spaces:', error);
         }
     };
-
-    // Compute diff between original and updated poll
-    const computePollDiff = (original: any, updated: any): string => {
-        const changes: string[] = [];
-
-        if (original.question !== updated.question) {
-            changes.push(`• Question changed from "${original.question}" to "${updated.question}"`);
-        }
-
-        const originalOptions = original.options.map((o: any) => o.text);
-        const updatedOptions = updated.options.map((o: any) => o.text);
-
-        if (JSON.stringify(originalOptions) !== JSON.stringify(updatedOptions)) {
-            changes.push(`• Options changed:`);
-            originalOptions.forEach((opt: string, idx: number) => {
-                if (updatedOptions[idx] && opt !== updatedOptions[idx]) {
-                    changes.push(`  - Option ${idx + 1}: "${opt}" → "${updatedOptions[idx]}"`);
-                }
-            });
-            if (updatedOptions.length > originalOptions.length) {
-                changes.push(`  - Added option: "${updatedOptions[updatedOptions.length - 1]}"`);
-            }
-            if (updatedOptions.length < originalOptions.length) {
-                changes.push(`  - Removed option: "${originalOptions[originalOptions.length - 1]}"`);
-            }
-        }
-
-        // Compare settings (simplified)
-        const settingsChanged = [];
-        if (original.settings.allowMultipleVotes !== updated.settings.allowMultipleVotes) settingsChanged.push('allowMultipleVotes');
-        if (original.settings.allowVoteChange !== updated.settings.allowVoteChange) settingsChanged.push('allowVoteChange');
-        if (original.settings.showResults !== updated.settings.showResults) settingsChanged.push('showResults');
-        if (original.settings.anonymous !== updated.settings.anonymous) settingsChanged.push('anonymous');
-        if (original.settings.weightedVoting !== updated.settings.weightedVoting) settingsChanged.push('weightedVoting');
-        if (original.settings.quorum !== updated.settings.quorum) settingsChanged.push('quorum');
-        if (original.settings.maxSelections !== updated.settings.maxSelections) settingsChanged.push('maxSelections');
-
-        if (settingsChanged.length > 0) {
-            changes.push(`• Settings updated: ${settingsChanged.join(', ')}`);
-        }
-
-        if (changes.length === 0) {
-            return t('no_significant_changes_detected');
-        }
-
-        return changes.join('\n');
-    };
-
 
     const addOption = async () => {
-        if (options.length < 10) {
+        if (options.length < 20) {
             setOptions([...options, '']);
-            await safeHaptics.impact();
+            safeHaptics.impact();
         }
     };
 
@@ -279,7 +352,7 @@ const PollComponent: React.FC<PollComponentProps> = ({
             const newOptions = [...options];
             newOptions.splice(index, 1);
             setOptions(newOptions);
-            await safeHaptics.impact();
+            safeHaptics.impact();
         }
     };
 
@@ -289,98 +362,17 @@ const PollComponent: React.FC<PollComponentProps> = ({
         setOptions(newOptions);
     };
 
-    const validatePoll = (): boolean => {
-        if (!question.trim()) {
-            Alert.alert(t('error'), t('please_enter_question'));
-            return false;
-        }
-
-        const validOptions = options.filter(o => o.trim().length > 0);
-        if (validOptions.length < 2) {
-            Alert.alert(t('error'), t('please_add_two_options'));
-            return false;
-        }
-
-        if (pollType === 'multiple' && maxSelections) {
-            const max = parseInt(maxSelections);
-            if (isNaN(max) || max < 1) {
-                Alert.alert(t('error'), t('max_selections_positive'));
-                return false;
-            }
-            if (max > validOptions.length) {
-                Alert.alert(t('error'), t('max_selections_exceed'));
-                return false;
-            }
-        }
-
-        if (hasDeadline && deadline <= new Date()) {
-            Alert.alert(t('error'), t('deadline_future'));
-            return false;
-        }
-
-        return true;
-    };
-
-    const createPoll = async (): Promise<Poll> => {
-        const validOptions = options.filter(o => o.trim().length > 0);
-
-        const formattedOptions = validOptions.map(text => ({
-            text: text.trim()
-        }));
-
-        const poll: Poll = {
-            id: editPoll?.id || `poll_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            spaceId,
-            createdBy: {
-                id: currentUserId,
-                name: t('current_user'), // This should come from context
-                avatar: undefined,
-            },
-            question: question.trim(),
-            options: formattedOptions.map((opt, index) => ({
-                id: `opt_${Date.now()}_${index}`,
-                text: opt.text,
-                votes: [],
-                voters: [],
-            })),
-            type: pollType,
-            settings: {
-                allowMultipleVotes,
-                allowVoteChange,
-                showResults,
-                anonymous,
-                weightedVoting,
-                ...(quorum ? { quorum: parseInt(quorum) } : {}),
-                ...(pollType === 'multiple' && maxSelections ? { maxSelections: parseInt(maxSelections, 10) } : {}),
-            },
-            ...(hasDeadline ? { deadline } : {}),
-            status: 'active',
-            totalVotes: 0,
-            uniqueVoters: 0,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            ...(tags ? { tags: tags.split(',').map(t => t.trim()).filter(t => t) } : {}),
-            ...(editPoll?.forwardedFrom ? { forwardedFrom: editPoll.forwardedFrom } : {}),
-        };
-
-        return poll;
-    };
-
-    // In PollComponent.tsx - CORRECTED handleSubmit function
     const handleSubmit = async () => {
-        if (!validatePoll()) return;
-
+        if (!isValid) return;
         setIsSubmitting(true);
+        safeHaptics.success();
 
         try {
-            // Create poll data structure
-            const poll = await createPoll(); // This returns the poll structure with options, etc.
-
-            // Prepare data for API
+            const validOptions = options.filter(o => o.trim().length > 0);
             const pollData = {
-                question: poll.question,
-                options: poll.options.map(opt => ({ text: opt.text })),
-                type: poll.type,
+                question: question.trim(),
+                options: validOptions.map(text => ({ text: text.trim() })),
+                type: pollType,
                 settings: {
                     allowMultipleVotes,
                     allowVoteChange,
@@ -395,93 +387,43 @@ const PollComponent: React.FC<PollComponentProps> = ({
             };
 
             let savedPoll;
-
             if (isEditing && editPoll) {
-                // Update existing poll
                 savedPoll = await collaborationService.updatePoll(spaceId, editPoll.id, pollData);
-
-                // Check if forwarded polls were deleted
-                if (savedPoll.forwarded_polls_deleted) {
-                    Alert.alert(
-                        t('forwarded_polls_deleted_title'),
-                        t('forwarded_polls_deleted_msg').replace('{count}', String(savedPoll.forwarded_polls_deleted.length)),
-                        [{ text: t('ok') }]
-                    );
-                }
-
-                // Send update notification to chat (simplified)
-                await collaborationService.sendMessage(spaceId, {
-                    content: t('poll_updated_notif').replace('{question}', pollData.question),
-                    type: 'text',  // ✅ This is correct (already 'text')
-                    metadata: {
-                        isPollNotification: true,
-                        pollId: savedPoll.id,
-                        notificationType: 'poll_updated',
-                    },
+                const msg = await collaborationService.sendMessage(spaceId, {
+                    content: `📊 ${t('poll_updated_notif').replace('{question}', pollData.question)}`,
+                    type: 'text',
+                    metadata: { isPollNotification: true, pollId: savedPoll.id, notificationType: 'poll_updated' },
                 });
+                onPollUpdated?.(savedPoll, msg);
             } else {
-                // Create new poll
                 savedPoll = await collaborationService.createPoll(spaceId, pollData);
-
-                // ✅ Send as type 'poll' so it appears inline in chat (WhatsApp-style)
-                await collaborationService.sendMessage(spaceId, {
+                const msg = await collaborationService.sendMessage(spaceId, {
                     content: `📊 ${pollData.question}`,
                     type: 'poll',
-                    metadata: {
-                        isPoll: true,
-                        pollId: savedPoll.id,
-                        pollData: savedPoll, // Real server poll with correct IDs
-                    },
+                    metadata: { isPoll: true, pollId: savedPoll.id, pollData: savedPoll },
                 });
 
                 if (selectedForwardSpaces.size > 0) {
                     const forwardTo = Array.from(selectedForwardSpaces);
                     await collaborationService.forwardPoll(savedPoll.id, forwardTo);
-
-                    // Send real-time messages to all forwarded spaces so it appears in chat
-                    for (const targetSpaceId of forwardTo) {
-                        await collaborationService.sendMessage(targetSpaceId, {
-                            content: t('poll_forwarded_notif').replace('{question}', savedPoll.question),
-                            type: 'poll', // Changed from text to poll
-                            metadata: {
-                                isPoll: true,
-                                isPollForward: true,
-                                pollId: savedPoll.id,
-                                pollData: savedPoll,
-                                sourceSpaceId: spaceId,
-                            },
+                    for (const targetId of forwardTo) {
+                        await collaborationService.sendMessage(targetId, {
+                            content: `📊 ${t('poll_forwarded_notif').replace('{question}', savedPoll.question)}`,
+                            type: 'poll',
+                            metadata: { isPoll: true, isPollForward: true, pollId: savedPoll.id, pollData: savedPoll, sourceSpaceId: spaceId },
                         });
                     }
-
-                    if (onPollForwarded) {
-                        onPollForwarded(savedPoll.id, forwardTo);
-                    }
+                    onPollForwarded?.(savedPoll.id, forwardTo);
                 }
+                onPollCreated?.(savedPoll, msg);
             }
-
-            await safeHaptics.notification(Haptics.NotificationFeedbackType.Success);
-
-            if (isEditing && onPollUpdated) {
-                onPollUpdated(savedPoll);
-            } else if (onPollCreated) {
-                onPollCreated(savedPoll);
-            }
-
+            onClose();
             resetForm();
-            // Let the parent component handle the onClose() logic via onPollCreated() to avoid duplicate state updates
         } catch (error: any) {
-            console.error('Error creating/updating poll:', error);
-
-            if (error.response?.status === 400 && error.response.data?.has_votes) {
-                Alert.alert(
-                    t('cannot_edit_title'),
-                    t('cannot_edit_votes_msg'),
-                    [{ text: t('ok') }]
-                );
-            } else if (error.response?.status === 422) {
-                const errors = error.response.data.errors;
-                const messages = Object.values(errors).flat().join('\n');
-                Alert.alert(t('validation_error'), messages);
+            console.error('Poll Error:', error);
+            if (error.response?.status === 422) {
+                const messages = Object.values(error.response.data.errors).flat().join('\n');
+                Alert.alert(t('error'), messages);
             } else {
                 Alert.alert(t('error'), error.response?.data?.message || t('failed_save_poll_msg'));
             }
@@ -489,870 +431,372 @@ const PollComponent: React.FC<PollComponentProps> = ({
             setIsSubmitting(false);
         }
     };
-    // Load available spaces for forwarding
-    const loadAvailableSpaces = async () => {
-        setIsLoadingSpaces(true);
-        try {
-            const result = await collaborationService.fetchUserSpaces(currentUserId);
-            const userSpaces = result.spaces;
-            const filtered = userSpaces.filter(s => s.id !== spaceId);
-            setAvailableSpaces(filtered);
-        } catch (error) {
-            console.error('Error loading spaces:', error);
-            Alert.alert(t('error'), t('could_not_load_spaces'));
-        } finally {
-            setIsLoadingSpaces(false);
-        }
-    };
 
-    const handleOpenForwardModal = () => {
-        loadAvailableSpaces();
-        setShowForwardModal(true);
-    };
+    const pollTypes = [
+        { id: 'single', name: t('single_choice'), icon: 'radio-button-on', color: '#3b82f6' },
+        { id: 'multiple', name: t('multiple_choice'), icon: 'checkbox', color: '#10b981' },
+        { id: 'ranked', name: t('ranked_choice'), icon: 'list', color: '#f59e0b' },
+        { id: 'weighted', name: t('weighted_choice'), icon: 'star', color: '#8b5cf6' },
+    ];
 
-    const renderStep1 = () => (
-        <View style={styles.stepContainer}>
-            <Text style={styles.sectionTitle}>{t('poll_question_title')}</Text>
-            <TextInput
-                style={styles.questionInput}
-                placeholder={t('ask_question_placeholder')}
-                value={question}
-                onChangeText={setQuestion}
-                multiline
-                maxLength={200}
-            />
-
-            <Text style={styles.sectionTitle}>{t('options_title')}</Text>
-            {options.map((option, index) => (
-                <View key={index} style={styles.optionRow}>
-                    <View style={styles.optionNumber}>
-                        <Text style={styles.optionNumberText}>{index + 1}</Text>
-                    </View>
-                    <TextInput
-                        style={styles.optionInput}
-                        placeholder={t('option_placeholder').replace('{index}', String(index + 1))}
-                        value={option}
-                        onChangeText={(text) => updateOption(text, index)}
-                        maxLength={100}
-                    />
-                    {options.length > 2 && (
-                        <TouchableOpacity onPress={() => removeOption(index)}>
-                            <Ionicons name="close-circle" size={24} color="#FF6B6B" />
-                        </TouchableOpacity>
-                    )}
-                </View>
-            ))}
-
-            {options.length < 10 && (
-                <TouchableOpacity style={styles.addOptionButton} onPress={addOption}>
-                    <Ionicons name="add-circle" size={24} color="#007AFF" />
-                    <Text style={styles.addOptionText}>{t('add_option_btn')}</Text>
-                </TouchableOpacity>
-            )}
-        </View>
-    );
-
-    const renderStep2 = () => (
-        <View style={styles.stepContainer}>
-            <Text style={styles.sectionTitle}>{t('poll_settings_title')}</Text>
-
-            <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>{t('poll_type_label')}</Text>
-                <View style={styles.typeSelector}>
-                    {['single', 'multiple', 'ranked', 'weighted'].map((type) => (
-                        <TouchableOpacity
-                            key={type}
-                            style={[
-                                styles.typeButton,
-                                pollType === type && styles.typeButtonActive,
-                            ]}
-                            onPress={() => setPollType(type as any)}
-                        >
-                            <Text
-                                style={[
-                                    styles.typeButtonText,
-                                    pollType === type && styles.typeButtonTextActive,
-                                ]}
-                            >
-                                {t(`${type}_choice`)}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-            </View>
-
-            {pollType === 'multiple' && (
-                <View style={styles.settingRow}>
-                    <Text style={styles.settingLabel}>{t('max_selections_label')}</Text>
-                    <TextInput
-                        style={styles.numberInput}
-                        value={maxSelections}
-                        onChangeText={setMaxSelections}
-                        keyboardType="numeric"
-                        placeholder={t('unlimited_placeholder')}
-                    />
-                </View>
-            )}
-
-            <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>{t('allow_multiple_votes_label')}</Text>
-                <Switch
-                    value={allowMultipleVotes}
-                    onValueChange={setAllowMultipleVotes}
-                    trackColor={{ false: '#e0e0e0', true: '#007AFF' }}
-                />
-            </View>
-
-            <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>{t('allow_vote_change_label')}</Text>
-                <Switch
-                    value={allowVoteChange}
-                    onValueChange={setAllowVoteChange}
-                    trackColor={{ false: '#e0e0e0', true: '#007AFF' }}
-                />
-            </View>
-
-            <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>{t('show_results_label')}</Text>
-                <View style={styles.resultsSelector}>
-                    {['always', 'after_vote', 'after_deadline', 'creator_only'].map((option) => (
-                        <TouchableOpacity
-                            key={option}
-                            style={[
-                                styles.resultsButton,
-                                showResults === option && styles.resultsButtonActive,
-                            ]}
-                            onPress={() => setShowResults(option as any)}
-                        >
-                            <Text
-                                style={[
-                                    styles.resultsButtonText,
-                                    showResults === option && styles.resultsButtonTextActive,
-                                ]}
-                            >
-                                {t(`${option}_show_results`)}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-            </View>
-
-            <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>{t('anonymous_voting_label')}</Text>
-                <Switch
-                    value={anonymous}
-                    onValueChange={setAnonymous}
-                    trackColor={{ false: '#e0e0e0', true: '#007AFF' }}
-                />
-            </View>
-
-            <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>{t('weighted_voting_label')}</Text>
-                <Switch
-                    value={weightedVoting}
-                    onValueChange={setWeightedVoting}
-                    trackColor={{ false: '#e0e0e0', true: '#007AFF' }}
-                />
-            </View>
-        </View>
-    );
-
-    const renderStep3 = () => (
-        <View style={styles.stepContainer}>
-            <Text style={styles.sectionTitle}>{t('advanced_options_title')}</Text>
-
-            <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>{t('has_deadline_label')}</Text>
-                <Switch
-                    value={hasDeadline}
-                    onValueChange={setHasDeadline}
-                    trackColor={{ false: '#e0e0e0', true: '#007AFF' }}
-                />
-            </View>
-
-            {hasDeadline && (
-                <TouchableOpacity
-                    style={styles.datePickerButton}
-                    onPress={() => setShowDatePicker(true)}
-                >
-                    <Ionicons name="calendar" size={20} color="#007AFF" />
-                    <Text style={styles.datePickerText}>
-                        {deadline.toLocaleString()}
-                    </Text>
-                </TouchableOpacity>
-            )}
-
-            {showDatePicker && Platform.OS !== 'web' && DateTimePicker && (
-                <DateTimePicker
-                    value={deadline}
-                    mode="datetime"
-                    onChange={(event: any, selectedDate?: Date) => {
-                        setShowDatePicker(false);
-                        if (selectedDate) setDeadline(selectedDate);
-                    }}
-                />
-            )}
-
-            <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>{t('quorum_min_participants_label')}</Text>
-                <TextInput
-                    style={styles.numberInput}
-                    value={quorum}
-                    onChangeText={setQuorum}
-                    keyboardType="numeric"
-                    placeholder={t('no_minimum_placeholder')}
-                />
-            </View>
-
-            <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>{t('tags_comma_separated_label')}</Text>
-                <TextInput
-                    style={styles.tagsInput}
-                    value={tags}
-                    onChangeText={setTags}
-                    placeholder={t('tags_placeholder')}
-                />
-            </View>
-        </View>
-    );
-
-    const renderStep4 = () => (
-        <View style={styles.stepContainer}>
-            <Text style={styles.sectionTitle}>{t('forward_to_spaces_title')}</Text>
-
-            <TouchableOpacity
-                style={styles.forwardButton}
-                onPress={handleOpenForwardModal}
-            >
-                <Ionicons name="share-social" size={20} color="#007AFF" />
-                <Text style={styles.forwardButtonText}>
-                    {selectedForwardSpaces.size > 0
-                        ? t('forwarding_to_spaces_msg').replace('{count}', String(selectedForwardSpaces.size))
-                        : t('select_spaces_forward_msg')}
-                </Text>
-            </TouchableOpacity>
-
-            <View style={styles.previewContainer}>
-                <Text style={styles.previewTitle}>{t('preview_title')}</Text>
-                <View style={styles.pollPreview}>
-                    <Text style={styles.previewQuestion}>{question || t('your_poll_question_placeholder')}</Text>
-                    {options.filter(o => o.trim()).map((opt, idx) => (
-                        <View key={idx} style={styles.previewOption}>
-                            <Text style={styles.previewOptionText}>• {opt || t('option_placeholder').replace('{index}', String(idx + 1))}</Text>
-                        </View>
-                    ))}
-                </View>
-            </View>
-        </View>
-    );
+    const resultsOptions = [
+        { id: 'always', name: t('always_show_results') },
+        { id: 'after_vote', name: t('after_vote_show_results') },
+        { id: 'after_deadline', name: t('after_deadline_show_results') },
+        { id: 'creator_only', name: t('creator_only_show_results') },
+    ];
 
     return (
-        <Modal
-            visible={isVisible}
-            animationType="slide"
-            transparent={true}
-            onRequestClose={onClose}
-        >
-            <View style={styles.modalOverlay}>
-                <Animated.View style={[styles.modalContent, { opacity: fadeAnim }]}>
-                    <View style={styles.modalHeader}>
-                        <TouchableOpacity onPress={onClose}>
-                            <Ionicons name="close" size={24} color="#666" />
-                        </TouchableOpacity>
-                        <Text style={styles.modalTitle}>
-                            {editPoll ? t('edit_poll_title') : t('create_poll_title')}
-                        </Text>
-                        <View style={{ width: 24 }} />
-                    </View>
+        <Modal visible={isVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+            <LinearGradient colors={isDark ? [colors.background, colors.background] : ['#f8fafc', '#f1f5f9']} style={[styles.container, { paddingTop: insets.top || 20 }]}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={onClose} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}>
+                        <Ionicons name="close" size={28} color={colors.text} />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>{isEditing ? t('edit_poll_title') : t('create_poll_title')}</Text>
+                    <View style={{ width: 28 }} />
+                </View>
 
-                    <View style={styles.stepIndicator}>
-                        {[1, 2, 3, 4].map((step) => (
-                            <TouchableOpacity
-                                key={step}
-                                style={[
-                                    styles.stepDot,
-                                    currentStep === step && styles.stepDotActive,
-                                    currentStep > step && styles.stepDotCompleted,
-                                ]}
-                                onPress={() => setCurrentStep(step)}
+                <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                    <MotiView entering={FadeIn.duration(400)} style={styles.contentMaxWidth}>
+                        
+                        {/* Question Input */}
+                        <View style={styles.card}>
+                            <Text style={styles.cardLabel}>{t('poll_question_title')}</Text>
+                            <TextInput
+                                style={styles.questionInput}
+                                placeholder={t('your_poll_question_placeholder')}
+                                placeholderTextColor={colors.textSecondary + '70'}
+                                value={question}
+                                onChangeText={setQuestion}
+                                multiline
+                                maxLength={200}
+                                editable={canEdit}
+                            />
+                            <View style={styles.separator} />
+                            <View style={styles.tagsRow}>
+                                <Ionicons name="pricetag-outline" size={16} color={colors.textSecondary} />
+                                <TextInput
+                                    style={styles.tagsInput}
+                                    placeholder={t('tags_placeholder')}
+                                    placeholderTextColor={colors.textSecondary + '70'}
+                                    value={tags}
+                                    onChangeText={setTags}
+                                />
+                            </View>
+                        </View>
+
+                        {/* Options List */}
+                        <Text style={styles.sectionLabel}>{t('options_title')}</Text>
+                        <View style={styles.optionsList}>
+                            {options.map((option, index) => (
+                                <View key={index} style={styles.optionRow}>
+                                    <View style={[styles.optionIndex, { backgroundColor: colors.tint + '15' }]}>
+                                        <Text style={[styles.optionIndexText, { color: colors.tint }]}>{index + 1}</Text>
+                                    </View>
+                                    <TextInput
+                                        style={styles.optionInput}
+                                        placeholder={t('option_placeholder', { index: index + 1 })}
+                                        placeholderTextColor={colors.textSecondary + '60'}
+                                        value={option}
+                                        onChangeText={(text) => updateOption(text, index)}
+                                        editable={canEdit}
+                                    />
+                                    {options.length > 2 && canEdit && (
+                                        <TouchableOpacity onPress={() => removeOption(index)} style={styles.removeBtn}>
+                                            <Ionicons name="remove-circle-outline" size={22} color="#ef4444" />
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                            ))}
+                            {canEdit && options.length < 20 && (
+                                <TouchableOpacity style={styles.addOptionBtn} onPress={addOption}>
+                                    <Ionicons name="add-circle" size={24} color={colors.tint} />
+                                    <Text style={styles.addOptionText}>{t('add_option_btn')}</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+
+                        {/* Poll Type Selector */}
+                        <Text style={styles.sectionLabel}>{t('poll_type_label')}</Text>
+                        <View style={styles.pillsGrid}>
+                            {pollTypes.map((type) => (
+                                <TouchableOpacity
+                                    key={type.id}
+                                    style={[styles.pill, pollType === type.id && styles.pillActive]}
+                                    onPress={() => { setPollType(type.id as any); safeHaptics.impact(); }}
+                                    disabled={!canEdit}
+                                >
+                                    <Ionicons name={type.icon as any} size={18} color={pollType === type.id ? '#fff' : colors.tint} />
+                                    <Text style={[styles.pillText, pollType === type.id && styles.pillTextActive]}>{type.name}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        {/* Settings Toggles */}
+                        <Text style={styles.sectionLabel}>{t('poll_settings_title')}</Text>
+                        <View style={styles.settingsToggles}>
+                            <TouchableOpacity 
+                                style={[styles.togglePill, anonymous && styles.togglePillActive]} 
+                                onPress={() => setAnonymous(!anonymous)}
+                                disabled={!canEdit}
                             >
-                                {currentStep > step ? (
-                                    <Ionicons name="checkmark" size={12} color="#fff" />
-                                ) : (
-                                    <Text style={styles.stepDotText}>{step}</Text>
-                                )}
+                                <Ionicons name={anonymous ? "person-circle" : "person-circle-outline"} size={18} color={anonymous ? "#fff" : colors.textSecondary} />
+                                <Text style={[styles.togglePillText, anonymous && styles.togglePillTextActive]}>{t('anonymous_voting_label')}</Text>
                             </TouchableOpacity>
-                        ))}
-                    </View>
 
-                    <ScrollView style={styles.scrollContent}>
-                        {currentStep === 1 && renderStep1()}
-                        {currentStep === 2 && renderStep2()}
-                        {currentStep === 3 && renderStep3()}
-                        {currentStep === 4 && renderStep4()}
-                    </ScrollView>
-
-                    <View style={styles.modalFooter}>
-                        <TouchableOpacity
-                            style={[styles.footerButton, styles.cancelButton]}
-                            onPress={onClose}
-                            disabled={isSubmitting}
-                        >
-                            <Text style={styles.cancelButtonText}>{t('cancel')}</Text>
-                        </TouchableOpacity>
-
-                        {currentStep < 4 ? (
-                            <TouchableOpacity
-                                style={[styles.footerButton, styles.nextButton]}
-                                onPress={() => setCurrentStep(currentStep + 1)}
+                            <TouchableOpacity 
+                                style={[styles.togglePill, allowVoteChange && styles.togglePillActive]} 
+                                onPress={() => setAllowVoteChange(!allowVoteChange)}
+                                disabled={!canEdit}
                             >
-                                <Text style={styles.nextButtonText}>{t('next')}</Text>
-                                <Ionicons name="arrow-forward" size={20} color="#fff" />
+                                <Ionicons name="refresh-outline" size={18} color={allowVoteChange ? "#fff" : colors.textSecondary} />
+                                <Text style={[styles.togglePillText, allowVoteChange && styles.togglePillTextActive]}>{t('allow_vote_change_label')}</Text>
                             </TouchableOpacity>
-                        ) : (
-                            <TouchableOpacity
-                                style={[
-                                    styles.footerButton,
-                                    styles.createButton,
-                                    isSubmitting && styles.createButtonDisabled,
-                                ]}
-                                onPress={handleSubmit}
-                                disabled={isSubmitting}
-                            >
-                                {isSubmitting ? (
-                                    <ActivityIndicator size="small" color="#fff" />
-                                ) : (
-                                    <>
-                                        <Ionicons name="checkmark" size={20} color="#fff" />
-                                        <Text style={styles.createButtonText}>
-                                            {editPoll ? t('update_poll') : t('create_poll')}
-                                        </Text>
-                                    </>
-                                )}
-                            </TouchableOpacity>
-                        )}
-                    </View>
-                </Animated.View>
-            </View>
 
-            {/* Forward to Spaces Modal */}
-            <Modal
-                visible={showForwardModal}
-                animationType="slide"
-                transparent={true}
-                onRequestClose={() => setShowForwardModal(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.forwardModalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>{t('forward_to_spaces_title')}</Text>
-                            <TouchableOpacity onPress={() => setShowForwardModal(false)}>
-                                <Ionicons name="close" size={24} color="#666" />
+                            <TouchableOpacity 
+                                style={[styles.togglePill, allowMultipleVotes && styles.togglePillActive]} 
+                                onPress={() => setAllowMultipleVotes(!allowMultipleVotes)}
+                                disabled={!canEdit}
+                            >
+                                <Ionicons name="checkbox-outline" size={18} color={allowMultipleVotes ? "#fff" : colors.textSecondary} />
+                                <Text style={[styles.togglePillText, allowMultipleVotes && styles.togglePillTextActive]}>{t('allow_multiple_votes_label')}</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity 
+                                style={[styles.togglePill, weightedVoting && styles.togglePillActive]} 
+                                onPress={() => setWeightedVoting(!weightedVoting)}
+                                disabled={!canEdit}
+                            >
+                                <Ionicons name="star-outline" size={18} color={weightedVoting ? "#fff" : colors.textSecondary} />
+                                <Text style={[styles.togglePillText, weightedVoting && styles.togglePillTextActive]}>{t('weighted_voting_label')}</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity 
+                                style={[styles.togglePill, hasDeadline && styles.togglePillActive]} 
+                                onPress={() => setHasDeadline(!hasDeadline)}
+                                disabled={!canEdit}
+                            >
+                                <Ionicons name="time-outline" size={18} color={hasDeadline ? "#fff" : colors.textSecondary} />
+                                <Text style={[styles.togglePillText, hasDeadline && styles.togglePillTextActive]}>{t('has_deadline_label')}</Text>
                             </TouchableOpacity>
                         </View>
 
-                        <TextInput
-                            style={styles.searchInput}
-                            placeholder={t('search_spaces_placeholder')}
-                            value={searchQuery}
-                            onChangeText={setSearchQuery}
-                            clearButtonMode="while-editing"
-                        />
-
-                        {isLoadingSpaces ? (
-                            <View style={styles.loadingContainer}>
-                                <ActivityIndicator size="large" color="#007AFF" />
-                                <Text style={styles.loadingText}>{t('loading_spaces_msg')}</Text>
-                            </View>
-                        ) : (
-                            <FlatList
-                                data={availableSpaces.filter(s =>
-                                    s.title?.toLowerCase().includes(searchQuery.toLowerCase())
-                                )}
-                                keyExtractor={(item) => item.id}
-                                style={styles.spacesList}
-                                renderItem={({ item }) => (
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.spaceItem,
-                                            selectedForwardSpaces.has(item.id) && styles.spaceItemSelected
-                                        ]}
-                                        onPress={() => {
-                                            const newSelected = new Set(selectedForwardSpaces);
-                                            if (newSelected.has(item.id)) {
-                                                newSelected.delete(item.id);
-                                            } else {
-                                                newSelected.add(item.id);
-                                            }
-                                            setSelectedForwardSpaces(newSelected);
-                                        }}
-                                    >
-                                        <Avatar
-                                            source={item.creator?.profile_photo}
-                                            size={40}
-                                            name={item.title}
-                                        />
-                                        <View style={styles.spaceInfo}>
-                                            <Text style={styles.spaceTitle}>{item.title}</Text>
-                                            <Text style={styles.spaceType}>{item.space_type}</Text>
+                        {/* Conditional Advanced Inputs */}
+                        {(hasDeadline || quorum || pollType === 'multiple') && (
+                            <MotiView from={{ opacity: 0, scaleY: 0.9 }} animate={{ opacity: 1, scaleY: 1 }} style={styles.advancedInputs}>
+                                {hasDeadline && (
+                                    <TouchableOpacity style={styles.inputCard} onPress={() => setShowDatePicker(true)} disabled={!canEdit}>
+                                        <View style={styles.inputIconCircle}>
+                                            <Ionicons name="calendar-outline" size={18} color={colors.tint} />
                                         </View>
-                                        {selectedForwardSpaces.has(item.id) && (
-                                            <Ionicons name="checkmark-circle" size={24} color="#007AFF" />
-                                        )}
+                                        <View style={styles.inputInfo}>
+                                            <Text style={styles.inputLabel}>{t('poll_deadline')}</Text>
+                                            <Text style={styles.inputValue}>{format(deadline, 'PPpp')}</Text>
+                                        </View>
+                                        <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
                                     </TouchableOpacity>
                                 )}
-                                ListEmptyComponent={
-                                    <Text style={styles.emptyText}>{t('no_spaces_available')}</Text>
-                                }
-                            />
+                                <View style={styles.inputsRow}>
+                                    <View style={[styles.inputCard, { flex: 1 }]}>
+                                        <View style={styles.inputIconCircle}>
+                                            <Ionicons name="people-outline" size={18} color={colors.tint} />
+                                        </View>
+                                        <View style={styles.inputInfo}>
+                                            <Text style={styles.inputLabel}>{t('quorum_label')}</Text>
+                                            <TextInput
+                                                style={styles.textInput}
+                                                value={quorum}
+                                                onChangeText={v => setQuorum(v.replace(/\D/g, ''))}
+                                                keyboardType="numeric"
+                                                placeholder="0"
+                                                editable={canEdit}
+                                            />
+                                        </View>
+                                    </View>
+                                    {pollType === 'multiple' && (
+                                        <View style={[styles.inputCard, { flex: 1 }]}>
+                                            <View style={styles.inputIconCircle}>
+                                                <Ionicons name="list-outline" size={18} color={colors.tint} />
+                                            </View>
+                                            <View style={styles.inputInfo}>
+                                                <Text style={styles.inputLabel}>{t('max_selections_label')}</Text>
+                                                <TextInput
+                                                    style={styles.textInput}
+                                                    value={maxSelections}
+                                                    onChangeText={v => setMaxSelections(v.replace(/\D/g, ''))}
+                                                    keyboardType="numeric"
+                                                    placeholder="2"
+                                                    editable={canEdit}
+                                                />
+                                            </View>
+                                        </View>
+                                    )}
+                                </View>
+                            </MotiView>
                         )}
 
-                        <View style={styles.modalButtons}>
-                            <TouchableOpacity
-                                style={[styles.modalButton, styles.modalButtonCancel]}
-                                onPress={() => {
-                                    setShowForwardModal(false);
-                                    setSelectedForwardSpaces(new Set());
-                                }}
-                            >
-                                <Text style={styles.modalButtonTextCancel}>Cancel</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={[
-                                    styles.modalButton,
-                                    styles.modalButtonConfirm,
-                                    selectedForwardSpaces.size === 0 && styles.modalButtonDisabled
-                                ]}
-                                onPress={() => {
-                                    setShowForwardModal(false);
-                                    // No need to save here; selectedForwardSpaces is already set
-                                }}
-                                disabled={selectedForwardSpaces.size === 0}
-                            >
-                                <Text style={styles.modalButtonTextConfirm}>
-                                    {t('done_count').replace('{count}', selectedForwardSpaces.size.toString())}
-                                </Text>
-                            </TouchableOpacity>
+                        {/* Show Results Settings */}
+                        <Text style={styles.sectionLabel}>{t('show_results_label')}</Text>
+                        <View style={styles.pillsGrid}>
+                            {resultsOptions.map((opt) => (
+                                <TouchableOpacity
+                                    key={opt.id}
+                                    style={[styles.pill, showResults === opt.id && styles.pillActive]}
+                                    onPress={() => { setShowResults(opt.id as any); safeHaptics.impact(); }}
+                                    disabled={!canEdit}
+                                >
+                                    <Text style={[styles.pillText, showResults === opt.id && styles.pillTextActive]}>{opt.name}</Text>
+                                </TouchableOpacity>
+                            ))}
                         </View>
-                    </View>
+
+                        {/* Forwarding Section */}
+                        <TouchableOpacity style={styles.forwardHeader} onPress={() => setShowForwardSection(!showForwardSection)}>
+                            <Text style={styles.sectionLabel}>{t('forward_poll_title')}</Text>
+                            <Ionicons name={showForwardSection ? "chevron-up" : "chevron-down"} size={16} color={colors.textSecondary} />
+                        </TouchableOpacity>
+                        {showForwardSection && (
+                            <View style={styles.forwardContent}>
+                                <TextInput
+                                    style={styles.searchInput}
+                                    placeholder={t('search_spaces_placeholder')}
+                                    value={searchQuery}
+                                    onChangeText={setSearchQuery}
+                                />
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.spacesScrollContent}>
+                                    {availableSpaces
+                                        .filter(s => s.title.toLowerCase().includes(searchQuery.toLowerCase()))
+                                        .map(s => (
+                                        <TouchableOpacity
+                                            key={s.id}
+                                            style={[styles.spacePill, selectedForwardSpaces.has(s.id) && styles.spacePillActive]}
+                                            onPress={() => {
+                                                const next = new Set(selectedForwardSpaces);
+                                                if (next.has(s.id)) next.delete(s.id); else next.add(s.id);
+                                                setSelectedForwardSpaces(next);
+                                                safeHaptics.impact();
+                                            }}
+                                        >
+                                            <Avatar source={s.image_url} name={s.title} size={24} />
+                                            <Text style={[styles.spacePillText, selectedForwardSpaces.has(s.id) && { color: colors.tint }]}>{s.title}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            </View>
+                        )}
+                    </MotiView>
+                </ScrollView>
+
+                {/* Submit Footer */}
+                <View style={styles.footer}>
+                    <TouchableOpacity
+                        style={[styles.submitBtn, (!isValid || isSubmitting) && styles.submitBtnDisabled]}
+                        onPress={handleSubmit}
+                        disabled={!isValid || isSubmitting}
+                    >
+                        <LinearGradient colors={isValid ? ['#6366f1', '#4f46e5'] : [colors.muted, colors.muted]} style={styles.submitGradient}>
+                            {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>{isEditing ? t('edit_poll_title') : t('create_poll_title')}</Text>}
+                        </LinearGradient>
+                    </TouchableOpacity>
                 </View>
-            </Modal>
+
+                {/* Deadline Picker */}
+                <DeadlinePickerModal
+                    visible={showDatePicker}
+                    value={deadline}
+                    onConfirm={(date) => { setDeadline(date); setShowDatePicker(false); }}
+                    onClose={() => setShowDatePicker(false)}
+                />
+            </LinearGradient>
         </Modal>
     );
 };
 
-const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    modalContent: {
-        backgroundColor: colors.card,
-        borderRadius: 16,
-        width: '100%',
-        maxWidth: 600,
-        maxHeight: '80%',
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-    },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: colors.text,
-    },
-    stepIndicator: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingVertical: 16,
-        paddingHorizontal: 24,
-        gap: 16,
-    },
-    stepDot: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: activeScheme === 'dark' ? colors.muted : '#f0f0f0',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    stepDotActive: {
-        backgroundColor: colors.tint,
-    },
-    stepDotCompleted: {
-        backgroundColor: '#4CAF50',
-    },
-    stepDotText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: colors.textSecondary,
-    },
-    scrollContent: {
-        padding: 16,
-    },
-    stepContainer: {
-        gap: 16,
-    },
-    sectionTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: colors.text,
-        marginBottom: 8,
-    },
-    questionInput: {
-        fontSize: 16,
-        padding: 12,
-        backgroundColor: colors.muted,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: colors.border,
-        color: colors.text,
-        minHeight: 80,
-        textAlignVertical: 'top',
-    },
-    optionRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginBottom: 8,
-    },
-    optionNumber: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: colors.tint,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    optionNumberText: {
-        color: '#fff',
-        fontSize: 12,
-        fontWeight: '600',
-    },
-    optionInput: {
-        flex: 1,
-        fontSize: 16,
-        padding: 10,
-        backgroundColor: colors.muted,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: colors.border,
-        color: colors.text,
-    },
-    addOptionButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 12,
-        backgroundColor: colors.tint + '10',
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: colors.tint,
-        borderStyle: 'dashed',
-        marginTop: 8,
-    },
-    addOptionText: {
-        marginLeft: 8,
-        fontSize: 14,
-        fontWeight: '600',
-        color: colors.tint,
-    },
-    settingRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-    },
-    settingLabel: {
-        fontSize: 15,
-        color: colors.text,
-        flex: 1,
-    },
-    typeSelector: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    typeButton: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 16,
-        backgroundColor: colors.muted,
-    },
-    typeButtonActive: {
-        backgroundColor: colors.tint,
-    },
-    typeButtonText: {
-        fontSize: 12,
-        color: colors.textSecondary,
-    },
-    typeButtonTextActive: {
-        color: '#fff',
-    },
-    resultsSelector: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-        justifyContent: 'flex-end',
-    },
-    resultsButton: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
-        backgroundColor: colors.muted,
-    },
-    resultsButtonActive: {
-        backgroundColor: colors.tint,
-    },
-    resultsButtonText: {
-        fontSize: 11,
-        color: colors.textSecondary,
-    },
-    resultsButtonTextActive: {
-        color: '#fff',
-    },
-    numberInput: {
-        width: 80,
-        fontSize: 15,
-        padding: 8,
-        backgroundColor: colors.muted,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: colors.border,
-        color: colors.text,
-        textAlign: 'center',
-    },
-    tagsInput: {
-        flex: 1,
-        fontSize: 15,
-        padding: 8,
-        backgroundColor: colors.muted,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: colors.border,
-        color: colors.text,
-    },
-    datePickerButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        padding: 12,
-        backgroundColor: colors.muted,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: colors.border,
-    },
-    datePickerText: {
-        fontSize: 15,
-        color: colors.text,
-    },
-    forwardButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        padding: 12,
-        backgroundColor: colors.muted,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: colors.border,
-    },
-    forwardButtonText: {
-        fontSize: 15,
-        color: colors.tint,
-        fontWeight: '500',
-    },
-    previewContainer: {
-        marginTop: 16,
-        padding: 12,
-        backgroundColor: colors.muted,
-        borderRadius: 8,
-    },
-    previewTitle: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: colors.textSecondary,
-        marginBottom: 8,
-    },
-    pollPreview: {
-        backgroundColor: colors.card,
-        borderRadius: 8,
-        padding: 12,
-    },
-    previewQuestion: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: colors.text,
-        marginBottom: 8,
-    },
-    previewOption: {
-        paddingVertical: 6,
-    },
-    previewOptionText: {
-        fontSize: 14,
-        color: colors.textSecondary,
-    },
-    modalFooter: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        padding: 16,
-        borderTopWidth: 1,
-        borderTopColor: colors.border,
-        gap: 12,
-    },
-    footerButton: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 12,
-        borderRadius: 8,
-        gap: 8,
-    },
-    cancelButton: {
-        backgroundColor: colors.muted,
-    },
-    cancelButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: colors.textSecondary,
-    },
-    nextButton: {
-        backgroundColor: colors.tint,
-    },
-    nextButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: activeScheme === 'dark' ? '#000' : '#fff',
-    },
-    createButton: {
-        backgroundColor: '#4CAF50',
-    },
-    createButtonDisabled: {
-        opacity: 0.5,
-    },
-    createButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#fff',
-    },
-    forwardModalContent: {
-        backgroundColor: colors.card,
-        borderRadius: 16,
-        width: '90%',
-        maxWidth: 500,
-        maxHeight: '70%',
-    },
-    spacesList: {
-        padding: 16,
-        maxHeight: 400,
-    },
-    placeholderText: {
-        textAlign: 'center',
-        color: colors.textSecondary,
-        padding: 20,
-    },
-    doneButton: {
-        padding: 16,
-        alignItems: 'center',
-        borderTopWidth: 1,
-        borderTopColor: colors.border,
-    },
-    doneButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: colors.tint,
-    },
-    loadingContainer: {
-        padding: 20,
-        alignItems: 'center',
-    },
-    loadingText: {
-        marginTop: 10,
-        color: colors.textSecondary,
-    },
-    searchInput: {
-        fontSize: 16,
-        padding: 12,
-        backgroundColor: colors.muted,
-        borderRadius: 8,
-        marginHorizontal: 16,
-        marginBottom: 16,
-        color: colors.text,
-    },
-    spacesListSearch: {
-        maxHeight: 300,
-    },
-    spaceItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-    },
-    spaceItemSelected: {
-        backgroundColor: colors.tint + '10',
-    },
-    spaceInfo: {
-        flex: 1,
-        marginLeft: 12,
-    },
-    spaceTitle: {
-        fontSize: 16,
-        fontWeight: '500',
-        color: colors.text,
-    },
-    spaceType: {
-        fontSize: 12,
-        color: colors.textSecondary,
-        marginTop: 2,
-    },
-    emptyText: {
-        textAlign: 'center',
-        padding: 20,
-        color: colors.textSecondary,
-    },
-    modalButtons: {
-        flexDirection: 'row',
-        padding: 16,
-        gap: 12,
-    },
-    modalButton: {
-        flex: 1,
-        paddingVertical: 12,
-        borderRadius: 8,
-        alignItems: 'center',
-    },
-    modalButtonCancel: {
-        backgroundColor: colors.muted,
-    },
-    modalButtonConfirm: {
-        backgroundColor: colors.tint,
-    },
-    modalButtonDisabled: {
-        opacity: 0.5,
-    },
-    modalButtonTextCancel: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: colors.textSecondary,
-    },
-    modalButtonTextConfirm: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: activeScheme === 'dark' ? '#000' : '#fff',
-    },
-});
+// ─── Styles ─────────────────────────────────────────────────────────────────
+
+const getDatePickerStyles = (colors: any, activeScheme: string) => {
+    const isDark = activeScheme === 'dark';
+    return StyleSheet.create({
+        overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+        sheet: { backgroundColor: isDark ? '#111' : colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40, width: '100%', maxHeight: '80%' },
+        handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginTop: 10, marginBottom: 10 },
+        header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: colors.border },
+        title: { fontSize: 16, fontWeight: '900', color: colors.text },
+        cancelBtn: { fontSize: 15, color: colors.textSecondary, fontWeight: '700' },
+        doneBtn: { fontSize: 15, color: colors.tint, fontWeight: '900' },
+        webDateContainer: { paddingVertical: 20, alignItems: 'center', width: '100%', paddingHorizontal: 20 },
+        webDateLabel: { fontSize: 14, color: colors.textSecondary, fontWeight: '700', marginBottom: 12 },
+        pickerRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingVertical: 15 },
+        pickerCol: { flex: 1, alignItems: 'center' },
+        pickerLabel: { fontSize: 10, fontWeight: '900', color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 6 },
+        pickerInput: { width: '100%', borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, fontSize: 18, fontWeight: '800', textAlign: 'center', color: colors.text, backgroundColor: isDark ? '#1A1A1A' : colors.background },
+        monthScroll: { maxHeight: 150, width: '100%' },
+        monthItem: { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, marginBottom: 4, alignItems: 'center' },
+        monthItemActive: { backgroundColor: colors.tint + '20' },
+        monthText: { fontSize: 14, color: colors.textSecondary, fontWeight: '700' },
+        monthTextActive: { color: colors.tint, fontWeight: '900' },
+    });
+};
+
+const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => {
+    const isDark = activeScheme === 'dark';
+    const SHADOW = createShadow({ height: 4, opacity: isDark ? 0.3 : 0.05, radius: 8, elevation: 4 });
+
+    return StyleSheet.create({
+        container: { flex: 1 },
+        header: { flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, height: 60 },
+        headerTitle: { fontSize: 15, fontWeight: '900', color: colors.text, textTransform: 'uppercase', letterSpacing: 1 },
+        scroll: { flex: 1 },
+        scrollContent: { paddingBottom: 140 },
+        contentMaxWidth: { width: '100%', maxWidth: 1440, alignSelf: 'center', paddingHorizontal: 20 },
+        card: { backgroundColor: colors.card, borderRadius: 20, padding: 20, marginBottom: 20, ...SHADOW },
+        cardLabel: { fontSize: 10, fontWeight: '900', color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 12 },
+        questionInput: { fontSize: 20, fontWeight: '800', color: colors.text, textAlign: isRTL ? 'right' : 'left', minHeight: 60 },
+        separator: { height: 1, backgroundColor: colors.border, opacity: 0.15, marginVertical: 12 },
+        tagsRow: { flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 10 },
+        tagsInput: { flex: 1, fontSize: 14, color: colors.textSecondary },
+        sectionLabel: { fontSize: 11, fontWeight: '900', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 12, marginTop: 10 },
+        optionsList: { gap: 10, marginBottom: 20 },
+        optionRow: { flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 10 },
+        optionIndex: { width: 26, height: 26, borderRadius: 13, justifyContent: 'center', alignItems: 'center' },
+        optionIndexText: { fontSize: 11, fontWeight: '900' },
+        optionInput: { flex: 1, height: 48, backgroundColor: colors.card, borderRadius: 12, paddingHorizontal: 15, fontSize: 15, color: colors.text, borderWidth: 1, borderColor: colors.border + '20', ...SHADOW },
+        removeBtn: { padding: 4 },
+        addOptionBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', paddingVertical: 12, paddingHorizontal: 8 },
+        addOptionText: { fontSize: 14, fontWeight: '700', color: colors.tint },
+        pillsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+        pill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border + '30', ...SHADOW },
+        pillActive: { backgroundColor: colors.tint, borderColor: colors.tint },
+        pillText: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
+        pillTextActive: { color: '#fff' },
+        settingsToggles: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+        togglePill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border + '30', ...SHADOW },
+        togglePillActive: { backgroundColor: colors.tint, borderColor: colors.tint },
+        togglePillText: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
+        togglePillTextActive: { color: '#fff' },
+        advancedInputs: { gap: 10, marginBottom: 20 },
+        inputsRow: { flexDirection: 'row', gap: 10 },
+        inputCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, backgroundColor: colors.card, borderRadius: 16, ...SHADOW },
+        inputIconCircle: { width: 32, height: 32, borderRadius: 10, backgroundColor: colors.tint + '10', justifyContent: 'center', alignItems: 'center' },
+        inputInfo: { flex: 1 },
+        inputLabel: { fontSize: 9, fontWeight: '800', color: colors.textSecondary, textTransform: 'uppercase' },
+        inputValue: { fontSize: 13, fontWeight: '700', color: colors.text, marginTop: 1 },
+        textInput: { fontSize: 15, fontWeight: '800', color: colors.tint, padding: 0 },
+        forwardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 10 },
+        forwardContent: { backgroundColor: colors.card, borderRadius: 20, padding: 15, ...SHADOW },
+        searchInput: { backgroundColor: colors.muted, borderRadius: 12, padding: 10, fontSize: 14, color: colors.text, marginBottom: 12 },
+        spacesScrollContent: { gap: 8, paddingBottom: 5 },
+        spacePill: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 8, paddingRight: 12, backgroundColor: colors.muted, borderRadius: 15 },
+        spacePillActive: { backgroundColor: colors.tint + '15', borderWidth: 1, borderColor: colors.tint },
+        spacePillText: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
+        footer: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, paddingBottom: Platform.OS === 'ios' ? 40 : 20, backgroundColor: colors.background + 'F0' },
+        submitBtn: { height: 54, borderRadius: 27, overflow: 'hidden', ...SHADOW },
+        submitBtnDisabled: { opacity: 0.5 },
+        submitGradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+        submitText: { color: '#fff', fontSize: 17, fontWeight: '900', letterSpacing: 0.5 },
+    });
+};
 
 export default PollComponent;

@@ -81,6 +81,12 @@ The following enhancements were implemented to provide a "Sub-10ms" UI feel:
 - **Implementation**: Replaced static imports with `React.lazy()` and `Suspense` boundaries with lightweight image/skeleton fallbacks.
 - **Impact**: Decreased initial JS bundle size, leading to significantly faster app startup times.
 
+### 6. Zero-Cost Universal Translation (MyMemory Integration)
+- **Status**: ✅ **Fully Integrated**.
+- **Impact**: Enabled native, in-place translation for both Chat and Posts using the **MyMemory (Translated.net)** API.
+- **Architecture**: Implemented as a client-side service using `fetch` and application-wide `locale` detection.
+- **Efficiency**: Zero backend overhead and zero-cost for the user by leveraging the service's public tier. Preserves HTML/URL integrity during the translation process.
+
 ---
 
 ## ⚡ Next-Generation Performance Paradigms (Expo Core Research)
@@ -155,6 +161,7 @@ Extensive research into the **Expo-Main** repository has identified several adva
 ### 3. Space Navigation Stack Bloat ("History Loop")
 - **Issue**: Multiple navigation stacks accumulated on top of each other, requiring dozens of "Back" taps to exit.
 - **Fix**: Refactored entry points to use `router.replace()` and hardened the exit logic to return directly to the chat list.
+
 ### 4. Babel Redeclaration (500 Error / MIME Type Mismatch)
 - **Issue**: Duplicate variable declarations (e.g., `const { t } = useTranslation();` twice) cause Babel to fail during bundling. Metro returns a JSON error which the browser refuses to execute as JS.
 - **Fix**: Consolidate hook declarations and use `npx tsc --noEmit` to catch redeclarations before the bundler runs.

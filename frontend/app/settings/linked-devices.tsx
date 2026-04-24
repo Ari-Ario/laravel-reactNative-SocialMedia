@@ -227,10 +227,10 @@ export default function LinkedDevicesScreen() {
             const mappedDevices = rawTokens.map((t: any, idx: number) => ({
                 id: idx.toString(),
                 name: t.name || 'Unknown Device',
-                location: 'United States',
+                location: t.location || 'Unknown Location',
                 lastSeen: relativeTime(t.last_registered_at),
                 isCurrent: idx === 0,
-                ip: 'Hidden for security',
+                ip: t.ip || 'Hidden for security',
                 browser: t.type === 'web' ? 'Web Browser' : 'Mobile App',
                 os: t.type === 'ios' ? 'iOS' : t.type === 'android' ? 'Android' : 'Web',
                 token: t.token

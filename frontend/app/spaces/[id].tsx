@@ -1216,7 +1216,7 @@ const SpaceDetailScreen = () => {
     if (params.activity && !showActivitiesModal && params.tab !== 'meeting') {
       setShowActivitiesModal(true);
     }
-  }, [params.activity, params.tab]);
+  }, [params.activity, params.tab, showActivitiesModal]);
 
   // ✅ Auto-start meeting if joining from a session
   useEffect(() => {
@@ -2181,7 +2181,10 @@ const SpaceDetailScreen = () => {
         <CollaborativeActivities
           spaceId={id as string} // Filter by current space
           initialActivityId={params.activity as string}
-          onClose={() => setShowActivitiesModal(false)}
+          onClose={() => {
+            setShowActivitiesModal(false);
+            router.setParams({ activity: undefined });
+          }}
           onActivitySelect={(activity) => {
             // Since we are already in the space, we can just close or update state
             setShowActivitiesModal(false);

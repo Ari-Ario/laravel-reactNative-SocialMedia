@@ -84,7 +84,7 @@ const MessageList: React.FC<MessageListProps> = ({
   spaceType,
   messages: messagesProp = [],
 }) => {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { colors, activeScheme } = useAppTheme();
   const [messages, setMessages] = useState<Message[]>(messagesProp);
 
@@ -313,7 +313,7 @@ const MessageList: React.FC<MessageListProps> = ({
   const handleTranslate = React.useCallback(async (msg: any) => {
     if (!msg.content) return;
 
-    // Toggle off if already translated
+    // Toggle off if already translated (this is our "See Original" mechanism)
     if (translatedMessages[msg.id]) {
       setTranslatedMessages(prev => {
         const next = { ...prev };
@@ -325,12 +325,24 @@ const MessageList: React.FC<MessageListProps> = ({
 
     setTranslatingMessageId(msg.id);
     try {
-      const langpair = 'autodetect|en'; // Future: Use setting from AuthContext if available
+      // Use the active app locale for target language. Default to English if not set.
+      const targetLang = locale || 'en';
+      const langpair = `autodetect|${targetLang}`;
+      
       const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(msg.content)}&langpair=${langpair}`);
       const data = await response.json();
 
       if (data && data.responseData && data.responseData.translatedText) {
-        setTranslatedMessages(prev => ({ ...prev, [msg.id]: data.responseData.translatedText }));
+        // Handle "PLEASE SELECT TWO DISTINCT LANGUAGES" error or same text returned
+        const translatedText = data.responseData.translatedText;
+        
+        // MyMemory sometimes returns an error message as the translated text if codes are identical
+        if (translatedText.toUpperCase().includes('DISTINCT LANGUAGES')) {
+           Alert.alert(t('info'), t('message_already_in_your_language') || 'This message is already in your language.');
+           return;
+        }
+
+        setTranslatedMessages(prev => ({ ...prev, [msg.id]: translatedText }));
       } else {
         throw new Error('Invalid translation response');
       }
@@ -340,7 +352,7 @@ const MessageList: React.FC<MessageListProps> = ({
     } finally {
       setTranslatingMessageId(null);
     }
-  }, [translatedMessages]);
+  }, [translatedMessages, locale, t]);
 
   useEffect(() => {
     loadMessages();
@@ -623,12 +635,13 @@ const MessageList: React.FC<MessageListProps> = ({
       },
 
       // ✅ FIX: Remove deleted polls from chat window in real-time
-      onPollDeleted: (deletedPollId: any) => {
+      onPollDeleted: (data: any) => {
+        const deletedPollId = data?.poll_id || data;
         console.log('🗑️ Poll deleted via socket, removing from chat:', deletedPollId);
         setMessages(prev => prev.filter(msg => {
           const isPollMsg = msg.type === 'poll' || msg.metadata?.isPoll;
-          const matchesPoll = msg.poll?.id === deletedPollId;
-          return !(isPollMsg && matchesPoll);
+          const msgPollId = msg.poll?.id || msg.metadata?.pollId;
+          return !(isPollMsg && String(msgPollId) === String(deletedPollId));
         }));
       },
 
@@ -1332,6 +1345,7 @@ const MessageList: React.FC<MessageListProps> = ({
           }
         }}
         onTranslate={handleTranslate}
+        isTranslated={!!(contextMenuMessage && translatedMessages[contextMenuMessage.id])}
         onDeleteForAll={async (msg) => {
           if (spaceId) {
             const isPoll = msg.type === 'poll' || msg.metadata?.isPoll;

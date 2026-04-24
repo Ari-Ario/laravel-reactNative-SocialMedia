@@ -244,6 +244,18 @@ export const useCollaborationStore = create<CollaborationState>()(
               console.log('🗑️ Activity deleted in space:', data);
               get().handleSpaceEvent({ type: 'activity.deleted', data });
             },
+            onPollCreated: (data: any) => {
+              console.log('📊 Poll created in space:', data);
+              get().handleSpaceEvent({ type: 'poll.created', data });
+            },
+            onPollUpdated: (data: any) => {
+              console.log('📊 Poll updated in space:', data);
+              get().handleSpaceEvent({ type: 'poll.updated', data });
+            },
+            onPollDeleted: (data: any) => {
+              console.log('🗑️ Poll deleted in space:', data);
+              get().handleSpaceEvent({ type: 'poll.deleted', data });
+            },
           });
         });
 
@@ -538,6 +550,51 @@ export const useCollaborationStore = create<CollaborationState>()(
             }
             break;
           }
+
+          case 'poll.created':
+          case 'poll_created':
+          case 'poll-created':
+            // We don't necessarily store a 'polls' array per space in the store (yet),
+            // but we might want to update space metadata or updated_at.
+            if (data.space_id) {
+                get().updateSpace(data.space_id.toString(), { updated_at: new Date().toISOString() });
+            }
+            break;
+
+          case 'poll.updated':
+          case 'poll_updated':
+          case 'poll-updated':
+            if (data.space_id) {
+                get().updateSpace(data.space_id.toString(), { updated_at: new Date().toISOString() });
+            }
+            break;
+
+          case 'poll.deleted':
+          case 'poll_deleted':
+          case 'poll-deleted': {
+            const pollId = (data.poll_id || data.id)?.toString();
+            const sid = (data.space_id || data.spaceId)?.toString();
+            if (pollId && sid) {
+                console.log(`🗑️ Syncing poll deletion ${pollId} for space ${sid} in store`);
+                // 1. Clean up messages of type poll that match this pollId
+                const space = get().spaces.find(s => s.id.toString() === sid);
+                if (space && space.content_state && (space.content_state as any).messages) {
+                    const filteredMessages = ((space.content_state as any).messages || []).filter((m: any) => {
+                        const isPoll = m.type === 'poll' || m.metadata?.isPoll;
+                        const msgPollId = m.poll?.id || m.metadata?.pollId;
+                        return !(isPoll && String(msgPollId) === String(pollId));
+                    });
+                    
+                    get().updateSpace(sid, {
+                        content_state: {
+                            ...space.content_state,
+                            messages: filteredMessages
+                        }
+                    });
+                }
+            }
+            break;
+          }
         }
 
         // ✅ Map internal event types → NOTIFICATION_TYPES
@@ -558,10 +615,15 @@ export const useCollaborationStore = create<CollaborationState>()(
           'participant.joined': 'participant_joined',
           'magic-triggered': 'magic_event',
           'magic.triggered': 'magic_event',
-          'screen-share-started': 'screen_share',
           'screen_share.started': 'screen_share',
           'screen-share-ended': 'screen_share',
           'screen_share.ended': 'screen_share',
+          'poll-created': 'poll_created',
+          'poll.created': 'poll_created',
+          'poll-updated': 'poll_updated',
+          'poll.updated': 'poll_updated',
+          'poll-deleted': 'poll_deleted',
+          'poll.deleted': 'poll_deleted',
         };
 
         const notificationType = typeMap[type] || type.replace(/-/g, '_');
@@ -577,6 +639,9 @@ export const useCollaborationStore = create<CollaborationState>()(
           'participant_joined': 'Participant joined',
           'magic_event': 'Magic event',
           'screen_share': 'Screen share started',
+          'poll_created': 'New poll',
+          'poll_updated': 'Poll updated',
+          'poll_deleted': 'Poll deleted',
         };
 
         const msgObjInternal = data?.message || data;
@@ -604,6 +669,15 @@ export const useCollaborationStore = create<CollaborationState>()(
             case 'call-started':
             case 'call.started':
               return `${data?.caller_name || 'A call'} started`;
+            case 'poll-created':
+            case 'poll.created':
+              return `${senderName} created a new poll: ${data.question || ''}`;
+            case 'poll-updated':
+            case 'poll.updated':
+              return `${senderName} updated a poll`;
+            case 'poll-deleted':
+            case 'poll.deleted':
+              return `A poll was deleted`;
             default: return 'New activity in space';
           }
         })();
@@ -962,10 +1036,13 @@ export const useCollaborationStore = create<CollaborationState>()(
         set({ isLoading: true });
         try {
           const result = await CollaborationService.getInstance().getGlobalActivities(params);
+          const activities = result.activities || [];
+          const upcomingCount = activities.filter((a: any) => a.status === 'scheduled').length;
+          
           set({
-            globalActivities: result.activities,
-            globalUpcomingCount: result.upcoming_count,
-            totalActivitiesCount: result.total
+            globalActivities: activities,
+            globalUpcomingCount: upcomingCount,
+            totalActivitiesCount: result.total || activities.length
           });
         } catch (error) {
           console.error('Error fetching global activities:', error);
@@ -978,14 +1055,17 @@ export const useCollaborationStore = create<CollaborationState>()(
         set({ isLoading: true });
         try {
           const result = await CollaborationService.getInstance().getSpaceActivities(spaceId, page, limit);
+          const activities = result.activities || [];
+          const upcomingCount = activities.filter((a: any) => a.status === 'scheduled').length;
+
           set((state) => ({
             spaceActivities: {
               ...state.spaceActivities,
-              [spaceId]: result.activities
+              [spaceId]: activities
             },
             spaceUpcomingCounts: {
               ...state.spaceUpcomingCounts,
-              [spaceId]: result.upcoming_count
+              [spaceId]: upcomingCount
             },
             activitiesLastFetched: {
               ...state.activitiesLastFetched,
@@ -1006,9 +1086,13 @@ export const useCollaborationStore = create<CollaborationState>()(
         // Prevent duplicate - safe comparison
         if (currentSpaceActivities.some(a => String(a.id) === String(activity.id))) return state;
 
-        const isUpcoming = !!(activity.status === 'scheduled' &&
+        const oneHourAgo = new Date();
+        oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+        const isUpcoming = !!(
+          (activity.status === 'scheduled' || activity.status === 'active') &&
           activity.scheduled_start &&
-          new Date(activity.scheduled_start) > new Date());
+          new Date(activity.scheduled_start) > oneHourAgo
+        );
 
         return {
           spaceActivities: {
@@ -1019,7 +1103,7 @@ export const useCollaborationStore = create<CollaborationState>()(
           globalUpcomingCount: isUpcoming ? state.globalUpcomingCount + 1 : state.globalUpcomingCount,
           spaceUpcomingCounts: {
             ...state.spaceUpcomingCounts,
-            [spaceId]: isUpcoming ? (state.spaceUpcomingCounts[spaceId] || 0) + 1 : (state.spaceUpcomingCounts[spaceId] || 0)
+            [spaceId]: [activity, ...currentSpaceActivities].filter(a => a.status === 'scheduled').length
           }
         };
       }),
@@ -1031,14 +1115,19 @@ export const useCollaborationStore = create<CollaborationState>()(
         const oldActivity = currentSpaceActivities.find(a => String(a.id) === String(activity.id)) ||
           state.globalActivities.find(a => String(a.id) === String(activity.id));
 
-        const wasUpcoming = !!(oldActivity &&
-          oldActivity.status === 'scheduled' &&
+        const oneHourAgo = new Date();
+        oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+        const wasUpcoming = !!(
+          (oldActivity.status === 'scheduled' || oldActivity.status === 'active') &&
           oldActivity.scheduled_start &&
-          new Date(oldActivity.scheduled_start) > new Date());
+          new Date(oldActivity.scheduled_start) > oneHourAgo
+        );
 
-        const isUpcoming = !!(activity.status === 'scheduled' &&
+        const isUpcoming = !!(
+          (activity.status === 'scheduled' || activity.status === 'active') &&
           activity.scheduled_start &&
-          new Date(activity.scheduled_start) > new Date());
+          new Date(activity.scheduled_start) > oneHourAgo
+        );
 
         const diff = (isUpcoming ? 1 : 0) - (wasUpcoming ? 1 : 0);
 
@@ -1051,7 +1140,7 @@ export const useCollaborationStore = create<CollaborationState>()(
           globalUpcomingCount: state.globalUpcomingCount + diff,
           spaceUpcomingCounts: {
             ...state.spaceUpcomingCounts,
-            [spaceId]: (state.spaceUpcomingCounts[spaceId] || 0) + diff
+            [spaceId]: currentSpaceActivities.map(a => String(a.id) === String(activity.id) ? activity : a).filter(a => a.status === 'scheduled').length
           }
         };
       }),
@@ -1061,10 +1150,14 @@ export const useCollaborationStore = create<CollaborationState>()(
         const activityToDelete = currentSpaceActivities.find(a => String(a.id) === String(activityId)) ||
           state.globalActivities.find(a => String(a.id) === String(activityId));
 
-        const wasUpcoming = !!(activityToDelete &&
-          activityToDelete.status === 'scheduled' &&
+        const oneHourAgo = new Date();
+        oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+        const wasUpcoming = !!(
+          activityToDelete &&
+          (activityToDelete.status === 'scheduled' || activityToDelete.status === 'active') &&
           activityToDelete.scheduled_start &&
-          new Date(activityToDelete.scheduled_start) > new Date());
+          new Date(activityToDelete.scheduled_start) > oneHourAgo
+        );
 
         return {
           spaceActivities: {
@@ -1075,7 +1168,7 @@ export const useCollaborationStore = create<CollaborationState>()(
           globalUpcomingCount: wasUpcoming ? Math.max(0, state.globalUpcomingCount - 1) : state.globalUpcomingCount,
           spaceUpcomingCounts: {
             ...state.spaceUpcomingCounts,
-            [spaceId]: wasUpcoming ? Math.max(0, (state.spaceUpcomingCounts[spaceId] || 0) - 1) : (state.spaceUpcomingCounts[spaceId] || 0)
+            [spaceId]: newSpaceActivities.filter(a => a.status === 'scheduled').length
           }
         };
       }),

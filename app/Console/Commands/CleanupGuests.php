@@ -44,15 +44,11 @@ class CleanupGuests extends Command
 
         $this->warn("⚠️ Found {$count} guest users to remove.");
 
-        if ($this->confirm('Do you wish to proceed with the deletion?', true)) {
-            // Delete users. Cascade deletes in the DB will handle relations.
-            $deleted = $query->delete();
-            
-            $this->info("✅ Successfully deleted {$deleted} guest users.");
-            Log::info("🧹 Guest Cleanup: Deleted {$deleted} users.");
-        } else {
-            $this->info("Operation cancelled.");
-        }
+        // Delete users. Cascade deletes in the DB will handle relations.
+        $deleted = $query->delete();
+        
+        $this->info("✅ Successfully deleted {$deleted} guest users.");
+        Log::info("🧹 Guest Cleanup: Deleted {$deleted} users.");
 
         return 0;
     }

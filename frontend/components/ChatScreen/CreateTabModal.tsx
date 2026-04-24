@@ -16,6 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { useTranslation } from '../../constants/i18n';
 import { Chat } from '../../app/(tabs)/chats/index';
 
@@ -45,7 +46,9 @@ const CreateTabModal: React.FC<CreateTabModalProps> = ({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const { t, isRTL } = useTranslation();
-  const styles = getStyles(isRTL);
+  const { colors, activeScheme } = useAppTheme();
+  const styles = getStyles(isRTL, colors, activeScheme);
+  const isDark = activeScheme === 'dark';
 
   useEffect(() => {
     if (visible) {
@@ -216,9 +219,9 @@ const CreateTabModal: React.FC<CreateTabModalProps> = ({
     >
       <Pressable style={styles.overlay} onPress={onClose}>
         {Platform.OS === 'web' ? (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.6)' }]} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.4)' }]} />
         ) : (
-          <BlurView intensity={25} style={StyleSheet.absoluteFill} tint="dark" />
+          <BlurView intensity={isDark ? 30 : 25} style={StyleSheet.absoluteFill} tint="dark" />
         )}
         
         <KeyboardAvoidingView
@@ -234,7 +237,7 @@ const CreateTabModal: React.FC<CreateTabModalProps> = ({
   );
 };
 
-const getStyles = (isRTL: boolean) => StyleSheet.create({
+const getStyles = (isRTL: boolean, colors: any, activeScheme: string) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
@@ -252,9 +255,9 @@ const getStyles = (isRTL: boolean) => StyleSheet.create({
     bottom: 0,
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderRadius: 24,
-    padding: 0, // Padding handled inside steps
+    padding: 0, 
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.3,
@@ -287,24 +290,24 @@ const getStyles = (isRTL: boolean) => StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: colors.text,
   },
   subtitle: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   closeButton: {
     padding: 4,
   },
   doneButton: {
-    backgroundColor: '#E7F3FF',
+    backgroundColor: activeScheme === 'dark' ? colors.muted : '#E7F3FF',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 10,
   },
   doneText: {
-    color: '#007AFF',
+    color: colors.tint,
     fontWeight: '700',
     fontSize: 15,
   },
@@ -313,44 +316,44 @@ const getStyles = (isRTL: boolean) => StyleSheet.create({
     marginBottom: 12,
   },
   input: {
-    backgroundColor: '#F5F7FA',
+    backgroundColor: activeScheme === 'dark' ? colors.muted : '#F5F7FA',
     borderRadius: 14,
     padding: 18,
     [isRTL ? 'paddingLeft' : 'paddingRight']: 60,
     fontSize: 17,
-    color: '#000',
+    color: colors.text,
     borderWidth: 1.5,
-    borderColor: '#E1E8F0',
+    borderColor: colors.border,
   },
   charCount: {
     position: 'absolute',
     right: 18,
     top: 20,
     fontSize: 12,
-    color: '#999',
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   description: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     lineHeight: 20,
     marginBottom: 28,
   },
   primaryButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.tint,
     borderRadius: 16,
     padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#007AFF',
+    shadowColor: colors.tint,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
     shadowRadius: 10,
     elevation: 8,
   },
   disabledButton: {
-    backgroundColor: '#BDC3C7',
+    backgroundColor: activeScheme === 'dark' ? colors.border : '#BDC3C7',
     shadowOpacity: 0,
     elevation: 0,
   },
@@ -363,7 +366,7 @@ const getStyles = (isRTL: boolean) => StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0F2F5',
+    backgroundColor: activeScheme === 'dark' ? colors.muted : '#F0F2F5',
     marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 12,
@@ -376,7 +379,7 @@ const getStyles = (isRTL: boolean) => StyleSheet.create({
     flex: 1,
     height: 44,
     fontSize: 16,
-    color: '#000',
+    color: colors.text,
   },
   selectionSummary: {
     paddingHorizontal: 24,
@@ -384,7 +387,7 @@ const getStyles = (isRTL: boolean) => StyleSheet.create({
   },
   selectionText: {
     fontSize: 12,
-    color: '#666',
+    color: colors.textSecondary,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -404,7 +407,7 @@ const getStyles = (isRTL: boolean) => StyleSheet.create({
     borderRadius: 26,
   },
   placeholderAvatar: {
-    backgroundColor: '#667EEA',
+    backgroundColor: colors.tint,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -419,7 +422,7 @@ const getStyles = (isRTL: boolean) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: colors.background,
   },
   itemInfo: {
     flex: 1,
@@ -428,11 +431,11 @@ const getStyles = (isRTL: boolean) => StyleSheet.create({
   itemName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1A1A1A',
+    color: colors.text,
   },
   itemType: {
     fontSize: 13,
-    color: '#666',
+    color: colors.textSecondary,
     marginTop: 3,
   },
   checkbox: {
@@ -440,17 +443,17 @@ const getStyles = (isRTL: boolean) => StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#D1D1D6',
+    borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
   checkboxSelected: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: colors.tint,
+    borderColor: colors.tint,
   },
   separator: {
     height: 1,
-    backgroundColor: '#F0F2F5',
+    backgroundColor: colors.border,
     [isRTL ? 'marginRight' : 'marginLeft']: 92,
   },
 });

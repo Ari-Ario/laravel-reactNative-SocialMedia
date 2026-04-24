@@ -134,28 +134,29 @@ export default function HelpCenterScreen() {
     const scrollY = useRef(new Animated.Value(0)).current;
 
     const faqs: FAQ[] = [
-        { question: "How do I make my account private?", answer: "Go to Settings > Privacy Vault and toggle 'Private Account' on. This limits your posts to approved followers only. You can also manage muted keywords and blocked users from the same section.", category: "privacy", helpful: 0 },
-        { question: "How do I clear my local storage?", answer: "Navigate to Settings > Storage Manager. Tap 'Clear' in the Cache Management section. You can also configure auto-cleanup intervals (Monthly) and set media quality preferences.", category: "technical", helpful: 0 },
-        { question: "Can I manage multiple devices?", answer: "Yes! In Settings > Linked Devices (Active Sessions), you can see all logged-in sessions, view device type (iOS, Android, Web), and revoke access remotely. Sessions update in real-time.", category: "security", helpful: 0 },
-        { question: "How to report inappropriate content?", answer: "Tap the three-dot menu on any post, comment, or message and select 'Report'. Choose the reason and submit. Our AI moderation system reviews reports within 24 hours.", category: "moderation", helpful: 0 },
-        { question: "How to enable dark mode?", answer: "Go to Settings > Account Identity > and look for theme preferences. You can choose between Light, Dark, or System default. Changes apply immediately across the app.", category: "personalization", helpful: 0 },
-        { question: "What are Collaboration Spaces?", answer: "Spaces are persistent collaboration hubs that support real-time messaging, video/audio calls, whiteboards, polls, and AI-powered suggestions. Create a Space from the main + button on your home screen.", category: "features", helpful: 0 },
-        { question: "How does the AI chatbot work?", answer: "The built-in AI Assistant understands natural language questions about Zmzir features. Access it via the Chatbot tab or from Help > AI Assistant. It's available 24/7 and learns from interactions.", category: "features", helpful: 0 },
-        { question: "What is Synchronicity?", answer: "Synchronicity is Zmzir's collaborative matching system. It analyzes collaboration styles, synergy traits, and interaction patterns to suggest ideal collaborators and enhance teamwork in Spaces.", category: "features", helpful: 0 },
-        { question: "How do broadcast lists work?", answer: "Broadcast lists (Settings > Broadcasts) let you send messages to multiple people simultaneously without creating a group chat. Each recipient sees messages as individual direct messages only.", category: "features", helpful: 0 },
-        { question: "How do I star important messages?", answer: "Long-press any message in a Space or direct conversation and select 'Star'. All starred messages are accessible from Settings > Starred Messages for quick reference across all your devices.", category: "features", helpful: 0 },
-        { question: "How does calling work across devices?", answer: "Zmzir supports audio and video calls within Spaces using WebRTC. Calls work on mobile browsers and native apps. For best quality, use a stable Wi-Fi connection. TURN relay servers ensure calls work even on restrictive networks.", category: "technical", helpful: 0 },
-        { question: "How do I change my notification preferences?", answer: "Go to Settings and look for notification controls. You can toggle email and push notifications separately. Device-specific notification tokens are managed automatically per device.", category: "technical", helpful: 0 },
-        { question: "What data does Zmzir store about me?", answer: "Zmzir stores your profile information (name, email, bio, social links), content (posts, stories, messages), and usage preferences. You can export or delete your account from Settings > Account Identity at any time.", category: "privacy", helpful: 0 },
+        { question: t('faq_q_app_guide'), answer: t('faq_a_app_guide'), category: "guide", helpful: 0 },
+        { question: t('faq_q_spaces_types'), answer: t('faq_a_spaces_types'), category: "spaces", helpful: 0 },
+        { question: t('faq_q_ai_assistant'), answer: t('faq_a_ai_assistant'), category: "spaces", helpful: 0 },
+        { question: t('faq_q_schedule_activity'), answer: t('faq_a_schedule_activity'), category: "activities", helpful: 0 },
+        { question: t('faq_q_privacy_vault'), answer: t('faq_a_privacy_vault'), category: "privacy", helpful: 0 },
+        { question: t('faq_q_trust_score'), answer: t('faq_a_trust_score'), category: "privacy", helpful: 0 },
+        { question: t('faq_q_storage_management'), answer: t('faq_a_storage_management'), category: "technical", helpful: 0 },
+        { question: t('faq_q_dark_mode'), answer: t('faq_a_dark_mode'), category: "personalization", helpful: 0 },
+        { question: t('faq_q_linked_devices'), answer: t('faq_a_linked_devices'), category: "security", helpful: 0 },
+        { question: t('faq_q_report_content'), answer: t('faq_a_report_content'), category: "moderation", helpful: 0 },
+        { question: t('faq_q_synchronicity'), answer: t('faq_a_synchronicity'), category: "features", helpful: 0 },
     ];
 
     const categories = [
         { id: 'all', label: t('all'), icon: 'apps' },
+        { id: 'guide', label: t('tutorial'), icon: 'school' },
+        { id: 'spaces', label: t('collaboration_spaces'), icon: 'people' },
+        { id: 'activities', label: t('activities'), icon: 'calendar' },
         { id: 'privacy', label: t('privacy'), icon: 'lock-closed' },
-        { id: 'technical', label: t('profile_security'), icon: 'hardware-chip' },
         { id: 'security', label: t('profile_security'), icon: 'shield-checkmark' },
-        { id: 'moderation', label: t('moderation_panel'), icon: 'flag' },
+        { id: 'technical', label: t('storage'), icon: 'hardware-chip' },
         { id: 'personalization', label: t('personal'), icon: 'color-palette' },
+        { id: 'moderation', label: t('moderation_panel'), icon: 'flag' },
         { id: 'features', label: t('upcoming_features'), icon: 'sparkles' },
     ];
 
@@ -185,7 +186,7 @@ export default function HelpCenterScreen() {
                 style={[styles.header, { paddingTop: insets.top + 10 }]}
             >
                 <BackButton onPress={() => router.back()} />
-                <Text style={styles.headerTitle}>{t('help')}</Text>
+                <Text style={styles.headerTitle}>{t('help_center')}</Text>
                 <View style={{ width: 40 }} />
             </LinearGradient>
 
@@ -205,7 +206,7 @@ export default function HelpCenterScreen() {
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                     >
-                        <Text style={styles.heroTitle}>{t('help')}</Text>
+                        <Text style={styles.heroTitle}>{t('help_center')}</Text>
                         <View style={styles.searchBar}>
                             <Ionicons name="search" size={20} color={colors.textSecondary} />
                             <TextInput
@@ -260,7 +261,7 @@ export default function HelpCenterScreen() {
 
                     <View style={styles.faqSection}>
                         <Text style={styles.sectionTitle}>
-                            {searchQuery ? t('search') : t('help')}
+                            {searchQuery ? t('search') : t('help_center')}
                         </Text>
 
                         {filteredFaqs.length === 0 ? (
@@ -270,9 +271,9 @@ export default function HelpCenterScreen() {
                                 style={styles.noResults}
                             >
                                 <Ionicons name="search" size={48} color={colors.textSecondary + '40'} />
-                                <Text style={styles.noResultsTitle}>{t('failed_update')}</Text>
+                                <Text style={styles.noResultsTitle}>{t('no_results_found')}</Text>
                                 <Text style={styles.noResultsText}>
-                                    {t('help')}
+                                    {t('search_no_results_desc')}
                                 </Text>
                             </MotiView>
                         ) : (
@@ -283,7 +284,7 @@ export default function HelpCenterScreen() {
                     </View>
 
                     <View style={styles.contactSection}>
-                        <Text style={styles.sectionTitle}>{t('help')}</Text>
+                        <Text style={styles.sectionTitle}>{t('contact')}</Text>
                         <View style={styles.contactRow}>
                             <TouchableOpacity
                                 style={styles.contactCard}
@@ -296,8 +297,8 @@ export default function HelpCenterScreen() {
                                     <View style={[styles.contactIcon, { backgroundColor: colors.tint + '15' }]}>
                                         <Ionicons name="mail" size={24} color={colors.tint} />
                                     </View>
-                                    <Text style={styles.contactLabel}>{t('help')}</Text>
-                                    <Text style={styles.contactDescription}>{t('help')}</Text>
+                                    <Text style={styles.contactLabel}>{t('contact_support_email')}</Text>
+                                    <Text style={styles.contactDescription}>{t('contact_support_desc')}</Text>
                                 </LinearGradient>
                             </TouchableOpacity>
 
@@ -312,15 +313,17 @@ export default function HelpCenterScreen() {
                                     <View style={[styles.contactIcon, { backgroundColor: '#4CAF5015' }]}>
                                         <Ionicons name="chatbubbles" size={24} color="#4CAF50" />
                                     </View>
-                                    <Text style={styles.contactLabel}>{t('help')}</Text>
-                                    <Text style={styles.contactDescription}>{t('help')}</Text>
+                                    <Text style={styles.contactLabel}>{t('ai_assistant_help')}</Text>
+                                    <Text style={styles.contactDescription}>{t('ai_assistant_desc')}</Text>
                                 </LinearGradient>
                             </TouchableOpacity>
                         </View>
                     </View>
 
                     <View style={styles.footer}>
-                        <Text style={styles.versionText}>Application Version 2.4.0 (Build 890)</Text>
+                        <Text style={styles.versionText}>
+                            {t('app_version_build', { version: '2.4.0', build: '890' })}
+                        </Text>
                         <View style={styles.linkRow}>
                             <TouchableOpacity onPress={() => Linking.openURL('https://zmzir.com/terms')}>
                                 <Text style={styles.footerLink}>{t('privacy')}</Text>
@@ -331,7 +334,7 @@ export default function HelpCenterScreen() {
                             </TouchableOpacity>
                         </View>
                         <TouchableOpacity style={styles.feedbackButton} onPress={() => Linking.openURL('mailto:support@zmzir.com?subject=App%20Feedback&body=Hi%20Zmzir%20Team%2C%0A%0A')}>
-                            <Text style={styles.feedbackText}>{t('help')}</Text>
+                            <Text style={styles.feedbackText}>{t('feedback_msg')}</Text>
                         </TouchableOpacity>
                     </View>
                 </MotiView>

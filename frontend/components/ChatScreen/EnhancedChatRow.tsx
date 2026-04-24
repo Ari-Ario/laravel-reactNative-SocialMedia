@@ -119,7 +119,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
   const handleStartChat = async () => {
     try {
       const spaceRes = await collaborationService.getOrCreateDirectSpace(user_id);
-      router.push(`/(spaces)/${spaceRes.space.id}`);
+      router.push({ pathname: '/(spaces)/[id]', params: { id: spaceRes.space.id } });
       setShowContactMenu(false);
     } catch (error) {
       console.error('Error starting chat:', error);
@@ -146,7 +146,15 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       });
 
       // Navigate to space with call active
-      router.push(`/(spaces)/${spaceId}?call=${callData.call?.id || 'active'}&type=video&tab=meeting`);
+      router.push({ 
+        pathname: '/(spaces)/[id]', 
+        params: { 
+          id: spaceId, 
+          call: callData.call?.id || 'active', 
+          type: 'video', 
+          tab: 'meeting' 
+        } 
+      });
       setShowContactMenu(false);
     } catch (error: any) {
       console.error('Error starting video call:', error);
@@ -174,7 +182,15 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       });
 
       // Navigate to the space
-      router.push(`/(spaces)/${spaceId}?call=${callData.call?.id || 'active'}&type=audio&tab=meeting`);
+      router.push({ 
+        pathname: '/(spaces)/[id]', 
+        params: { 
+          id: spaceId, 
+          call: callData.call?.id || 'active', 
+          type: 'audio', 
+          tab: 'meeting' 
+        } 
+      });
       setShowContactMenu(false);
     } catch (error) {
       console.error('Error starting voice call:', error);
@@ -189,7 +205,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
       const spaceRes = await collaborationService.getOrCreateDirectSpace(user_id);
       const spaceId = spaceRes.space.id;
 
-      router.push(`/(spaces)/${spaceId}`);
+      router.push({ pathname: '/(spaces)/[id]', params: { id: spaceId } });
       setShowContactMenu(false);
     } catch (error) {
       console.error('Error starting whiteboard:', error);
@@ -274,7 +290,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
 
       if (space) {
         console.log('Space created, navigating to:', `/spaces/${space.id}`);
-        router.push(`/(spaces)/${space.id}`);
+        router.push({ pathname: '/(spaces)/[id]', params: { id: space.id } });
       }
 
       setShowCollaborationMenu(false);
@@ -299,7 +315,7 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
 
       case 'chat':
         console.log('Navigating to chat:', `/(tabs)/chats/${id}`);
-        router.push(`/(tabs)/chats/${id}`);
+        router.push({ pathname: '/(tabs)/chats/[id]', params: { id } });
         break;
 
       case 'contact':
@@ -354,9 +370,8 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
   };
 
   const handleDeleteSpace = async () => {
-    if (Platform.OS !== 'web') {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    }
+    // Close menu first to ensure UI is clean before showing alerts
+    setShowCollaborationMenu(false);
     
     const warningMessage = type === 'space' 
       ? t('space_delete_warning')
@@ -364,12 +379,13 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
  
     confirmAction(t('delete_chat'), warningMessage, t('delete'), async () => {
       try {
-        if (type === 'space') {
-          await collaborationService.deleteSpace(id);
-          simpleAlert(t('success'), t('success'));
-          if (onDelete) onDelete(id);
-        }
-        setShowCollaborationMenu(false);
+        await collaborationService.deleteSpace(id);
+        
+        // Update global store immediately
+        useCollaborationStore.getState().removeSpace(id);
+        
+        simpleAlert(t('success'), t('success'));
+        if (onDelete) onDelete(id);
       } catch (error) {
         console.error('Error deleting space:', error);
         simpleAlert(t('error'), t('error'));
@@ -776,114 +792,133 @@ export const EnhancedChatRow: React.FC<EnhancedChatRowProps> = ({
   };
 
   return (
-    <View style={{ flex: 1 }}>
+    <View>
       {type === 'contact' ? renderContactContent() : renderContent()}
+      {showCollaborationMenu && (
+        <GenericMenu
+          visible={showCollaborationMenu}
+          onClose={() => setShowCollaborationMenu(false)}
+          anchorPosition={menuPosition}
+          items={type === 'space' ? (
+            (() => {
+              const spaceType = spaceData?.space_type || 'chat';
+              const isDirectSpace = (spaceData?.settings?.is_direct || spaceType === 'direct' || spaceType === 'chat') && !!spaceData?.other_participant;
+              
+              const menuItems: MenuItem[] = [
+                {
+                  icon: (localIsPinned ? "pin-outline" : "pin") as any,
+                  label: localIsPinned ? t("unpin_chat") : t("pin_chat"),
+                  onPress: handlePinSpace,
+                },
+                {
+                  icon: (localIsUnread ? "mail-open-outline" : "mail-unread-outline") as any,
+                  label: localIsUnread ? t("mark_as_read") : t("mark_as_unread"),
+                  onPress: handleMarkUnread,
+                },
+                {
+                  icon: (localIsArchived ? "archive" : "archive-outline") as any,
+                  label: localIsArchived ? t("unarchive_chat") : t("archive_chat"),
+                  onPress: handleArchiveSpace,
+                },
+                {
+                  icon: (localIsMuted ? "volume-high-outline" : "volume-mute-outline") as any,
+                  label: localIsMuted ? t("unmute_notifications") : t("mute_notifications"),
+                  onPress: handleMuteSpace,
+                },
+                {
+                  icon: (localIsFavorite ? "heart-dislike-outline" : "heart-outline") as any,
+                  label: localIsFavorite ? t("remove_from_favorites") : t("add_to_favorites"),
+                  onPress: handleFavoriteSpace,
+                }
+              ];
 
-      <GenericMenu
-        visible={showCollaborationMenu}
-        onClose={() => setShowCollaborationMenu(false)}
-        anchorPosition={menuPosition}
-        items={type === 'space' ? (
-          (() => {
-            const spaceType = spaceData?.space_type || 'chat';
-            const isDirectSpace = (spaceData?.settings?.is_direct || spaceType === 'direct' || spaceType === 'chat') && !!spaceData?.other_participant;
-            
-            const menuItems: MenuItem[] = [
+              if (!isDirectSpace) {
+                if (spaceData?.my_role === 'owner' || spaceData?.my_role === 'moderator') {
+                  menuItems.push({
+                    icon: "person-add-outline" as any,
+                    label: t("invite_people"),
+                    onPress: () => {
+                      setShowInviteModal(true);
+                      setShowCollaborationMenu(false);
+                    },
+                  });
+                }
+
+                if (spaceData?.my_role !== 'owner') {
+                  menuItems.push({
+                    icon: "exit-outline" as any,
+                    label: t("leave_space"),
+                    onPress: handleLeaveSpace,
+                    destructive: true,
+                  });
+                }
+              }
+
+              menuItems.push({
+                icon: "remove-circle-outline" as any,
+                label: t("clear_chat"),
+                onPress: handleClearChat,
+              });
+
+              if (spaceData?.my_role === 'owner' || isDirectSpace) {
+                menuItems.push({
+                  icon: "trash-outline" as any,
+                  label: t("delete_chat"),
+                  onPress: handleDeleteSpace,
+                  destructive: true,
+                });
+              }
+
+              return menuItems;
+            })()
+          ) : (
+            [
               {
                 icon: (localIsPinned ? "pin-outline" : "pin") as any,
                 label: localIsPinned ? t("unpin_chat") : t("pin_chat"),
                 onPress: handlePinSpace,
               },
               {
-                icon: (localIsUnread ? "mail-open-outline" : "mail-unread-outline") as any,
-                label: localIsUnread ? t("mark_as_read") : t("mark_as_unread"),
-                onPress: handleMarkUnread,
-              },
-              {
-                icon: (localIsArchived ? "archive" : "archive-outline") as any,
-                label: localIsArchived ? t("unarchive_chat") : t("archive_chat"),
-                onPress: handleArchiveSpace,
-              },
-              {
-                icon: (localIsMuted ? "volume-high-outline" : "volume-mute-outline") as any,
-                label: localIsMuted ? t("unmute_notifications") : t("mute_notifications"),
-                onPress: handleMuteSpace,
-              },
-              {
-                icon: (localIsFavorite ? "heart-dislike-outline" : "heart-outline") as any,
-                label: localIsFavorite ? t("remove_from_favorites") : t("add_to_favorites"),
-                onPress: handleFavoriteSpace,
-              }
-            ];
-
-            if (!isDirectSpace) {
-              if (spaceData?.my_role === 'owner' || spaceData?.my_role === 'moderator') {
-                menuItems.push({
-                  icon: "person-add-outline" as any,
-                  label: t("invite_people"),
-                  onPress: () => {
-                    setShowInviteModal(true);
-                    setShowCollaborationMenu(false);
-                  },
-                });
-              }
-
-              if (spaceData?.my_role !== 'owner') {
-                menuItems.push({
-                  icon: "exit-outline" as any,
-                  label: t("leave_space"),
-                  onPress: handleLeaveSpace,
-                  destructive: true,
-                });
-              }
-            }
-
-            menuItems.push({
-              icon: "remove-circle-outline" as any,
-              label: t("clear_chat"),
-              onPress: handleClearChat,
-            });
-
-            if (spaceData?.my_role === 'owner' || isDirectSpace) {
-              menuItems.push({
-                icon: "trash-outline" as any,
+                icon: "trash-outline",
                 label: t("delete_chat"),
-                onPress: handleDeleteSpace,
                 destructive: true,
-              });
-            }
+                onPress: handleDeleteSpace,
+              }
+            ]
+          )}
+        />
+      )}
 
-            return menuItems;
-          })()
-        ) : []}
-      />
+      {showContactMenu && (
+        <GenericMenu
+          visible={showContactMenu}
+          onClose={() => setShowContactMenu(false)}
+          anchorPosition={menuPosition}
+          items={[
+            {
+              icon: 'chatbubble-ellipses-outline',
+              label: t('message'),
+              onPress: handleStartChat,
+            },
+            {
+              icon: 'ban-outline',
+              label: t('block_user'),
+              destructive: true,
+              onPress: handleBlockUser,
+            },
+          ]}
+        />
+      )}
 
-      <GenericMenu
-        visible={showContactMenu}
-        onClose={() => setShowContactMenu(false)}
-        anchorPosition={menuPosition}
-        items={[
-          {
-            icon: 'chatbubble-ellipses-outline',
-            label: t('message'),
-            onPress: handleStartChat,
-          },
-          {
-            icon: 'ban-outline',
-            label: t('block_user'),
-            onPress: handleBlockUser,
-            destructive: true,
-          },
-        ]}
-      />
-
-      <EnhancedInviteModal
-        visible={showInviteModal}
-        spaceId={id}
-        spaceTitle={name}
-        onClose={() => setShowInviteModal(false)}
-        onInvite={handleInviteUsers}
-      />
+      {showInviteModal && (
+        <EnhancedInviteModal
+          visible={showInviteModal}
+          spaceId={id}
+          spaceTitle={name}
+          onClose={() => setShowInviteModal(false)}
+          onInvite={handleInviteUsers}
+        />
+      )}
     </View>
   );
 };

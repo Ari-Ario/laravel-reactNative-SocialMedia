@@ -26,8 +26,10 @@ import getApiBaseImage from '@/services/getApiBaseImage';
 import { router } from 'expo-router';
 import { GlobalStyles } from '@/styles/GlobalStyles';
 import { useNotificationStore } from '@/stores/notificationStore';
+import { useCollaborationStore } from '@/stores/collaborationStore';
 import { useToastStore } from '@/stores/toastStore';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
+import CollaborativeActivities from "@/components/ChatScreen/CollaborativeActivities";
 import PushNotificationService from '@/services/PushNotificationService';
 import { MediaCompressor } from '@/utils/mediaCompressor';
 import GenericMenu, { MenuItem } from '@/components/GenericMenu';
@@ -80,7 +82,9 @@ const Page = () => {
 
   const [activeTab, setActiveTab] = useState<'settings' | 'stats'>('settings');
   const [showThemeMenu, setShowThemeMenu] = useState(false);
+  const [showActivities, setShowActivities] = useState(false);
   const [themeMenuPosition, setThemeMenuPosition] = useState<AnchorPosition | undefined>(undefined);
+  const globalUpcomingCount = useCollaborationStore(state => state.globalUpcomingCount);
   const themeIconRef = useRef<View>(null);
   const [editNameMode, setEditNameMode] = useState(false);
   const [newName, setNewName] = useState(user?.name || '');
@@ -89,6 +93,30 @@ const Page = () => {
   const [isCameraVisible, setIsCameraVisible] = useState(false);
   const nameInputRef = useRef<TextInput>(null);
   const webCameraRef = useRef<any>(null);
+  const [complianceData, setComplianceData] = useState<any>(null);
+
+
+  useEffect(() => {
+    const fetchCompliance = async () => {
+      try {
+        const response = await axios.get('/moderation/compliance');
+        setComplianceData(response.data);
+      } catch (error) {
+        console.error('Error fetching compliance data:', error);
+      }
+    };
+    fetchCompliance();
+    useCollaborationStore.getState().fetchGlobalActivities();
+  }, []);
+
+  const trustPercentage = complianceData ? Math.round((complianceData.trust_score || 0) * 100) : 100;
+  const healthStatus = useMemo(() => {
+    if (!complianceData) return t('health_excellent');
+    const score = complianceData.trust_score || 0;
+    if (score >= 0.9) return t('health_excellent');
+    if (score >= 0.7) return t('health_good');
+    return t('health_at_risk');
+  }, [complianceData, t]);
 
 
   useEffect(() => {
@@ -386,6 +414,7 @@ const Page = () => {
       {
         title: t('connect'),
         items: [
+          { name: t('activities'), icon: 'calendar-outline', color: '#007AFF', badge: globalUpcomingCount, onPress: () => setShowActivities(true) },
           { name: t('broadcast_lists'), icon: 'megaphone-outline', color: '#25D366', onPress: () => router.push('/settings/broadcasts') },
           { name: t('linked_devices'), icon: 'laptop-outline', color: '#25D366', onPress: () => router.push('/settings/linked-devices') },
           { name: t('chat_highlights'), icon: 'flash-outline', color: '#FFD700', onPress: () => router.push('/settings/highlights') },
@@ -419,7 +448,7 @@ const Page = () => {
     }
 
     return sections;
-  }, [user, unreadModerationCount, bookmarks?.length, pushEnabled, t]);
+  }, [user, unreadModerationCount, bookmarks?.length, globalUpcomingCount, pushEnabled, t]);
 
   return (
     <View style={[styles.mainContainer, { backgroundColor: colors.background }]}>
@@ -569,7 +598,7 @@ const Page = () => {
               {isWeb && /iPhone|iPad|iPod/.test(navigator.userAgent) && (
                 <View style={styles.tipCard}>
                   <Ionicons name="information-circle-outline" size={20} color="#0084ff" style={styles.tipIcon} />
-                  <Text style={styles.tipText}>
+                  <Text style={[styles.tipText, { color: colors.text }]}>
                     To receive offline notifications on iOS, tap the "Share" button and select "Add to Home Screen".
                   </Text>
                 </View>
@@ -596,16 +625,36 @@ const Page = () => {
 
               <View style={[styles.aiInsightsCard, { backgroundColor: colors.tint + '10', borderLeftColor: colors.tint }]}>
                 <Text style={[styles.insightTitle, { color: colors.tint, textAlign: isRTL ? 'right' : 'left' }]}>{t('ai_trends')}</Text>
-                <Text style={[styles.insightText, { color: colors.textSecondary, textAlign: isRTL ? 'right' : 'left' }]}>Your activity suggests a high interest in creative communities. Your content interactions are 100% compliant.</Text>
+                <Text style={[styles.insightText, { color: colors.textSecondary, textAlign: isRTL ? 'right' : 'left' }]}>
+                  {t('ai_insight_text', { percentage: trustPercentage })}
+                </Text>
                 <View style={[styles.trendBar, { backgroundColor: colors.muted }]}>
-                  <LinearGradient colors={[colors.tint, colors.tint + '80']} style={[styles.trendFill, { width: '85%' }]} />
+                  <LinearGradient colors={[colors.tint, colors.tint + '80']} style={[styles.trendFill, { width: `${trustPercentage}%` }]} />
                 </View>
-                <Text style={[styles.trendLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t('account_health')}</Text>
+                <Text style={[styles.trendLabel, { textAlign: isRTL ? 'right' : 'left' }]}>
+                  {t('account_health', { status: healthStatus })}
+                </Text>
               </View>
             </MotiView>
           )}
         </AnimatePresence>
       </ScrollView>
+
+      {/* Activities Modal */}
+      <Modal
+        visible={showActivities}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setShowActivities(false)}
+      >
+        <CollaborativeActivities
+          onClose={() => setShowActivities(false)}
+          onActivitySelect={(activity) => {
+            setShowActivities(false);
+            router.push(`/(spaces)/${activity.space_id}?tab=meeting&activity=${activity.id}`);
+          }}
+        />
+      </Modal>
     </View>
   );
 };

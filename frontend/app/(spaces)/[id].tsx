@@ -267,6 +267,7 @@ const SpaceDetailScreen = () => {
   const [selectedParticipant, setSelectedParticipant] = useState<any>(null);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [showActivitiesModal, setShowActivitiesModal] = useState(false);
+  const hasAutoOpenedActivity = useRef(false);
 
   // poll states
   const [showPollCreator, setShowPollCreator] = useState(false);
@@ -340,6 +341,8 @@ const SpaceDetailScreen = () => {
       setParticipants(spaceData.participants || []);
       setMagicEvents(spaceData.magic_events || []);
 
+      console.log('📝 [SpaceDetail] Content state messages count:', spaceData.content_state?.messages?.length || 0);
+
       // Initialize management states (for logged in users)
       if (user) {
         const perms = spaceData.my_permissions || {};
@@ -403,19 +406,11 @@ const SpaceDetailScreen = () => {
   const loadPolls = async () => {
     try {
       const spacePolls = await collaborationService.getPolls(id);
-      setPolls(prev => {
-        // Create a map of existing polls
-        const pollMap = new Map(prev.map(p => [p.id, p]));
-
-        // Update with new data
-        spacePolls.forEach(poll => {
-          pollMap.set(poll.id, poll);
-        });
-
-        // Convert back to array and sort by date
-        return Array.from(pollMap.values())
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      });
+      // ✅ FIX: Replace list instead of merging to handle server-side removals (Phase 72)
+      const sortedPolls = spacePolls.sort((a: any, b: any) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      setPolls(sortedPolls);
     } catch (error) {
       console.error('Error loading polls:', error);
       // ✅ Phase 57: Fallback if polls fail due to deletion/auth
@@ -631,18 +626,38 @@ const SpaceDetailScreen = () => {
           }
         },
 
-        onPollDeleted: (pollId) => {
+        onPollDeleted: (data) => {
+          const pollId = data?.poll_id || data;
           console.log('🗑️ Poll deleted:', pollId);
+          
+          // 1. Remove from polls list
           setPolls(prev => {
-            // Filter out the deleted poll
-            const filtered = prev.filter(p => p.id !== pollId);
+            console.log('🗑️ [Pusher] Filtering polls list for deletion:', pollId);
+            const filtered = prev.filter(p => String(p.id) !== String(pollId));
+            return activeTab === 'polls' ? [...filtered] : filtered;
+          });
 
-            // If we're on the polls tab, force a re-render
-            if (activeTab === 'polls') {
-              return [...filtered];
-            }
+          // 2. Remove from messages list (source of truth for Chat tab)
+          setSpace(prev => {
+            if (!prev?.content_state?.messages) return prev;
+            const filteredMessages = prev.content_state.messages.filter((msg: any) => {
+              const isPoll = msg.type === 'poll' || msg.metadata?.isPoll;
+              const msgPollId = msg.poll?.id || msg.metadata?.pollId;
+              return !(isPoll && String(msgPollId) === String(pollId));
+            });
+            return {
+              ...prev,
+              content_state: {
+                ...prev.content_state,
+                messages: filteredMessages
+              }
+            };
+          });
 
-            return filtered;
+          // ✅ Sync with global store
+          useCollaborationStore.getState().handleSpaceEvent({
+            type: 'poll.deleted',
+            data: { poll_id: pollId, space_id: id }
           });
 
           // Optional: Show a notification
@@ -667,6 +682,11 @@ const SpaceDetailScreen = () => {
               p.id === poll.id || p.parent_poll_id === poll.id ? { ...poll, id: p.id } : p
             );
             return activeTab === 'polls' ? [...updated] : updated;
+          });
+
+          // ✅ Sync with global store
+          useCollaborationStore.getState().updateSpace(id as string, {
+            updated_at: new Date().toISOString()
           });
         },
 
@@ -1235,12 +1255,12 @@ const SpaceDetailScreen = () => {
     }
   }, [params.tab]);
 
-  // ✅ Auto-open activities modal if activity param is present
   useEffect(() => {
-    if (params.activity && !showActivitiesModal && params.tab !== 'meeting') {
+    if (params.activity && !showActivitiesModal && activeTab !== 'meeting' && !hasAutoOpenedActivity.current) {
       setShowActivitiesModal(true);
+      hasAutoOpenedActivity.current = true;
     }
-  }, [params.activity, params.tab]);
+  }, [params.activity, activeTab, showActivitiesModal]);
 
   // ✅ Auto-start meeting if joining from a session
   useEffect(() => {
@@ -1380,6 +1400,31 @@ const SpaceDetailScreen = () => {
                   currentUserId={Number(user?.id) || 0}
                   currentUserRole={space?.my_role}
                   onRefresh={loadPolls}
+                  onDelete={(pollId) => {
+                    setPolls(prev => prev.filter(p => p.id !== pollId));
+                    // 2. Remove from messages list (source of truth for Chat tab)
+                    setSpace(prev => {
+                      if (!prev?.content_state?.messages) return prev;
+                      const filteredMessages = prev.content_state.messages.filter((msg: any) => {
+                        const isPoll = msg.type === 'poll' || msg.metadata?.isPoll;
+                        const msgPollId = msg.poll?.id || msg.metadata?.pollId;
+                        return !(isPoll && String(msgPollId) === String(pollId));
+                      });
+                      return {
+                        ...prev,
+                        content_state: {
+                          ...prev.content_state,
+                          messages: filteredMessages
+                        }
+                      };
+                    });
+
+                    // ✅ Sync with global store
+                    useCollaborationStore.getState().handleSpaceEvent({
+                      type: 'poll.deleted',
+                      data: { poll_id: pollId, space_id: id }
+                    });
+                  }}
                 />
               ))
             )}
@@ -1647,18 +1692,7 @@ const SpaceDetailScreen = () => {
             </TouchableOpacity>
           )}
 
-          {/* Priority 1: Add People (only for non-direct spaces, and if allowed) */}
-          {!isDirectChat && space?.space_type !== 'channel' && (canInvite || myParticipation?.role === 'owner') && (
-            <TouchableOpacity
-              style={[styles.headerButton, isLocked && { opacity: 0.5 }]}
-              onPress={() => setShowInviteModal(true)}
-              disabled={isLocked}
-            >
-              <Ionicons name="person-add-outline" size={24} color={colors.tint} />
-            </TouchableOpacity>
-          )}
-
-          {/* Priority 2: Call (if allowed, hide for channels unless admin) */}
+          {/* Priority 1: Call (if allowed, hide for channels unless admin) */}
           {canStartCalls && (space?.space_type !== 'channel' || canEditSpace) && (
             <TouchableOpacity
               ref={callButtonRef}
@@ -1675,7 +1709,7 @@ const SpaceDetailScreen = () => {
           )}
 
           {/* Activities Popup with Badge (Hidden when 0) */}
-          {((spaceUpcomingCounts[id as string] || 0) > 0) && (
+          {(spaceUpcomingCounts[id as string] || 0) > 0 && (
             <TouchableOpacity
               style={[styles.headerButton, isLocked && { opacity: 0.5 }]}
               onPress={() => setShowActivitiesModal(true)}
@@ -1850,9 +1884,55 @@ const SpaceDetailScreen = () => {
         currentUserRole={space?.my_role}
         isVisible={showPollCreator}
         onClose={() => setShowPollCreator(false)}
-        onPollCreated={() => {
+        onPollCreated={(poll, message) => {
           loadPolls();
+          if (message) {
+            setSpace((prev: any) => {
+              const msgs = prev?.content_state?.messages || [];
+              if (msgs.some((m: any) => m.id === message.id)) return prev;
+              return {
+                ...prev,
+                content_state: {
+                  ...prev?.content_state,
+                  messages: [message, ...msgs]
+                }
+              };
+            });
+          }
           setShowPollCreator(false);
+          setActiveTab('chat');
+        }}
+        onPollUpdated={(poll, message) => {
+          loadPolls();
+          let updatedMessages = [];
+          if (message) {
+            setSpace((prev: any) => {
+              const msgs = prev?.content_state?.messages || [];
+              if (msgs.some((m: any) => m.id === message.id)) return prev;
+              updatedMessages = [message, ...msgs];
+              return {
+                ...prev,
+                content_state: {
+                  ...prev?.content_state,
+                  messages: updatedMessages
+                }
+              };
+            });
+          }
+          
+          // ✅ Sync with global store
+          useCollaborationStore.getState().updateSpace(id as string, {
+            updated_at: new Date().toISOString(),
+            ...(message ? {
+                content_state: {
+                    ...(useCollaborationStore.getState().activeSpace?.content_state || {}),
+                    messages: updatedMessages.length > 0 ? updatedMessages : undefined
+                }
+            } : {})
+          });
+
+          setShowPollCreator(false);
+          setActiveTab('chat');
         }}
       />
 
@@ -2246,12 +2326,14 @@ const SpaceDetailScreen = () => {
         <CollaborativeActivities
           spaceId={id as string} // Filter by current space
           initialActivityId={params.activity as string}
-          onClose={() => setShowActivitiesModal(false)}
-          onActivitySelect={(activity) => {
-            // Since we are already in the space, we can just close or update state
+          onClose={() => {
             setShowActivitiesModal(false);
-            // Optionally switch to calendar tab if not already there, 
-            // though the modal should handle the details.
+            router.setParams({ activity: undefined });
+          }}
+          onActivitySelect={(activity) => {
+            setShowActivitiesModal(false);
+            router.setParams({ activity: undefined });
+            handleJoinSession(activity);
           }}
         />
       </Modal>

@@ -74,6 +74,7 @@ const PollVotersModal: React.FC<PollVotersModalProps> = ({
     visible,
     onClose,
     poll,
+    currentUserId,
     spaceId,
 }) => {
     const { colors: themeColors, activeScheme } = useAppTheme();

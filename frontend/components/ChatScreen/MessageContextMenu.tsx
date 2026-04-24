@@ -84,6 +84,7 @@ export interface MessageContextMenuProps {
     onTranslate?: (message: ContextMessage) => void;
     onPin?: (message: ContextMessage) => void;
     onSelect?: (message: ContextMessage) => void;
+    isTranslated?: boolean;
     // ── Poll-specific handlers ─────────────────────────────────────────────────
     onClosePoll?: (message: ContextMessage) => void;
     onForwardPoll?: (message: ContextMessage) => void;
@@ -116,6 +117,7 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
     currentUserRole,
     anchorY,
     anchorRight = false,
+    isTranslated = false,
     onClose,
     onReply,
     onForward,
@@ -198,8 +200,8 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
         if (isText && message.content && onTranslate) {
             actions.push({
                 id: 'translate',
-                label: t('translate'),
-                icon: 'language-outline',
+                label: isTranslated ? t('see_original') : t('translate'),
+                icon: isTranslated ? 'refresh-outline' : 'language-outline',
                 color: '#5856D6',
                 onPress: () => { onClose(); onTranslate(message); },
             });

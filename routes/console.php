@@ -9,4 +9,4 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('cleanup:guests --hours=24')->daily();
+Schedule::command('cleanup:guests --hours=72')->dailyAt('01:00');

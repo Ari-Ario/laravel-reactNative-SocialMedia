@@ -11,6 +11,8 @@ interface PostMenuProps {
     onReport: () => void;
     isOwner: boolean;
     anchorPosition?: { top: number; left: number };
+    onTranslate?: () => void;
+    isTranslated?: boolean;
 }
 
 export default function PostMenu({ 
@@ -20,7 +22,9 @@ export default function PostMenu({
     onEdit, 
     onReport,
     isOwner,
-    anchorPosition = { top: 0, left: 0 }
+    anchorPosition = { top: 0, left: 0 },
+    onTranslate,
+    isTranslated = false
 }: PostMenuProps) {
     const { colors } = useAppTheme();
     const { t, isRTL } = useTranslation();
@@ -29,7 +33,19 @@ export default function PostMenu({
 
     return (
         <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
-            <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
+            <TouchableOpacity 
+                style={styles.overlay} 
+                activeOpacity={1} 
+                onPress={(e) => {
+                    if (Platform.OS === 'web') {
+                        // 🛡️ Robust propagation control for Web
+                        const nativeEvent = e.nativeEvent as any;
+                        if (nativeEvent.stopPropagation) nativeEvent.stopPropagation();
+                        if (nativeEvent.preventDefault) nativeEvent.preventDefault();
+                    }
+                    onClose();
+                }}
+            >
                 <View style={[
                     styles.menuContainer,
                     {
@@ -57,6 +73,22 @@ export default function PostMenu({
                                 <Text style={[styles.menuText, { color: colors.text }]}>{t('edit')}</Text>
                             </TouchableOpacity>
                         </>
+                    )}
+                    
+                    {onTranslate && (
+                        <TouchableOpacity 
+                            style={styles.menuItem} 
+                            onPress={() => { onClose(); onTranslate(); }}
+                        >
+                            <Ionicons 
+                                name={isTranslated ? "refresh-outline" : "language-outline"} 
+                                size={20} 
+                                color={isTranslated ? "#25D366" : colors.text} 
+                            />
+                            <Text style={[styles.menuText, { color: isTranslated ? "#25D366" : colors.text }]}>
+                                {isTranslated ? t('see_original') : t('translate')}
+                            </Text>
+                        </TouchableOpacity>
                     )}
                     
                     <TouchableOpacity 

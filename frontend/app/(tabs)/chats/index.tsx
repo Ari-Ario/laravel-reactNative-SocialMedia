@@ -1,4 +1,3 @@
-// app/(tabs)/chats/index.tsx
 import React, { useState, useEffect, useContext, useMemo, useCallback, useRef } from "react";
 import {
   View, StyleSheet, ActivityIndicator,
@@ -87,6 +86,30 @@ const ChatPage = () => {
 
     return descriptions[space.space_type] || t('collaboration_space');
   }, [t]);
+
+  const formatLastMessageTime = useCallback((dateStr: string): string => {
+    if (!dateStr) return '';
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return '';
+      
+      const now = new Date();
+      const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (diffInDays === 0) {
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      } else if (diffInDays === 1) {
+        return t('yesterday');
+      } else if (diffInDays < 7) {
+        const days = [t('sunday'), t('monday'), t('tuesday'), t('wednesday'), t('thursday'), t('friday'), t('saturday')];
+        return days[date.getDay()];
+      } else {
+        return date.toLocaleDateString();
+      }
+    } catch (e) {
+      return '';
+    }
+  }, [t]);
   const notificationService = NotificationService.getInstance();
   const searchService = SearchService.getInstance();
   const realTimeService = RealTimeService.getInstance();
@@ -129,22 +152,25 @@ const ChatPage = () => {
 
   // Helper function to transform API data to contacts
   const transformUsersToContacts = useCallback((data: any[]): Chat[] => {
-    return data.map((item) => {
-      const user = item.follower || item.following || item.user || item;
-      return {
-        id: user.id.toString(),
-        name: user.name || t('user'),
+    return data
+      .map((item) => {
+        const u = item.follower || item.following || item.user || item;
+        return u;
+      })
+      .filter((u) => u && u.id)
+      .map((u) => ({
+        id: u.id.toString(),
+        name: u.name || t('user'),
         lastMessage: t('start_chatting'),
         timestamp: t('active'),
-        avatar: user.profile_photo,
+        avatar: u.profile_photo,
         isOnline: false,
-        user_id: user.id.toString(),
+        user_id: u.id.toString(),
         type: 'contact' as const,
-        email: user.email,
-        username: user.username,
+        email: u.email,
+        username: u.username,
         updatedAt: new Date(0).toISOString(),
-      };
-    });
+      }));
   }, [t]);
 
 
@@ -785,7 +811,9 @@ const ChatPage = () => {
             <Text style={[styles.tabText, activeTab === tab.id && styles.activeTabText]}>{tab.name}</Text>
             {tab.spaceIds.length > 0 && (
               <View style={[styles.tabBadge, { backgroundColor: '#007AFF' }]}>
-                <Text style={styles.tabBadgeText}>{tab.spaceIds.length}</Text>
+                <Text style={styles.tabBadgeText}>
+                  {tab.spaceIds.length > 99 ? '99+' : tab.spaceIds.length}
+                </Text>
               </View>
             )}
           </TouchableOpacity>
@@ -1068,10 +1096,13 @@ const ChatPage = () => {
           onClose={() => setShowActivities(false)}
           initialActivityId={activity as string}
           onActivitySelect={(activity) => {
+            // Close the modal first to ensure UI unblocks before navigation
+            setShowActivities(false);
+            
             // Navigate to the space containing this activity
             const space = storeSpaces.find(s => s.id === activity.space_id);
             if (space) {
-              router.push(`/(spaces)/${activity.space_id}?activity=${activity.id}`);
+              router.push(`/(spaces)/${activity.space_id}`);
             } else {
               Alert.alert(t('error'), t('failed_to_update'));
             }

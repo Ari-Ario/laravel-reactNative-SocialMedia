@@ -58,7 +58,13 @@ class PostController extends Controller
                             'media' => function($q) {
                                 $q->select(['id', 'model_id', 'model_type', 'file_path', 'type']);
                             },
-                            'reactionCounts'
+                            'reactionCounts',
+                            'reposts' => function ($query) {
+                                $query->select(['id', 'user_id', 'post_id', 'context_tag', 'personal_note', 'created_at'])
+                                      ->with('user:id,name,profile_photo')
+                                      ->latest()
+                                      ->limit(5);
+                            }
                         ]);
                 } else {
                     $query->with([
@@ -846,6 +852,9 @@ class PostController extends Controller
             'collection_id' => $request->collection_id,
             'visibility' => $request->visibility ?? 'public',
         ]);
+
+        // Bust cache for the feed
+        \Illuminate\Support\Facades\Cache::put('posts_cache_v', time(), 86400);
 
         return response()->json([
             'message' => 'Post reposted',

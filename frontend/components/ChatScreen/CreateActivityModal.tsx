@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Modal,
   View,
@@ -15,25 +15,25 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlobalStyles } from '@/styles/GlobalStyles';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from 'date-fns';
 import CollaborationService, { CollaborativeActivity } from '@/services/ChatScreen/CollaborationService';
 import { createShadow } from '@/utils/styles';
 import { useToastStore } from '@/stores/toastStore';
-import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useTranslation } from '@/constants/i18n';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
   withTiming,
   interpolate,
   Extrapolate,
   FadeIn,
 } from 'react-native-reanimated';
 import { safeHaptics } from '@/utils/haptics';
+import { MotiView } from 'moti';
+
+// ─── Types & Props ───────────────────────────────────────────────────────────
 
 interface CreateActivityModalProps {
   spaceId?: string;
@@ -45,6 +45,168 @@ interface CreateActivityModalProps {
   activityToEdit?: CollaborativeActivity | null;
   isEditing?: boolean;
 }
+
+interface SessionDatePickerModalProps {
+  visible: boolean;
+  value: Date;
+  onConfirm: (date: Date) => void;
+  onClose: () => void;
+}
+
+// ─── Custom Date Picker Modal ───────────────────────────────────────────────
+
+const SessionDatePickerModal = ({ visible, value, onConfirm, onClose }: SessionDatePickerModalProps) => {
+  const { t } = useTranslation();
+  const { colors, activeScheme } = useAppTheme();
+  const modalStyles = getDatePickerStyles(colors, activeScheme);
+
+  const baseDate = value || new Date(Date.now() + 3600000);
+  const [year, setYear] = useState(String(baseDate.getFullYear()));
+  const [month, setMonth] = useState(String(baseDate.getMonth() + 1).padStart(2, '0'));
+  const [day, setDay] = useState(String(baseDate.getDate()).padStart(2, '0'));
+  const [hour, setHour] = useState(String(baseDate.getHours()).padStart(2, '0'));
+  const [minute, setMinute] = useState(String(baseDate.getMinutes()).padStart(2, '0'));
+
+  const [webDateTime, setWebDateTime] = useState(baseDate.toISOString().slice(0, 16));
+
+  const handleConfirm = () => {
+    if (Platform.OS === 'web') {
+      onConfirm(new Date(webDateTime));
+    } else {
+      const d = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute));
+      if (isNaN(d.getTime())) {
+        Alert.alert(t('error'), t('invalid_date'));
+        return;
+      }
+      onConfirm(d);
+    }
+  };
+
+  const MONTHS = [
+    t('month_jan'), t('month_feb'), t('month_mar'), t('month_apr'), t('month_may'), t('month_jun'),
+    t('month_jul'), t('month_aug'), t('month_sep'), t('month_oct'), t('month_nov'), t('month_dec')
+  ];
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={modalStyles.overlay} activeOpacity={1} onPress={onClose}>
+        <MotiView
+          from={{ translateY: 300, opacity: 0 }}
+          animate={{ translateY: 0, opacity: 1 }}
+          transition={{ type: 'spring', damping: 22 }}
+          style={modalStyles.sheet}
+        >
+          <TouchableOpacity activeOpacity={1}>
+            <View style={modalStyles.handle} />
+            <View style={modalStyles.header}>
+              <TouchableOpacity onPress={onClose}>
+                <Text style={modalStyles.cancelBtn}>{t('cancel')}</Text>
+              </TouchableOpacity>
+              <Text style={modalStyles.title}>{t('schedule_session')}</Text>
+              <TouchableOpacity onPress={handleConfirm}>
+                <Text style={modalStyles.doneBtn}>{t('save')}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {Platform.OS === 'web' ? (
+              <View style={modalStyles.webDateContainer}>
+                <Text style={modalStyles.webDateLabel}>{t('select_date_time')}</Text>
+                <input
+                  type="datetime-local"
+                  value={webDateTime}
+                  min={new Date().toISOString().slice(0, 16)}
+                  onChange={(e: any) => setWebDateTime(e.target.value)}
+                  style={{
+                    width: '85%',
+                    alignSelf: 'center',
+                    padding: 14,
+                    fontSize: 18,
+                    borderRadius: 12,
+                    border: `2px solid ${activeScheme === 'dark' ? '#333' : colors.border}`,
+                    outline: 'none',
+                    fontFamily: 'inherit',
+                    color: colors.text,
+                    backgroundColor: activeScheme === 'dark' ? '#1A1A1A' : colors.surface,
+                    marginTop: 8,
+                    colorScheme: activeScheme === 'dark' ? 'dark' : 'light',
+                  } as any}
+                />
+              </View>
+            ) : (
+              <View style={{ flexShrink: 1 }}>
+                <Text style={[modalStyles.webDateLabel, { paddingHorizontal: 20 }]}>{t('select_date_time')}</Text>
+                <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 400 }}>
+                  <View style={modalStyles.pickerRow}>
+                    <View style={modalStyles.pickerCol}>
+                      <Text style={modalStyles.pickerLabel}>{t('day')}</Text>
+                      <TextInput
+                        style={modalStyles.pickerInput}
+                        value={day}
+                        onChangeText={v => setDay(v.replace(/\D/g, '').slice(0, 2))}
+                        keyboardType="number-pad"
+                        maxLength={2}
+                      />
+                    </View>
+                    <View style={modalStyles.pickerCol}>
+                      <Text style={modalStyles.pickerLabel}>{t('month')}</Text>
+                      <ScrollView style={modalStyles.monthScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+                        {MONTHS.map((m, i) => (
+                          <TouchableOpacity
+                            key={m}
+                            style={[modalStyles.monthItem, month === String(i + 1).padStart(2, '0') && modalStyles.monthItemActive]}
+                            onPress={() => setMonth(String(i + 1).padStart(2, '0'))}
+                          >
+                            <Text style={[modalStyles.monthText, month === String(i + 1).padStart(2, '0') && modalStyles.monthTextActive]}>
+                              {m}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                    <View style={modalStyles.pickerCol}>
+                      <Text style={modalStyles.pickerLabel}>{t('year')}</Text>
+                      <TextInput
+                        style={modalStyles.pickerInput}
+                        value={year}
+                        onChangeText={v => setYear(v.replace(/\D/g, '').slice(0, 4))}
+                        keyboardType="number-pad"
+                        maxLength={4}
+                      />
+                    </View>
+                  </View>
+                  <View style={[modalStyles.pickerRow, { borderTopWidth: 1, borderTopColor: colors.border, marginTop: 10 }]}>
+                    <View style={modalStyles.pickerCol}>
+                      <Text style={modalStyles.pickerLabel}>{t('hour')}</Text>
+                      <TextInput
+                        style={modalStyles.pickerInput}
+                        value={hour}
+                        onChangeText={v => setHour(v.replace(/\D/g, '').slice(0, 2))}
+                        keyboardType="number-pad"
+                        maxLength={2}
+                      />
+                    </View>
+                    <View style={modalStyles.pickerCol}>
+                      <Text style={modalStyles.pickerLabel}>{t('minute')}</Text>
+                      <TextInput
+                        style={modalStyles.pickerInput}
+                        value={minute}
+                        onChangeText={v => setMinute(v.replace(/\D/g, '').slice(0, 2))}
+                        keyboardType="number-pad"
+                        maxLength={2}
+                      />
+                    </View>
+                  </View>
+                </ScrollView>
+              </View>
+            )}
+          </TouchableOpacity>
+        </MotiView>
+      </TouchableOpacity>
+    </Modal>
+  );
+};
+
+// ─── Main Component ──────────────────────────────────────────────────────────
 
 const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
   spaceId,
@@ -60,1028 +222,439 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({
   const insets = useSafeAreaInsets();
   const { colors, activeScheme } = useAppTheme();
   const { t, isRTL } = useTranslation();
-  const getLocalizedDay = (date: Date, short = true) => {
-    const dayKey = 'day_' + format(date, 'eee').toLowerCase();
-    const shortKey = dayKey + '_s';
-    return t(short ? shortKey : dayKey);
-  };
-
-  const styles = getStyles(colors, activeScheme, isRTL);
   const isDark = activeScheme === 'dark';
-  const [step, setStep] = useState(1);
+
+  // State
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [activityType, setActivityType] = useState('meeting');
-  const [scheduledStart, setScheduledStart] = useState<Date>(() => {
-    const date = defaultDate ? new Date(defaultDate) : new Date();
-    date.setHours(10, 0, 0, 0);
-    return date;
-  });
-  const [duration, setDuration] = useState(60);
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [recurrencePattern, setRecurrencePattern] = useState<'weekly' | 'biweekly' | 'monthly'>('weekly');
+  const [scheduledStart, setScheduledStart] = useState<Date>(new Date());
+  
+  const [durationValue, setDurationValue] = useState('60');
+  const [durationUnit, setDurationUnit] = useState<'min' | 'hour' | 'day'>('min');
+  
+  const [isRecurring, setIsRecurring] = useState(true);
+  const [recurrencePattern, setRecurrencePattern] = useState<'daily' | 'weekly' | 'biweekly' | 'monthly'>('weekly');
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
   const [maxParticipants, setMaxParticipants] = useState<number | undefined>();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Space selection
-  const { spaces, globalActivities } = require('@/stores/collaborationStore').useCollaborationStore();
+  const { spaces } = require('@/stores/collaborationStore').useCollaborationStore();
   const [selectedSpaceId, setSelectedSpaceId] = useState<string>(spaceId || '');
-
   const collaborationService = CollaborationService.getInstance();
 
-  // Animation values
   const progress = useSharedValue(0);
-  const scale = useSharedValue(1);
 
   useEffect(() => {
     if (visible) {
-      progress.value = withTiming(1, { duration: 500 });
+      progress.value = withTiming(1, { duration: 400 });
       
-      // Initialize form with provided values
-      if (initialTime) {
-        setScheduledStart(new Date(initialTime));
-      } else if (defaultDate) {
+      if (initialTime) setScheduledStart(new Date(initialTime));
+      else if (defaultDate) {
         const d = new Date(defaultDate);
-        d.setHours(10, 0, 0, 0);
+        d.setHours(new Date().getHours() + 1, 0, 0, 0);
         setScheduledStart(d);
       } else {
         const now = new Date();
-        now.setHours(now.getHours() + 1, 0, 0, 0); // Next hour by default
+        now.setHours(now.getHours() + 1, 0, 0, 0);
         setScheduledStart(now);
       }
       
-      if (spaceId) {
-        setSelectedSpaceId(spaceId);
-      }
+      if (spaceId) setSelectedSpaceId(spaceId);
 
-      // Initialize with activity data if editing
       if (isEditing && activityToEdit) {
         setTitle(activityToEdit.title);
         setDescription(activityToEdit.description || '');
-        if (activityToEdit.scheduled_start) {
-          setScheduledStart(new Date(activityToEdit.scheduled_start));
+        if (activityToEdit.scheduled_start) setScheduledStart(new Date(activityToEdit.scheduled_start));
+        
+        const mins = activityToEdit.duration_minutes || 60;
+        if (mins >= 1440 && mins % 1440 === 0) {
+          setDurationValue(String(mins / 1440));
+          setDurationUnit('day');
+        } else if (mins >= 60 && mins % 60 === 0) {
+          setDurationValue(String(mins / 60));
+          setDurationUnit('hour');
+        } else {
+          setDurationValue(String(mins));
+          setDurationUnit('min');
         }
-        setDuration(activityToEdit.duration_minutes || 60);
+
         setIsRecurring(!!activityToEdit.is_recurring);
         setRecurrencePattern(activityToEdit.recurrence_pattern as any || 'weekly');
         setMaxParticipants(activityToEdit.max_participants);
         setSelectedSpaceId(activityToEdit.space_id);
       }
-      
-      // Reset flow for fresh open
-      setStep(1);
     } else {
       progress.value = 0;
       setIsSubmitting(false);
     }
   }, [visible, initialTime, spaceId, defaultDate, isEditing, activityToEdit]);
 
-  const activityTypes = [
+  const activityTypes = useMemo(() => [
     { id: 'meeting', name: t('team_meeting'), icon: 'people', color: '#6366f1' },
     { id: 'brainstorm', name: t('brainstorm'), icon: 'bulb', color: '#10b981' },
     { id: 'workshop', name: t('workshop'), icon: 'school', color: '#f59e0b' },
     { id: 'review', name: t('review'), icon: 'checkmark-circle', color: '#8b5cf6' },
     { id: 'planning', name: t('planning'), icon: 'calendar', color: '#3b82f6' },
     { id: 'social', name: t('social'), icon: 'wine', color: '#ec4899' },
-  ];
+  ], [t]);
 
-  const durationOptions = [15, 30, 45, 60, 90, 120];
-  const quickTimes = [
-    { label: t('morning'), time: '09:00' },
-    { label: t('lunch'), time: '12:00' },
-    { label: t('afternoon'), time: '14:00' },
-    { label: t('late'), time: '16:00' },
-  ];
+  const getLocalizedDay = useCallback((date: Date, short = true) => {
+    const dayKey = 'day_' + format(date, 'eee').toLowerCase();
+    const shortKey = dayKey + '_s';
+    return t(short ? shortKey : dayKey);
+  }, [t]);
 
-  const handleNext = () => {
-    if (step === 1) {
-      if (!title.trim()) {
-        showToast(t('enter_session_title'), 'error');
-        return;
-      }
-      if (!selectedSpaceId && !spaceId) {
-        showToast(t('select_space_activity'), 'error');
-        return;
-      }
-    }
-    if (step === 2 && !scheduledStart) {
-      showToast(t('select_date_time'), 'error');
-      return;
-    }
-    if (step < 3) {
-      setStep(step + 1);
-      safeHaptics.impact();
-      scale.value = withSpring(1.1, {}, () => {
-        scale.value = withSpring(1);
-      });
-    } else {
-      if (isEditing) {
-        handleUpdateActivity();
+  const durationInMinutes = useMemo(() => {
+    const val = parseInt(durationValue, 10) || 0;
+    if (durationUnit === 'day') return val * 1440;
+    if (durationUnit === 'hour') return val * 60;
+    return val;
+  }, [durationValue, durationUnit]);
+
+  const isFormValid = useMemo(() => {
+    return title.trim().length > 0 && selectedSpaceId.length > 0 && !!scheduledStart && durationInMinutes > 0;
+  }, [title, selectedSpaceId, scheduledStart, durationInMinutes]);
+
+  const handleAction = async () => {
+    if (!isFormValid) return;
+    setIsSubmitting(true);
+    safeHaptics.success();
+
+    const activityData: any = {
+      space_id: selectedSpaceId,
+      title,
+      description,
+      activity_type: activityType,
+      scheduled_start: scheduledStart.toISOString(),
+      duration_minutes: durationInMinutes,
+      is_recurring: isRecurring,
+      recurrence_pattern: isRecurring ? recurrencePattern : null,
+      max_participants: maxParticipants,
+    };
+
+    try {
+      let result;
+      const store = require('@/stores/collaborationStore').useCollaborationStore.getState();
+      if (isEditing && activityToEdit) {
+        result = await collaborationService.updateCollaborativeActivity(Number(activityToEdit.id), activityData);
+        if (result) {
+          store.updateActivity(result);
+          showToast(t('session_updated'), 'success');
+        }
       } else {
-        handleCreateActivity();
+        result = await collaborationService.createCollaborativeActivity(activityData);
+        if (result) {
+          store.addActivity(result);
+          showToast(t('session_scheduled'), 'success');
+        }
       }
-    }
-  };
-
-  const checkConflicts = (start: Date, duration_mins: number): string | null => {
-    const newStart = start.getTime();
-    const newEnd = newStart + duration_mins * 60 * 1000;
-
-    for (const activity of globalActivities) {
-      // Skip the one we are editing
-      if (isEditing && activityToEdit && activity.id === activityToEdit.id) continue;
-      
-      // Only check scheduled/active sessions
-      if (activity.status === 'cancelled' || activity.status === 'completed') continue;
-
-      const existingStart = new Date(activity.scheduled_start).getTime();
-      const existingEnd = existingStart + (activity.duration_minutes || 60) * 60 * 1000;
-
-      // Overlap logic: (StartA < EndB) && (EndA > StartB)
-      if (newStart < existingEnd && newEnd > existingStart) {
-        return activity.title;
-      }
-    }
-    return null;
-  };
-
-  const handleUpdateActivity = async () => {
-    if (!activityToEdit) return;
-
-    try {
-      setIsSubmitting(true);
-      safeHaptics.success();
-
-      // Check for conflicts
-      const conflictTitle = checkConflicts(scheduledStart, duration);
-      if (conflictTitle) {
-        showToast(t('time_conflict').replace('{title}', conflictTitle), 'error');
-        setIsSubmitting(false);
-        return;
-      }
-
-      const activityData: any = {
-        title,
-        description,
-        activity_type: activityType,
-        scheduled_start: scheduledStart.toISOString(),
-        duration_minutes: duration,
-        is_recurring: isRecurring,
-        recurrence_pattern: isRecurring ? recurrencePattern : null,
-        max_participants: maxParticipants,
-      };
-
-      const updatedActivity = await collaborationService.updateCollaborativeActivity(
-        Number(activityToEdit.id),
-        activityData
-      );
-
-      if (updatedActivity) {
-        const { useCollaborationStore } = require('@/stores/collaborationStore');
-        useCollaborationStore.getState().updateActivity(updatedActivity);
-        showToast(t('session_updated'), 'success');
-      }
-
       onActivityCreated();
       onClose();
     } catch (error) {
-      console.error('Error updating activity:', error);
-      showToast(t('error_update'), 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleCreateActivity = async () => {
-    try {
-      setIsSubmitting(true);
-      safeHaptics.success();
-
-      // Check for conflicts
-      const conflictTitle = checkConflicts(scheduledStart, duration);
-      if (conflictTitle) {
-        showToast(t('time_conflict').replace('{title}', conflictTitle), 'error');
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Simulate a short delay for better UX
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      const activityData: any = {
-        space_id: (selectedSpaceId || spaceId) as string,
-        title,
-        description,
-        activity_type: activityType,
-        scheduled_start: scheduledStart.toISOString(),
-        duration_minutes: duration,
-        is_recurring: isRecurring,
-        recurrence_pattern: isRecurring ? recurrencePattern : null,
-        max_participants: maxParticipants,
-      };
-
-      if (!activityData.space_id) {
-        showToast(t('select_space_activity'), 'error');
-        setIsSubmitting(false);
-        return;
-      }
-
-      const newActivity = await collaborationService.createCollaborativeActivity(activityData);
-      
-      // ✅ NEW: Add to local store immediately for instant UI refresh
-      if (newActivity) {
-        const { useCollaborationStore } = require('@/stores/collaborationStore');
-        useCollaborationStore.getState().addActivity(newActivity);
-        showToast(t('session_scheduled'), 'success');
-      }
-
-      onActivityCreated();
-      onClose();
-    } catch (error) {
-      console.error('Error creating activity:', error);
       showToast(t('error'), 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleQuickTimeSelect = (timeString: string) => {
-    const [hours, minutes] = timeString.split(':').map(Number);
-    const newDate = new Date(scheduledStart);
-    newDate.setHours(hours, minutes, 0, 0);
-    setScheduledStart(newDate);
-    safeHaptics.impact();
-  };
-
-  const handleQuickDateSelect = (daysToAdd: number) => {
-    const newDate = new Date();
-    newDate.setDate(newDate.getDate() + daysToAdd);
-    newDate.setHours(scheduledStart.getHours(), scheduledStart.getMinutes(), 0, 0);
-    setScheduledStart(newDate);
-    safeHaptics.impact();
-  };
-
-  const animatedHeaderStyle = useAnimatedStyle(() => ({
-    opacity: progress.value,
-    transform: [{ scale: interpolate(progress.value, [0, 1], [0.9, 1], Extrapolate.CLAMP) }],
-  }));
-
-  const animatedButtonStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const renderStepIndicator = () => (
-    <View style={styles.progressContainer}>
-      <View style={styles.progressBar}>
-        {[1, 2, 3].map((i) => (
-          <Animated.View
-            key={i}
-            style={[
-              styles.progressDot,
-              i <= step && styles.progressDotActive,
-              i === step && styles.progressDotCurrent,
-            ]}
-          />
-        ))}
-      </View>
-      <Text style={styles.stepText}>{t('step_of').replace('{step}', step.toString()).replace('{total}', '3')}</Text>
-    </View>
-  );
+  const styles = getStyles(colors, activeScheme, isRTL);
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <LinearGradient
         colors={isDark ? [colors.background, colors.background] : ['#f8fafc', '#f1f5f9']}
         style={[GlobalStyles.popupContainer, { paddingTop: insets.top || 20, backgroundColor: colors.background }]}
       >
-        {/* Header */}
-        <Animated.View style={[styles.header, { flexDirection: isRTL ? 'row-reverse' : 'row' }, animatedHeaderStyle]}>
-          <TouchableOpacity
-            onPress={step > 1 ? () => setStep(step - 1) : onClose}
-            hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
-          >
-            <Ionicons name={step > 1 ? (isRTL ? 'chevron-forward' : 'chevron-back') : 'close'} size={28} color={colors.text} />
+        <View style={[styles.header, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+          <TouchableOpacity onPress={onClose} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}>
+            <Ionicons name="close" size={28} color={colors.text} />
           </TouchableOpacity>
-
-          {renderStepIndicator()}
-
+          <Text style={styles.headerTitle}>{isEditing ? t('edit_session') : t('create_session')}</Text>
           <View style={{ width: 28 }} />
-        </Animated.View>
+        </View>
 
         <ScrollView
           style={styles.scrollContent}
           contentContainerStyle={styles.scrollContentContainer}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {step === 1 && (
-            <Animated.View entering={FadeIn.duration(300)}>
-              <Text style={[styles.heroTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{isEditing ? t('edit_session') : t('create_session')}</Text>
-              <Text style={[styles.heroSubtitle, { textAlign: isRTL ? 'right' : 'left' }]}>
-                {isEditing ? t('update_details') : t('setup_activity')}
-              </Text>
+          <Animated.View entering={FadeIn.duration(400)}>
+            
+            {/* Title Card */}
+            <View style={styles.card}>
+              <TextInput
+                style={styles.titleInput}
+                placeholder={t('session_title')}
+                placeholderTextColor={colors.textSecondary + '70'}
+                value={title}
+                onChangeText={setTitle}
+              />
+              <View style={styles.separator} />
+              <TextInput
+                style={styles.descriptionInput}
+                placeholder={t('description_placeholder')}
+                placeholderTextColor={colors.textSecondary + '70'}
+                value={description}
+                onChangeText={setDescription}
+                multiline
+                numberOfLines={2}
+              />
+            </View>
 
-              <View style={styles.card}>
-                <TextInput
-                  style={styles.titleInput}
-                  placeholder={t('session_title')}
-                  placeholderTextColor={colors.textSecondary}
-                  value={title}
-                  onChangeText={setTitle}
-                  autoFocus
-                />
-                <TextInput
-                  style={styles.descriptionInput}
-                  placeholder={t('description_placeholder')}
-                  placeholderTextColor={colors.textSecondary}
-                  value={description}
-                  onChangeText={setDescription}
-                  multiline
-                  numberOfLines={4}
-                />
-              </View>
-
-              <Text style={[styles.sectionLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t('activity_type')}</Text>
-              <ScrollView horizontal={!isRTL} showsHorizontalScrollIndicator={false} style={styles.typeScroll} contentContainerStyle={isRTL && { flexDirection: 'row-reverse' }}>
-                {activityTypes.map((type) => (
-                  <TouchableOpacity
-                    key={type.id}
-                    activeOpacity={0.7}
-                    style={[
-                      styles.typeChip,
-                      activityType === type.id && styles.typeChipSelected,
-                      { borderColor: type.color + '80' },
-                    ]}
-                    onPress={() => {
-                      setActivityType(type.id);
-                      safeHaptics.impact();
-                    }}
-                  >
-                    <LinearGradient
-                      colors={[type.color, type.color + 'd0']}
-                      style={styles.typeIconGradient}
-                    >
-                      <Ionicons name={type.icon as any} size={22} color="#fff" />
-                    </LinearGradient>
-                    <Text
-                      style={[
-                        styles.typeName,
-                        activityType === type.id && { color: type.color, fontWeight: '700' },
-                      ]}
-                    >
-                      {type.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              <Text style={[styles.sectionLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t('target_space')}</Text>
-              <ScrollView horizontal={!isRTL} showsHorizontalScrollIndicator={false} style={styles.typeScroll} contentContainerStyle={isRTL && { flexDirection: 'row-reverse' }}>
-                {spaces
-                  .filter((s: any) => s && s.id && (spaceId ? s.id === spaceId : true)) // 🛡️ Filter nulls and restrict if spaceId is provided
-                  .map((s: any) => (
-                  <TouchableOpacity
-                    key={s.id}
-                    activeOpacity={0.7}
-                    style={[
-                      styles.spaceChip,
-                      selectedSpaceId === s.id && styles.spaceChipSelected,
-                    ]}
-                    onPress={() => {
-                      setSelectedSpaceId(s.id);
-                      safeHaptics.impact();
-                    }}
-                  >
-                    <View style={styles.spaceAvatarPlaceholder}>
-                        <Text style={styles.spaceAvatarText}>{s.title?.charAt(0) || 'S'}</Text>
-                    </View>
-                    <Text style={styles.spaceChipName} numberOfLines={1}>{s.title}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </Animated.View>
-          )}
-
-          {step === 2 && (
-            <Animated.View entering={FadeIn.duration(300)}>
-              <Text style={[styles.heroTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t('when')}</Text>
-
-              <View style={styles.card}>
+            {/* PACKED HORIZONTAL Type Icons */}
+            <Text style={styles.sectionLabel}>{t('activity_type')}</Text>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              style={styles.typeScroll}
+              contentContainerStyle={styles.typeScrollContent}
+            >
+              {activityTypes.map((type) => (
                 <TouchableOpacity
-                  style={styles.dateTimeRow}
-                  onPress={() => setShowDatePicker(true)}
+                  key={type.id}
+                  style={[styles.typeItem, activityType === type.id && styles.typeItemSelected]}
+                  onPress={() => { setActivityType(type.id); safeHaptics.impact(); }}
                 >
-                  <Ionicons name="calendar-outline" size={22} color={colors.textSecondary} />
-                  <Text style={styles.dateTimeValue}>
-                    {getLocalizedDay(scheduledStart, false) + format(scheduledStart, ', MMMM d, yyyy')}
-                  </Text>
-                </TouchableOpacity>
-
-                <View style={styles.separator} />
-
-                <TouchableOpacity
-                  style={styles.dateTimeRow}
-                  onPress={() => setShowTimePicker(true)}
-                >
-                  <Ionicons name="time-outline" size={22} color={colors.textSecondary} />
-                  <Text style={styles.dateTimeValue}>
-                    {format(scheduledStart, 'h:mm a')}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {Platform.OS === 'ios' && showDatePicker && (
-                <DateTimePicker
-                  value={scheduledStart}
-                  mode="date"
-                  display="spinner"
-                  onChange={(_: any, date?: Date) => {
-                    setShowDatePicker(false);
-                    if (date) setScheduledStart(date);
-                  }}
-                />
-              )}
-              {Platform.OS === 'ios' && showTimePicker && (
-                <DateTimePicker
-                  value={scheduledStart}
-                  mode="time"
-                  display="spinner"
-                  onChange={(_: any, date?: Date) => {
-                    setShowTimePicker(false);
-                    if (date) setScheduledStart(date);
-                  }}
-                />
-              )}
-
-              <Text style={[styles.sectionLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t('quick_start_times')}</Text>
-              <View style={[styles.quickGrid, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                {quickTimes.map((qt) => (
-                  <TouchableOpacity
-                    key={qt.time}
-                    style={styles.quickPill}
-                    onPress={() => handleQuickTimeSelect(qt.time)}
-                  >
-                    <Text style={styles.quickLabel}>{qt.label}</Text>
-                    <Text style={styles.quickValue}>{qt.time}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <Text style={[styles.sectionLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t('quick_dates')}</Text>
-              <View style={[styles.quickGrid, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                {[
-                  { label: t('today'), days: 0 },
-                  { label: t('tomorrow'), days: 1 },
-                  { label: t('next_mon'), days: (1 - new Date().getDay() + 7) % 7 || 7 },
-                  { label: t('next_week'), days: 7 },
-                ].map((item) => (
-                  <TouchableOpacity
-                    key={item.label}
-                    style={styles.quickPill}
-                    onPress={() => handleQuickDateSelect(item.days)}
-                  >
-                    <Text style={styles.quickLabelBig}>{item.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <Text style={[styles.sectionLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t('duration')}</Text>
-              <View style={[styles.durationGrid, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                {durationOptions.map((mins) => (
-                  <TouchableOpacity
-                    key={mins}
-                    style={[
-                      styles.durationChip,
-                      duration === mins && styles.durationChipActive,
-                    ]}
-                    onPress={() => {
-                      setDuration(mins);
-                      safeHaptics.impact();
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.durationText,
-                        duration === mins && styles.durationTextActive,
-                      ]}
-                    >
-                      {mins} {t('min')}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </Animated.View>
-          )}
-
-          {step === 3 && (
-            <Animated.View entering={FadeIn.duration(300)}>
-              <Text style={[styles.heroTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t('almost_done')}</Text>
-
-              <LinearGradient
-                colors={isDark ? [colors.card, colors.card] : ['#ffffff', '#f8fafc']}
-                style={styles.summaryCard}
-              >
-                <View style={[styles.summaryHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                  <LinearGradient
-                    colors={[activityTypes.find(t => t.id === activityType)?.color + '80' || '#6366f180', activityTypes.find(t => t.id === activityType)?.color || '#6366f1']}
-                    style={styles.summaryIcon}
-                  >
-                    <Ionicons
-                      name={activityTypes.find(t => t.id === activityType)?.icon as any || 'calendar'}
-                      size={24}
-                      color="#fff"
-                    />
+                  <LinearGradient colors={[type.color, type.color + 'cc']} style={styles.typeIconCircle}>
+                    <Ionicons name={type.icon as any} size={32} color="#fff" />
                   </LinearGradient>
-                  <Text style={[styles.summaryTitle, { textAlign: isRTL ? 'right' : 'left', [isRTL ? 'marginRight' : 'marginLeft']: 12 }]} numberOfLines={1}>
-                    {title || t('untitled_session')}
+                  <Text style={[styles.typeName, activityType === type.id && { color: type.color, fontWeight: '800' }]} numberOfLines={1}>
+                    {type.name}
                   </Text>
-                </View>
-                <View style={[styles.summaryRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                  <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
-                  <Text style={[styles.summaryValue, { [isRTL ? 'marginRight' : 'marginLeft']: 10 }]}>
-                    {getLocalizedDay(scheduledStart) + format(scheduledStart, ', MMM d • h:mm a')}
-                  </Text>
-                </View>
-                <View style={[styles.summaryRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                  <Ionicons name="time-outline" size={18} color={colors.textSecondary} />
-                  <Text style={[styles.summaryValue, { [isRTL ? 'marginRight' : 'marginLeft']: 10 }]}>{duration} {t('minutes')}</Text>
-                </View>
-                <View style={[styles.summaryRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                  <Ionicons name="people-outline" size={18} color={colors.textSecondary} />
-                  <Text style={[styles.summaryValue, { [isRTL ? 'marginRight' : 'marginLeft']: 10 }]}>
-                    {maxParticipants ? t('max_people').replace('{count}', maxParticipants.toString()) : t('open_to_all')}
-                  </Text>
-                </View>
-                {isRecurring && (
-                  <View style={[styles.summaryRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                    <Ionicons name="repeat-outline" size={18} color={colors.textSecondary} />
-                    <Text style={[styles.summaryValue, { [isRTL ? 'marginRight' : 'marginLeft']: 10 }]}>
-                      {t('repeats')} {recurrencePattern === 'weekly' ? t('repeats_weekly') : recurrencePattern === 'biweekly' ? t('repeats_biweekly') : t('repeats_monthly')}
-                    </Text>
-                  </View>
-                )}
-              </LinearGradient>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
 
-              <View style={[styles.settingCard, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                <View style={[styles.settingLeft, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
-                  <Text style={styles.settingTitle}>{t('recurring')}</Text>
-                  <Text style={styles.settingDesc}>{t('repeat_event')}</Text>
+            {/* When Hub */}
+            <Text style={styles.sectionLabel}>{t('when')}</Text>
+            <TouchableOpacity 
+              style={styles.scheduleCard}
+              onPress={() => setShowDatePicker(true)}
+              activeOpacity={0.8}
+            >
+              <View style={styles.scheduleIconWrapper}>
+                <Ionicons name="calendar" size={20} color={colors.tint} />
+              </View>
+              <View style={styles.scheduleInfo}>
+                <Text style={styles.scheduleDate}>
+                  {getLocalizedDay(scheduledStart, false) + format(scheduledStart, ', MMM d, yyyy')}
+                </Text>
+                <Text style={styles.scheduleTime}>
+                  {format(scheduledStart, 'h:mm a')} • {durationInMinutes} {t('min')}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            <SessionDatePickerModal
+              visible={showDatePicker}
+              value={scheduledStart}
+              onConfirm={(date) => { setScheduledStart(date); setShowDatePicker(false); }}
+              onClose={() => setShowDatePicker(false)}
+            />
+
+            {/* Duration & Participants */}
+            <View style={styles.splitBox}>
+              <Text style={styles.boxLabel}>{t('duration')}</Text>
+              <View style={styles.durationInputRow}>
+                <TextInput
+                  style={styles.numericInput}
+                  value={durationValue}
+                  onChangeText={v => setDurationValue(v.replace(/\D/g, ''))}
+                  keyboardType="numeric"
+                />
+                <View style={styles.unitSelector}>
+                  {['min', 'hour', 'day'].map(u => (
+                    <TouchableOpacity 
+                      key={u} 
+                      onPress={() => setDurationUnit(u as any)}
+                      style={[styles.unitPill, durationUnit === u && styles.unitPillActive]}
+                    >
+                      <Text style={[styles.unitPillText, durationUnit === u && styles.unitPillTextActive]}>{u}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+
+            <View style={[styles.splitBox, { marginTop: 16 }]}>
+              <Text style={styles.boxLabel}>{t('participants')}</Text>
+              <TextInput
+                style={styles.numericInputLarge}
+                placeholder="∞"
+                value={maxParticipants === undefined ? '' : String(maxParticipants)}
+                onChangeText={v => {
+                  if (v === '') setMaxParticipants(undefined);
+                  else {
+                    const n = parseInt(v, 10);
+                    if (!isNaN(n)) setMaxParticipants(n);
+                  }
+                }}
+                keyboardType="numeric"
+              />
+              <Text style={styles.usageDescription}>{t('participants_limit_desc')}</Text>
+            </View>
+
+            {/* Recurrence & Frequency */}
+            <View style={styles.recurrenceGroup}>
+              <View style={styles.recurrenceHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.recurrenceTitle}>{t('recurring')}</Text>
+                  <Text style={styles.recurrenceDesc}>{t('repeat_event')}</Text>
                 </View>
                 <Switch
                   value={isRecurring}
-                  onValueChange={(val) => {
-                    setIsRecurring(val);
-                    safeHaptics.impact();
-                  }}
-                  trackColor={{ false: isDark ? '#334155' : '#cbd5e1', true: colors.tint }}
-                  thumbColor={isRecurring ? '#fff' : isDark ? '#94a3b8' : '#f1f5f9'}
+                  onValueChange={setIsRecurring}
+                  trackColor={{ false: colors.border, true: colors.tint }}
                 />
               </View>
-
+              
               {isRecurring && (
-                <Animated.View entering={FadeIn.duration(200)} style={{ marginTop: 16 }}>
-                  <Text style={[styles.sectionLabelSmall, { textAlign: isRTL ? 'right' : 'left' }]}>{t('repeat_every')}</Text>
-                  <View style={[styles.recurrenceRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                    {['weekly', 'biweekly', 'monthly'].map((p) => (
+                <MotiView from={{ opacity: 0, scaleY: 0 }} animate={{ opacity: 1, scaleY: 1 }} style={styles.freqContainer}>
+                  <View style={styles.divider} />
+                  <View style={styles.freqPills}>
+                    {['daily', 'weekly', 'biweekly', 'monthly'].map((p) => (
                       <TouchableOpacity
                         key={p}
-                        style={[
-                          styles.recurrenceOption,
-                          recurrencePattern === p && styles.recurrenceOptionActive,
-                        ]}
+                        style={[styles.freqPill, recurrencePattern === p && styles.freqPillActive]}
                         onPress={() => setRecurrencePattern(p as any)}
                       >
-                        <Text
-                          style={[
-                            styles.recurrenceText,
-                            recurrencePattern === p && styles.recurrenceTextActive,
-                          ]}
-                        >
+                        <Text style={[styles.freqPillText, recurrencePattern === p && styles.freqPillTextActive]}>
                           {p === 'biweekly' ? t('two_weeks') : t(`repeats_${p}`)}
                         </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
-                </Animated.View>
+                </MotiView>
               )}
+            </View>
 
-              <View style={{ marginTop: 24 }}>
-                <Text style={[styles.sectionLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t('participant_limit')}</Text>
-                <View style={styles.participantInputWrapper}>
-                  <TextInput
-                    style={[styles.participantInput, { textAlign: isRTL ? 'right' : 'left' }]}
-                    placeholder={t('unlimited')}
-                    placeholderTextColor={colors.textSecondary}
-                    value={maxParticipants?.toString() ?? ''}
-                    onChangeText={(txt) => setMaxParticipants(txt ? Number(txt) : undefined)}
-                    keyboardType="number-pad"
-                  />
-                </View>
-              </View>
-            </Animated.View>
-          )}
+            {/* Target Space */}
+            <Text style={styles.sectionLabel}>{t('target_space')}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.spaceScroll}>
+              {spaces
+                .filter((s: any) => s && s.id && s.space_type !== 'direct' && s.space_type !== 'chat')
+                .map((s: any) => (
+                <TouchableOpacity
+                  key={s.id}
+                  style={[styles.spacePill, selectedSpaceId === s.id && styles.spacePillActive]}
+                  onPress={() => setSelectedSpaceId(s.id)}
+                >
+                  <View style={[styles.dot, { backgroundColor: colors.tint }]} />
+                  <Text style={[styles.spaceText, selectedSpaceId === s.id && { color: colors.tint }]}>{s.title}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+          </Animated.View>
         </ScrollView>
 
         <View style={styles.footer}>
-          <Animated.View style={[animatedButtonStyle, { flex: 1 }]}>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={[
-                styles.actionButton,
-                (step === 1 && !title.trim()) || isSubmitting ? styles.actionButtonDisabled : null,
-              ]}
-              onPress={handleNext}
-              disabled={(step === 1 && !title.trim()) || isSubmitting}
-            >
-              <LinearGradient
-                colors={['#6366f1', '#4f46e5']}
-                style={styles.buttonGradient}
-              >
-                {isSubmitting && step === 3 ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <>
-                    <Text style={styles.buttonText}>
-                      {step === 3 ? (isEditing ? t('update_session') : t('schedule_session')) : t('continue')}
-                    </Text>
-                    <Ionicons name={isRTL ? "arrow-back" : "arrow-forward"} size={20} color="#fff" />
-                  </>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-          </Animated.View>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.actionBtn, !isFormValid && styles.actionBtnDisabled]}
+            onPress={handleAction}
+            disabled={!isFormValid || isSubmitting}
+          >
+            <LinearGradient colors={isFormValid ? ['#6366f1', '#4f46e5'] : [colors.border, colors.border]} style={styles.actionGradient}>
+              {isSubmitting ? <ActivityIndicator color="#fff" /> : (
+                <>
+                  <Text style={styles.actionBtnText}>{isEditing ? t('update_session') : t('schedule_session')}</Text>
+                  {isFormValid && <Ionicons name="sparkles" size={18} color="#fff" />}
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
       </LinearGradient>
     </Modal>
   );
 };
- 
+
 const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => {
   const isDark = activeScheme === 'dark';
-  const SHADOW = createShadow({ 
-    height: 6, 
-    opacity: isDark ? 0.3 : 0.12, 
-    radius: 12, 
-    elevation: 8 
-  });
-  
+  const SHADOW = createShadow({ height: 4, opacity: isDark ? 0.3 : 0.05, radius: 6, elevation: 3 });
+
   return StyleSheet.create({
-    container: {
-      flex: 1,
-    },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 20,
-      paddingBottom: 16,
-    },
-    progressContainer: {
-      alignItems: 'center',
-    },
-    progressBar: {
-      flexDirection: 'row',
-      gap: 10,
-      marginBottom: 6,
-    },
-    progressDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: isDark ? '#334155' : '#e2e8f0',
-    },
-    progressDotActive: {
-      backgroundColor: colors.tint,
-    },
-    progressDotCurrent: {
-      width: 12,
-      height: 12,
-      borderWidth: 3,
-      borderColor: isDark ? '#4338ca' : '#a5b4fc',
-    },
-    stepText: {
-      fontSize: 13,
-      color: colors.textSecondary,
-      fontWeight: '600',
-    },
-    scrollContent: {
-      flex: 1,
-    },
-    scrollContentContainer: {
-      paddingHorizontal: 20,
-      paddingBottom: 140,
-    },
-    heroTitle: {
-      fontSize: 28,
-      fontWeight: '700',
-      color: colors.text,
-      marginTop: 8,
-      marginBottom: 4,
-    },
-    heroSubtitle: {
-      fontSize: 15,
-      color: colors.textSecondary,
-      marginBottom: 28,
-    },
-    card: {
-      backgroundColor: colors.card,
-      borderRadius: 20,
-      padding: 20,
-      marginBottom: 28,
-      ...SHADOW,
-    },
-    titleInput: {
-      fontSize: 20,
-      fontWeight: '700',
-      color: colors.text,
-      paddingBottom: 12,
-      borderBottomWidth: 2,
-      borderBottomColor: colors.tint,
-    },
-    descriptionInput: {
-      marginTop: 16,
-      fontSize: 16,
-      color: colors.text,
-      minHeight: 80,
-      textAlignVertical: 'top',
-    },
-    sectionLabel: {
-      fontSize: 17,
-      fontWeight: '700',
-      color: colors.text,
-      marginBottom: 14,
-    },
-    sectionLabelSmall: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: colors.text,
-      marginBottom: 12,
-    },
-    typeScroll: {
-      marginHorizontal: -4,
-    },
-    typeChip: {
-      alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      marginHorizontal: 4,
-      borderRadius: 16,
-      borderWidth: 1.5,
-      backgroundColor: colors.card,
-      ...SHADOW,
-      minWidth: 110,
-    },
-    typeChipSelected: {
-      borderWidth: 2,
-    },
-    typeIconGradient: {
-      width: 54,
-      height: 54,
-      borderRadius: 27,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: 10,
-    },
-    typeName: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: colors.textSecondary,
-    },
-    dateTimeRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 14,
-    },
-    dateTimeValue: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: colors.text,
-      [isRTL ? 'marginRight' : 'marginLeft']: 14,
-      flex: 1,
-    },
-    separator: {
-      height: 1,
-      backgroundColor: colors.border,
-      marginVertical: 4,
-    },
-    quickGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 12,
-      marginBottom: 28,
-    },
-    quickPill: {
-      flex: 1,
-      minWidth: '45%',
-      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
-      borderRadius: 16,
-      paddingVertical: 14,
-      alignItems: 'center',
-      ...SHADOW,
-    },
-    quickLabel: {
-      fontSize: 13,
-      color: colors.textSecondary,
-      marginBottom: 4,
-    },
-    quickLabelBig: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: colors.text,
-    },
-    quickValue: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: colors.text,
-    },
-    durationGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 12,
-    },
-    durationChip: {
-      paddingHorizontal: 20,
-      paddingVertical: 12,
-      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
-      borderRadius: 20,
-      ...SHADOW,
-    },
-    durationChipActive: {
-      backgroundColor: colors.tint,
-    },
-    durationText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: colors.textSecondary,
-    },
-    durationTextActive: {
-      color: '#ffffff',
-    },
-    summaryCard: {
-      borderRadius: 20,
-      padding: 20,
-      marginBottom: 24,
-      ...SHADOW,
-    },
-    summaryHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 16,
-    },
-    summaryIcon: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      justifyContent: 'center',
-      alignItems: 'center',
-      [isRTL ? 'marginLeft' : 'marginRight']: 12,
-    },
-    summaryTitle: {
-      fontSize: 20,
-      fontWeight: '700',
-      color: colors.text,
-      flex: 1,
-    },
-    summaryRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 12,
-    },
-    summaryValue: {
-      fontSize: 15,
-      color: colors.textSecondary,
-      [isRTL ? 'marginRight' : 'marginLeft']: 12,
-      flex: 1,
-    },
-    settingCard: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      backgroundColor: colors.card,
-      borderRadius: 16,
-      padding: 18,
-      marginBottom: 16,
-      ...SHADOW,
-    },
-    settingLeft: {
-      flex: 1,
-    },
-    settingTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: colors.text,
-    },
-    settingDesc: {
-      fontSize: 13,
-      color: colors.textSecondary,
-      marginTop: 2,
-    },
-    recurrenceRow: {
-      flexDirection: 'row',
-      gap: 10,
-    },
-    recurrenceOption: {
-      flex: 1,
-      paddingVertical: 14,
-      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
-      borderRadius: 12,
-      alignItems: 'center',
-    },
-    recurrenceOptionActive: {
-      backgroundColor: isDark ? 'rgba(99,102,241,0.2)' : '#e0e7ff',
-      borderWidth: 1.5,
-      borderColor: colors.tint,
-    },
-    recurrenceText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.textSecondary,
-    },
-    recurrenceTextActive: {
-      color: isDark ? '#a5b4fc' : '#4f46e5',
-      fontWeight: '700',
-    },
-    participantInputWrapper: {
-      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
-      borderRadius: 16,
-      marginTop: 8,
-      ...SHADOW,
-    },
-    participantInput: {
-      fontSize: 16,
-      padding: 16,
-      color: colors.text,
-    },
-    footer: {
-      paddingHorizontal: 20,
-      paddingVertical: 16,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      backgroundColor: colors.background,
-    },
-    actionButton: {
-      borderRadius: 20,
-      overflow: 'hidden',
-      ...SHADOW,
-    },
-    actionButtonDisabled: {
-      opacity: 0.5,
-    },
-    buttonGradient: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: 18,
-      gap: 10,
-    },
-    buttonText: {
-      fontSize: 17,
-      fontWeight: '700',
-      color: '#ffffff',
-    },
-    spaceChip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.card,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 12,
-      marginHorizontal: 4,
-      borderWidth: 1,
-      borderColor: colors.border,
-      ...SHADOW,
-    },
-    spaceChipSelected: {
-      borderColor: colors.tint,
-      backgroundColor: isDark ? 'rgba(99,102,241,0.1)' : '#f5f3ff',
-    },
-    spaceAvatarPlaceholder: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
-      backgroundColor: colors.border,
-      justifyContent: 'center',
-      alignItems: 'center',
-      [isRTL ? 'marginLeft' : 'marginRight']: 8,
-    },
-    spaceAvatarText: {
-      fontSize: 10,
-      fontWeight: '700',
-      color: colors.textSecondary,
-    },
-    spaceChipName: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: colors.textSecondary,
-      maxWidth: 100,
-    },
+    header: { paddingHorizontal: 20, paddingBottom: 16, alignItems: 'center', justifyContent: 'space-between' },
+    headerTitle: { fontSize: 16, fontWeight: '900', color: colors.text, textTransform: 'uppercase' },
+    scrollContent: { flex: 1 },
+    scrollContentContainer: { paddingHorizontal: 20, paddingBottom: 140 },
+    card: { backgroundColor: colors.card, borderRadius: 16, padding: 16, marginBottom: 16, ...SHADOW },
+    titleInput: { fontSize: 20, fontWeight: '800', color: colors.text, marginBottom: 6 },
+    descriptionInput: { fontSize: 14, color: colors.textSecondary, lineHeight: 18 },
+    separator: { height: 1, backgroundColor: colors.border, opacity: 0.2, marginVertical: 6 },
+    sectionLabel: { fontSize: 10, fontWeight: '900', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12 },
+    typeScroll: { marginBottom: 20, marginHorizontal: -20 },
+    typeScrollContent: { paddingHorizontal: 20, gap: 10 },
+    typeItem: { width: 85, height: 95, backgroundColor: colors.card, borderRadius: 16, justifyContent: 'center', alignItems: 'center', ...SHADOW },
+    typeItemSelected: { borderWidth: 2, borderColor: colors.tint },
+    typeIconCircle: { width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+    typeName: { fontSize: 10, fontWeight: '800', color: colors.textSecondary, textAlign: 'center', paddingHorizontal: 4 },
+    scheduleCard: { backgroundColor: colors.card, borderRadius: 14, padding: 12, flexDirection: 'row', alignItems: 'center', marginBottom: 16, ...SHADOW },
+    scheduleIconWrapper: { width: 36, height: 36, borderRadius: 10, backgroundColor: colors.tint + '10', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+    scheduleInfo: { flex: 1 },
+    scheduleDate: { fontSize: 15, fontWeight: '800', color: colors.text },
+    scheduleTime: { fontSize: 12, color: colors.textSecondary },
+    splitBox: { backgroundColor: colors.card, borderRadius: 16, padding: 14, ...SHADOW },
+    boxLabel: { fontSize: 10, fontWeight: '900', color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 8 },
+    durationInputRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    numericInput: { fontSize: 18, fontWeight: '800', color: colors.text, width: 55, textAlign: 'center', backgroundColor: colors.muted, borderRadius: 8, padding: 6 },
+    numericInputLarge: { fontSize: 22, fontWeight: '900', color: colors.tint, width: '100%', textAlign: 'center' },
+    unitSelector: { flex: 1, flexDirection: 'row', gap: 4 },
+    unitPill: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: colors.muted, alignItems: 'center' },
+    unitPillActive: { backgroundColor: colors.tint },
+    unitPillText: { fontSize: 10, fontWeight: '800', color: colors.textSecondary },
+    unitPillTextActive: { color: '#fff' },
+    usageDescription: { fontSize: 10, color: colors.textSecondary, textAlign: 'center', marginTop: 4, fontStyle: 'italic' },
+    recurrenceGroup: { backgroundColor: colors.card, borderRadius: 16, padding: 14, marginTop: 16, marginBottom: 16, ...SHADOW },
+    recurrenceHeader: { flexDirection: 'row', alignItems: 'center' },
+    recurrenceTitle: { fontSize: 15, fontWeight: '800', color: colors.text },
+    recurrenceDesc: { fontSize: 12, color: colors.textSecondary },
+    freqContainer: { overflow: 'hidden' },
+    divider: { height: 1, backgroundColor: colors.border, opacity: 0.2, marginVertical: 10 },
+    freqPills: { flexDirection: 'row', gap: 4 },
+    freqPill: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: colors.muted, alignItems: 'center' },
+    freqPillActive: { backgroundColor: colors.tint },
+    freqPillText: { fontSize: 9, fontWeight: '800', color: colors.textSecondary },
+    freqPillTextActive: { color: '#fff' },
+    spaceScroll: { marginBottom: 16 },
+    spacePill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colors.card, borderRadius: 10, marginRight: 8, ...SHADOW },
+    spacePillActive: { borderColor: colors.tint, borderWidth: 1.5 },
+    dot: { width: 4, height: 4, borderRadius: 2, marginRight: 6 },
+    spaceText: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
+    footer: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, paddingBottom: Platform.OS === 'ios' ? 40 : 20, backgroundColor: colors.background + 'F0' },
+    actionBtn: { height: 50, borderRadius: 25, overflow: 'hidden', ...SHADOW },
+    actionBtnDisabled: { opacity: 0.3 },
+    actionGradient: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+    actionBtnText: { color: '#fff', fontSize: 16, fontWeight: '900' },
   });
 };
+
+function getDatePickerStyles(colors: any, activeScheme: string) {
+  const isDark = activeScheme === 'dark';
+  return StyleSheet.create({
+    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'flex-end' },
+    sheet: { backgroundColor: isDark ? '#111' : colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40, width: '100%', maxHeight: '75%' },
+    handle: { width: 30, height: 3, borderRadius: 1.5, backgroundColor: colors.border, alignSelf: 'center', marginTop: 8, marginBottom: 8 },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
+    title: { fontSize: 15, fontWeight: '900', color: colors.text },
+    cancelBtn: { fontSize: 14, color: colors.textSecondary, fontWeight: '700' },
+    doneBtn: { fontSize: 14, color: colors.tint, fontWeight: '900' },
+    pickerRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingVertical: 10 },
+    pickerCol: { flex: 1, alignItems: 'center' },
+    pickerLabel: { fontSize: 9, fontWeight: '800', color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 4 },
+    pickerInput: { width: '100%', borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 10, fontSize: 16, fontWeight: '800', textAlign: 'center', color: colors.text, backgroundColor: isDark ? '#1A1A1A' : colors.background },
+    monthScroll: { maxHeight: 120, width: '100%' },
+    monthItem: { paddingVertical: 6, paddingHorizontal: 8, borderRadius: 6, marginBottom: 2, alignItems: 'center' },
+    monthItemActive: { backgroundColor: colors.tint + '20' },
+    monthText: { fontSize: 13, color: colors.textSecondary, fontWeight: '700' },
+    monthTextActive: { color: colors.tint, fontWeight: '900' },
+    webDateContainer: { paddingVertical: 20, alignItems: 'center', width: '100%', paddingHorizontal: 12 },
+    webDateLabel: { fontSize: 13, color: colors.textSecondary, fontWeight: '700', marginBottom: 10 },
+  });
+}
 
 export default CreateActivityModal;

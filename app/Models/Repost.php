@@ -10,6 +10,19 @@ class Repost extends Model
     use HasFactory;
 
     protected $fillable = ['user_id', 'post_id', 'context_tag', 'personal_note', 'collection_id', 'visibility'];
+    
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saved(function ($repost) {
+            \Illuminate\Support\Facades\Cache::put('posts_cache_v', time(), 86400);
+        });
+
+        static::deleted(function ($repost) {
+            \Illuminate\Support\Facades\Cache::put('posts_cache_v', time(), 86400);
+        });
+    }
 
     public function user()
     {

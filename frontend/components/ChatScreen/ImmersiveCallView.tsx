@@ -195,7 +195,8 @@ const VideoTile = React.memo(({
   videoRefs,
   name,
   avatar,
-  isHandRaised
+  isHandRaised,
+  styles
 }: any) => {
 
 
@@ -1074,6 +1075,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
           videoRefs={videoRefs}
           name={item.name}
           avatar={item.avatar}
+          styles={styles}
         />
       </View>
     );
@@ -1292,6 +1294,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
           videoRefs={videoRefs}
           name={mainParticipant.name}
           avatar={mainParticipant.avatar}
+          styles={styles}
         />
 
         {/* WEBRTC AUDIO FIX: Render hidden video elements for all OTHER participants 
@@ -1522,6 +1525,7 @@ const ImmersiveCallView: React.FC<ImmersiveCallViewProps> = ({
                           videoRefs={videoRefs}
                           name={p.name}
                           avatar={p.avatar}
+                          styles={styles}
                         />
                       </View>
                     ))}

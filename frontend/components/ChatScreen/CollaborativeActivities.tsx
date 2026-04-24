@@ -30,6 +30,7 @@ import {
   isToday,
   isTomorrow,
   addDays,
+  addMinutes,
   startOfWeek,
   endOfWeek,
   eachDayOfInterval,
@@ -43,6 +44,8 @@ import {
   setMinutes,
   getHours,
   getMinutes,
+  startOfDay,
+  endOfDay,
 } from 'date-fns';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -60,6 +63,8 @@ import { safeHaptics } from '@/utils/haptics';
 import CreateActivityModal from './CreateActivityModal';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import ActivityDetailModal from './ActivityDetailModal';
+import { useToastStore } from '@/stores/toastStore';
 
 const { width, height } = Dimensions.get('window');
 const HOUR_HEIGHT = 70;
@@ -136,18 +141,86 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
     return activities;
   }, [initialActivities, spaceId]);
 
-  // Get activities for selected date range
-  const getActivitiesForDate = useCallback((date: Date) => {
-    return filteredActivities.filter(activity => {
-      if (!activity.scheduled_start) return false;
-      const activityDate = parseISO(activity.scheduled_start);
-      return isSameDay(activityDate, date);
-    }).sort((a, b) => {
-      const aTime = a.scheduled_start ? new Date(a.scheduled_start).getTime() : 0;
-      const bTime = b.scheduled_start ? new Date(b.scheduled_start).getTime() : 0;
-      return aTime - bTime;
-    });
+  const upcomingActivities = useMemo(() => {
+    const now = new Date();
+    return filteredActivities
+      .filter(a => {
+        if (!a.scheduled_start) return false;
+        const start = parseISO(a.scheduled_start);
+        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+        return (start >= oneHourAgo || a.status === 'active') && a.status !== 'cancelled' && a.status !== 'completed';
+      })
+      .sort((a, b) => new Date(a.scheduled_start!).getTime() - new Date(b.scheduled_start!).getTime());
   }, [filteredActivities]);
+
+  // Get activities for selected date range
+  const isActivityVisibleOnDate = useCallback((activity: CollaborativeActivity, date: Date) => {
+    if (!activity.scheduled_start) return false;
+    const start = parseISO(activity.scheduled_start);
+    const duration = activity.duration_minutes || 60;
+    const end = addMinutes(start, duration);
+
+    // Normalize dates to midnight for accurate comparison
+    const dStart = startOfDay(start);
+    const dEnd = startOfDay(end);
+    const dCurrent = startOfDay(date);
+
+    // Multi-day non-recurring activity
+    if (!activity.is_recurring) {
+      if (dCurrent < dStart || dCurrent > dEnd) return false;
+      
+      // Only show on the end day if it actually has duration on that day
+      if (dCurrent.getTime() === dEnd.getTime()) {
+        const minutesOnLastDay = differenceInMinutes(end, dEnd);
+        return minutesOnLastDay > 0;
+      }
+      return true;
+    }
+
+    // Recurring activity check
+    if (dCurrent < dStart) return false;
+    if (activity.recurrence_end && dCurrent > startOfDay(parseISO(activity.recurrence_end))) return false;
+
+    const pattern = activity.recurrence_pattern;
+    const diffDays = Math.round((dCurrent.getTime() - dStart.getTime()) / (1000 * 60 * 60 * 24));
+    
+    const daysToLookBack = Math.ceil(duration / 1440);
+    
+    for (let i = 0; i <= daysToLookBack; i++) {
+      const checkDayDiff = diffDays - i;
+      if (checkDayDiff < 0) continue;
+
+      let isMatch = false;
+      if (pattern === 'daily') isMatch = true;
+      else if (pattern === 'weekly') isMatch = checkDayDiff % 7 === 0;
+      else if (pattern === 'biweekly') isMatch = checkDayDiff % 14 === 0;
+      else if (pattern === 'monthly') isMatch = start.getDate() === date.getDate();
+
+      if (isMatch) {
+        const instanceStart = addDays(start, checkDayDiff);
+        const instanceEnd = addMinutes(instanceStart, duration);
+        const dInstEnd = startOfDay(instanceEnd);
+
+        if (dCurrent >= startOfDay(instanceStart) && dCurrent <= dInstEnd) {
+          if (dCurrent.getTime() === dInstEnd.getTime()) {
+            return differenceInMinutes(instanceEnd, dInstEnd) > 0;
+          }
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }, []);
+
+  const getActivitiesForDate = useCallback((date: Date) => {
+    return filteredActivities.filter(activity => isActivityVisibleOnDate(activity, date))
+      .sort((a, b) => {
+        const aTime = a.scheduled_start ? new Date(a.scheduled_start).getTime() : 0;
+        const bTime = b.scheduled_start ? new Date(b.scheduled_start).getTime() : 0;
+        return aTime - bTime;
+      });
+  }, [filteredActivities, isActivityVisibleOnDate]);
 
   // Get activities for week view
   const getWeekActivities = useCallback(() => {
@@ -164,46 +237,150 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
   // Get hours for day view
   const getHoursRange = useCallback(() => {
     const hours = [];
-    for (let i = 0; i < 24; i++) {
+    for (let i = 0; i <= 24; i++) {
       hours.push(setHours(setMinutes(new Date(), 0), i));
     }
     return hours;
   }, []);
 
   // Get position for activity in timeline
-  const getActivityPosition = useCallback((activity: CollaborativeActivity) => {
+  const getActivityPosition = useCallback((activity: CollaborativeActivity, viewingDate: Date) => {
     if (!activity.scheduled_start) return { top: 0, height: 0 };
-    const startTime = parseISO(activity.scheduled_start);
-    const endTime = addHours(startTime, (activity.duration_minutes || 60) / 60);
+    const start = parseISO(activity.scheduled_start);
+    const duration = activity.duration_minutes || 60;
 
-    const startHour = getHours(startTime);
-    const startMinute = getMinutes(startTime);
-    const endHour = getHours(endTime);
-    const endMinute = getMinutes(endTime);
+    // For recurring sessions, find the actual instance that overlaps this day
+    let instanceStart = start;
+    if (activity.is_recurring) {
+      const dCurrent = startOfDay(viewingDate);
+      const dStart = startOfDay(start);
+      const diffDays = Math.round((dCurrent.getTime() - dStart.getTime()) / (1000 * 60 * 60 * 24));
+      
+      const daysToLookBack = Math.ceil(duration / 1440);
+      for (let i = 0; i <= daysToLookBack; i++) {
+        const checkDayDiff = diffDays - i;
+        if (checkDayDiff < 0) continue;
 
-    const startOffset = startHour * HOUR_HEIGHT + (startMinute / 60) * HOUR_HEIGHT;
-    const duration = (endHour - startHour) * HOUR_HEIGHT + (endMinute - startMinute) / 60 * HOUR_HEIGHT;
+        let isMatch = false;
+        if (activity.recurrence_pattern === 'daily') isMatch = true;
+        else if (activity.recurrence_pattern === 'weekly') isMatch = checkDayDiff % 7 === 0;
+        else if (activity.recurrence_pattern === 'biweekly') isMatch = checkDayDiff % 14 === 0;
+        else if (activity.recurrence_pattern === 'monthly') isMatch = start.getDate() === viewingDate.getDate();
 
-    return { top: startOffset, height: Math.max(duration, HOUR_HEIGHT / 2) };
+        if (isMatch) {
+          const possibleStart = addDays(start, checkDayDiff);
+          const possibleEnd = addMinutes(possibleStart, duration);
+          if (viewingDate >= startOfDay(possibleStart) && viewingDate <= startOfDay(possibleEnd)) {
+            instanceStart = possibleStart;
+            break;
+          }
+        }
+      }
+    }
+
+    const end = addMinutes(instanceStart, duration);
+
+    // Calculate start position on the current viewing day
+    let startTop = 0;
+    if (isSameDay(viewingDate, instanceStart)) {
+      startTop = getHours(instanceStart) * HOUR_HEIGHT + (getMinutes(instanceStart) / 60) * HOUR_HEIGHT;
+    }
+
+    // Calculate duration visible on this specific day
+    const dayStart = startOfDay(viewingDate);
+    const dayEnd = endOfDay(viewingDate);
+    
+    // The portion of the activity that falls within this day
+    const actualStart = isAfter(instanceStart, dayStart) ? instanceStart : dayStart;
+    const actualEnd = isBefore(end, dayEnd) ? end : dayEnd;
+    
+    const minutesOnThisDay = Math.max(0, differenceInMinutes(actualEnd, actualStart));
+    const cardHeight = (minutesOnThisDay / 60) * HOUR_HEIGHT;
+
+    return { top: startTop, height: Math.max(cardHeight, 20) };
   }, []);
+
+  const computeActivityLayout = useCallback((dayActivities: CollaborativeActivity[], viewingDate: Date) => {
+    if (dayActivities.length === 0) return {};
+
+    const sorted = [...dayActivities].sort((a, b) => {
+      const posA = getActivityPosition(a, viewingDate);
+      const posB = getActivityPosition(b, viewingDate);
+      if (Math.abs(posA.top - posB.top) > 1) return posA.top - posB.top;
+      return posB.height - posA.height;
+    });
+
+    const columns: CollaborativeActivity[][] = [];
+    const layout: Record<string, { left: number; width: number }> = {};
+
+    sorted.forEach(activity => {
+      const pos = getActivityPosition(activity, viewingDate);
+      let placed = false;
+      
+      for (let i = 0; i < columns.length; i++) {
+        const hasOverlap = columns[i].some(other => {
+          const otherPos = getActivityPosition(other, viewingDate);
+          return (pos.top < otherPos.top + otherPos.height - 1) && 
+                 (pos.top + pos.height > otherPos.top + 1);
+        });
+        
+        if (!hasOverlap) {
+          columns[i].push(activity);
+          placed = true;
+          break;
+        }
+      }
+      
+      if (!placed) {
+        columns.push([activity]);
+      }
+    });
+
+    const colCount = columns.length;
+    columns.forEach((col, colIndex) => {
+      col.forEach(activity => {
+        layout[activity.id] = {
+          left: (colIndex / colCount) * 100,
+          width: (100 / colCount)
+        };
+      });
+    });
+
+    return layout;
+  }, [getActivityPosition]);
 
   const updateCalendarMarks = useCallback(() => {
     const markedDates: any = {};
 
     filteredActivities.forEach(activity => {
       if (activity.scheduled_start) {
-        const date = format(parseISO(activity.scheduled_start), 'yyyy-MM-dd');
-        if (!markedDates[date]) {
-          markedDates[date] = {
-            marked: true,
-            dots: [],
-            activities: [],
-          };
+        // Mark all days covered by this activity (up to a reasonable limit e.g. 60 days)
+        const start = parseISO(activity.scheduled_start);
+        const today = startOfDay(new Date());
+        const limit = addDays(today, 60);
+
+        for (let d = startOfDay(start); d <= limit; d = addDays(d, 1)) {
+          if (isActivityVisibleOnDate(activity, d)) {
+            const dateStr = format(d, 'yyyy-MM-dd');
+            if (!markedDates[dateStr]) {
+              markedDates[dateStr] = {
+                marked: true,
+                dots: [],
+                activities: [],
+              };
+            }
+            // Avoid duplicate dots/activities for the same session on the same day
+            if (!markedDates[dateStr].activities.some((a: any) => a.id === activity.id)) {
+              markedDates[dateStr].dots.push({
+                color: getStatusColor(activity.status),
+              });
+              markedDates[dateStr].activities.push(activity);
+            }
+          } else if (d > start && !activity.is_recurring) {
+            // For non-recurring, we can stop the loop once we pass the end
+            break;
+          }
         }
-        markedDates[date].dots.push({
-          color: getStatusColor(activity.status),
-        });
-        markedDates[date].activities.push(activity);
       }
     });
 
@@ -377,6 +554,47 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
     }
   };
 
+  const handleDeleteActivity = async (activity: CollaborativeActivity) => {
+    const performDeletion = async () => {
+      try {
+        await CollaborationService.getInstance().deleteCollaborativeActivity(activity.id);
+        
+        // Update global store immediately for snappy UI
+        useCollaborationStore.getState().deleteActivity(activity.id.toString(), activity.space_id);
+        
+        setSelectedActivity(null);
+        useToastStore.getState().showToast(t('activity_deleted_success'), 'success');
+        if (Platform.OS !== 'web') safeHaptics.success();
+      } catch (error) {
+        console.error('Error deleting activity:', error);
+        Alert.alert(t('error'), t('failed_delete_activity'));
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(t('confirm_delete_activity'))) {
+        performDeletion();
+      }
+    } else {
+      Alert.alert(
+        t('delete_activity'),
+        t('confirm_delete_activity'),
+        [
+          { text: t('cancel'), style: 'cancel' },
+          { text: t('delete'), style: 'destructive', onPress: performDeletion }
+        ]
+      );
+    }
+  };
+
+  const handleCopyLink = async (activity: CollaborativeActivity) => {
+    const frontendHost = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : 'https://zmzir.com';
+    const deepLink = `${frontendHost}/spaces/${activity.space_id}?activity=${activity.id}`;
+    await require('expo-clipboard').setStringAsync(deepLink);
+    useToastStore.getState().showToast(t('session_link_copied'), 'success');
+    if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
@@ -413,484 +631,351 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
     const weekDays = getWeekActivities();
     const hours = getHoursRange();
 
+    // Pre-calculate layouts for all days in the week
+    const layouts = useMemo(() => {
+      const res: Record<string, any> = {};
+      weekDays.forEach(day => {
+        res[day.date.toISOString()] = computeActivityLayout(day.activities, day.date);
+      });
+      return res;
+    }, [weekDays]);
+
     return (
       <ScrollView
         ref={weekScrollRef}
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={styles.weekContainer}
+        style={[styles.weekContainer, { backgroundColor: colors.background }]}
         contentContainerStyle={styles.weekContent}
       >
-        <View style={styles.timeColumn}>
+        <View style={[styles.timeColumn, { backgroundColor: isDark ? '#121212' : '#F8F9FA', borderRightColor: colors.border }]}>
           <View style={styles.timeHeader} />
           {hours.map((hour, index) => (
             <View key={index} style={styles.timeSlot}>
-              <Text style={styles.timeText}>
-                {format(hour, 'h a')}
-              </Text>
+              <Text style={[styles.timeText, { color: colors.textSecondary }]}>{format(hour, 'h a')}</Text>
             </View>
           ))}
         </View>
 
-        {weekDays.map((day, dayIndex) => {
-          const isSelected = isSameDay(day.date, selectedDate);
-
-          return (
-            <TouchableOpacity
-              key={dayIndex}
-              style={[
-                styles.dayColumn,
-                isSelected && styles.dayColumnSelected,
-              ]}
-              activeOpacity={0.9}
-              onPress={() => setSelectedDate(day.date)}
-            >
-              <View style={[styles.dayHeader, isSelected && styles.dayHeaderSelected]}>
-                <Text style={[styles.dayName, isSelected && styles.dayNameSelected]}>
-                  {getLocalizedDay(day.date)}
-                </Text>
-                <Text style={[styles.dayNumber, isSelected && styles.dayNumberSelected]}>
-                  {format(day.date, 'd')}
-                </Text>
-                {isToday(day.date) && (
-                  <View style={styles.todayBadge}>
-                    <Text style={styles.todayBadgeText}>{t('today')}</Text>
-                  </View>
-                )}
-              </View>
-
-              <ScrollView style={styles.dayGrid} showsVerticalScrollIndicator={false}>
-                {hours.map((hour, hourIndex) => {
-                  const hourActivities = day.activities.filter(activity => {
-                    if (!activity.scheduled_start) return false;
-                    const activityHour = getHours(parseISO(activity.scheduled_start));
-                    return activityHour === hourIndex;
-                  });
-
-                  return (
+        <View style={{ flexDirection: 'row', flex: 1, position: 'relative' }}>
+          {/* Background Grid Layer */}
+          {weekDays.map((day, dayIndex) => {
+            const isSelected = isSameDay(day.date, selectedDate);
+            return (
+              <TouchableOpacity
+                key={dayIndex}
+                style={[styles.dayColumn, isSelected && styles.dayColumnSelected, { borderRightColor: colors.border }]}
+                activeOpacity={1}
+                onPress={() => setSelectedDate(day.date)}
+              >
+                <View style={[styles.dayHeader, isSelected && styles.dayHeaderSelected, { borderBottomColor: colors.border }]}>
+                  <Text style={[styles.dayName, isSelected && styles.dayNameSelected, { color: isSelected ? colors.tint : colors.textSecondary }]}>{getLocalizedDay(day.date)}</Text>
+                  <Text style={[styles.dayNumber, isSelected && styles.dayNumberSelected, { color: colors.text }]}>{format(day.date, 'd')}</Text>
+                </View>
+                <View style={styles.dayGrid}>
+                  {hours.map((_, hourIndex) => (
                     <TouchableOpacity
                       key={hourIndex}
-                      style={styles.hourSlot}
+                      style={[styles.hourSlot, { borderBottomColor: colors.border }]}
                       activeOpacity={0.7}
                       onPress={() => {
                         const date = new Date(day.date);
                         date.setHours(hourIndex, 0, 0, 0);
                         handleTimeSlotPress(date);
                       }}
-                    >
-                      {hourActivities.map(activity => {
-                        const position = getActivityPosition(activity);
-                        return (
-                          <Animated.View
-                            key={activity.id}
-                            entering={FadeInDown.delay(dayIndex * 50)}
-                            style={[
-                              styles.weekActivityCard,
-                              {
-                                top: position.top % HOUR_HEIGHT,
-                                height: position.height,
-                                borderLeftColor: getStatusColor(activity.status),
-                              }
-                            ]}
-                          >
-                            <TouchableOpacity
-                              style={styles.weekActivityTouchable}
-                              onPress={() => handleActivityPress(activity)}
-                            >
-                              <Text style={[styles.weekActivityTitle, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>
-                                {activity.title}
-                              </Text>
-                              <View style={[styles.weekActivityMeta, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                                <Ionicons
-                                  name={getActivityIcon(activity.activity_type)}
-                                  size={10}
-                                  color="#666"
-                                />
-                                <Text style={[styles.weekActivityTime, { color: colors.textSecondary }]}>
-                                  {format(parseISO(activity.scheduled_start!), 'h:mm a')}
-                                </Text>
-                              </View>
-                            </TouchableOpacity>
-                          </Animated.View>
-                        );
-                      })}
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </TouchableOpacity>
-          );
-        })}
+                    />
+                  ))}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+
+          {/* Activity Cards Overlay Layer */}
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'box-none', flexDirection: 'row' }}>
+            {weekDays.map((day, dayIndex) => (
+              <View key={dayIndex} style={[styles.dayColumn, { backgroundColor: 'transparent', borderRightWidth: 0, borderLeftWidth: 0 }]}>
+                <View style={styles.dayHeader} />
+                <View style={{ flex: 1, position: 'relative' }}>
+                  {day.activities.map(activity => {
+                    const position = getActivityPosition(activity, day.date);
+                    const dayLayout = layouts[day.date.toISOString()] || {};
+                    const actLayout = dayLayout[activity.id] || { left: 0, width: 100 };
+                      return (
+                        <Animated.View
+                          key={activity.id}
+                          entering={FadeInDown.delay(dayIndex * 50)}
+                          style={[
+                            styles.weekActivityCard,
+                            {
+                              position: 'absolute',
+                              top: position.top,
+                              height: position.height,
+                              left: `${actLayout.left}%`,
+                              width: `${actLayout.width}%`,
+                              paddingRight: 4,
+                              borderLeftColor: getStatusColor(activity.status),
+                              backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
+                              zIndex: 300,
+                            }
+                          ]}
+                        >
+                          <TouchableOpacity style={styles.weekActivityTouchable} onPress={() => handleActivityPress(activity)}>
+                            <Text style={[styles.weekActivityTitle, { color: colors.text }]} numberOfLines={1}>{activity.title}</Text>
+                            <View style={styles.weekActivityMeta}>
+                              <Ionicons name={getActivityIcon(activity.activity_type)} size={10} color={getStatusColor(activity.status)} />
+                              <Text style={[styles.weekActivityTime, { color: colors.textSecondary }]}>{format(parseISO(activity.scheduled_start!), 'h:mm a')}</Text>
+                            </View>
+                          </TouchableOpacity>
+                        </Animated.View>
+                      );
+                  })}
+                </View>
+              </View>
+            ))}
+          </View>
+
+          {/* LAYER: Global Red Time Line (Highest Layer - Over Everything) */}
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999, pointerEvents: 'none' }}>
+            {weekDays.map((day, dayIndex) => {
+              if (!isToday(day.date)) return null;
+              return (
+                <View
+                  key={dayIndex}
+                  style={[
+                    styles.currentTimeLine,
+                    { 
+                      top: (new Date().getHours() * HOUR_HEIGHT) + (new Date().getMinutes() / 60 * HOUR_HEIGHT),
+                      left: 0,
+                      width: '100%',
+                      zIndex: 100000,
+                    }
+                  ]}
+                >
+                  <View style={styles.currentTimeDot} />
+                  <View style={styles.currentTimeBar} />
+                </View>
+              );
+            })}
+          </View>
+        </View>
       </ScrollView>
     );
   };
 
   // Day View Component
   const DayView = () => {
-    const activities = getActivitiesForDate(selectedDate);
+    const activitiesForDay = getActivitiesForDate(selectedDate);
     const hours = getHoursRange();
+    const totalHeight = 25 * HOUR_HEIGHT;
+
+    // Pre-calculate layout for the current day
+    const layout = useMemo(() => computeActivityLayout(activitiesForDay, selectedDate), [activitiesForDay, selectedDate]);
 
     return (
       <ScrollView
         ref={dayScrollRef}
-        style={styles.dayContainer}
+        style={[styles.dayContainer, { backgroundColor: colors.background }]}
+        contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
       >
-        {isToday(selectedDate) && (
-          <View
-            style={[
-              styles.currentTimeLine,
-              { top: (new Date().getHours() * HOUR_HEIGHT) + (new Date().getMinutes() / 60 * HOUR_HEIGHT) }
-            ]}
-          >
-            <View style={styles.currentTimeDot} />
-            <View style={styles.currentTimeBar} />
-          </View>
-        )}
-
-        {hours.map((hour, index) => {
-          const hourActivities = activities.filter(activity => {
-            if (!activity.scheduled_start) return false;
-            const activityHour = getHours(parseISO(activity.scheduled_start));
-            return activityHour === index;
-          });
-
-          return (
-            <View key={index} style={styles.dayHourSlot}>
-              <View style={styles.dayHourLabel}>
-                <Text style={styles.dayHourText}>
-                  {format(hour, 'h a')}
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => handleTimeSlotPress(hour)}
-                style={styles.dayHourContent}
-              >
-                {hourActivities.map(activity => {
-                  const spaceInfo = getSpaceInfo(activity.space_id);
-                  return (
-                    <Animated.View
-                      key={activity.id}
-                      entering={SlideInRight.delay(index * 30)}
-                      style={[
-                        styles.dayActivityCard,
-                        { borderLeftColor: getStatusColor(activity.status) }
-                      ]}
-                    >
-                      <TouchableOpacity
-                        style={styles.dayActivityTouchable}
-                        onPress={() => handleActivityPress(activity)}
-                      >
-                        <View style={styles.dayActivityHeader}>
-                          <View style={styles.dayActivityBadge}>
-                            <Ionicons
-                              name={getActivityIcon(activity.activity_type)}
-                              size={14}
-                              color={getStatusColor(activity.status)}
-                            />
-                            <Text style={[
-                              styles.dayActivityType,
-                              { color: getStatusColor(activity.status) }
-                            ]}>
-                              {getActivityLabel(activity.activity_type)}
-                            </Text>
-                          </View>
-                          <View style={[styles.spaceBadge, { flexDirection: isRTL ? 'row-reverse' : 'row', backgroundColor: spaceInfo.color + '20' }]}>
-                            <View style={[styles.spaceDot, { backgroundColor: spaceInfo.color }]} />
-                            <Text style={styles.spaceBadgeText}>{spaceInfo.name}</Text>
-                          </View>
-                        </View>
-
-                        <Text style={[styles.dayActivityTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{activity.title}</Text>
-
-                        {activity.description && (
-                          <Text style={[styles.dayActivityDescription, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={2}>
-                            {activity.description}
-                          </Text>
-                        )}
-
-                        <View style={[styles.dayActivityMeta, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                          <View style={[styles.dayActivityDuration, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                            <Ionicons name="timer-outline" size={14} color="#666" />
-                            <Text style={styles.dayActivityMetaText}>
-                              {t('duration_minutes').replace('{count}', (activity.duration_minutes || 60).toString())}
-                            </Text>
-                          </View>
-                          <View style={[styles.dayActivityStatus, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                            <View style={[styles.statusDot, { backgroundColor: getStatusColor(activity.status) }]} />
-                            <Text style={styles.dayActivityMetaText}>
-                              {getStatusLabel(activity.status)}
-                            </Text>
-                          </View>
-                        </View>
-
-                        <View style={[styles.dayActivityActions, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                          <TouchableOpacity
-                            style={[styles.dayAction, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
-                            onPress={() => handleAddToCalendar(activity)}
-                          >
-                            <Ionicons name="calendar-outline" size={16} color="#007AFF" />
-                            <Text style={styles.dayActionText}>{t('calendar')}</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[styles.dayAction, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
-                            onPress={() => handleExportICS(activity)}
-                          >
-                            <Ionicons name="download-outline" size={16} color="#666" />
-                            <Text style={styles.dayActionText}>{t('export')}</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[styles.dayAction, styles.dayActionJoin, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
-                            onPress={() => {
-                              onClose();
-                              router.push(`/(spaces)/${activity.space_id}?tab=meeting&activity=${activity.id}`);
-                            }}
-                          >
-                            <LinearGradient
-                              colors={['#007AFF', '#0056CC']}
-                              style={[styles.joinButtonGradient, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
-                            >
-                              <Ionicons name="enter-outline" size={14} color="#fff" />
-                              <Text style={styles.joinButtonText}>{t('join')}</Text>
-                            </LinearGradient>
-                          </TouchableOpacity>
-                        </View>
-                      </TouchableOpacity>
-                    </Animated.View>
-                  );
-                })}
-              </TouchableOpacity>
+        <View style={{ height: totalHeight, position: 'relative' }}>
+          {/* Main Grid Row (Labels + Lines) */}
+          <View style={{ flexDirection: 'row', flex: 1 }}>
+            {/* Sidebar (Time Labels) */}
+            <View style={{ width: 50, borderRightWidth: 1, borderRightColor: colors.border, backgroundColor: isDark ? '#121212' : '#F8F9FA' }}>
+              {hours.map((hour, index) => (
+                <View key={index} style={{ height: HOUR_HEIGHT, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 8 }}>
+                  <Text style={[styles.dayHourText, { color: colors.textSecondary }]}>{format(hour, 'h a')}</Text>
+                </View>
+              ))}
             </View>
-          );
-        })}
+
+            {/* Background Grid Area */}
+            <View style={{ flex: 1, backgroundColor: colors.background }}>
+              {hours.map((_, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={{ height: HOUR_HEIGHT, borderBottomWidth: 1, borderBottomColor: colors.border }}
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    const date = new Date(selectedDate);
+                    date.setHours(index, 0, 0, 0);
+                    handleTimeSlotPress(date);
+                  }}
+                />
+              ))}
+            </View>
+          </View>
+
+          {/* Activity Cards Overlay Layer */}
+          <View style={{ position: 'absolute', top: 0, left: 50, right: 0, height: totalHeight, zIndex: 200, pointerEvents: 'box-none' }}>
+            {activitiesForDay.map((activity) => {
+              const position = getActivityPosition(activity, selectedDate);
+              const actLayout = layout[activity.id] || { left: 0, width: 100 };
+              const spaceInfo = getSpaceInfo(activity.space_id);
+              
+              return (
+                  <Animated.View
+                    key={activity.id}
+                    entering={FadeInDown.delay(0)}
+                    style={[
+                      styles.dayActivityCardOverlay,
+                      { 
+                        position: 'absolute',
+                        top: position.top,
+                        height: position.height,
+                        left: `${actLayout.left}%`,
+                        width: `${actLayout.width}%`,
+                        paddingRight: 4,
+                        borderLeftColor: getStatusColor(activity.status),
+                        backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
+                        zIndex: 300,
+                      }
+                    ]}
+                  >
+                    <TouchableOpacity
+                      style={styles.dayActivityTouchable}
+                      onPress={() => handleActivityPress(activity)}
+                    >
+                      <View style={styles.dayActivityHeader}>
+                        <View style={styles.dayActivityBadge}>
+                          <Ionicons name={getActivityIcon(activity.activity_type)} size={14} color={getStatusColor(activity.status)} />
+                          <Text style={[styles.dayActivityType, { color: getStatusColor(activity.status) }]}>{getActivityLabel(activity.activity_type)}</Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: spaceInfo.color + '20', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                          <View style={[styles.spaceDot, { backgroundColor: spaceInfo.color }]} />
+                          <Text style={[styles.spaceBadgeText, { color: colors.textSecondary }]}>{spaceInfo.name}</Text>
+                        </View>
+                      </View>
+
+                      <Text style={[styles.dayActivityTitle, { color: colors.text }]}>{activity.title}</Text>
+                      {activity.description && <Text style={[styles.dayActivityDescription, { color: colors.textSecondary }]} numberOfLines={2}>{activity.description}</Text>}
+
+                      <View style={styles.dayActivityMeta}>
+                        <View style={styles.dayActivityDuration}>
+                          <Ionicons name="timer-outline" size={14} color={colors.textSecondary} />
+                          <Text style={[styles.dayActivityMetaText, { color: colors.textSecondary }]}>{t('duration_minutes').replace('{count}', (activity.duration_minutes || 60).toString())}</Text>
+                        </View>
+                        <View style={styles.dayActivityStatus}>
+                          <View style={[styles.statusDot, { backgroundColor: getStatusColor(activity.status) }]} />
+                          <Text style={[styles.dayActivityMetaText, { color: colors.textSecondary }]}>{getStatusLabel(activity.status)}</Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  </Animated.View>
+                );
+              })}
+          </View>
+
+          {/* LAYER: Global Red Time Line (Highest Layer - Over Everything) */}
+          {isToday(selectedDate) && (
+            <View
+              style={[
+                styles.currentTimeLine,
+                { 
+                  top: (new Date().getHours() * HOUR_HEIGHT) + (new Date().getMinutes() / 60 * HOUR_HEIGHT),
+                  left: 50,
+                  right: 0,
+                  zIndex: 99999,
+                  pointerEvents: 'none'
+                }
+              ]}
+            >
+              <View style={styles.currentTimeDot} />
+              <View style={styles.currentTimeBar} />
+            </View>
+          )}
+        </View>
       </ScrollView>
     );
   };
-
   // Month View Component
   const MonthView = () => (
-    <Calendar
-      current={format(selectedDate, 'yyyy-MM-dd')}
-      onDayPress={(day: any) => {
-        setSelectedDate(parseISO(day.dateString));
-        setViewMode('day');
-      }}
-      markedDates={calendarMarked}
-      theme={{
-        backgroundColor: colors.background,
-        calendarBackground: colors.background,
-        textSectionTitleColor: colors.textSecondary,
-        selectedDayBackgroundColor: colors.tint,
-        selectedDayTextColor: '#fff',
-        todayTextColor: colors.tint,
-        dayTextColor: colors.text,
-        textDisabledColor: isDark ? '#444' : '#ddd',
-        dotColor: colors.tint,
-        arrowColor: colors.tint,
-        monthTextColor: colors.text,
-        textMonthFontWeight: '600',
-        textDayFontSize: 16,
-        textDayHeaderFontSize: 12,
-      }}
-      renderArrow={(direction: string) => (
-        <Ionicons
-          name={direction === 'left' ? 'chevron-back' : 'chevron-forward'}
-          size={24}
-          color={colors.tint}
-        />
-      )}
-      markingType={'multi-dot'}
-    />
-  );
-
-  // Activity Detail Modal
-  const ActivityDetailModal = () => (
-    <Modal
-      visible={!!selectedActivity}
-      transparent
-      animationType="fade"
-      onRequestClose={() => setSelectedActivity(null)}
+    <ScrollView 
+      style={styles.monthContainer}
+      contentContainerStyle={{ paddingBottom: 120 }}
+      showsVerticalScrollIndicator={false}
     >
-      <BlurView intensity={90} tint="dark" style={styles.modalOverlay}>
-        <Animated.View
-          entering={FadeInUp.springify().damping(15)}
-          style={styles.modalContainer}
-        >
-          {selectedActivity && (
-            <>
-              <View style={[styles.modalHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                <View style={[styles.modalHeaderTitleRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                  <Text style={[styles.modalTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{selectedActivity.title || t('untitled')}</Text>
-                  <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 8 }}>U:{String(user?.id)} C:{String(selectedActivity.created_by)}</Text>
-                  {(String(selectedActivity.created_by || selectedActivity.creator?.id) === String(user?.id)) && (
-                    <TouchableOpacity
-                      style={styles.editButton}
-                      onPress={() => {
-                        setActivityToEdit(selectedActivity);
-                        setIsEditing(true);
-                        setShowCreateModal(true);
-                        setSelectedActivity(null);
-                      }}
-                    >
-                      <Ionicons name="pencil" size={20} color="#007AFF" />
-                    </TouchableOpacity>
-                  )}
-                </View>
-                <TouchableOpacity onPress={() => setSelectedActivity(null)}>
-                  <Ionicons name="close" size={24} color="#fff" />
-                </TouchableOpacity>
-              </View>
+      <Calendar
+        current={format(selectedDate, 'yyyy-MM-dd')}
+        onDayPress={(day: any) => {
+          setSelectedDate(parseISO(day.dateString));
+          setViewMode('day');
+        }}
+        markedDates={calendarMarked}
+        theme={{
+          backgroundColor: colors.background,
+          calendarBackground: colors.background,
+          textSectionTitleColor: colors.textSecondary,
+          selectedDayBackgroundColor: colors.tint,
+          selectedDayTextColor: '#fff',
+          todayTextColor: colors.tint,
+          dayTextColor: colors.text,
+          textDisabledColor: isDark ? '#444' : '#ddd',
+          dotColor: colors.tint,
+          arrowColor: colors.tint,
+          monthTextColor: colors.text,
+          textMonthFontWeight: '600',
+          textDayFontSize: 16,
+          textDayHeaderFontSize: 12,
+        }}
+        renderArrow={(direction: string) => (
+          <Ionicons
+            name={direction === 'left' ? 'chevron-back' : 'chevron-forward'}
+            size={24}
+            color={colors.tint}
+          />
+        )}
+        markingType={'multi-dot'}
+      />
 
-              <ScrollView style={styles.modalContent}>
-                <View style={styles.modalSection}>
-                  <Text style={[styles.modalSectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t('details')}</Text>
-                  <Text style={[styles.modalText, { textAlign: isRTL ? 'right' : 'left' }]}>{selectedActivity.description || t('no_description')}</Text>
-                </View>
+      <View style={styles.upcomingSection}>
+        <View style={styles.upcomingHeader}>
+          <Text style={[styles.upcomingTitle, { color: colors.text }]}>{t('upcoming_sessions')}</Text>
+          <View style={[styles.upcomingBadge, { backgroundColor: colors.tint + '20' }]}>
+            <Text style={[styles.upcomingBadgeText, { color: colors.tint }]}>{upcomingActivities.length}</Text>
+          </View>
+        </View>
 
-                <View style={styles.modalSection}>
-                  <Text style={[styles.modalSectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t('time')}</Text>
-                  <View style={[styles.modalTimeRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                    <Ionicons name="time-outline" size={20} color="#007AFF" />
-                    <Text style={[styles.modalText, { textAlign: isRTL ? 'right' : 'left' }]}>
-                      {selectedActivity.scheduled_start
-                        ? format(parseISO(selectedActivity.scheduled_start), 'EEEE, MMMM d, h:mm a')
-                        : t('not_scheduled')}
-                    </Text>
-                  </View>
-                  <View style={[styles.modalTimeRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                    <Ionicons name="timer-outline" size={20} color="#007AFF" />
-                    <Text style={[styles.modalText, { textAlign: isRTL ? 'right' : 'left' }]}>
-                      {t('duration_minutes').replace('{count}', (selectedActivity.duration_minutes || 60).toString())}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.modalSection}>
-                  <Text style={[styles.modalSectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t('space')}</Text>
-                  <View style={[styles.modalSpaceRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                    <View style={[styles.modalSpaceDot, { backgroundColor: getSpaceInfo(selectedActivity.space_id).color }]} />
-                    <Text style={[styles.modalText, { textAlign: isRTL ? 'right' : 'left' }]}>
-                      {getSpaceInfo(selectedActivity.space_id).name}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Participants Section */}
-                <View style={styles.modalSection}>
-                  <View style={[styles.sectionHeaderRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                    <Text style={[styles.modalSectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t('participants')}</Text>
-                    {(selectedActivity.created_by === useCollaborationStore.getState().spaces.find(s => s.id === selectedActivity.space_id)?.creator_id ||
-                      selectedActivity.created_by === Number(useCollaborationStore.getState().spaces.find(s => s.id === selectedActivity.space_id)?.creator_id)) && (
-                        <TouchableOpacity
-                          onPress={() => setIsManagingParticipants(!isManagingParticipants)}
-                          style={styles.manageButton}
-                        >
-                          <Text style={styles.manageButtonText}>
-                            {isManagingParticipants ? t('done') : t('manage')}
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-                  </View>
-
-                  <View style={styles.participantsList}>
-                    {selectedActivity.participants?.map((p: any) => (
-                      <View key={p.id} style={[styles.participantItem, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                        <View style={[styles.participantInfo, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                          <View style={styles.participantAvatar}>
-                            <Text style={styles.avatarText}>{p.name?.charAt(0).toUpperCase()}</Text>
-                          </View>
-                          <Text style={[styles.participantName, { textAlign: isRTL ? 'right' : 'left' }]}>{p.name}</Text>
-                        </View>
-                        {isManagingParticipants && (
-                          <TouchableOpacity
-                            onPress={() => handleUpdateParticipant(p.id, 'remove')}
-                            disabled={isUpdatingParticipants}
-                          >
-                            <Ionicons name="remove-circle" size={22} color="#F44336" />
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    ))}
-
-                    {isManagingParticipants && spaceParticipants
-                      .filter(sp => !selectedActivity.participant_ids?.includes(sp.user_id) && !selectedActivity.participants?.some((p: any) => p.id === sp.user_id))
-                      .map((sp: any) => (
-                        <View key={sp.user_id} style={[styles.participantItem, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                          <View style={[styles.participantInfo, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                            <View style={[styles.participantAvatar, { backgroundColor: '#E0E0E0' }]}>
-                              <Text style={styles.avatarText}>{sp.user?.name?.charAt(0).toUpperCase()}</Text>
-                            </View>
-                            <Text style={[styles.participantName, { textAlign: isRTL ? 'right' : 'left', color: '#888' }]}>{sp.user?.name}</Text>
-                          </View>
-                          <TouchableOpacity
-                            onPress={() => handleUpdateParticipant(sp.user_id, 'add')}
-                            disabled={isUpdatingParticipants}
-                          >
-                            <Ionicons name="add-circle" size={22} color="#4CAF50" />
-                          </TouchableOpacity>
-                        </View>
-                      ))
-                    }
+        {upcomingActivities.length > 0 ? (
+          upcomingActivities.map((activity, index) => {
+            const startTime = parseISO(activity.scheduled_start!);
+            return (
+              <TouchableOpacity
+                key={activity.id}
+                style={[styles.upcomingCard, { backgroundColor: isDark ? '#1E1E1E' : '#fff', borderLeftColor: getStatusColor(activity.status) }]}
+                onPress={() => handleActivityPress(activity)}
+              >
+                <View style={styles.upcomingCardContent}>
+                  <View style={styles.upcomingCardTop}>
+                    <View style={styles.upcomingCardIconContainer}>
+                      <Ionicons name={getActivityIcon(activity.activity_type)} size={18} color={getStatusColor(activity.status)} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.upcomingCardTitle, { color: colors.text }]} numberOfLines={1}>
+                        {activity.title}
+                      </Text>
+                      <Text style={[styles.upcomingCardTime, { color: colors.textSecondary }]}>
+                        {isToday(startTime) ? t('today') : format(startTime, 'MMM d')} • {format(startTime, 'h:mm a')}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
                   </View>
                 </View>
-
-                <View style={[styles.modalActions, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                  <TouchableOpacity
-                    style={styles.modalAction}
-                    onPress={() => handleAddToCalendar(selectedActivity)}
-                  >
-                    <Ionicons name="calendar" size={20} color="#007AFF" />
-                    <Text style={styles.modalActionText}>{t('add_to_calendar')}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.modalAction}
-                    onPress={() => handleExportICS(selectedActivity)}
-                  >
-                    <Ionicons name="download" size={20} color="#666" />
-                    <Text style={styles.modalActionText}>{t('export_ics')}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.modalAction}
-                    onPress={() => {
-                      const frontendHost = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
-                      const deepLink = `${frontendHost}/${selectedActivity.space_id}?activity=${selectedActivity.id}`;
-                      require('expo-clipboard').setStringAsync(deepLink);
-                      try { require('@/stores/toastStore').useToastStore.getState().showToast(t('session_link_copied'), 'success'); } catch (e) { }
-                      if (Platform.OS !== 'web') try { require('expo-haptics').notificationAsync(require('expo-haptics').NotificationFeedbackType.Success); } catch (e) { }
-                    }}
-                  >
-                    <Ionicons name="link" size={20} color="#666" />
-                    <Text style={styles.modalActionText}>{t('copy_link')}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.modalAction, styles.modalActionJoin]}
-                    onPress={() => {
-                      const activityToJoin = selectedActivity;
-                      setSelectedActivity(null);
-                      onClose();
-                      if (activityToJoin) {
-                        router.push(`/(spaces)/${activityToJoin.space_id}?tab=meeting&activity=${activityToJoin.id}`);
-                      }
-                    }}
-                  >
-                    <LinearGradient
-                      colors={['#007AFF', '#0056CC']}
-                      style={[styles.modalJoinGradient, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
-                    >
-                      <Ionicons name="enter" size={20} color="#fff" />
-                      <Text style={styles.modalJoinText}>{t('join_session')}</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
-              </ScrollView>
-            </>
-          )}
-        </Animated.View>
-      </BlurView>
-    </Modal>
+              </TouchableOpacity>
+            );
+          })
+        ) : (
+          <View style={styles.upcomingEmpty}>
+            <Ionicons name="calendar-outline" size={40} color={colors.textSecondary} style={{ opacity: 0.5, marginBottom: 8 }} />
+            <Text style={[styles.upcomingEmptyText, { color: colors.textSecondary }]}>{t('no_upcoming_sessions')}</Text>
+          </View>
+        )}
+      </View>
+    </ScrollView>
   );
+
+
 
   return (
     <Animated.View entering={FadeIn.duration(300)} style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
@@ -1021,7 +1106,42 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
       />
 
       {/* Activity Detail Modal */}
-      <ActivityDetailModal />
+      <ActivityDetailModal
+        isVisible={!!selectedActivity}
+        activity={selectedActivity}
+        onClose={() => setSelectedActivity(null)}
+        onEdit={(activity) => {
+          setActivityToEdit(activity);
+          setIsEditing(true);
+          setShowCreateModal(true);
+          setSelectedActivity(null);
+        }}
+        onDelete={handleDeleteActivity}
+        onJoin={(activity) => {
+          setSelectedActivity(null);
+          // Close the parent modal first to ensure UI unblocks
+          if (onClose) onClose();
+          
+          // Small delay to allow modal unmounting before triggering the call
+          setTimeout(() => {
+            if (onActivitySelect) {
+              onActivitySelect(activity);
+            } else {
+              router.push(`/(spaces)/${activity.space_id}?tab=meeting&activity=${activity.id}`);
+            }
+          }, 100);
+        }}
+        onUpdateParticipant={handleUpdateParticipant}
+        isManagingParticipants={isManagingParticipants}
+        setIsManagingParticipants={setIsManagingParticipants}
+        isUpdatingParticipants={isUpdatingParticipants}
+        spaceParticipants={spaceParticipants}
+        currentUserId={user?.id}
+        isRTL={isRTL}
+        onAddToCalendar={handleAddToCalendar}
+        onExportICS={handleExportICS}
+        onCopyLink={handleCopyLink}
+      />
     </Animated.View>
   );
 };
@@ -1318,6 +1438,18 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => {
         elevation: 2,
       }),
     },
+    dayActivityCardOverlay: {
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      [isRTL ? 'borderRightWidth' : 'borderLeftWidth']: 4,
+      ...createShadow({
+        width: 0,
+        height: 2,
+        opacity: isDark ? 0.3 : 0.05,
+        radius: 4,
+        elevation: 2,
+      }),
+    },
     dayActivityTouchable: {
       padding: 12,
     },
@@ -1432,6 +1564,7 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => {
       justifyContent: 'center',
       alignItems: 'center',
       padding: 20,
+      backgroundColor: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.4)',
     },
     modalContainer: {
       backgroundColor: '#1A1A2E',
@@ -1591,6 +1724,73 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => {
       fontSize: 14,
       color: '#fff',
       fontWeight: '500',
+    },
+    // Upcoming Sessions Styles
+    upcomingSection: {
+      padding: 20,
+      marginTop: 10,
+    },
+    upcomingHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 16,
+      gap: 8,
+    },
+    upcomingTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+    },
+    upcomingBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 10,
+    },
+    upcomingBadgeText: {
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    upcomingCard: {
+      borderRadius: 16,
+      marginBottom: 12,
+      borderLeftWidth: 4,
+      ...createShadow({
+        width: 0,
+        height: 2,
+        opacity: 0.1,
+        radius: 4,
+        elevation: 2,
+      }),
+    },
+    upcomingCardContent: {
+      padding: 16,
+    },
+    upcomingCardTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    upcomingCardIconContainer: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      backgroundColor: 'rgba(0,0,0,0.05)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    upcomingCardTitle: {
+      fontSize: 15,
+      fontWeight: '600',
+      marginBottom: 2,
+    },
+    upcomingCardTime: {
+      fontSize: 12,
+    },
+    upcomingEmpty: {
+      alignItems: 'center',
+      paddingVertical: 40,
+    },
+    upcomingEmptyText: {
+      fontSize: 14,
     },
   });
 };
