@@ -20,6 +20,15 @@ php artisan reverb:start --debug
 
 php artisan queue:work --tries=3
 
+
+# Force the scheduler to show you what would run right now
+php artisan schedule:test
+
+# Or run the cleanup manually to see if it works with your new 72-hour limit
+php artisan cleanup:guests --hours=72
+
+php artisan schedule:work
+
 ### 🚀 Production (Server)
 # These are already managed by Supervisor on Forge:
 # - Octane (Swoole) on Port 8089

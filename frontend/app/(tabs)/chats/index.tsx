@@ -515,12 +515,14 @@ const ChatPage = () => {
     useCallback(() => {
       if (user) {
         loadAllData();
+        // Ensure animations run on focus to prevent stuck transparency/position
+        startAnimations();
       }
 
       return () => {
         // Optional cleanup
       };
-    }, [user])
+    }, [user, startAnimations])
   );
 
   // Load all data
@@ -1099,6 +1101,9 @@ const ChatPage = () => {
             // Close the modal first to ensure UI unblocks before navigation
             setShowActivities(false);
             
+            // Clear activity param to prevent modal re-opening on back navigation
+            router.setParams({ activity: undefined });
+            
             // Navigate to the space containing this activity
             const space = storeSpaces.find(s => s.id === activity.space_id);
             if (space) {
@@ -1311,14 +1316,7 @@ const ChatPage = () => {
         ]}
       />
 
-      {showSpaceCreationModal && (
-        <SpaceCreationModal
-          visible={showSpaceCreationModal}
-          onClose={() => setShowSpaceCreationModal(false)}
-          contacts={contacts}
-          onSpaceCreated={onSpaceCreated}
-        />
-      )}
+
     </Animated.View >
   );
 };

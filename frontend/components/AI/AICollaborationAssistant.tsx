@@ -27,7 +27,8 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
   visible,
   onClose
 }) => {
-  const { t } = useTranslation();
+  const { t, isRTL } = useTranslation();
+  const styles = getStyles(isRTL);
   const [aiThinking, setAiThinking] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
   const [chatHistory, setChatHistory] = useState<any[]>([]);
@@ -337,7 +338,7 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
                 }
               }}
             >
-              <Ionicons name="send" size={20} color="#fff" />
+              <Ionicons name="send" size={20} color="#fff" style={styles.sendIcon} />
             </Pressable>
           </View>
         </View>
@@ -346,7 +347,9 @@ export const AICollaborationAssistant: React.FC<AIAssistantProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const getStyles = (isRTL: boolean) => StyleSheet.create({
   floatingAIButton: {
     position: 'absolute',
     bottom: 180,
@@ -432,7 +435,7 @@ const styles = StyleSheet.create({
   },
 
   inputContainer: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     marginTop: 16,
   },
 
@@ -443,7 +446,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    marginRight: 8,
+    [isRTL ? 'marginLeft' : 'marginRight']: 8,
+    textAlign: isRTL ? 'right' : 'left',
   },
 
   sendButton: {
@@ -453,6 +457,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#667EEA',
     justifyContent: 'center',
     alignItems: 'center',
+    [isRTL ? 'paddingRight' : 'paddingLeft']: 2,
+  },
+  sendIcon: {
+    transform: [{ rotate: isRTL ? '165deg' : '-15deg' }],
   },
 
   suggestionCard: {

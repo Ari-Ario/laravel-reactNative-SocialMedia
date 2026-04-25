@@ -104,136 +104,7 @@ interface ChannelCallViewProps {
   onToggleMinimize?: () => void;
 }
 
-const VideoTile = React.memo(({ 
-  participant, 
-  stream, 
-  name, 
-  avatar, 
-  hasVideo, 
-  isMuted, 
-  isSpeaking, 
-  isLocal = false,
-  isMaximized = false,
-  isSharingScreen = false,
-  onMaximize,
-  isAdmin = false,
-  onPromote
-}: any) => {
-  const { t } = useTranslation();
-  const videoElementRef = useRef<HTMLVideoElement | null>(null);
-  const isHandRaised = participant.handRaised;
-  const role = participant.role?.toLowerCase() || 'participant';
-  const isHost = role === 'owner';
-  const isMod = role === 'moderator' || role === 'admin';
 
-  useEffect(() => {
-    if (isWeb && stream && videoElementRef.current && videoElementRef.current.srcObject !== stream) {
-      videoElementRef.current.srcObject = stream;
-      // Web: Mute if local
-      videoElementRef.current.muted = isLocal;
-      videoElementRef.current.play().catch(e => {
-        if (e.name !== 'AbortError' && e.name !== 'NotAllowedError') {
-          console.warn("AutoPlay blocked in VideoTile:", e);
-        }
-      });
-    }
-  }, [stream, isLocal, isSharingScreen]);
-
-  return (
-    <View style={styles.videoTile}>
-      {/* Video Content */}
-      <View style={styles.videoContainer}>
-        {stream && hasVideo ? (
-          <>
-            {isWeb ? (
-              <video
-                ref={videoElementRef}
-                autoPlay
-                playsInline
-                muted={isLocal}
-                style={StyleSheet.flatten([
-                  styles.videoElement as any,
-                  isSharingScreen && { objectFit: 'contain' }
-                ])}
-              />
-            ) : RTCView ? (
-              <RTCView
-                streamURL={stream.toURL()}
-                style={styles.videoElement}
-                objectFit={isSharingScreen ? "contain" : "cover"}
-                mirror={isLocal && !isSharingScreen}
-              />
-            ) : null}
-          </>
-        ) : (
-          <View style={styles.avatarContainer}>
-            <Avatar source={avatar} size={isMaximized ? 120 : 80} name={name} />
-            {!stream && isHandRaised && (
-              <MotiView
-                animate={{ scale: [1, 1.2, 1], opacity: [0.6, 1, 0.6] }}
-                transition={{ loop: true, duration: 2000 }}
-                style={styles.waitingIndicator}
-              >
-                <Ionicons name="hand-left" size={24} color="#FFD700" />
-                <Text style={styles.waitingText}>{t('awaiting_stage')}</Text>
-              </MotiView>
-            )}
-          </View>
-        )}
-
-        {/* Glossy Overlay for Name and Status */}
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.8)']}
-          style={styles.tileOverlay}
-        >
-          <View style={styles.tileHeader}>
-            <View style={styles.nameBadge}>
-              {isHost && <Ionicons name="ribbon" size={14} color="#FFD700" style={{ marginRight: 4 }} />}
-              <Text style={styles.tileName} numberOfLines={1}>{name}</Text>
-              {isLocal && <Text style={styles.youBadge}>{t('you_label')}</Text>}
-            </View>
-            
-            <View style={styles.statusIcons}>
-              {isMuted && (
-                <View style={styles.tileStatusBadge}>
-                  <Ionicons name="mic-off" size={12} color="#FF6B6B" />
-                </View>
-              )}
-              {isHandRaised && (
-                <View style={[styles.tileStatusBadge, { backgroundColor: '#FFD700' }]}>
-                  <Ionicons name="hand-left" size={12} color="#000" />
-                </View>
-              )}
-            </View>
-          </View>
-
-          {/* Role Badge */}
-          {(isHost || isMod) && (
-            <View style={[styles.roleBadge, isHost ? styles.hostBadge : styles.modBadge]}>
-              <Text style={styles.roleText}>{isHost ? t('host_role') : t('moderator_role')}</Text>
-            </View>
-          )}
-        </LinearGradient>
-
-        {/* Promote Button (For Admins viewing pending requests) */}
-        {isAdmin && isHandRaised && !stream && (
-          <TouchableOpacity style={styles.gridPromoteBtn} onPress={onPromote}>
-            <LinearGradient
-              colors={['#4f46e5', '#7c3aed']}
-              style={styles.gridPromoteGradient}
-            >
-              <Ionicons name="mic" size={16} color="#fff" />
-              <Text style={styles.gridPromoteText}>{t('bring_to_stage')}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Speaking Indicator */}
-      {isSpeaking && <View style={styles.speakingBorder} />}
-    </View>
-  );
-});
 
 const ChannelCallView: React.FC<ChannelCallViewProps> = ({ 
   spaceId,
@@ -956,14 +827,14 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({
               <View style={styles.requestInfo}>
                 <Text style={styles.requestText} numberOfLines={1}>
                   <Text style={{ fontWeight: '800' }}>{joinRequests[0].name}</Text>
-                  {joinRequests.length > 1 ? ` & ${joinRequests.length - 1} more` : ' wants to join'}
+                  {joinRequests.length > 1 ? ` & ${joinRequests.length - 1}${t('more_people')}` : t('wants_to_join')}
                 </Text>
               </View>
               <TouchableOpacity 
                 style={styles.promoteActionBtn}
                 onPress={() => handlePromote(joinRequests[0].id)}
               >
-                <Text style={styles.promoteActionText}>Promote</Text>
+                <Text style={styles.promoteActionText}>{t('promote')}</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.dismissBtn} 
@@ -1092,7 +963,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({
                     padding: 4,
                   }}
                 >
-                  <VideoTile
+                   <VideoTile
                     participant={p}
                     stream={p.stream}
                     name={p.name}
@@ -1104,6 +975,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({
                     isSharingScreen={p.id === 'local' ? isSharingScreen : p.isSharingScreen}
                     isAdmin={isAdmin}
                     onPromote={() => handlePromote(p.id)}
+                    t={t}
                   />
                 </MotiView>
               ))}
@@ -1121,8 +993,8 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({
                 <Text style={styles.emptyTitle}>{t('broadcasting_studio')}</Text>
                 <Text style={styles.emptyText}>
                   {isAdmin 
-                    ? "You are the stage manager. Wait for speakers to join or start broadcasting yourself!"
-                    : "The stage is currently empty. The broadcast will begin shortly."}
+                    ? t('stage_manager_hint')
+                    : t('empty_stage_hint')}
                 </Text>
               </MotiView>
             )}
@@ -1284,14 +1156,14 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({
                           style={[styles.sidebarPromoteBtn, { backgroundColor: '#FF3B30' }]}
                           onPress={() => handleDemote(p.id)}
                         >
-                          <Text style={styles.sidebarPromoteText}>Demote</Text>
+                          <Text style={styles.sidebarPromoteText}>{t('demote')}</Text>
                         </TouchableOpacity>
                       ) : isAdmin && p.handRaised ? (
                         <TouchableOpacity 
                           style={styles.sidebarPromoteBtn}
                           onPress={() => handlePromote(p.id)}
                         >
-                          <Text style={styles.sidebarPromoteText}>Promote</Text>
+                          <Text style={styles.sidebarPromoteText}>{t('promote')}</Text>
                         </TouchableOpacity>
                       ) : p.isMuted ? (
                         <Ionicons name="mic-off" size={16} color="#FF3B30" />
@@ -2024,6 +1896,137 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...createShadow({ opacity: 0.3, radius: 8, height: 4 }),
   },
+});
+
+const VideoTile = React.memo(({ 
+  participant, 
+  stream, 
+  name, 
+  avatar, 
+  hasVideo, 
+  isMuted, 
+  isSpeaking, 
+  isLocal = false,
+  isMaximized = false,
+  isSharingScreen = false,
+  onMaximize,
+  isAdmin = false,
+  onPromote,
+  t // Explicitly passed
+}: any) => {
+  const videoElementRef = useRef<HTMLVideoElement | null>(null);
+  const isHandRaised = participant.handRaised;
+  const role = participant.role?.toLowerCase() || 'participant';
+  const isHost = role === 'owner';
+  const isMod = role === 'moderator' || role === 'admin';
+
+  useEffect(() => {
+    if (isWeb && stream && videoElementRef.current && videoElementRef.current.srcObject !== stream) {
+      videoElementRef.current.srcObject = stream;
+      // Web: Mute if local
+      videoElementRef.current.muted = isLocal;
+      videoElementRef.current.play().catch(e => {
+        if (e.name !== 'AbortError' && e.name !== 'NotAllowedError') {
+          console.warn("AutoPlay blocked in VideoTile:", e);
+        }
+      });
+    }
+  }, [stream, isLocal, isSharingScreen]);
+
+  return (
+    <View style={styles.videoTile}>
+      {/* Video Content */}
+      <View style={styles.videoContainer}>
+        {stream && hasVideo ? (
+          <>
+            {isWeb ? (
+              <video
+                ref={videoElementRef}
+                autoPlay
+                playsInline
+                muted={isLocal}
+                style={StyleSheet.flatten([
+                  styles.videoElement as any,
+                  isSharingScreen && { objectFit: 'contain' }
+                ])}
+              />
+            ) : RTCView ? (
+              <RTCView
+                streamURL={stream.toURL()}
+                style={styles.videoElement}
+                objectFit={isSharingScreen ? "contain" : "cover"}
+                mirror={isLocal && !isSharingScreen}
+              />
+            ) : null}
+          </>
+        ) : (
+          <View style={styles.avatarContainer}>
+            <Avatar source={avatar} size={isMaximized ? 120 : 80} name={name} />
+            {!stream && isHandRaised && (
+              <MotiView
+                animate={{ scale: [1, 1.2, 1], opacity: [0.6, 1, 0.6] }}
+                transition={{ loop: true, duration: 2000 }}
+                style={styles.waitingIndicator}
+              >
+                <Ionicons name="hand-left" size={24} color="#FFD700" />
+                <Text style={styles.waitingText}>{t('awaiting_stage')}</Text>
+              </MotiView>
+            )}
+          </View>
+        )}
+
+        {/* Glossy Overlay for Name and Status */}
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.8)']}
+          style={styles.tileOverlay}
+        >
+          <View style={styles.tileHeader}>
+            <View style={styles.nameBadge}>
+              {isHost && <Ionicons name="ribbon" size={14} color="#FFD700" style={{ marginRight: 4 }} />}
+              <Text style={styles.tileName} numberOfLines={1}>{name}</Text>
+              {isLocal && <Text style={styles.youBadge}>{t('you_label')}</Text>}
+            </View>
+            
+            <View style={styles.statusIcons}>
+              {isMuted && (
+                <View style={styles.tileStatusBadge}>
+                  <Ionicons name="mic-off" size={12} color="#FF6B6B" />
+                </View>
+              )}
+              {isHandRaised && (
+                <View style={[styles.tileStatusBadge, { backgroundColor: '#FFD700' }]}>
+                  <Ionicons name="hand-left" size={12} color="#000" />
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Role Badge */}
+          {(isHost || isMod) && (
+            <View style={[styles.roleBadge, isHost ? styles.hostBadge : styles.modBadge]}>
+              <Text style={styles.roleText}>{isHost ? t('host_role') : t('moderator_role')}</Text>
+            </View>
+          )}
+        </LinearGradient>
+
+        {/* Promote Button (For Admins viewing pending requests) */}
+        {isAdmin && isHandRaised && !stream && (
+          <TouchableOpacity style={styles.gridPromoteBtn} onPress={onPromote}>
+            <LinearGradient
+              colors={['#4f46e5', '#7c3aed']}
+              style={styles.gridPromoteGradient}
+            >
+              <Ionicons name="mic" size={16} color="#fff" />
+              <Text style={styles.gridPromoteText}>{t('bring_to_stage')}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Speaking Indicator */}
+      {isSpeaking && <View style={styles.speakingBorder} />}
+    </View>
+  );
 });
 
 export default ChannelCallView;

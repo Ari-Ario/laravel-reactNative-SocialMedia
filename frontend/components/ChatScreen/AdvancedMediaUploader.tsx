@@ -137,7 +137,8 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
   onClose,
   onUploadComplete,
 }, ref) => {
-  const { t } = useTranslation();
+  const { t, isRTL } = useTranslation();
+  const styles = getStyles(isRTL);
   const insets = useSafeAreaInsets();
   // Navigation State
   const [viewState, setViewState] = useState<'preview' | 'grid'>('preview');
@@ -709,7 +710,7 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
                     maxLength={1000}
                   />
                   <TouchableOpacity style={styles.sendBtn} onPress={handleSend} disabled={uploading}>
-                    <Ionicons name="send" size={20} color="#fff" />
+                    <Ionicons name="send" size={20} color="#fff" style={styles.sendIcon} />
                   </TouchableOpacity>
                 </>
               )}
@@ -787,7 +788,7 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
                     onPress={handleSend}
                     disabled={uploading}
                   >
-                    <Ionicons name="send" size={20} color="#fff" />
+                    <Ionicons name="send" size={20} color="#fff" style={styles.sendIcon} />
                   </TouchableOpacity>
                 </>
               )}
@@ -804,7 +805,7 @@ export default AdvancedMediaUploader;
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const getStyles = (isRTL: boolean) => StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
@@ -939,7 +940,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   captionBar: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'flex-end',
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -956,6 +957,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     maxHeight: 120,
     minHeight: 40,
+    textAlign: isRTL ? 'right' : 'left',
   },
   sendBtn: {
     backgroundColor: '#007AFF',
@@ -964,8 +966,12 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 12,
+    [isRTL ? 'marginRight' : 'marginLeft']: 12,
     marginBottom: 0,
+    [isRTL ? 'paddingRight' : 'paddingLeft']: 2,
+  },
+  sendIcon: {
+    transform: [{ rotate: isRTL ? '165deg' : '-15deg' }],
   },
   uploadingState: {
     flex: 1,
@@ -1009,7 +1015,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'flex-end',
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -1027,6 +1033,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     maxHeight: 120,
     minHeight: 48,
+    textAlign: isRTL ? 'right' : 'left',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
   },
@@ -1037,7 +1044,8 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 12,
+    [isRTL ? 'marginRight' : 'marginLeft']: 12,
+    [isRTL ? 'paddingRight' : 'paddingLeft']: 2,
     ...createShadow({ width: 0, height: 2, opacity: 0.2, radius: 4, elevation: 4 }),
   },
   headerIndicator: {

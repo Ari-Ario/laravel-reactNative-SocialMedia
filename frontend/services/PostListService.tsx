@@ -14,6 +14,7 @@ import { useModal } from '@/context/ModalContext';
 import { useProfileView } from '@/context/ProfileViewContext';
 import { useToastStore } from '@/stores/toastStore';
 import { usePostStore, Post, Comment, Reaction } from '@/stores/postStore';
+import { calculateAnchor, AnchorPosition } from '@/utils/layout';
 
 export interface Repost {
   id: number;
@@ -52,7 +53,7 @@ export const usePostListService = (user: any) => {
     commentId?: number;
     postId: number;
   } | null>(null);
-  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const [menuPosition, setMenuPosition] = useState<AnchorPosition>();
   const [menuVisible, setMenuVisible] = useState(false);
   const [reportVisible, setReportVisible] = useState(false);
   const [mediaViewerVisible, setMediaViewerVisible] = useState(false);
@@ -516,12 +517,23 @@ const getGroupedReactionsComments = (
   }, [findAdjacentPostWithMedia, handleCloseViewer]);
 
   // Menu handler
-  const handleMenuPress = (event: NativeSyntheticEvent<NativeTouchEvent>) => {
-    setMenuVisible(true);
-    setMenuPosition({
-      top: event.nativeEvent.pageY,
-      left: event.nativeEvent.pageX,
-    });
+  const handleMenuPress = (event: any, ref?: React.RefObject<any>) => {
+    const { pageX, pageY } = event.nativeEvent;
+    
+    if (ref?.current) {
+      ref.current.measure((x: number, y: number, width: number, height: number, px: number, py: number) => {
+        // Use touch coordinates (pageX/pageY) as the anchor point with 0 width/height 
+        // to ensure it appears exactly where the user long-pressed, but still benefit from horizontal clamping
+        const anchor = calculateAnchor(pageX || px, pageY || py, 0, 0, 220);
+        setMenuPosition(anchor);
+        setMenuVisible(true);
+      });
+    } else {
+      // Fallback if no ref
+      const anchor = calculateAnchor(pageX - 110, pageY, 220, 0, 220);
+      setMenuPosition(anchor);
+      setMenuVisible(true);
+    }
   };
 
   // Submit comment

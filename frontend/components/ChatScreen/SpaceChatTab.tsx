@@ -585,7 +585,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                                         activeOpacity={0.8}
                                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                     >
-                                        <Ionicons name="send" size={20} color="#fff" />
+                                        <Ionicons name="send" size={20} color="#fff" style={styles.sendIcon} />
                                     </TouchableOpacity>
                                 </View>
                             )}
@@ -636,6 +636,7 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                                             name={content.trim() ? "send" : (isRecording ? "stop" : "mic")}
                                             size={content.trim() ? 18 : 22}
                                             color="#fff"
+                                            style={content.trim() && styles.sendIcon}
                                         />
                                     )}
                                 </TouchableOpacity>
@@ -769,7 +770,7 @@ function getStyles(colors: any, activeScheme: string, isRTL: boolean) {
     },
     /* ── Input area ── */
     chatInputContainer: {
-        flexDirection: 'row', // Always keep send on right
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         alignItems: 'flex-end',
         paddingHorizontal: 8,
         paddingVertical: 8,
@@ -795,6 +796,7 @@ function getStyles(colors: any, activeScheme: string, isRTL: boolean) {
         fontSize: 15,
         maxHeight: 120,
         lineHeight: 20,
+        textAlign: isRTL ? 'right' : 'left',
     },
     sendButton: {
         backgroundColor: '#007AFF',
@@ -804,6 +806,10 @@ function getStyles(colors: any, activeScheme: string, isRTL: boolean) {
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 1,
+        [isRTL ? 'paddingRight' : 'paddingLeft']: 2,
+    },
+    sendIcon: {
+        transform: [{ rotate: isRTL ? '165deg' : '-15deg' }],
     },
     sendButtonDisabled: {
         backgroundColor: '#c8c8c8',

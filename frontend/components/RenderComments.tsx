@@ -44,6 +44,46 @@ const RenderComments = ({
   const { posts } = usePostStore();
   const currentPost = posts.find(p => p.id === postId);
   const comments = currentPost?.comments || [];
+  const { locale } = useTranslation();
+
+  const [translatedComments, setTranslatedComments] = React.useState<Record<number, string>>({});
+  const [translatingCommentIds, setTranslatingCommentIds] = React.useState<Record<number, boolean>>({});
+
+  const handleTranslateComment = React.useCallback(async (comment: any) => {
+    if (translatedComments[comment.id]) {
+      setTranslatedComments(prev => {
+        const next = { ...prev };
+        delete next[comment.id];
+        return next;
+      });
+      return;
+    }
+
+    setTranslatingCommentIds(prev => ({ ...prev, [comment.id]: true }));
+    try {
+      const targetLang = locale || 'en';
+      const langpair = `autodetect|${targetLang}`;
+      
+      const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(comment.content)}&langpair=${langpair}`);
+      const data = await response.json();
+
+      if (data && data.responseData && data.responseData.translatedText) {
+        const translatedText = data.responseData.translatedText;
+        if (translatedText.toUpperCase().includes('DISTINCT LANGUAGES')) {
+           useToastStore.getState().showToast(t('message_already_in_your_language'), 'info');
+           return;
+        }
+        setTranslatedComments(prev => ({ ...prev, [comment.id]: translatedText }));
+      } else {
+        throw new Error('Invalid translation response');
+      }
+    } catch (error) {
+      console.error('Comment translation failed:', error);
+      useToastStore.getState().showToast(t('could_not_translate'), 'error');
+    } finally {
+      setTranslatingCommentIds(prev => ({ ...prev, [comment.id]: false }));
+    }
+  }, [translatedComments, locale, t]);
 
   const [showReportModal, setShowReportModal] = React.useState(false);
   const [reportingCommentId, setReportingCommentId] = React.useState<number | null>(null);
@@ -110,7 +150,9 @@ const RenderComments = ({
             />
             <Text style={[styles.commentUsername, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}>{item.user.name}</Text>
           </TouchableOpacity>
-          <Text style={[styles.commentContent, { color: colors.text, textAlign: isRTL ? 'right' : 'left', [isRTL ? 'marginRight' : 'marginLeft']: 40, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}>{item.content}</Text>
+          <Text style={[styles.commentContent, { color: colors.text, textAlign: isRTL ? 'right' : 'left', [isRTL ? 'marginRight' : 'marginLeft']: 40, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}>
+            {translatedComments[item.id] || item.content}
+          </Text>
           {detectedUrl && (
             <View style={[styles.commentLinkPreview, { [isRTL ? 'marginRight' : 'marginLeft']: 40, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}>
               <LinkPreviewCard url={detectedUrl} compact={true} />
@@ -152,6 +194,17 @@ const RenderComments = ({
           >
             <Text style={[styles.replyButtonText, { color: colors.tint }]}>{t('reply')}</Text>
           </TouchableOpacity>
+
+          {(!item.user?.locale || item.user.locale !== locale) && (
+            <TouchableOpacity
+              style={[styles.translateButton, { [isRTL ? 'marginRight' : 'marginLeft']: 15 }]}
+              onPress={() => handleTranslateComment(item)}
+            >
+              <Text style={[styles.replyButtonText, { color: colors.tint }]}>
+                {translatingCommentIds[item.id] ? t('translating') : translatedComments[item.id] ? t('see_original') : t('translate')}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           <View style={[styles.commentReactionsScrollContainer, { [isRTL ? 'marginRight' : 'marginLeft']: 10, [isRTL ? 'marginLeft' : 'marginRight']: 10 }]}>
             {groupedReactions.length > 0 ? (
@@ -338,6 +391,9 @@ const styles = StyleSheet.create({
   },
   replyButtonText: {
     fontSize: 12,
+  },
+  translateButton: {
+    marginTop: 5,
   },
   repliesContainer: {
     paddingLeft: 10,

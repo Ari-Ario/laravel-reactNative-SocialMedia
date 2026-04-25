@@ -542,7 +542,7 @@ const Page = () => {
                 {saving && (
                   <View style={styles.cameraLoadingOverlay}>
                     <ActivityIndicator size="large" color="#fff" />
-                    <Text style={styles.cameraLoadingText}>Optimizing...</Text>
+                    <Text style={styles.cameraLoadingText}>{t('optimizing')}</Text>
                   </View>
                 )}
               </View>
@@ -595,11 +595,16 @@ const Page = () => {
                 </View>
               ))}
 
-              {isWeb && /iPhone|iPad|iPod/.test(navigator.userAgent) && (
+              {isWeb && !((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || (navigator as any).standalone) && (
                 <View style={styles.tipCard}>
                   <Ionicons name="information-circle-outline" size={20} color="#0084ff" style={styles.tipIcon} />
-                  <Text style={[styles.tipText, { color: colors.text }]}>
-                    To receive offline notifications on iOS, tap the "Share" button and select "Add to Home Screen".
+                  <Text style={[styles.tipText, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}>
+                    {/iPhone|iPad|iPod/.test(navigator.userAgent) 
+                      ? t('pwa_ios_tip') 
+                      : /Android/.test(navigator.userAgent) 
+                        ? t('pwa_android_tip') 
+                        : t('pwa_ios_tip') // Fallback
+                    }
                   </Text>
                 </View>
               )}

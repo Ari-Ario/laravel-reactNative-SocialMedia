@@ -16,7 +16,8 @@ import {
   Modal,
   Pressable,
   Dimensions,
-  Alert
+  Alert,
+  I18nManager
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -94,7 +95,8 @@ const ImageCarouselItem = ({ uri, index, service, styles }: { uri: string, index
 
 const PostDetailScreen = () => {
   const { colors, activeScheme } = useAppTheme();
-  const styles = getStyles(colors, activeScheme as string);
+  const { t, isRTL } = useTranslation();
+  const styles = getStyles(colors, activeScheme as string, isRTL);
   const { id, highlightCommentId, returnTo } = useLocalSearchParams();
   const { posts, addPost, updatePost } = usePostStore();
   const { bookmarks, addBookmark, removeBookmark } = useBookmarkStore();
@@ -919,7 +921,7 @@ const PostDetailScreen = () => {
   );
 };
 
-const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
+const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -1189,7 +1191,7 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 20 : 0,
   },
   commentInputContainer: {
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     padding: 12,
     backgroundColor: colors.surface,
@@ -1198,7 +1200,7 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    marginRight: 8,
+    [isRTL ? 'marginLeft' : 'marginRight']: 8,
   },
   commentInput: {
     flex: 1,
@@ -1210,8 +1212,9 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     fontSize: 14,
     color: colors.text,
     maxHeight: 80,
-    marginRight: 8,
+    [isRTL ? 'marginLeft' : 'marginRight']: 8,
     backgroundColor: colors.surface,
+    textAlign: isRTL ? 'right' : 'left',
   },
   commentSubmitButton: {
     backgroundColor: colors.tint,
@@ -1220,14 +1223,14 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingLeft: 3, 
+    [isRTL ? 'paddingRight' : 'paddingLeft']: 3, 
   },
   commentSubmitButtonDisabled: {
     backgroundColor: colors.muted,
     opacity: 0.5,
   },
   sendIcon: {
-    transform: [{ rotate: '-15deg' }], 
+    transform: [{ rotate: isRTL ? '165deg' : '-15deg' }], 
   },
   emojiPicker: {
     borderRadius: 10,

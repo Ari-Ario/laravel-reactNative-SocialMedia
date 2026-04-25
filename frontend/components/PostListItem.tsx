@@ -16,9 +16,9 @@ import {
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { useContext, useState, useMemo } from 'react';
+import { useContext, useState, useMemo, useRef } from 'react';
 import EmojiPicker from 'rn-emoji-keyboard';
-import PostMenu from './PostMenu';
+import GenericMenu from './GenericMenu';
 import ReportPost from './ReportPost';
 import AuthContext from '@/context/AuthContext';
 import { router } from 'expo-router';
@@ -95,6 +95,8 @@ function PostListItem({
   const expandedPostId = usePostStore(state => state.expandedPostId);
   const toggleExpandedPostId = usePostStore(state => state.toggleExpandedPostId);
   const hydratePost = usePostStore(state => state.hydratePost);
+
+  const containerRef = useRef<View>(null);
 
   const handleToggleExpand = () => {
     if (expandedPostId !== post.id) {
@@ -299,6 +301,40 @@ function PostListItem({
     }
   };
 
+  const postMenuItems = useMemo(() => {
+    const items: any[] = [];
+    if (isOwner) {
+      items.push({
+        icon: 'trash-outline',
+        label: t('delete'),
+        destructive: true,
+        onPress: () => service.handleDelete(post.id)
+      });
+      items.push({
+        icon: 'create-outline',
+        label: t('edit'),
+        onPress: () => service.handleEdit(post)
+      });
+    }
+    
+    if (currentPost.caption) {
+      items.push({
+        icon: translatedCaption ? "refresh-outline" : "language-outline",
+        label: translatedCaption ? t('see_original') : t('translate'),
+        color: translatedCaption ? "#25D366" : undefined,
+        onPress: handleTranslate
+      });
+    }
+
+    items.push({
+      icon: 'flag-outline',
+      label: t('report'),
+      onPress: service.handleReport
+    });
+
+    return items;
+  }, [isOwner, post.id, currentPost.caption, translatedCaption, t, service, handleTranslate]);
+
 
   const renderMainContent = () => (
     <>
@@ -369,7 +405,7 @@ function PostListItem({
 
           <TouchableOpacity
             style={styles.menuButton}
-            onPress={service.handleMenuPress}
+            onPress={(e) => service.handleMenuPress(e, containerRef)}
           >
             <Ionicons name="ellipsis-horizontal" size={20} color={colors.text} />
           </TouchableOpacity>
@@ -471,9 +507,9 @@ function PostListItem({
   const myReactions = reactions.filter((r: { user_id: number | string }) => Number(r.user_id) === Number(user?.id)).map((r: { reaction: string }) => r.reaction);
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} ref={containerRef}>
       <Pressable
-        onLongPress={service.handleMenuPress}
+        onLongPress={(e) => service.handleMenuPress(e, containerRef)}
         delayLongPress={300}
       >
 
@@ -704,16 +740,11 @@ function PostListItem({
       </Modal>
 
       {service.menuVisible && (
-        <PostMenu
+        <GenericMenu
           visible={service.menuVisible}
           onClose={() => service.setMenuVisible(false)}
-          onDelete={() => service.handleDelete(post.id)}
-          onEdit={() => service.handleEdit(post)}
-          onReport={service.handleReport}
-          isOwner={isOwner}
+          items={postMenuItems}
           anchorPosition={service.menuPosition}
-          onTranslate={handleTranslate}
-          isTranslated={!!translatedCaption}
         />
       )}
 
@@ -737,7 +768,7 @@ function PostListItem({
   );
 }
 
-const getStyles = (colors: any, activeScheme: string, isRTL: boolean): any => ({
+const getStyles = (colors: any, activeScheme: string, isRTL: boolean): any => StyleSheet.create({
   container: {
   },
   head: {
@@ -981,13 +1012,13 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean): any => ({
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingLeft: 3, // Slight offset to center the send icon
+    [isRTL ? 'paddingRight' : 'paddingLeft']: 3, // Slight offset to center the send icon
   },
   commentSubmitButtonDisabled: {
     backgroundColor: '#bedcf3',
   },
   sendIcon: {
-    transform: [{ rotate: '-15deg' }], // Telegram-style slight tilt
+    transform: [{ rotate: isRTL ? '165deg' : '-15deg' }], // Telegram-style slight tilt, mirrored for RTL
   },
   emojiPicker: {
     borderRadius: 10,
@@ -1051,4 +1082,3 @@ const PostListItemMemo = React.memo(PostListItem, (prevProps, nextProps) => {
 });
 
 export default PostListItemMemo;
-

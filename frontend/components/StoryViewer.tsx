@@ -110,6 +110,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
   const { showToast } = useToastStore();
   const { colors, activeScheme } = useAppTheme();
   const insets = useSafeAreaInsets();
+  const styles = getStyles(colors, activeScheme, isRTL);
   const { storyGroups, setStoriesForUser } = useStoryStore();
   const stories = useMemo(() => {
     const group = storyGroups.find(g => g.user.id === userId);
@@ -847,7 +848,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
                       {isSendingReply ? (
                         <ActivityIndicator size="small" color="#fff" />
                       ) : (
-                        <Ionicons name="send" size={20} color="#fff" />
+                        <Ionicons name="send" size={20} color="#fff" style={styles.sendIcon} />
                       )}
                     </TouchableOpacity>
                   </AnimatedComponent.View>
@@ -982,7 +983,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
 );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'black',
@@ -1136,12 +1137,12 @@ const styles = StyleSheet.create({
   },
   replyContainer: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 25,
-    paddingLeft: 15,
-    paddingRight: 5,
+    [isRTL ? 'paddingRight' : 'paddingLeft']: 15,
+    [isRTL ? 'paddingLeft' : 'paddingRight']: 5,
     paddingVertical: 5,
   },
   replyInput: {
@@ -1149,6 +1150,7 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 15,
     paddingVertical: 10,
+    textAlign: isRTL ? 'right' : 'left',
   },
   sendButton: {
     width: 40,
@@ -1156,6 +1158,10 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    [isRTL ? 'paddingRight' : 'paddingLeft']: 2,
+  },
+  sendIcon: {
+    transform: [{ rotate: isRTL ? '165deg' : '-15deg' }],
   },
   sendButtonDisabled: {
     opacity: 0.5,
