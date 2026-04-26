@@ -1,5 +1,5 @@
 // components/Notifications/FollowersPanel.tsx
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, Modal, Platform, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, Modal, Platform, Alert, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { createShadow } from '@/utils/styles';
 import { useState, useEffect } from 'react';
@@ -35,15 +35,23 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
   } = useNotificationStore();
 
   const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
+  const { width: windowWidth } = useWindowDimensions();
+  const panelWidth = Math.min(windowWidth - 16, 420);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [isFollowingMap, setIsFollowingMap] = useState<Record<string, boolean>>({});
   const [checkingStatus, setCheckingStatus] = useState<Record<string, boolean>>({});
 
   // Using direct state properties from store (pattern from index.tsx)
 
-  // Check follow status for all users when panel opens
+  // Check follow status + mark as read when panel opens
   useEffect(() => {
     if (visible && followerNotifications.length > 0) {
+      // Mark all follower notifications as read after a short delay
+      if (unreadFollowerCount > 0) {
+        const timer = setTimeout(() => markAllFollowerNotificationsAsRead(), 300);
+        checkAllFollowStatus();
+        return () => clearTimeout(timer);
+      }
       checkAllFollowStatus();
     }
   }, [visible]);
@@ -176,7 +184,7 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
               />
                 <Text style={[styles.followerTitle, { color: colors.text }]}>{item.title}</Text>
                 <Text style={[styles.followerTime, { color: colors.textSecondary }]}>
-                  {formatTimeAgo(item.createdAt, locale)}
+                  {formatTimeAgo(item.createdAt)}
                 </Text>
               </View>
               <Text style={[styles.followerMessage, { color: colors.textSecondary }]}>{item.message}</Text>
@@ -246,12 +254,12 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
       <View
         style={[
           styles.panelContainer,
-          { backgroundColor: colors.surface, borderColor: colors.border },
+          { backgroundColor: colors.surface, borderColor: colors.border, width: panelWidth },
           anchorPosition ? {
             top: anchorPosition.top + 15,
             left: anchorPosition.left,
             right: anchorPosition.right,
-          } : styles.defaultPosition
+          } : [styles.defaultPosition, { left: (windowWidth - panelWidth) / 2 }],
         ]}
       >
         {/* Pointer Arrow */}
@@ -270,7 +278,7 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
         <View style={styles.contentWrapper}>
           <View style={[styles.panelHeader, { borderBottomColor: colors.border, backgroundColor: colors.surface }]}>
             <Text style={[styles.panelTitle, { color: colors.text }]}>
-              {t('followers_count').replace('{count}', followerNotifications.length.toString())}
+            {t('followers_count', { count: followerNotifications.length })}
             </Text>
             <TouchableOpacity
               onPress={() => {
@@ -316,18 +324,12 @@ const styles = StyleSheet.create({
   },
   panelContainer: {
     position: 'absolute',
-    width: Platform.OS === 'web' ? 400 : 320,
-    maxHeight: 500,
-    borderRadius: 16,
-    ...createShadow({
-      width: 0,
-      height: 4,
-      opacity: 0.2,
-      radius: 12,
-      elevation: 8,
-    }),
+    maxHeight: 520,
+    borderRadius: 20,
+    ...createShadow({ width: 0, height: 8, opacity: 0.18, radius: 20, elevation: 12 }),
     borderWidth: 1,
     zIndex: 1000,
+    overflow: 'hidden',
   },
   defaultPosition: {
     top: 90,

@@ -714,6 +714,11 @@ class PusherService {
         if (notifType.includes('MessageSent')) notifType = 'new_message';
         if (notifType.includes('ModerationAction')) notifType = 'moderation_action';
         if (upperNotifType.includes('FOLLOW')) notifType = 'new_follower';
+        if ((upperNotifType.includes('COMMENT') || upperNotifType.includes('COMMENTED')) && !upperNotifType.includes('REACTION')) notifType = 'comment';
+        if ((upperNotifType.includes('REACTION') || upperNotifType.includes('REACTED')) && !upperNotifType.includes('COMMENT')) notifType = 'reaction';
+        if (upperNotifType.includes('COMMENT') && upperNotifType.includes('REACTION')) notifType = 'comment_reaction';
+        if (upperNotifType.includes('POSTCREATED') || (upperNotifType.includes('POST') && upperNotifType.includes('NEW'))) notifType = 'new_post';
+        if (upperNotifType.includes('STORYCREATED') || (upperNotifType.includes('STORY') && upperNotifType.includes('NEW'))) notifType = 'story-created';
 
         // Map generic Laravel notification to our store format
         const idata = innerData as any;
@@ -764,9 +769,18 @@ class PusherService {
 
         // Construct message if missing (common for Laravel notifications with raw data)
         if (!notification.message && notifType === 'space_invitation') {
-          const inviter = innerData.inviter_name || 'Someone';
+          const inviter = innerData.inviter_name || innerData.userName || 'Someone';
           const space = innerData.space_title || innerData.space?.title || 'a space';
           notification.message = `${inviter} invited you to join "${space}"`;
+        } else if (!notification.message && notifType === 'comment') {
+          const actor = innerData.userName || innerData.user_name || innerData.user?.name || 'Someone';
+          notification.message = `${actor} commented on your post`;
+        } else if (!notification.message && notifType === 'reaction') {
+          const actor = innerData.userName || innerData.user_name || innerData.user?.name || 'Someone';
+          notification.message = `${actor} reacted to your post`;
+        } else if (!notification.message && notifType === 'new_follower') {
+          const actor = innerData.userName || innerData.user_name || innerData.user?.name || 'Someone';
+          notification.message = `${actor} started following you`;
         } else if (!notification.message) {
           notification.message = 'You have a new update';
         }

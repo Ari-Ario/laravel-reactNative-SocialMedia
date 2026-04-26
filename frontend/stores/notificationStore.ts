@@ -201,6 +201,12 @@ interface NotificationStore {
   removeSpaceNotifications: (spaceId: string) => void;
   markModerationAsRead: () => void; // ✅ NEW
 
+  // Panel-level bulk mark-as-read (called when panel opens)
+  markCallsAsRead: () => void;
+  markMessagesAsRead: () => void;
+  markSpacesAsRead: () => void;
+  markActivitiesAsRead: () => void;
+
 
   // Real-time
   initializeRealtime: (token: string, userId: number) => void;
@@ -220,7 +226,6 @@ interface NotificationStore {
   getCalls: () => Notification[];
   getMessages: () => Notification[];
   getSpaces: () => Notification[];
-  getRegularNotifications: () => Notification[];
   reset: () => void;
 }
 
@@ -236,6 +241,8 @@ const isCallNotification = (type: string): boolean => {
   return [
     NOTIFICATION_TYPES.CALL_STARTED,
     NOTIFICATION_TYPES.CALL_ENDED,
+    'incoming_call', // ✅ FIXED: API returns incoming_call (maps to call_started)
+    'missed_call',   // ✅ ADDED: missed call variant
   ].includes(type);
 };
 
@@ -388,11 +395,8 @@ export const useNotificationStore = create<NotificationStore>()(
 
           // ✅ Atomic Duplicate Check
           const isDuplicate = targetArray.some(notif => {
+            // Exact ID check
             if (notif.id === newNotification.id) return true;
-
-            // If we have messageId/postId, use it for exact deduplication
-            if (newNotification.messageId && notif.messageId && String(newNotification.messageId) === String(notif.messageId)) return true;
-            if (newNotification.postId && notif.postId && String(newNotification.postId) === String(notif.postId)) return true;
 
             const isSameSpaceInv = notif.type === 'space_invitation' &&
               newNotification.type === 'space_invitation' &&
@@ -637,6 +641,55 @@ export const useNotificationStore = create<NotificationStore>()(
           return {
             notifications: updatedNotifications,
             unreadModerationCount: 0,
+          };
+        });
+      },
+
+      // ✅ Panel-level bulk mark-as-read actions (called when a sub-panel opens)
+      markCallsAsRead: () => {
+        set((state) => {
+          const updated = state.notifications.map(n =>
+            isCallNotification(n.type) ? { ...n, isRead: true } : n
+          );
+          return {
+            notifications: updated,
+            unreadCallCount: 0,
+          };
+        });
+      },
+
+      markMessagesAsRead: () => {
+        set((state) => {
+          const updated = state.notifications.map(n =>
+            isMessageNotification(n.type) ? { ...n, isRead: true } : n
+          );
+          return {
+            notifications: updated,
+            unreadMessageCount: 0,
+          };
+        });
+      },
+
+      markSpacesAsRead: () => {
+        set((state) => {
+          const updated = state.notifications.map(n =>
+            isSpaceNotification(n.type) ? { ...n, isRead: true } : n
+          );
+          return {
+            notifications: updated,
+            unreadSpaceCount: 0,
+          };
+        });
+      },
+
+      markActivitiesAsRead: () => {
+        set((state) => {
+          const updated = state.notifications.map(n =>
+            isActivityNotification(n.type) ? { ...n, isRead: true } : n
+          );
+          return {
+            notifications: updated,
+            unreadActivityCount: 0,
           };
         });
       },
@@ -1040,17 +1093,18 @@ export const useNotificationStore = create<NotificationStore>()(
                 };
               }
 
-              // 7. CALL STARTED
-              else if (type === 'call_started') {
+              // 7. CALL STARTED / INCOMING_CALL
+              else if (type === 'call_started' || type === 'incoming_call' || type === 'missed_call') {
                 formattedNotification = {
                   ...formattedNotification,
+                  // Normalize to call_started so isCallNotification matches
                   type: 'call_started',
-                  title: 'Call Started',
-                  message: notifData.message || 'A call has started',
+                  title: notifData.title || 'Incoming Call',
+                  message: notifData.message || notifData.body || 'A call has started',
                   spaceId: notifData.spaceId || notifData.space_id,
-                  callId: notifData.callId || notifData.call?.id,
-                  userId: notifData.userId || notifData.user?.id,
-                  avatar: notifData.avatar || notifData.user?.profile_photo,
+                  callId: notifData.callId || notifData.call_id || notifData.call?.id,
+                  userId: notifData.userId || notifData.callerId || notifData.caller_id || notifData.user?.id,
+                  avatar: notifData.avatar || notifData.profile_photo || notifData.user?.profile_photo,
                   data: notifData,
                 };
               }

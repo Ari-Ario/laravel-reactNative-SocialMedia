@@ -120,7 +120,7 @@ export const useCollaborationStore = create<CollaborationState>()(
       hydrateSpace: async (spaceId) => {
         const id = spaceId.toString();
         const currentSpace = get().spaces.find(s => s.id.toString() === id);
-        
+
         // If space exists and is lite (missing full detail fields or is_lite is true)
         if (currentSpace && (currentSpace.is_lite || !currentSpace.description)) {
           try {
@@ -282,7 +282,7 @@ export const useCollaborationStore = create<CollaborationState>()(
         const eventId = (() => {
           // 1. Check for ID inside message object (standard for space broadcasts)
           if (msgObj && typeof msgObj === 'object' && msgObj.id) return `msg:${msgObj.id}`;
-          
+
           // 2. Check for ID at top level (standard for notifications bridged from NotificationStore)
           const topLevelMsgId = data.messageId || data.message_id || data.id;
           if (topLevelMsgId && (type.includes('message') || type.includes('sent'))) {
@@ -406,10 +406,10 @@ export const useCollaborationStore = create<CollaborationState>()(
           case 'invitation': {
             const spaceDataFromEvent = data.space || data.data?.space;
             const sid = (spaceDataFromEvent?.id || data.space_id || data.spaceId || data.data?.space_id)?.toString();
-            
+
             if (sid) {
               const exists = get().spaces.some(s => s.id.toString() === sid);
-              
+
               // If we have full space data in the event, use it
               if (spaceDataFromEvent && spaceDataFromEvent.creator_id) {
                 if (!exists) {
@@ -557,7 +557,7 @@ export const useCollaborationStore = create<CollaborationState>()(
             // We don't necessarily store a 'polls' array per space in the store (yet),
             // but we might want to update space metadata or updated_at.
             if (data.space_id) {
-                get().updateSpace(data.space_id.toString(), { updated_at: new Date().toISOString() });
+              get().updateSpace(data.space_id.toString(), { updated_at: new Date().toISOString() });
             }
             break;
 
@@ -565,7 +565,7 @@ export const useCollaborationStore = create<CollaborationState>()(
           case 'poll_updated':
           case 'poll-updated':
             if (data.space_id) {
-                get().updateSpace(data.space_id.toString(), { updated_at: new Date().toISOString() });
+              get().updateSpace(data.space_id.toString(), { updated_at: new Date().toISOString() });
             }
             break;
 
@@ -575,23 +575,23 @@ export const useCollaborationStore = create<CollaborationState>()(
             const pollId = (data.poll_id || data.id)?.toString();
             const sid = (data.space_id || data.spaceId)?.toString();
             if (pollId && sid) {
-                console.log(`🗑️ Syncing poll deletion ${pollId} for space ${sid} in store`);
-                // 1. Clean up messages of type poll that match this pollId
-                const space = get().spaces.find(s => s.id.toString() === sid);
-                if (space && space.content_state && (space.content_state as any).messages) {
-                    const filteredMessages = ((space.content_state as any).messages || []).filter((m: any) => {
-                        const isPoll = m.type === 'poll' || m.metadata?.isPoll;
-                        const msgPollId = m.poll?.id || m.metadata?.pollId;
-                        return !(isPoll && String(msgPollId) === String(pollId));
-                    });
-                    
-                    get().updateSpace(sid, {
-                        content_state: {
-                            ...space.content_state,
-                            messages: filteredMessages
-                        }
-                    });
-                }
+              console.log(`🗑️ Syncing poll deletion ${pollId} for space ${sid} in store`);
+              // 1. Clean up messages of type poll that match this pollId
+              const space = get().spaces.find(s => s.id.toString() === sid);
+              if (space && space.content_state && (space.content_state as any).messages) {
+                const filteredMessages = ((space.content_state as any).messages || []).filter((m: any) => {
+                  const isPoll = m.type === 'poll' || m.metadata?.isPoll;
+                  const msgPollId = m.poll?.id || m.metadata?.pollId;
+                  return !(isPoll && String(msgPollId) === String(pollId));
+                });
+
+                get().updateSpace(sid, {
+                  content_state: {
+                    ...space.content_state,
+                    messages: filteredMessages
+                  }
+                });
+              }
             }
             break;
           }
@@ -712,8 +712,8 @@ export const useCollaborationStore = create<CollaborationState>()(
             if (existingSpace) {
               // If new space is lite, merge it into existing space (preserving hydrated fields)
               // If new space is NOT lite, it's a full refresh, replace it
-              return newSpace.is_lite 
-                ? { ...existingSpace, ...newSpace } 
+              return newSpace.is_lite
+                ? { ...existingSpace, ...newSpace }
                 : { ...newSpace };
             }
             return newSpace;
@@ -1037,8 +1037,19 @@ export const useCollaborationStore = create<CollaborationState>()(
         try {
           const result = await CollaborationService.getInstance().getGlobalActivities(params);
           const activities = result.activities || [];
-          const upcomingCount = activities.filter((a: any) => a.status === 'scheduled').length;
-          
+          const now = new Date();
+          const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+          const upcomingCount = activities.filter((a: any) => {
+            if (a.status !== 'scheduled' && a.status !== 'active') return false;
+            if (!a.scheduled_start) return false;
+            try {
+              const start = new Date(a.scheduled_start);
+              return a.status === 'active' || start >= oneHourAgo;
+            } catch (e) {
+              return false;
+            }
+          }).length;
+
           set({
             globalActivities: activities,
             globalUpcomingCount: upcomingCount,
@@ -1056,7 +1067,18 @@ export const useCollaborationStore = create<CollaborationState>()(
         try {
           const result = await CollaborationService.getInstance().getSpaceActivities(spaceId, page, limit);
           const activities = result.activities || [];
-          const upcomingCount = activities.filter((a: any) => a.status === 'scheduled').length;
+          const now = new Date();
+          const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+          const upcomingCount = activities.filter((a: any) => {
+            if (a.status !== 'scheduled' && a.status !== 'active') return false;
+            if (!a.scheduled_start) return false;
+            try {
+              const start = new Date(a.scheduled_start);
+              return a.status === 'active' || start >= oneHourAgo;
+            } catch (e) {
+              return false;
+            }
+          }).length;
 
           set((state) => ({
             spaceActivities: {
@@ -1086,24 +1108,31 @@ export const useCollaborationStore = create<CollaborationState>()(
         // Prevent duplicate - safe comparison
         if (currentSpaceActivities.some(a => String(a.id) === String(activity.id))) return state;
 
-        const oneHourAgo = new Date();
-        oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+        const now = new Date();
+        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
         const isUpcoming = !!(
           (activity.status === 'scheduled' || activity.status === 'active') &&
           activity.scheduled_start &&
-          new Date(activity.scheduled_start) > oneHourAgo
+          new Date(activity.scheduled_start) >= oneHourAgo
         );
+
+        const newSpaceActivities = [activity, ...currentSpaceActivities];
+        const newSpaceUpcomingCount = newSpaceActivities.filter(a => {
+          if (a.status !== 'scheduled' && a.status !== 'active') return false;
+          if (!a.scheduled_start) return false;
+          return a.status === 'active' || new Date(a.scheduled_start) >= oneHourAgo;
+        }).length;
 
         return {
           spaceActivities: {
             ...state.spaceActivities,
-            [spaceId]: [activity, ...currentSpaceActivities]
+            [spaceId]: newSpaceActivities
           },
           globalActivities: [activity, ...state.globalActivities],
           globalUpcomingCount: isUpcoming ? state.globalUpcomingCount + 1 : state.globalUpcomingCount,
           spaceUpcomingCounts: {
             ...state.spaceUpcomingCounts,
-            [spaceId]: [activity, ...currentSpaceActivities].filter(a => a.status === 'scheduled').length
+            [spaceId]: newSpaceUpcomingCount
           }
         };
       }),
@@ -1115,32 +1144,39 @@ export const useCollaborationStore = create<CollaborationState>()(
         const oldActivity = currentSpaceActivities.find(a => String(a.id) === String(activity.id)) ||
           state.globalActivities.find(a => String(a.id) === String(activity.id));
 
-        const oneHourAgo = new Date();
-        oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+        const now = new Date();
+        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
         const wasUpcoming = !!(
+          oldActivity &&
           (oldActivity.status === 'scheduled' || oldActivity.status === 'active') &&
           oldActivity.scheduled_start &&
-          new Date(oldActivity.scheduled_start) > oneHourAgo
+          new Date(oldActivity.scheduled_start) >= oneHourAgo
         );
 
         const isUpcoming = !!(
           (activity.status === 'scheduled' || activity.status === 'active') &&
           activity.scheduled_start &&
-          new Date(activity.scheduled_start) > oneHourAgo
+          new Date(activity.scheduled_start) >= oneHourAgo
         );
 
         const diff = (isUpcoming ? 1 : 0) - (wasUpcoming ? 1 : 0);
+        const newSpaceActivities = currentSpaceActivities.map(a => String(a.id) === String(activity.id) ? activity : a);
+        const newSpaceUpcomingCount = newSpaceActivities.filter(a => {
+          if (a.status !== 'scheduled' && a.status !== 'active') return false;
+          if (!a.scheduled_start) return false;
+          return a.status === 'active' || new Date(a.scheduled_start) >= oneHourAgo;
+        }).length;
 
         return {
           spaceActivities: {
             ...state.spaceActivities,
-            [spaceId]: currentSpaceActivities.map(a => String(a.id) === String(activity.id) ? activity : a)
+            [spaceId]: newSpaceActivities
           },
           globalActivities: state.globalActivities.map(a => String(a.id) === String(activity.id) ? activity : a),
           globalUpcomingCount: state.globalUpcomingCount + diff,
           spaceUpcomingCounts: {
             ...state.spaceUpcomingCounts,
-            [spaceId]: currentSpaceActivities.map(a => String(a.id) === String(activity.id) ? activity : a).filter(a => a.status === 'scheduled').length
+            [spaceId]: newSpaceUpcomingCount
           }
         };
       }),
@@ -1150,25 +1186,32 @@ export const useCollaborationStore = create<CollaborationState>()(
         const activityToDelete = currentSpaceActivities.find(a => String(a.id) === String(activityId)) ||
           state.globalActivities.find(a => String(a.id) === String(activityId));
 
-        const oneHourAgo = new Date();
-        oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+        const now = new Date();
+        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
         const wasUpcoming = !!(
           activityToDelete &&
           (activityToDelete.status === 'scheduled' || activityToDelete.status === 'active') &&
           activityToDelete.scheduled_start &&
-          new Date(activityToDelete.scheduled_start) > oneHourAgo
+          new Date(activityToDelete.scheduled_start) >= oneHourAgo
         );
+
+        const newSpaceActivities = currentSpaceActivities.filter(a => String(a.id) !== String(activityId));
+        const newSpaceUpcomingCount = newSpaceActivities.filter(a => {
+          if (a.status !== 'scheduled' && a.status !== 'active') return false;
+          if (!a.scheduled_start) return false;
+          return a.status === 'active' || new Date(a.scheduled_start) >= oneHourAgo;
+        }).length;
 
         return {
           spaceActivities: {
             ...state.spaceActivities,
-            [spaceId]: currentSpaceActivities.filter(a => String(a.id) !== String(activityId))
+            [spaceId]: newSpaceActivities
           },
           globalActivities: state.globalActivities.filter(a => String(a.id) !== String(activityId)),
           globalUpcomingCount: wasUpcoming ? Math.max(0, state.globalUpcomingCount - 1) : state.globalUpcomingCount,
           spaceUpcomingCounts: {
             ...state.spaceUpcomingCounts,
-            [spaceId]: newSpaceActivities.filter(a => a.status === 'scheduled').length
+            [spaceId]: newSpaceUpcomingCount
           }
         };
       }),

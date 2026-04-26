@@ -168,7 +168,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
     // Multi-day non-recurring activity
     if (!activity.is_recurring) {
       if (dCurrent < dStart || dCurrent > dEnd) return false;
-      
+
       // Only show on the end day if it actually has duration on that day
       if (dCurrent.getTime() === dEnd.getTime()) {
         const minutesOnLastDay = differenceInMinutes(end, dEnd);
@@ -183,9 +183,9 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
 
     const pattern = activity.recurrence_pattern;
     const diffDays = Math.round((dCurrent.getTime() - dStart.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     const daysToLookBack = Math.ceil(duration / 1440);
-    
+
     for (let i = 0; i <= daysToLookBack; i++) {
       const checkDayDiff = diffDays - i;
       if (checkDayDiff < 0) continue;
@@ -255,7 +255,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
       const dCurrent = startOfDay(viewingDate);
       const dStart = startOfDay(start);
       const diffDays = Math.round((dCurrent.getTime() - dStart.getTime()) / (1000 * 60 * 60 * 24));
-      
+
       const daysToLookBack = Math.ceil(duration / 1440);
       for (let i = 0; i <= daysToLookBack; i++) {
         const checkDayDiff = diffDays - i;
@@ -289,11 +289,11 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
     // Calculate duration visible on this specific day
     const dayStart = startOfDay(viewingDate);
     const dayEnd = endOfDay(viewingDate);
-    
+
     // The portion of the activity that falls within this day
     const actualStart = isAfter(instanceStart, dayStart) ? instanceStart : dayStart;
     const actualEnd = isBefore(end, dayEnd) ? end : dayEnd;
-    
+
     const minutesOnThisDay = Math.max(0, differenceInMinutes(actualEnd, actualStart));
     const cardHeight = (minutesOnThisDay / 60) * HOUR_HEIGHT;
 
@@ -316,21 +316,21 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
     sorted.forEach(activity => {
       const pos = getActivityPosition(activity, viewingDate);
       let placed = false;
-      
+
       for (let i = 0; i < columns.length; i++) {
         const hasOverlap = columns[i].some(other => {
           const otherPos = getActivityPosition(other, viewingDate);
-          return (pos.top < otherPos.top + otherPos.height - 1) && 
-                 (pos.top + pos.height > otherPos.top + 1);
+          return (pos.top < otherPos.top + otherPos.height - 1) &&
+            (pos.top + pos.height > otherPos.top + 1);
         });
-        
+
         if (!hasOverlap) {
           columns[i].push(activity);
           placed = true;
           break;
         }
       }
-      
+
       if (!placed) {
         columns.push([activity]);
       }
@@ -430,7 +430,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
     };
     return statusColors[status] || '#666';
   };
- 
+
   const getStatusLabel = (status: string): string => {
     const statusLabels: Record<string, string> = {
       scheduled: t('scheduled'),
@@ -457,7 +457,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
     };
     return icons[type] || 'cube';
   };
- 
+
   const getActivityLabel = (type: string): string => {
     const labels: Record<string, string> = {
       brainstorm: t('brainstorm'),
@@ -558,10 +558,10 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
     const performDeletion = async () => {
       try {
         await CollaborationService.getInstance().deleteCollaborativeActivity(activity.id);
-        
+
         // Update global store immediately for snappy UI
         useCollaborationStore.getState().deleteActivity(activity.id.toString(), activity.space_id);
-        
+
         setSelectedActivity(null);
         useToastStore.getState().showToast(t('activity_deleted_success'), 'success');
         if (Platform.OS !== 'web') safeHaptics.success();
@@ -631,6 +631,9 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
     const weekDays = getWeekActivities();
     const hours = getHoursRange();
 
+    // Shared horizontal scroll offset so the sticky header row stays in sync with the grid
+    const headerScrollRef = useRef<ScrollView>(null);
+
     // Pre-calculate layouts for all days in the week
     const layouts = useMemo(() => {
       const res: Record<string, any> = {};
@@ -640,125 +643,189 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
       return res;
     }, [weekDays]);
 
+    // Sync header scroll when the grid scrolls horizontally
+    const onGridScroll = useCallback((e: any) => {
+      const x = e.nativeEvent.contentOffset.x;
+      headerScrollRef.current?.scrollTo({ x, animated: false });
+    }, []);
+
+    const TIME_COL_WIDTH = 50;
+    const DAYS_TO_VISIBLE = width < 500 ? 3.5 : 7;
+    const DAY_COL_WIDTH = (width - TIME_COL_WIDTH) / DAYS_TO_VISIBLE;
+    const totalGridHeight = 24 * HOUR_HEIGHT;
+
+    // Current time offset inside the grid (no header to offset since header is now outside)
+    const now = new Date();
+    const currentTimeTop = now.getHours() * HOUR_HEIGHT + (now.getMinutes() / 60) * HOUR_HEIGHT;
+
     return (
-      <ScrollView
-        ref={weekScrollRef}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={[styles.weekContainer, { backgroundColor: colors.background }]}
-        contentContainerStyle={styles.weekContent}
-      >
-        <View style={[styles.timeColumn, { backgroundColor: isDark ? '#121212' : '#F8F9FA', borderRightColor: colors.border }]}>
-          <View style={styles.timeHeader} />
-          {hours.map((hour, index) => (
-            <View key={index} style={styles.timeSlot}>
-              <Text style={[styles.timeText, { color: colors.textSecondary }]}>{format(hour, 'h a')}</Text>
-            </View>
-          ))}
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+
+        {/* ── STICKY HEADER ROW (day names + numbers, never scrolls away) ── */}
+        <View style={[styles.weekStickyHeader, { borderBottomColor: colors.border }]}>
+          {/* Spacer aligned with the time-label column */}
+          <View style={[styles.weekStickyTimespacer, { width: TIME_COL_WIDTH, [isRTL ? 'borderLeftColor' : 'borderRightColor']: colors.border }]} />
+
+          {/* Horizontally scrollable day-name cells, locked to grid offset */}
+          <ScrollView
+            ref={headerScrollRef}
+            horizontal
+            scrollEnabled={false}
+            showsHorizontalScrollIndicator={false}
+            style={{ flex: 1 }}
+            contentContainerStyle={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}
+          >
+            {weekDays.map((day, dayIndex) => {
+              const isSelected = isSameDay(day.date, selectedDate);
+              const today = isToday(day.date);
+              return (
+                <TouchableOpacity
+                  key={dayIndex}
+                  style={[
+                    styles.weekStickyDayCell,
+                    isSelected && styles.weekStickyDayCellSelected,
+                    { width: DAY_COL_WIDTH, [isRTL ? 'borderLeftColor' : 'borderRightColor']: colors.border },
+                  ]}
+                  onPress={() => setSelectedDate(day.date)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.dayName, isSelected && styles.dayNameSelected, { color: isSelected ? colors.tint : colors.textSecondary }]}>
+                    {getLocalizedDay(day.date)}
+                  </Text>
+                  <View style={[styles.dayNumberCircle, today && styles.dayNumberCircleToday, isSelected && !today && styles.dayNumberCircleSelected]}>
+                    <Text style={[styles.dayNumber, isSelected && styles.dayNumberSelected, today && styles.dayNumberToday, { color: today ? '#fff' : (isSelected ? colors.tint : colors.text) }]}>
+                      {format(day.date, 'd')}
+                    </Text>
+                  </View>
+                  {today && (
+                    <View style={styles.todayBadge}>
+                      <Text style={styles.todayBadgeText}>{t('today')}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </View>
 
-        <View style={{ flexDirection: 'row', flex: 1, position: 'relative' }}>
-          {/* Background Grid Layer */}
-          {weekDays.map((day, dayIndex) => {
-            const isSelected = isSameDay(day.date, selectedDate);
-            return (
-              <TouchableOpacity
-                key={dayIndex}
-                style={[styles.dayColumn, isSelected && styles.dayColumnSelected, { borderRightColor: colors.border }]}
-                activeOpacity={1}
-                onPress={() => setSelectedDate(day.date)}
-              >
-                <View style={[styles.dayHeader, isSelected && styles.dayHeaderSelected, { borderBottomColor: colors.border }]}>
-                  <Text style={[styles.dayName, isSelected && styles.dayNameSelected, { color: isSelected ? colors.tint : colors.textSecondary }]}>{getLocalizedDay(day.date)}</Text>
-                  <Text style={[styles.dayNumber, isSelected && styles.dayNumberSelected, { color: colors.text }]}>{format(day.date, 'd')}</Text>
-                </View>
-                <View style={styles.dayGrid}>
-                  {hours.map((_, hourIndex) => (
-                    <TouchableOpacity
-                      key={hourIndex}
-                      style={[styles.hourSlot, { borderBottomColor: colors.border }]}
-                      activeOpacity={0.7}
-                      onPress={() => {
-                        const date = new Date(day.date);
-                        date.setHours(hourIndex, 0, 0, 0);
-                        handleTimeSlotPress(date);
-                      }}
-                    />
-                  ))}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-
-          {/* Activity Cards Overlay Layer */}
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'box-none', flexDirection: 'row' }}>
-            {weekDays.map((day, dayIndex) => (
-              <View key={dayIndex} style={[styles.dayColumn, { backgroundColor: 'transparent', borderRightWidth: 0, borderLeftWidth: 0 }]}>
-                <View style={styles.dayHeader} />
-                <View style={{ flex: 1, position: 'relative' }}>
-                  {day.activities.map(activity => {
-                    const position = getActivityPosition(activity, day.date);
-                    const dayLayout = layouts[day.date.toISOString()] || {};
-                    const actLayout = dayLayout[activity.id] || { left: 0, width: 100 };
-                      return (
-                        <Animated.View
-                          key={activity.id}
-                          entering={FadeInDown.delay(dayIndex * 50)}
-                          style={[
-                            styles.weekActivityCard,
-                            {
-                              position: 'absolute',
-                              top: position.top,
-                              height: position.height,
-                              left: `${actLayout.left}%`,
-                              width: `${actLayout.width}%`,
-                              paddingRight: 4,
-                              borderLeftColor: getStatusColor(activity.status),
-                              backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
-                              zIndex: 300,
-                            }
-                          ]}
-                        >
-                          <TouchableOpacity style={styles.weekActivityTouchable} onPress={() => handleActivityPress(activity)}>
-                            <Text style={[styles.weekActivityTitle, { color: colors.text }]} numberOfLines={1}>{activity.title}</Text>
-                            <View style={styles.weekActivityMeta}>
-                              <Ionicons name={getActivityIcon(activity.activity_type)} size={10} color={getStatusColor(activity.status)} />
-                              <Text style={[styles.weekActivityTime, { color: colors.textSecondary }]}>{format(parseISO(activity.scheduled_start!), 'h:mm a')}</Text>
-                            </View>
-                          </TouchableOpacity>
-                        </Animated.View>
-                      );
-                  })}
-                </View>
+        {/* ── SCROLLABLE GRID (time labels + 24-hour slots + cards + red line) ── */}
+        <ScrollView
+          ref={weekScrollRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={[styles.weekContainer, { backgroundColor: colors.background }]}
+          contentContainerStyle={styles.weekContent}
+          onScroll={onGridScroll}
+          scrollEventThrottle={16}
+        >
+          {/* Time-label column */}
+          <View style={[styles.timeColumn, { width: TIME_COL_WIDTH, backgroundColor: isDark ? '#121212' : '#F8F9FA', [isRTL ? 'borderLeftColor' : 'borderRightColor']: colors.border }]}>
+            {hours.map((hour, index) => (
+              <View key={index} style={styles.timeSlot}>
+                <Text style={[styles.timeText, { color: colors.textSecondary }]}>{format(hour, 'h a')}</Text>
               </View>
             ))}
           </View>
 
-          {/* LAYER: Global Red Time Line (Highest Layer - Over Everything) */}
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999, pointerEvents: 'none' }}>
+          {/* Day columns + overlays */}
+          <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', width: DAY_COL_WIDTH * weekDays.length, position: 'relative', height: totalGridHeight }}>
+
+            {/* LAYER 1 – Background grid (tappable hour slots) */}
             {weekDays.map((day, dayIndex) => {
-              if (!isToday(day.date)) return null;
+              const isSelected = isSameDay(day.date, selectedDate);
               return (
-                <View
+                <TouchableOpacity
                   key={dayIndex}
                   style={[
-                    styles.currentTimeLine,
-                    { 
-                      top: (new Date().getHours() * HOUR_HEIGHT) + (new Date().getMinutes() / 60 * HOUR_HEIGHT),
-                      left: 0,
-                      width: '100%',
-                      zIndex: 100000,
-                    }
+                    styles.dayColumn,
+                    isSelected && styles.dayColumnSelected,
+                    { [isRTL ? 'borderLeftColor' : 'borderRightColor']: colors.border, height: totalGridHeight },
                   ]}
+                  activeOpacity={1}
+                  onPress={() => setSelectedDate(day.date)}
                 >
-                  <View style={styles.currentTimeDot} />
-                  <View style={styles.currentTimeBar} />
-                </View>
+                  <View style={styles.dayGrid}>
+                    {hours.map((_, hourIndex) => (
+                      <TouchableOpacity
+                        key={hourIndex}
+                        style={[styles.hourSlot, { borderBottomColor: colors.border }]}
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          const date = new Date(day.date);
+                          date.setHours(hourIndex, 0, 0, 0);
+                          handleTimeSlotPress(date);
+                        }}
+                      />
+                    ))}
+                  </View>
+                </TouchableOpacity>
               );
             })}
+
+            {/* LAYER 2 – Activity cards overlay */}
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'box-none', flexDirection: isRTL ? 'row-reverse' : 'row' }}>
+              {weekDays.map((day, dayIndex) => (
+                <View
+                  key={dayIndex}
+                  style={{ width: DAY_COL_WIDTH, position: 'relative' }}
+                  pointerEvents="box-none"
+                >
+                  {day.activities.map(activity => {
+                    const position = getActivityPosition(activity, day.date);
+                    const dayLayout = layouts[day.date.toISOString()] || {};
+                    const actLayout = dayLayout[activity.id] || { left: 0, width: 100 };
+                    return (
+                      <Animated.View
+                        key={activity.id}
+                        entering={FadeInDown.delay(dayIndex * 50)}
+                        style={[
+                          styles.weekActivityCard,
+                          {
+                            position: 'absolute',
+                            top: position.top,
+                            height: position.height,
+                            left: `${actLayout.left}%`,
+                            width: `${actLayout.width}%`,
+                            paddingRight: 4,
+                            borderLeftColor: getStatusColor(activity.status),
+                            backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
+                            zIndex: 300,
+                          }
+                        ]}
+                      >
+                        <TouchableOpacity style={styles.weekActivityTouchable} onPress={() => handleActivityPress(activity)}>
+                          <Text style={[styles.weekActivityTitle, { color: colors.text }]} numberOfLines={1}>{activity.title}</Text>
+                          <View style={styles.weekActivityMeta}>
+                            <Ionicons name={getActivityIcon(activity.activity_type)} size={10} color={getStatusColor(activity.status)} />
+                            <Text style={[styles.weekActivityTime, { color: colors.textSecondary }]}>{format(parseISO(activity.scheduled_start!), 'h:mm a')}</Text>
+                          </View>
+                        </TouchableOpacity>
+                      </Animated.View>
+                    );
+                  })}
+                </View>
+              ))}
+            </View>
+
+            {/* LAYER 3 – Red current-time line (stretched across all days) */}
+            <View
+              style={[
+                styles.weekCurrentTimeLine,
+                {
+                  top: currentTimeTop,
+                  left: 0,
+                  right: 0,
+                  zIndex: 99999,
+                }
+              ]}
+              pointerEvents="none"
+            >
+              <View style={styles.currentTimeDot} />
+              <View style={styles.currentTimeBar} />
+            </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
     );
   };
 
@@ -780,9 +847,9 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
       >
         <View style={{ height: totalHeight, position: 'relative' }}>
           {/* Main Grid Row (Labels + Lines) */}
-          <View style={{ flexDirection: 'row', flex: 1 }}>
+          <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', flex: 1 }}>
             {/* Sidebar (Time Labels) */}
-            <View style={{ width: 50, borderRightWidth: 1, borderRightColor: colors.border, backgroundColor: isDark ? '#121212' : '#F8F9FA' }}>
+            <View style={{ width: 50, [isRTL ? 'borderLeftWidth' : 'borderRightWidth']: 1, [isRTL ? 'borderLeftColor' : 'borderRightColor']: colors.border, backgroundColor: isDark ? '#121212' : '#F8F9FA' }}>
               {hours.map((hour, index) => (
                 <View key={index} style={{ height: HOUR_HEIGHT, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 8 }}>
                   <Text style={[styles.dayHourText, { color: colors.textSecondary }]}>{format(hour, 'h a')}</Text>
@@ -807,91 +874,89 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
             </View>
           </View>
 
-          {/* Activity Cards Overlay Layer */}
-          <View style={{ position: 'absolute', top: 0, left: 50, right: 0, height: totalHeight, zIndex: 200, pointerEvents: 'box-none' }}>
-            {activitiesForDay.map((activity) => {
-              const position = getActivityPosition(activity, selectedDate);
-              const actLayout = layout[activity.id] || { left: 0, width: 100 };
-              const spaceInfo = getSpaceInfo(activity.space_id);
-              
-              return (
-                  <Animated.View
-                    key={activity.id}
-                    entering={FadeInDown.delay(0)}
-                    style={[
-                      styles.dayActivityCardOverlay,
-                      { 
-                        position: 'absolute',
-                        top: position.top,
-                        height: position.height,
-                        left: `${actLayout.left}%`,
-                        width: `${actLayout.width}%`,
-                        paddingRight: 4,
-                        borderLeftColor: getStatusColor(activity.status),
-                        backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
-                        zIndex: 300,
-                      }
-                    ]}
-                  >
-                    <TouchableOpacity
-                      style={styles.dayActivityTouchable}
-                      onPress={() => handleActivityPress(activity)}
-                    >
-                      <View style={styles.dayActivityHeader}>
-                        <View style={styles.dayActivityBadge}>
-                          <Ionicons name={getActivityIcon(activity.activity_type)} size={14} color={getStatusColor(activity.status)} />
-                          <Text style={[styles.dayActivityType, { color: getStatusColor(activity.status) }]}>{getActivityLabel(activity.activity_type)}</Text>
-                        </View>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: spaceInfo.color + '20', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                          <View style={[styles.spaceDot, { backgroundColor: spaceInfo.color }]} />
-                          <Text style={[styles.spaceBadgeText, { color: colors.textSecondary }]}>{spaceInfo.name}</Text>
-                        </View>
-                      </View>
+          {activitiesForDay.map((activity) => {
+            const position = getActivityPosition(activity, selectedDate);
+            const actLayout = layout[activity.id] || { left: 0, width: 100 };
+            const spaceInfo = getSpaceInfo(activity.space_id);
 
-                      <Text style={[styles.dayActivityTitle, { color: colors.text }]}>{activity.title}</Text>
-                      {activity.description && <Text style={[styles.dayActivityDescription, { color: colors.textSecondary }]} numberOfLines={2}>{activity.description}</Text>}
+            return (
+              <Animated.View
+                key={activity.id}
+                entering={FadeInDown.delay(0)}
+                style={[
+                  styles.dayActivityCardOverlay,
+                  {
+                    position: 'absolute',
+                    top: position.top,
+                    height: position.height,
+                    left: `${actLayout.left}%`,
+                    width: `${actLayout.width}%`,
+                    paddingRight: 4,
+                    borderLeftColor: getStatusColor(activity.status),
+                    backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
+                    zIndex: 300,
+                  }
+                ]}
+              >
+                <TouchableOpacity
+                  style={styles.dayActivityTouchable}
+                  onPress={() => handleActivityPress(activity)}
+                >
+                  <View style={styles.dayActivityHeader}>
+                    <View style={styles.dayActivityBadge}>
+                      <Ionicons name={getActivityIcon(activity.activity_type)} size={14} color={getStatusColor(activity.status)} />
+                      <Text style={[styles.dayActivityType, { color: getStatusColor(activity.status) }]}>{getActivityLabel(activity.activity_type)}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: spaceInfo.color + '20', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                      <View style={[styles.spaceDot, { backgroundColor: spaceInfo.color }]} />
+                      <Text style={[styles.spaceBadgeText, { color: colors.textSecondary }]}>{spaceInfo.name}</Text>
+                    </View>
+                  </View>
 
-                      <View style={styles.dayActivityMeta}>
-                        <View style={styles.dayActivityDuration}>
-                          <Ionicons name="timer-outline" size={14} color={colors.textSecondary} />
-                          <Text style={[styles.dayActivityMetaText, { color: colors.textSecondary }]}>{t('duration_minutes').replace('{count}', (activity.duration_minutes || 60).toString())}</Text>
-                        </View>
-                        <View style={styles.dayActivityStatus}>
-                          <View style={[styles.statusDot, { backgroundColor: getStatusColor(activity.status) }]} />
-                          <Text style={[styles.dayActivityMetaText, { color: colors.textSecondary }]}>{getStatusLabel(activity.status)}</Text>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  </Animated.View>
-                );
-              })}
-          </View>
+                  <Text style={[styles.dayActivityTitle, { color: colors.text }]}>{activity.title}</Text>
+                  {activity.description && <Text style={[styles.dayActivityDescription, { color: colors.textSecondary }]} numberOfLines={2}>{activity.description}</Text>}
 
-          {/* LAYER: Global Red Time Line (Highest Layer - Over Everything) */}
-          {isToday(selectedDate) && (
-            <View
-              style={[
-                styles.currentTimeLine,
-                { 
-                  top: (new Date().getHours() * HOUR_HEIGHT) + (new Date().getMinutes() / 60 * HOUR_HEIGHT),
-                  left: 50,
-                  right: 0,
-                  zIndex: 99999,
-                  pointerEvents: 'none'
-                }
-              ]}
-            >
-              <View style={styles.currentTimeDot} />
-              <View style={styles.currentTimeBar} />
-            </View>
-          )}
+                  <View style={styles.dayActivityMeta}>
+                    <View style={styles.dayActivityDuration}>
+                      <Ionicons name="timer-outline" size={14} color={colors.textSecondary} />
+                      <Text style={[styles.dayActivityMetaText, { color: colors.textSecondary }]}>{t('duration_minutes').replace('{count}', (activity.duration_minutes || 60).toString())}</Text>
+                    </View>
+                    <View style={styles.dayActivityStatus}>
+                      <View style={[styles.statusDot, { backgroundColor: getStatusColor(activity.status) }]} />
+                      <Text style={[styles.dayActivityMetaText, { color: colors.textSecondary }]}>{getStatusLabel(activity.status)}</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              </Animated.View>
+            );
+          })}
         </View>
+
+        {/* LAYER: Global Red Time Line (Highest Layer - Over Everything) */}
+        {isToday(selectedDate) && (
+          <View
+            style={[
+              styles.currentTimeLine,
+              {
+                top: (new Date().getHours() * HOUR_HEIGHT) + (new Date().getMinutes() / 60 * HOUR_HEIGHT),
+                left: 50,
+                right: 0,
+                zIndex: 99999,
+                pointerEvents: 'none'
+              }
+            ]}
+          >
+            <View style={styles.currentTimeDot} />
+            <View style={styles.currentTimeBar} />
+          </View>
+        )}
+        {/* </View> */}
       </ScrollView>
     );
   };
   // Month View Component
   const MonthView = () => (
-    <ScrollView 
+    <ScrollView
       style={styles.monthContainer}
       contentContainerStyle={{ paddingBottom: 120 }}
       showsVerticalScrollIndicator={false}
@@ -992,7 +1057,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
             {spaceId ? t('space_sessions') : t('collaborative_sessions')}
           </Text>
           <Text style={styles.headerSubtitle}>
-            {t('total_activities').replace('{count}', filteredActivities.length.toString())} • {t('upcoming_activities').replace('{count}', filteredActivities.filter(a => a.status === 'scheduled').length.toString())}
+            {t('total_activities').replace('{count}', filteredActivities.length.toString())} • {t('upcoming_activities').replace('{count}', upcomingActivities.length.toString())}
           </Text>
         </View>
 
@@ -1121,7 +1186,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
           setSelectedActivity(null);
           // Close the parent modal first to ensure UI unblocks
           if (onClose) onClose();
-          
+
           // Small delay to allow modal unmounting before triggering the call
           setTimeout(() => {
             if (onActivitySelect) {
@@ -1145,7 +1210,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
     </Animated.View>
   );
 };
- 
+
 const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => {
   const isDark = activeScheme === 'dark';
   return StyleSheet.create({
@@ -1257,22 +1322,41 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => {
     content: {
       flex: 1,
     },
+    weekStickyHeader: {
+      flexDirection: isRTL ? 'row-reverse' : 'row',
+      backgroundColor: colors.background,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      ...createShadow({ width: 0, height: 2, opacity: 0.06, radius: 4, elevation: 3 }),
+      zIndex: 10,
+    },
+    weekStickyTimespacer: {
+      width: 50,
+      backgroundColor: isDark ? '#121212' : '#F8F9FA',
+      [isRTL ? 'borderLeftWidth' : 'borderRightWidth']: 1,
+      [isRTL ? 'borderLeftColor' : 'borderRightColor']: colors.border,
+    },
+    weekStickyDayCell: {
+      height: 80,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 8,
+      [isRTL ? 'borderLeftWidth' : 'borderRightWidth']: 1,
+      [isRTL ? 'borderLeftColor' : 'borderRightColor']: colors.border,
+    },
+    weekStickyDayCellSelected: {
+      backgroundColor: isDark ? 'rgba(0,122,255,0.08)' : '#EEF4FF',
+    },
     weekContainer: {
       flex: 1,
     },
     weekContent: {
-      flexDirection: 'row',
+      flexDirection: isRTL ? 'row-reverse' : 'row',
     },
     timeColumn: {
-      width: 60,
-      backgroundColor: colors.background,
-      borderRightWidth: 1,
-      borderRightColor: colors.border,
-    },
-    timeHeader: {
-      height: 80,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      width: 50,
+      [isRTL ? 'borderLeftWidth' : 'borderRightWidth']: 1,
+      [isRTL ? 'borderLeftColor' : 'borderRightColor']: colors.border,
     },
     timeSlot: {
       height: HOUR_HEIGHT,
@@ -1287,10 +1371,10 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => {
       marginTop: -8,
     },
     dayColumn: {
-      width: (width - 60) / DAYS_TO_SHOW,
+      width: width < 500 ? (width - 50) / 3.5 : (width - 50) / 7,
       backgroundColor: colors.background,
-      borderRightWidth: 1,
-      borderRightColor: colors.border,
+      [isRTL ? 'borderLeftWidth' : 'borderRightWidth']: 1,
+      [isRTL ? 'borderLeftColor' : 'borderRightColor']: colors.border,
     },
     dayColumnSelected: {
       backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#F8F9FA',
@@ -1317,13 +1401,29 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => {
       fontWeight: '700',
     },
     dayNumber: {
-      fontSize: 24,
+      fontSize: 22,
       fontWeight: '600',
       color: colors.text,
-      marginTop: 4,
     },
     dayNumberSelected: {
       color: colors.tint,
+    },
+    dayNumberToday: {
+      color: '#fff',
+    },
+    dayNumberCircle: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: 4,
+    },
+    dayNumberCircleToday: {
+      backgroundColor: colors.tint,
+    },
+    dayNumberCircleSelected: {
+      backgroundColor: isDark ? 'rgba(0,122,255,0.15)' : 'rgba(0,122,255,0.12)',
     },
     todayBadge: {
       marginTop: 4,
@@ -1383,6 +1483,12 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => {
     },
     dayContainer: {
       flex: 1,
+    },
+    weekCurrentTimeLine: {
+      position: 'absolute',
+      flexDirection: isRTL ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      pointerEvents: 'none',
     },
     currentTimeLine: {
       position: 'absolute',

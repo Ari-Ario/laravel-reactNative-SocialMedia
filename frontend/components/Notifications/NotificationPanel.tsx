@@ -10,6 +10,7 @@ import {
     ScrollView,
     Platform,
     Switch,
+    useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Avatar from '../Image/Avatar';
@@ -26,6 +27,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import AuthContext from '@/context/AuthContext';
 import { useTranslation } from '@/constants/i18n';
 import { formatTimeAgo } from '@/utils/dateUtils';
+import { groupNotifications, getGroupSummary, NotificationGroup } from '@/utils/groupNotifications';
 
 interface NotificationPanelProps {
     visible: boolean;
@@ -46,6 +48,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
     const {
         getRegularNotifications,
         markAsRead,
+        markAllAsRead,
         removeNotification,
         getCalls,
         getMessages,
@@ -55,6 +58,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         getAdminNotifications,
         unreadChatbotTrainingCount,
     } = useNotificationStore();
+    const { width: windowWidth } = useWindowDimensions();
+    const panelWidth = Math.min(windowWidth - 16, 420);
 
     const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
     const { addPost } = usePostStore();
@@ -113,6 +118,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
     };
 
     const filteredNotifications = getFilteredNotifications();
+    const groupedNotifications = groupNotifications(filteredNotifications);
     const totalCount = filteredNotifications.length;
 
     const handleNotificationPress = async (item: Notification) => {
@@ -362,72 +368,94 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         }
     };
 
-    const renderNotificationItem = ({ item }: { item: Notification }) => {
+    const handleGroupPress = async (group: NotificationGroup) => {
+        // Mark all in group as read
+        group.notifications.forEach(n => {
+            if (!n.isRead) markAsRead(n.id);
+        });
+
+        // Use the latest notification for navigation logic
+        handleNotificationPress(group.latestNotification);
+    };
+
+    const renderNotificationGroup = ({ item: group }: { item: NotificationGroup }) => {
+        const item = group.latestNotification;
         const iconName = getNotificationIcon(item.type);
         const iconColor = getNotificationColor(item.type);
+        const summary = getGroupSummary(group, t);
+        const hasMultiple = group.count > 1;
 
         return (
             <TouchableOpacity
                 style={[
                     styles.notificationItem,
                     { borderBottomColor: colors.border },
-                    !item.isRead && styles.unreadNotification,
-                    !item.isRead && { backgroundColor: colors.primary + '10', borderLeftColor: colors.primary }
+                    group.hasUnread && styles.unreadNotification,
+                    group.hasUnread && { backgroundColor: colors.primary + '10', borderLeftColor: colors.primary }
                 ]}
-                onPress={() => handleNotificationPress(item)}
+                onPress={() => handleGroupPress(group)}
             >
-                <TouchableOpacity
-                    style={styles.Foto}
-                    onPress={(e) => {
-                        e.stopPropagation();
-                        handleAvatarPress(item);
-                    }}
-                >
-                    <Avatar
-                        source={item.avatar}
-                        name={item.title}
-                        size={48}
-                        showStatus={false}
-                    />
-                </TouchableOpacity>
+                <View style={styles.avatarWrapper}>
+                    <TouchableOpacity
+                        style={styles.Foto}
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            handleAvatarPress(item);
+                        }}
+                    >
+                        <Avatar
+                            source={item.avatar}
+                            name={item.title}
+                            size={48}
+                            showStatus={false}
+                        />
+                    </TouchableOpacity>
+
+                    {group.actorAvatars.length > 1 && (
+                        <View style={[styles.miniAvatar, { borderColor: colors.surface }]}>
+                            <Avatar
+                                source={group.actorAvatars[1]}
+                                size={24}
+                                showStatus={false}
+                            />
+                        </View>
+                    )}
+
+                    {group.count > 1 && (
+                        <View style={[styles.countBadge, { backgroundColor: colors.primary, borderColor: colors.surface }]}>
+                            <Text style={styles.countBadgeText}>{group.count}</Text>
+                        </View>
+                    )}
+                </View>
 
                 <View style={styles.notificationContent}>
                     <View style={styles.textContent}>
                         <View style={styles.titleRow}>
                             <View style={styles.titleWithIcon}>
                                 <Ionicons name={iconName as any} size={16} color={iconColor} />
-                                <Text style={[styles.notificationTitle, { color: colors.text }]}>{item.title}</Text>
+                                <Text style={[styles.notificationTitle, { color: colors.text }]} numberOfLines={1}>
+                                    {group.count > 1
+                                        ? group.actorNames.slice(0, 2).join(', ') + (group.actorNames.length > 2 ? ` +${group.actorNames.length - 2}` : '')
+                                        : item.title
+                                    }
+                                </Text>
                             </View>
                             <Text style={[styles.notificationTime, { color: colors.textSecondary }]}>
                                 {formatTimeAgo(item.createdAt)}
                             </Text>
                         </View>
 
-                        <Text style={[styles.notificationMessage, { color: colors.textSecondary }]}>
-                            {typeof item.message === 'object' ? JSON.stringify(item.message) : item.message}
+                        <Text style={[styles.notificationMessage, { color: colors.textSecondary }]} numberOfLines={2}>
+                            {summary}
                         </Text>
 
-                        {/* Metadata for chat notifications */}
-                        {item.type === NOTIFICATION_TYPES.SPACE_INVITATION && item.data?.space?.title && (
+                        {/* Metadata for specific types */}
+                        {item.spaceId && group.spaceName && (
                             <View style={[styles.metadataContainer, { backgroundColor: colors.background }]}>
-                                <Ionicons name="people" size={12} color={colors.textSecondary} />
-                                <Text style={[styles.metadataText, { color: colors.textSecondary }]}>{t('space_metadata', { title: item.data.space.title })}</Text>
-                            </View>
-                        )}
-
-                        {item.type === NOTIFICATION_TYPES.CALL_STARTED && item.data?.call?.type && (
-                            <View style={[styles.metadataContainer, { backgroundColor: colors.background }]}>
-                                <Ionicons name={item.data.call.type === 'video' ? 'videocam' : 'call'} size={12} color="#4CD964" />
-                                <Text style={[styles.metadataText, { color: colors.textSecondary }]}>
-                                    {item.data.call.type === 'video' ? t('video_call_started') : t('audio_call_started')}
+                                <Ionicons name="cube-outline" size={12} color={colors.textSecondary} />
+                                <Text style={[styles.metadataText, { color: colors.textSecondary }]} numberOfLines={1}>
+                                    {group.spaceName}
                                 </Text>
-                            </View>
-                        )}
-
-                        {item.type === NOTIFICATION_TYPES.MAGIC_EVENT && (
-                            <View style={[styles.metadataContainer, { backgroundColor: colors.background }]}>
-                                <Ionicons name="sparkles" size={12} color="#FF2D55" />
-                                <Text style={[styles.metadataText, { color: colors.textSecondary }]}>{t('magic_discovered')}</Text>
                             </View>
                         )}
                     </View>
@@ -436,7 +464,9 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 <TouchableOpacity
                     onPress={(e) => {
                         e.stopPropagation();
-                        removeNotification(item.id);
+                        // Remove the whole group if requested, or just the latest?
+                        // User likely expects to dismiss the whole card.
+                        group.notifications.forEach(n => removeNotification(n.id));
                     }}
                     style={[styles.deleteButton, { backgroundColor: colors.muted }]}
                 >
@@ -542,12 +572,12 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             <View
                 style={[
                     styles.panelContainer,
-                    { backgroundColor: colors.surface, borderColor: colors.border },
+                    { backgroundColor: colors.surface, borderColor: colors.border, width: panelWidth },
                     anchorPosition ? {
                         top: anchorPosition.top + 15,
                         left: anchorPosition.left,
                         right: anchorPosition.right,
-                    } : styles.defaultPosition
+                    } : [styles.defaultPosition, { left: (windowWidth - panelWidth) / 2 }]
                 ]}
             >
                 {/* Pointer Arrow */}
@@ -568,9 +598,21 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                         <Text style={[styles.panelTitle, { color: colors.text }]}>
                             {t('notifications_count', { count: totalCount })}
                         </Text>
-                        <TouchableOpacity onPress={onClose} style={[styles.closeButton, { backgroundColor: colors.muted }]}>
-                            <Ionicons name="close" size={20} color={colors.textSecondary} />
-                        </TouchableOpacity>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            {filteredNotifications.some((n: any) => !n.isRead) && (
+                                <TouchableOpacity
+                                    onPress={() => markAllAsRead()}
+                                    style={[styles.markReadBtn, { backgroundColor: colors.muted }]}
+                                >
+                                    <Text style={[styles.markReadText, { color: colors.primary }]}>
+                                        {t('mark_all_read_panel')}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+                            <TouchableOpacity onPress={onClose} style={[styles.closeButton, { backgroundColor: colors.muted }]}>
+                                <Ionicons name="close" size={20} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     <View style={[styles.filterTabsContainer, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
@@ -578,12 +620,12 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                     </View>
 
                     <View style={[styles.listContainer, { backgroundColor: colors.surface }]}>
-                        {totalCount > 0 ? (
+                        {groupedNotifications.length > 0 ? (
                             <FlatList
                                 style={{ flex: 1 }}
-                                data={filteredNotifications}
-                                renderItem={renderNotificationItem}
-                                keyExtractor={(item) => item.id}
+                                data={groupedNotifications}
+                                renderItem={renderNotificationGroup}
+                                keyExtractor={(item) => item.key}
                                 extraData={activeFilter}
                                 contentContainerStyle={styles.listContent}
                                 showsVerticalScrollIndicator={false}
@@ -630,23 +672,30 @@ const styles = StyleSheet.create({
     },
     panelContainer: {
         position: 'absolute',
-        width: Platform.OS === 'web' ? 400 : 320,
-        maxHeight: 500,
-        borderRadius: 16,
+        maxHeight: 520,
+        borderRadius: 20,
         ...createShadow({
             width: 0,
-            height: 4,
-            opacity: 0.2,
-            radius: 12,
-            elevation: 8,
+            height: 8,
+            opacity: 0.18,
+            radius: 20,
+            elevation: 12,
         }),
         borderWidth: 1,
         zIndex: 1000,
+        overflow: 'hidden',
     },
     defaultPosition: {
         top: 90,
-        left: 16,
-        right: 16,
+    },
+    markReadBtn: {
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 12,
+    },
+    markReadText: {
+        fontSize: 12,
+        fontWeight: '600',
     },
     contentWrapper: {
         flex: 1,
@@ -768,6 +817,35 @@ const styles = StyleSheet.create({
     emptyText: { marginTop: 16, fontSize: 18, fontWeight: '600' },
     emptySubtext: { marginTop: 8, fontSize: 14, textAlign: 'center', lineHeight: 20 },
     Foto: { alignSelf: 'flex-start' },
+    avatarWrapper: {
+        position: 'relative',
+        alignSelf: 'flex-start'
+    },
+    miniAvatar: {
+        position: 'absolute',
+        bottom: -2,
+        right: -2,
+        borderRadius: 12,
+        borderWidth: 2,
+        overflow: 'hidden'
+    },
+    countBadge: {
+        position: 'absolute',
+        top: -6,
+        left: -6,
+        minWidth: 18,
+        height: 18,
+        borderRadius: 9,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        paddingHorizontal: 2
+    },
+    countBadgeText: {
+        color: 'white',
+        fontSize: 10,
+        fontWeight: 'bold'
+    },
     avatar: {
         width: 48,
         height: 48,

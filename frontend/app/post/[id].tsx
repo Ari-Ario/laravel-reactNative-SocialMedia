@@ -42,6 +42,7 @@ import { useReportedContentStore } from '@/stores/reportedContentStore';
 import { deleteReportByTarget } from '@/services/ReportService';
 import { useToastStore } from '@/stores/toastStore';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useTranslation } from '@/constants/i18n';
 import { LinkPreviewCard } from '@/components/LinkPreviewCard';
 import Avatar from '@/components/Image/Avatar';
 import { useMemo } from 'react';

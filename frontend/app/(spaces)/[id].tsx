@@ -923,7 +923,7 @@ const SpaceDetailScreen = () => {
       
       startCall({
         spaceId: id as string,
-        spaceType: space?.space_type === 'direct' ? 'direct' : 'group',
+        spaceType: space?.space_type === 'direct' ? 'direct' : (space?.space_type === 'channel' ? 'channel' : 'group'),
         type,
         callId: call.id
       });
@@ -1656,28 +1656,60 @@ const SpaceDetailScreen = () => {
         </TouchableOpacity>
 
         <View style={styles.headerActions}>
-          {/* Broadcasting Icon (for channels with active calls) */}
+          {/* Broadcasting Icon (for channels) */}
           {(() => {
-            if (space?.space_type === 'channel' && space?.active_call) {
-              console.log('💡 Rendering LIVE icon for channel:', space.id, 'Call:', space.active_call.id);
-              return (
-                <TouchableOpacity
-                  style={[styles.headerButton, { backgroundColor: '#ff4444' + '30', borderRadius: 12, paddingHorizontal: 6, marginRight: 8, borderWidth: 1, borderColor: '#ff4444' }]}
-                  onPress={() => {
-                    startCall({
-                      spaceId: id as string,
-                      spaceType: 'channel',
-                      callId: space.active_call.id,
-                      type: space.active_call.type || 'video',
-                    });
-                  }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Ionicons name="radio" size={18} color="#ff4444" />
-                    <Text style={{ color: '#ff4444', fontSize: 10, fontWeight: '900', marginLeft: 2 }}>{t('live_status')}</Text>
-                  </View>
-                </TouchableOpacity>
-              );
+            if (space?.space_type === 'channel') {
+              const hasActiveCall = !!space?.active_call;
+              const isBroadcaster = canEditSpace;
+
+              if (hasActiveCall || isBroadcaster) {
+                console.log('💡 Rendering LIVE/GO-LIVE icon for channel:', space.id, 'Active:', hasActiveCall);
+                return (
+                  <TouchableOpacity
+                    ref={callButtonRef}
+                    style={[
+                      styles.headerButton, 
+                      { 
+                        backgroundColor: hasActiveCall ? '#ff4444' + '30' : colors.tint + '15', 
+                        borderRadius: 12, 
+                        paddingHorizontal: 8, 
+                        marginRight: 8, 
+                        borderWidth: 1, 
+                        borderColor: hasActiveCall ? '#ff4444' : colors.tint 
+                      }
+                    ]}
+                    onPress={() => {
+                      if (hasActiveCall) {
+                        startCall({
+                          spaceId: id as string,
+                          spaceType: 'channel',
+                          callId: space.active_call.id,
+                          type: space.active_call.type || 'video',
+                        });
+                      } else {
+                        measureCallButton();
+                      }
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons 
+                        name={hasActiveCall ? "radio" : "videocam"} 
+                        size={18} 
+                        color={hasActiveCall ? "#ff4444" : colors.tint} 
+                      />
+                      <Text style={{ 
+                        color: hasActiveCall ? '#ff4444' : colors.tint, 
+                        fontSize: 10, 
+                        fontWeight: '900', 
+                        marginLeft: 4,
+                        textTransform: 'uppercase'
+                      }}>
+                        {hasActiveCall ? t('live_status') : t('go_live')}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              }
             }
             return null;
           })()}
@@ -1692,8 +1724,8 @@ const SpaceDetailScreen = () => {
             </TouchableOpacity>
           )}
 
-          {/* Priority 1: Call (if allowed, hide for channels unless admin) */}
-          {canStartCalls && (space?.space_type !== 'channel' || canEditSpace) && (
+          {/* Priority 1: Call (if allowed, hide for channels as they use the "Go Live" flow) */}
+          {canStartCalls && space?.space_type !== 'channel' && (
             <TouchableOpacity
               ref={callButtonRef}
               style={[styles.headerButton, isLocked && { opacity: 0.3 }]}

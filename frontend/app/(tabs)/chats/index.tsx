@@ -136,6 +136,9 @@ const ChatPage = () => {
   const [contacts, setContacts] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  // Tracks whether the initial data load has completed, so background refreshes on focus
+  // don't re-trigger the loading skeleton (which causes a white screen flash on return).
+  const hasInitiallyLoaded = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreativeGenerator, setShowCreativeGenerator] = useState(false);
   const [token, setToken] = useState<string | null>(null);
@@ -362,7 +365,11 @@ const ChatPage = () => {
   const fetchChatsAndContacts = useCallback(async () => {
     if (!user?.id || !token) return;
 
-    setLoading(true);
+    // Only show the loading skeleton on the very first fetch.
+    // On subsequent focus-triggered refreshes, keep showing existing content.
+    if (!hasInitiallyLoaded.current) {
+      setLoading(true);
+    }
     const API_BASE = getApiBase();
 
     try {
@@ -421,6 +428,7 @@ const ChatPage = () => {
       setContacts(getFallbackContacts());
     } finally {
       setLoading(false);
+      hasInitiallyLoaded.current = true;
     }
   }, [user?.id, token, transformUsersToContacts, getFallbackContacts]);
 
@@ -514,15 +522,21 @@ const ChatPage = () => {
   useFocusEffect(
     useCallback(() => {
       if (user) {
+        if (hasInitiallyLoaded.current) {
+          // Data already loaded — snap animation to fully visible immediately
+          // so there is NO transparent flash when returning from a space.
+          fadeAnim.setValue(1);
+          slideAnim.setValue(0);
+        } else {
+          startAnimations();
+        }
         loadAllData();
-        // Ensure animations run on focus to prevent stuck transparency/position
-        startAnimations();
       }
 
       return () => {
         // Optional cleanup
       };
-    }, [user, startAnimations])
+    }, [user, startAnimations, fadeAnim, slideAnim])
   );
 
   // Load all data
