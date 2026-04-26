@@ -151,12 +151,16 @@ class PusherService {
         return true;
       }
 
-      if (this.pusher && this.isInitialized && this.currentToken !== token) {
-        console.log('🔄 Token changed (User/Guest switch), re-initializing Reverb/Pusher...');
-        this.pusher.disconnect();
-        this.pusher = null;
+      // ✅ FIX: If token changed, we MUST reset connection attempts and re-initialize
+      if (this.currentToken !== token) {
+        console.log('🔄 Token changed, resetting connection attempts and re-initializing...');
+        if (this.pusher) {
+          this.pusher.disconnect();
+          this.pusher = null;
+        }
         this.isInitialized = false;
         this.channels.clear();
+        this.connectionAttempts = 0;
       }
 
       if (this.connectionAttempts >= this.maxConnectionAttempts) {

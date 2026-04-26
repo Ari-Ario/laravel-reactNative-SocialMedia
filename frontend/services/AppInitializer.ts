@@ -1,3 +1,4 @@
+import { getToken } from '@/services/TokenService';
 import PusherService from '@/services/PusherService';
 import PushNotificationService from '@/services/PushNotificationService';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -11,6 +12,8 @@ class AppInitializer {
   private static instance: AppInitializer;
   private isInitialized = false;
   private currentUserId: string | number | null = null;
+  private currentToken: string | null = null;
+  private isVerified: boolean | null = null;
 
   private constructor() {}
 
@@ -24,10 +27,12 @@ class AppInitializer {
   public async initialize() {
     const authStore = useAuthStore.getState();
     const user = authStore.user;
-    const token = authStore.token;
+    // Decisively fetch the token from TokenService to ensure it's always up-to-date
+    const token = await getToken();
+    const isVerified = !!user?.email_verified_at;
 
-    // Guard: Only initialize if we have a user and token, and haven't already initialized for this user
-    if (!user || !token || (this.isInitialized && this.currentUserId === user.id)) {
+    // Guard: Only skip if fully initialized for this specific user, token, AND verification status
+    if (!user || !token || (this.isInitialized && this.currentUserId === user.id && this.currentToken === token && this.isVerified === isVerified)) {
       return;
     }
 
@@ -35,6 +40,8 @@ class AppInitializer {
 
     try {
       this.currentUserId = user.id;
+      this.currentToken = token;
+      this.isVerified = isVerified;
       const numericUserId = Number(user.id);
 
       // 1. Initialize core services once
@@ -47,7 +54,7 @@ class AppInitializer {
       // Notifications
       const notificationStore = useNotificationStore.getState();
       notificationStore.setCurrentUserId(numericUserId);
-      notificationStore.initializeRealtime(token, numericUserId);
+      notificationStore.initializeRealtime(token, numericUserId, isVerified);
 
       // Posts & Stories
       usePostStore.getState().initializeRealtime(token);
@@ -76,6 +83,8 @@ class AppInitializer {
     
     this.isInitialized = false;
     this.currentUserId = null;
+    this.currentToken = null;
+    this.isVerified = null;
   }
 }
 

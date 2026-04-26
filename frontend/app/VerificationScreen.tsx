@@ -61,6 +61,7 @@ const VerificationScreen = () => {
     }, [userStr]); // Only recalculate when userStr changes
 
     const [code, setCode] = useState(['', '', '', '', '', '']);
+    const [focusedIndex, setFocusedIndex] = useState<number | null>(0);
     const [loading, setLoading] = useState(false);
     const [resendLoading, setResendLoading] = useState(false);
     const [message, setMessage] = useState('');
@@ -68,17 +69,23 @@ const VerificationScreen = () => {
 
     const inputRefs = useRef<Array<TextInput | null>>([]);
 
-    // Initialize user in context if available - FIXED DEPENDENCY
+    // Auto-redirect if already verified
     useEffect(() => {
-        console.log('useEffect running, initialUser:', initialUser);
-        if (initialUser && setUser) {
-            setUser(initialUser);
-            console.log('User set from params:', initialUser);
+        if (user?.email_verified_at) {
+            console.log('User already verified, redirecting to tabs');
+            router.replace('/(tabs)');
         }
-    }, [initialUser]); // Only depend on initialUser, not setUser
+    }, [user?.email_verified_at]);
+
+    // Initialize user in context if available
+    useEffect(() => {
+        if (initialUser && setUser && (!user || user.id !== initialUser.id)) {
+            setUser(initialUser);
+            console.log('User initialized from params');
+        }
+    }, [initialUser]);
 
     useEffect(() => {
-        // Start countdown for resend
         if (countdown > 0) {
             const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
             return () => clearTimeout(timer);
@@ -98,21 +105,39 @@ const VerificationScreen = () => {
     };
 
     const handleCodeChange = (text: string, index: number) => {
-        // Only allow numbers
+        if (loading) return;
+
         const numericText = text.replace(/[^0-9]/g, '');
+        
+        if (numericText.length > 1) {
+            const pasteDigits = numericText.slice(0, 6).split('');
+            const newCode = [...code];
+            pasteDigits.forEach((digit, i) => {
+                if (index + i < 6) {
+                    newCode[index + i] = digit;
+                }
+            });
+            setCode(newCode);
+            
+            const nextFocusIndex = Math.min(index + pasteDigits.length, 5);
+            inputRefs.current[nextFocusIndex]?.focus();
+            
+            if (newCode.every(d => d !== '')) {
+                verifyCode(newCode.join(''));
+            }
+            return;
+        }
 
         const newCode = [...code];
         newCode[index] = numericText;
         setCode(newCode);
 
-        // Auto-focus next input
         if (numericText && index < 5) {
             focusNextInput(index);
         }
 
-        // Auto-verify when all digits are entered
         if (newCode.every(digit => digit !== '') && index === 5) {
-            verifyCode();
+            verifyCode(newCode.join(''));
         }
     };
 
@@ -122,15 +147,16 @@ const VerificationScreen = () => {
         }
     };
 
-    const verifyCode = async () => {
-        console.log('Verify button clicked, userId:', userId, 'token:', token);
+    const verifyCode = async (providedCode?: string) => {
+        if (loading) return; // Critical: prevent double submission
 
+        const fullCode = providedCode || code.join('');
+        
         if (!userId) {
-            Alert.alert(t('error'), 'User ID not found');
+            Alert.alert(t('error'), 'User ID missing');
             return;
         }
 
-        const fullCode = code.join('');
         if (fullCode.length !== 6) {
             setMessage(t('enter_code_sent'));
             return;
@@ -140,51 +166,44 @@ const VerificationScreen = () => {
         setMessage('');
 
         try {
-            // Add token to request headers if available
             const config = token ? {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }
             } : {};
 
-            console.log('Calling verifyEmailCode with:', { userId, code: fullCode });
+            console.log('Sending verification request...');
             const response = await verifyEmailCode(userId, fullCode, config);
-            console.log('Verify response:', response);
-
+            
             if (response.verified) {
-                // Save the token if returned in response
                 if (response.token) {
-                    await setToken(response.token); // Fixed: use setToken
-                    console.log('New token saved after verification');
+                    await setToken(response.token);
                 }
 
-                // Update user in context with verified status
                 if (response.user && setUser) {
                     setUser(response.user);
-                    console.log('User updated after verification:', response.user);
                 }
 
-                Alert.alert(
-                    t('success'),
-                    t('verify_success'),
-                    [
-                        {
-                            text: t('continue'),
-                            onPress: () => {
-                                console.log('Navigating to tabs');
-                                router.replace('/(tabs)');
-                            }
-                        }
-                    ]
-                );
+                // Immediate navigation for better UX, Alert as fallback/success indicator
+                console.log('Verification success, navigating...');
+                router.replace('/(tabs)');
+                
+                // Show alert only if navigation takes a moment
+                setTimeout(() => {
+                    Alert.alert(t('success'), t('verify_success'));
+                }, 100);
             } else {
                 setMessage(response.message || 'Verification failed');
             }
         } catch (error: any) {
+            // Handle "already verified" or "code already consumed" which might return 400
+            if (error.response?.status === 400 && user?.email_verified_at) {
+                router.replace('/(tabs)');
+                return;
+            }
+
             console.error('Verification error:', error);
-            console.error('Error response:', error.response?.data);
             setMessage(error.response?.data?.message || t('error'));
-            // Clear code on error
             setCode(['', '', '', '', '', '']);
             inputRefs.current[0]?.focus();
         } finally {
@@ -193,55 +212,29 @@ const VerificationScreen = () => {
     };
 
     const handleResendCode = async () => {
-        console.log('Resend button clicked, userId:', userId, 'token:', token);
-
-        if (!userId || countdown > 0) {
-            console.log('Cannot resend: missing userId or countdown active');
-            return;
-        }
+        if (!userId || countdown > 0 || resendLoading) return;
 
         setResendLoading(true);
         setMessage('');
 
         try {
-            // Add token to request headers if available
             const config = token ? {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }
             } : {};
 
-            console.log('Calling resendVerificationCode with userId:', userId);
-            const response = await resendVerificationCode(userId, config);
-            console.log('Resend response:', response);
-
+            await resendVerificationCode(userId, config);
             setMessage('New verification code sent!');
-            setCountdown(60); // 60 seconds countdown
+            setCountdown(60);
             setCode(['', '', '', '', '', '']);
             inputRefs.current[0]?.focus();
         } catch (error: any) {
-            console.error('Resend error:', error);
-            console.error('Error response:', error.response?.data);
             setMessage(error.response?.data?.message || t('error'));
         } finally {
             setResendLoading(false);
         }
     };
-
-    // If no userId, show error
-    // if (!userId) {
-    //     return (
-    //         <SafeAreaView style={styles.container}>
-    //             <View style={styles.errorContainer}>
-    //                 <Text style={styles.errorText}>Verification data missing</Text>
-    //                 <Button 
-    //                     title="Go Back" 
-    //                     onPress={() => router.push('/VerificationScreen')} 
-    //                 />
-    //             </View>
-    //         </SafeAreaView>
-    //     );
-    // }
 
     return (
         <SafeAreaView style={styles.wrapper}>
@@ -249,21 +242,20 @@ const VerificationScreen = () => {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.content}
             >
-                <View style={{ position: 'absolute', top: 10, [isRTL ? 'right' : 'left']: 10, zIndex: 10 }}>
+                <View style={styles.navHeader}>
                     <BackButton onPress={() => router.push('/RegisterScreen')} />
                 </View>
 
-                <View style={styles.headerIcon}>
-                    <Ionicons name="shield-checkmark-outline" size={40} color={colors.tint} />
+                <View style={styles.headerSection}>
+                    <View style={styles.headerIcon}>
+                        <Ionicons name="shield-checkmark-outline" size={40} color={colors.tint} />
+                    </View>
+                    <Text style={styles.title}>{t('verify_email_title')}</Text>
+                    <Text style={styles.subtitle}>{t('enter_code_sent')}</Text>
+                    <Text style={styles.email}>{email}</Text>
                 </View>
 
-                <Text style={styles.title}>{t('verify_email_title')}</Text>
-                <Text style={styles.subtitle}>
-                    {t('enter_code_sent')}
-                </Text>
-                <Text style={styles.email}>{email}</Text>
-
-                <View style={styles.container}>
+                <View style={styles.formContainer}>
                     <View style={[styles.codeContainer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                         {[0, 1, 2, 3, 4, 5].map((index) => (
                             <TextInput
@@ -271,29 +263,34 @@ const VerificationScreen = () => {
                                 ref={(ref) => inputRefs.current[index] = ref}
                                 style={[
                                     styles.codeInput,
-                                    code[index] ? styles.codeInputFilled : null
+                                    code[index] ? styles.codeInputFilled : null,
+                                    focusedIndex === index ? styles.codeInputFocused : null
                                 ]}
                                 value={code[index]}
                                 onChangeText={(text) => handleCodeChange(text, index)}
                                 onKeyPress={(e) => handleKeyPress(e, index)}
+                                onFocus={() => setFocusedIndex(index)}
+                                onBlur={() => setFocusedIndex(null)}
                                 keyboardType="number-pad"
-                                maxLength={1}
+                                maxLength={Platform.OS === 'web' ? undefined : 1}
                                 editable={!loading}
                                 selectTextOnFocus
+                                cursorColor={colors.tint}
+                                selectionColor={colors.tint + '40'}
                                 keyboardAppearance={activeScheme}
                             />
                         ))}
                     </View>
 
                     {message ? (
-                        <Text style={[
-                            styles.message,
+                        <View style={[
+                            styles.messageBadge,
                             message.includes('sent') || message.includes('Success')
-                                ? styles.successMessage
-                                : styles.errorMessage
+                                ? styles.successBadge
+                                : styles.errorBadge
                         ]}>
-                            {message}
-                        </Text>
+                            <Text style={styles.messageText}>{message}</Text>
+                        </View>
                     ) : null}
 
                     <TouchableOpacity
@@ -301,8 +298,9 @@ const VerificationScreen = () => {
                             styles.button,
                             (loading || code.join('').length !== 6) && styles.buttonDisabled
                         ]}
-                        onPress={verifyCode}
+                        onPress={() => verifyCode()}
                         disabled={loading || code.join('').length !== 6}
+                        activeOpacity={0.8}
                     >
                         <Text style={styles.buttonText}>{loading ? t('verifying') : t('verify_email_btn')}</Text>
                     </TouchableOpacity>
@@ -330,30 +328,54 @@ const VerificationScreen = () => {
 };
 
 function getStyles(colors: any, activeScheme: string, isRTL: boolean) {
+    const isDark = activeScheme === 'dark';
     return StyleSheet.create({
     wrapper: {
         flex: 1,
-        padding: 24,
         backgroundColor: colors.background,
     },
     content: {
         flex: 1,
-        justifyContent: 'center',
+        paddingHorizontal: 20, // Slightly reduced horizontal padding
+    },
+    navHeader: {
+        position: 'absolute',
+        top: 10,
+        [isRTL ? 'right' : 'left']: 16,
+        zIndex: 10,
+    },
+    headerSection: {
+        alignItems: 'center',
+        marginTop: Platform.OS === 'web' ? 40 : 20,
+        marginBottom: 32,
     },
     headerIcon: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
+        width: 70, // Slightly smaller icon
+        height: 70,
+        borderRadius: 35,
         backgroundColor: colors.surface,
         alignItems: 'center',
         justifyContent: 'center',
-        alignSelf: 'center',
-        marginBottom: 24,
+        marginBottom: 20,
         borderWidth: 1,
         borderColor: colors.border,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.1,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 4,
+            },
+            web: {
+                boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+            }
+        }),
     },
     title: {
-        fontSize: 28,
+        fontSize: 26, // Slightly smaller title
         fontWeight: '900',
         color: colors.text,
         textAlign: 'center',
@@ -361,49 +383,54 @@ function getStyles(colors: any, activeScheme: string, isRTL: boolean) {
         letterSpacing: -0.5,
     },
     subtitle: {
-        fontSize: 16,
+        fontSize: 15,
         textAlign: 'center',
         color: colors.textSecondary,
         marginBottom: 4,
-        lineHeight: 24,
+        lineHeight: 22,
     },
     email: {
-        fontSize: 16,
+        fontSize: 15,
         textAlign: 'center',
         fontWeight: '800',
         color: colors.text,
-        marginBottom: 32,
     },
-    container: {
+    formContainer: {
         width: '100%',
         maxWidth: 400,
         alignSelf: 'center',
     },
     codeContainer: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        justifyContent: 'center', // Centered for better responsiveness
         marginBottom: 32,
-        gap: 8,
+        gap: Platform.OS === 'web' ? 10 : 6, // Reduced gap for mobile
     },
     codeInput: {
         flex: 1,
-        height: 64,
+        height: Platform.OS === 'web' ? 64 : 54, // Slightly shorter height
+        maxWidth: 48, // Reduced maxWidth to fit iPhone XR (414px)
         borderWidth: 2,
         borderColor: colors.border,
-        borderRadius: 16,
+        borderRadius: 14,
         textAlign: 'center',
-        fontSize: 28,
+        fontSize: 22, // Slightly smaller font
         fontWeight: '800',
         color: colors.text,
         backgroundColor: colors.surface,
+        ...(Platform.OS === 'web' ? { outlineStyle: 'none' } : {}),
+    },
+    codeInputFocused: {
+        borderColor: colors.tint,
+        backgroundColor: isDark ? colors.tint + '15' : colors.tint + '05',
     },
     codeInputFilled: {
         borderColor: colors.tint,
-        backgroundColor: colors.tint + '10',
+        color: colors.tint,
     },
     button: {
         backgroundColor: colors.tint,
-        height: 56,
+        height: 54,
         borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
@@ -412,12 +439,12 @@ function getStyles(colors: any, activeScheme: string, isRTL: boolean) {
         opacity: 0.5,
     },
     buttonText: {
-        color: '#fff',
+        color: '#FFFFFF',
         fontSize: 16,
         fontWeight: '800',
     },
     resendButton: {
-        padding: 16,
+        padding: 12,
         alignItems: 'center',
         marginTop: 8,
     },
@@ -426,26 +453,30 @@ function getStyles(colors: any, activeScheme: string, isRTL: boolean) {
     },
     resendButtonText: {
         color: colors.tint,
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: '700',
     },
-    message: {
-        textAlign: 'center',
-        marginBottom: 24,
-        fontSize: 14,
-        padding: 16,
-        borderRadius: 16,
-        fontWeight: '600',
+    messageBadge: {
+        marginBottom: 20,
+        padding: 12,
+        borderRadius: 12,
+        alignItems: 'center',
     },
-    successMessage: {
-        color: colors.success,
+    successBadge: {
         backgroundColor: colors.success + '15',
     },
-    errorMessage: {
-        color: colors.error,
+    errorBadge: {
         backgroundColor: colors.error + '15',
+    },
+    messageText: {
+        fontSize: 13,
+        fontWeight: '700',
+        textAlign: 'center',
+        color: colors.text,
     },
 });
 }
+
+
 
 export default VerificationScreen;

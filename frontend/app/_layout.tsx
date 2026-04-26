@@ -77,7 +77,7 @@ export default function RootLayout() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
-  const { user, setUser, logout, initialize: initAuth, isInitialized: isAuthInitialized } = useAuthStore();
+  const { user, setUser, logout, initialize: initAuth, isInitialized: isAuthInitialized, token } = useAuthStore();
   const [isReady, setIsReady] = useState(false);
   
   const router = useRouter();
@@ -108,7 +108,7 @@ export default function RootLayout() {
     if (isAuthInitialized && user) {
       AppInitializer.initialize();
     }
-  }, [isAuthInitialized, user?.id]);
+  }, [isAuthInitialized, user?.id, token, user?.email_verified_at]);
 
   // Sync language preference globally whenever user data changes
   useEffect(() => {

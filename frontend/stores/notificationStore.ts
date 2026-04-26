@@ -168,6 +168,8 @@ interface NotificationStore {
   isFollowersPanelVisible: boolean;
   isConnected: boolean;
   currentUserId: number | null;
+  currentToken: string | null;
+  isVerified: boolean | null;
   lastActiveTimes: { [userId: number]: string };
   initializationTime: Date | null;
   unreadCallCount: number;
@@ -209,7 +211,7 @@ interface NotificationStore {
 
 
   // Real-time
-  initializeRealtime: (token: string, userId: number) => void;
+  initializeRealtime: (token: string, userId: number, isVerified: boolean) => void;
   disconnectRealtime: () => void;
 
   // Missed notifications
@@ -298,6 +300,8 @@ export const useNotificationStore = create<NotificationStore>()(
       isFollowersPanelVisible: false,
       isConnected: false,
       currentUserId: null,
+      currentToken: null,
+      isVerified: null,
       lastActiveTimes: {},
       initializationTime: null,
       unreadCallCount: 0,
@@ -831,19 +835,22 @@ export const useNotificationStore = create<NotificationStore>()(
         get().clearAll();
         set({
           isConnected: false,
-          currentUserId: null
+          currentUserId: null,
+          currentToken: null,
+          isVerified: null
         });
         console.log('🧹 NotificationStore reset complete');
       },
 
-      initializeRealtime: (token: string, userId: number) => {
-        const { isConnected, currentUserId } = get();
-        if (isConnected && currentUserId === userId) {
+      initializeRealtime: (token: string, userId: number, isVerified: boolean) => {
+        const { isConnected, currentUserId, currentToken, isVerified: storeIsVerified } = get();
+
+        if (isConnected && currentUserId === userId && currentToken === token && storeIsVerified === isVerified) {
           console.log('ℹ️ Notification real-time already connected for user:', userId);
           return;
         }
 
-        console.log('🔔 INITIALIZING NOTIFICATION REAL-TIME FOR USER:', userId);
+        console.log('🔔 INITIALIZING NOTIFICATION REAL-TIME FOR USER:', userId, 'Verified:', isVerified);
 
         const success = PusherService.initialize(token);
 
@@ -875,7 +882,7 @@ export const useNotificationStore = create<NotificationStore>()(
             get().fetchMissedNotifications(token, userId);
           });
 
-          set({ isConnected: true, currentUserId: userId });
+          set({ isConnected: true, currentUserId: userId, currentToken: token, isVerified: isVerified });
           console.log('✅ NOTIFICATION REAL-TIME INITIALIZED SUCCESSFULLY');
         } else {
           console.error('❌ FAILED TO INITIALIZE NOTIFICATION REAL-TIME');
@@ -891,7 +898,7 @@ export const useNotificationStore = create<NotificationStore>()(
         }
         PusherService.disconnect();
 
-        set({ isConnected: false, currentUserId: null });
+        set({ isConnected: false, currentUserId: null, currentToken: null, isVerified: null });
       },
 
 
