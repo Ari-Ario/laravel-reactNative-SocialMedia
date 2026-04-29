@@ -123,6 +123,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
   const { user } = useContext(AuthContext);
   const weekScrollRef = useRef<ScrollView>(null);
   const dayScrollRef = useRef<ScrollView>(null);
+  const headerScrollRef = useRef<ScrollView>(null);
 
   const collaborationService = CollaborationService.getInstance();
 
@@ -626,89 +627,91 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
     }
   };
 
-  // Week View Component
-  const WeekView = () => {
+  // ── WEEK VIEW SUB-COMPONENTS ──
+
+  const renderWeekHeader = () => {
+    const weekDays = getWeekActivities();
+    const TIME_COL_WIDTH = 50;
+    const DAYS_TO_VISIBLE = width < 500 ? 3.5 : 7;
+    const DAY_COL_WIDTH = (width - TIME_COL_WIDTH) / DAYS_TO_VISIBLE;
+
+    return (
+      <View style={[styles.weekStickyHeader, { borderBottomColor: colors.border }]}>
+        <View style={[styles.weekStickyTimespacer, { width: TIME_COL_WIDTH, [isRTL ? 'borderLeftColor' : 'borderRightColor']: colors.border }]} />
+        <ScrollView
+          ref={headerScrollRef}
+          horizontal
+          scrollEnabled={false}
+          showsHorizontalScrollIndicator={false}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}
+        >
+          {weekDays.map((day, dayIndex) => {
+            const isSelected = isSameDay(day.date, selectedDate);
+            const today = isToday(day.date);
+            return (
+              <TouchableOpacity
+                key={dayIndex}
+                style={[
+                  styles.weekStickyDayCell,
+                  isSelected && styles.weekStickyDayCellSelected,
+                  { width: DAY_COL_WIDTH, [isRTL ? 'borderLeftColor' : 'borderRightColor']: colors.border },
+                ]}
+                onPress={() => setSelectedDate(day.date)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.dayName, isSelected && styles.dayNameSelected, { color: isSelected ? colors.tint : colors.textSecondary }]}>
+                  {getLocalizedDay(day.date)}
+                </Text>
+                <View style={[styles.dayNumberCircle, today && styles.dayNumberCircleToday, isSelected && !today && styles.dayNumberCircleSelected]}>
+                  <Text style={[styles.dayNumber, isSelected && styles.dayNumberSelected, today && styles.dayNumberToday, { color: today ? '#fff' : (isSelected ? colors.tint : colors.text) }]}>
+                    {format(day.date, 'd')}
+                  </Text>
+                </View>
+                {today && (
+                  <View style={styles.todayBadge}>
+                    <Text style={styles.todayBadgeText}>{t('today')}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+    );
+  };
+
+  const renderWeekGrid = () => {
     const weekDays = getWeekActivities();
     const hours = getHoursRange();
-
-    // Shared horizontal scroll offset so the sticky header row stays in sync with the grid
-    const headerScrollRef = useRef<ScrollView>(null);
-
-    // Pre-calculate layouts for all days in the week
-    const layouts = useMemo(() => {
-      const res: Record<string, any> = {};
-      weekDays.forEach(day => {
-        res[day.date.toISOString()] = computeActivityLayout(day.activities, day.date);
-      });
-      return res;
-    }, [weekDays]);
-
-    // Sync header scroll when the grid scrolls horizontally
-    const onGridScroll = useCallback((e: any) => {
-      const x = e.nativeEvent.contentOffset.x;
-      headerScrollRef.current?.scrollTo({ x, animated: false });
-    }, []);
-
     const TIME_COL_WIDTH = 50;
     const DAYS_TO_VISIBLE = width < 500 ? 3.5 : 7;
     const DAY_COL_WIDTH = (width - TIME_COL_WIDTH) / DAYS_TO_VISIBLE;
     const totalGridHeight = 24 * HOUR_HEIGHT;
-
-    // Current time offset inside the grid (no header to offset since header is now outside)
     const now = new Date();
     const currentTimeTop = now.getHours() * HOUR_HEIGHT + (now.getMinutes() / 60) * HOUR_HEIGHT;
 
+    const dayLayouts = weekDays.reduce((acc, day) => {
+      acc[day.date.toISOString()] = computeActivityLayout(day.activities, day.date);
+      return acc;
+    }, {} as Record<string, any>);
+
+    const onGridScroll = (e: any) => {
+      const x = e.nativeEvent.contentOffset.x;
+      headerScrollRef.current?.scrollTo({ x, animated: false });
+    };
+
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
-
-        {/* ── STICKY HEADER ROW (day names + numbers, never scrolls away) ── */}
-        <View style={[styles.weekStickyHeader, { borderBottomColor: colors.border }]}>
-          {/* Spacer aligned with the time-label column */}
-          <View style={[styles.weekStickyTimespacer, { width: TIME_COL_WIDTH, [isRTL ? 'borderLeftColor' : 'borderRightColor']: colors.border }]} />
-
-          {/* Horizontally scrollable day-name cells, locked to grid offset */}
-          <ScrollView
-            ref={headerScrollRef}
-            horizontal
-            scrollEnabled={false}
-            showsHorizontalScrollIndicator={false}
-            style={{ flex: 1 }}
-            contentContainerStyle={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}
-          >
-            {weekDays.map((day, dayIndex) => {
-              const isSelected = isSameDay(day.date, selectedDate);
-              const today = isToday(day.date);
-              return (
-                <TouchableOpacity
-                  key={dayIndex}
-                  style={[
-                    styles.weekStickyDayCell,
-                    isSelected && styles.weekStickyDayCellSelected,
-                    { width: DAY_COL_WIDTH, [isRTL ? 'borderLeftColor' : 'borderRightColor']: colors.border },
-                  ]}
-                  onPress={() => setSelectedDate(day.date)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.dayName, isSelected && styles.dayNameSelected, { color: isSelected ? colors.tint : colors.textSecondary }]}>
-                    {getLocalizedDay(day.date)}
-                  </Text>
-                  <View style={[styles.dayNumberCircle, today && styles.dayNumberCircleToday, isSelected && !today && styles.dayNumberCircleSelected]}>
-                    <Text style={[styles.dayNumber, isSelected && styles.dayNumberSelected, today && styles.dayNumberToday, { color: today ? '#fff' : (isSelected ? colors.tint : colors.text) }]}>
-                      {format(day.date, 'd')}
-                    </Text>
-                  </View>
-                  {today && (
-                    <View style={styles.todayBadge}>
-                      <Text style={styles.todayBadgeText}>{t('today')}</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+      <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', flex: 1, backgroundColor: colors.background }}>
+        {/* Time-label column (Fixed Horizontally) */}
+        <View style={[styles.timeColumn, { width: TIME_COL_WIDTH, zIndex: 20 }]}>
+          {hours.map((hour, index) => (
+            <View key={index} style={styles.timeSlot}>
+              <Text style={[styles.timeText, { color: colors.textSecondary }]}>{format(hour, 'h a')}</Text>
+            </View>
+          ))}
         </View>
 
-        {/* ── SCROLLABLE GRID (time labels + 24-hour slots + cards + red line) ── */}
         <ScrollView
           ref={weekScrollRef}
           horizontal
@@ -718,15 +721,6 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
           onScroll={onGridScroll}
           scrollEventThrottle={16}
         >
-          {/* Time-label column */}
-          <View style={[styles.timeColumn, { width: TIME_COL_WIDTH, backgroundColor: isDark ? '#121212' : '#F8F9FA', [isRTL ? 'borderLeftColor' : 'borderRightColor']: colors.border }]}>
-            {hours.map((hour, index) => (
-              <View key={index} style={styles.timeSlot}>
-                <Text style={[styles.timeText, { color: colors.textSecondary }]}>{format(hour, 'h a')}</Text>
-              </View>
-            ))}
-          </View>
-
           {/* Day columns + overlays */}
           <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', width: DAY_COL_WIDTH * weekDays.length, position: 'relative', height: totalGridHeight }}>
 
@@ -772,7 +766,7 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
                 >
                   {day.activities.map(activity => {
                     const position = getActivityPosition(activity, day.date);
-                    const dayLayout = layouts[day.date.toISOString()] || {};
+                    const dayLayout = dayLayouts[day.date.toISOString()] || {};
                     const actLayout = dayLayout[activity.id] || { left: 0, width: 100 };
                     return (
                       <Animated.View
@@ -829,27 +823,17 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
     );
   };
 
-  // Day View Component
-  const DayView = () => {
+  const renderDayView = () => {
     const activitiesForDay = getActivitiesForDate(selectedDate);
     const hours = getHoursRange();
-    const totalHeight = 25 * HOUR_HEIGHT;
-
-    // Pre-calculate layout for the current day
-    const layout = useMemo(() => computeActivityLayout(activitiesForDay, selectedDate), [activitiesForDay, selectedDate]);
+    const layout = computeActivityLayout(activitiesForDay, selectedDate);
 
     return (
-      <ScrollView
-        ref={dayScrollRef}
-        style={[styles.dayContainer, { backgroundColor: colors.background }]}
-        contentContainerStyle={{ paddingBottom: 100 }}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={{ height: totalHeight, position: 'relative' }}>
-          {/* Main Grid Row (Labels + Lines) */}
+      <View style={{ flex: 1, backgroundColor: colors.background, minHeight: 24 * HOUR_HEIGHT }}>
+        <View style={{ flex: 1, position: 'relative', height: 24 * HOUR_HEIGHT }}>
           <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', flex: 1 }}>
             {/* Sidebar (Time Labels) */}
-            <View style={{ width: 50, [isRTL ? 'borderLeftWidth' : 'borderRightWidth']: 1, [isRTL ? 'borderLeftColor' : 'borderRightColor']: colors.border, backgroundColor: isDark ? '#121212' : '#F8F9FA' }}>
+            <View style={[styles.timeColumn, { width: 50 }]}>
               {hours.map((hour, index) => (
                 <View key={index} style={{ height: HOUR_HEIGHT, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 8 }}>
                   <Text style={[styles.dayHourText, { color: colors.textSecondary }]}>{format(hour, 'h a')}</Text>
@@ -950,265 +934,270 @@ const CollaborativeActivities: React.FC<CollaborativeActivitiesProps> = ({
             <View style={styles.currentTimeBar} />
           </View>
         )}
-        {/* </View> */}
-      </ScrollView>
+      </View>
     );
   };
-  // Month View Component
-  const MonthView = () => (
-    <ScrollView
-      style={styles.monthContainer}
-      contentContainerStyle={{ paddingBottom: 120 }}
-      showsVerticalScrollIndicator={false}
-    >
-      <Calendar
-        current={format(selectedDate, 'yyyy-MM-dd')}
-        onDayPress={(day: any) => {
-          setSelectedDate(parseISO(day.dateString));
-          setViewMode('day');
-        }}
-        markedDates={calendarMarked}
-        theme={{
-          backgroundColor: colors.background,
-          calendarBackground: colors.background,
-          textSectionTitleColor: colors.textSecondary,
-          selectedDayBackgroundColor: colors.tint,
-          selectedDayTextColor: '#fff',
-          todayTextColor: colors.tint,
-          dayTextColor: colors.text,
-          textDisabledColor: isDark ? '#444' : '#ddd',
-          dotColor: colors.tint,
-          arrowColor: colors.tint,
-          monthTextColor: colors.text,
-          textMonthFontWeight: '600',
-          textDayFontSize: 16,
-          textDayHeaderFontSize: 12,
-        }}
-        renderArrow={(direction: string) => (
-          <Ionicons
-            name={direction === 'left' ? 'chevron-back' : 'chevron-forward'}
-            size={24}
-            color={colors.tint}
-          />
-        )}
-        markingType={'multi-dot'}
-      />
+// Month View Component
+const MonthView = () => (
+  <ScrollView
+    style={styles.monthContainer}
+    contentContainerStyle={{ paddingBottom: 120 }}
+    showsVerticalScrollIndicator={false}
+  >
+    <Calendar
+      current={format(selectedDate, 'yyyy-MM-dd')}
+      onDayPress={(day: any) => {
+        setSelectedDate(parseISO(day.dateString));
+        setViewMode('day');
+      }}
+      markedDates={calendarMarked}
+      theme={{
+        backgroundColor: colors.background,
+        calendarBackground: colors.background,
+        textSectionTitleColor: colors.textSecondary,
+        selectedDayBackgroundColor: colors.tint,
+        selectedDayTextColor: '#fff',
+        todayTextColor: colors.tint,
+        dayTextColor: colors.text,
+        textDisabledColor: isDark ? '#444' : '#ddd',
+        dotColor: colors.tint,
+        arrowColor: colors.tint,
+        monthTextColor: colors.text,
+        textMonthFontWeight: '600',
+        textDayFontSize: 16,
+        textDayHeaderFontSize: 12,
+      }}
+      renderArrow={(direction: string) => (
+        <Ionicons
+          name={direction === 'left' ? 'chevron-back' : 'chevron-forward'}
+          size={24}
+          color={colors.tint}
+        />
+      )}
+      markingType={'multi-dot'}
+    />
 
-      <View style={styles.upcomingSection}>
-        <View style={styles.upcomingHeader}>
-          <Text style={[styles.upcomingTitle, { color: colors.text }]}>{t('upcoming_sessions')}</Text>
-          <View style={[styles.upcomingBadge, { backgroundColor: colors.tint + '20' }]}>
-            <Text style={[styles.upcomingBadgeText, { color: colors.tint }]}>{upcomingActivities.length}</Text>
-          </View>
+    <View style={styles.upcomingSection}>
+      <View style={styles.upcomingHeader}>
+        <Text style={[styles.upcomingTitle, { color: colors.text }]}>{t('upcoming_sessions')}</Text>
+        <View style={[styles.upcomingBadge, { backgroundColor: colors.tint + '20' }]}>
+          <Text style={[styles.upcomingBadgeText, { color: colors.tint }]}>{upcomingActivities.length}</Text>
         </View>
+      </View>
 
-        {upcomingActivities.length > 0 ? (
-          upcomingActivities.map((activity, index) => {
-            const startTime = parseISO(activity.scheduled_start!);
-            return (
-              <TouchableOpacity
-                key={activity.id}
-                style={[styles.upcomingCard, { backgroundColor: isDark ? '#1E1E1E' : '#fff', borderLeftColor: getStatusColor(activity.status) }]}
-                onPress={() => handleActivityPress(activity)}
-              >
-                <View style={styles.upcomingCardContent}>
-                  <View style={styles.upcomingCardTop}>
-                    <View style={styles.upcomingCardIconContainer}>
-                      <Ionicons name={getActivityIcon(activity.activity_type)} size={18} color={getStatusColor(activity.status)} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.upcomingCardTitle, { color: colors.text }]} numberOfLines={1}>
-                        {activity.title}
-                      </Text>
-                      <Text style={[styles.upcomingCardTime, { color: colors.textSecondary }]}>
-                        {isToday(startTime) ? t('today') : format(startTime, 'MMM d')} • {format(startTime, 'h:mm a')}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+      {upcomingActivities.length > 0 ? (
+        upcomingActivities.map((activity, index) => {
+          const startTime = parseISO(activity.scheduled_start!);
+          return (
+            <TouchableOpacity
+              key={activity.id}
+              style={[styles.upcomingCard, { backgroundColor: isDark ? '#1E1E1E' : '#fff', borderLeftColor: getStatusColor(activity.status) }]}
+              onPress={() => handleActivityPress(activity)}
+            >
+              <View style={styles.upcomingCardContent}>
+                <View style={styles.upcomingCardTop}>
+                  <View style={styles.upcomingCardIconContainer}>
+                    <Ionicons name={getActivityIcon(activity.activity_type)} size={18} color={getStatusColor(activity.status)} />
                   </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.upcomingCardTitle, { color: colors.text }]} numberOfLines={1}>
+                      {activity.title}
+                    </Text>
+                    <Text style={[styles.upcomingCardTime, { color: colors.textSecondary }]}>
+                      {isToday(startTime) ? t('today') : format(startTime, 'MMM d')} • {format(startTime, 'h:mm a')}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
                 </View>
-              </TouchableOpacity>
-            );
-          })
-        ) : (
-          <View style={styles.upcomingEmpty}>
-            <Ionicons name="calendar-outline" size={40} color={colors.textSecondary} style={{ opacity: 0.5, marginBottom: 8 }} />
-            <Text style={[styles.upcomingEmptyText, { color: colors.textSecondary }]}>{t('no_upcoming_sessions')}</Text>
-          </View>
-        )}
-      </View>
-    </ScrollView>
-  );
-
-
-
-  return (
-    <Animated.View entering={FadeIn.duration(300)} style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
-
-      {/* Header */}
-      <BlurView intensity={90} tint={isDark ? 'dark' : 'light'} style={[styles.header, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-        <TouchableOpacity onPress={onClose} style={styles.backButton}>
-          <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={24} color={colors.text} />
-        </TouchableOpacity>
-
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>
-            {spaceId ? t('space_sessions') : t('collaborative_sessions')}
-          </Text>
-          <Text style={styles.headerSubtitle}>
-            {t('total_activities').replace('{count}', filteredActivities.length.toString())} • {t('upcoming_activities').replace('{count}', upcomingActivities.length.toString())}
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.createButton}
-          onPress={() => setShowCreateModal(true)}
-        >
-          <LinearGradient
-            colors={['#007AFF', '#0056CC']}
-            style={styles.createButtonGradient}
-          >
-            <Ionicons name="add" size={20} color="#fff" />
-          </LinearGradient>
-        </TouchableOpacity>
-      </BlurView>
-
-      {/* View Toggle */}
-      <View style={[styles.viewToggle, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-        {[
-          { id: 'day', label: t('day'), icon: 'today' },
-          { id: 'week', label: t('week'), icon: 'calendar' },
-          { id: 'month', label: t('month'), icon: 'calendar-outline' },
-        ].map((mode) => (
-          <TouchableOpacity
-            key={mode.id}
-            style={[
-              styles.viewToggleButton,
-              viewMode === mode.id && styles.viewToggleButtonActive
-            ]}
-            onPress={() => setViewMode(mode.id as any)}
-          >
-            <Ionicons
-              name={mode.icon as any}
-              size={18}
-              color={viewMode === mode.id ? colors.tint : colors.textSecondary}
-            />
-            <Text style={[
-              styles.viewToggleText,
-              { color: viewMode === mode.id ? colors.tint : colors.textSecondary },
-              viewMode === mode.id && styles.viewToggleTextActive
-            ]}>
-              {mode.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Navigation Bar */}
-      {(viewMode === 'week' || viewMode === 'day') && (
-        <View style={[styles.navBar, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-          <TouchableOpacity
-            style={styles.navButton}
-            onPress={() => viewMode === 'week' ? navigateWeek(isRTL ? 'next' : 'prev') : navigateDay(isRTL ? 'next' : 'prev')}
-          >
-            <Ionicons name={isRTL ? "chevron-forward" : "chevron-back"} size={20} color={colors.tint} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.navDate}
-            onPress={() => setSelectedDate(new Date())}
-          >
-            <Text style={styles.navDateText}>
-              {viewMode === 'week'
-                ? `${format(startOfWeek(selectedDate, { weekStartsOn: 1 }), 'MMM d')} - ${format(endOfWeek(selectedDate, { weekStartsOn: 1 }), 'MMM d, yyyy')}`
-                : format(selectedDate, 'MMMM d, yyyy')
-              }
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.navButton}
-            onPress={() => viewMode === 'week' ? navigateWeek(isRTL ? 'prev' : 'next') : navigateDay(isRTL ? 'prev' : 'next')}
-          >
-            <Ionicons name={isRTL ? "chevron-back" : "chevron-forward"} size={20} color={colors.tint} />
-          </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          );
+        })
+      ) : (
+        <View style={styles.upcomingEmpty}>
+          <Ionicons name="calendar-outline" size={40} color={colors.textSecondary} style={{ opacity: 0.5, marginBottom: 8 }} />
+          <Text style={[styles.upcomingEmptyText, { color: colors.textSecondary }]}>{t('no_upcoming_sessions')}</Text>
         </View>
       )}
+    </View>
+  </ScrollView>
+);
 
-      {/* Main Content */}
+
+
+return (
+  <Animated.View entering={FadeIn.duration(300)} style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+    <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
+
+    {/* Header */}
+    <BlurView intensity={90} tint={isDark ? 'dark' : 'light'} style={[styles.header, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+      <TouchableOpacity onPress={onClose} style={styles.backButton}>
+        <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={24} color={colors.text} />
+      </TouchableOpacity>
+
+      <View style={styles.headerCenter}>
+        <Text style={styles.headerTitle}>
+          {spaceId ? t('space_sessions') : t('collaborative_sessions')}
+        </Text>
+        <Text style={styles.headerSubtitle}>
+          {t('total_activities').replace('{count}', filteredActivities.length.toString())} • {t('upcoming_activities').replace('{count}', upcomingActivities.length.toString())}
+        </Text>
+      </View>
+
+      <TouchableOpacity
+        style={styles.createButton}
+        onPress={() => setShowCreateModal(true)}
+      >
+        <LinearGradient
+          colors={['#007AFF', '#0056CC']}
+          style={styles.createButtonGradient}
+        >
+          <Ionicons name="add" size={20} color="#fff" />
+        </LinearGradient>
+      </TouchableOpacity>
+    </BlurView>
+
+    {/* View Toggle */}
+    <View style={[styles.viewToggle, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+      {[
+        { id: 'day', label: t('day'), icon: 'today' },
+        { id: 'week', label: t('week'), icon: 'calendar' },
+        { id: 'month', label: t('month'), icon: 'calendar-outline' },
+      ].map((mode) => (
+        <TouchableOpacity
+          key={mode.id}
+          style={[
+            styles.viewToggleButton,
+            viewMode === mode.id && styles.viewToggleButtonActive
+          ]}
+          onPress={() => setViewMode(mode.id as any)}
+        >
+          <Ionicons
+            name={mode.icon as any}
+            size={18}
+            color={viewMode === mode.id ? colors.tint : colors.textSecondary}
+          />
+          <Text style={[
+            styles.viewToggleText,
+            { color: viewMode === mode.id ? colors.tint : colors.textSecondary },
+            viewMode === mode.id && styles.viewToggleTextActive
+          ]}>
+            {mode.label}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+
+    {/* Navigation Bar */}
+    {(viewMode === 'week' || viewMode === 'day') && (
+      <View style={[styles.navBar, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+        <TouchableOpacity
+          style={styles.navButton}
+          onPress={() => viewMode === 'week' ? navigateWeek(isRTL ? 'next' : 'prev') : navigateDay(isRTL ? 'next' : 'prev')}
+        >
+          <Ionicons name={isRTL ? "chevron-forward" : "chevron-back"} size={20} color={colors.tint} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navDate}
+          onPress={() => setSelectedDate(new Date())}
+        >
+          <Text style={styles.navDateText}>
+            {viewMode === 'week'
+              ? `${format(startOfWeek(selectedDate, { weekStartsOn: 1 }), 'MMM d')} - ${format(endOfWeek(selectedDate, { weekStartsOn: 1 }), 'MMM d, yyyy')}`
+              : format(selectedDate, 'MMMM d, yyyy')
+            }
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navButton}
+          onPress={() => viewMode === 'week' ? navigateWeek(isRTL ? 'prev' : 'next') : navigateDay(isRTL ? 'prev' : 'next')}
+        >
+          <Ionicons name={isRTL ? "chevron-back" : "chevron-forward"} size={20} color={colors.tint} />
+        </TouchableOpacity>
+      </View>
+    )}
+
+    {/* Main Content */}
+    <View style={styles.content}>
+      {viewMode === 'week' && renderWeekHeader()}
+
       <ScrollView
         style={styles.content}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.tint} />
         }
+        contentContainerStyle={{ flexGrow: 1 }}
+        showsVerticalScrollIndicator={false}
       >
-        {viewMode === 'day' && <DayView />}
-        {viewMode === 'week' && <WeekView />}
+        {viewMode === 'day' && renderDayView()}
+        {viewMode === 'week' && renderWeekGrid()}
         {viewMode === 'month' && <MonthView />}
       </ScrollView>
+    </View>
 
-      {/* Create Activity Modal */}
-      <CreateActivityModal
-        visible={showCreateModal}
-        onClose={() => {
-          setShowCreateModal(false);
-          setIsEditing(false);
-          setActivityToEdit(null);
-          setPreselectedTime(undefined);
-        }}
-        spaceId={spaceId}
-        initialTime={preselectedTime}
-        isEditing={isEditing}
-        activityToEdit={activityToEdit}
-        onActivityCreated={() => {
-          setShowCreateModal(false);
-          setIsEditing(false);
-          setActivityToEdit(null);
-          setPreselectedTime(undefined);
-          handleRefresh();
-        }}
-      />
+    {/* Create Activity Modal */}
+    <CreateActivityModal
+      visible={showCreateModal}
+      onClose={() => {
+        setShowCreateModal(false);
+        setIsEditing(false);
+        setActivityToEdit(null);
+        setPreselectedTime(undefined);
+      }}
+      spaceId={spaceId}
+      initialTime={preselectedTime}
+      isEditing={isEditing}
+      activityToEdit={activityToEdit}
+      onActivityCreated={() => {
+        setShowCreateModal(false);
+        setIsEditing(false);
+        setActivityToEdit(null);
+        setPreselectedTime(undefined);
+        handleRefresh();
+      }}
+    />
 
-      {/* Activity Detail Modal */}
-      <ActivityDetailModal
-        isVisible={!!selectedActivity}
-        activity={selectedActivity}
-        onClose={() => setSelectedActivity(null)}
-        onEdit={(activity) => {
-          setActivityToEdit(activity);
-          setIsEditing(true);
-          setShowCreateModal(true);
-          setSelectedActivity(null);
-        }}
-        onDelete={handleDeleteActivity}
-        onJoin={(activity) => {
-          setSelectedActivity(null);
-          // Close the parent modal first to ensure UI unblocks
-          if (onClose) onClose();
+    {/* Activity Detail Modal */}
+    <ActivityDetailModal
+      isVisible={!!selectedActivity}
+      activity={selectedActivity}
+      onClose={() => setSelectedActivity(null)}
+      onEdit={(activity) => {
+        setActivityToEdit(activity);
+        setIsEditing(true);
+        setShowCreateModal(true);
+        setSelectedActivity(null);
+      }}
+      onDelete={handleDeleteActivity}
+      onJoin={(activity) => {
+        setSelectedActivity(null);
+        // Close the parent modal first to ensure UI unblocks
+        if (onClose) onClose();
 
-          // Small delay to allow modal unmounting before triggering the call
-          setTimeout(() => {
-            if (onActivitySelect) {
-              onActivitySelect(activity);
-            } else {
-              router.push(`/(spaces)/${activity.space_id}?tab=meeting&activity=${activity.id}`);
-            }
-          }, 100);
-        }}
-        onUpdateParticipant={handleUpdateParticipant}
-        isManagingParticipants={isManagingParticipants}
-        setIsManagingParticipants={setIsManagingParticipants}
-        isUpdatingParticipants={isUpdatingParticipants}
-        spaceParticipants={spaceParticipants}
-        currentUserId={user?.id}
-        isRTL={isRTL}
-        onAddToCalendar={handleAddToCalendar}
-        onExportICS={handleExportICS}
-        onCopyLink={handleCopyLink}
-      />
-    </Animated.View>
-  );
+        // Small delay to allow modal unmounting before triggering the call
+        setTimeout(() => {
+          if (onActivitySelect) {
+            onActivitySelect(activity);
+          } else {
+            router.push(`/(spaces)/${activity.space_id}?tab=meeting&activity=${activity.id}`);
+          }
+        }, 100);
+      }}
+      onUpdateParticipant={handleUpdateParticipant}
+      isManagingParticipants={isManagingParticipants}
+      setIsManagingParticipants={setIsManagingParticipants}
+      isUpdatingParticipants={isUpdatingParticipants}
+      spaceParticipants={spaceParticipants}
+      currentUserId={user?.id}
+      isRTL={isRTL}
+      onAddToCalendar={handleAddToCalendar}
+      onExportICS={handleExportICS}
+      onCopyLink={handleCopyLink}
+    />
+  </Animated.View>
+);
 };
 
 const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => {
@@ -1357,6 +1346,7 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => {
       width: 50,
       [isRTL ? 'borderLeftWidth' : 'borderRightWidth']: 1,
       [isRTL ? 'borderLeftColor' : 'borderRightColor']: colors.border,
+      backgroundColor: isDark ? '#121212' : '#F8F9FA',
     },
     timeSlot: {
       height: HOUR_HEIGHT,

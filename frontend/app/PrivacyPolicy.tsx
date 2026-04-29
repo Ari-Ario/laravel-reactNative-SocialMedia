@@ -38,31 +38,37 @@ const PrivacyPolicy = () => {
           <Text style={styles.paragraph}>
             At zmzir, your creative expression is paramount. We collect information you provide directly:
             {'\n'}• Profile details and artistic content you share.
+            {'\n'}• Marketplace listings, including item descriptions, photos, and pricing.
             {'\n'}• Social media handles and phone contacts (when linked via your Account Settings).
-            {'\n'}• Approximate or precise location data, when you explicitly choose to share it for project collaboration.
+            {'\n'}• Approximate or precise location data, when you explicitly choose to share it for project collaboration or marketplace listings.
           </Text>
 
-          <Text style={styles.sectionTitle}>2. Social Discovery & Linking</Text>
+          <Text style={styles.sectionTitle}>2. Marketplace & Commerce</Text>
+          <Text style={styles.paragraph}>
+            Our Marketplace allows users to buy and sell items directly. When you list an item, its details (title, price, condition, and photos) become visible to other zmzir users. Communications between buyers and sellers are facilitated through our secure messaging system to ensure your contact details remain private until you choose to share them.
+          </Text>
+
+          <Text style={styles.sectionTitle}>3. Social Discovery & Linking</Text>
           <Text style={styles.paragraph}>
             When you link external social platforms (such as WhatsApp, Instagram, or Telegram) to your zmzir identity, we use this information to help you discover friends who are also part of the zmzir universe. This matching is done using secure identifiers and can be controlled at any time in your Privacy Settings.
           </Text>
 
-          <Text style={styles.sectionTitle}>3. Real-time Collaboration Spaces</Text>
+          <Text style={styles.sectionTitle}>4. Real-time Collaboration Spaces</Text>
           <Text style={styles.paragraph}>
             Our Collaboration Spaces (chat, whiteboards, and meetings) facilitate real-time creative work. While metadata about these interactions is used to optimize performance and sync state across participants, your session data remains private to the space members.
           </Text>
 
-          <Text style={styles.sectionTitle}>4. AI & Personalization</Text>
+          <Text style={styles.sectionTitle}>5. AI & Personalization</Text>
           <Text style={styles.paragraph}>
             User interactions with our AI Assistant tools are used to personalize your experience and provide relevant creative suggestions. We prioritize anonymization and ensure that sensitive collaborative data is handled with the highest security standards.
           </Text>
 
-          <Text style={styles.sectionTitle}>5. Data Security & Retention</Text>
+          <Text style={styles.sectionTitle}>6. Data Security & Retention</Text>
           <Text style={styles.paragraph}>
             We implement state-of-the-art security measures to protect your digital footprint. Your art and settings are yours. If you choose to delete your account, we initiate an immediate data removal process, with a short retention window solely for recovery purposes before permanent deletion.
           </Text>
 
-          <Text style={styles.sectionTitle}>6. Your Rights & Settings</Text>
+          <Text style={styles.sectionTitle}>7. Your Rights & Settings</Text>
           <Text style={styles.paragraph}>
             You have full control over your digital identity. You can manage Discovery preferences, update linked accounts, or export your creative history at any time through your Profile Settings.
           </Text>

@@ -723,6 +723,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({
           isSpeaking={mainParticipant.isSpeaking}
           isSharingScreen={mainParticipant.id === 'local' ? isSharingScreen : mainParticipant.isSharingScreen}
           isAdmin={isAdmin}
+          t={t}
         />
 
         <View style={styles.minimizedOverlay}>
@@ -915,6 +916,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({
                 isSharingScreen={true}
                 isMaximized={true}
                 onMaximize={() => setMaximizedId(null)}
+                t={t}
               />
             </View>
             <View style={styles.smallParticipantsContainer}>
@@ -935,6 +937,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({
                         isSharingScreen={p.id === 'local' ? isSharingScreen : p.isSharingScreen}
                         isAdmin={isAdmin}
                         onPromote={() => handlePromote(p.id)}
+                        t={t}
                       />
                     </View>
                   ))}
@@ -1203,6 +1206,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({
                     isSharingScreen={isSharingScreen}
                     isMaximized
                     onMaximize={() => setMaximizedId(null)}
+                    t={t}
                   />
                 );
               }
@@ -1219,6 +1223,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({
                     isSharingScreen={p.id === 'local' ? isSharingScreen : p.isSharingScreen}
                     isMaximized
                     onMaximize={() => setMaximizedId(null)}
+                    t={t}
                   />
                 );
               }

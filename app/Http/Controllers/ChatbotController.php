@@ -145,6 +145,18 @@ class ChatbotController extends Controller
             'realtime' => 'real-time',
             'blackmodus' => 'dark mode',
             'zentered' => 'centered',
+            'markit' => 'marketplace',
+            'markert' => 'marketplace',
+            'maarket' => 'marketplace',
+            'sel' => 'sell',
+            'seling' => 'selling',
+            'buyin' => 'buying',
+            'deliveri' => 'delivery',
+            'delivry' => 'delivery',
+            'conditon' => 'condition',
+            'conditn' => 'condition',
+            'catgory' => 'category',
+            'categry' => 'category',
         ];
 
         // Word boundary replacement for all typos
@@ -278,9 +290,16 @@ class ChatbotController extends Controller
             'theme modes' => 'We support 4 premium modes: Light (clean aesthetic), Dark (high-contrast premium experience with #0A84FF tints), Automatic (OS-sync), and Dynamic (Android Material 3 Monet colors).',
             'repost flow' => 'Our 2024 Repost flow features a blurred backdrop that allows instant dismissal by tapping anywhere outside the selector—no close button required!',
             'unified spaces' => 'Direct spaces are now unified and strictly private. They support real-time collaboration features like shared whiteboards with living cursor tracking.',
-            'app guide' => "Follow these 6 steps to master Zmzir:\n1. Register & Verify your email.\n2. Setup Profile (Profile > Edit, now with responsive 98% width birthday picker!).\n3. Create/Join Spaces (Direct or Protected).\n4. Start Collaborating (Whiteboard, Meetings, AI Assistants).\n5. Manage Activities (Schedule events with real-time synchronized badges).\n6. Stay Safe (Privacy Vault & Trust Score).",
+            'app guide' => "Follow these 7 steps to master Zmzir:\n1. Register & Verify your email.\n2. Setup Profile (Profile > Edit, now with responsive 98% width birthday picker!).\n3. Create/Join Spaces (Direct or Protected).\n4. Start Collaborating (Whiteboard, Meetings, AI Assistants).\n5. Manage Activities (Schedule events with real-time synchronized badges).\n6. Stay Safe (Privacy Vault & Trust Score).\n7. Explore Marketplace (Buy & Sell items with real-time updates and integrated chat).",
             'date picker' => 'Our date picker for birthdays is now fully responsive for web (98% width) and supports "blackmodus" with a sleek #1A1A1A background.',
             'activity badge' => 'The activity badge is now synchronized across the app! It appears in the Space header and the Settings menu, showing the exact count of upcoming scheduled activities.',
+            'marketplace' => 'The Marketplace is where you can buy and sell items within the Zmzir community. It features real-time updates and integrated chat for buyers and sellers.',
+            'market browse' => 'The "Browse" tab in the Marketplace shows you all active items available for purchase from other users. You can filter them by categories like Electronics, Fashion, or Home.',
+            'my items' => 'The "My Items" tab allows you to manage your own listings. You can see your active, sold, and inactive items here. This is your personal seller dashboard.',
+            'item condition' => 'Marketplace items can be listed with various conditions: New, Like New, Refurbished, or Used. This helps buyers understand the state of the product before purchasing.',
+            'market delivery' => 'Sellers can indicate if delivery is available for their items. Look for the box icon on the market card to see if an item can be delivered to you.',
+            'market chat' => 'You can start a secure chat directly with a seller from any Marketplace item. This creates a dedicated Space where you can discuss details, price, and pick-up/delivery.',
+            'selling on market' => 'To sell an item, tap the "+" FAB button in the Marketplace. You can upload up to 10 photos or videos, set a price, condition, and category for your item.',
         ];
 
         // ————————————————————————————————————

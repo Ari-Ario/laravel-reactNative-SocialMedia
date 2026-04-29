@@ -12,6 +12,7 @@ use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\ChatbotTrainingController;
 use App\Http\Controllers\PostController;
+use App\Http\Controllers\MarketController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StoryController;
 use App\Http\Controllers\NotificationController;
@@ -31,6 +32,7 @@ use App\Http\Controllers\ModerationAdminController;
 use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\InviteController;
 use Illuminate\Support\Facades\Broadcast;
+use App\Http\Controllers\MarketplaceController;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -116,6 +118,21 @@ Route::group(["middleware" => ["auth:sanctum"]], function () {
     Route::delete('/posts/{post}/media/{media}', [PostController::class, 'deleteMedia']);
     // Single Post fetch
     Route::get('/posts/{id}', [PostController::class, 'showPost']);
+
+    // Marketplace Routes
+    Route::get('/market/my-items', [MarketController::class, 'myItems']);
+    Route::get('/market', [MarketController::class, 'index']);
+    Route::post('/market', [MarketController::class, 'store']);
+    Route::get('/market/{id}', [MarketController::class, 'show']);
+    Route::match(['put', 'post'], '/market/{id}', [MarketController::class, 'update']);
+    Route::delete('/market/{id}', [MarketController::class, 'destroy']);
+    Route::post('/market/{id}/chat', [MarketController::class, 'startChat']);
+    Route::post('/market/{id}/react', [MarketController::class, 'react']);
+    Route::post('/market/{id}/deletereaction', [MarketController::class, 'deleteReaction']);
+    Route::post('/market/{id}/comment', [MarketController::class, 'comment']);
+    Route::delete('/market/{id}/comments/{commentId}', [MarketController::class, 'deleteComment']);
+    Route::post('/market/{id}/bookmark', [MarketController::class, 'bookmark']);
+    Route::post('/market/{id}/repost', [MarketController::class, 'repost']);
 
     // Reactions
     Route::post('/posts/{post}/react', [PostController::class, 'react']);

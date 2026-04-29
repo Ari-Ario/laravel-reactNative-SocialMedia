@@ -6,19 +6,31 @@ import {
     getBookmarks, 
     addBookmark as apiAddBookmark, 
     removeBookmark as apiRemoveBookmark, 
+    removeMarketBookmark as apiRemoveMarketBookmark,
     updateBookmark as apiUpdateBookmark 
 } from '@/services/BookmarkService';
 
 interface Bookmark {
     id: number;
-    post_id: number;
+    post_id: number | null;
+    market_item_id: number | null;
     user_id: number;
     collection: string;
     note: string | null;
     created_at: string;
-    post: {
+    post?: {
         id: number;
         caption: string;
+        media: Array<{ file_path: string; type: string }>;
+        user: {
+            id: number;
+            name: string;
+            profile_photo: string | null;
+        };
+    };
+    market_item?: {
+        id: number;
+        title: string;
         media: Array<{ file_path: string; type: string }>;
         user: {
             id: number;
@@ -37,8 +49,9 @@ interface BookmarkStore {
     loadBookmarks: () => Promise<void>;
     addBookmark: (postId: number, collection?: string, note?: string | null) => Promise<{ bookmark: Bookmark | null, bookmarked: boolean }>;
     removeBookmark: (postId: number) => Promise<void>;
-    updateBookmarkNote: (postId: number, note: string | null) => Promise<void>;
-    moveToCollection: (postId: number, collection: string) => Promise<void>;
+    removeMarketBookmark: (marketItemId: number) => Promise<void>;
+    updateBookmarkNote: (itemId: number, note: string | null, isMarket?: boolean) => Promise<void>;
+    moveToCollection: (itemId: number, collection: string, isMarket?: boolean) => Promise<void>;
     clearBookmarks: () => void;
 }
 
@@ -106,15 +119,32 @@ export const useBookmarkStore = create<BookmarkStore>()(
                 }));
             },
 
-            updateBookmarkNote: async (postId, note) => {
-                const bookmark = get().bookmarks.find(b => b && b.post_id === postId);
+            removeMarketBookmark: async (marketItemId) => {
+                try {
+                    await apiRemoveMarketBookmark(marketItemId);
+                } catch (error: any) {
+                    if (error.response?.status !== 404) {
+                        set({ error: error.message });
+                        throw error;
+                    }
+                }
+
+                set((state) => ({
+                    bookmarks: state.bookmarks.filter(b => b && b.market_item_id !== marketItemId),
+                }));
+            },
+
+            updateBookmarkNote: async (itemId, note, isMarket = false) => {
+                const bookmark = get().bookmarks.find(b => 
+                    b && (isMarket ? b.market_item_id === itemId : b.post_id === itemId)
+                );
                 if (!bookmark) return;
 
                 try {
                     const updated = await apiUpdateBookmark(bookmark.id, { note });
                     set((state) => ({
                         bookmarks: state.bookmarks.map(b =>
-                            (b && b.post_id === postId) ? updated : b
+                            (b && b.id === bookmark.id) ? { ...b, note: updated.note } : b
                         ),
                     }));
                 } catch (error: any) {
@@ -123,15 +153,17 @@ export const useBookmarkStore = create<BookmarkStore>()(
                 }
             },
 
-            moveToCollection: async (postId, collection) => {
-                const bookmark = get().bookmarks.find(b => b && b.post_id === postId);
+            moveToCollection: async (itemId, collection, isMarket = false) => {
+                const bookmark = get().bookmarks.find(b => 
+                    b && (isMarket ? b.market_item_id === itemId : b.post_id === itemId)
+                );
                 if (!bookmark) return;
 
                 try {
                     const updated = await apiUpdateBookmark(bookmark.id, { collection });
                     set((state) => ({
                         bookmarks: state.bookmarks.map(b =>
-                            (b && b.post_id === postId) ? updated : b
+                            (b && b.id === bookmark.id) ? { ...b, collection: updated.collection } : b
                         ),
                     }));
                 } catch (error: any) {

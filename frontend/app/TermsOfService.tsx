@@ -45,22 +45,27 @@ const TermsOfService = () => {
             You retain all rights to the content you create. In shared Collaboration Spaces (such as shared project whiteboards), contributions from multiple users are recognized. By collaborating, you grant your partners the right to work on shared assets within that specific space.
           </Text>
 
-          <Text style={styles.sectionTitle}>3. Social Discovery & External Links</Text>
+          <Text style={styles.sectionTitle}>3. Marketplace Commerce</Text>
+          <Text style={styles.paragraph}>
+            The zmzir Marketplace is a peer-to-peer venue for the purchase and sale of items. zmzir facilitates the discovery and communication but is not a party to the actual transactions. Users are responsible for the accuracy of their listings, the quality of items sold, and the fulfillment of agreements made within the platform. Prohibited items, including illegal goods or services, will be removed immediately.
+          </Text>
+
+          <Text style={styles.sectionTitle}>4. Social Discovery & External Links</Text>
           <Text style={styles.paragraph}>
             Linking your external social media handles is optional but recommended for friend discovery. You are responsible for the accuracy of the handles you link and for ensuring they comply with the external platforms' own terms.
           </Text>
 
-          <Text style={styles.sectionTitle}>4. Conduct & Spaces Safety</Text>
+          <Text style={styles.sectionTitle}>5. Conduct & Spaces Safety</Text>
           <Text style={styles.paragraph}>
             Respect is the foundation of our creative community. Harassment, harmful behavior, or misuse of real-time tools (whiteboards, meetings, calls) are strictly prohibited. We reserve the right to restrict access to spaces for users who violate these standards.
           </Text>
 
-          <Text style={styles.sectionTitle}>5. Professional Communication (Broadcasts)</Text>
+          <Text style={styles.sectionTitle}>6. Professional Communication (Broadcasts)</Text>
           <Text style={styles.paragraph}>
             Broadcast Lists are provided for streamlined group messaging. By joining a broadcast list, you agree to receive updates from the list creator. Misuse of broadcasts for spam or prohibited content will result in immediate termination of the service.
           </Text>
 
-          <Text style={styles.sectionTitle}>6. Platform Evolution</Text>
+          <Text style={styles.sectionTitle}>7. Platform Evolution</Text>
           <Text style={styles.paragraph}>
             We are constantly refining our collaboration tools. We reserve the right to modify discovery algorithms, space types, and AI capabilities to better serve the creative community and maintain platform stability.
           </Text>

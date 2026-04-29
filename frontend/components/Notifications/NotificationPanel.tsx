@@ -28,6 +28,8 @@ import AuthContext from '@/context/AuthContext';
 import { useTranslation } from '@/constants/i18n';
 import { formatTimeAgo } from '@/utils/dateUtils';
 import { groupNotifications, getGroupSummary, NotificationGroup } from '@/utils/groupNotifications';
+import { useMarketStore } from '@/stores/marketStore';
+import { fetchMarketItemById } from '@/services/MarketService';
 
 interface NotificationPanelProps {
     visible: boolean;
@@ -296,6 +298,33 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 router.push('/moderation/admin-channel');
                 onClose();
                 return;
+            }
+
+            // ============= MARKET-RELATED NOTIFICATIONS =============
+            if (item.type === NOTIFICATION_TYPES.MARKET_COMMENT || item.type === NOTIFICATION_TYPES.MARKET_REACTION) {
+                const itemId = item.marketItemId || item.data?.itemId || item.data?.marketItemId;
+                if (itemId) {
+                    // Pre-load market item into store for instant view
+                    try {
+                        const marketData = await fetchMarketItemById(Number(itemId));
+                        if (marketData) {
+                            useMarketStore.getState().addOrUpdateItem(marketData);
+                        }
+                    } catch (err) {
+                        console.error('Failed to preload market item:', err);
+                    }
+
+                    router.push({
+                        pathname: '/post/[id]',
+                        params: { 
+                            id: itemId.toString(), 
+                            isMarket: 'true', 
+                            highlightCommentId: item.commentId?.toString() 
+                        }
+                    } as any);
+                    onClose();
+                    return;
+                }
             }
 
             // ============= POST-RELATED NOTIFICATIONS =============

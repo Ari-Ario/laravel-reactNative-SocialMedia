@@ -57,6 +57,27 @@ export const GlobalStyles = StyleSheet.create({
                 alignSelf: 'center',
             },
         }),
+    },
+
+    /**
+     * Bottom sheet styles for comments and interactions.
+     */
+    commentsBackdrop: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+    },
+    commentsSheet: {
+        height: height * 0.7,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        overflow: 'hidden',
+        ...Platform.select({
+            web: {
+                maxWidth: 600,
+                alignSelf: 'center',
+                width: '100%',
+            },
+        }),
     }
 });
 

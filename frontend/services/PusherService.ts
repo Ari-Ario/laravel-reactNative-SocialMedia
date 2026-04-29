@@ -300,7 +300,7 @@ class PusherService {
             this.pendingSubscriptions.forEach(sub => sub());
             this.pendingSubscriptions = [];
           }
-          
+
           // 🚀 EXTREME PERFORMANCE: Re-apply registry subscriptions on re-init
           if (this.subscriptionRegistry.size > 0) {
             console.log(`🔄 Re-applying ${this.subscriptionRegistry.size} registered subscriptions`);
@@ -508,13 +508,13 @@ class PusherService {
 
         let message = data.message as string || 'Post updated';
         if (data.userName) {
-            if (data.changes?.caption?.new) {
-                message = `${data.userName} updated a post: "${data.changes.caption.new.substring(0, 30)}..."`;
-            } else if (data.updatedFields?.includes('media')) {
-                message = `${data.userName} updated the media in their post`;
-            } else {
-                message = `${data.userName} updated their post`;
-            }
+          if (data.changes?.caption?.new) {
+            message = `${data.userName} updated a post: "${data.changes.caption.new.substring(0, 30)}..."`;
+          } else if (data.updatedFields?.includes('media')) {
+            message = `${data.userName} updated the media in their post`;
+          } else {
+            message = `${data.userName} updated their post`;
+          }
         }
 
         const notification = {
@@ -789,9 +789,47 @@ class PusherService {
           notification.message = 'You have a new update';
         }
 
-        console.log('📨 SENDING BROADCAST NOTIFICATION TO STORE:', notification.type, '| spaceId:', notification.spaceId);
+        console.log('🛒 SENDING BROADCAST NOTIFICATION TO STORE:', notification.type, '| spaceId:', notification.spaceId);
         onNotification(notification as Record<string, unknown>);
       });
+
+      channel?.bind('market-item-commented', (data: PusherEventPayload) => {
+        console.log('🛒 RAW DATA (market-item-commented):', data);
+
+        const notification = {
+          type: 'market_comment',
+          title: data.title || 'New Market Comment',
+          message: data.message || `${data.comment?.user?.name || 'Someone'} commented on your item`,
+          data: data,
+          userId: data.comment?.user_id || data.user_id,
+          itemId: data.itemId,
+          commentId: data.comment?.id,
+          avatar: data.comment?.user?.profile_photo || data.user_avatar,
+          createdAt: new Date()
+        };
+
+        console.log('🛒 SENDING TO NOTIFICATION STORE:', notification);
+        onNotification(notification as Record<string, unknown>);
+      });
+
+      channel?.bind('market-item-reacted', (data: PusherEventPayload) => {
+        console.log('🛒 RAW DATA (market-item-reacted):', data);
+
+        const notification = {
+          type: 'market_reaction',
+          title: data.title || 'New Market Reaction',
+          message: data.message || `${data.reaction?.user?.name || 'Someone'} reacted to your item`,
+          data: data,
+          userId: data.reaction?.user_id,
+          itemId: data.itemId,
+          avatar: data.reaction?.user?.profile_photo,
+          createdAt: new Date()
+        };
+
+        console.log('🛒 SENDING TO NOTIFICATION STORE:', notification);
+        onNotification(notification as Record<string, unknown>);
+      });
+
 
 
       // Call started
@@ -1544,11 +1582,11 @@ class PusherService {
       // Add to registry for auto-resubscription
       if (!this.subscriptionRegistry.has(channelName)) {
         this.subscriptionRegistry.set(channelName, {
-          onEvent: (event, data) => {},
+          onEvent: (event, data) => { },
           bindings: new Map()
         });
       }
-      
+
       const reg = this.subscriptionRegistry.get(channelName)!;
       reg.bindings.set('story-created', onStoryCreated);
       reg.bindings.set('story-deleted', onStoryDeleted);
@@ -1593,7 +1631,7 @@ class PusherService {
             channel?.bind(event, callback);
           });
         },
-        unbind: () => {}, // Dummy for interface compliance
+        unbind: () => { }, // Dummy for interface compliance
       };
     }
     return this.pusher.subscribe(channelName);
@@ -1654,6 +1692,63 @@ class PusherService {
   // Get active channels for debugging
   getActiveChannels(): string[] {
     return Array.from(this.channels.keys());
+  }
+
+  // NEW: Subscribe to market-global channel
+  subscribeToMarket(
+    onItemCommented: (data: Record<string, unknown>) => void,
+    onItemReacted: (data: Record<string, unknown>) => void,
+    onItemUpdated: (data: Record<string, unknown>) => void,
+    onItemDeleted: (data: Record<string, unknown>) => void
+  ): boolean {
+    if (!this.pusher || !this.isInitialized) {
+      console.log('⏳ Pusher not ready. Queuing market subscription.');
+      this.pendingSubscriptions.push(() =>
+        this.subscribeToMarket(onItemCommented, onItemReacted, onItemUpdated, onItemDeleted)
+      );
+      return true;
+    }
+
+    try {
+      const channelName = `market-global`;
+
+      if (this.channels.has(channelName)) {
+        console.log(`ℹ️ Already subscribed to global market channel`);
+        return true;
+      }
+
+      const channel = this.pusher.subscribe(channelName);
+
+      channel?.bind('market-item-commented', (data: PusherEventPayload) => {
+        console.log('🛒 Global channel: market item commented:', data.itemId);
+        onItemCommented(data as Record<string, unknown>);
+      });
+
+      channel?.bind('market-item-reacted', (data: PusherEventPayload) => {
+        console.log('🛒 Global channel: market item reacted:', data.itemId);
+        onItemReacted(data as Record<string, unknown>);
+      });
+
+      channel?.bind('market-item-updated', (data: PusherEventPayload) => {
+        console.log('🛒 Global channel: market item updated:', data.itemId);
+        onItemUpdated(data as Record<string, unknown>);
+      });
+
+      channel?.bind('market-item-deleted', (data: PusherEventPayload) => {
+        console.log('🛒 Global channel: market item deleted:', data.itemId);
+        onItemDeleted(data as Record<string, unknown>);
+      });
+
+      this.channels.set(channelName, channel);
+      return true;
+    } catch (error) {
+      console.error(`❌ ERROR SUBSCRIBING TO MARKET:`, error);
+      return false;
+    }
+  }
+
+  unsubscribeFromMarket(): void {
+    this.unsubscribeFromChannel('market-global');
   }
 }
 

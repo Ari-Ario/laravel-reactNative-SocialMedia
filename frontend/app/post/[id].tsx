@@ -23,6 +23,8 @@ import { BlurView } from 'expo-blur';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { usePostStore } from '@/stores/postStore';
 import { fetchPostById, commentOnPost, deleteReactionFromPost, deleteComment, reactToPost, reactToComment, deleteReactionFromComment } from '@/services/PostService';
+import { fetchMarketItemById, bookmarkMarketItem, addMarketItemComment, deleteMarketItemComment, reactToComment as reactToMarketComment, deleteCommentReaction as deleteMarketCommentReaction, startItemChat } from '@/services/MarketService';
+import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import RenderComments from '@/components/RenderComments';
 import { useProfileView } from '@/context/ProfileViewContext';
 import { useModal } from '@/context/ModalContext';
@@ -41,6 +43,9 @@ import ReportPost from '@/components/ReportPost';
 import { useReportedContentStore } from '@/stores/reportedContentStore';
 import { deleteReportByTarget } from '@/services/ReportService';
 import { useToastStore } from '@/stores/toastStore';
+import { useMarketStore } from '@/stores/marketStore';
+import MarketCard from '@/components/Market/MarketCard';
+import * as Haptics from 'expo-haptics';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useTranslation } from '@/constants/i18n';
 import { LinkPreviewCard } from '@/components/LinkPreviewCard';
@@ -48,10 +53,10 @@ import Avatar from '@/components/Image/Avatar';
 import { useMemo } from 'react';
 const isWeb = Platform.OS === 'web';
 const isMobileWeb = isWeb && (
-    (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches) ||
-    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-        typeof navigator !== 'undefined' ? navigator.userAgent : ''
-    )
+  (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches) ||
+  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    typeof navigator !== 'undefined' ? navigator.userAgent : ''
+  )
 );
 const isDesktopWeb = isWeb && !isMobileWeb;
 
@@ -98,10 +103,13 @@ const PostDetailScreen = () => {
   const { colors, activeScheme } = useAppTheme();
   const { t, isRTL } = useTranslation();
   const styles = getStyles(colors, activeScheme as string, isRTL);
-  const { id, highlightCommentId, returnTo } = useLocalSearchParams();
+  const { id, highlightCommentId, returnTo, isMarket } = useLocalSearchParams();
   const { posts, addPost, updatePost } = usePostStore();
+  const { addOrUpdateItem, items: marketItems } = useMarketStore();
   const { bookmarks, addBookmark, removeBookmark } = useBookmarkStore();
-  const isBookmarked = bookmarks.some(b => b && b.post_id === Number(id));
+  const isBookmarked = bookmarks.some(b => 
+    b && (isMarket === 'true' ? b.market_item_id === Number(id) : b.post_id === Number(id))
+  );
   const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
   const { openModal } = useModal();
   const router = useRouter();
@@ -121,7 +129,10 @@ const PostDetailScreen = () => {
   const [mediaViewerIndex, setMediaViewerIndex] = useState(0);
   const { user } = useContext(AuthContext);
   const postId = parseInt(id as string);
-  const post = posts.find(p => p.id === postId);
+
+  // Use market store if it's a market item
+  const marketItem = marketItems.find(i => i.id === postId);
+  const post = isMarket === 'true' ? (marketItem as any) : posts.find(p => p.id === postId);
   const service = usePostListService(user);
 
   // Detect link in caption
@@ -148,18 +159,24 @@ const PostDetailScreen = () => {
   const { showToast } = useToastStore();
 
   const handleStalePost = async () => {
-    const isBookmarked = bookmarks.some(b => b.post_id === postId);
+    const isBookmarked = bookmarks.some(b => 
+      isMarket === 'true' ? b.market_item_id === postId : b.post_id === postId
+    );
     if (isBookmarked) {
       Alert.alert(
-        'Post Unavailable',
-        'This post has been deleted from the server and was removed from your bookmarks.',
+        (isMarket === 'true' ? 'Item' : 'Post') + ' Unavailable',
+        'This ' + (isMarket === 'true' ? 'item' : 'post') + ' has been deleted from the server and was removed from your bookmarks.',
         [{ text: 'OK', onPress: () => router.back() }]
       );
-      await removeBookmark(postId);
+      if (isMarket === 'true') {
+        await useBookmarkStore.getState().removeMarketBookmark(postId);
+      } else {
+        await removeBookmark(postId);
+      }
     } else {
       Alert.alert(
-        'Post Gone',
-        'This post is no longer available.',
+        (isMarket === 'true' ? 'Item' : 'Post') + ' Gone',
+        'This ' + (isMarket === 'true' ? 'item' : 'post') + ' is no longer available.',
         [{ text: 'OK', onPress: () => router.back() }]
       );
     }
@@ -168,15 +185,22 @@ const PostDetailScreen = () => {
   useEffect(() => {
     // If post not found in store, fetch it
     if (!post && postId) {
-      const fetchPost = async () => {
+      const fetchData = async () => {
         setLoading(true);
         try {
-          const postData = await fetchPostById(postId);
-          if (postData) {
-            addPost(postData);
+          if (isMarket === 'true') {
+            const marketData = await fetchMarketItemById(postId);
+            if (marketData) {
+              addOrUpdateItem(marketData);
+            }
+          } else {
+            const postData = await fetchPostById(postId);
+            if (postData) {
+              addPost(postData);
+            }
           }
         } catch (error: any) {
-          console.error('Error fetching post:', error);
+          console.error('Error fetching data:', error);
           if (error.response?.status === 404) {
             handleStalePost();
           }
@@ -185,9 +209,9 @@ const PostDetailScreen = () => {
         }
       };
 
-      fetchPost();
+      fetchData();
     }
-  }, [postId, post, addPost, bookmarks]);
+  }, [postId, post, addPost, addOrUpdateItem, bookmarks, isMarket]);
 
   // Handle comment highlighting when highlightCommentId changes
   useEffect(() => {
@@ -254,11 +278,14 @@ const PostDetailScreen = () => {
   // Handle comment reaction
   const handleReactComment = async (emoji: string, commentId: number) => {
     try {
-      await reactToComment(postId, commentId, emoji);
-      // Refresh post data
-      const postData = await fetchPostById(postId);
-      if (postData) {
-        addPost(postData);
+      if (isMarket === 'true') {
+        await reactToMarketComment(postId, commentId, emoji);
+        const marketData = await fetchMarketItemById(postId);
+        if (marketData) addOrUpdateItem(marketData);
+      } else {
+        await reactToComment(postId, commentId, emoji);
+        const postData = await fetchPostById(postId);
+        if (postData) addPost(postData);
       }
     } catch (error: any) {
       console.error('Error reacting to comment:', error);
@@ -299,11 +326,14 @@ const PostDetailScreen = () => {
 
   const handleDeleteCommentReaction = async (commentId: number, emoji: string) => {
     try {
-      await deleteReactionFromComment(commentId);
-      // Refresh post data
-      const postData = await fetchPostById(postId);
-      if (postData) {
-        addPost(postData);
+      if (isMarket === 'true') {
+        await deleteMarketCommentReaction(commentId);
+        const marketData = await fetchMarketItemById(postId);
+        if (marketData) addOrUpdateItem(marketData);
+      } else {
+        await deleteReactionFromComment(commentId);
+        const postData = await fetchPostById(postId);
+        if (postData) addPost(postData);
       }
     } catch (error: any) {
       console.error('Error deleting comment reaction:', error);
@@ -313,11 +343,14 @@ const PostDetailScreen = () => {
 
   const handleDeleteComment = async (commentId: number) => {
     try {
-      await deleteComment(postId, commentId);
-      // Refresh post data after deletion
-      const postData = await fetchPostById(postId);
-      if (postData) {
-        addPost(postData);
+      if (isMarket === 'true') {
+        await deleteMarketItemComment(postId, commentId);
+        const marketData = await fetchMarketItemById(postId);
+        if (marketData) addOrUpdateItem(marketData);
+      } else {
+        await deleteComment(postId, commentId);
+        const postData = await fetchPostById(postId);
+        if (postData) addPost(postData);
       }
     } catch (error: any) {
       console.error('Error deleting comment:', error);
@@ -330,35 +363,39 @@ const PostDetailScreen = () => {
 
     setIsSubmitting(true);
     try {
-      const comment = await commentOnPost(postId, commentText.trim());
-      
-      // Optimistic update for immediate feedback
-      const formattedComment = {
-        id: comment.id,
-        content: comment.content,
-        user_id: comment.user_id,
-        user: {
-          id: user?.id || comment.user.id,
-          name: user?.name || comment.user.name,
-          profile_photo: user?.profile_photo || comment.user.profile_photo
-        },
-        post_id: comment.post_id,
-        parent_id: comment.parent_id,
-        replies: [],
-        reaction_counts: [],
-        reactions: [],
-        reaction_comments: [],
-        reaction_comments_count: 0
-      };
-      
-      usePostStore.getState().updatePostWithNewComment(Number(postId), formattedComment as any);
-      setCommentText('');
+      const comment = isMarket === 'true' 
+        ? await addMarketItemComment(postId, commentText.trim())
+        : await commentOnPost(postId, commentText.trim());
 
-      // Refresh post data to get updated comments and other metadata
-      const postData = await fetchPostById(postId);
-      if (postData) {
-        updatePost(postData);
+      // Refresh post/market data to get updated comments and other metadata
+      if (isMarket === 'true') {
+        const marketData = await fetchMarketItemById(postId);
+        if (marketData) addOrUpdateItem(marketData);
+      } else {
+        // Optimistic update for immediate feedback (only for posts for now to keep it simple)
+        const formattedComment = {
+          id: comment.id,
+          content: comment.content,
+          user_id: comment.user_id,
+          user: {
+            id: user?.id || comment.user.id,
+            name: user?.name || comment.user.name,
+            profile_photo: user?.profile_photo || comment.user.profile_photo
+          },
+          post_id: comment.post_id,
+          parent_id: comment.parent_id,
+          replies: [],
+          reaction_counts: [],
+          reactions: [],
+          reaction_comments: [],
+          reaction_comments_count: 0
+        };
+        usePostStore.getState().updatePostWithNewComment(Number(postId), formattedComment as any);
+        
+        const postData = await fetchPostById(postId);
+        if (postData) addPost(postData);
       }
+      setCommentText('');
     } catch (error: any) {
       console.error('Error submitting comment:', error);
       if (error.response?.status === 404) handleStalePost();
@@ -395,24 +432,75 @@ const PostDetailScreen = () => {
   const handleBookmarkPost = async () => {
     if (!post) return;
     try {
-      const result = await addBookmark(post.id);
-      if (result.bookmarked && result.bookmark) {
-        showToast('Post bookmarked!', 'success');
-        
-        if (mediaViewerVisible) {
-          setMediaViewerVisible(false);
+      if (isMarket === 'true') {
+        const response = await bookmarkMarketItem(post.id);
+        useBookmarkStore.getState().loadBookmarks();
+        if (response.bookmarked) {
+          showToast('Item bookmarked!', 'success');
+          router.push({
+            pathname: '/settings/bookmarks',
+            params: { initialMarketItemId: post.id }
+          });
+        } else {
+          showToast('Bookmark removed', 'info');
         }
-
-        router.push({
-          pathname: '/settings/bookmarks',
-          params: { initialPostId: post.id }
-        });
       } else {
-        showToast('Bookmark removed', 'info');
+        const result = await addBookmark(post.id);
+        if (result.bookmarked && result.bookmark) {
+          showToast('Post bookmarked!', 'success');
+
+          if (mediaViewerVisible) {
+            setMediaViewerVisible(false);
+          }
+
+          router.push({
+            pathname: '/settings/bookmarks',
+            params: { initialPostId: post.id }
+          });
+        } else {
+          showToast('Bookmark removed', 'info');
+        }
       }
     } catch (error) {
-      console.error('Error bookmarking post:', error);
-      showToast("Failed to bookmark post", 'error');
+      console.error('Error bookmarking:', error);
+      showToast("Failed to bookmark", 'error');
+    }
+  };
+  
+  const handleChatPress = async () => {
+    if (!post || isMarket !== 'true') return;
+    
+    try {
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+      const response = await startItemChat(post.id);
+      if (response.space) {
+        // Automatically send the item share so the owner knows the context
+        const collaborationService = CollaborationService.getInstance();
+        const baseUrl = getApiBaseImage();
+        
+        const metadata = {
+          post_id: post.id,
+          is_market: true,
+          creator_name: post.user?.name || 'Anonymous',
+          creator_avatar: post.user?.profile_photo,
+          media: post.media || [],
+          caption: post.caption,
+          is_internal_share: true,
+          post_url: `${baseUrl}/post/${post.id}`,
+        };
+
+        await collaborationService.sendMessage(response.space.id, {
+          content: `${t('inquiry_about')}: ${post.title || 'Market Item'}`,
+          type: 'post_share',
+          metadata
+        });
+
+        router.push(`/(spaces)/${response.space.id}`);
+      }
+    } catch (error) {
+      console.error('Error starting chat:', error);
     }
   };
 
@@ -511,9 +599,9 @@ const PostDetailScreen = () => {
               }
             }}
           />
-          <Text style={styles.headerTitle}>Post</Text>
+          <Text style={styles.headerTitle}>{isMarket === 'true' ? 'Market Item' : 'Post'}</Text>
           <View style={styles.headerSpacer}>
-            {post && isReported('post', post.id) && (
+            {post && !isMarket && isReported('post', post.id) && (
               <TouchableOpacity
                 onPress={() => handleToggleReport()}
                 style={styles.headerIcon}
@@ -521,12 +609,14 @@ const PostDetailScreen = () => {
                 <Ionicons name="flag" size={22} color="#ff3040" />
               </TouchableOpacity>
             )}
-            <TouchableOpacity
-              onPress={handleSharePost}
-              style={styles.headerIcon}
-            >
-              <Ionicons name="share-outline" size={22} color={colors.text} />
-            </TouchableOpacity>
+            {!isMarket && (
+              <TouchableOpacity
+                onPress={handleSharePost}
+                style={styles.headerIcon}
+              >
+                <Ionicons name="share-outline" size={22} color={colors.text} />
+              </TouchableOpacity>
+            )}
           </View>
         </BlurView>
 
@@ -536,218 +626,230 @@ const PostDetailScreen = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 100 }}
         >
-          {/* Post Header */}
-          <View style={styles.postHeader}>
-            <TouchableOpacity
-              style={styles.userInfo}
-              onPress={() => post.user && handleProfilePress(post.user.id.toString())}
-            >
-              <View style={{ marginRight: 8 }}>
-                <Avatar
-                  source={post.user?.profile_photo}
-                  name={post.user?.name || 'User'}
-                  size={32}
-                  showStatus={false}
-                />
-              </View>
-              <Text style={styles.userName}>{post.user?.name}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.moreButton} onPress={handleOpenMenu}>
-              <Ionicons name="ellipsis-horizontal" size={20} color={colors.text} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Post Content */}
-          <View style={styles.postContent}>
-            <Text style={styles.contentText}>
-              <Text style={styles.userName}>{post.user?.name} </Text>
-              {post.caption || post.content}
-            </Text>
-            {post.caption && post.content && post.caption !== post.content && (
-              <Text style={styles.additionalContent}>
-                {post.content}
-              </Text>
-            )}
-            
-            {/* Link Previews */}
-            {detectedUrl && (
-              <View style={{ marginTop: 10 }}>
-                <LinkPreviewCard url={detectedUrl} />
-              </View>
-            )}
-
-            {post.media?.map((media: any, index: number) => {
-              if (media.type === 'link' || media.mime_type === 'text/url') {
-                return (
-                  <View key={`link-${index}`} style={{ marginTop: 10 }}>
-                    <LinkPreviewCard url={media.file_path || media.url} />
-                  </View>
-                );
-              }
-              return null;
-            })}
-          </View>
-
-          {/* Post media – Premium Gallery */}
-          {post.media && post.media.length > 0 && (
-            <View style={styles.premiumMediaContainer}>
-              {(() => {
-                const sortedMedia = [...post.media].sort((a, b) => {
-                  if (a.type === 'video' && b.type !== 'video') return 1;
-                  if (a.type !== 'video' && b.type === 'video') return -1;
-                  return 0;
-                });
-
-                const containerWidth = Dimensions.get('window').width * (isDesktopWeb ? 0.8 : 1.0);
-
-                return (
-                  <>
-                    <FlatList
-                      data={sortedMedia}
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      snapToInterval={containerWidth}
-                      snapToAlignment="start"
-                      decelerationRate="fast"
-                      onMomentumScrollEnd={(e) => {
-                        const index = Math.round(e.nativeEvent.contentOffset.x / containerWidth);
-                        setActiveMediaIndex(index);
-                      }}
-                      keyExtractor={(item, index) => `${item.id}-${index}`}
-                      initialNumToRender={1}
-                      maxToRenderPerBatch={2}
-                      windowSize={3}
-                      removeClippedSubviews={Platform.OS !== 'web'}
-                      renderItem={({ item, index }: { item: any, index: number }) => {
-                        const mediaUrl = (item.file_path || item.url || '').startsWith('http')
-                          ? (item.file_path || item.url || '')
-                          : `${getApiBaseImage()}/storage/${item.file_path}`;
-
-                        if (item.type === 'video') {
-                          return (
-                            <View style={{ width: containerWidth }}>
-                              <VideoCarouselItem uri={mediaUrl} index={index} service={{ ...service, openMediaViewer: handleOpenMediaViewer }} styles={styles} />
-                            </View>
-                          );
-                        }
-                        return (
-                          <View style={{ width: containerWidth }}>
-                            <ImageCarouselItem uri={mediaUrl} index={index} service={{ ...service, openMediaViewer: handleOpenMediaViewer }} styles={styles} />
-                          </View>
-                        );
-                      }}
-                    />
-                    {sortedMedia.length > 1 && (
-                      <View style={styles.paginationContainer}>
-                        {sortedMedia.map((_, i) => (
-                          <View
-                            key={i}
-                            style={[
-                              styles.paginationDot,
-                              activeMediaIndex === i && styles.paginationDotActive
-                            ]}
-                          />
-                        ))}
-                      </View>
-                    )}
-                  </>
-                );
-              })()}
-            </View>
-          )}
-
-          {/* Post Actions */}
-          <View style={styles.postActions}>
-            <View style={styles.leftActions}>
-              {groupedReactions.length === 0 && (
+          {isMarket === 'true' ? (
+            <MarketCard
+              item={post as any}
+              onProfilePress={handleProfilePress}
+              onChatPress={handleChatPress}
+              initialShowComments={showComments}
+              hideCommentSystem={false}
+            />
+          ) : (
+            <View>
+              {/* Post Header */}
+              <View style={styles.postHeader}>
                 <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => {
-                    setCurrentReactingItem({ postId: post.id });
-                    setIsEmojiPickerOpen(true);
-                  }}
+                  style={styles.userInfo}
+                  onPress={() => post.user && handleProfilePress(post.user.id.toString())}
                 >
-                  <Ionicons
-                    name={userHasReacted ? "heart" : "heart-outline"}
-                    size={28}
-                    color={userHasReacted ? "#ff3040" : colors.text}
-                  />
+                  <View style={{ marginRight: 8 }}>
+                    <Avatar
+                      source={post.user?.profile_photo}
+                      name={post.user?.name || 'User'}
+                      size={32}
+                      showStatus={false}
+                    />
+                  </View>
+                  <Text style={styles.userName}>{post.user?.name}</Text>
                 </TouchableOpacity>
-              )}
+                <TouchableOpacity style={styles.moreButton} onPress={handleOpenMenu}>
+                  <Ionicons name="ellipsis-horizontal" size={20} color={colors.text} />
+                </TouchableOpacity>
+              </View>
 
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => {
-                  setShowComments(true);
-                  setTimeout(() => {
-                    commentsSectionRef.current?.measure((x, y, width, height, pageX, pageY) => {
-                      scrollViewRef.current?.scrollTo({ y: pageY - 100, animated: true });
-                    });
-                  }, 100);
-                }}
-              >
-                <Ionicons name="chatbubble-outline" size={26} color={colors.text} />
-                {(post.comments_count ?? 0) > 0 && (
-                  <View style={styles.commentCountBadge}>
-                    <Text style={styles.commentCountText}>{post.comments_count}</Text>
+              {/* Post Content */}
+              <View style={styles.postContent}>
+                <Text style={styles.contentText}>
+                  <Text style={styles.userName}>{post.user?.name} </Text>
+                  {post.caption || post.content}
+                </Text>
+                {post.caption && post.content && post.caption !== post.content && (
+                  <Text style={styles.additionalContent}>
+                    {post.content}
+                  </Text>
+                )}
+
+                {/* Link Previews */}
+                {detectedUrl && (
+                  <View style={{ marginTop: 10 }}>
+                    <LinkPreviewCard url={detectedUrl} />
                   </View>
                 )}
-              </TouchableOpacity>
 
-              <TouchableOpacity style={styles.actionButton} onPress={handleSharePost}>
-                <Ionicons name="paper-plane-outline" size={26} color={colors.text} />
-              </TouchableOpacity>
+                {post.media?.map((media: any, index: number) => {
+                  if (media.type === 'link' || media.mime_type === 'text/url') {
+                    return (
+                      <View key={`link-${index}`} style={{ marginTop: 10 }}>
+                        <LinkPreviewCard url={media.file_path || media.url} />
+                      </View>
+                    );
+                  }
+                  return null;
+                })}
+              </View>
 
-              {/* Post Reactions */}
-              {groupedReactions.length > 0 && (
-                <View style={styles.reactionsContainer}>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <View style={styles.reactionsList}>
-                      {groupedReactions.map((reaction, index) => {
-                        const isMyReaction = reaction.user_ids.includes(Number(user?.id));
-                        return (
-                          <TouchableOpacity
-                            key={index}
-                            style={[
-                              styles.reactionItem,
-                              isMyReaction && styles.reactionItemMine
-                            ]}
-                            onPress={() => isMyReaction ? handleDeletePostReaction() : handleReact(reaction.emoji)}
-                          >
-                            <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
-                            {reaction.count > 1 && (
-                              <Text style={[
-                                styles.reactionCount,
-                                isMyReaction && styles.reactionCountMine
-                              ]}>
-                                {reaction.count}
-                              </Text>
-                            )}
-                          </TouchableOpacity>
-                        );
-                      })}
-                      <TouchableOpacity
-                        style={styles.addReactionButton}
-                        onPress={() => {
-                          setCurrentReactingItem({ postId: post.id });
-                          setIsEmojiPickerOpen(true);
-                        }}
-                      >
-                        <Ionicons name="add" size={16} color={colors.textSecondary} />
-                      </TouchableOpacity>
-                    </View>
-                  </ScrollView>
+              {/* Post media – Premium Gallery */}
+              {post.media && post.media.length > 0 && (
+                <View style={styles.premiumMediaContainer}>
+                  {(() => {
+                    const sortedMedia = [...post.media].sort((a, b) => {
+                      if (a.type === 'video' && b.type !== 'video') return 1;
+                      if (a.type !== 'video' && b.type === 'video') return -1;
+                      return 0;
+                    });
+
+                    const containerWidth = Dimensions.get('window').width * (isDesktopWeb ? 0.8 : 1.0);
+
+                    return (
+                      <>
+                        <FlatList
+                          data={sortedMedia}
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                          snapToInterval={containerWidth}
+                          snapToAlignment="start"
+                          decelerationRate="fast"
+                          onMomentumScrollEnd={(e) => {
+                            const index = Math.round(e.nativeEvent.contentOffset.x / containerWidth);
+                            setActiveMediaIndex(index);
+                          }}
+                          keyExtractor={(item, index) => `${item.id}-${index}`}
+                          initialNumToRender={1}
+                          maxToRenderPerBatch={2}
+                          windowSize={3}
+                          removeClippedSubviews={Platform.OS !== 'web'}
+                          renderItem={({ item, index }: { item: any, index: number }) => {
+                            const mediaUrl = (item.file_path || item.url || '').startsWith('http')
+                              ? (item.file_path || item.url || '')
+                              : `${getApiBaseImage()}/storage/${item.file_path}`;
+
+                            if (item.type === 'video') {
+                              return (
+                                <View style={{ width: containerWidth }}>
+                                  <VideoCarouselItem uri={mediaUrl} index={index} service={{ ...service, openMediaViewer: handleOpenMediaViewer }} styles={styles} />
+                                </View>
+                              );
+                            }
+                            return (
+                              <View style={{ width: containerWidth }}>
+                                <ImageCarouselItem uri={mediaUrl} index={index} service={{ ...service, openMediaViewer: handleOpenMediaViewer }} styles={styles} />
+                              </View>
+                            );
+                          }}
+                        />
+                        {sortedMedia.length > 1 && (
+                          <View style={styles.paginationContainer}>
+                            {sortedMedia.map((_, i) => (
+                              <View
+                                key={i}
+                                style={[
+                                  styles.paginationDot,
+                                  activeMediaIndex === i && styles.paginationDotActive
+                                ]}
+                              />
+                            ))}
+                          </View>
+                        )}
+                      </>
+                    );
+                  })()}
                 </View>
               )}
+
+              {/* Post Actions */}
+              <View style={styles.postActions}>
+                <View style={styles.leftActions}>
+                  {groupedReactions.length === 0 && (
+                    <TouchableOpacity
+                      style={styles.actionButton}
+                      onPress={() => {
+                        setCurrentReactingItem({ postId: post.id });
+                        setIsEmojiPickerOpen(true);
+                      }}
+                    >
+                      <Ionicons
+                        name={userHasReacted ? "heart" : "heart-outline"}
+                        size={28}
+                        color={userHasReacted ? "#ff3040" : colors.text}
+                      />
+                    </TouchableOpacity>
+                  )}
+
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => {
+                      setShowComments(true);
+                      setTimeout(() => {
+                        commentsSectionRef.current?.measure((x, y, width, height, pageX, pageY) => {
+                          scrollViewRef.current?.scrollTo({ y: pageY - 100, animated: true });
+                        });
+                      }, 100);
+                    }}
+                  >
+                    <Ionicons name="chatbubble-outline" size={26} color={colors.text} />
+                    {(post.comments_count ?? 0) > 0 && (
+                      <View style={styles.commentCountBadge}>
+                        <Text style={styles.commentCountText}>{post.comments_count}</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity style={styles.actionButton} onPress={handleSharePost}>
+                    <Ionicons name="paper-plane-outline" size={26} color={colors.text} />
+                  </TouchableOpacity>
+
+                  {/* Post Reactions */}
+                  {groupedReactions.length > 0 && (
+                    <View style={styles.reactionsContainer}>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                        <View style={styles.reactionsList}>
+                          {groupedReactions.map((reaction, index) => {
+                            const isMyReaction = reaction.user_ids.includes(Number(user?.id));
+                            return (
+                              <TouchableOpacity
+                                key={index}
+                                style={[
+                                  styles.reactionItem,
+                                  isMyReaction && styles.reactionItemMine
+                                ]}
+                                onPress={() => isMyReaction ? handleDeletePostReaction() : handleReact(reaction.emoji)}
+                              >
+                                <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
+                                {reaction.count > 1 && (
+                                  <Text style={[
+                                    styles.reactionCount,
+                                    isMyReaction && styles.reactionCountMine
+                                  ]}>
+                                    {reaction.count}
+                                  </Text>
+                                )}
+                              </TouchableOpacity>
+                            );
+                          })}
+                          <TouchableOpacity
+                            style={styles.addReactionButton}
+                            onPress={() => {
+                              setCurrentReactingItem({ postId: post.id });
+                              setIsEmojiPickerOpen(true);
+                            }}
+                          >
+                            <Ionicons name="add" size={16} color={colors.textSecondary} />
+                          </TouchableOpacity>
+                        </View>
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+                <TouchableOpacity style={styles.actionButton} onPress={handleBookmarkPost}>
+                  <Ionicons
+                    name={isBookmarked ? "bookmark" : "bookmark-outline"}
+                    size={26}
+                    color={isBookmarked ? "#10b981" : colors.text}
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
-            <TouchableOpacity style={styles.actionButton} onPress={handleBookmarkPost}>
-              <Ionicons 
-                name={isBookmarked ? "bookmark" : "bookmark-outline"} 
-                size={26} 
-                color={isBookmarked ? "#10b981" : colors.text} 
-              />
-            </TouchableOpacity>
-          </View>
+          )}
 
           {/* Comments Section */}
           <View style={styles.commentsSection}>
@@ -774,7 +876,10 @@ const PostDetailScreen = () => {
                 service={{
                   setCurrentReactingComment: setCurrentReactingComment,
                   setCurrentReactingItem: setCurrentReactingItem,
-                  setIsEmojiPickerOpen: setIsEmojiPickerOpen
+                  setIsEmojiPickerOpen: setIsEmojiPickerOpen,
+                  handleReactComment: handleReactComment,
+                  isEmojiPickerOpen: isEmojiPickerOpen,
+                  currentReactingComment: currentReactingComment
                 }}
                 postId={post.id}
                 onProfilePress={handleProfilePress}
@@ -784,56 +889,57 @@ const PostDetailScreen = () => {
                 onDeleteComment={handleDeleteComment}
                 highlightedCommentId={highlightedCommentId}
                 onCommentLayout={handleCommentLayout}
+                overrideComments={isMarket === 'true' ? post.comments : undefined}
+                hideReactions={false}
               />
             </Animated.View>
           </View>
         </ScrollView>
 
-        {/* Comment Input */}
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
           style={styles.commentInputWrapper}
         >
-          <View style={styles.commentInputContainer}>
-            <View style={{ marginRight: 8 }}>
-              <Avatar
-                source={user?.profile_photo}
-                name={user?.name || 'User'}
-                size={32}
-                showStatus={false}
-              />
-            </View>
-            <TextInput
-              style={styles.commentInput}
-              placeholder="Add a comment..."
-              placeholderTextColor={colors.textSecondary}
-              value={commentText}
-              onChangeText={setCommentText}
-              multiline
-              maxLength={500}
-            />
-            <TouchableOpacity
-              style={[
-                styles.commentSubmitButton,
-                (!commentText.trim() || isSubmitting) && styles.commentSubmitButtonDisabled
-              ]}
-              onPress={handleSubmitComment}
-              disabled={!commentText.trim() || isSubmitting}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <Ionicons
-                  name="send"
-                  size={20}
-                  color="white"
-                  style={styles.sendIcon}
+            <View style={styles.commentInputContainer}>
+              <View style={{ marginRight: 8 }}>
+                <Avatar
+                  source={user?.profile_photo}
+                  name={user?.name || 'User'}
+                  size={32}
+                  showStatus={false}
                 />
-              )}
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
+              </View>
+              <TextInput
+                style={styles.commentInput}
+                placeholder="Add a comment..."
+                placeholderTextColor={colors.textSecondary}
+                value={commentText}
+                onChangeText={setCommentText}
+                multiline
+                maxLength={500}
+              />
+              <TouchableOpacity
+                style={[
+                  styles.commentSubmitButton,
+                  (!commentText.trim() || isSubmitting) && styles.commentSubmitButtonDisabled
+                ]}
+                onPress={handleSubmitComment}
+                disabled={!commentText.trim() || isSubmitting}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Ionicons
+                    name="send"
+                    size={20}
+                    color="white"
+                    style={styles.sendIcon}
+                  />
+                )}
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
       </View>
 
       {/* Overlays & Modals */}
@@ -926,7 +1032,7 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => StyleSh
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    alignItems: isDesktopWeb ? 'center' : 'stretch', 
+    alignItems: isDesktopWeb ? 'center' : 'stretch',
   },
   webWrapper: {
     width: '100%',
@@ -1224,14 +1330,14 @@ const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => StyleSh
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    [isRTL ? 'paddingRight' : 'paddingLeft']: 3, 
+    [isRTL ? 'paddingRight' : 'paddingLeft']: 3,
   },
   commentSubmitButtonDisabled: {
     backgroundColor: colors.muted,
     opacity: 0.5,
   },
   sendIcon: {
-    transform: [{ rotate: isRTL ? '165deg' : '-15deg' }], 
+    transform: [{ rotate: isRTL ? '165deg' : '-15deg' }],
   },
   emojiPicker: {
     borderRadius: 10,

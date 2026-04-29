@@ -710,8 +710,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           await fetchStory(Number(itemId));
           router.push({ pathname: '/story/[id]', params: { id: itemId, standalone: 'true' } });
         } else {
-          await fetchPostById(Number(itemId));
-          router.push({ pathname: '/post/[id]', params: { id: itemId } });
+          // For market items, we reuse the post detail screen with isMarket flag
+          if (metadata.is_market) {
+            router.push({ pathname: '/post/[id]', params: { id: itemId, isMarket: 'true' } });
+          } else {
+            await fetchPostById(Number(itemId));
+            router.push({ pathname: '/post/[id]', params: { id: itemId } });
+          }
         }
       } catch (error: any) {
         const isNotFound = error?.response?.status === 404 || error?.status === 404 || error?.message?.includes('404');

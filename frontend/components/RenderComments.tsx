@@ -25,6 +25,8 @@ interface RenderCommentsProps {
   onDeleteComment: (commentId: number) => void;
   highlightedCommentId?: string | null;
   onCommentLayout?: (commentId: string, y: number) => void;
+  overrideComments?: any[];
+  hideReactions?: boolean;
 }
 
 const RenderComments = ({
@@ -37,13 +39,15 @@ const RenderComments = ({
   onDeleteCommentReaction,
   onDeleteComment,
   highlightedCommentId,
-  onCommentLayout
+  onCommentLayout,
+  overrideComments,
+  hideReactions = false
 }: RenderCommentsProps) => {
   const { colors, activeScheme } = useAppTheme();
   const { t, isRTL } = useTranslation();
   const { posts } = usePostStore();
   const currentPost = posts.find(p => p.id === postId);
-  const comments = currentPost?.comments || [];
+  const comments = overrideComments || currentPost?.comments || [];
   const { locale } = useTranslation();
 
   const [translatedComments, setTranslatedComments] = React.useState<Record<number, string>>({});
@@ -206,62 +210,64 @@ const RenderComments = ({
             </TouchableOpacity>
           )}
 
-          <View style={[styles.commentReactionsScrollContainer, { [isRTL ? 'marginRight' : 'marginLeft']: 10, [isRTL ? 'marginLeft' : 'marginRight']: 10 }]}>
-            {groupedReactions.length > 0 ? (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={[styles.commentReactionsScrollContent, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
-              >
-                {groupedReactions.map((reaction, idx) => {
-                  const isMyReaction = reaction.user_ids?.some(id => String(id) === String(user?.id));
-                  return isMyReaction ? (
-                    <TouchableOpacity
-                      key={`${reaction.emoji}-${idx}`}
-                      style={[styles.reactionItem, styles.reactionItemMine, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
-                      onPress={() => onDeleteCommentReaction(item.id, reaction.emoji)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
-                      {reaction.count > 1 && (
-                        <Text style={[styles.reactionCount, styles.reactionCountMine, { [isRTL ? 'marginRight' : 'marginLeft']: 4, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}>
-                          {reaction.count}
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      key={`${reaction.emoji}-${idx}`}
-                      style={[styles.reactionItem, { borderColor: colors.border, flexDirection: isRTL ? 'row-reverse' : 'row' }]}
-                      onPress={() => {
-                        service.setCurrentReactingComment({ postId, commentId: item.id });
-                        service.setCurrentReactingItem(null);
-                        onReactComment(item.id);
-                      }}
-                    >
-                      <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
-                      {reaction.count > 1 && (
-                        <Text style={[styles.reactionCount, { color: colors.textSecondary, [isRTL ? 'marginRight' : 'marginLeft']: 4, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}>
-                          {reaction.count}
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            ) : (
-              <TouchableOpacity
-                style={[styles.addReactionButton, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
-                onPress={() => {
-                  service.setCurrentReactingComment({ postId, commentId: item.id });
-                  service.setIsEmojiPickerOpen(true);
-                }}
-              >
-                <Ionicons name="happy-outline" size={16} color={colors.textSecondary} />
-                <Text style={[styles.addReactionText, { color: colors.textSecondary, [isRTL ? 'marginRight' : 'marginLeft']: 4, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}>{t('react')}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          {!hideReactions && (
+            <View style={[styles.commentReactionsScrollContainer, { [isRTL ? 'marginRight' : 'marginLeft']: 10, [isRTL ? 'marginLeft' : 'marginRight']: 10 }]}>
+              {groupedReactions.length > 0 ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={[styles.commentReactionsScrollContent, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
+                >
+                  {groupedReactions.map((reaction, idx) => {
+                    const isMyReaction = reaction.user_ids?.some(id => String(id) === String(user?.id));
+                    return isMyReaction ? (
+                      <TouchableOpacity
+                        key={`${reaction.emoji}-${idx}`}
+                        style={[styles.reactionItem, styles.reactionItemMine, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
+                        onPress={() => onDeleteCommentReaction(item.id, reaction.emoji)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
+                        {reaction.count > 1 && (
+                          <Text style={[styles.reactionCount, styles.reactionCountMine, { [isRTL ? 'marginRight' : 'marginLeft']: 4, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}>
+                            {reaction.count}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        key={`${reaction.emoji}-${idx}`}
+                        style={[styles.reactionItem, { borderColor: colors.border, flexDirection: isRTL ? 'row-reverse' : 'row' }]}
+                        onPress={() => {
+                          service.setCurrentReactingComment({ postId, commentId: item.id });
+                          service.setCurrentReactingItem(null);
+                          onReactComment(item.id);
+                        }}
+                      >
+                        <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
+                        {reaction.count > 1 && (
+                          <Text style={[styles.reactionCount, { color: colors.textSecondary, [isRTL ? 'marginRight' : 'marginLeft']: 4, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}>
+                            {reaction.count}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.addReactionButton, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
+                  onPress={() => {
+                    service.setCurrentReactingComment({ postId, commentId: item.id });
+                    service.setIsEmojiPickerOpen(true);
+                  }}
+                >
+                  <Ionicons name="happy-outline" size={16} color={colors.textSecondary} />
+                  <Text style={[styles.addReactionText, { color: colors.textSecondary, [isRTL ? 'marginRight' : 'marginLeft']: 4, [isRTL ? 'marginLeft' : 'marginRight']: 0 }]}>{t('react')}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
 
           {isMyComment && (
             <TouchableOpacity

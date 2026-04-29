@@ -1,159 +1,466 @@
-// app/(tabs)/market/index.tsx
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    ScrollView,
-    Dimensions,
-    Platform,
-    StatusBar,
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+  Platform,
+  TextInput
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { MotiView } from 'moti';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useToastStore } from '@/stores/toastStore';
-import { useAppTheme } from '@/hooks/useAppTheme';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import debounce from 'lodash/debounce';
 import { useTranslation } from '@/constants/i18n';
+import { useAppTheme } from '@/hooks/useAppTheme';
+import { useModal } from '@/context/ModalContext';
+import { useMarketStore } from '@/stores/marketStore';
+import { startItemChat } from '@/services/MarketService';
+import MarketCard from '@/components/Market/MarketCard';
+import PusherService from '@/services/PusherService';
+import * as Haptics from 'expo-haptics';
+import CollaborationService from '@/services/ChatScreen/CollaborationService';
+import getApiBaseImage from '@/services/getApiBaseImage';
+import { MarketItem } from '@/services/MarketService';
+import { MARKET_CATEGORIES } from '@/constants/MarketCategories';
 
-const { width } = Dimensions.get('window');
-const isMobile = width < 768;
+export default function MarketTab() {
+  const { t, isRTL } = useTranslation();
+  const { colors, activeScheme } = useAppTheme();
+  const styles = getStyles(colors, activeScheme, isRTL);
+  const router = useRouter();
 
-const MarketScreen = () => {
-    const { colors, activeScheme } = useAppTheme();
-    const { t, isRTL } = useTranslation();
-    const styles = getStyles(colors, activeScheme);
-    const insets = useSafeAreaInsets();
-    const { showToast } = useToastStore();
+  const { 
+    items, isLoading, isRefreshing, hasMore, loadItems, 
+    myItems, myIsLoading, myIsRefreshing, myHasMore, loadMyItems,
+    searchQuery, setSearchQuery 
+  } = useMarketStore();
+  const { openModal } = useModal();
+  const [activeCategory, setActiveCategory] = useState<string | undefined>(undefined);
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [viewType, setViewType] = useState<'browse' | 'mine'>('browse');
+  const searchInputRef = React.useRef<import('react-native').TextInput>(null);
 
-    const upcomingFeatures = [
-        { icon: 'storefront-outline', title: 'Curated Marketplace', desc: 'Securely buy and sell physical & digital goods.' },
-        { icon: 'hammer-outline', title: 'Live Auctions', desc: 'Real-time bidding on exclusive, one-of-a-kind items.' },
-        { icon: 'diamond-outline', title: 'NFT Collections', desc: 'Showcase and trade your unique digital assets.' },
-        { icon: 'swap-horizontal-outline', title: 'P2P Trade Center', desc: 'Direct bartering and exchange with other users.' },
-        { icon: 'wallet-outline', title: 'Integrated Wallet', desc: 'Manage your earnings and payments in one place.' },
-    ];
+  const debouncedSearch = React.useCallback(
+    debounce((query: string) => {
+      if (viewType === 'browse') {
+        loadItems(true, activeCategory);
+      } else {
+        loadMyItems(true);
+      }
+    }, 500),
+    [activeCategory, viewType, loadItems, loadMyItems]
+  );
 
-    const handleNotifyMe = () => {
-        showToast(t('success'), 'success');
-    };
+  const handleSearchChange = (text: string) => {
+    setSearchQuery(text);
+    debouncedSearch(text);
+  };
 
-    return (
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
-            <StatusBar barStyle={activeScheme === 'dark' ? 'light-content' : 'dark-content'} />
+  const categories = useMemo(() => [
+    { id: 'all', name: t('all') },
+    ...MARKET_CATEGORIES.map(cat => ({ ...cat, name: t(cat.name) }))
+  ], [t]);
 
-            {/* Header */}
-            <View style={[styles.header, { paddingTop: insets.top + 20, backgroundColor: colors.background, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>Nexus {t('market')}</Text>
-                <View style={styles.versionBadge}>
-                    <Text style={styles.versionText}>v2.0 Beta {t('coming_soon')}</Text>
-                </View>
-            </View>
+  useEffect(() => {
+    if (viewType === 'browse') {
+      loadItems(true, activeCategory);
+    } else {
+      loadMyItems(true);
+    }
 
-            <ScrollView
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-            >
-                {/* Main Hero Card */}
-                <MotiView
-                    from={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ type: 'timing', duration: 800 }}
-                    style={styles.heroCard}
-                >
-                    <LinearGradient
-                        colors={['#1a1a1a', '#333']}
-                        style={styles.heroGradient}
-                    >
-                        <MaterialCommunityIcons name="shopping-outline" size={80} color="rgba(255,255,255,0.1)" style={[styles.heroIcon, isRTL ? { left: -20, right: undefined } : { right: -20 }]} />
-                        <View style={[styles.heroBadge, isRTL ? { alignSelf: 'flex-end' } : { alignSelf: 'flex-start' }]}>
-                            <Text style={styles.heroBadgeText}>{t('coming_soon')}</Text>
-                        </View>
-                        <Text style={[styles.heroTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t('market_hero_title')}</Text>
-                        <Text style={[styles.heroSubtitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t('market_hero_subtitle')}</Text>
+    // ✅ Real-time Market Updates
+    PusherService.subscribeToMarket(
+      (data: any) => {
+        // New Comment
+        const { itemId, comment } = data;
+        useMarketStore.getState().updateItemLocally(itemId, (item) => ({
+          ...item,
+          comments: [...(item.comments || []).filter((c: any) => c.id !== comment.id), comment]
+        }));
+      },
+      (data: any) => {
+        // New Reaction
+        const { itemId, reaction } = data;
+        useMarketStore.getState().updateItemLocally(itemId, (item) => {
+          const reactions = [...(item.reactions || []).filter((r: any) => r.user_id !== reaction.user_id), reaction];
+          // Recalculate reaction counts
+          const counts: any = {};
+          reactions.forEach((r: any) => { counts[r.emoji] = (counts[r.emoji] || 0) + 1; });
+          const reactionCounts = Object.keys(counts).map(emoji => ({ emoji, count: counts[emoji] }));
 
-                        <TouchableOpacity style={[styles.notifyBtn, { flexDirection: isRTL ? 'row-reverse' : 'row' }, isRTL ? { alignSelf: 'flex-end' } : { alignSelf: 'flex-start' }]} onPress={handleNotifyMe} activeOpacity={0.8}>
-                            <Text style={styles.notifyBtnText}>{t('notify_me')}</Text>
-                            <Ionicons name="notifications-outline" size={18} color="#1a1a1a" />
-                        </TouchableOpacity>
-                    </LinearGradient>
-                </MotiView>
-
-                {/* Upcoming Features Section */}
-                <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t('upcoming_features')}</Text>
-                    {upcomingFeatures.map((feature, index) => (
-                        <MotiView
-                            key={index}
-                            from={{ opacity: 0, translateX: -20 }}
-                            animate={{ opacity: 1, translateX: 0 }}
-                            transition={{ type: 'timing', duration: 500, delay: 200 + (index * 100) }}
-                            style={[styles.featureCard, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
-                        >
-                            <View style={[styles.iconContainer, isRTL ? { marginLeft: 16, marginRight: 0 } : { marginRight: 16 }]}>
-                                <Ionicons name={feature.icon as any} size={24} color="#0084ff" />
-                            </View>
-                            <View style={styles.featureText}>
-                                <Text style={[styles.featureTitle, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}>{feature.title}</Text>
-                                <Text style={[styles.featureDesc, { color: colors.textSecondary, textAlign: isRTL ? 'right' : 'left' }]}>{feature.desc}</Text>
-                            </View>
-                            <Ionicons name={isRTL ? "chevron-back" : "chevron-forward"} size={16} color="rgba(0,0,0,0.2)" />
-                        </MotiView>
-                    ))}
-                </View>
-
-                {/* Bottom Footer Info */}
-                <View style={styles.footer}>
-                    <Text style={styles.footerText}>Powered by Nexus Design Systems</Text>
-                    <Text style={styles.copyright}>© 2026 Nexus Social Media Corp.</Text>
-                </View>
-            </ScrollView>
-        </View>
+          return {
+            ...item,
+            reactions,
+            reaction_counts: reactionCounts
+          };
+        });
+      },
+      (data: any) => {
+        // Item Updated
+        const { item } = data;
+        useMarketStore.getState().addOrUpdateItem(item);
+      },
+      (data: any) => {
+        // Item Deleted
+        const { itemId } = data;
+        useMarketStore.getState().removeItemLocally(itemId);
+      }
     );
-};
 
-function getStyles(colors: any, activeScheme: string) {
-    return StyleSheet.create({
-        container: { flex: 1 },
-        header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 20 },
-        headerTitle: { fontSize: 24, fontWeight: '800', letterSpacing: -0.5 },
-        versionBadge: { backgroundColor: 'rgba(0,132,255,0.1)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-        versionText: { color: '#0084ff', fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
-        scrollContent: { paddingHorizontal: 20, paddingBottom: 60 },
-        heroCard: { borderRadius: 28, overflow: 'hidden', marginBottom: 32, ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 20 }, android: { elevation: 8 } }) },
-        heroGradient: { padding: 32, minHeight: 220, justifyContent: 'center' },
-        heroIcon: { position: 'absolute', right: -20, top: -20 },
-        heroBadge: { alignSelf: 'flex-start', backgroundColor: '#4ADE80', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, marginBottom: 16 },
-        heroBadgeText: { color: '#1a1a1a', fontSize: 34, fontWeight: '800', letterSpacing: 0.5 },
-        heroTitle: { fontSize: 28, fontWeight: '800', color: '#fff', marginBottom: 12, letterSpacing: -0.5, lineHeight: 34 },
-        heroSubtitle: { fontSize: 16, color: 'rgba(255,255,255,0.7)', lineHeight: 24, marginBottom: 24 },
-        notifyBtn: { backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 14, gap: 8 },
-        notifyBtnText: { color: '#1a1a1a', fontSize: 15, fontWeight: '700' },
-        section: { marginTop: 8 },
-        sectionTitle: { fontSize: 18, fontWeight: '800', color: colors.text, marginBottom: 16, paddingLeft: 4 },
-        featureCard: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: colors.surface,
-            padding: 16,
-            borderRadius: 20,
-            marginBottom: 12,
-            borderWidth: 1,
-            borderColor: colors.border,
-            width: isMobile ? '98%' : '100%',
-            alignSelf: 'center',
-            ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10 }, android: { elevation: 2 } })
-        },
-        iconContainer: { width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(0,132,255,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
-        featureText: { flex: 1 },
-        featureTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 2 },
-        featureDesc: { fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
-        footer: { marginTop: 40, alignItems: 'center', paddingBottom: 20 },
-        footerText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, opacity: 0.5, marginBottom: 4 },
-        copyright: { fontSize: 11, fontWeight: '500', color: colors.textSecondary, opacity: 0.3 },
-    });
+    return () => {
+      PusherService.unsubscribeFromMarket();
+    };
+  }, [activeCategory, viewType]);
+
+  const handleRefresh = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (viewType === 'browse') {
+      loadItems(true, activeCategory);
+    } else {
+      loadMyItems(true);
+    }
+  };
+
+  const handleLoadMore = () => {
+    if (viewType === 'browse') {
+      if (hasMore && !isLoading && !isRefreshing) {
+        loadItems(false, activeCategory);
+      }
+    } else {
+      if (myHasMore && !myIsLoading && !myIsRefreshing) {
+        loadMyItems(false);
+      }
+    }
+  };
+
+  const handleChatPress = async (item: MarketItem) => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const response = await startItemChat(item.id);
+      if (response.space) {
+        // Automatically send the item share so the owner knows the context
+        const collaborationService = CollaborationService.getInstance();
+        const baseUrl = getApiBaseImage();
+
+        const metadata = {
+          post_id: item.id,
+          is_market: true,
+          creator_name: item.user?.name || 'Anonymous',
+          creator_avatar: item.user?.profile_photo,
+          media: item.media || [],
+          caption: item.description,
+          is_internal_share: true,
+          post_url: `${baseUrl}/post/${item.id}`,
+        };
+
+        await collaborationService.sendMessage(response.space.id, {
+          content: `${t('market_inquiry_about')}: ${item.title}`,
+          type: 'post_share',
+          metadata
+        });
+
+        router.push(`/(spaces)/${response.space.id}`);
+      }
+    } catch (error) {
+      console.error('Error starting chat:', error);
+    }
+  };
+
+  const renderHeader = () => (
+    <View style={styles.headerContainer}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>{t('market_marketplace')}</Text>
+        <TouchableOpacity
+          style={styles.searchBtn}
+          onPress={() => {
+            setIsSearchVisible(!isSearchVisible);
+            if (!isSearchVisible) {
+              setTimeout(() => searchInputRef.current?.focus(), 100);
+            } else {
+              setSearchQuery('');
+              loadItems(true, activeCategory);
+            }
+          }}
+        >
+          <Ionicons name={isSearchVisible ? "close" : "search"} size={24} color={colors.text} />
+        </TouchableOpacity>
+      </View>
+      {isSearchVisible && (
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
+          <TextInput
+            ref={searchInputRef as any}
+            style={[styles.searchInput, { color: colors.text }]}
+            placeholder={t('market_search_placeholder')}
+            placeholderTextColor={colors.textSecondary}
+            value={searchQuery}
+            onChangeText={handleSearchChange}
+            clearButtonMode="while-editing"
+          />
+        </View>
+      )}
+      
+      <View style={styles.switchWrapper}>
+        <View style={styles.switchContainer}>
+          <TouchableOpacity 
+            style={[styles.switchTab, viewType === 'browse' && styles.switchTabActive]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setViewType('browse');
+            }}
+          >
+            <Text style={[styles.switchText, viewType === 'browse' && styles.switchTextActive]}>
+              {t('market_browse')}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.switchTab, viewType === 'mine' && styles.switchTabActive]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setViewType('mine');
+            }}
+          >
+            <Text style={[styles.switchText, viewType === 'mine' && styles.switchTextActive]}>
+              {t('market_my_items')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+
+  const renderCategories = () => (
+    <View style={styles.categoriesWrapper}>
+      <FlatList
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        data={categories}
+        keyExtractor={item => item.id}
+        contentContainerStyle={styles.categoriesList}
+        renderItem={({ item }) => {
+          const isActive = (activeCategory === item.id) || (!activeCategory && item.id === 'all');
+          return (
+            <TouchableOpacity
+              style={[
+                styles.categoryChip,
+                isActive ? styles.categoryChipActive : { backgroundColor: colors.surface }
+              ]}
+              onPress={() => setActiveCategory(item.id === 'all' ? undefined : item.id)}
+            >
+              <Text style={[
+                styles.categoryText,
+                isActive ? styles.categoryTextActive : { color: colors.text }
+              ]}>
+                {item.name}
+              </Text>
+            </TouchableOpacity>
+          );
+        }}
+      />
+    </View>
+  );
+
+  const displayItems = viewType === 'browse' ? items : myItems;
+  const isDisplayLoading = viewType === 'browse' ? isLoading : myIsLoading;
+  const isDisplayRefreshing = viewType === 'browse' ? isRefreshing : myIsRefreshing;
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {renderHeader()}
+      {viewType === 'browse' && renderCategories()}
+
+      <FlatList
+        data={displayItems}
+        keyExtractor={(item) => item.id.toString()}
+        showsVerticalScrollIndicator={false}
+        renderItem={({ item }) => (
+          <MarketCard
+            item={item}
+            onPress={() => {/* Future: Open detailed view */ }}
+            onChatPress={() => handleChatPress(item)}
+          />
+        )}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={isDisplayRefreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+          />
+        }
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          isDisplayLoading && !isDisplayRefreshing ? (
+            <View style={styles.footerLoader}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : null
+        }
+        ListEmptyComponent={
+          !isDisplayLoading && !isDisplayRefreshing ? (
+            <View style={styles.emptyState}>
+              <Ionicons name={viewType === 'browse' ? "storefront-outline" : "cube-outline"} size={64} color={colors.textSecondary} />
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>
+                {viewType === 'browse' ? t('market_no_items_found') : t('market_no_my_items')}
+              </Text>
+              {viewType === 'browse' && (
+                <Text style={[styles.emptyDesc, { color: colors.textSecondary }]}>
+                  {t('market_be_first_to_sell')}
+                </Text>
+              )}
+            </View>
+          ) : null
+        }
+      />
+
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: colors.primary }]}
+        onPress={() => openModal('create-market-item')}
+      >
+        <Ionicons name="add" size={32} color="#fff" />
+      </TouchableOpacity>
+
+    </SafeAreaView>
+  );
 }
 
-export default MarketScreen;
+const getStyles = (colors: any, scheme: string, isRTL: boolean) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  headerContainer: {
+    paddingBottom: 8,
+  },
+  header: {
+    flexDirection: isRTL ? 'row-reverse' : 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  searchBtn: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+  },
+  searchContainer: {
+    flexDirection: isRTL ? 'row-reverse' : 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    marginHorizontal: 16,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+  },
+  searchIcon: {
+    marginRight: isRTL ? 0 : 8,
+    marginLeft: isRTL ? 8 : 0,
+  },
+  searchInput: {
+    flex: 1,
+    height: 40,
+    fontSize: 16,
+    textAlign: isRTL ? 'right' : 'left',
+  },
+  switchWrapper: {
+    paddingHorizontal: 16,
+    marginTop: 8,
+  },
+  switchContainer: {
+    flexDirection: isRTL ? 'row-reverse' : 'row',
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: 4,
+  },
+  switchTab: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  switchTabActive: {
+    backgroundColor: colors.primary,
+  },
+  switchText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  switchTextActive: {
+    color: '#fff',
+  },
+  categoriesWrapper: {
+    marginBottom: 8,
+  },
+  categoriesList: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    gap: 8,
+  },
+  categoryChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  categoryChipActive: {
+    backgroundColor: '#1DA1F2',
+  },
+  categoryText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  categoryTextActive: {
+    color: '#fff',
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 100, // Space for FAB
+  },
+  footerLoader: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 100,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyDesc: {
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+  }
+});

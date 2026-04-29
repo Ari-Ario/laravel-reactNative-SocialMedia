@@ -86,6 +86,15 @@ const BookmarkCard = React.memo(({
     onNavigate 
 }: any) => {
     const { t } = useTranslation();
+    const item = bookmark.post || bookmark.market_item;
+    const isMarket = !!bookmark.market_item;
+    const title = isMarket ? item.title : item.caption;
+    const media = item.media?.[0];
+    const user = item.user;
+    const itemId = isMarket ? bookmark.market_item_id : bookmark.post_id;
+
+    if (!item) return null;
+
     return (
         <MotiView
             from={{ opacity: 0, translateX: -20 }}
@@ -96,24 +105,24 @@ const BookmarkCard = React.memo(({
             <View style={styles.timelineGradient}>
                 <TouchableOpacity 
                     style={styles.timelineContent} 
-                    onPress={() => onNavigate(bookmark.post_id)}
+                    onPress={() => onNavigate(itemId, isMarket)}
                 >
-                    {bookmark.post.media?.[0] && (
+                    {media && (
                         <Image 
-                            source={{ uri: `${getApiBaseImage()}/storage/${bookmark.post.media[0].file_path}` }} 
+                            source={{ uri: `${getApiBaseImage()}/storage/${media.file_path}` }} 
                             style={styles.timelineThumb} 
                         />
                     )}
                     <View style={styles.timelineInfo}>
                         <View style={styles.timelineRow}>
                             <Image 
-                                source={{ uri: bookmark.post.user.profile_photo ? `${getApiBaseImage()}/storage/${bookmark.post.user.profile_photo}` : 'https://via.placeholder.com/20' }} 
+                                source={{ uri: user?.profile_photo ? `${getApiBaseImage()}/storage/${user.profile_photo}` : 'https://via.placeholder.com/20' }} 
                                 style={styles.timelineAvatar} 
                             />
-                            <Text style={styles.timelineName}>{bookmark.post.user.name}</Text>
+                            <Text style={styles.timelineName}>{user?.name || t('user')}</Text>
                         </View>
                         <Text style={styles.timelineCaption} numberOfLines={2}>
-                            {bookmark.post.caption || t('save')}
+                            {title || t('save')}
                         </Text>
                         {bookmark.note && (
                             <View style={styles.timelineNote}>
@@ -131,7 +140,7 @@ const BookmarkCard = React.memo(({
                                 </TouchableOpacity>
                                 <TouchableOpacity 
                                     style={[styles.mobileActionButton, styles.mobileActionDelete]} 
-                                    onPress={() => onRemove(bookmark.post_id)}
+                                    onPress={() => onRemove(itemId, isMarket)}
                                 >
                                     <Ionicons name="trash-outline" size={18} color={colors.error} />
                                 </TouchableOpacity>
@@ -142,8 +151,8 @@ const BookmarkCard = React.memo(({
                 {isDesktopWeb && (
                     <WebActionButtons 
                         onAddNote={() => onAddNote(bookmark)} 
-                        onRemove={() => onRemove(bookmark.post_id)} 
-                        onNavigate={() => onNavigate(bookmark.post_id)} 
+                        onRemove={() => onRemove(itemId, isMarket)} 
+                        onNavigate={() => onNavigate(itemId, isMarket)} 
                     />
                 )}
             </View>
@@ -159,7 +168,7 @@ export default function BookmarksScreen() {
     const styles = getStyles(colors, activeScheme);
     const insets = useSafeAreaInsets();
     const params = useLocalSearchParams();
-    const { bookmarks, removeBookmark, updateBookmarkNote, moveToCollection } = useBookmarkStore();
+    const { bookmarks, removeBookmark, removeMarketBookmark, updateBookmarkNote, moveToCollection } = useBookmarkStore();
     const [selectedCollection, setSelectedCollection] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [showNoteModal, setShowNoteModal] = useState(false);
@@ -173,8 +182,11 @@ export default function BookmarksScreen() {
         if (params.initialPostId) {
             const bookmark = bookmarks.find(b => b.post_id === Number(params.initialPostId));
             if (bookmark) handleAddNote(bookmark);
+        } else if (params.initialMarketItemId) {
+            const bookmark = bookmarks.find(b => b.market_item_id === Number(params.initialMarketItemId));
+            if (bookmark) handleAddNote(bookmark);
         }
-    }, [params.initialPostId, bookmarks]);
+    }, [params.initialPostId, params.initialMarketItemId, bookmarks]);
 
     const getTimeBasedGreeting = () => {
         const hour = new Date().getHours();
@@ -190,13 +202,15 @@ export default function BookmarksScreen() {
     };
 
     const filteredBookmarks = bookmarks.filter(bookmark => {
-        if (!bookmark || !bookmark.post) return false;
+        const item = bookmark.post || bookmark.market_item;
+        if (!item) return false;
         if (selectedCollection !== 'all' && bookmark.collection !== selectedCollection) return false;
         if (searchQuery) {
             const searchLower = searchQuery.toLowerCase();
+            const title = bookmark.market_item ? bookmark.market_item.title : bookmark.post.caption;
             return (
-                bookmark.post.caption?.toLowerCase().includes(searchLower) ||
-                bookmark.post.user.name.toLowerCase().includes(searchLower) ||
+                title?.toLowerCase().includes(searchLower) ||
+                item.user?.name?.toLowerCase().includes(searchLower) ||
                 bookmark.note?.toLowerCase().includes(searchLower)
             );
         }
@@ -211,9 +225,13 @@ export default function BookmarksScreen() {
         return groups;
     }, {} as Record<string, any[]>);
 
-    const handleRemoveBookmark = (postId: number) => {
+    const handleRemoveBookmark = (itemId: number, isMarket: boolean = false) => {
         const confirm = () => {
-            removeBookmark(postId);
+            if (isMarket) {
+                removeMarketBookmark(itemId);
+            } else {
+                removeBookmark(itemId);
+            }
         };
         if (isDesktopWeb) {
             if (window.confirm(t('logout'))) confirm();
@@ -234,9 +252,11 @@ export default function BookmarksScreen() {
 
     const saveNote = async () => {
         if (currentBookmark) {
+            const isMarket = !!currentBookmark.market_item;
+            const itemId = isMarket ? currentBookmark.market_item_id : currentBookmark.post_id;
             try {
-                if (noteText !== currentBookmark.note) await updateBookmarkNote(currentBookmark.post_id, noteText);
-                if (tempCollection !== currentBookmark.collection) await moveToCollection(currentBookmark.post_id, tempCollection);
+                if (noteText !== currentBookmark.note) await updateBookmarkNote(itemId, noteText, isMarket);
+                if (tempCollection !== currentBookmark.collection) await moveToCollection(itemId, tempCollection, isMarket);
                 setShowNoteModal(false);
             } catch (error) {
                 Alert.alert(t('error'), t('failed_update'));
@@ -244,8 +264,12 @@ export default function BookmarksScreen() {
         }
     };
 
-    const navigateToPost = (postId: number) => {
-        router.push(`/post/${postId}`);
+    const navigateToPost = (itemId: number, isMarket: boolean = false) => {
+        if (isMarket) {
+            router.push(`/post/${itemId}?isMarket=true`);
+        } else {
+            router.push(`/post/${itemId}`);
+        }
     };
 
     const renderTimelineView = () => (

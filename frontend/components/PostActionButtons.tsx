@@ -173,6 +173,16 @@ const PostActionButtonsBase = ({
               </View>
             );
           })}
+          
+          <TouchableOpacity
+            style={[styles.reactionItem, { borderColor: reactionBorder, paddingHorizontal: 8 }]}
+            onPress={() => {
+              setCurrentReactingItem({ postId: post.id });
+              setIsEmojiPickerOpen(true);
+            }}
+          >
+            <Ionicons name="add" size={16} color={secondaryColor} />
+          </TouchableOpacity>
         </ScrollView>
       </View>
 

@@ -1831,17 +1831,17 @@ const SpaceDetailScreen = () => {
             label: t('space_settings_label'),
             onPress: handleOpenSettings,
           } as MenuItem] : []),
-          {
+          ...((!isDirectChat && (space?.space_type !== 'protected' || ['owner', 'moderator'].includes(myParticipation?.role))) ? [{
             icon: 'people-outline',
             label: t('view_participants_label'),
             onPress: () => setShowParticipantsModal(true),
-          } as MenuItem,
+          } as MenuItem] : []),
           ...((space?.space_type === 'general' || space?.space_type === 'channel') ? [{
             icon: 'share-social-outline',
             label: t('share_space_label'),
             onPress: handleShare,
           } as MenuItem] : []),
-          ...(canEditSpace ? [{
+          ...((canEditSpace && !isDirectChat) ? [{
             icon: 'shield-outline',
             label: t('manage_admins_label'),
             onPress: () => setShowAdminsModal(true),

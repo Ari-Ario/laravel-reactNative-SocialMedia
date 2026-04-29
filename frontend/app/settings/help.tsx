@@ -144,6 +144,10 @@ export default function HelpCenterScreen() {
         { question: t('faq_q_dark_mode'), answer: t('faq_a_dark_mode'), category: "personalization", helpful: 0 },
         { question: t('faq_q_linked_devices'), answer: t('faq_a_linked_devices'), category: "security", helpful: 0 },
         { question: t('faq_q_report_content'), answer: t('faq_a_report_content'), category: "moderation", helpful: 0 },
+        { question: t('faq_q_market_how_to'), answer: t('faq_a_market_how_to'), category: "market", helpful: 0 },
+        { question: t('faq_q_market_conditions'), answer: t('faq_a_market_conditions'), category: "market", helpful: 0 },
+        { question: t('faq_q_market_delivery'), answer: t('faq_a_market_delivery'), category: "market", helpful: 0 },
+        { question: t('faq_q_my_items'), answer: t('faq_a_my_items'), category: "market", helpful: 0 },
         { question: t('faq_q_synchronicity'), answer: t('faq_a_synchronicity'), category: "features", helpful: 0 },
     ];
 
@@ -156,6 +160,7 @@ export default function HelpCenterScreen() {
         { id: 'security', label: t('profile_security'), icon: 'shield-checkmark' },
         { id: 'technical', label: t('storage'), icon: 'hardware-chip' },
         { id: 'personalization', label: t('personal'), icon: 'color-palette' },
+        { id: 'market', label: t('market_marketplace'), icon: 'cart' },
         { id: 'moderation', label: t('moderation_panel'), icon: 'flag' },
         { id: 'features', label: t('upcoming_features'), icon: 'sparkles' },
     ];
@@ -325,12 +330,12 @@ export default function HelpCenterScreen() {
                             {t('app_version_build', { version: '2.4.0', build: '890' })}
                         </Text>
                         <View style={styles.linkRow}>
-                            <TouchableOpacity onPress={() => Linking.openURL('https://zmzir.com/terms')}>
-                                <Text style={styles.footerLink}>{t('privacy')}</Text>
+                            <TouchableOpacity onPress={() => router.push('/TermsOfService')}>
+                                <Text style={styles.footerLink}>{t('terms')}</Text>
                             </TouchableOpacity>
                             <Text style={styles.footerDot}>•</Text>
-                            <TouchableOpacity onPress={() => Linking.openURL('https://zmzir.com/privacy')}>
-                                <Text style={styles.footerLink}>{t('privacy')}</Text>
+                            <TouchableOpacity onPress={() => router.push('/PrivacyPolicy')}>
+                                <Text style={styles.footerLink}>{t('privacy_policy')}</Text>
                             </TouchableOpacity>
                         </View>
                         <TouchableOpacity style={styles.feedbackButton} onPress={() => Linking.openURL('mailto:support@zmzir.com?subject=App%20Feedback&body=Hi%20Zmzir%20Team%2C%0A%0A')}>

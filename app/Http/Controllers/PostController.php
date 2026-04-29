@@ -881,7 +881,7 @@ class PostController extends Controller
     public function getBookmarks()
     {
         $bookmarks = Bookmark::where('user_id', Auth::id())
-            ->with(['post.user', 'post.media'])
+            ->with(['post.user', 'post.media', 'market_item.user', 'market_item.media'])
             ->latest()
             ->get();
 

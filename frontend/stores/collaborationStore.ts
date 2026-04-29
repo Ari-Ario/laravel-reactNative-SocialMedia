@@ -338,6 +338,8 @@ export const useCollaborationStore = create<CollaborationState>()(
               const spaceExists = state.spaces.some(s => s.id.toString() === spaceId);
               const currentUserId = require('@/stores/notificationStore').useNotificationStore.getState().currentUserId;
 
+              const eventTime = data.created_at || data.timestamp || data.data?.created_at || new Date().toISOString();
+
               // Extraction of space data from various possible nesting levels
               const spaceInfo = data.space || data.data?.space;
 
@@ -365,15 +367,19 @@ export const useCollaborationStore = create<CollaborationState>()(
                 const hasRequiredFields = spaceData.creator_id && (spaceData.title || spaceData.other_participant?.name);
 
                 if (spaceExists) {
-                  get().updateSpace(spaceId, spaceData);
+                  get().updateSpace(spaceId, { ...spaceData, updated_at: eventTime });
                 } else if (hasRequiredFields) {
-                  get().addSpace(spaceData);
+                  get().addSpace({ ...spaceData, updated_at: eventTime });
                 } else {
                   // Fallback to fetch if data is incomplete
                   console.log(`🆕 Incomplete space data for ${spaceId} (missing creator_id or title). Triggering fetch.`);
                   if (currentUserId) get().fetchUserSpaces(currentUserId);
                 }
-              } else if (!spaceExists) {
+              } else if (spaceExists) {
+                // ✅ KEY FIX: Bump updated_at even if we don't have full space data.
+                // This ensures the chat list re-sorts correctly in real-time.
+                get().updateSpace(spaceId, { updated_at: eventTime });
+              } else {
                 console.log(`🆕 New space detected from message: ${spaceId}. Triggering fetch.`);
                 if (currentUserId) {
                   get().fetchUserSpaces(currentUserId);
@@ -454,6 +460,10 @@ export const useCollaborationStore = create<CollaborationState>()(
           case 'magic_event':
             if (data.space_id && data.event) {
               get().addMagicEvent(data.event);
+              // Bump updated_at to bring space to top
+              get().updateSpace(data.space_id.toString(), { 
+                updated_at: data.created_at || data.timestamp || new Date().toISOString() 
+              });
             }
             break;
 
@@ -489,6 +499,12 @@ export const useCollaborationStore = create<CollaborationState>()(
           case 'activity_created':
             if (data.activity) {
               get().addActivity(data.activity);
+              // Bump updated_at to bring space to top
+              if (data.activity.space_id) {
+                get().updateSpace(data.activity.space_id.toString(), { 
+                  updated_at: data.activity.created_at || new Date().toISOString() 
+                });
+              }
             }
             break;
 

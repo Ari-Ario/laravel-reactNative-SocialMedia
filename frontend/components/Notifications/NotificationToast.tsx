@@ -13,6 +13,8 @@ import { useProfileView } from '@/context/ProfileViewContext';
 import { fetchPostById } from '@/services/PostService';
 import { fetchProfile } from '@/services/UserService';
 import { useTranslation } from '@/constants/i18n';
+import { useMarketStore } from '@/stores/marketStore';
+import { fetchMarketItemById } from '@/services/MarketService';
 
 interface NotificationToastProps {
   notification: Notification | null;
@@ -147,6 +149,28 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
         router.push('/moderation/admin-channel');
       } else if (item.type === 'post_deleted' || item.type === NOTIFICATION_TYPES.CALL_ENDED) {
         // Do nothing on toast click
+      } else if ([NOTIFICATION_TYPES.MARKET_COMMENT, NOTIFICATION_TYPES.MARKET_REACTION].includes(item.type)) {
+        const itemId = item.marketItemId || item.data?.itemId || item.data?.marketItemId;
+        if (itemId) {
+          // Pre-load market item into store for instant view
+          try {
+            const marketData = await fetchMarketItemById(Number(itemId));
+            if (marketData) {
+              useMarketStore.getState().addOrUpdateItem(marketData);
+            }
+          } catch (err) {
+            console.error('Failed to preload market item:', err);
+          }
+
+          router.push({
+            pathname: '/post/[id]',
+            params: { 
+              id: itemId.toString(), 
+              isMarket: 'true', 
+              highlightCommentId: item.commentId?.toString() 
+            }
+          } as any);
+        }
       } else if (['training_needed', NOTIFICATION_TYPES.CHATBOT_TRAINING].includes(item.type)) {
         router.push({ pathname: '/chatbotTraining', params: { highlightChatbotTraining: 'true', from: 'notifications' } });
       } else if (['post', NOTIFICATION_TYPES.POST_UPDATED, 'reaction'].includes(item.type) && item.postId) {

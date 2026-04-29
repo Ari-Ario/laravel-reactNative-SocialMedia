@@ -9,7 +9,7 @@ class Reaction extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'post_id', 'emoji'];
+    protected $fillable = ['user_id', 'post_id', 'market_item_id', 'emoji'];
 
     public function user()
     {
@@ -19,5 +19,10 @@ class Reaction extends Model
     public function post()
     {
         return $this->belongsTo(Post::class);
+    }
+
+    public function market_item()
+    {
+        return $this->belongsTo(MarketItem::class);
     }
 }

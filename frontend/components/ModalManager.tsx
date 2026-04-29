@@ -8,6 +8,7 @@ import ReportPost from './ReportPost';
 import ProfilePreview from './ProfilePreview';
 import PostShareModal from './PostShareModal';
 import LocationModal from './LocationModal';
+import CreateMarketItemModal from './Market/CreateMarketItemModal';
 
 export default function ModalManager() {
   const { modalType, modalProps, closeModal } = useModal();
@@ -44,6 +45,8 @@ export default function ModalManager() {
       return <ProfilePreview visible={true} onClose={closeModal} {...modalProps} />;
     case 'location':
       return <LocationModal visible={true} onClose={closeModal} {...modalProps} />;
+    case 'create-market-item':
+      return <CreateMarketItemModal visible={true} onClose={closeModal} {...modalProps} />;
     default:
       return null;
   }

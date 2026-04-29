@@ -9,7 +9,7 @@ class Repost extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'post_id', 'context_tag', 'personal_note', 'collection_id', 'visibility'];
+    protected $fillable = ['user_id', 'post_id', 'market_item_id', 'context_tag', 'personal_note', 'collection_id', 'visibility'];
     
     protected static function boot()
     {
@@ -34,9 +34,19 @@ class Repost extends Model
         return $this->belongsTo(Post::class)->with(['user', 'media', 'reactions', 'comments']);
     }
 
+    public function market_item()
+    {
+        return $this->belongsTo(MarketItem::class)->with(['user', 'media', 'reactions', 'comments']);
+    }
+
     public function originalPost()
     {
         return $this->belongsTo(Post::class, 'post_id');
+    }
+
+    public function originalMarketItem()
+    {
+        return $this->belongsTo(MarketItem::class, 'market_item_id');
     }
 
     public function collection()

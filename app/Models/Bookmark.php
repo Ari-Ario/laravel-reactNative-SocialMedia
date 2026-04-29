@@ -9,7 +9,7 @@ class Bookmark extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'post_id', 'collection', 'note'];
+    protected $fillable = ['user_id', 'post_id', 'market_item_id', 'collection', 'note'];
 
     public function user()
     {
@@ -19,5 +19,10 @@ class Bookmark extends Model
     public function post()
     {
         return $this->belongsTo(Post::class)->with(['user', 'media', 'reactions', 'comments']);
+    }
+
+    public function market_item()
+    {
+        return $this->belongsTo(MarketItem::class)->with(['user', 'media', 'reactions', 'comments']);
     }
 }

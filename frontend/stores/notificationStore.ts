@@ -24,6 +24,7 @@ export interface Notification {
   messageId?: string;  // ✅ ADDED: for reaction/reply routing
   callId?: string;
   activityId?: number;
+  marketItemId?: number;
   avatar?: string;
   fromUserId?: string; // ✅ ADDED
 }
@@ -39,6 +40,8 @@ export const NOTIFICATION_TYPES = {
   POST_DELETED: 'post_deleted',
   NEW_FOLLOWER: 'new_follower',
   CHATBOT_TRAINING: 'chatbot_training',
+  MARKET_COMMENT: 'market_comment',
+  MARKET_REACTION: 'market_reaction',
 
   // Space / Chat
   SPACE_INVITATION: 'space-invitation',
@@ -90,6 +93,8 @@ export const getNotificationIcon = (type: string): string => {
     case NOTIFICATION_TYPES.POST_DELETED: return 'trash-outline';
     case NOTIFICATION_TYPES.NEW_FOLLOWER: return 'person-add-outline';
     case NOTIFICATION_TYPES.CHATBOT_TRAINING: return 'school-outline';
+    case NOTIFICATION_TYPES.MARKET_COMMENT: return 'cart-outline';
+    case NOTIFICATION_TYPES.MARKET_REACTION: return 'heart-outline';
     case NOTIFICATION_TYPES.VIOLATION_REPORTED: return 'alert-outline';
     case NOTIFICATION_TYPES.MODERATION_ACTION: return 'notifications-outline';
     default: return 'notifications-outline';
@@ -123,6 +128,8 @@ export const getNotificationColor = (type: string): string => {
     case NOTIFICATION_TYPES.POST_DELETED: return '#FF3B30';
     case NOTIFICATION_TYPES.NEW_FOLLOWER: return '#5856D6';
     case NOTIFICATION_TYPES.CHATBOT_TRAINING: return '#FF2D55';
+    case NOTIFICATION_TYPES.MARKET_COMMENT: return '#FF9500';
+    case NOTIFICATION_TYPES.MARKET_REACTION: return '#FF3B30';
     case NOTIFICATION_TYPES.VIOLATION_REPORTED: return '#F44336';
     case NOTIFICATION_TYPES.MODERATION_ACTION: return '#FF3B30';
     default: return '#8E8E93';
@@ -367,6 +374,7 @@ export const useNotificationStore = create<NotificationStore>()(
           messageId: notificationData.messageId || notificationData.message_id,
           callId: notificationData.callId,
           activityId: notificationData.activityId,
+          marketItemId: notificationData.marketItemId || notificationData.itemId || notificationData.data?.itemId || notificationData.data?.marketItemId,
         };
 
         // ✅ Update last seen time to the receipt of this notification 

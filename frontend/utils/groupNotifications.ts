@@ -120,6 +120,12 @@ const getGroupKey = (n: Notification): string => {
     return `reactions::${postId || 'no-post'}`;
   }
 
+  // Market-related: group by market item
+  if (type === 'market_comment' || type === 'market_reaction') {
+    const marketId = n.marketItemId || n.data?.itemId || n.data?.marketItemId;
+    return `market::${type}::${marketId || 'no-item'}`;
+  }
+
   if (type === 'new_post' || type === 'post_updated' || type === 'post_deleted') {
     return `posts::${type}::${userId || 'no-user'}`;
   }
@@ -238,6 +244,16 @@ export function getGroupSummary(group: NotificationGroup, t: (key: string, param
   if (type === 'comment' || type === 'comment_reaction') {
     if (count === 1) return latestNotification.message || t('n_comments_on_post', { count: 1 });
     return t('n_comments_on_post', { count });
+  }
+
+  if (type === 'market_reaction') {
+    if (count === 1) return latestNotification.message || t('n_reactions_on_item', { count: 1 });
+    return t('n_reactions_on_item', { count });
+  }
+
+  if (type === 'market_comment') {
+    if (count === 1) return latestNotification.message || t('n_comments_on_item', { count: 1 });
+    return t('n_comments_on_item', { count });
   }
 
   // Default: use the latest message

@@ -445,7 +445,11 @@ const HomePage = () => {
             <View style={[styles.headerScrollContainer, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
                 <View style={[styles.header, { backgroundColor: colors.surface }]}>
                     <View style={styles.storiesContainer}>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 10, flexDirection: isRTL ? 'row-reverse' : 'row' }}>
+                        <ScrollView 
+                            horizontal 
+                            showsHorizontalScrollIndicator={false} 
+                            contentContainerStyle={styles.storiesScrollContent}
+                        >
                             <View style={styles.storyItem}>
                                 <View style={{ position: 'relative' }}>
                                     <TouchableOpacity
@@ -609,9 +613,13 @@ function getStyles(colors: any, activeScheme: string, isRTL: boolean): any {
             marginBottom: 15,
         },
         storiesContainer: {
-            // paddingVertical: 10,
-            // borderBottomWidth: 1,
-            // borderBottomColor: '#eee',
+            width: '100%',
+        },
+        storiesScrollContent: {
+            paddingHorizontal: 10,
+            flexDirection: isRTL ? 'row-reverse' : 'row',
+            flexGrow: 1,
+            justifyContent: 'flex-start',
         },
         myStoryCircle: {
             width: 70,
@@ -650,7 +658,7 @@ function getStyles(colors: any, activeScheme: string, isRTL: boolean): any {
         addStoryIcon: {
             position: 'absolute',
             bottom: 0,
-            right: 0,
+            [isRTL ? 'left' : 'right']: 0,
             borderRadius: 12,
             width: 24,
             height: 24,
@@ -661,7 +669,7 @@ function getStyles(colors: any, activeScheme: string, isRTL: boolean): any {
         unseenBadge: {
             position: 'absolute',
             top: -2,
-            right: -2,
+            [isRTL ? 'left' : 'right']: -2,
             width: 12,
             height: 12,
             borderRadius: 6,

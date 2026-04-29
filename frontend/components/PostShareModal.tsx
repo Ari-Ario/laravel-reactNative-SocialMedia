@@ -199,6 +199,7 @@ export default function PostShareModal({ visible, onClose, post, story, location
           media_type: mediaType,
           media: isStory || isLocation ? [] : (post.media || []),
           caption: isLocation ? undefined : (isStory ? story.caption : post.caption),
+          is_market: !isStory && !isLocation ? post.is_market : undefined,
           is_internal_share: true,
           post_url: shareUrl,
           appended_message: additionalMessage.trim() || undefined,

@@ -279,13 +279,13 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
                     },
                     updated_at: new Date().toISOString()
                 };
-                
+
                 // ✅ Sync with global store to trigger list re-ordering
                 useCollaborationStore.getState().updateSpace(spaceId, {
                     updated_at: updatedSpace.updated_at,
                     content_state: updatedSpace.content_state
                 });
-                
+
                 return updatedSpace;
             });
 
@@ -736,272 +736,272 @@ const SpaceChatTab: React.FC<SpaceChatTabProps> = ({
 
 function getStyles(colors: any, activeScheme: string, isRTL: boolean) {
     return RNStyleSheet.create({
-    chatContainer: {
-        flex: 1,
-    },
-    /* ── Polls banner ── */
-    pollsBanner: {
-        flexDirection: isRTL ? 'row-reverse' : 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderBottomWidth: 1,
-    },
-    pollsBannerLeft: {
-        flexDirection: isRTL ? 'row-reverse' : 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
-    pollsBannerText: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#007AFF',
-    },
-    pollsBannerRight: {
-        flexDirection: isRTL ? 'row-reverse' : 'row',
-        alignItems: 'center',
-        gap: 2,
-    },
-    pollsBannerCta: {
-        fontSize: 13,
-        fontWeight: '500',
-        color: '#007AFF',
-    },
-    /* ── Input area ── */
-    chatInputContainer: {
-        flexDirection: isRTL ? 'row-reverse' : 'row',
-        alignItems: 'flex-end',
-        paddingHorizontal: 8,
-        paddingVertical: 8,
-        borderTopWidth: 1,
-        ...createShadow({ width: 0, height: -2, opacity: 0.04, radius: 4, elevation: 4 }),
-    },
-    attachActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingBottom: 2,
-    },
-    actionButton: {
-        padding: 6,
-        marginHorizontal: 2,
-    },
-    messageInput: {
-        flex: 1,
-        borderRadius: 22,
-        paddingHorizontal: 16,
-        paddingTop: Platform.OS === 'ios' ? 10 : 8,
-        paddingBottom: Platform.OS === 'ios' ? 10 : 8,
-        marginHorizontal: 6,
-        fontSize: 15,
-        maxHeight: 120,
-        lineHeight: 20,
-        textAlign: isRTL ? 'right' : 'left',
-    },
-    sendButton: {
-        backgroundColor: '#007AFF',
-        width: 42,
-        height: 42,
-        borderRadius: 21,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 1,
-        [isRTL ? 'paddingRight' : 'paddingLeft']: 2,
-    },
-    sendIcon: {
-        transform: [{ rotate: isRTL ? '165deg' : '-15deg' }],
-    },
-    sendButtonDisabled: {
-        backgroundColor: '#c8c8c8',
-    },
-    /* ── Poll overlay ── */
-    overlayBackdrop: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.45)',
-        justifyContent: 'flex-end',
-    },
-    pollOverlaySheet: {
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        maxHeight: '80%',
-        ...createShadow({ width: 0, height: -4, opacity: 0.12, radius: 20, elevation: 20 }),
-        overflow: 'hidden',
-    },
-    sheetHeader: {
-        paddingTop: 10,
-        paddingBottom: 12,
-        paddingHorizontal: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
-    },
-    sheetHandle: {
-        width: 36,
-        height: 4,
-        backgroundColor: '#d0d0d0',
-        borderRadius: 2,
-        alignSelf: 'center',
-        marginBottom: 12,
-    },
-    sheetTitleRow: {
-        flexDirection: isRTL ? 'row-reverse' : 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    sheetTitle: {
-        flex: 1,
-        fontSize: 17,
-        fontWeight: '700',
-        color: '#1a1a1a',
-    },
-    sheetCloseBtn: {
-        padding: 4,
-        borderRadius: 14,
-        backgroundColor: '#f0f0f0',
-    },
-    /* ── Reply Preview Styles ── */
-    replyPreviewContainer: {
-        flexDirection: isRTL ? 'row-reverse' : 'row',
-        backgroundColor: '#f9f9f9',
-        borderTopWidth: 1,
-        borderTopColor: '#eee',
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        alignItems: 'center',
-    },
-    replyPreviewBar: {
-        width: 4,
-        height: '100%',
-        backgroundColor: '#007AFF',
-        borderRadius: 2,
-    },
-    replyPreviewContent: {
-        flex: 1,
-        marginLeft: 10,
-        justifyContent: 'center',
-    },
-    replyPreviewName: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#007AFF',
-        marginBottom: 2,
-    },
-    replyPreviewText: {
-        fontSize: 13,
-        color: '#666',
-        textAlign: isRTL ? 'right' : 'left',
-    },
-    replyPreviewClose: {
-        padding: 4,
-    },
-    /* ── Join / Admin Only Bars ── */
-    joinBarContainer: {
-        padding: 16,
-        alignItems: 'center',
-        backgroundColor: '#fff',
-        borderTopWidth: 1,
-        borderTopColor: '#e8e8e8',
-        gap: 10,
-    },
-    joinButton: {
-        backgroundColor: '#007AFF',
-        flexDirection: isRTL ? 'row-reverse' : 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-        borderRadius: 25,
-        gap: 8,
-        width: '100%',
-        ...createShadow({ width: 0, height: 2, opacity: 0.1, radius: 4, elevation: 3 }),
-    },
-    joinButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '700',
-    },
-    joinHint: {
-        fontSize: 13,
-        color: '#8E8E93',
-        textAlign: 'center',
-    },
-    adminOnlyBar: {
-        flexDirection: isRTL ? 'row-reverse' : 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#F2F2F7',
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        borderTopWidth: 1,
-        borderTopColor: '#e8e8e8',
-        gap: 8,
-    },
-    adminOnlyText: {
-        fontSize: 14,
-        color: '#8E8E93',
-        fontWeight: '500',
-    },
-    recordingOverlay: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: '#fff',
-        borderRadius: 25,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        marginHorizontal: 10,
-        marginBottom: 8,
-        ...createShadow({ width: 0, height: 2, opacity: 0.1, radius: 8, elevation: 5 }),
-    },
-    recordingCenterSection: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 12,
-    },
-    recordingPulse: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        backgroundColor: '#FF3B30',
-    },
-    recordingTimerText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#1a1a1a',
-        width: 45,
-        textAlign: 'center',
-    },
-    discardButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#FFE5E5',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    pauseResumeButton: {
-        width: 40,
-        height: 40,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    previewPlayButton: {
-        width: 32,
-        height: 32,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    sendRecordingButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#007AFF',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-});
+        chatContainer: {
+            flex: 1,
+        },
+        /* ── Polls banner ── */
+        pollsBanner: {
+            flexDirection: isRTL ? 'row-reverse' : 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: 14,
+            paddingVertical: 8,
+            borderBottomWidth: 1,
+        },
+        pollsBannerLeft: {
+            flexDirection: isRTL ? 'row-reverse' : 'row',
+            alignItems: 'center',
+            gap: 6,
+        },
+        pollsBannerText: {
+            fontSize: 13,
+            fontWeight: '600',
+            color: '#007AFF',
+        },
+        pollsBannerRight: {
+            flexDirection: isRTL ? 'row-reverse' : 'row',
+            alignItems: 'center',
+            gap: 2,
+        },
+        pollsBannerCta: {
+            fontSize: 13,
+            fontWeight: '500',
+            color: '#007AFF',
+        },
+        /* ── Input area ── */
+        chatInputContainer: {
+            flexDirection: isRTL ? 'row-reverse' : 'row',
+            alignItems: 'flex-end',
+            paddingHorizontal: 8,
+            paddingVertical: 8,
+            borderTopWidth: 1,
+            ...createShadow({ width: 0, height: -2, opacity: 0.04, radius: 4, elevation: 4 }),
+        },
+        attachActions: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingBottom: 2,
+        },
+        actionButton: {
+            padding: 6,
+            marginHorizontal: 2,
+        },
+        messageInput: {
+            flex: 1,
+            borderRadius: 22,
+            paddingHorizontal: 16,
+            paddingTop: Platform.OS === 'ios' ? 10 : 8,
+            paddingBottom: Platform.OS === 'ios' ? 10 : 8,
+            marginHorizontal: 6,
+            fontSize: 15,
+            maxHeight: 120,
+            lineHeight: 20,
+            textAlign: isRTL ? 'right' : 'left',
+        },
+        sendButton: {
+            backgroundColor: '#007AFF',
+            width: 42,
+            height: 42,
+            borderRadius: 21,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginBottom: 1,
+            [isRTL ? 'paddingRight' : 'paddingLeft']: 2,
+        },
+        sendIcon: {
+            transform: [{ rotate: isRTL ? '165deg' : '-15deg' }],
+        },
+        sendButtonDisabled: {
+            backgroundColor: '#c8c8c8',
+        },
+        /* ── Poll overlay ── */
+        overlayBackdrop: {
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.45)',
+            justifyContent: 'flex-end',
+        },
+        pollOverlaySheet: {
+            backgroundColor: '#fff',
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            maxHeight: '80%',
+            ...createShadow({ width: 0, height: -4, opacity: 0.12, radius: 20, elevation: 20 }),
+            overflow: 'hidden',
+        },
+        sheetHeader: {
+            paddingTop: 10,
+            paddingBottom: 12,
+            paddingHorizontal: 16,
+            borderBottomWidth: 1,
+            borderBottomColor: '#f0f0f0',
+        },
+        sheetHandle: {
+            width: 36,
+            height: 4,
+            backgroundColor: '#d0d0d0',
+            borderRadius: 2,
+            alignSelf: 'center',
+            marginBottom: 12,
+        },
+        sheetTitleRow: {
+            flexDirection: isRTL ? 'row-reverse' : 'row',
+            alignItems: 'center',
+            gap: 8,
+        },
+        sheetTitle: {
+            flex: 1,
+            fontSize: 17,
+            fontWeight: '700',
+            color: '#1a1a1a',
+        },
+        sheetCloseBtn: {
+            padding: 4,
+            borderRadius: 14,
+            backgroundColor: '#f0f0f0',
+        },
+        /* ── Reply Preview Styles ── */
+        replyPreviewContainer: {
+            flexDirection: isRTL ? 'row-reverse' : 'row',
+            backgroundColor: '#f9f9f9',
+            borderTopWidth: 1,
+            borderTopColor: '#eee',
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            alignItems: 'center',
+        },
+        replyPreviewBar: {
+            width: 4,
+            height: '100%',
+            backgroundColor: '#007AFF',
+            borderRadius: 2,
+        },
+        replyPreviewContent: {
+            flex: 1,
+            marginLeft: 10,
+            justifyContent: 'center',
+        },
+        replyPreviewName: {
+            fontSize: 13,
+            fontWeight: '600',
+            color: '#007AFF',
+            marginBottom: 2,
+        },
+        replyPreviewText: {
+            fontSize: 13,
+            color: '#666',
+            textAlign: isRTL ? 'right' : 'left',
+        },
+        replyPreviewClose: {
+            padding: 4,
+        },
+        /* ── Join / Admin Only Bars ── */
+        joinBarContainer: {
+            padding: 16,
+            alignItems: 'center',
+            backgroundColor: '#fff',
+            borderTopWidth: 1,
+            borderTopColor: '#e8e8e8',
+            gap: 10,
+        },
+        joinButton: {
+            backgroundColor: '#007AFF',
+            flexDirection: isRTL ? 'row-reverse' : 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingVertical: 12,
+            paddingHorizontal: 24,
+            borderRadius: 25,
+            gap: 8,
+            width: '100%',
+            ...createShadow({ width: 0, height: 2, opacity: 0.1, radius: 4, elevation: 3 }),
+        },
+        joinButtonText: {
+            color: '#fff',
+            fontSize: 16,
+            fontWeight: '700',
+        },
+        joinHint: {
+            fontSize: 13,
+            color: '#8E8E93',
+            textAlign: 'center',
+        },
+        adminOnlyBar: {
+            flexDirection: isRTL ? 'row-reverse' : 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: '#F2F2F7',
+            paddingVertical: 12,
+            paddingHorizontal: 16,
+            borderTopWidth: 1,
+            borderTopColor: '#e8e8e8',
+            gap: 8,
+        },
+        adminOnlyText: {
+            fontSize: 14,
+            color: '#8E8E93',
+            fontWeight: '500',
+        },
+        recordingOverlay: {
+            flexDirection: isRTL ? 'row-reverse' : 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backgroundColor: '#fff',
+            borderRadius: 25,
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            marginHorizontal: 10,
+            marginBottom: 8,
+            ...createShadow({ width: 0, height: 2, opacity: 0.1, radius: 8, elevation: 5 }),
+        },
+        recordingCenterSection: {
+            flex: 1,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 12,
+        },
+        recordingPulse: {
+            width: 10,
+            height: 10,
+            borderRadius: 5,
+            backgroundColor: '#FF3B30',
+        },
+        recordingTimerText: {
+            fontSize: 16,
+            fontWeight: '600',
+            color: '#1a1a1a',
+            width: 45,
+            textAlign: 'center',
+        },
+        discardButton: {
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: '#FFE5E5',
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        pauseResumeButton: {
+            width: 40,
+            height: 40,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        previewPlayButton: {
+            width: 32,
+            height: 32,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        sendRecordingButton: {
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: '#007AFF',
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+    });
 }
 
 export default React.memo(SpaceChatTab);

@@ -39,6 +39,10 @@ export const removeBookmark = async (postId: number): Promise<void> => {
     await axios.post(`/posts/${postId}/bookmark`);
 };
 
+export const removeMarketBookmark = async (marketItemId: number): Promise<void> => {
+    await axios.post(`/market/${marketItemId}/bookmark`);
+};
+
 export const updateBookmark = async (id: number, data: { collection?: string; note?: string | null }): Promise<Bookmark> => {
     const response = await axios.put(`/bookmarks/${id}`, data);
     return response.data.bookmark;
