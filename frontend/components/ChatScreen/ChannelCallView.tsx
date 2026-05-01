@@ -200,7 +200,7 @@ const ChannelCallView: React.FC<ChannelCallViewProps> = ({
           });
         } else {
           await Clipboard.setStringAsync(message);
-          Alert.alert(t('link_copied_title'), t('link_copied_msg'));
+          Alert.alert(t('link_copied_title'), t('broadcast_link_copied_msg'));
         }
       } else {
         await Share.share({

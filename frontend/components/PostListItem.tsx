@@ -280,7 +280,7 @@ function PostListItem({
     try {
       const result = await addBookmark(post.id);
       if (result.bookmarked && result.bookmark) {
-        showToast(t('post_bookmarked'), 'success');
+        showToast(t('post_bookmarked_feedback'), 'success');
         
         // If MediaViewer is open, close it so the "popup" navigation is visible
         if (service.mediaViewerVisible) {

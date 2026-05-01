@@ -1197,7 +1197,7 @@ const SpaceDetailScreen = () => {
         } else {
           await Clipboard.setStringAsync(message);
           if (typeof window !== 'undefined') {
-            window.alert(`${t('link_copied_title')}\n\n${t('link_copied_msg')}`);
+            window.alert(`${t('link_copied_title')}\n\n${t('space_link_copied_msg')}`);
           }
         }
       } else {

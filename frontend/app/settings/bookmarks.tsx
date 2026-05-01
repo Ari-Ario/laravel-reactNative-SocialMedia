@@ -61,7 +61,7 @@ const WebActionButtons = ({ onAddNote, onRemove, onNavigate }: any) => {
     <View style={styles.webActionButtons}>
         <TouchableOpacity style={styles.webActionButton} onPress={onNavigate}>
             <Ionicons name="open-outline" size={18} color={colors.text} />
-            <Text style={styles.webActionText}>{t('save')}</Text>
+            <Text style={styles.webActionText}>{t('open')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.webActionButton} onPress={onAddNote}>
             <Ionicons name="pencil" size={18} color={colors.text} />
@@ -69,7 +69,7 @@ const WebActionButtons = ({ onAddNote, onRemove, onNavigate }: any) => {
         </TouchableOpacity>
         <TouchableOpacity style={[styles.webActionButton, styles.webActionDelete]} onPress={onRemove}>
             <Ionicons name="trash-outline" size={18} color={colors.error} />
-            <Text style={styles.webActionText}>{t('logout')}</Text>
+            <Text style={styles.webActionText}>{t('delete')}</Text>
         </TouchableOpacity>
     </View>
     );
@@ -122,7 +122,7 @@ const BookmarkCard = React.memo(({
                             <Text style={styles.timelineName}>{user?.name || t('user')}</Text>
                         </View>
                         <Text style={styles.timelineCaption} numberOfLines={2}>
-                            {title || t('save')}
+                            {title || t('untitled')}
                         </Text>
                         {bookmark.note && (
                             <View style={styles.timelineNote}>
@@ -233,12 +233,12 @@ export default function BookmarksScreen() {
                 removeBookmark(itemId);
             }
         };
-        if (isDesktopWeb) {
-            if (window.confirm(t('logout'))) confirm();
+        if (isWeb) {
+            if (window.confirm(t('remove_bookmark_confirm'))) confirm();
         } else {
-            Alert.alert(t('logout'), t('logout'), [
+            Alert.alert(t('remove_bookmark_title'), t('remove_bookmark_confirm'), [
                 { text: t('cancel'), style: 'cancel' },
-                { text: t('logout'), style: 'destructive', onPress: confirm },
+                { text: t('delete'), style: 'destructive', onPress: confirm },
             ]);
         }
     };
@@ -342,7 +342,7 @@ export default function BookmarksScreen() {
             {showNoteModal && (
                 <View style={[styles.modalOverlay, { backgroundColor: activeScheme === 'dark' ? 'rgba(0,0,0,0.9)' : 'rgba(255,255,255,0.95)' }]}>
                     <MotiView from={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={styles.noteModal}>
-                        <Text style={styles.noteModalTitle}>{t('save')}</Text>
+                        <Text style={styles.noteModalTitle}>{t('edit')}</Text>
                         
                         <View style={styles.collectionSelection}>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -361,7 +361,7 @@ export default function BookmarksScreen() {
 
                         <TextInput 
                             style={styles.noteInput} 
-                            placeholder={t('save')} 
+                            placeholder={t('add_your_note')} 
                             placeholderTextColor="#999" 
                             multiline 
                             value={noteText} 

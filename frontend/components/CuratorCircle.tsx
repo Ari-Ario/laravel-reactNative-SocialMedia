@@ -85,7 +85,7 @@ export const CuratorCircle = ({ reposters, postId, postContent, post }: CuratorC
 
     if (days === 0) return t('today');
     if (days === 1) return t('yesterday');
-    if (days < 7) return t('days_ago', { days });
+    if (days < 7) return t('time_days_ago', { days });
     return t('weeks_ago', { weeks: Math.floor(days / 7) });
   };
 
@@ -232,7 +232,7 @@ export const CuratorCircle = ({ reposters, postId, postContent, post }: CuratorC
         <View style={[styles.textContainer, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
           <Text style={[styles.circleText, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={1}>
             <Text style={styles.boldText}>{reposters[0].name}</Text>
-            {reposters.length > 1 && ` ${t('and')} ${reposters.length - 1} ${reposters.length === 2 ? t('other') : t('others')}`}
+            {reposters.length > 1 && ` ${t('and')} ${reposters.length - 1} ${reposters.length === 2 ? t('common_other_lowercase') : t('others')}`}
           </Text>
           <Text style={[styles.circleSubtext, { textAlign: isRTL ? 'right' : 'left' }]}>
             {reposters.length > 1 ? t('shared_this_post') : t('shared_with_context')}

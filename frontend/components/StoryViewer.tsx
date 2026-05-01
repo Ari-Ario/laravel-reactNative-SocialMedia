@@ -151,19 +151,19 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
   const { user } = useContext(AuthContext);
 
   const formatTimeAgo = (timestamp: string) => {
-    if (!timestamp) return t('just_now');
+    if (!timestamp) return t('time_just_now');
     try {
       const date = new Date(timestamp);
       const now = new Date();
       const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-      if (seconds < 60) return t('just_now');
+      if (seconds < 60) return t('time_just_now');
       if (seconds < 3600) return `${Math.floor(seconds / 60)}${t('m_short')}`;
       if (seconds < 86400) return `${Math.floor(seconds / 3600)}${t('h_short')}`;
       if (seconds < 2592000) return `${Math.floor(seconds / 86400)}${t('d_short')}`;
       return date.toLocaleDateString();
     } catch {
-      return t('just_now');
+      return t('time_just_now');
     }
   };
 

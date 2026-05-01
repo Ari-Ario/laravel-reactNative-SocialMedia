@@ -658,7 +658,7 @@ const PollViewer: React.FC<PollViewerProps> = ({
                                 <Text style={styles.timestamp}>
                                     {localPoll?.created_at
                                         ? new Date(localPoll.created_at).toLocaleString()
-                                        : t('just_now')}
+                                        : t('time_just_now')}
                                 </Text>
                             </View>
                         </TouchableOpacity>

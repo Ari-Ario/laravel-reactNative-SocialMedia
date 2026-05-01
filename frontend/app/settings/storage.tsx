@@ -275,7 +275,7 @@ export default function StorageSettingsScreen() {
                                 </View>
                                 <View style={styles.storageStat}>
                                     <View style={[styles.storageDot, { backgroundColor: '#FF9800' }]} />
-                                    <Text style={styles.storageStatText}>{t('other') || 'Other'}: 12.8 GB</Text>
+                                    <Text style={styles.storageStatText}>{t('common_other_label') || 'Other'}: 12.8 GB</Text>
                                 </View>
                             </View>
                         </LinearGradient>

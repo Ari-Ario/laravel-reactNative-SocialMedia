@@ -3,7 +3,6 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Localization from 'expo-localization';
 import { Locale, LANGUAGES } from '@/constants/i18n';
-import enTranslations from '../constants/locales/en.json';
 
 interface TranslationState {
   locale: Locale;
@@ -50,48 +49,57 @@ const getDeviceLocale = (): Locale => {
   return LOADERS[normalized] ? (normalized as Locale) : 'en';
 };
 
+/**
+ * Cache English translations in memory after first load to avoid redundant disk I/O
+ * while keeping it out of the initial JS bundle.
+ */
+let cachedEn: Record<string, string> | null = null;
+
 export const useTranslationStore = create<TranslationState>()(
   persist(
     (set, get) => ({
-      locale: 'en', // Default until hydration
-      translations: enTranslations as Record<string, string>,
+      locale: 'en',
+      translations: {}, // Start empty, will be populated on rehydrate/init
       isLoading: false,
       setLocale: async (newLocale: Locale) => {
         const locale = (newLocale as string)?.split('-')[0]?.split('_')[0] as Locale;
         
-        // Skip if already loaded and NOT in initial state (where translations are just en)
-        if (get().locale === locale && !get().isLoading && locale !== 'en' && get().translations['settings'] !== enTranslations['settings']) {
-          set({ isLoading: false });
-          return;
-        }
-
-        // If another load is already in progress for the SAME locale, wait for it
-        if (get().isLoading && get().locale === locale) {
-           return;
-        }
-        
-        if (locale === 'en') {
-          set({ locale: 'en', translations: enTranslations as Record<string, string>, isLoading: false });
+        // Skip if already loaded
+        if (get().locale === locale && !get().isLoading && Object.keys(get().translations).length > 0) {
           return;
         }
 
         set({ isLoading: true });
         try {
+          // 1. Ensure English (base) is loaded for fallbacks
+          if (!cachedEn) {
+            console.log('[TranslationStore] Loading base: en');
+            const enModule = await LOADERS['en']();
+            cachedEn = enModule.default || enModule;
+          }
+
+          if (locale === 'en') {
+            set({ locale: 'en', translations: cachedEn!, isLoading: false });
+            return;
+          }
+
+          // 2. Load target locale
           console.log(`[TranslationStore] Loading shard: ${locale}`);
           const loader = LOADERS[locale] || LOADERS['en'];
           const module = await loader();
           const nextTranslations = module.default || module;
           
+          // Merge with cachedEn for fallbacks
           set({ 
             locale, 
-            translations: { ...enTranslations, ...nextTranslations }, 
+            translations: { ...cachedEn, ...nextTranslations }, 
             isLoading: false 
           });
         } catch (error) {
           console.error(`[TranslationStore] Failed to load ${locale}:`, error);
           set({ 
             locale: 'en', 
-            translations: enTranslations as Record<string, string>, 
+            translations: cachedEn || {}, 
             isLoading: false 
           });
         }

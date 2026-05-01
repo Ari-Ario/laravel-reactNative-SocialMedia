@@ -2,6 +2,7 @@ export const MARKET_CATEGORIES = [
   { id: 'electronics', name: 'market_cat_electronics', icon: 'laptop-outline' },
   { id: 'fashion', name: 'market_cat_fashion', icon: 'shirt-outline' },
   { id: 'home', name: 'market_cat_home', icon: 'home-outline' },
+  { id: 'home_garden', name: 'market_cat_home_garden', icon: 'leaf-outline' },
   { id: 'vehicles', name: 'market_cat_vehicles', icon: 'car-outline' },
   { id: 'real_estate', name: 'market_cat_real_estate', icon: 'business-outline' },
   { id: 'services', name: 'market_cat_services', icon: 'construct-outline' },

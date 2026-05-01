@@ -311,7 +311,7 @@ const RenderComments = ({
             type="comment"
             onClose={() => setShowReportModal(false)}
             onReportSubmitted={() => {
-              useToastStore.getState().showToast(t('report_submitted_ai_review'), 'success');
+              useToastStore.getState().showToast(t('report_ai_review_long'), 'success');
               setShowReportModal(false);
             }}
           />
