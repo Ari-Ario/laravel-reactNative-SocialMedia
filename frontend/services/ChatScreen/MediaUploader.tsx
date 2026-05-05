@@ -18,6 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { getToken } from '@/services/TokenService';
 import getApiBase from '@/services/getApiBase';
+import VideoTrimmer from '@/components/Shared/VideoTrimmer';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -55,8 +56,16 @@ async function uploadToSpace(
 
   const formData = new FormData();
 
-  if (Platform.OS === 'web' && payload.webFile) {
-    formData.append('file', payload.webFile);
+  if (Platform.OS === 'web') {
+    if (payload.webFile) {
+      formData.append('file', payload.webFile);
+    } else {
+      // Fallback for trimmed blobs or camera captures on web
+      const response = await fetch(payload.uri);
+      const blob = await response.blob();
+      const file = new File([blob], payload.name, { type: payload.mimeType });
+      formData.append('file', file);
+    }
   } else {
     formData.append('file', {
       uri: payload.uri,
@@ -65,6 +74,13 @@ async function uploadToSpace(
     } as any);
   }
   formData.append('type', mediaType);
+
+  if (payload.startTime !== undefined) {
+    formData.append('trim_start', payload.startTime.toString());
+  }
+  if (payload.endTime !== undefined) {
+    formData.append('trim_end', payload.endTime.toString());
+  }
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -112,12 +128,33 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({
   const [statusLabel, setStatusLabel] = useState('');
   const [preview, setPreview] = useState<string | null>(null);
 
+  // Video Trimmer State
+  const [showTrimmer, setShowTrimmer] = useState(false);
+  const [trimPendingAsset, setTrimPendingAsset] = useState<{
+    uri: string;
+    name: string;
+    mimeType: string;
+    webFile?: File;
+  } | null>(null);
+
+  const getWebVideoDuration = (uri: string): Promise<number> =>
+    new Promise((resolve) => {
+      if (typeof document === 'undefined') { resolve(0); return; }
+      const vid = document.createElement('video');
+      vid.preload = 'metadata';
+      vid.onloadedmetadata = () => resolve(vid.duration * 1000); // ms
+      vid.onerror = () => resolve(0);
+      vid.src = uri;
+    });
+
   const doUpload = useCallback(async (
     uri: string,
     name: string,
     mimeType: string,
     mediaType: 'image' | 'video' | 'document',
     webFile?: File,
+    startTime?: number,
+    endTime?: number,
   ) => {
     setUploading(true);
     setProgress(0);
@@ -127,7 +164,7 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({
     try {
       const media = await uploadToSpace(
         spaceId,
-        { uri, name, mimeType, webFile },
+        { uri, name, mimeType, webFile, startTime, endTime },
         mediaType,
         (pct) => setProgress(pct),
       );
@@ -210,7 +247,23 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({
         const files: File[] = Array.from(e.target?.files ?? []);
         for (const file of files) {
           const uri = URL.createObjectURL(file);
-          const mediaType = file.type.startsWith('video/') ? 'video' : 'image';
+          const isVideo = file.type.startsWith('video/');
+          const mediaType = isVideo ? 'video' : 'image';
+          
+          if (isVideo) {
+            const duration = await getWebVideoDuration(uri);
+            if (duration > 120 * 1000) {
+              setTrimPendingAsset({
+                uri,
+                name: file.name,
+                mimeType: file.type,
+                webFile: file,
+              });
+              setShowTrimmer(true);
+              continue; // Trimmer will handle the upload for this file
+            }
+          }
+          
           await doUpload(uri, file.name, file.type, mediaType, file);
         }
       };
@@ -234,12 +287,19 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({
     if (!result.canceled && result.assets?.[0]) {
       const asset = result.assets[0];
       const isVideo = asset.type === 'video' || (asset.mimeType ?? '').startsWith('video/');
-      await doUpload(
-        asset.uri,
-        asset.fileName || `media_${Date.now()}.${isVideo ? 'mp4' : 'jpg'}`,
-        asset.mimeType ?? (isVideo ? 'video/mp4' : 'image/jpeg'),
-        isVideo ? 'video' : 'image',
-      );
+      
+      const payload = {
+        uri: asset.uri,
+        name: asset.fileName || `media_${Date.now()}.${isVideo ? 'mp4' : 'jpg'}`,
+        mimeType: asset.mimeType ?? (isVideo ? 'video/mp4' : 'image/jpeg'),
+      };
+
+      if (isVideo && asset.duration && asset.duration > 120 * 1000) {
+        setTrimPendingAsset(payload);
+        setShowTrimmer(true);
+      } else {
+        await doUpload(payload.uri, payload.name, payload.mimeType, isVideo ? 'video' : 'image');
+      }
     }
   }, [doUpload]);
 
@@ -290,14 +350,34 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({
     });
     if (!result.canceled && result.assets?.[0]) {
       const asset = result.assets[0];
-      await doUpload(
-        asset.uri,
-        asset.fileName || `video_${Date.now()}.mp4`,
-        asset.mimeType ?? 'video/mp4',
-        'video',
-      );
+      const payload = {
+        uri: asset.uri,
+        name: asset.fileName || `video_${Date.now()}.mp4`,
+        mimeType: asset.mimeType ?? 'video/mp4',
+      };
+
+      if (asset.duration && asset.duration > 120 * 1000) {
+        setTrimPendingAsset(payload);
+        setShowTrimmer(true);
+      } else {
+        await doUpload(payload.uri, payload.name, payload.mimeType, 'video');
+      }
     }
   }, [doUpload]);
+
+  const handleTrimSave = async (trimmedData: { uri: string; duration: number; startTime: number; endTime: number }) => {
+    if (!trimPendingAsset) return;
+    const finalUri = trimmedData.uri;
+    const { name, mimeType } = trimPendingAsset;
+    
+    setShowTrimmer(false);
+    setTrimPendingAsset(null);
+    
+    const { startTime, endTime } = trimmedData;
+    
+    // Pass undefined as webFile to force uploadToSpace to fetch the trimmed blob from finalUri
+    await doUpload(finalUri, name, mimeType, 'video', undefined, startTime, endTime);
+  };
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -348,6 +428,20 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({
             </>
           )}
         </View>
+
+        {showTrimmer && trimPendingAsset && (
+          <VideoTrimmer
+            visible={showTrimmer}
+            videoUri={trimPendingAsset.uri}
+            maxDuration={120}
+            isStory={false}
+            onSave={handleTrimSave}
+            onClose={() => {
+              setShowTrimmer(false);
+              setTrimPendingAsset(null);
+            }}
+          />
+        )}
       </View>
     </Modal>
   );

@@ -95,7 +95,9 @@ class MarketController extends Controller
             'delivery_available' => 'boolean',
             'location' => 'nullable|string',
             'media' => 'sometimes|array|max:10',
-            'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,webm|max:40960',
+            'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,webm,avi,mp3,wav,pdf,doc,docx,ogg,oga,opus,flac,aac,m4a,m4b,m4p,m4r,m4v,mp2,mp3,mp4,mpeg,mpeg4,mpegps,mpg,mpegts,mpegv,mts,oga,ogg,opus,wav,webm,mpga|max:61440',
+            'trim_start' => 'sometimes|array',
+            'trim_end' => 'sometimes|array',
         ]);
 
         $item = MarketItem::create([
@@ -113,16 +115,32 @@ class MarketController extends Controller
 
         if ($request->hasFile('media')) {
             $files = $request->file('media');
-            foreach ($files as $file) {
+            $trimStarts = $request->input('trim_start', []);
+            $trimEnds = $request->input('trim_end', []);
+
+            foreach ($files as $index => $file) {
                 $type = $this->getMediaType($file->getMimeType());
-                $folder = $type === 'video' ? 'videos' : 'images';
+                $folder = $this->getMediaFolder($type);
                 $path = $file->store("media/{$folder}/" . Auth::id(), 'public');
+
+                $storedMimeType = $file->getMimeType();
+                if ($type === 'video' && isset($trimStarts[$index]) && isset($trimEnds[$index])) {
+                    $start = (float) $trimStarts[$index];
+                    $end   = (float) $trimEnds[$index];
+                    if ($start > 0 || $end > 0) {
+                        $newPath = $this->trimVideo($path, $start, $end);
+                        if ($newPath !== $path && str_ends_with($newPath, '.mp4')) {
+                            $storedMimeType = 'video/mp4';
+                        }
+                        $path = $newPath;
+                    }
+                }
 
                 $item->media()->create([
                     'user_id' => Auth::id(),
                     'file_path' => $path,
                     'type' => $type,
-                    'mime_type' => $file->getMimeType(),
+                    'mime_type' => $storedMimeType,
                     'size' => $file->getSize(),
                     'original_name' => $file->getClientOriginalName(),
                 ]);
@@ -178,9 +196,11 @@ class MarketController extends Controller
             'delivery_available' => 'sometimes|boolean',
             'location' => 'nullable|string',
             'media' => 'sometimes|array|max:10',
-            'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,webm|max:40960',
+            'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,webm,avi,mp3,wav,pdf,doc,docx,ogg,oga,opus,flac,aac,m4a,m4b,m4p,m4r,m4v,mp2,mp3,mp4,mpeg,mpeg4,mpegps,mpg,mpegts,mpegv,mts,oga,ogg,opus,wav,webm,mpga|max:61440',
             'delete_media' => 'sometimes|array',
             'delete_media.*' => 'exists:media,id',
+            'trim_start' => 'sometimes|array',
+            'trim_end' => 'sometimes|array',
         ]);
 
         $updateData = $request->only(['title', 'description', 'price', 'currency', 'status', 'category', 'condition']);
@@ -208,16 +228,33 @@ class MarketController extends Controller
 
         // Handle new media uploads
         if ($request->hasFile('media')) {
-            foreach ($request->file('media') as $file) {
+            $files = $request->file('media');
+            $trimStarts = $request->input('trim_start', []);
+            $trimEnds = $request->input('trim_end', []);
+
+            foreach ($files as $index => $file) {
                 $type = $this->getMediaType($file->getMimeType());
-                $folder = $type === 'video' ? 'videos' : 'images';
+                $folder = $this->getMediaFolder($type);
                 $path = $file->store("media/{$folder}/" . Auth::id(), 'public');
+
+                $storedMimeType = $file->getMimeType();
+                if ($type === 'video' && isset($trimStarts[$index]) && isset($trimEnds[$index])) {
+                    $start = (float) $trimStarts[$index];
+                    $end   = (float) $trimEnds[$index];
+                    if ($start > 0 || $end > 0) {
+                        $newPath = $this->trimVideo($path, $start, $end);
+                        if ($newPath !== $path && str_ends_with($newPath, '.mp4')) {
+                            $storedMimeType = 'video/mp4';
+                        }
+                        $path = $newPath;
+                    }
+                }
 
                 $item->media()->create([
                     'user_id' => Auth::id(),
                     'file_path' => $path,
                     'type' => $type,
-                    'mime_type' => $file->getMimeType(),
+                    'mime_type' => $storedMimeType,
                     'size' => $file->getSize(),
                     'original_name' => $file->getClientOriginalName(),
                 ]);
@@ -407,17 +444,6 @@ class MarketController extends Controller
         return response()->json(['message' => 'Comment deleted']);
     }
 
-    private function getMediaType($mimeType)
-    {
-        if (Str::startsWith($mimeType, 'image/'))
-            return 'image';
-        if (Str::startsWith($mimeType, 'video/'))
-            return 'video';
-        if (Str::startsWith($mimeType, 'audio/'))
-            return 'audio';
-        return 'document';
-    }
-
     public function bookmark(Request $request, $id)
     {
         $item = MarketItem::findOrFail($id);
@@ -477,5 +503,76 @@ class MarketController extends Controller
             'repost' => $repost,
             'reposts_count' => $item->reposts()->count()
         ]);
+    }
+
+    private function getMediaType($mimeType)
+    {
+        if (\Illuminate\Support\Str::startsWith($mimeType, 'image/'))
+            return 'image';
+        if (\Illuminate\Support\Str::startsWith($mimeType, 'video/'))
+            return 'video';
+        if (\Illuminate\Support\Str::startsWith($mimeType, 'audio/'))
+            return 'audio';
+        return 'document';
+    }
+
+    private function trimVideo($path, $start, $end)
+    {
+        $fullPath = storage_path('app/public/' . $path);
+        if (!file_exists($fullPath)) return $path;
+
+        $extension       = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+        $basePath        = substr($path, 0, strrpos($path, '.'));
+
+        $outputExtension = in_array($extension, ['webm', 'mkv']) ? 'mp4' : $extension;
+        $trimmedPath     = $basePath . '_trimmed.' . $outputExtension;
+        $fullTrimmedPath = storage_path('app/public/' . $trimmedPath);
+
+        $ffmpeg = trim((string) shell_exec('which ffmpeg'));
+        if (!$ffmpeg) {
+            \Log::warning('FFmpeg not found. Video trimming skipped.', ['path' => $path]);
+            return $path;
+        }
+
+        $duration = $end - $start;
+
+        if ($outputExtension !== $extension) {
+            $command = sprintf(
+                'ffmpeg -y -ss %s -i %s -t %s -c:v libx264 -preset fast -crf 23 -c:a aac -movflags +faststart %s 2>&1',
+                escapeshellarg((string) $start),
+                escapeshellarg($fullPath),
+                escapeshellarg((string) $duration),
+                escapeshellarg($fullTrimmedPath)
+            );
+        } else {
+            $command = sprintf(
+                'ffmpeg -y -ss %s -i %s -t %s -c copy -map 0 %s 2>&1',
+                escapeshellarg((string) $start),
+                escapeshellarg($fullPath),
+                escapeshellarg((string) $duration),
+                escapeshellarg($fullTrimmedPath)
+            );
+        }
+
+        $output = [];
+        $resultCode = 0;
+        exec($command, $output, $resultCode);
+
+        if ($resultCode === 0 && file_exists($fullTrimmedPath) && filesize($fullTrimmedPath) > 0) {
+            unlink($fullPath);
+            return $trimmedPath;
+        }
+
+        return $path;
+    }
+
+    private function getMediaFolder($type)
+    {
+        switch ($type) {
+            case 'video': return 'videos';
+            case 'audio': return 'audio';
+            case 'document': return 'documents';
+            default: return 'images';
+        }
     }
 }

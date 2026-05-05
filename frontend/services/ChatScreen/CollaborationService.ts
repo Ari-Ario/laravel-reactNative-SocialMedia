@@ -1981,7 +1981,8 @@ END:VCALENDAR`;
     }
   }
 
-  getGroupedReactions(post: Record<string, unknown>) {
+  getGroupedReactions(post: Record<string, unknown> | null) {
+    if (!post || !post['reactions']) return [];
     const reactions = (post['reactions'] as { reaction: string, user_id?: number }[]) || [];
     if (!reactions || !Array.isArray(reactions)) return [];
 

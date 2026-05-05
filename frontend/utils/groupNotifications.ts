@@ -20,6 +20,8 @@ export interface NotificationGroup {
   latestNotification: Notification;
   /** How many total notifications are in this group */
   count: number;
+  /** How many notifications in this group are unread (new) — both offline+realtime */
+  unreadCount: number;
   /** Up to 3 unique actor names for display (e.g. "Alice, Bob, and 3 more") */
   actorNames: string[];
   /** Up to 3 unique actor avatars (stacked) */
@@ -167,6 +169,7 @@ export function groupNotifications(notifications: Notification[]): NotificationG
         spaceName: extractSpaceName(n),
         latestNotification: n, // first encountered = most recent
         count: 0,
+        unreadCount: 0,
         actorNames: [],
         actorAvatars: [],
         hasUnread: false,
@@ -178,7 +181,10 @@ export function groupNotifications(notifications: Notification[]): NotificationG
     group.count++;
     group.notifications.push(n);
 
-    if (!n.isRead) group.hasUnread = true;
+    if (!n.isRead) {
+      group.hasUnread = true;
+      group.unreadCount++;
+    }
 
     // Collect up to 3 unique actors
     const actorName = extractActorName(n);

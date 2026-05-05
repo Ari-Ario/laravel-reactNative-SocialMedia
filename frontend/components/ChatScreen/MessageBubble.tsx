@@ -894,11 +894,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           ]}>
             {renderShareCard()}
             <View style={styles.appendedMessageContainer}>
-              <Text style={[styles.appendedMessageText, !isCurrentUser && { color: '#333' }]}>
+              <Text style={[styles.appendedMessageText, !isCurrentUser && { color: colors.text }]}>
                 {metadata.appended_message}
               </Text>
               <View style={styles.appendedMessageMeta}>
-                <Text style={[styles.appendedMessageTime, !isCurrentUser && { color: '#666' }]}>
+                <Text style={[styles.appendedMessageTime, !isCurrentUser && { color: colors.textSecondary }]}>
                   {formatTime(message.created_at)}
                 </Text>
                 {isCurrentUser && (
@@ -1044,6 +1044,7 @@ function getStyles(colors: any, activeScheme: string) {
     fontSize: 12,
     fontWeight: '600',
     marginBottom: 4,
+    color: colors.tint,
   },
   text: {
     fontSize: 16,
@@ -1083,7 +1084,7 @@ function getStyles(colors: any, activeScheme: string) {
   imageCaption: {
     marginTop: 8,
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
   },
   videoPlaceholder: {
     backgroundColor: '#333',
@@ -1448,12 +1449,13 @@ function getStyles(colors: any, activeScheme: string) {
   },
   replyHeaderText: {
     fontSize: 12,
+    color: colors.textSecondary,
   },
   pollBubbleContent: {
     flex: 1,
   },
   highlightedBubble: {
-    backgroundColor: '#FFF9C4', // Soft yellow highlight
+    backgroundColor: activeScheme === 'dark' ? 'rgba(255, 249, 196, 0.2)' : '#FFF9C4', // Soft yellow highlight
     borderWidth: 1,
     borderColor: '#FBC02D',
   },
@@ -1525,7 +1527,7 @@ function getStyles(colors: any, activeScheme: string) {
     backgroundColor: 'rgba(255,255,255,0.15)',
   },
   otherUserDocument: {
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    backgroundColor: activeScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
   },
   documentIconContainer: {
     width: 44,
@@ -1588,7 +1590,7 @@ function getStyles(colors: any, activeScheme: string) {
   },
   locationAddress: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: colors.textSecondary,
   },
   liveHeader: {
     flexDirection: 'row',

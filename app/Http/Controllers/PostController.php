@@ -226,7 +226,7 @@ class PostController extends Controller
             'caption' => 'nullable|string|max:500',
             'location' => 'nullable|string', // JSON string from frontend
             'media' => 'sometimes|array|max:10',
-            'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,webm,avi,mp3,wav,pdf,doc,docx,ogg,oga,opus,flac,aac,m4a,m4b,m4p,m4r,m4v,mp2,mp3,mp4,mpeg,mpeg4,mpegps,mpg,mpegts,mpegv,mts,oga,ogg,opus,wav,webm,mpga|max:40960', // 40MB
+            'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,webm,avi,mp3,wav,pdf,doc,docx,ogg,oga,opus,flac,aac,m4a,m4b,m4p,m4r,m4v,mp2,mp3,mp4,mpeg,mpeg4,mpegps,mpg,mpegts,mpegv,mts,oga,ogg,opus,wav,webm,mpga|max:61440', // 60MB — allows raw upload before server-side FFmpeg trim
             'trim_start' => 'sometimes|array',
             'trim_end' => 'sometimes|array',
         ]);
@@ -247,20 +247,26 @@ class PostController extends Controller
                 $folder = $this->getMediaFolder($type);
                 $path = $file->store("media/{$folder}/" . Auth::id(), 'public');
                 
-                // Perform trimming if requested and it's a video
+                // Perform server-side trimming with FFmpeg if requested
+                $storedMimeType = $file->getMimeType();
                 if ($type === 'video' && isset($trimStarts[$index]) && isset($trimEnds[$index])) {
                     $start = (float) $trimStarts[$index];
-                    $end = (float) $trimEnds[$index];
+                    $end   = (float) $trimEnds[$index];
                     if ($start > 0 || $end > 0) {
-                        $path = $this->trimVideo($path, $start, $end);
+                        $newPath = $this->trimVideo($path, $start, $end);
+                        // If format was converted (e.g. webm → mp4), update mime type
+                        if ($newPath !== $path && str_ends_with($newPath, '.mp4')) {
+                            $storedMimeType = 'video/mp4';
+                        }
+                        $path = $newPath;
                     }
                 }
 
                 $post->media()->create([
-                    'file_path' => $path,
-                    'type' => $type,
-                    'mime_type' => $file->getMimeType(),
-                    'size' => $file->getSize(),
+                    'file_path'     => $path,
+                    'type'          => $type,
+                    'mime_type'     => $storedMimeType,
+                    'size'          => $file->getSize(),
                     'original_name' => $file->getClientOriginalName()
                 ]);
             }
@@ -361,7 +367,7 @@ class PostController extends Controller
             'caption' => 'nullable|string|max:500',
             'location' => 'nullable|string', // JSON string
             'media' => 'sometimes|array|max:10',
-            'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,webm,avi,mp3,wav,pdf,doc,docx,ogg,oga,opus,flac,aac,m4a,m4b,m4p,m4r,m4v,mp2,mp3,mp4,mpeg,mpeg4,mpegps,mpg,mpegts,mpegv,mts,oga,ogg,opus,wav,webm,mpga|max:40960', // 40MB
+            'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,webm,avi,mp3,wav,pdf,doc,docx,ogg,oga,opus,flac,aac,m4a,m4b,m4p,m4r,m4v,mp2,mp3,mp4,mpeg,mpeg4,mpegps,mpg,mpegts,mpegv,mts,oga,ogg,opus,wav,webm,mpga|max:61440', // 60MB
             'delete_media' => 'sometimes|array',
             'delete_media.*' => 'nullable', // We will validate ownership manually to avoid 422 errors on stale IDs
             'trim_start' => 'sometimes|array',
@@ -432,20 +438,25 @@ class PostController extends Controller
                 $folder = $this->getMediaFolder($type);
                 $path = $file->store("media/{$folder}/" . Auth::id(), 'public');
                 
-                // Perform trimming if requested and it's a video
+                // Perform server-side trimming with FFmpeg if requested
+                $storedMimeType = $file->getMimeType();
                 if ($type === 'video' && isset($trimStarts[$index]) && isset($trimEnds[$index])) {
                     $start = (float) $trimStarts[$index];
-                    $end = (float) $trimEnds[$index];
+                    $end   = (float) $trimEnds[$index];
                     if ($start > 0 || $end > 0) {
-                        $path = $this->trimVideo($path, $start, $end);
+                        $newPath = $this->trimVideo($path, $start, $end);
+                        if ($newPath !== $path && str_ends_with($newPath, '.mp4')) {
+                            $storedMimeType = 'video/mp4';
+                        }
+                        $path = $newPath;
                     }
                 }
 
                 $media = $post->media()->create([
-                    'file_path' => $path,
-                    'type' => $type,
-                    'mime_type' => $file->getMimeType(),
-                    'size' => $file->getSize(),
+                    'file_path'     => $path,
+                    'type'          => $type,
+                    'mime_type'     => $storedMimeType,
+                    'size'          => $file->getSize(),
                     'original_name' => $file->getClientOriginalName()
                 ]);
                 
@@ -773,44 +784,59 @@ class PostController extends Controller
         $fullPath = storage_path('app/public/' . $path);
         if (!file_exists($fullPath)) return $path;
 
-        $extension = pathinfo($fullPath, PATHINFO_EXTENSION);
-        $trimmedPath = str_replace(".{$extension}", "_trimmed.{$extension}", $path);
+        $extension       = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+        $basePath        = substr($path, 0, strrpos($path, '.'));
+
+        // webm / mkv → convert to H264 mp4 for universal browser + Safari support.
+        // mp4 / mov → stream copy (fast, no quality loss).
+        $outputExtension = in_array($extension, ['webm', 'mkv']) ? 'mp4' : $extension;
+        $trimmedPath     = $basePath . '_trimmed.' . $outputExtension;
         $fullTrimmedPath = storage_path('app/public/' . $trimmedPath);
 
-        // Check if FFmpeg is installed
-        $ffmpeg = shell_exec('which ffmpeg');
+        $ffmpeg = trim((string) shell_exec('which ffmpeg'));
         if (!$ffmpeg) {
             Log::warning('FFmpeg not found. Video trimming skipped.', ['path' => $path]);
             return $path;
         }
 
         $duration = $end - $start;
-        // Fast trim with stream copy, seeking before input for speed
-        $command = sprintf(
-            'ffmpeg -ss %s -i %s -t %s -c copy -map 0 %s 2>&1',
-            escapeshellarg((string)$start),
-            escapeshellarg($fullPath),
-            escapeshellarg((string)$duration),
-            escapeshellarg($fullTrimmedPath)
-        );
+
+        if ($outputExtension !== $extension) {
+            // Transcode webm/mkv → H264 mp4 for universal playback
+            $command = sprintf(
+                'ffmpeg -y -ss %s -i %s -t %s -c:v libx264 -preset fast -crf 23 -c:a aac -movflags +faststart %s 2>&1',
+                escapeshellarg((string) $start),
+                escapeshellarg($fullPath),
+                escapeshellarg((string) $duration),
+                escapeshellarg($fullTrimmedPath)
+            );
+        } else {
+            // Stream copy — fast, lossless for mp4/mov
+            $command = sprintf(
+                'ffmpeg -y -ss %s -i %s -t %s -c copy -map 0 %s 2>&1',
+                escapeshellarg((string) $start),
+                escapeshellarg($fullPath),
+                escapeshellarg((string) $duration),
+                escapeshellarg($fullTrimmedPath)
+            );
+        }
 
         $output = [];
         $resultCode = 0;
         exec($command, $output, $resultCode);
 
-        if ($resultCode === 0 && file_exists($fullTrimmedPath)) {
-            // Delete original oversized file
-            unlink($fullPath);
+        if ($resultCode === 0 && file_exists($fullTrimmedPath) && filesize($fullTrimmedPath) > 0) {
+            unlink($fullPath); // remove original oversized file
             return $trimmedPath;
         }
 
         Log::error('FFmpeg trim failed', [
-            'command' => $command,
-            'output' => $output,
-            'result_code' => $resultCode
+            'command'     => $command,
+            'output'      => implode("\n", $output),
+            'result_code' => $resultCode,
         ]);
 
-        return $path;
+        return $path; // fallback: keep original if trim fails
     }
 
     private function getMediaFolder($type)

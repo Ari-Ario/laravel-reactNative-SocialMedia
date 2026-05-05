@@ -210,8 +210,11 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
       {
         transform: [{ translateY: slideAnim }],
         opacity: opacityAnim,
-        width: width * 0.94,
-        marginLeft: width * 0.03,
+        // Wide desktop web: cap and center. Mobile web/native: full responsive.
+        ...(Platform.OS === 'web' && width >= 500
+          ? { width: Math.min(420, width - 32), left: (width - Math.min(420, width - 32)) / 2 }
+          : { width: width * 0.94, marginLeft: width * 0.03 }
+        ),
       }
     ]}>
       {Platform.OS === 'web' ? (

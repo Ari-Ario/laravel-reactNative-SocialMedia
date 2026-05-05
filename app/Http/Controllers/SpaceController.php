@@ -1465,6 +1465,20 @@ public function endCall(Request $request, $id)
         // Store the file
         $file = $request->file('file');
         $path = $file->store("spaces/{$space->id}/media", 'public');
+
+        // Server-side FFmpeg trim
+        $storedMimeType = $file->getMimeType();
+        if ($request->type === 'video' && $request->filled('trim_start') && $request->filled('trim_end')) {
+            $start = (float) $request->trim_start;
+            $end   = (float) $request->trim_end;
+            if ($start > 0 || $end > 0) {
+                $newPath = $this->trimVideo($path, $start, $end);
+                if ($newPath !== $path && str_ends_with($newPath, '.mp4')) {
+                    $storedMimeType = 'video/mp4';
+                }
+                $path = $newPath;
+            }
+        }
         
         // Create media record
         $media = \App\Models\Media::create([
@@ -1473,8 +1487,8 @@ public function endCall(Request $request, $id)
             'model_id' => $space->id,
             'file_path' => $path,
             'original_name' => $file->getClientOriginalName(),
-            'mime_type' => $file->getMimeType(),
-            'size' => $file->getSize(),
+            'mime_type' => $storedMimeType,
+            'size' => Storage::disk('public')->size($path),
             'type' => $request->type,
             'metadata' => [
                 'space_id' => $space->id,
@@ -1515,6 +1529,55 @@ public function endCall(Request $request, $id)
             'url' => Storage::url($path),
             'message' => 'Media uploaded successfully'
         ]);
+    }
+
+    /**
+     * Trim a video segment using FFmpeg.
+     */
+    private function trimVideo(string $path, float $start, float $end): string
+    {
+        $fullPath = storage_path('app/public/' . $path);
+        if (!file_exists($fullPath)) return $path;
+
+        $extension       = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+        $basePath        = substr($path, 0, strrpos($path, '.'));
+        $outputExtension = in_array($extension, ['webm', 'mkv']) ? 'mp4' : $extension;
+        $trimmedPath     = $basePath . '_trimmed.' . $outputExtension;
+        $fullTrimmedPath = storage_path('app/public/' . $trimmedPath);
+
+        $ffmpeg = trim((string) shell_exec('which ffmpeg'));
+        if (!$ffmpeg) {
+            Log::warning('FFmpeg not found. Space media trim skipped.', ['path' => $path]);
+            return $path;
+        }
+
+        $duration = $end - $start;
+        if ($outputExtension !== $extension) {
+            $command = sprintf(
+                'ffmpeg -y -ss %s -i %s -t %s -c:v libx264 -preset fast -crf 23 -c:a aac -movflags +faststart %s 2>&1',
+                escapeshellarg((string) $start), escapeshellarg($fullPath),
+                escapeshellarg((string) $duration), escapeshellarg($fullTrimmedPath)
+            );
+        } else {
+            $command = sprintf(
+                'ffmpeg -y -ss %s -i %s -t %s -c copy -map 0 %s 2>&1',
+                escapeshellarg((string) $start), escapeshellarg($fullPath),
+                escapeshellarg((string) $duration), escapeshellarg($fullTrimmedPath)
+            );
+        }
+
+        $output = []; $resultCode = 0;
+        exec($command, $output, $resultCode);
+
+        if ($resultCode === 0 && file_exists($fullTrimmedPath) && filesize($fullTrimmedPath) > 0) {
+            unlink($fullPath);
+            return $trimmedPath;
+        }
+
+        Log::error('Space Media FFmpeg trim failed', [
+            'command' => $command, 'output' => implode("\n", $output), 'result_code' => $resultCode,
+        ]);
+        return $path;
     }
 
     /**

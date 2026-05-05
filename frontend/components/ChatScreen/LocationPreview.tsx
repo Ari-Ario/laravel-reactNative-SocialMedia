@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, TouchableOpacity, Image, ActivityIndicator, Pla
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import { MotiView } from 'moti';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 interface LocationPreviewProps {
   latitude: number;
@@ -17,6 +18,8 @@ const LocationPreviewComponent: React.FC<LocationPreviewProps> = ({
   style,
   name
 }) => {
+  const { colors, activeScheme } = useAppTheme();
+  const styles = getStyles(colors, activeScheme);
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
 
@@ -83,80 +86,85 @@ const LocationPreviewComponent: React.FC<LocationPreviewProps> = ({
 
 const LocationPreview = memo(LocationPreviewComponent);
 
-const styles = StyleSheet.create({
-  container: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#1c1c1e',
-    overflow: 'hidden',
-    position: 'relative',
-    borderRadius: 16,
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-  },
-  imageHidden: {
-    opacity: 0,
-  },
-  loadingContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#1c1c1e',
-    zIndex: 1,
-  },
-  fallbackContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#2c2c2e',
-    gap: 8,
-  },
-  fallbackText: {
-    color: '#8E8E93',
-    fontSize: 12,
-  },
-  overlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 6,
-    gap: 4,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.1)',
-  },
-  text: {
-    fontSize: 11,
-    color: '#fff',
-    fontWeight: '600',
-  },
-  coordsBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    gap: 4,
-  },
-  coordsText: {
-    fontSize: 9,
-    color: '#8E8E93',
-    fontWeight: '400',
-  },
-});
+const styles = StyleSheet.create({}); // fallback
+
+const getStyles = (colors: any, activeScheme: string) => {
+  const isDark = activeScheme === 'dark';
+  return StyleSheet.create({
+    container: {
+      width: '100%',
+      height: '100%',
+      backgroundColor: isDark ? colors.surface : '#f2f2f7',
+      overflow: 'hidden',
+      position: 'relative',
+      borderRadius: 16,
+    },
+    image: {
+      width: '100%',
+      height: '100%',
+    },
+    imageHidden: {
+      opacity: 0,
+    },
+    loadingContainer: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: isDark ? colors.surface : '#f2f2f7',
+      zIndex: 1,
+    },
+    fallbackContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: isDark ? colors.muted : '#e5e5ea',
+      gap: 8,
+    },
+    fallbackText: {
+      color: colors.textSecondary,
+      fontSize: 12,
+    },
+    overlay: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 6,
+      gap: 4,
+      borderTopWidth: 1,
+      borderTopColor: 'rgba(255,255,255,0.1)',
+    },
+    text: {
+      fontSize: 11,
+      color: '#fff',
+      fontWeight: '600',
+    },
+    coordsBadge: {
+      position: 'absolute',
+      top: 8,
+      right: 8,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 8,
+      gap: 4,
+    },
+    coordsText: {
+      fontSize: 9,
+      color: 'rgba(255,255,255,0.7)',
+      fontWeight: '400',
+    },
+  });
+};
 
 export default LocationPreview;

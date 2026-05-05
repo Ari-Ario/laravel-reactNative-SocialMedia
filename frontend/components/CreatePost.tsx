@@ -107,7 +107,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
     const initializeData = async () => {
       if (visible && !isInitialized.current) {
         isInitialized.current = true;
-        
+
         // Prioritize props over router params for live store sync
         const activePostId = params.postId || initialParams?.postId;
         const activeCaption = params.caption || initialParams?.caption;
@@ -118,7 +118,7 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
 
         if (isActualEditing) {
           console.log('🔄 Editor: Initializing edit for post', activePostId);
-          
+
           // 1. Initial sync from provided data
           setCaption(activeCaption && activeCaption !== 'null' ? String(activeCaption) : '');
           try {
@@ -142,7 +142,18 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
               const fullPost = await postStore.hydratePost(numericId);
               if (fullPost) {
                 setCaption(fullPost.caption && fullPost.caption !== 'null' ? String(fullPost.caption) : '');
-                setMedia(fullPost.media || []);
+                
+                // Hydrate media with thumbnails for videos
+                const hydratedMedia = await Promise.all((fullPost.media || []).map(async (item: any) => {
+                  if (item.type === 'video' && !item.thumbnailUri) {
+                    const videoUrl = `${getApiBaseImage()}/storage/${item.file_path}`;
+                    const thumbnailUri = await generateVideoThumbnail(videoUrl);
+                    return { ...item, thumbnailUri };
+                  }
+                  return item;
+                }));
+                
+                setMedia(hydratedMedia);
                 if (fullPost.location) {
                   const loc = typeof fullPost.location === 'string' ? JSON.parse(fullPost.location) : fullPost.location;
                   setLocation(loc);
@@ -177,13 +188,13 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
 
   // Check for long videos whenever media changes
   useEffect(() => {
-    const hasLongVideo = media.some(item =>
+    const untrimmedLongVideos = media.filter(item =>
       item.type === 'video' &&
       item.duration &&
       item.duration > 120000 &&
       !item.startTime
     );
-    setLongVideosDetected(hasLongVideo);
+    setLongVideosDetected(untrimmedLongVideos.length > 0);
   }, [media]);
 
   // Clean up recording timer on unmount
@@ -213,6 +224,92 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
     setLocation(null);
   };
 
+  const getVideoDuration = (uri: string): Promise<number> => {
+    return new Promise((resolve) => {
+      if (Platform.OS !== 'web') {
+        // Native duration is usually provided by picker, fallback to 0
+        resolve(0);
+        return;
+      }
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.onloadedmetadata = () => {
+        resolve(video.duration * 1000); // convert to ms
+      };
+      video.onerror = () => resolve(0);
+      video.src = uri;
+    });
+  };
+
+  const generateVideoThumbnail = (uri: string): Promise<string | null> => {
+    return new Promise(async (resolve) => {
+      if (Platform.OS !== 'web') {
+        resolve(null);
+        return;
+      }
+
+      let sourceUri = uri;
+      let blobUrl: string | null = null;
+
+      // For remote URLs, try to use proxy to avoid tainted canvas if CORS is restricted
+      if (uri.startsWith('http') && uri.includes('/storage/')) {
+        try {
+          const baseUrl = uri.split('/storage/')[0];
+          const filePath = uri.split('/storage/')[1];
+          const proxyUrl = `${baseUrl}/media-proxy?path=${filePath}`;
+          
+          const response = await fetch(proxyUrl, { mode: 'cors' });
+          if (response.ok) {
+            const blob = await response.blob();
+            blobUrl = URL.createObjectURL(blob);
+            sourceUri = blobUrl;
+          }
+        } catch (e) {
+          console.warn('Proxy fetch failed for thumbnail generation, falling back to direct URI:', uri);
+        }
+      } else if (uri.startsWith('http')) {
+        // Fallback for non-storage http URLs
+        try {
+          const response = await fetch(uri, { mode: 'cors' });
+          if (response.ok) {
+            const blob = await response.blob();
+            blobUrl = URL.createObjectURL(blob);
+            sourceUri = blobUrl;
+          }
+        } catch (e) {}
+      }
+
+      const video = document.createElement('video');
+      video.src = sourceUri;
+      video.crossOrigin = 'anonymous';
+      video.currentTime = 0.5; // Seek a bit in to avoid black frames
+      video.muted = true;
+      video.onseeked = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          resolve(dataUrl);
+        } catch (e) {
+          console.warn('Canvas capture failed (likely CORS):', e);
+          resolve(null);
+        } finally {
+          if (blobUrl) URL.revokeObjectURL(blobUrl);
+          video.src = '';
+          video.load();
+        }
+      };
+      video.onerror = (e) => {
+        console.warn('Thumbnail generation failed for', uri, e);
+        if (blobUrl) URL.revokeObjectURL(blobUrl);
+        resolve(null);
+      };
+    });
+  };
+
   const pickMedia = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images', 'videos'],
@@ -224,30 +321,34 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
     if (!result.canceled) {
       // Process each asset
       const processedAssets = [];
-      let hasLongVideo = false;
+      let longVideosCount = 0;
 
       for (const asset of result.assets) {
-        if (asset.type === 'video' && asset.duration && asset.duration > 120000) {
-          console.log('Long video detected (ms):', asset.duration);
-          hasLongVideo = true;
+        let duration = asset.duration || 0;
+        
+        // Robust check for web duration if picker returns 0 or small value
+        if (Platform.OS === 'web' && duration < 2000) {
+          try {
+            const probedDuration = await getVideoDuration(asset.uri);
+            if (probedDuration > 0) duration = probedDuration;
+          } catch (e) {
+            console.warn('Failed to probe duration for', asset.uri);
+          }
+        }
 
-          // For long videos, we'll add them without compression first
-          // They will be sent to trimmer
+        const isLong = asset.type === 'video' && duration > 120000;
+        
+        if (isLong) {
+          longVideosCount++;
+          // For long videos, add with needsTrimming flag
           processedAssets.push({
             ...asset,
             uri: asset.uri,
             type: asset.type,
             needsTrimming: true,
+            isLong: true,
+            duration: duration
           });
-
-          // If this is the first long video and we have multiple, show warning
-          if (hasLongVideo && result.assets.length > 1) {
-            Alert.alert(
-              'Long Video Detected',
-              'Only the first long video will be trimmed. Other media will be uploaded as is.',
-              [{ text: 'OK' }]
-            );
-          }
         } else {
           // Compress normal media
           try {
@@ -259,31 +360,46 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
               ...asset,
               uri: compressed.uri,
               type: asset.type || MediaCompressor.getMediaTypeFromUri(asset.uri),
+              duration: duration
             });
           } catch (error) {
             console.error('Failed to compress media:', error);
-            processedAssets.push(asset);
+            processedAssets.push({
+              ...asset,
+              duration: duration
+            });
           }
         }
       }
 
       if (processedAssets.length > 0) {
-        setMedia([...media, ...processedAssets]);
+        // Generate thumbnails for new videos
+        const assetsWithThumbnails = await Promise.all(processedAssets.map(async (asset) => {
+          if (asset.type === 'video') {
+            const thumbnailUri = await generateVideoThumbnail(asset.uri);
+            return { ...asset, thumbnailUri };
+          }
+          return asset;
+        }));
 
-        // Check if we need to auto-trim the first long video
-        const firstLongVideoIndex = processedAssets.findIndex(
-          item => item.type === 'video' && (item.duration || 0) > 120000
+        const updatedMedia = [...media, ...assetsWithThumbnails];
+        setMedia(updatedMedia);
+
+        // Find the first untrimmed long video in the ENTIRE media array
+        const firstUntrimmedIndex = updatedMedia.findIndex(
+          item => item.type === 'video' && item.isLong && !item.startTime
         );
 
-        if (firstLongVideoIndex !== -1) {
-          // Calculate the actual index in the combined array
-          const actualIndex = media.length + firstLongVideoIndex;
-
+        if (firstUntrimmedIndex !== -1) {
           // Auto-open trimmer for the first long video
           setTimeout(() => {
-            setVideoToTrimIndex(actualIndex);
+            setVideoToTrimIndex(firstUntrimmedIndex);
             setTrimmerVisible(true);
           }, 500);
+          
+          if (longVideosCount > 0) {
+            showToast(t('long_videos_detected'), 'info');
+          }
         }
       }
     }
@@ -341,8 +457,12 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
 
         if (video) {
           // Process video
+          const videoUri = video.uri;
+          const thumbnailUri = await generateVideoThumbnail(videoUri);
+          
           const videoAsset = {
-            uri: video.uri,
+            uri: videoUri,
+            thumbnailUri,
             type: 'video',
             fileName: `video-${Date.now()}.mp4`,
             duration: recordingProgress * RECORDING_LIMIT_MS
@@ -430,11 +550,15 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
         currentAsset.fileName || `video-${Date.now()}.mp4`
       );
 
+      // Generate new thumbnail for trimmed video
+      const thumbnailUri = await generateVideoThumbnail(compressed.uri);
+
       // Update the asset with trim data and compressed URI
       const newMedia = [...media];
       newMedia[videoToTrimIndex] = {
         ...currentAsset,
         uri: compressed.uri,
+        thumbnailUri,
         startTime: trimmedData.startTime,
         endTime: trimmedData.endTime,
         duration: trimmedData.duration * 1000, // convert back to ms for consistency
@@ -444,6 +568,17 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
       setMedia(newMedia);
       setTrimmerVisible(false);
       setVideoToTrimIndex(null);
+
+      // Show completion toast
+      const hasMoreLongVideos = newMedia.some(
+        (item) => item.type === 'video' && item.isLong && !item.startTime
+      );
+      
+      if (hasMoreLongVideos) {
+        showToast(t('trim_one_more'), 'info');
+      } else {
+        showToast(t('trim_completed'), 'success');
+      }
     } catch (err) {
       console.error('Trim save error:', err);
       Alert.alert(t('error'), t('failed_save_trimmed_video'));
@@ -518,16 +653,27 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
       return;
     }
 
-    // Check if there are still untrimmed long videos
+    // Strict Check: Block if there are still untrimmed long videos
     const untrimmedLongVideos = media.filter(
       item => item.type === 'video' && item.duration > 120000 && !item.startTime
     );
 
     if (untrimmedLongVideos.length > 0) {
+      showToast(t('trim_videos_warning'), 'error');
       Alert.alert(
         t('long_videos_detected'),
         t('trim_videos_warning'),
-        [{ text: t('ok') }]
+        [{ 
+          text: t('trim_now'), 
+          onPress: () => {
+            const firstIdx = media.findIndex(item => item.type === 'video' && item.duration > 120000 && !item.startTime);
+            if (firstIdx !== -1) {
+              setVideoToTrimIndex(firstIdx);
+              setTrimmerVisible(true);
+            }
+          }
+        },
+        { text: t('cancel'), style: 'cancel' }]
       );
       return;
     }
@@ -556,23 +702,39 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
 
       for (let i = 0; i < newMediaToUpload.length; i++) {
         const item = newMediaToUpload[i];
-        const fileData = {
-          uri: item.uri,
-          type: item.type === 'video' ? 'video/mp4' : 'image/jpeg',
-          name: item.fileName || `media-${Date.now()}.${item.type === 'video' ? 'mp4' : 'jpg'}`,
-        } as any;
+
+        // Safety check: Block any long video that somehow bypassed the gatekeeper
+        if (item.type === 'video' && (item.duration || 0) > 120000 && item.startTime === undefined) {
+          console.warn('Blocking untrimmed long video at upload stage:', item.uri);
+          continue; // "Return nothing" for this segment
+        }
+
+        // Determine the correct MIME type from the actual file content on web,
+        // not from a hardcoded map (which was wrong for .webm files picked from disk).
+        const mimeExt: Record<string, string> = {
+          'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov',
+          'video/x-msvideo': 'avi', 'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif',
+        };
 
         if (Platform.OS === 'web') {
-          // Web: Convert to File object
           const response = await fetch(item.uri);
           const blob = await response.blob();
-          const file = new File([blob], fileData.name, { type: fileData.type });
+          // Use actual MIME from blob (browser detects this correctly for webm/mp4/etc.)
+          const actualMime = blob.type || (item.type === 'video' ? 'video/webm' : 'image/jpeg');
+          const ext = mimeExt[actualMime] || (item.type === 'video' ? 'webm' : 'jpg');
+          const fileName = item.fileName || `media-${Date.now()}.${ext}`;
+          const file = new File([blob], fileName, { type: actualMime });
           formData.append('media[]', file);
         } else {
+          const fileData = {
+            uri: item.uri,
+            type: item.type === 'video' ? 'video/mp4' : 'image/jpeg',
+            name: item.fileName || `media-${Date.now()}.${item.type === 'video' ? 'mp4' : 'jpg'}`,
+          } as any;
           formData.append('media[]', fileData);
         }
 
-        // Add trim metadata for this specific new media
+        // Add trim metadata
         if (item.startTime !== undefined) {
           formData.append('trim_start[]', item.startTime.toString());
           formData.append('trim_end[]', item.endTime.toString());
@@ -736,226 +898,233 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
         renderCameraView()
       ) : (
         <View style={[GlobalStyles.popupContainer, { paddingTop: insets.top, backgroundColor: colors.background }]}>
-            <View style={[styles.header, { borderBottomColor: colors.border }]}>
-              <TouchableOpacity onPress={handleClose}>
-                <Ionicons name="close" size={24} color={colors.text} />
-              </TouchableOpacity>
-              <Text style={[styles.title, { color: colors.text }]}>{isEditing ? t('edit_post') : t('new_post')}</Text>
-              <TouchableOpacity
-                onPress={handleSubmit}
-                disabled={isUploading || (longVideosDetected && !isEditing)}
-              >
-                {isUploading ? (
-                  <ActivityIndicator size="small" color="#1DA1F2" />
-                ) : (
-                  <Text style={[
-                    styles.postButton,
-                    (longVideosDetected && !isEditing) && styles.postButtonDisabled
-                  ]}>
-                    {isEditing ? t('update') : t('post')}
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView contentContainerStyle={styles.content}>
-              <TextInput
-                style={[styles.captionInput, { color: colors.text }]}
-                placeholder={t('whats_happening_placeholder')}
-            placeholderTextColor={colors.textSecondary}
-            multiline
-            value={caption}
-            onChangeText={setCaption}
-          />
-
-          {/* AI Shield Feedback */}
-          {caption.length > 5 && (
-            <View style={[styles.aiShieldContainer, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-              <View style={styles.aiShieldHeader}>
-                <Ionicons 
-                  name={isSafe ? "shield-checkmark-outline" : "alert-circle-outline"} 
-                  size={16} 
-                  color={isSafe ? colors.success : colors.error} 
-                />
-                <Text style={[styles.aiShieldTitle, { color: isSafe ? colors.success : colors.error }]}>
-                  {t('ai_shield')}: {isChecking ? t('analyzing') : isSafe ? t('safe_content') : t('potential_violation')}
+          <View style={[styles.header, { borderBottomColor: colors.border }]}>
+            <TouchableOpacity onPress={handleClose}>
+              <Ionicons name="close" size={24} color={colors.text} />
+            </TouchableOpacity>
+            <Text style={[styles.title, { color: colors.text }]}>{isEditing ? t('edit_post') : t('new_post')}</Text>
+            <TouchableOpacity
+              onPress={handleSubmit}
+              disabled={isUploading || (longVideosDetected && !isEditing)}
+            >
+              {isUploading ? (
+                <ActivityIndicator size="small" color="#1DA1F2" />
+              ) : (
+                <Text style={[
+                  styles.postButton,
+                  (longVideosDetected && !isEditing) && styles.postButtonDisabled
+                ]}>
+                  {isEditing ? t('update') : t('post')}
                 </Text>
-              </View>
-              
-              <View style={styles.aiMetricsRow}>
-                <View style={styles.aiMetric}>
-                  <Text style={[styles.aiMetricLabel, { color: colors.textSecondary }]}>{t('factual_score')}</Text>
-                  <Text style={[styles.aiMetricValue, { color: factScore > 0.8 ? colors.success : colors.text }]}>
-                    {(factScore * 100).toFixed(0)}%
-                  </Text>
-                </View>
-                <View style={styles.aiMetric}>
-                  <Text style={[styles.aiMetricLabel, { color: colors.textSecondary }]}>{t('morality_score')}</Text>
-                  <Text style={[styles.aiMetricValue, { color: moralityScore > 0.8 ? colors.success : colors.text }]}>
-                    {(moralityScore * 100).toFixed(0)}%
-                  </Text>
-                </View>
-              </View>
+              )}
+            </TouchableOpacity>
+          </View>
 
-              {analysis?.flags && analysis.flags.length > 0 && (
-                <View style={styles.aiFlagsRow}>
-                  {analysis.flags.map(flag => (
-                    <View key={flag} style={[styles.aiFlagBadge, { backgroundColor: colors.background }]}>
-                      <Text style={[styles.aiFlagText, { color: colors.textSecondary }]}>{flag.replace('_', ' ')}</Text>
-                    </View>
-                  ))}
+          <ScrollView contentContainerStyle={styles.content}>
+            <TextInput
+              style={[styles.captionInput, { color: colors.text }]}
+              placeholder={t('whats_happening_placeholder')}
+              placeholderTextColor={colors.textSecondary}
+              multiline
+              value={caption}
+              onChangeText={setCaption}
+            />
+
+            {/* AI Shield Feedback */}
+            {caption.length > 5 && (
+              <View style={[styles.aiShieldContainer, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                <View style={styles.aiShieldHeader}>
+                  <Ionicons
+                    name={isSafe ? "shield-checkmark-outline" : "alert-circle-outline"}
+                    size={16}
+                    color={isSafe ? colors.success : colors.error}
+                  />
+                  <Text style={[styles.aiShieldTitle, { color: isSafe ? colors.success : colors.error }]}>
+                    {t('ai_shield')}: {isChecking ? t('analyzing') : isSafe ? t('safe_content') : t('potential_violation')}
+                  </Text>
                 </View>
+
+                <View style={styles.aiMetricsRow}>
+                  <View style={styles.aiMetric}>
+                    <Text style={[styles.aiMetricLabel, { color: colors.textSecondary }]}>{t('factual_score')}</Text>
+                    <Text style={[styles.aiMetricValue, { color: factScore > 0.8 ? colors.success : colors.text }]}>
+                      {(factScore * 100).toFixed(0)}%
+                    </Text>
+                  </View>
+                  <View style={styles.aiMetric}>
+                    <Text style={[styles.aiMetricLabel, { color: colors.textSecondary }]}>{t('morality_score')}</Text>
+                    <Text style={[styles.aiMetricValue, { color: moralityScore > 0.8 ? colors.success : colors.text }]}>
+                      {(moralityScore * 100).toFixed(0)}%
+                    </Text>
+                  </View>
+                </View>
+
+                {analysis?.flags && analysis.flags.length > 0 && (
+                  <View style={styles.aiFlagsRow}>
+                    {analysis.flags.map(flag => (
+                      <View key={flag} style={[styles.aiFlagBadge, { backgroundColor: colors.background }]}>
+                        <Text style={[styles.aiFlagText, { color: colors.textSecondary }]}>{flag.replace('_', ' ')}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* Location Picker */}
+            <View style={styles.locationContainer}>
+              {location ? (
+                <View style={styles.locationTag}>
+                  <BlurView intensity={80} tint={activeScheme === 'dark' ? 'dark' : 'light'} style={styles.locationTagContent}>
+                    <Ionicons name="location" size={16} color={colors.tint} />
+                    <Text style={[styles.locationTagText, { color: colors.text }]}>{location.name}</Text>
+                    <TouchableOpacity onPress={removeLocation} style={styles.removeLocationButton}>
+                      <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  </BlurView>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.addLocationButton, { backgroundColor: colors.muted }]}
+                  onPress={() => setShowLocationSearch(true)}
+                >
+                  <Ionicons name="location-outline" size={20} color={colors.tint} />
+                  <Text style={[styles.addLocationText, { color: colors.tint }]}>{t('add_location')}</Text>
+                </TouchableOpacity>
               )}
             </View>
-          )}
 
-          {/* Location Picker */}
-          <View style={styles.locationContainer}>
-            {location ? (
-              <View style={styles.locationTag}>
-                <BlurView intensity={80} tint={activeScheme === 'dark' ? 'dark' : 'light'} style={styles.locationTagContent}>
-                  <Ionicons name="location" size={16} color={colors.tint} />
-                  <Text style={[styles.locationTagText, { color: colors.text }]}>{location.name}</Text>
-                  <TouchableOpacity onPress={removeLocation} style={styles.removeLocationButton}>
-                    <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
-                  </TouchableOpacity>
-                </BlurView>
+            {/* Long Video Warning */}
+            {longVideosDetected && !isEditing && (
+              <View style={styles.warningContainer}>
+                <Ionicons name="alert-circle" size={20} color="#FF9500" />
+                <Text style={styles.warningText}>
+                  {t('long_video_warning')}
+                </Text>
               </View>
-            ) : (
-              <TouchableOpacity
-                style={[styles.addLocationButton, { backgroundColor: colors.muted }]}
-                onPress={() => setShowLocationSearch(true)}
-              >
-                <Ionicons name="location-outline" size={20} color={colors.tint} />
-                <Text style={[styles.addLocationText, { color: colors.tint }]}>{t('add_location')}</Text>
-              </TouchableOpacity>
             )}
-          </View>
 
-          {/* Long Video Warning */}
-          {longVideosDetected && !isEditing && (
-            <View style={styles.warningContainer}>
-              <Ionicons name="alert-circle" size={20} color="#FF9500" />
-              <Text style={styles.warningText}>
-                {t('long_video_warning')}
-              </Text>
-            </View>
-          )}
-
-          {media.some(item => !item._deleted) && (
-            <View style={styles.mediaContainer}>
-              {media.map((item, index) => {
-                if (item._deleted) return null;
-                return (
-                  <View key={`media-${item.id || index}`} style={styles.mediaItem}>
-                    {item.type === 'video' ? (
-                      <View style={styles.videoThumbnail}>
-                        <Ionicons name="videocam" size={40} color="#fff" />
-                        {item.duration && (
-                          <View style={styles.durationContainer}>
-                            <Text style={styles.durationLabel}>
-                              {item.startTime !== undefined
-                                ? `${Math.floor((item.endTime - item.startTime) / 60)}:${Math.floor((item.endTime - item.startTime) % 60).toString().padStart(2, '0')}`
-                                : `${Math.floor(item.duration / 60000)}:${Math.floor((item.duration % 60000) / 1000).toString().padStart(2, '0')}`}
-                            </Text>
-                            {item.startTime !== undefined && (
-                              <View style={styles.trimmedBadgeTiny}>
-                                <Text style={styles.trimmedTextTiny}>{t('trimmed')}</Text>
-                              </View>
-                            )}
+            {media.some(item => !item._deleted) && (
+              <View style={styles.mediaContainer}>
+                {media.map((item, index) => {
+                  if (item._deleted) return null;
+                  return (
+                    <View key={`media-${item.id || index}`} style={styles.mediaItem}>
+                      {item.type === 'video' ? (
+                        <View style={styles.videoThumbnail}>
+                          <Image
+                            source={{ uri: item.thumbnailUri || (item.file_path ? `${getApiBaseImage()}/storage/${item.file_path}` : item.uri) }}
+                            style={styles.mediaPreview}
+                            resizeMode="cover"
+                          />
+                          <View style={[styles.videoOverlay, { backgroundColor: 'rgba(0,0,0,0.3)' }]}>
+                            <Ionicons name="videocam" size={32} color="#fff" />
                           </View>
-                        )}
-
-                        {item.duration && item.duration > 120000 && !item.startTime && (
-                          <TouchableOpacity
-                            style={styles.trimOverlay}
-                            onPress={() => handleTrim(index)}
-                          >
-                            <View style={styles.trimBadge}>
-                              <Ionicons name="cut" size={16} color="#fff" />
-                              <Text style={styles.trimText}>{t('cut_to_2m')}</Text>
+                          {item.duration && (
+                            <View style={styles.durationContainer}>
+                              <Text style={styles.durationLabel}>
+                                {item.startTime !== undefined
+                                  ? `${Math.floor((item.endTime - item.startTime) / 60)}:${Math.floor((item.endTime - item.startTime) % 60).toString().padStart(2, '0')}`
+                                  : `${Math.floor(item.duration / 60000)}:${Math.floor((item.duration % 60000) / 1000).toString().padStart(2, '0')}`}
+                              </Text>
+                              {item.startTime !== undefined && (
+                                <View style={styles.trimmedBadgeTiny}>
+                                  <Text style={styles.trimmedTextTiny}>{t('trimmed')}</Text>
+                                </View>
+                              )}
                             </View>
-                          </TouchableOpacity>
-                        )}
+                          )}
 
-                        {item.startTime !== undefined && (
-                          <TouchableOpacity
-                            style={styles.trimOverlayActive}
-                            onPress={() => handleTrim(index)}
-                          >
-                            <View style={styles.trimBadgeActive}>
-                              <Ionicons name="checkmark-circle" size={16} color="#fff" />
-                              <Text style={styles.trimText}>{t('trimmed')}</Text>
-                            </View>
-                          </TouchableOpacity>
-                        )}
+                          {item.duration && item.duration > 120000 && !item.startTime && !item.file_path && (
+                            <TouchableOpacity
+                              style={styles.trimOverlay}
+                              onPress={() => handleTrim(index)}
+                            >
+                              <View style={styles.trimBadge}>
+                                <Ionicons name="cut" size={16} color="#fff" />
+                                <Text style={styles.trimText}>{t('cut_to_2m')}</Text>
+                              </View>
+                            </TouchableOpacity>
+                          )}
 
-                        {(!item.duration || item.duration <= 120000) && item.startTime === undefined && (
-                          <TouchableOpacity
-                            style={styles.miniTrimButton}
-                            onPress={() => handleTrim(index)}
-                          >
-                            <Ionicons name="cut" size={14} color="#fff" />
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    ) : (
-                      <Image
-                        source={{ uri: item.file_path ? `${getApiBaseImage()}/storage/${item.file_path}` : item.uri }}
-                        style={styles.mediaPreview}
-                        resizeMode="cover"
-                      />
-                    )}
-                    <TouchableOpacity
-                      style={styles.removeMediaButton}
-                      onPress={() => removeMedia(index)}
-                    >
-                      <Ionicons name="trash" size={20} color="white" />
-                    </TouchableOpacity>
-                  </View>
-                );
-              })}
+                          {item.startTime !== undefined && !item.file_path && (
+                            <TouchableOpacity
+                              style={styles.trimOverlayActive}
+                              onPress={() => handleTrim(index)}
+                            >
+                              <View style={styles.trimBadgeActive}>
+                                <Ionicons name="checkmark-circle" size={16} color="#fff" />
+                                <Text style={styles.trimText}>{t('trimmed')}</Text>
+                              </View>
+                            </TouchableOpacity>
+                          )}
+
+                          {(!item.duration || item.duration <= 120000) && item.startTime === undefined && !item.file_path && (
+                            <TouchableOpacity
+                              style={styles.miniTrimButton}
+                              onPress={() => handleTrim(index)}
+                            >
+                              <Ionicons name="cut" size={14} color="#fff" />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      ) : (
+                        <Image
+                          source={{ uri: item.file_path ? `${getApiBaseImage()}/storage/${item.file_path}` : item.uri }}
+                          style={styles.mediaPreview}
+                          resizeMode="cover"
+                        />
+                      )}
+                      <TouchableOpacity
+                        style={styles.removeMediaButton}
+                        onPress={() => removeMedia(index)}
+                      >
+                        <Ionicons name="trash" size={20} color="white" />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+
+            <View style={styles.mediaButtons}>
+              <TouchableOpacity
+                style={[styles.mediaButton, { backgroundColor: colors.muted }]}
+                onPress={pickMedia}
+              >
+                <Ionicons name="image" size={24} color={colors.tint} />
+                <Text style={[styles.mediaButtonText, { color: colors.tint }]}>{t('library')}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.mediaButton, { backgroundColor: colors.muted }]}
+                onPress={() => setCameraVisible(true)}
+              >
+                <Ionicons name="camera" size={24} color={colors.tint} />
+                <Text style={[styles.mediaButtonText, { color: colors.tint }]}>{t('camera')}</Text>
+              </TouchableOpacity>
             </View>
-          )}
+          </ScrollView>
+        </View>
+      )}
 
-          <View style={styles.mediaButtons}>
-            <TouchableOpacity
-              style={[styles.mediaButton, { backgroundColor: colors.muted }]}
-              onPress={pickMedia}
-            >
-              <Ionicons name="image" size={24} color={colors.tint} />
-              <Text style={[styles.mediaButtonText, { color: colors.tint }]}>{t('library')}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.mediaButton, { backgroundColor: colors.muted }]}
-              onPress={() => setCameraVisible(true)}
-            >
-              <Ionicons name="camera" size={24} color={colors.tint} />
-              <Text style={[styles.mediaButtonText, { color: colors.tint }]}>{t('camera')}</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </View>
-    )}
-
-        {videoToTrimIndex !== null && (
-          <VideoTrimmer
-            visible={trimmerVisible}
-            videoUri={media[videoToTrimIndex].uri}
-            onClose={() => {
-              setTrimmerVisible(false);
-              setVideoToTrimIndex(null);
-            }}
-            onSave={onTrimSave}
-          />
-        )}
-
-        <ShareLocation
-          visible={showLocationSearch}
-          onClose={() => setShowLocationSearch(false)}
-          onShareLocation={handleLocationSelect}
+      {videoToTrimIndex !== null && media[videoToTrimIndex] && (
+        <VideoTrimmer
+          visible={trimmerVisible}
+          videoUri={media[videoToTrimIndex].uri}
+          onClose={() => {
+            setTrimmerVisible(false);
+            setVideoToTrimIndex(null);
+          }}
+          onSave={onTrimSave}
         />
+      )}
+
+      <ShareLocation
+        visible={showLocationSearch}
+        onClose={() => setShowLocationSearch(false)}
+        onShareLocation={handleLocationSelect}
+      />
     </Modal>
   );
 }
@@ -1144,6 +1313,12 @@ const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
     color: 'white',
     marginTop: 8,
     fontWeight: 'bold',
+  },
+  videoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
   },
   durationContainer: {
     position: 'absolute',

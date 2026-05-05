@@ -32,6 +32,7 @@ import { getToken } from '@/services/TokenService';
 import getApiBase from '@/services/getApiBase';
 import { createShadow, createTextShadow } from '@/utils/styles';
 import { useTranslation } from '@/constants/i18n';
+import VideoTrimmer from '@/components/Shared/VideoTrimmer';
 
 export interface UploadedMedia {
   id: number;
@@ -61,6 +62,9 @@ interface SelectedAsset {
   name: string;
   mimeType: string;
   file?: File;
+  durationMs?: number; // video duration in milliseconds
+  startTime?: number;  // trim start in seconds
+  endTime?: number;    // trim end in seconds
 }
 
 // ─── Upload Helper ────────────────────────────────────────────────────────────
@@ -93,6 +97,13 @@ async function uploadToSpaceAPI(
     } as any);
   }
   formData.append('type', asset.type);
+  
+  if (asset.startTime !== undefined) {
+    formData.append('trim_start', asset.startTime.toString());
+  }
+  if (asset.endTime !== undefined) {
+    formData.append('trim_end', asset.endTime.toString());
+  }
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -159,6 +170,23 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
 
+  // Video trimmer state
+  const MAX_VIDEO_DURATION_SEC = 120;
+  const trimSaveInProgressRef = useRef(false);
+  const [showTrimmer, setShowTrimmer] = useState(false);
+  const [trimTargetIndex, setTrimTargetIndex] = useState<number | null>(null);
+
+  // Helper: get video duration on web via HTMLVideoElement
+  const getWebVideoDuration = (uri: string): Promise<number> =>
+    new Promise((resolve) => {
+      if (typeof document === 'undefined') { resolve(0); return; }
+      const vid = document.createElement('video');
+      vid.preload = 'metadata';
+      vid.onloadedmetadata = () => resolve(vid.duration * 1000); // ms
+      vid.onerror = () => resolve(0);
+      vid.src = uri;
+    });
+
   // Camera & Recording State
   const [cameraType, setCameraType] = useState<'back' | 'front'>('back');
   const [cameraMode, setCameraMode] = useState<'picture' | 'video'>('picture');
@@ -171,6 +199,12 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
   const longPressTimeout = useRef<any>(null);
   const cameraRef = useRef<any>(null);
 
+  // Sync ref for the looping heartbeat to avoid stale closures
+  const mediaRef = useRef<SelectedAsset | null>(null);
+  useEffect(() => {
+    mediaRef.current = selectedAssets[focusedIndex] || null;
+  }, [selectedAssets, focusedIndex]);
+
   // Video Preview Player (SDK 52)
   const videoPlayer = useVideoPlayer(
     viewState === 'preview' && selectedAssets[focusedIndex]?.type === 'video' ? selectedAssets[focusedIndex].uri : '',
@@ -179,6 +213,48 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
       if (viewState === 'preview') player.play();
     }
   );
+
+  // Robust playback and looping logic for preview
+  useEffect(() => {
+    const currentMedia = selectedAssets[focusedIndex];
+    if (viewState !== 'preview' || currentMedia?.type !== 'video' || !videoPlayer) return;
+
+    // Set custom loop behavior
+    const isTrimmed = currentMedia.startTime !== undefined && currentMedia.endTime !== undefined;
+    videoPlayer.loop = !isTrimmed;
+
+    let interval: any;
+
+    if (isTrimmed) {
+      // 1. Initial sync to start time
+      const currentTime = Platform.OS === 'web' ? videoPlayer.currentTime : videoPlayer.currentTime / 1000;
+      if (currentTime < (currentMedia.startTime || 0) - 0.5 || currentTime > (currentMedia.endTime || 0) + 0.5) {
+        videoPlayer.currentTime = (currentMedia.startTime || 0) * (Platform.OS === 'web' ? 1 : 1000);
+      }
+
+      // 2. Start looping heartbeat
+      interval = setInterval(() => {
+        const pTime = Platform.OS === 'web' ? videoPlayer.currentTime : videoPlayer.currentTime / 1000;
+        const refMedia = mediaRef.current;
+        if (refMedia && refMedia.endTime !== undefined && pTime >= refMedia.endTime - 0.2) {
+          videoPlayer.currentTime = (refMedia.startTime || 0) * (Platform.OS === 'web' ? 1 : 1000);
+        }
+      }, 100);
+
+      // 3. Play with safety delay
+      const playTimer = setTimeout(() => {
+        try { videoPlayer.play(); } catch (e) {}
+      }, 100);
+      
+      return () => {
+        if (interval) clearInterval(interval);
+        clearTimeout(playTimer);
+      };
+    } else {
+      // Untrimmed video - just play normally
+      try { videoPlayer.play(); } catch (e) {}
+    }
+  }, [viewState, focusedIndex, selectedAssets[focusedIndex]?.uri, selectedAssets[focusedIndex]?.startTime, selectedAssets[focusedIndex]?.endTime, videoPlayer]);
 
   useEffect(() => {
     return () => {
@@ -194,7 +270,8 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
     type: 'image' | 'video' | 'document',
     name: string,
     mimeType: string,
-    file?: File
+    file?: File,
+    durationMs?: number
   ) => {
     // ─── Size Limit Check (20MB) ───
     try {
@@ -218,10 +295,24 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
       console.warn('Size check failed:', err);
     }
 
-    setSelectedAssets(prev => [...prev, { uri, type, name, mimeType, file }]);
-    setFocusedIndex(selectedAssets.length);
+    // ─── Duration check for web videos ───
+    let resolvedDurationMs = durationMs;
+    if (type === 'video' && Platform.OS === 'web' && !resolvedDurationMs) {
+      resolvedDurationMs = await getWebVideoDuration(uri);
+    }
+
+    const asset: SelectedAsset = { uri, type, name, mimeType, file, durationMs: resolvedDurationMs };
+    const nextIndex = selectedAssets.length;
+    setSelectedAssets(prev => [...prev, asset]);
+    setFocusedIndex(nextIndex);
     setViewState('preview');
     setCameraVisible(false);
+
+    // ─── Auto-open trimmer for long videos ───
+    if (type === 'video' && resolvedDurationMs && resolvedDurationMs > MAX_VIDEO_DURATION_SEC * 1000) {
+      setTrimTargetIndex(nextIndex);
+      setShowTrimmer(true);
+    }
   };
 
   const openCamera = useCallback(async () => {
@@ -282,11 +373,14 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
         });
 
         if (video) {
+          // Camera recordings are always within 120s limit (RECORDING_LIMIT_MS = 120000)
           handleAssetPicked(
             video.uri,
             'video',
             `video-${Date.now()}.mp4`,
-            'video/mp4'
+            'video/mp4',
+            undefined,
+            RECORDING_LIMIT_MS
           );
         }
       } catch (error) {
@@ -359,20 +453,42 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
       input.onchange = async (e: any) => {
         const files = Array.from(e.target?.files || []) as File[];
         if (files.length > 0) {
-          const newAssets: SelectedAsset[] = files.map(file => {
+          const newAssets: SelectedAsset[] = await Promise.all(files.map(async file => {
             const type = file.type.startsWith('video/') ? 'video' : 'image';
+            const uri = URL.createObjectURL(file);
+            let durationMs;
+            if (type === 'video') {
+              durationMs = await getWebVideoDuration(uri);
+            }
             return {
-              uri: URL.createObjectURL(file),
+              uri,
               type,
               name: file.name,
               mimeType: file.type,
-              file
+              file,
+              durationMs,
             };
-          });
+          }));
+
           setSelectedAssets(prev => {
             const next = [...prev, ...newAssets];
-            setFocusedIndex(prev.length);
+            const firstNewIndex = prev.length;
+            setFocusedIndex(firstNewIndex);
             setViewState(next.length > 1 ? 'grid' : 'preview');
+
+            // Auto-open trimmer for first long video in this pick session
+            const longVideoIdx = newAssets.findIndex(
+              a => a.type === 'video' && a.durationMs && (a.durationMs / 1000) > MAX_VIDEO_DURATION_SEC
+            );
+            
+            if (longVideoIdx >= 0) {
+              const absIdx = firstNewIndex + longVideoIdx;
+              setTimeout(() => {
+                setTrimTargetIndex(absIdx);
+                setShowTrimmer(true);
+              }, 100);
+            }
+
             return next;
           });
         }
@@ -403,7 +519,8 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
           uri: asset.uri,
           type: isVideo ? 'video' : 'image',
           name: asset.fileName || `media_${Date.now()}.${isVideo ? 'mp4' : 'jpg'}`,
-          mimeType: asset.mimeType ?? (isVideo ? 'video/mp4' : 'image/jpeg')
+          mimeType: asset.mimeType ?? (isVideo ? 'video/mp4' : 'image/jpeg'),
+          durationMs: isVideo && asset.duration ? asset.duration : undefined,
         };
       });
 
@@ -411,6 +528,18 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
         const next = [...prev, ...newAssets];
         setFocusedIndex(prev.length);
         setViewState(next.length > 1 ? 'grid' : 'preview');
+
+        // Auto-open trimmer for first long video picked
+        const longVideoIdx = newAssets.findIndex(
+          a => a.type === 'video' && a.durationMs && a.durationMs > MAX_VIDEO_DURATION_SEC * 1000
+        );
+        if (longVideoIdx >= 0) {
+          const absIdx = prev.length + longVideoIdx;
+          setTimeout(() => {
+            setTrimTargetIndex(absIdx);
+            setShowTrimmer(true);
+          }, 100);
+        }
         return next;
       });
     }
@@ -515,7 +644,43 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
     setSelectedAssets([]);
     setFocusedIndex(0);
     setCaption('');
+    setShowTrimmer(false);
+    setTrimTargetIndex(null);
     onClose();
+  };
+
+  // ─── Trim Save Handler ─────────────────────────────────────────────────────
+  const handleTrimSave = (trimmedData: { uri: string; startTime: number; endTime: number; duration: number }) => {
+    if (trimTargetIndex === null) return;
+    const targetIdx = trimTargetIndex; 
+    
+    console.log(`[AdvancedMediaUploader] Trim saved for index ${targetIdx}`);
+    trimSaveInProgressRef.current = true;
+
+    setSelectedAssets(prev => {
+      const next = [...prev];
+      if (next[targetIdx]) {
+        next[targetIdx] = {
+          ...next[targetIdx],
+          uri: trimmedData.uri,
+          startTime: trimmedData.startTime,
+          endTime: trimmedData.endTime,
+          durationMs: trimmedData.duration * 1000,
+          file: undefined, 
+        };
+      }
+      return next;
+    });
+
+    setFocusedIndex(targetIdx);
+    setViewState('preview');
+    setShowTrimmer(false);
+    setTrimTargetIndex(null);
+    
+    // Reset the ref after a delay to allow any pending onClose calls to finish
+    setTimeout(() => {
+      trimSaveInProgressRef.current = false;
+    }, 500);
   };
 
   const removeAsset = (index: number) => {
@@ -627,6 +792,7 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
 
   if (cameraVisible) return renderCameraView();
 
+  // ─── VideoTrimmer overlay for long chat videos ─────────────────────────────
   return (
     <Modal
       visible={isVisible}
@@ -638,6 +804,35 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
+        {/* ─── Video Trimmer Overlay ─── */}
+        {showTrimmer && trimTargetIndex !== null && selectedAssets[trimTargetIndex] && (
+          <VideoTrimmer
+            visible={showTrimmer}
+            videoUri={selectedAssets[trimTargetIndex].uri}
+            maxDuration={120}
+            isStory={false}
+            onSave={handleTrimSave}
+            onClose={() => {
+              if (trimSaveInProgressRef.current) {
+                console.log('[AdvancedMediaUploader] Trimmer onClose ignored (Save in progress)');
+                return;
+              }
+
+              setShowTrimmer(false);
+              setTrimTargetIndex(null);
+              
+              // Remove the untrimmed video asset ONLY if user cancels
+              setSelectedAssets(prev => {
+                const next = prev.filter((_, i) => i !== trimTargetIndex);
+                if (next.length === 0) {
+                  setTimeout(resetAndClose, 0);
+                }
+                return next;
+              });
+            }}
+          />
+        )}
+
         {viewState === 'grid' && (
           <View style={[styles.previewContainer, GlobalStyles.popupContainer, { backgroundColor: '#000' }]}>
             <View style={[styles.previewHeader, { paddingTop: insets.top || 16 }]}>
@@ -730,6 +925,7 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
                 />
               ) : selectedAssets[focusedIndex].type === 'video' ? (
                 <VideoView
+                  key={`${selectedAssets[focusedIndex].uri}-${selectedAssets[focusedIndex].startTime || 'original'}`}
                   style={styles.previewVideo}
                   player={videoPlayer}
                   nativeControls={true}

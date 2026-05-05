@@ -8,6 +8,7 @@ import {
     TouchableOpacity,
     FlatList,
     Modal,
+    Platform,
     useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -59,8 +60,11 @@ const getActivityColor = (type: string): string => {
 const ActivitiesPanel = ({ visible, onClose, anchorPosition }: ActivitiesPanelProps) => {
     const { colors, activeScheme } = useAppTheme();
     const { t } = useTranslation();
-    const { width: windowWidth } = useWindowDimensions();
-    const panelWidth = Math.min(windowWidth - 16, 420);
+    const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+    const panelWidth = Platform.OS === 'web' && windowWidth < 500
+        ? windowWidth - 8
+        : Math.min(windowWidth - 16, 420);
+    const panelMaxHeight = Math.min(windowHeight * 0.78, 580);
 
     const {
         getActivities,
@@ -182,10 +186,12 @@ const ActivitiesPanel = ({ visible, onClose, anchorPosition }: ActivitiesPanelPr
             <View
                 style={[
                     styles.panelContainer,
-                    { backgroundColor: colors.surface, borderColor: colors.border, width: panelWidth },
+                    { backgroundColor: colors.surface, borderColor: colors.border, width: panelWidth, maxHeight: panelMaxHeight },
                     anchorPosition ? {
                         top: anchorPosition.top + 15,
-                        left: anchorPosition.left,
+                        left: anchorPosition.left !== undefined
+                            ? Math.min(anchorPosition.left, windowWidth - panelWidth - 4)
+                            : undefined,
                         right: anchorPosition.right,
                     } : [styles.defaultPosition, { left: (windowWidth - panelWidth) / 2 }],
                 ]}

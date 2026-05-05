@@ -259,7 +259,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
   }, [width, currentIndex]);
 
   const { colors } = useAppTheme();
-  const reactionsToShow = getGroupedReactions(post);
+  const reactionsToShow = post ? getGroupedReactions(post) : [];
 
   // Reset state when visibility or post changes
   useEffect(() => {

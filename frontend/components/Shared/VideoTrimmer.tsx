@@ -30,6 +30,19 @@ import Animated, {
 import { MediaCompressor } from '@/utils/mediaCompressor';
 import * as Haptics from 'expo-haptics';
 
+// Note: Web video trimming is delegated to the server (FFmpeg via trim_start/trim_end form fields).
+// A client-side approach (MediaRecorder + captureStream) is unreliable for seeked local files
+// and produces corrupt/empty output. The backend trims and converts to mp4 after upload.
+
+// Platform-aware blur (PerformanceReport §7.2 — BlurView causes mobile web blur leak)
+// Defined OUTSIDE component to avoid re-creation every render.
+const PlatformBlur: React.FC<{ intensity: number; style?: any; children?: React.ReactNode }> = ({ intensity, style, children }) => {
+    if (Platform.OS === 'web') {
+        return <View style={[style, { backgroundColor: 'rgba(20,20,25,0.88)' }]}>{children}</View>;
+    }
+    return <BlurView intensity={intensity} style={style}>{children}</BlurView>;
+};
+
 interface VideoTrimmerProps {
     visible: boolean;
     videoUri: string;
@@ -75,6 +88,7 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
     const scrubberLayoutRef = useRef({ x: 0, width: 0 });
     const [effectiveScrubberWidth, setEffectiveScrubberWidth] = useState(trimmerWindowWidth - 72);
     const initialDurationSet = useRef(false);
+    const [scrubberEl, setScrubberEl] = useState<any>(null); // set by callback ref when DOM mounts
 
     // Reset initialization when URI changes
     useEffect(() => {
@@ -108,14 +122,24 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
         [safeEndPos, safeStartPos, safeDuration]
     );
 
+    // ── expo-video time unit helpers ──────────────────────────────────────────
+    // expo-video on web wraps HTMLVideoElement → duration/currentTime in SECONDS.
+    // expo-video on native (iOS/Android) reports in MILLISECONDS.
+    // These helpers normalize everything to seconds for our state.
+    const playerValueToSeconds = useCallback((playerValue: number): number =>
+        Platform.OS === 'web' ? playerValue : playerValue / 1000
+    , []);
+    const secondsToPlayerValue = useCallback((secs: number): number =>
+        Platform.OS === 'web' ? secs : secs * 1000
+    , []);
+
     const safeSetCurrentTime = useCallback((timeInSeconds: number) => {
         if (!player || !duration || duration === 0) return;
-        
-        const timeMs = timeInSeconds * 1000;
-        if (!isNaN(timeMs) && isFinite(timeMs) && timeMs >= 0) {
-            player.currentTime = timeMs;
+        const playerVal = secondsToPlayerValue(timeInSeconds);
+        if (!isNaN(playerVal) && isFinite(playerVal) && playerVal >= 0) {
+            player.currentTime = playerVal;
         }
-    }, [player, duration]);
+    }, [player, duration, secondsToPlayerValue]);
 
     // Animate duration label when selection changes
     useEffect(() => {
@@ -135,7 +159,8 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
 
         const setInitialDuration = () => {
             if (player.duration > 0 && !initialDurationSet.current) {
-                const dur = player.duration / 1000;
+                // Convert from player units → seconds (web=s, native=ms)
+                const dur = playerValueToSeconds(player.duration);
                 setDuration(dur);
                 
                 // Set exactly maxDuration (10s for stories, 120s for posts)
@@ -176,7 +201,8 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
         if (!player) return;
 
         const subscription = player.addListener('timeUpdate', (event) => {
-            const time = event.currentTime / 1000;
+            // Convert from player units → seconds
+            const time = playerValueToSeconds(event.currentTime);
             setCurrentTime(time);
 
             // Keep within trim range with spring-back effect
@@ -218,51 +244,63 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
         }
     }, []);
 
-    // PanResponder for Start Handle with sliding window logic
+    // Stale-closure fix refs (read inside DOM event handlers which are attached once)
+    const safeDurationRef = useRef(safeDuration);
+    const maxDurationRef = useRef(maxDuration);
+    const safeSetCurrentTimeRef = useRef(safeSetCurrentTime);
+    useEffect(() => { safeDurationRef.current = safeDuration; }, [safeDuration]);
+    useEffect(() => { maxDurationRef.current = maxDuration; }, [maxDuration]);
+    useEffect(() => { safeSetCurrentTimeRef.current = safeSetCurrentTime; }, [safeSetCurrentTime]);
+
+    // ── Grant-position refs: store position AT gesture start, add total dx to it ──
+    // gestureState.dx is TOTAL displacement from grant (not per-frame), so:
+    //   newPos = grantPos + totalDx / width   (never add dx to a moving ref)
+    const startPosRef = useRef(startPos);
+    const endPosRef = useRef(endPos);
+    const startGrantRef = useRef(0);
+    const endGrantRef = useRef(0);
+    const playheadGrantRef = useRef(0);
+    const currentTimePosRef = useRef(0);
+    const scrubberContainerRef = useCallback((el: any) => setScrubberEl(el), []); // callback ref – triggers state when DOM mounts
+    useEffect(() => { startPosRef.current = startPos; }, [startPos]);
+    useEffect(() => { endPosRef.current = endPos; }, [endPos]);
+    useEffect(() => { currentTimePosRef.current = currentTime / (safeDuration || 1); }, [currentTime, safeDuration]);
+
+    // PanResponder for Start Handle
     const startPanResponder = useRef(
         PanResponder.create({
             onStartShouldSetPanResponder: () => true,
             onMoveShouldSetPanResponder: () => true,
             onPanResponderGrant: () => {
+                // Capture position at the moment the finger lands
+                startGrantRef.current = startPosRef.current;
                 setShowTimeTooltip(true);
                 handlesOpacity.value = withTiming(1.2);
                 scrubberScale.value = withSpring(1.02);
                 triggerHaptic('light');
             },
             onPanResponderMove: (_, gestureState) => {
-                if (!duration || isNaN(duration) || duration === 0) return;
-                
-                // Calibration: moveX is absolute, we need relative to scrubber
-                // gestureState.x0 is start position. startPos * effectiveScrubberWidth is where it WAS.
-                // So scrubberStart = x0 - (startPos * effectiveScrubberWidth)
-                // But this only works if x0 was on the handle.
-                // Safer: just use moveX and localized scrubberLayout.
-                const rawPos = (gestureState.moveX - (scrubberLayoutRef.current.x || 36)) / effectiveScrubberWidth;
-                let newStartPos = Math.max(0, Math.min(rawPos, endPos - (MIN_SELECTION_DURATION / (safeDuration * zoomLevel))));
-
+                if (!duration || isNaN(duration) || duration === 0 || effectiveScrubberWidth <= 0) return;
+                // grantPos + totalDx — correct for all dx accumulation modes
+                let newStartPos = Math.max(0, Math.min(
+                    startGrantRef.current + gestureState.dx / effectiveScrubberWidth,
+                    endPosRef.current - (MIN_SELECTION_DURATION / safeDuration)
+                ));
                 if (isNaN(newStartPos) || !isFinite(newStartPos)) return;
-
-                // Update tooltip time
-                setTooltipTime((newStartPos * safeDuration) / zoomLevel);
-
-                // Check if selection would exceed max duration
-                const currentSelectionDuration = (endPos - newStartPos) * safeDuration;
-
-                if (currentSelectionDuration > maxDuration) {
-                    const excess = currentSelectionDuration - maxDuration;
-                    const newEndPos = endPos - (excess / safeDuration);
-                    if (newEndPos >= newStartPos + (MIN_SELECTION_DURATION / safeDuration)) {
-                        setEndPos(newEndPos);
-                    } else {
-                        newStartPos = endPos - (maxDuration / safeDuration);
-                    }
+                if ((endPosRef.current - newStartPos) * safeDuration > maxDuration) {
+                    newStartPos = endPosRef.current - (maxDuration / safeDuration);
                 }
-
+                setTooltipTime(newStartPos * safeDuration);
                 setStartPos(newStartPos);
                 safeSetCurrentTime(newStartPos * safeDuration);
                 triggerHaptic('light');
             },
-            onPanResponderRelease: () => {
+            onPanResponderRelease: (_, gestureState) => {
+                // Commit final position to ref for next gesture's grantPos
+                startPosRef.current = Math.max(0, Math.min(
+                    startGrantRef.current + gestureState.dx / effectiveScrubberWidth,
+                    endPosRef.current - (MIN_SELECTION_DURATION / safeDuration)
+                ));
                 setShowTimeTooltip(false);
                 handlesOpacity.value = withTiming(1);
                 scrubberScale.value = withSpring(1);
@@ -271,46 +309,38 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
         })
     ).current;
 
-    // PanResponder for End Handle with sliding window logic
+    // PanResponder for End Handle
     const endPanResponder = useRef(
         PanResponder.create({
             onStartShouldSetPanResponder: () => true,
             onMoveShouldSetPanResponder: () => true,
             onPanResponderGrant: () => {
+                endGrantRef.current = endPosRef.current;
                 setShowTimeTooltip(true);
                 handlesOpacity.value = withTiming(1.2);
                 scrubberScale.value = withSpring(1.02);
                 triggerHaptic('light');
             },
             onPanResponderMove: (_, gestureState) => {
-                if (!duration || isNaN(duration) || duration === 0) return;
-                
-                const rawPos = (gestureState.moveX - (scrubberLayoutRef.current.x || 36)) / effectiveScrubberWidth;
-                let newEndPos = Math.max(startPos + (MIN_SELECTION_DURATION / (safeDuration * zoomLevel)), Math.min(rawPos, 1));
-
+                if (!duration || isNaN(duration) || duration === 0 || effectiveScrubberWidth <= 0) return;
+                let newEndPos = Math.max(
+                    startPosRef.current + (MIN_SELECTION_DURATION / safeDuration),
+                    Math.min(1, endGrantRef.current + gestureState.dx / effectiveScrubberWidth)
+                );
                 if (isNaN(newEndPos) || !isFinite(newEndPos)) return;
-
-                // Update tooltip time
-                setTooltipTime((newEndPos * safeDuration) / zoomLevel);
-
-                // Check if selection would exceed max duration
-                const currentSelectionDuration = (newEndPos - startPos) * safeDuration;
-
-                if (currentSelectionDuration > maxDuration) {
-                    const excess = currentSelectionDuration - maxDuration;
-                    const newStartPos = startPos + (excess / safeDuration);
-                    if (newStartPos <= newEndPos - (MIN_SELECTION_DURATION / safeDuration)) {
-                        setStartPos(newStartPos);
-                    } else {
-                        newEndPos = startPos + (maxDuration / safeDuration);
-                    }
+                if ((newEndPos - startPosRef.current) * safeDuration > maxDuration) {
+                    newEndPos = startPosRef.current + (maxDuration / safeDuration);
                 }
-
+                setTooltipTime(newEndPos * safeDuration);
                 setEndPos(newEndPos);
                 safeSetCurrentTime(newEndPos * safeDuration);
                 triggerHaptic('light');
             },
-            onPanResponderRelease: () => {
+            onPanResponderRelease: (_, gestureState) => {
+                endPosRef.current = Math.max(
+                    startPosRef.current + (MIN_SELECTION_DURATION / safeDuration),
+                    Math.min(1, endGrantRef.current + gestureState.dx / effectiveScrubberWidth)
+                );
                 setShowTimeTooltip(false);
                 handlesOpacity.value = withTiming(1);
                 scrubberScale.value = withSpring(1);
@@ -319,81 +349,181 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
         })
     ).current;
 
-    // Playhead dragging for precise scrubbing
+    // Playhead dragging
     const playheadPanResponder = useRef(
         PanResponder.create({
             onStartShouldSetPanResponder: () => true,
             onMoveShouldSetPanResponder: () => true,
             onPanResponderGrant: () => {
+                playheadGrantRef.current = currentTimePosRef.current;
                 setShowTimeTooltip(true);
                 player.pause();
                 setIsPlaying(false);
                 triggerHaptic('light');
             },
             onPanResponderMove: (_, gestureState) => {
-                if (!duration || isNaN(duration) || duration === 0) return;
-                
-                const rawPos = (gestureState.moveX - (scrubberLayoutRef.current.x || 36)) / effectiveScrubberWidth;
-                const newPos = Math.max(0, Math.min(rawPos, 1));
-                const newTime = (newPos * safeDuration) / zoomLevel;
-
+                if (!duration || isNaN(duration) || duration === 0 || effectiveScrubberWidth <= 0) return;
+                const newPos = Math.max(
+                    startPosRef.current,
+                    Math.min(endPosRef.current, playheadGrantRef.current + gestureState.dx / effectiveScrubberWidth)
+                );
+                const newTime = newPos * safeDuration;
                 if (isNaN(newTime) || !isFinite(newTime)) return;
-
                 setTooltipTime(newTime);
                 safeSetCurrentTime(newTime);
                 triggerHaptic('light');
             },
-            onPanResponderRelease: () => {
+            onPanResponderRelease: (_, gestureState) => {
+                currentTimePosRef.current = Math.max(
+                    startPosRef.current,
+                    Math.min(endPosRef.current, playheadGrantRef.current + gestureState.dx / effectiveScrubberWidth)
+                );
                 setShowTimeTooltip(false);
                 triggerHaptic('medium');
             },
         })
     ).current;
 
+    // ── Web-only pointer drag system ────────────────────────────────────────────────
+    // PanResponder is unreliable on web (no setPointerCapture, browser drag conflicts).
+    // Instead: attach a single pointerdown/move/up listener to the scrubber container
+    // and use setPointerCapture so moves work even when cursor leaves the element.
+    useEffect(() => {
+        if (Platform.OS !== 'web') return;
+        const el = scrubberEl as HTMLElement | null;
+        if (!el) return;
+
+        el.style.touchAction = 'none';   // prevent scroll interference
+        el.style.userSelect = 'none';    // prevent text selection during drag
+        el.style.cursor = 'pointer';
+
+        let activeHandle: 'start' | 'end' | 'playhead' | null = null;
+
+        const getPos = (clientX: number): number => {
+            const rect = el.getBoundingClientRect();
+            return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        };
+
+        const onPointerDown = (e: PointerEvent) => {
+            e.preventDefault();
+            const pos = getPos(e.clientX);
+            const sd = safeDurationRef.current || 1;
+
+            // Determine nearest handle (handles have a hit-area of ~5% of track)
+            const startDist = Math.abs(pos - startPosRef.current);
+            const endDist   = Math.abs(pos - endPosRef.current);
+            const phDist    = Math.abs(pos - currentTimePosRef.current);
+            const THRESHOLD = 0.08;
+
+            if (startDist < THRESHOLD && startDist <= endDist) {
+                activeHandle = 'start';
+                startGrantRef.current = startPosRef.current;
+            } else if (endDist < THRESHOLD && endDist <= startDist) {
+                activeHandle = 'end';
+                endGrantRef.current = endPosRef.current;
+            } else if (phDist < THRESHOLD) {
+                activeHandle = 'playhead';
+                playheadGrantRef.current = currentTimePosRef.current;
+            } else if (pos > startPosRef.current && pos < endPosRef.current) {
+                // Click inside active region → move playhead directly
+                activeHandle = 'playhead';
+                playheadGrantRef.current = currentTimePosRef.current;
+                const newTime = pos * sd;
+                safeSetCurrentTimeRef.current(newTime);
+                setTooltipTime(newTime);
+            } else {
+                return; // click outside active region and not near a handle
+            }
+
+            el.setPointerCapture(e.pointerId); // lock pointer to this element
+            setShowTimeTooltip(true);
+            handlesOpacity.value = withTiming(1.2);
+            scrubberScale.value = withSpring(1.02);
+        };
+
+        const onPointerMove = (e: PointerEvent) => {
+            if (!activeHandle) return;
+            const pos = getPos(e.clientX);
+            const sd  = safeDurationRef.current || 1;
+            const md  = maxDurationRef.current;
+
+            if (activeHandle === 'start') {
+                let np = Math.max(0, Math.min(pos, endPosRef.current - MIN_SELECTION_DURATION / sd));
+                if ((endPosRef.current - np) * sd > md) np = endPosRef.current - md / sd;
+                setStartPos(np);
+                startPosRef.current = np;
+                setTooltipTime(np * sd);
+                safeSetCurrentTimeRef.current(np * sd);
+
+            } else if (activeHandle === 'end') {
+                let np = Math.max(startPosRef.current + MIN_SELECTION_DURATION / sd, Math.min(1, pos));
+                if ((np - startPosRef.current) * sd > md) np = startPosRef.current + md / sd;
+                setEndPos(np);
+                endPosRef.current = np;
+                setTooltipTime(np * sd);
+                safeSetCurrentTimeRef.current(np * sd);
+
+            } else if (activeHandle === 'playhead') {
+                const np = Math.max(startPosRef.current, Math.min(endPosRef.current, pos));
+                currentTimePosRef.current = np;
+                safeSetCurrentTimeRef.current(np * sd);
+                setTooltipTime(np * sd);
+            }
+        };
+
+        const onPointerUp = () => {
+            activeHandle = null;
+            setShowTimeTooltip(false);
+            handlesOpacity.value = withTiming(1);
+            scrubberScale.value = withSpring(1);
+        };
+
+        el.addEventListener('pointerdown', onPointerDown);
+        el.addEventListener('pointermove', onPointerMove);
+        el.addEventListener('pointerup',   onPointerUp);
+        el.addEventListener('pointercancel', onPointerUp);
+
+        return () => {
+            el.removeEventListener('pointerdown', onPointerDown);
+            el.removeEventListener('pointermove', onPointerMove);
+            el.removeEventListener('pointerup',   onPointerUp);
+            el.removeEventListener('pointercancel', onPointerUp);
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [scrubberEl]); // re-runs when DOM element actually mounts (callback ref sets scrubberEl state)
+
     const handleSave = async () => {
         setIsProcessing(true);
-        saveButtonScale.value = withSequence(
-            withSpring(0.9),
-            withSpring(1)
-        );
+        saveButtonScale.value = withSequence(withSpring(0.9), withSpring(1));
 
         const startTime = startPos * safeDuration;
-        const endTime = endPos * safeDuration;
+        const endTime   = endPos   * safeDuration;
         const currentDuration = trimDuration;
 
         try {
             triggerHaptic('heavy');
 
             let trimmedUri = videoUri;
-            let thumbnailUri;
+            const thumbnailUri: string | undefined = undefined;
 
-            // Compress and trim video to max 40MB
-            if (Platform.OS !== 'web') {
-                const result = await MediaCompressor.compressVideo({
-                    uri: videoUri,
-                    startTime,
-                    endTime,
-                    maxSizeMB: MAX_FILE_SIZE_MB,
-                    quality: 'high',
-                }) as any;
-
-                trimmedUri = result.uri;
-                thumbnailUri = result.thumbnailUri;
+            if (Platform.OS === 'web') {
+                // On web: pass the original URI unchanged.
+                // The server (PostController.trimVideo via FFmpeg) does the physical trim
+                // using the trim_start / trim_end fields sent alongside the upload.
+                // DO NOT use MediaRecorder here — it produces corrupt output for seeked local files.
+                trimmedUri = videoUri;
+            } else {
+                // On native: ImagePicker already applied H264_1920x1080 export preset.
+                // Server handles physical trim via startTime/endTime form fields.
+                try {
+                    trimmedUri = await MediaCompressor.compressVideo(videoUri) as string;
+                } catch (_e) {
+                    trimmedUri = videoUri;
+                }
             }
 
-            onSave({
-                uri: trimmedUri,
-                startTime,
-                endTime,
-                duration: currentDuration,
-                thumbnailUri,
-            });
-
-            // Small delay to show success state
-            setTimeout(() => {
-                setIsProcessing(false);
-                onClose();
-            }, 300);
+            onSave({ uri: trimmedUri, startTime, endTime, duration: currentDuration, thumbnailUri });
+            setTimeout(() => { setIsProcessing(false); onClose(); }, 300);
         } catch (error) {
             console.error('Error saving video:', error);
             setIsProcessing(false);
@@ -490,7 +620,7 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                         style={styles.header}
                     >
                         <TouchableOpacity
-                            onPress={onClose}
+                            onPress={handleSave}
                             style={styles.headerButton}
                             disabled={isProcessing}
                         >
@@ -526,10 +656,10 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                         />
 
                         {isLoading && (
-                            <BlurView intensity={60} style={[styles.loadingOverlay, StyleSheet.absoluteFill]}>
+                            <PlatformBlur intensity={60} style={[styles.loadingOverlay, StyleSheet.absoluteFill]}>
                                 <ActivityIndicator size="large" color="#FF9F0A" />
                                 <Text style={styles.loadingText}>{t('preparing_video')}</Text>
-                            </BlurView>
+                            </PlatformBlur>
                         )}
 
                         {!isLoading && (
@@ -555,20 +685,20 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
 
                                 {/* Premium Time Display */}
                                 <View style={styles.timeDisplayContainer}>
-                                    <BlurView intensity={80} style={styles.timeDisplay}>
+                                    <PlatformBlur intensity={80} style={styles.timeDisplay}>
                                         <Text style={styles.timeDisplayText}>
                                             {formatDetailedTime(currentTime)}
                                         </Text>
-                                    </BlurView>
-                                    <BlurView intensity={80} style={[styles.timeDisplay, styles.totalTimeDisplay]}>
+                                    </PlatformBlur>
+                                    <PlatformBlur intensity={80} style={[styles.timeDisplay, styles.totalTimeDisplay]}>
                                         <Text style={styles.timeDisplayText}>
                                             {formatDetailedTime(duration)}
                                         </Text>
-                                    </BlurView>
+                                    </PlatformBlur>
                                 </View>
 
                                 {/* Premium Selection Info with Duration Badge */}
-                                <BlurView intensity={80} style={styles.selectionInfo}>
+                                <PlatformBlur intensity={80} style={styles.selectionInfo}>
                                     <Animated.View style={[styles.durationBadge, durationLabelStyle]}>
                                         <LinearGradient
                                             colors={['#FF9F0A', '#FF8800']}
@@ -585,7 +715,7 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                                     ]}>
                                         {isStory ? t('max_10s') : t('max_2min')}
                                     </Text>
-                                </BlurView>
+                                </PlatformBlur>
                             </>
                         )}
                     </View>
@@ -593,8 +723,9 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                     {/* Premium iPhone-style Precision Scrubber */}
                     {!isLoading && (
                         <Animated.View style={[styles.scrubberWrapper, scrubberAnimatedStyle]}>
-                            <View 
+                                <View 
                                 style={styles.scrubberContainer}
+                                ref={scrubberContainerRef}
                                 onLayout={onScrubberLayout}
                             >
                                 {/* Premium Time Ruler */}
@@ -618,8 +749,8 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                                     />
 
                                     {/* Inactive track segments with blur */}
-                                    <BlurView intensity={20} style={[styles.trackSegment, { width: `${startPos * 100}%` }]} />
-                                    <BlurView intensity={20} style={[styles.trackSegment, {
+                                    <PlatformBlur intensity={20} style={[styles.trackSegment, { width: `${startPos * 100}%` }]} />
+                                    <PlatformBlur intensity={20} style={[styles.trackSegment, {
                                         left: `${endPos * 100}%`,
                                         width: `${(1 - endPos) * 100}%`
                                     }]} />
@@ -648,12 +779,12 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                                                 { left: (tooltipTime / safeDuration) * effectiveScrubberWidth - 35 }
                                             ]}
                                         >
-                                            <BlurView intensity={90} style={styles.timeTooltipInner}>
+                                            <PlatformBlur intensity={90} style={styles.timeTooltipInner}>
                                                 <Text style={styles.timeTooltipText}>
                                                     {formatDetailedTime(tooltipTime)}
                                                 </Text>
                                                 <View style={styles.timeTooltipArrow} />
-                                            </BlurView>
+                                            </PlatformBlur>
                                         </Animated.View>
                                     )}
 
@@ -745,10 +876,10 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                                     style={styles.actionButton}
                                     onPress={handleReset}
                                 >
-                                    <BlurView intensity={40} style={styles.actionButtonInner}>
+                                    <PlatformBlur intensity={40} style={styles.actionButtonInner}>
                                         <Ionicons name="refresh" size={18} color="#FF9F0A" />
                                         <Text style={styles.actionButtonText}>{t('reset')}</Text>
-                                    </BlurView>
+                                    </PlatformBlur>
                                 </TouchableOpacity>
 
                                 <View style={styles.zoomControls}>
@@ -756,31 +887,31 @@ const VideoTrimmer: React.FC<VideoTrimmerProps> = ({
                                         style={styles.zoomButton}
                                         onPress={handleZoomOut}
                                     >
-                                        <BlurView intensity={40} style={styles.zoomButtonInner}>
+                                        <PlatformBlur intensity={40} style={styles.zoomButtonInner}>
                                             <Ionicons name="remove" size={18} color="#FF9F0A" />
-                                        </BlurView>
+                                        </PlatformBlur>
                                     </TouchableOpacity>
                                     <Text style={styles.zoomLevel}>{zoomLevel}x</Text>
                                     <TouchableOpacity
                                         style={styles.zoomButton}
                                         onPress={handleZoomIn}
                                     >
-                                        <BlurView intensity={40} style={styles.zoomButtonInner}>
+                                        <PlatformBlur intensity={40} style={styles.zoomButtonInner}>
                                             <Ionicons name="add" size={18} color="#FF9F0A" />
-                                        </BlurView>
+                                        </PlatformBlur>
                                     </TouchableOpacity>
                                 </View>
                             </View>
 
                             {/* Premium Instruction */}
-                            <BlurView intensity={40} style={styles.instructionContainer}>
+                            <PlatformBlur intensity={40} style={styles.instructionContainer}>
                                 <Text style={styles.instruction}>
                                     {isStory
                                         ? t('drag_handles_10s')
                                         : t('drag_handles_2min')
                                     }
                                 </Text>
-                            </BlurView>
+                            </PlatformBlur>
                         </Animated.View>
                     )}
                 </Animated.View>
@@ -793,10 +924,20 @@ const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.95)',
+        ...(Platform.OS === 'web' ? {
+            position: 'fixed' as any,
+            top: 0,
+            left: 0,
+            width: '100%' as any,
+            height: '100%' as any,
+            minHeight: '100vh' as any,
+            zIndex: 99999,
+        } : {}),
     },
     container: {
         flex: 1,
         paddingTop: Platform.OS === 'ios' ? 50 : 30,
+        ...(Platform.OS === 'web' ? { overflowY: 'auto' as any } : {}),
     },
     headerTitle: {
         color: '#fff',

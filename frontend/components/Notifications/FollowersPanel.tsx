@@ -35,8 +35,11 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
   } = useNotificationStore();
 
   const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
-  const { width: windowWidth } = useWindowDimensions();
-  const panelWidth = Math.min(windowWidth - 16, 420);
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const panelWidth = Platform.OS === 'web' && windowWidth < 500
+    ? windowWidth - 8
+    : Math.min(windowWidth - 16, 420);
+  const panelMaxHeight = Math.min(windowHeight * 0.78, 580);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [isFollowingMap, setIsFollowingMap] = useState<Record<string, boolean>>({});
   const [checkingStatus, setCheckingStatus] = useState<Record<string, boolean>>({});
@@ -139,15 +142,13 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
     return (
       <TouchableOpacity
         style={[
-          styles.followerItem, 
+          styles.followerItem,
           { borderBottomColor: colors.border },
           !item.isRead && styles.unreadFollower,
           !item.isRead && { backgroundColor: colors.primary + '10', borderLeftColor: colors.primary }
         ]}
         onPress={() => {
-          if (!item.isRead) {
-            markAsRead(item.id);
-          }
+          if (!item.isRead) markAsRead(item.id);
           if (item.userId) {
             setProfileViewUserId(item.userId.toString());
             setProfilePreviewVisible(true);
@@ -155,6 +156,7 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
           }
         }}
       >
+        {/* Avatar column */}
         <TouchableOpacity
           style={styles.Foto}
           onPress={() => {
@@ -166,65 +168,61 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
           }}
         >
           <Image
-            source={{
-              uri: item.avatar ? `${getApiBaseImage()}/storage/${item.avatar}` : undefined
-            }}
+            source={{ uri: item.avatar ? `${getApiBaseImage()}/storage/${item.avatar}` : undefined }}
             defaultSource={require('@/assets/images/favicon.png')}
             style={[styles.avatar, { borderColor: colors.surface, backgroundColor: colors.muted }]}
           />
         </TouchableOpacity>
 
-        <View style={styles.followerContent}>
-          <View style={styles.textContent}>
-            <View style={styles.titleRow}>
-              <Ionicons
-                name={item.type === 'new_follower' ? 'person-add-outline' : 'person-remove-outline'}
-                size={18}
-                color={item.type === 'new_follower' ? colors.primary : '#FF3B30'}
-              />
-                <Text style={[styles.followerTitle, { color: colors.text }]}>{item.title}</Text>
-                <Text style={[styles.followerTime, { color: colors.textSecondary }]}>
-                  {formatTimeAgo(item.createdAt)}
-                </Text>
-              </View>
-              <Text style={[styles.followerMessage, { color: colors.textSecondary }]}>{item.message}</Text>
+        {/* Content column: 2 rows */}
+        <View style={styles.contentCol}>
+          {/* Row 1: icon + name + time */}
+          <View style={styles.titleRow}>
+            <Ionicons
+              name={item.type === 'new_follower' ? 'person-add-outline' : 'person-remove-outline'}
+              size={16}
+              color={item.type === 'new_follower' ? colors.primary : '#FF3B30'}
+            />
+            <Text style={[styles.followerTitle, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
+            <Text style={[styles.followerTime, { color: colors.textSecondary }]}>{formatTimeAgo(item.createdAt)}</Text>
           </View>
+
+          {/* Row 2: message */}
+          <Text style={[styles.followerMessage, { color: colors.textSecondary }]} numberOfLines={2}>{item.message}</Text>
+
+          {/* Row 3: Follow Back button inline under message */}
+          {item.type === 'new_follower' && (
+            <View style={styles.actionRow}>
+              {isChecking ? (
+                <ActivityIndicator size="small" color={colors.tint} />
+              ) : (
+                <TouchableOpacity
+                  style={[
+                    styles.followButton,
+                    { backgroundColor: colors.tint },
+                    isFollowing && [styles.followingButton, { backgroundColor: colors.muted }]
+                  ]}
+                  onPress={() => handleFollowBack(item)}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator size="small" color={isFollowing ? colors.text : 'white'} />
+                  ) : (
+                    <Text style={[
+                      styles.followButtonText,
+                      { color: '#fff' },
+                      isFollowing && [styles.followingButtonText, { color: colors.text }]
+                    ]}>
+                      {isFollowing ? t('following_state') : t('follow_back')}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
         </View>
 
-        {/* FOLLOW BACK BUTTON - only for new_follower */}
-        {item.type === 'new_follower' && (
-          <View style={styles.buttonContainer}>
-            {isChecking ? (
-              <ActivityIndicator size="small" color={colors.tint} style={styles.followButton} />
-            ) : (
-              <TouchableOpacity
-                style={[
-                  styles.followButton,
-                  { backgroundColor: colors.tint },
-                  isFollowing && [styles.followingButton, { backgroundColor: colors.muted }]
-                ]}
-                onPress={() => handleFollowBack(item)}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <ActivityIndicator
-                    size="small"
-                    color={isFollowing ? 'black' : 'white'}
-                  />
-                ) : (
-                  <Text style={[
-                    styles.followButtonText,
-                    { color: '#fff' },
-                    isFollowing && [styles.followingButtonText, { color: colors.text }]
-                  ]}>
-                    {isFollowing ? t('following_state') : t('follow_back')}
-                  </Text>
-                )}
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-
+        {/* Delete button */}
         <TouchableOpacity
           onPress={() => removeNotification(item.id)}
           style={[styles.deleteButton, { backgroundColor: colors.muted }]}
@@ -254,10 +252,12 @@ const FollowersPanel = ({ visible, onClose, anchorPosition }: FollowersPanelProp
       <View
         style={[
           styles.panelContainer,
-          { backgroundColor: colors.surface, borderColor: colors.border, width: panelWidth },
+          { backgroundColor: colors.surface, borderColor: colors.border, width: panelWidth, maxHeight: panelMaxHeight },
           anchorPosition ? {
             top: anchorPosition.top + 15,
-            left: anchorPosition.left,
+            left: anchorPosition.left !== undefined
+              ? Math.min(anchorPosition.left, windowWidth - panelWidth - 4)
+              : undefined,
             right: anchorPosition.right,
           } : [styles.defaultPosition, { left: (windowWidth - panelWidth) / 2 }],
         ]}
@@ -380,34 +380,28 @@ const styles = StyleSheet.create({
   },
   followerItem: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
+    alignItems: 'flex-start',
+    paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    minHeight: 80,
   },
   unreadFollower: {
     borderLeftWidth: 3,
   },
-  followerContent: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  textContent: {
+  contentCol: {
     flex: 1,
     marginStart: 12,
+    gap: 3,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
+    gap: 6,
+    marginBottom: 2,
   },
   followerTitle: {
     fontWeight: '600',
-    fontSize: 15,
+    fontSize: 14,
     flex: 1,
   },
   followerMessage: {
@@ -416,28 +410,25 @@ const styles = StyleSheet.create({
   },
   followerTime: {
     fontSize: 11,
-    marginStart: 8,
+    flexShrink: 0,
   },
-  buttonContainer: {
-    marginStart: 8,
+  actionRow: {
+    marginTop: 6,
+    alignItems: 'flex-start',
   },
   followButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 8,
+    paddingVertical: 6,
     paddingHorizontal: 14,
     borderRadius: 20,
-    minWidth: 95,
     alignItems: 'center',
   },
-  followingButton: {
-  },
+  followingButton: {},
   followButtonText: {
     color: 'white',
     fontWeight: '700',
     fontSize: 13,
   },
-  followingButtonText: {
-  },
+  followingButtonText: {},
   deleteButton: {
     padding: 6,
     marginStart: 8,
@@ -446,6 +437,7 @@ const styles = StyleSheet.create({
     height: 28,
     justifyContent: 'center',
     alignItems: 'center',
+    flexShrink: 0,
   },
   emptyState: {
     flex: 1,
@@ -467,12 +459,12 @@ const styles = StyleSheet.create({
   },
   Foto: {
     alignSelf: 'flex-start',
+    flexShrink: 0,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginEnd: 12,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     borderWidth: 2,
   },
 });

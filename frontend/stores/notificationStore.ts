@@ -421,12 +421,26 @@ export const useNotificationStore = create<NotificationStore>()(
               (notif.spaceId || newNotification.spaceId ? notif.spaceId === newNotification.spaceId : true) &&
               (notif.commentId || newNotification.commentId ? notif.commentId === newNotification.commentId : true);
 
-            // Reduce aggressive 60s window to 3s to only catch actual double-fires / networking echoes
-            // legitimate sequential messages from users should be permitted to ping sequentially!
+            // ✅ FIX: Broader match for social interaction double-fires.
+            // PusherService fires both a direct event (new-comment / new-reaction) WITH commentId
+            // AND Laravel also fires BroadcastNotificationCreated on the same channel — commentId
+            // may be nested differently. Match: same type + same actor + same post/item within 10s.
+            const SOCIAL_DOUBLE_FIRE_TYPES = ['comment', 'reaction', 'comment_reaction', 'market_comment', 'market_reaction'];
+            const isSameSocialInteraction =
+              SOCIAL_DOUBLE_FIRE_TYPES.includes(notif.type) &&
+              notif.type === newNotification.type &&
+              notif.userId === newNotification.userId &&
+              (
+                (notif.postId != null && notif.postId === newNotification.postId) ||
+                (notif.marketItemId != null && notif.marketItemId === newNotification.marketItemId)
+              ) &&
+              Math.abs(new Date(notif.createdAt).getTime() - newNotification.createdAt.getTime()) < 10000;
+
             const withinWindow = Math.abs(new Date(notif.createdAt).getTime() - newNotification.createdAt.getTime()) < 3000;
 
             return (isSameSpaceInv && Math.abs(new Date(notif.createdAt).getTime() - newNotification.createdAt.getTime()) < 60000) ||
-              (isSameMetadata && withinWindow && (notif.messageId || notif.postId || notif.spaceId)); // Require at least one valid ID if not an invite
+              (isSameMetadata && withinWindow && (notif.messageId || notif.postId || notif.spaceId)) ||
+              isSameSocialInteraction;
           });
 
           if (isDuplicate) {

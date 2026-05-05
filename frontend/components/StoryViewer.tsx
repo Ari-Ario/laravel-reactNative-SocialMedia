@@ -52,16 +52,29 @@ interface StoryViewerProps {
   onPrevUser: (currentIndex?: number) => void;
 }
 
+// Module-level stylesheet for StoryVideoContent.
+// Cannot use the theme-dependent `styles` from inside StoryViewer (different scope).
+const storyVideoStyles = StyleSheet.create({
+  mediaContainer: {
+    width: '100%',
+    height: '100%',
+    maxWidth: '100%',
+    maxHeight: '100%',
+  },
+});
+
 const StoryVideoContent = ({
   uri,
   paused,
   isMuted,
-  volume
+  volume,
+  onVolumeChange,   // received but handled by parent; kept in props for forward-compatibility
 }: {
-  uri: string,
-  paused: boolean,
-  isMuted: boolean,
-  volume: number
+  uri: string;
+  paused: boolean;
+  isMuted: boolean;
+  volume: number;
+  onVolumeChange?: (v: number) => void;
 }) => {
 
   const player = useVideoPlayer(uri, (p) => {
@@ -91,7 +104,7 @@ const StoryVideoContent = ({
   }, [player, paused]);
 
   return (
-    <View style={styles.storyMedia}>
+    <View style={storyVideoStyles.mediaContainer}>
       <VideoView
         player={player}
         style={[StyleSheet.absoluteFill, { maxWidth: '100%', maxHeight: '100%' }]}
@@ -333,7 +346,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
   useEffect(() => {
     if (!loading && stories.length > 0) {
       const storyExists = stories.some(s => s.id === currentStory?.id);
-      
+
       if (!storyExists && currentStory) {
         console.log('⚠️ Current story was deleted remotely, re-syncing index');
         // If current story is gone, try to stay at the same index or go to the end
@@ -342,7 +355,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
         } else {
           // Stay at same index (which now points to the next story)
           // but we might need to force a re-render
-          setCurrentStoryIndex(prev => prev); 
+          setCurrentStoryIndex(prev => prev);
         }
       } else if (stories.length === 0) {
         // Spring to next user instead of closing
@@ -414,7 +427,7 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
       if (Platform.OS !== 'web') {
         safeHaptics.success();
       }
-      
+
       showToast(t('reply_sent'), 'success');
     } catch (error) {
       console.error('Error sending reply:', error);
@@ -445,12 +458,12 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
 
         // Show success message
         showToast(t('story_deleted_success'), 'success');
-        
+
         // INSTANT LOCAL UPDATE: Update the store immediately for the owner
         // This makes the transition "spring" instantly without waiting for Pusher
-        useStoryStore.getState().handleStoryDeleted({ 
-          storyId: currentStory.id, 
-          userId: Number(currentStory.user.id) 
+        useStoryStore.getState().handleStoryDeleted({
+          storyId: currentStory.id,
+          userId: Number(currentStory.user.id)
         });
 
       } catch (error) {
@@ -552,435 +565,435 @@ const StoryViewer = ({ userId, initialStoryId, onClose, onNextUser, onPrevUser }
           <View style={[styles.container, GlobalStyles.popupContainer, { backgroundColor: '#000' }]}>
             <BlurView intensity={100} style={StyleSheet.absoluteFill} />
 
-          {/* Delete Status Message */}
-          <AnimatePresence>
-            {deleteStatus.visible && (
-              <AnimatedComponent.View
-                entering={FadeIn.duration(300)}
-                exiting={FadeOut.duration(300)}
-                style={styles.deleteStatus}
-              >
-                <BlurView intensity={80} tint={activeScheme === 'dark' ? 'dark' : 'light'} style={styles.deleteStatusContent}>
-                  <Ionicons name="checkmark-circle" size={20} color="#4CD964" />
-                  <Text style={[styles.deleteStatusText, { color: colors.text }]}>{deleteStatus.message}</Text>
-                </BlurView>
-              </AnimatedComponent.View>
-            )}
-          </AnimatePresence>
-
-          {/* Progress bars for all stories */}
-          <View style={[styles.progressBarsContainer, { paddingTop: Math.max(insets.top, 15) }]}>
-            {stories.map((story, index) => (
-              <View key={story.id} style={styles.progressBarBackground}>
-                {index === currentStoryIndex ? (
-                  <Animated.View
-                    style={[
-                      styles.progressBar,
-                      {
-                        width: progressAnim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: ['0%', '100%']
-                        })
-                      }
-                    ]}
-                  />
-                ) : (
-                  <View style={[
-                    styles.progressBar,
-                    {
-                      width: `${index < currentStoryIndex ? 100 : 0}%`,
-                      backgroundColor: index < currentStoryIndex ? colors.tint : (activeScheme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)')
-                    }
-                  ]} />
-                )}
-              </View>
-            ))}
-          </View>
-
-          {/* Header */}
-          <LinearGradient
-            colors={['rgba(0,0,0,0.5)', 'transparent']}
-            style={styles.headerGradient}
-          >
-            <View style={[styles.header, { paddingTop: Math.max(insets.top, 15) + 10 }]}>
-              <View style={styles.userInfo}>
-                <Image
-                  source={{ uri: `${getApiBaseImage()}/storage/${currentStory.user.profile_photo}` }}
-                  style={styles.userImage}
-                />
-                <View>
-                  <Text style={styles.username}>{currentStory.user.name}</Text>
-                  <Text style={styles.timeAgo}>{formatTimeAgo(currentStory.created_at)}</Text>
-                </View>
-              </View>
-
-              <View style={styles.headerActions}>
-                {currentStory?.type === 'video' && (
-                  <TouchableOpacity onPress={toggleMute} style={styles.headerButton}>
-                    <Ionicons
-                      name={isMuted ? 'volume-mute' : 'volume-high'}
-                      size={22}
-                      color="white"
-                    />
-                  </TouchableOpacity>
-                )}
-                {storyLocation && (
-                  <TouchableOpacity onPress={() => handleLocationPress(storyLocation)} style={styles.headerButton}>
-                    <Ionicons name="location" size={24} color="#0084ff" />
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity onPress={() => setShowInfo(true)} style={styles.headerButton}>
-                  <Ionicons name="information-circle-outline" size={24} color="white" />
-                </TouchableOpacity>
-                {Number(currentStory.user.id) !== Number(user?.id) && (
-                  <TouchableOpacity onPress={async () => {
-                    const reported = useReportedContentStore.getState().isReported('story', currentStory.id);
-                    if (reported) {
-                      try {
-                        await deleteReportByTarget('story', currentStory.id);
-                        useReportedContentStore.getState().removeReportedItem('story', currentStory.id);
-                        showToast(t('report_removed_msg'), 'success');
-                      } catch {
-                        showToast(t('failed_remove_report_msg'), 'error');
-                      }
-                    } else {
-                      setShowReportModal(true);
-                    }
-                  }} style={styles.headerButton}>
-                    <Ionicons
-                      name={useReportedContentStore.getState().isReported('story', currentStory.id) ? "flag" : "flag-outline"}
-                      size={22}
-                      color={useReportedContentStore.getState().isReported('story', currentStory.id) ? "#ff4444" : "white"}
-                    />
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity onPress={onClose} style={styles.headerButton}>
-                  <Ionicons name="close" size={24} color="white" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </LinearGradient>
-
-          {/* Story content */}
-          <View key={`story-content-${currentStory.id}`} style={styles.contentWrapper}>
-            <TouchableOpacity
-              style={styles.contentContainer}
-              activeOpacity={1}
-              onPress={handleTap}
-              onLongPress={handleLongPress}
-              onPressOut={handleLongPressRelease}
-              delayLongPress={LONG_PRESS_DURATION}
-            >
-              {/* Main Media or Background Color */}
-              {currentStory.type === 'video' ? (
-                <StoryVideoContent
-                  key={`video-${currentStory.id}`}
-                  uri={currentStory.media_path.startsWith('http') ? currentStory.media_path : `${getApiBaseImage()}/storage/${currentStory.media_path}`}
-                  paused={paused || showLocationPopup || showShareModal || showReactions || showInfo}
-                  isMuted={isMuted}
-                  volume={volume}
-                  onVolumeChange={handleVolumeChange}
-                />
-              ) : backgroundColors ? (
-                backgroundColors.length > 1 ? (
-                  <LinearGradient
-                    key={`gradient-${currentStory.id}`}
-                    colors={backgroundColors}
-                    style={styles.storyMedia}
-                  />
-                ) : (
-                  <View key={`bg-${currentStory.id}`} style={[styles.storyMedia, { backgroundColor: backgroundColors[0] }]} />
-                )
-              ) : (
-                <Image
-                  key={`image-${currentStory.id}`}
-                  source={{ uri: currentStory.media_path.startsWith('http') ? currentStory.media_path : `${getApiBaseImage()}/storage/${currentStory.media_path}` }}
-                  style={styles.storyMedia}
-                  resizeMode="contain"
-                />
-              )}
-
-              {/* Stickers */}
-              {storyStickers.filter((s: { type: string }) => s.type !== 'background').map((sticker: { id: string | number; type: string; x: number; y: number; scale?: number; rotation?: number; text?: string; color?: string; fontSize?: number; fontFamily?: string; location?: { name: string; latitude: number; longitude: number }; feeling?: { emoji: string; text: string } }, index: number) => (
+            {/* Delete Status Message */}
+            <AnimatePresence>
+              {deleteStatus.visible && (
                 <AnimatedComponent.View
-                  key={sticker.id || index}
-                  entering={FadeIn.delay(index * 100).springify()}
-                  style={[
-                    styles.stickerWrapper,
-                    {
-                      left: sticker.type === 'text' ? 0 : sticker.x * width,
-                      right: sticker.type === 'text' ? 0 : undefined,
-                      top: sticker.y * height,
-                      transform: [
-                        { scale: sticker.scale || 1 },
-                        { rotate: `${sticker.rotation || 0}rad` }
-                      ],
-                      zIndex: 10,
-                      alignItems: 'center',
-                    }
-                  ]}
+                  entering={FadeIn.duration(300)}
+                  exiting={FadeOut.duration(300)}
+                  style={styles.deleteStatus}
                 >
-                  <View style={[styles.stickerContent, sticker.type === 'text' && { width: '100%' }]}>
-                    {sticker.text !== '' && (
-                      <Text
-                        style={[
-                          styles.stickerText,
-                          {
-                            color: sticker.color || 'white',
-                            // Scale normalized font size back to current screen width
-                            fontSize: sticker.fontSize ? (sticker.fontSize / 375) * width : 32,
-                            lineHeight: sticker.fontSize ? (sticker.fontSize / 375) * width * 1.2 : 32 * 1.2,
-                            fontFamily: sticker.fontFamily || 'System',
-                            textAlign: 'center',
-                            width: '100%',
-                          }
-                        ]}
-                      >
-                        {sticker.text}
-                      </Text>
-                    )}
-
-                    {sticker.location && (
-                      <TouchableOpacity
-                        onPress={() => handleLocationPress(sticker.location)}
-                        activeOpacity={0.7}
-                      >
-                        <BlurView intensity={80} tint="dark" style={styles.integratedLocationSticker}>
-                          <Ionicons name="location" size={14} color={colors.tint} />
-                          <Text style={styles.integratedLocationStickerText}>{sticker.location.name}</Text>
-                        </BlurView>
-                      </TouchableOpacity>
-                    )}
-
-                    {sticker.feeling && (
-                      <BlurView intensity={80} tint="dark" style={styles.integratedFeelingSticker}>
-                        <Text style={styles.integratedFeelingEmoji}>{sticker.feeling.emoji}</Text>
-                        <Text style={styles.integratedFeelingText}>{sticker.feeling.text}</Text>
-                      </BlurView>
-                    )}
-                  </View>
-                </AnimatedComponent.View>
-              ))}
-
-              {currentStory.caption && (
-                <BlurView intensity={60} style={styles.captionContainer}>
-                  <Text style={styles.caption}>{currentStory.caption}</Text>
-                </BlurView>
-              )}
-
-              {showReactions && (
-                <AnimatedComponent.View
-                  entering={FadeIn.springify()}
-                  exiting={FadeOut.springify()}
-                  style={styles.heartOverlay}
-                >
-                  <Ionicons name="heart" size={80} color="white" />
-                </AnimatedComponent.View>
-              )}
-
-              {showVolumeSlider && (
-                <AnimatedComponent.View
-                  style={[styles.volumeSliderContainer, animatedVolumeStyle]}
-                >
-                  <BlurView intensity={80} style={styles.volumeSlider}>
-                    <Ionicons name={volume === 0 ? 'volume-mute' : 'volume-medium'} size={18} color="white" />
-                    <View style={styles.volumeBar}>
-                      <View style={[styles.volumeFill, { width: `${volume * 100}%` }]} />
-                    </View>
+                  <BlurView intensity={80} tint={activeScheme === 'dark' ? 'dark' : 'light'} style={styles.deleteStatusContent}>
+                    <Ionicons name="checkmark-circle" size={20} color="#4CD964" />
+                    <Text style={[styles.deleteStatusText, { color: colors.text }]}>{deleteStatus.message}</Text>
                   </BlurView>
                 </AnimatedComponent.View>
               )}
-            </TouchableOpacity>
-          </View>
+            </AnimatePresence>
 
-          {/* Footer */}
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.5)']}
-            style={styles.footerGradient}
-          >
-            <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
-              {Number(currentStory.user.id) === Number(user?.id) ? (
-                <View style={styles.ownerFooterActions}>
-                  <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={handleDeleteStory}
-                    disabled={isSendingReply}
-                  >
-                    <Ionicons name="trash-outline" size={24} color="#FF3B30" />
+            {/* Progress bars for all stories */}
+            <View style={[styles.progressBarsContainer, { paddingTop: Math.max(insets.top, 15) }]}>
+              {stories.map((story, index) => (
+                <View key={story.id} style={styles.progressBarBackground}>
+                  {index === currentStoryIndex ? (
+                    <Animated.View
+                      style={[
+                        styles.progressBar,
+                        {
+                          width: progressAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: ['0%', '100%']
+                          })
+                        }
+                      ]}
+                    />
+                  ) : (
+                    <View style={[
+                      styles.progressBar,
+                      {
+                        width: `${index < currentStoryIndex ? 100 : 0}%`,
+                        backgroundColor: index < currentStoryIndex ? colors.tint : (activeScheme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)')
+                      }
+                    ]} />
+                  )}
+                </View>
+              ))}
+            </View>
+
+            {/* Header */}
+            <LinearGradient
+              colors={['rgba(0,0,0,0.5)', 'transparent']}
+              style={styles.headerGradient}
+            >
+              <View style={[styles.header, { paddingTop: Math.max(insets.top, 15) + 10 }]}>
+                <View style={styles.userInfo}>
+                  <Image
+                    source={{ uri: `${getApiBaseImage()}/storage/${currentStory.user.profile_photo}` }}
+                    style={styles.userImage}
+                  />
+                  <View>
+                    <Text style={styles.username}>{currentStory.user.name}</Text>
+                    <Text style={styles.timeAgo}>{formatTimeAgo(currentStory.created_at)}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.headerActions}>
+                  {currentStory?.type === 'video' && (
+                    <TouchableOpacity onPress={toggleMute} style={styles.headerButton}>
+                      <Ionicons
+                        name={isMuted ? 'volume-mute' : 'volume-high'}
+                        size={22}
+                        color="white"
+                      />
+                    </TouchableOpacity>
+                  )}
+                  {storyLocation && (
+                    <TouchableOpacity onPress={() => handleLocationPress(storyLocation)} style={styles.headerButton}>
+                      <Ionicons name="location" size={24} color="#0084ff" />
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity onPress={() => setShowInfo(true)} style={styles.headerButton}>
+                    <Ionicons name="information-circle-outline" size={24} color="white" />
                   </TouchableOpacity>
+                  {Number(currentStory.user.id) !== Number(user?.id) && (
+                    <TouchableOpacity onPress={async () => {
+                      const reported = useReportedContentStore.getState().isReported('story', currentStory.id);
+                      if (reported) {
+                        try {
+                          await deleteReportByTarget('story', currentStory.id);
+                          useReportedContentStore.getState().removeReportedItem('story', currentStory.id);
+                          showToast(t('report_removed_msg'), 'success');
+                        } catch {
+                          showToast(t('failed_remove_report_msg'), 'error');
+                        }
+                      } else {
+                        setShowReportModal(true);
+                      }
+                    }} style={styles.headerButton}>
+                      <Ionicons
+                        name={useReportedContentStore.getState().isReported('story', currentStory.id) ? "flag" : "flag-outline"}
+                        size={22}
+                        color={useReportedContentStore.getState().isReported('story', currentStory.id) ? "#ff4444" : "white"}
+                      />
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity onPress={onClose} style={styles.headerButton}>
+                    <Ionicons name="close" size={24} color="white" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </LinearGradient>
 
+            {/* Story content */}
+            <View key={`story-content-${currentStory.id}`} style={styles.contentWrapper}>
+              <TouchableOpacity
+                style={styles.contentContainer}
+                activeOpacity={1}
+                onPress={handleTap}
+                onLongPress={handleLongPress}
+                onPressOut={handleLongPressRelease}
+                delayLongPress={LONG_PRESS_DURATION}
+              >
+                {/* Main Media or Background Color */}
+                {currentStory.type === 'video' ? (
+                  <StoryVideoContent
+                    key={`video-${currentStory.id}`}
+                    uri={currentStory.media_path.startsWith('http') ? currentStory.media_path : `${getApiBaseImage()}/storage/${currentStory.media_path}`}
+                    paused={paused || showLocationPopup || showShareModal || showReactions || showInfo}
+                    isMuted={isMuted}
+                    volume={volume}
+                    onVolumeChange={handleVolumeChange}
+                  />
+                ) : backgroundColors ? (
+                  backgroundColors.length > 1 ? (
+                    <LinearGradient
+                      key={`gradient-${currentStory.id}`}
+                      colors={backgroundColors}
+                      style={styles.storyMedia}
+                    />
+                  ) : (
+                    <View key={`bg-${currentStory.id}`} style={[styles.storyMedia, { backgroundColor: backgroundColors[0] }]} />
+                  )
+                ) : (
+                  <Image
+                    key={`image-${currentStory.id}`}
+                    source={{ uri: currentStory.media_path.startsWith('http') ? currentStory.media_path : `${getApiBaseImage()}/storage/${currentStory.media_path}` }}
+                    style={styles.storyMedia}
+                    resizeMode="contain"
+                  />
+                )}
+
+                {/* Stickers */}
+                {storyStickers.filter((s: { type: string }) => s.type !== 'background').map((sticker: { id: string | number; type: string; x: number; y: number; scale?: number; rotation?: number; text?: string; color?: string; fontSize?: number; fontFamily?: string; location?: { name: string; latitude: number; longitude: number }; feeling?: { emoji: string; text: string } }, index: number) => (
+                  <AnimatedComponent.View
+                    key={sticker.id || index}
+                    entering={FadeIn.delay(index * 100).springify()}
+                    style={[
+                      styles.stickerWrapper,
+                      {
+                        left: sticker.type === 'text' ? 0 : sticker.x * width,
+                        right: sticker.type === 'text' ? 0 : undefined,
+                        top: sticker.y * height,
+                        transform: [
+                          { scale: sticker.scale || 1 },
+                          { rotate: `${sticker.rotation || 0}rad` }
+                        ],
+                        zIndex: 10,
+                        alignItems: 'center',
+                      }
+                    ]}
+                  >
+                    <View style={[styles.stickerContent, sticker.type === 'text' && { width: '100%' }]}>
+                      {sticker.text !== '' && (
+                        <Text
+                          style={[
+                            styles.stickerText,
+                            {
+                              color: sticker.color || 'white',
+                              // Scale normalized font size back to current screen width
+                              fontSize: sticker.fontSize ? (sticker.fontSize / 375) * width : 32,
+                              lineHeight: sticker.fontSize ? (sticker.fontSize / 375) * width * 1.2 : 32 * 1.2,
+                              fontFamily: sticker.fontFamily || 'System',
+                              textAlign: 'center',
+                              width: '100%',
+                            }
+                          ]}
+                        >
+                          {sticker.text}
+                        </Text>
+                      )}
+
+                      {sticker.location && (
+                        <TouchableOpacity
+                          onPress={() => handleLocationPress(sticker.location)}
+                          activeOpacity={0.7}
+                        >
+                          <BlurView intensity={80} tint="dark" style={styles.integratedLocationSticker}>
+                            <Ionicons name="location" size={14} color={colors.tint} />
+                            <Text style={styles.integratedLocationStickerText}>{sticker.location.name}</Text>
+                          </BlurView>
+                        </TouchableOpacity>
+                      )}
+
+                      {sticker.feeling && (
+                        <BlurView intensity={80} tint="dark" style={styles.integratedFeelingSticker}>
+                          <Text style={styles.integratedFeelingEmoji}>{sticker.feeling.emoji}</Text>
+                          <Text style={styles.integratedFeelingText}>{sticker.feeling.text}</Text>
+                        </BlurView>
+                      )}
+                    </View>
+                  </AnimatedComponent.View>
+                ))}
+
+                {currentStory.caption && (
+                  <BlurView intensity={60} style={styles.captionContainer}>
+                    <Text style={styles.caption}>{currentStory.caption}</Text>
+                  </BlurView>
+                )}
+
+                {showReactions && (
+                  <AnimatedComponent.View
+                    entering={FadeIn.springify()}
+                    exiting={FadeOut.springify()}
+                    style={styles.heartOverlay}
+                  >
+                    <Ionicons name="heart" size={80} color="white" />
+                  </AnimatedComponent.View>
+                )}
+
+                {showVolumeSlider && (
+                  <AnimatedComponent.View
+                    style={[styles.volumeSliderContainer, animatedVolumeStyle]}
+                  >
+                    <BlurView intensity={80} style={styles.volumeSlider}>
+                      <Ionicons name={volume === 0 ? 'volume-mute' : 'volume-medium'} size={18} color="white" />
+                      <View style={styles.volumeBar}>
+                        <View style={[styles.volumeFill, { width: `${volume * 100}%` }]} />
+                      </View>
+                    </BlurView>
+                  </AnimatedComponent.View>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Footer */}
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.5)']}
+              style={styles.footerGradient}
+            >
+              <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+                {Number(currentStory.user.id) === Number(user?.id) ? (
+                  <View style={styles.ownerFooterActions}>
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={handleDeleteStory}
+                      disabled={isSendingReply}
+                    >
+                      <Ionicons name="trash-outline" size={24} color="#FF3B30" />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.shareButton}
+                      onPress={() => setShowShareModal(true)}
+                    >
+                      <Ionicons name="paper-plane-outline" size={24} color="white" />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.replyContainer}>
+                    <TextInput
+                      ref={replyInputRef}
+                      style={[styles.replyInput, { color: '#fff' }]}
+                      placeholder={t('send_message_placeholder')}
+                      placeholderTextColor="rgba(255,255,255,0.6)"
+                      value={replyText}
+                      onChangeText={setReplyText}
+                      editable={!isSendingReply}
+                      onFocus={() => {
+                        setIsTyping(true);
+                        setPaused(true);
+                      }}
+                      onBlur={() => {
+                        setIsTyping(false);
+                        setPaused(false);
+                      }}
+                    />
+                    <AnimatedComponent.View style={animatedReplyButtonStyle}>
+                      <TouchableOpacity
+                        style={[
+                          styles.sendButton,
+                          { backgroundColor: colors.tint },
+                          !replyText.trim() && styles.sendButtonDisabled
+                        ]}
+                        onPress={handleSendReply}
+                        disabled={!replyText.trim() || isSendingReply}
+                      >
+                        {isSendingReply ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <Ionicons name="send" size={20} color="#fff" style={styles.sendIcon} />
+                        )}
+                      </TouchableOpacity>
+                    </AnimatedComponent.View>
+                  </View>
+                )}
+
+                {Number(currentStory.user.id) !== Number(user?.id) && (
                   <TouchableOpacity
                     style={styles.shareButton}
                     onPress={() => setShowShareModal(true)}
                   >
                     <Ionicons name="paper-plane-outline" size={24} color="white" />
                   </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={styles.replyContainer}>
-                  <TextInput
-                    ref={replyInputRef}
-                    style={[styles.replyInput, { color: '#fff' }]}
-                    placeholder={t('send_message_placeholder')}
-                    placeholderTextColor="rgba(255,255,255,0.6)"
-                    value={replyText}
-                    onChangeText={setReplyText}
-                    editable={!isSendingReply}
-                    onFocus={() => {
-                      setIsTyping(true);
-                      setPaused(true);
-                    }}
-                    onBlur={() => {
-                      setIsTyping(false);
-                      setPaused(false);
-                    }}
-                  />
-                  <AnimatedComponent.View style={animatedReplyButtonStyle}>
-                    <TouchableOpacity
-                      style={[
-                        styles.sendButton,
-                        { backgroundColor: colors.tint },
-                        !replyText.trim() && styles.sendButtonDisabled
-                      ]}
-                      onPress={handleSendReply}
-                      disabled={!replyText.trim() || isSendingReply}
-                    >
-                      {isSendingReply ? (
-                        <ActivityIndicator size="small" color="#fff" />
-                      ) : (
-                        <Ionicons name="send" size={20} color="#fff" style={styles.sendIcon} />
-                      )}
-                    </TouchableOpacity>
-                  </AnimatedComponent.View>
-                </View>
-              )}
+                )}
+              </View>
+            </LinearGradient>
 
-              {Number(currentStory.user.id) !== Number(user?.id) && (
-                <TouchableOpacity
-                  style={styles.shareButton}
-                  onPress={() => setShowShareModal(true)}
+            {/* Reactions Panel */}
+            <Modal visible={showReactions} transparent animationType="none">
+              <BlurView intensity={90} tint={activeScheme === 'dark' ? 'dark' : 'light'} style={styles.modalOverlay}>
+                <AnimatedComponent.View
+                  style={[
+                    styles.reactionsPanel,
+                    { paddingBottom: Math.max(insets.bottom, 20) + 10 },
+                    animatedReactionPanelStyle
+                  ]}
                 >
-                  <Ionicons name="paper-plane-outline" size={24} color="white" />
-                </TouchableOpacity>
-              )}
-            </View>
-          </LinearGradient>
-
-          {/* Reactions Panel */}
-          <Modal visible={showReactions} transparent animationType="none">
-            <BlurView intensity={90} tint={activeScheme === 'dark' ? 'dark' : 'light'} style={styles.modalOverlay}>
-              <AnimatedComponent.View
-                style={[
-                  styles.reactionsPanel,
-                  { paddingBottom: Math.max(insets.bottom, 20) + 10 },
-                  animatedReactionPanelStyle
-                ]}
-              >
-                <View style={styles.reactionsHeader}>
-                  <Text style={[styles.reactionsTitle, { color: colors.text }]}>{t('react_to_story')}</Text>
-                  <TouchableOpacity onPress={() => {
-                    reactionPanelY.value = withSpring(height);
-                    setTimeout(() => setShowReactions(false), 200);
-                  }}>
-                    <Ionicons name="close" size={24} color={colors.text} />
-                  </TouchableOpacity>
-                </View>
-
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  {['❤️', '😂', '😮', '😢', '👏', '🔥'].map((emoji) => (
-                    <TouchableOpacity
-                      key={emoji}
-                      style={[styles.reactionEmoji, { backgroundColor: colors.muted }]}
-                      onPress={() => {
-                        reactionPanelY.value = withSpring(height);
-                        setTimeout(() => setShowReactions(false), 200);
-                        safeHaptics.success();
-                      }}
-                    >
-                      <Text style={styles.emojiText}>{emoji}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </AnimatedComponent.View>
-            </BlurView>
-          </Modal>
-
-          {/* Info Modal */}
-          <Modal visible={showInfo} transparent animationType="fade">
-            <BlurView intensity={90} tint={activeScheme === 'dark' ? 'dark' : 'light'} style={styles.modalOverlay}>
-              <AnimatedComponent.View
-                entering={SlideInDown.springify()}
-                exiting={SlideOutDown.springify()}
-                style={styles.infoModal}
-              >
-                <View
-                  style={[styles.infoContent, { backgroundColor: colors.surface }]}
-                >
-                  <View style={[styles.infoHeader, isRTL && { flexDirection: 'row-reverse' }]}>
-                    <Text style={[styles.infoTitle, { color: colors.text }, isRTL && { textAlign: 'right' }]}>{t('story_info')}</Text>
-                    <TouchableOpacity onPress={() => setShowInfo(false)}>
+                  <View style={styles.reactionsHeader}>
+                    <Text style={[styles.reactionsTitle, { color: colors.text }]}>{t('react_to_story')}</Text>
+                    <TouchableOpacity onPress={() => {
+                      reactionPanelY.value = withSpring(height);
+                      setTimeout(() => setShowReactions(false), 200);
+                    }}>
                       <Ionicons name="close" size={24} color={colors.text} />
                     </TouchableOpacity>
                   </View>
 
-                  <View style={[styles.infoItem, { borderBottomColor: colors.border }, isRTL && { flexDirection: 'row-reverse' }]}>
-                    <Ionicons name="calendar-outline" size={20} color={colors.tint} />
-                    <Text style={[styles.infoLabel, { color: colors.textSecondary }, isRTL && { marginLeft: 0, marginRight: 12, textAlign: 'right' }]}>{t('posted_label')}</Text>
-                    <Text style={[styles.infoValue, { color: colors.text }, isRTL && { textAlign: 'right' }]}>{new Date(currentStory.created_at).toLocaleString()}</Text>
-                  </View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    {['❤️', '😂', '😮', '😢', '👏', '🔥'].map((emoji) => (
+                      <TouchableOpacity
+                        key={emoji}
+                        style={[styles.reactionEmoji, { backgroundColor: colors.muted }]}
+                        onPress={() => {
+                          reactionPanelY.value = withSpring(height);
+                          setTimeout(() => setShowReactions(false), 200);
+                          safeHaptics.success();
+                        }}
+                      >
+                        <Text style={styles.emojiText}>{emoji}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </AnimatedComponent.View>
+              </BlurView>
+            </Modal>
 
-                  <View style={[styles.infoItem, { borderBottomColor: colors.border }, isRTL && { flexDirection: 'row-reverse' }]}>
-                    <Ionicons name="eye-outline" size={20} color={colors.tint} />
-                    <Text style={[styles.infoLabel, { color: colors.textSecondary }, isRTL && { marginLeft: 0, marginRight: 12, textAlign: 'right' }]}>{t('views_label')}</Text>
-                    <Text style={[styles.infoValue, { color: colors.text }, isRTL && { textAlign: 'right' }]}>{currentStory.views_count || 0}</Text>
-                  </View>
+            {/* Info Modal */}
+            <Modal visible={showInfo} transparent animationType="fade">
+              <BlurView intensity={90} tint={activeScheme === 'dark' ? 'dark' : 'light'} style={styles.modalOverlay}>
+                <AnimatedComponent.View
+                  entering={SlideInDown.springify()}
+                  exiting={SlideOutDown.springify()}
+                  style={styles.infoModal}
+                >
+                  <View
+                    style={[styles.infoContent, { backgroundColor: colors.surface }]}
+                  >
+                    <View style={[styles.infoHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+                      <Text style={[styles.infoTitle, { color: colors.text }, isRTL && { textAlign: 'right' }]}>{t('story_info')}</Text>
+                      <TouchableOpacity onPress={() => setShowInfo(false)}>
+                        <Ionicons name="close" size={24} color={colors.text} />
+                      </TouchableOpacity>
+                    </View>
 
-                  <View style={[styles.infoItem, { borderBottomColor: colors.border }, isRTL && { flexDirection: 'row-reverse' }]}>
-                    <Ionicons name={currentStory.type === 'video' ? "videocam-outline" : "image-outline"} size={20} color={colors.tint} />
-                    <Text style={[styles.infoLabel, { color: colors.textSecondary }, isRTL && { marginLeft: 0, marginRight: 12, textAlign: 'right' }]}>{t('type_label')}</Text>
-                    <Text style={[styles.infoValue, { color: colors.text }, isRTL && { textAlign: 'right' }]}>{currentStory.type === 'video' ? t('video_label') : t('photo_label')}</Text>
-                  </View>
-
-                  {currentStory.caption && (
                     <View style={[styles.infoItem, { borderBottomColor: colors.border }, isRTL && { flexDirection: 'row-reverse' }]}>
-                      <Ionicons name="chatbubble-outline" size={20} color={colors.tint} />
-                      <Text style={[styles.infoLabel, { color: colors.textSecondary }, isRTL && { marginLeft: 0, marginRight: 12, textAlign: 'right' }]}>{t('caption_label')}</Text>
-                      <Text style={[styles.infoValue, { color: colors.text }, isRTL && { textAlign: 'right' }]} numberOfLines={2}>{currentStory.caption}</Text>
+                      <Ionicons name="calendar-outline" size={20} color={colors.tint} />
+                      <Text style={[styles.infoLabel, { color: colors.textSecondary }, isRTL && { marginLeft: 0, marginRight: 12, textAlign: 'right' }]}>{t('posted_label')}</Text>
+                      <Text style={[styles.infoValue, { color: colors.text }, isRTL && { textAlign: 'right' }]}>{new Date(currentStory.created_at).toLocaleString()}</Text>
                     </View>
-                  )}
 
-                  {storyLocation && (
-                    <View style={[styles.infoItem, { borderBottomWidth: 0 }, isRTL && { flexDirection: 'row-reverse' }]}>
-                      <Ionicons name="location-outline" size={20} color={colors.tint} />
-                      <Text style={[styles.infoLabel, { color: colors.textSecondary }, isRTL && { marginLeft: 0, marginRight: 12, textAlign: 'right' }]}>{t('location_label')}</Text>
-                      <Text style={[styles.infoValue, { color: colors.text }, isRTL && { textAlign: 'right' }]}>{storyLocation.name}</Text>
+                    <View style={[styles.infoItem, { borderBottomColor: colors.border }, isRTL && { flexDirection: 'row-reverse' }]}>
+                      <Ionicons name="eye-outline" size={20} color={colors.tint} />
+                      <Text style={[styles.infoLabel, { color: colors.textSecondary }, isRTL && { marginLeft: 0, marginRight: 12, textAlign: 'right' }]}>{t('views_label')}</Text>
+                      <Text style={[styles.infoValue, { color: colors.text }, isRTL && { textAlign: 'right' }]}>{currentStory.views_count || 0}</Text>
                     </View>
-                  )}
-                </View>
-              </AnimatedComponent.View>
-            </BlurView>
-          </Modal>
 
-          <PostShareModal
-            visible={showShareModal}
-            onClose={() => setShowShareModal(false)}
-            story={currentStory}
-          />
-          <ReportPost
-            visible={showReportModal}
-            targetId={currentStory.id}
-            type="story"
-            onClose={() => setShowReportModal(false)}
-            onReportSubmitted={() => {
-              useToastStore.getState().showToast(t('report_story_ai_review'), 'success');
-              setShowReportModal(false);
-            }}
-          />
-        </View>
-      </KeyboardAvoidingView>
-    </GestureDetector>
-  </GestureHandlerRootView>
-);
+                    <View style={[styles.infoItem, { borderBottomColor: colors.border }, isRTL && { flexDirection: 'row-reverse' }]}>
+                      <Ionicons name={currentStory.type === 'video' ? "videocam-outline" : "image-outline"} size={20} color={colors.tint} />
+                      <Text style={[styles.infoLabel, { color: colors.textSecondary }, isRTL && { marginLeft: 0, marginRight: 12, textAlign: 'right' }]}>{t('type_label')}</Text>
+                      <Text style={[styles.infoValue, { color: colors.text }, isRTL && { textAlign: 'right' }]}>{currentStory.type === 'video' ? t('video_label') : t('photo_label')}</Text>
+                    </View>
+
+                    {currentStory.caption && (
+                      <View style={[styles.infoItem, { borderBottomColor: colors.border }, isRTL && { flexDirection: 'row-reverse' }]}>
+                        <Ionicons name="chatbubble-outline" size={20} color={colors.tint} />
+                        <Text style={[styles.infoLabel, { color: colors.textSecondary }, isRTL && { marginLeft: 0, marginRight: 12, textAlign: 'right' }]}>{t('caption_label')}</Text>
+                        <Text style={[styles.infoValue, { color: colors.text }, isRTL && { textAlign: 'right' }]} numberOfLines={2}>{currentStory.caption}</Text>
+                      </View>
+                    )}
+
+                    {storyLocation && (
+                      <View style={[styles.infoItem, { borderBottomWidth: 0 }, isRTL && { flexDirection: 'row-reverse' }]}>
+                        <Ionicons name="location-outline" size={20} color={colors.tint} />
+                        <Text style={[styles.infoLabel, { color: colors.textSecondary }, isRTL && { marginLeft: 0, marginRight: 12, textAlign: 'right' }]}>{t('location_label')}</Text>
+                        <Text style={[styles.infoValue, { color: colors.text }, isRTL && { textAlign: 'right' }]}>{storyLocation.name}</Text>
+                      </View>
+                    )}
+                  </View>
+                </AnimatedComponent.View>
+              </BlurView>
+            </Modal>
+
+            <PostShareModal
+              visible={showShareModal}
+              onClose={() => setShowShareModal(false)}
+              story={currentStory}
+            />
+            <ReportPost
+              visible={showReportModal}
+              targetId={currentStory.id}
+              type="story"
+              onClose={() => setShowReportModal(false)}
+              onReportSubmitted={() => {
+                useToastStore.getState().showToast(t('report_story_ai_review'), 'success');
+                setShowReportModal(false);
+              }}
+            />
+          </View>
+        </KeyboardAvoidingView>
+      </GestureDetector>
+    </GestureHandlerRootView>
+  );
 };
 
 const getStyles = (colors: any, activeScheme: string, isRTL: boolean) => StyleSheet.create({

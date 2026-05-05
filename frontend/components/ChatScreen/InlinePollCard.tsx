@@ -22,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '@/constants/i18n';
 import CollaborationService from '@/services/ChatScreen/CollaborationService';
 import { createShadow } from '@/utils/styles';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -114,6 +115,8 @@ const PollOptionRow = React.memo<OptionProps>(({
     closed,
     onSelect,
 }) => {
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
     const votes = getOptionVotes(option);
     const pct = totalVotes > 0 ? votes / totalVotes : 0;
     const barAnim = useRef(new Animated.Value(0)).current;
@@ -196,6 +199,8 @@ const InlinePollCard: React.FC<InlinePollCardProps> = ({
     isCurrentUser = false,
 }) => {
     const { t } = useTranslation();
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
     const collaborationService = CollaborationService.getInstance();
 
     // Local poll state (for optimistic updates)
@@ -384,190 +389,199 @@ const InlinePollCard: React.FC<InlinePollCardProps> = ({
 
 const CARD_RADIUS = 16;
 
-const styles = StyleSheet.create({
-    card: {
-        backgroundColor: '#fff',
-        borderRadius: CARD_RADIUS,
-        padding: 14,
-        marginVertical: 4,
-        marginHorizontal: 8,
-        maxWidth: '88%',
-        alignSelf: 'flex-start',
-        borderWidth: 1,
-        borderColor: '#E8E8E8',
-        ...createShadow({ width: 0, height: 2, opacity: 0.08, radius: 8, elevation: 4 }),
-    },
-    cardRight: {
-        alignSelf: 'flex-end',
-    },
+const styles = StyleSheet.create({}); // fallback
 
-    // Header
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 4,
-    },
-    headerLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
-    pollIcon: {
-        backgroundColor: 'rgba(0,122,255,0.10)',
-        borderRadius: 6,
-        padding: 3,
-    },
-    pollLabel: {
-        fontSize: 10,
-        fontWeight: '800',
-        color: '#007AFF',
-        letterSpacing: 1.2,
-    },
-    statusDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: '#34C759',
-    },
-    statusDotClosed: { backgroundColor: '#999' },
-    statusText: {
-        fontSize: 10,
-        fontWeight: '600',
-        color: '#34C759',
-    },
-    statusTextClosed: { color: '#999' },
-    syncIcon: {
-        opacity: 0.5,
-    },
+const getStyles = (colors: any, activeScheme: string) => {
+    const isDark = activeScheme === 'dark';
+    const CARD_RADIUS = 16;
 
-    // Meta
-    meta: {
-        fontSize: 11,
-        color: '#AAA',
-        marginBottom: 6,
-    },
+    return StyleSheet.create({
+        card: {
+            backgroundColor: isDark ? colors.surface : '#fff',
+            borderRadius: CARD_RADIUS,
+            padding: 14,
+            marginVertical: 4,
+            marginHorizontal: 8,
+            maxWidth: '88%',
+            alignSelf: 'flex-start',
+            borderWidth: 1,
+            borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E8E8E8',
+            ...createShadow({ width: 0, height: 2, opacity: isDark ? 0.3 : 0.08, radius: 8, elevation: 4 }),
+        },
+        cardRight: {
+            alignSelf: 'flex-end',
+            backgroundColor: isDark ? colors.tint : '#007AFF', // WhatsApp style: current user bubble is usually tinted
+            borderColor: 'transparent',
+        },
 
-    // Question
-    question: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: '#1A1A1A',
-        lineHeight: 21,
-        marginBottom: 12,
-    },
+        // Header
+        header: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 4,
+        },
+        headerLeft: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+        },
+        pollIcon: {
+            backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,122,255,0.10)',
+            borderRadius: 6,
+            padding: 3,
+        },
+        pollLabel: {
+            fontSize: 10,
+            fontWeight: '800',
+            color: isDark ? '#fff' : '#007AFF',
+            letterSpacing: 1.2,
+        },
+        statusDot: {
+            width: 6,
+            height: 6,
+            borderRadius: 3,
+            backgroundColor: '#34C759',
+        },
+        statusDotClosed: { backgroundColor: '#999' },
+        statusText: {
+            fontSize: 10,
+            fontWeight: '600',
+            color: '#34C759',
+        },
+        statusTextClosed: { color: isDark ? '#8E8E93' : '#999' },
+        syncIcon: {
+            opacity: 0.5,
+        },
 
-    // Options
-    options: {
-        gap: 8,
-    },
-    optionRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#F4F6FA',
-        borderRadius: 10,
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        overflow: 'hidden',
-        position: 'relative',
-        minHeight: 44,
-        borderWidth: 1.5,
-        borderColor: 'transparent',
-    },
-    optionRowSelected: {
-        borderColor: '#007AFF',
-        backgroundColor: '#EBF3FF',
-    },
-    optionRowClosed: {
-        opacity: 0.85,
-    },
-    optionFill: {
-        position: 'absolute',
-        left: 0,
-        top: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0,122,255,0.08)',
-        borderRadius: 10,
-    },
-    optionFillSelected: {
-        backgroundColor: 'rgba(0,122,255,0.14)',
-    },
-    optionCheck: {
-        width: 18,
-        height: 18,
-        borderRadius: 9,
-        borderWidth: 2,
-        borderColor: '#BCC2CB',
-        marginRight: 10,
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-    },
-    optionCheckSelected: {
-        borderColor: '#007AFF',
-        backgroundColor: '#007AFF',
-    },
-    optionCheckInner: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: '#fff',
-    },
-    optionText: {
-        flex: 1,
-        fontSize: 14,
-        fontWeight: '500',
-        color: '#333',
-        lineHeight: 19,
-    },
-    optionTextSelected: {
-        color: '#007AFF',
-        fontWeight: '600',
-    },
-    optionPct: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#666',
-        marginLeft: 8,
-        minWidth: 32,
-        textAlign: 'right',
-    },
+        // Meta
+        meta: {
+            fontSize: 11,
+            color: isDark ? 'rgba(255,255,255,0.5)' : '#AAA',
+            marginBottom: 6,
+        },
 
-    // Submit btn (multi)
-    submitBtn: {
-        marginTop: 10,
-        backgroundColor: '#007AFF',
-        borderRadius: 10,
-        paddingVertical: 9,
-        alignItems: 'center',
-    },
-    submitBtnText: {
-        color: '#fff',
-        fontSize: 14,
-        fontWeight: '700',
-    },
+        // Question
+        question: {
+            fontSize: 15,
+            fontWeight: '700',
+            color: isDark ? '#fff' : '#1A1A1A',
+            lineHeight: 21,
+            marginBottom: 12,
+        },
 
-    // Footer
-    footer: {
-        marginTop: 10,
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-        alignItems: 'center',
-    },
-    footerText: {
-        fontSize: 11,
-        color: '#999',
-    },
-    deadlineText: {
-        color: '#FF9500',
-    },
-    changeVoteHint: {
-        fontSize: 11,
-        color: '#007AFF',
-        fontStyle: 'italic',
-    },
-});
+        // Options
+        options: {
+            gap: 8,
+        },
+        optionRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F4F6FA',
+            borderRadius: 10,
+            paddingVertical: 10,
+            paddingHorizontal: 12,
+            overflow: 'hidden',
+            position: 'relative',
+            minHeight: 44,
+            borderWidth: 1.5,
+            borderColor: 'transparent',
+        },
+        optionRowSelected: {
+            borderColor: isDark ? '#fff' : '#007AFF',
+            backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : '#EBF3FF',
+        },
+        optionRowClosed: {
+            opacity: 0.85,
+        },
+        optionFill: {
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,122,255,0.08)',
+            borderRadius: 10,
+        },
+        optionFillSelected: {
+            backgroundColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,122,255,0.14)',
+        },
+        optionCheck: {
+            width: 18,
+            height: 18,
+            borderRadius: 9,
+            borderWidth: 2,
+            borderColor: isDark ? 'rgba(255,255,255,0.4)' : '#BCC2CB',
+            marginRight: 10,
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+        },
+        optionCheckSelected: {
+            borderColor: isDark ? '#fff' : '#007AFF',
+            backgroundColor: isDark ? '#fff' : '#007AFF',
+        },
+        optionCheckInner: {
+            width: 8,
+            height: 8,
+            borderRadius: 4,
+            backgroundColor: isDark ? colors.tint : '#fff',
+        },
+        optionText: {
+            flex: 1,
+            fontSize: 14,
+            fontWeight: '500',
+            color: isDark ? '#fff' : '#333',
+            lineHeight: 19,
+        },
+        optionTextSelected: {
+            color: isDark ? '#fff' : '#007AFF',
+            fontWeight: '600',
+        },
+        optionPct: {
+            fontSize: 12,
+            fontWeight: '700',
+            color: isDark ? 'rgba(255,255,255,0.7)' : '#666',
+            marginLeft: 8,
+            minWidth: 32,
+            textAlign: 'right',
+        },
+
+        // Submit btn (multi)
+        submitBtn: {
+            marginTop: 10,
+            backgroundColor: colors.tint,
+            borderRadius: 10,
+            paddingVertical: 9,
+            alignItems: 'center',
+        },
+        submitBtnText: {
+            color: isDark ? '#000' : '#fff',
+            fontSize: 14,
+            fontWeight: '700',
+        },
+
+        // Footer
+        footer: {
+            marginTop: 10,
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: 8,
+            alignItems: 'center',
+        },
+        footerText: {
+            fontSize: 11,
+            color: isDark ? 'rgba(255,255,255,0.5)' : '#999',
+        },
+        deadlineText: {
+            color: '#FF9500',
+        },
+        changeVoteHint: {
+            fontSize: 11,
+            color: isDark ? '#fff' : '#007AFF',
+            fontStyle: 'italic',
+        },
+    });
+};
 
 // ── Outer memo: skip full re-render if poll id+data hasn't changed ────────────
 export default React.memo(InlinePollCard, (prev, next) =>

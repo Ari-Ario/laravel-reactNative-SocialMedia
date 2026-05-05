@@ -60,8 +60,13 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         getAdminNotifications,
         unreadChatbotTrainingCount,
     } = useNotificationStore();
-    const { width: windowWidth } = useWindowDimensions();
-    const panelWidth = Math.min(windowWidth - 16, 420);
+    const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+    // Adaptive panel width: near-fullscreen on narrow mobile web, capped at 420 on desktop
+    const panelWidth = Platform.OS === 'web' && windowWidth < 500
+        ? windowWidth - 8
+        : Math.min(windowWidth - 16, 420);
+    // Adaptive panel max-height: 78% of screen height, capped at 580
+    const panelMaxHeight = Math.min(windowHeight * 0.78, 580);
 
     const { setProfileViewUserId, setProfilePreviewVisible } = useProfileView();
     const { addPost } = usePostStore();
@@ -450,9 +455,16 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                         </View>
                     )}
 
-                    {group.count > 1 && (
+                {/* New (unread) count badge — primary color */}
+                    {group.unreadCount > 0 && (
                         <View style={[styles.countBadge, { backgroundColor: colors.primary, borderColor: colors.surface }]}>
-                            <Text style={styles.countBadgeText}>{group.count}</Text>
+                            <Text style={styles.countBadgeText}>{group.unreadCount > 99 ? '99+' : group.unreadCount}</Text>
+                        </View>
+                    )}
+                    {/* Total count badge — muted, shown only when all read and count > 1 */}
+                    {group.unreadCount === 0 && group.count > 1 && (
+                        <View style={[styles.countBadge, { backgroundColor: colors.muted, borderColor: colors.surface }]}>
+                            <Text style={[styles.countBadgeText, { color: colors.textSecondary }]}>{group.count > 99 ? '99+' : group.count}</Text>
                         </View>
                     )}
                 </View>
@@ -601,10 +613,12 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             <View
                 style={[
                     styles.panelContainer,
-                    { backgroundColor: colors.surface, borderColor: colors.border, width: panelWidth },
+                    { backgroundColor: colors.surface, borderColor: colors.border, width: panelWidth, maxHeight: panelMaxHeight },
                     anchorPosition ? {
                         top: anchorPosition.top + 15,
-                        left: anchorPosition.left,
+                        left: anchorPosition.left !== undefined
+                            ? Math.min(anchorPosition.left, windowWidth - panelWidth - 4)
+                            : undefined,
                         right: anchorPosition.right,
                     } : [styles.defaultPosition, { left: (windowWidth - panelWidth) / 2 }]
                 ]}

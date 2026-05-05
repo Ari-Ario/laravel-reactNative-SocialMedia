@@ -10,6 +10,7 @@ import {
     Modal,
     Alert,
     ActivityIndicator,
+    Platform,
     useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,8 +37,11 @@ const SpacesPanel = ({ visible, onClose, anchorPosition }: SpacesPanelProps) => 
     const { colors, activeScheme } = useAppTheme();
     const { t } = useTranslation();
     const { user } = useContext(AuthContext);
-    const { width: windowWidth } = useWindowDimensions();
-    const panelWidth = Math.min(windowWidth - 16, 420);
+    const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+    const panelWidth = Platform.OS === 'web' && windowWidth < 500
+        ? windowWidth - 8
+        : Math.min(windowWidth - 16, 420);
+    const panelMaxHeight = Math.min(windowHeight * 0.78, 580);
     const [joiningSpaceId, setJoiningSpaceId] = useState<string | null>(null);
 
     const {
@@ -204,10 +208,12 @@ const SpacesPanel = ({ visible, onClose, anchorPosition }: SpacesPanelProps) => 
             <View
                 style={[
                     styles.panelContainer,
-                    { backgroundColor: colors.surface, borderColor: colors.border, width: panelWidth },
+                    { backgroundColor: colors.surface, borderColor: colors.border, width: panelWidth, maxHeight: panelMaxHeight },
                     anchorPosition ? {
                         top: anchorPosition.top + 15,
-                        left: anchorPosition.left,
+                        left: anchorPosition.left !== undefined
+                            ? Math.min(anchorPosition.left, windowWidth - panelWidth - 4)
+                            : undefined,
                         right: anchorPosition.right,
                     } : [styles.defaultPosition, { left: (windowWidth - panelWidth) / 2 }],
                 ]}
@@ -295,7 +301,7 @@ const styles = StyleSheet.create({
     unreadHint: { fontSize: 11, fontWeight: '500', marginTop: 1 },
     closeButton: { padding: 6, borderRadius: 20 },
     listContent: { flexGrow: 1, paddingVertical: 4 },
-    groupItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: StyleSheet.hairlineWidth, gap: 12 },
+    groupItem: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 10, paddingHorizontal: 16, borderBottomWidth: StyleSheet.hairlineWidth, gap: 12 },
     unreadItem: { borderLeftWidth: 3 },
     avatarWrapper: { position: 'relative', flexShrink: 0 },
     countBubble: { position: 'absolute', bottom: -4, right: -4, minWidth: 20, height: 20, borderRadius: 10, borderWidth: 2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },

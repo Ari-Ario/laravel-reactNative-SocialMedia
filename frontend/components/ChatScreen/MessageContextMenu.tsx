@@ -34,6 +34,7 @@ import { BlurView } from 'expo-blur';
 import EmojiKeyboard from 'rn-emoji-keyboard';
 import { useTranslation } from '@/constants/i18n';
 import { createShadow } from '@/utils/styles';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -134,6 +135,8 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
     onSharePollResults,
 }) => {
     const { t } = useTranslation();
+    const { colors, activeScheme } = useAppTheme();
+    const styles = getStyles(colors, activeScheme);
     const scaleAnim = useRef(new Animated.Value(0.88)).current;
     const opacityAnim = useRef(new Animated.Value(0)).current;
     const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
@@ -411,7 +414,7 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                 <TouchableWithoutFeedback onPress={onClose}>
                     <Animated.View style={[styles.backdrop, { opacity: opacityAnim }]}>
                         {Platform.OS !== 'web' ? (
-                            <BlurView intensity={12} tint="dark" style={StyleSheet.absoluteFill} />
+                            <BlurView intensity={activeScheme === 'dark' ? 12 : 20} tint={activeScheme as any} style={StyleSheet.absoluteFill} />
                         ) : (
                             <View style={[StyleSheet.absoluteFill, styles.webBackdrop]} />
                         )}
@@ -460,7 +463,7 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                                             activeOpacity={0.65}
                                             onPress={() => setEmojiPickerOpen(true)}
                                         >
-                                            <Ionicons name="add" size={18} color="#8E8E93" />
+                                            <Ionicons name="add" size={18} color={colors.textSecondary} />
                                         </TouchableOpacity>
                                     </View>
                                     <View style={styles.divider} />
@@ -483,7 +486,7 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                                                 <Ionicons
                                                     name={action.icon}
                                                     size={19}
-                                                    color={action.destructive ? '#FF453A' : action.color ?? '#3A7AFE'}
+                                                    color={action.destructive ? '#FF453A' : action.color ?? colors.tint}
                                                 />
                                                 <Text
                                                     style={[
@@ -527,80 +530,85 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-    backdrop: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0,0,0,0.38)',
-    },
-    webBackdrop: {
-        backgroundColor: 'rgba(0,0,0,0.42)',
-    } as any,
-    // ── Card ────────────────────────────────────────────────
-    card: {
-        position: 'absolute',
-        width: CARD_W,
-        backgroundColor: '#1C1C1E',
-        borderRadius: 18,
-        overflow: 'hidden',
-        ...createShadow({ width: 0, height: 8, opacity: 0.36, radius: 24, elevation: 20 }),
-    },
-    // ── Reactions ───────────────────────────────────────────
-    reactionRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 10,
-        paddingVertical: 10,
-        gap: 4,
-    },
-    reactionBtn: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 5,
-        borderRadius: 16,
-        backgroundColor: 'rgba(255,255,255,0.07)',
-    },
-    reactionBtnMore: {
-        backgroundColor: 'rgba(255,255,255,0.04)',
-    },
-    reactionEmoji: {
-        fontSize: 20,
-    },
-    // ── Divider ─────────────────────────────────────────────
-    divider: {
-        height: StyleSheet.hairlineWidth,
-        backgroundColor: 'rgba(255,255,255,0.13)',
-    },
-    // ── Action row ──────────────────────────────────────────
-    actionRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 14,
-        paddingHorizontal: 16,
-        paddingVertical: 13,
-    },
-    actionLabel: {
-        flex: 1,
-        fontSize: 15.5,
-        fontWeight: '500',
-        color: '#EBEBF5',
-        letterSpacing: -0.1,
-    },
-    actionLabelDestructive: {
-        color: '#FF453A',
-    },
-    // ── Meta ────────────────────────────────────────────────
-    metaRow: {
-        paddingHorizontal: 16,
-        paddingVertical: 9,
-        borderTopWidth: StyleSheet.hairlineWidth,
-        borderTopColor: 'rgba(255,255,255,0.10)',
-    },
-    metaText: {
-        fontSize: 11.5,
-        color: '#636366',
-        letterSpacing: -0.1,
-    },
-});
+const styles = StyleSheet.create({}); // fallback
+
+const getStyles = (colors: any, activeScheme: string) => {
+    const isDark = activeScheme === 'dark';
+    return StyleSheet.create({
+        backdrop: {
+            ...StyleSheet.absoluteFillObject,
+            backgroundColor: isDark ? 'rgba(0,0,0,0.38)' : 'rgba(0,0,0,0.15)',
+        },
+        webBackdrop: {
+            backgroundColor: isDark ? 'rgba(0,0,0,0.42)' : 'rgba(0,0,0,0.2)',
+        } as any,
+        // ── Card ────────────────────────────────────────────────
+        card: {
+            position: 'absolute',
+            width: CARD_W,
+            backgroundColor: isDark ? '#1C1C1E' : colors.surface,
+            borderRadius: 18,
+            overflow: 'hidden',
+            ...createShadow({ width: 0, height: 8, opacity: isDark ? 0.36 : 0.15, radius: 24, elevation: 20 }),
+        },
+        // ── Reactions ───────────────────────────────────────────
+        reactionRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 10,
+            paddingVertical: 10,
+            gap: 4,
+        },
+        reactionBtn: {
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingVertical: 5,
+            borderRadius: 16,
+            backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.03)',
+        },
+        reactionBtnMore: {
+            backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
+        },
+        reactionEmoji: {
+            fontSize: 20,
+        },
+        // ── Divider ─────────────────────────────────────────────
+        divider: {
+            height: StyleSheet.hairlineWidth,
+            backgroundColor: isDark ? 'rgba(255,255,255,0.13)' : colors.border,
+        },
+        // ── Action row ──────────────────────────────────────────
+        actionRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 14,
+            paddingHorizontal: 16,
+            paddingVertical: 13,
+        },
+        actionLabel: {
+            flex: 1,
+            fontSize: 15.5,
+            fontWeight: '500',
+            color: isDark ? '#EBEBF5' : colors.text,
+            letterSpacing: -0.1,
+        },
+        actionLabelDestructive: {
+            color: '#FF453A',
+        },
+        // ── Meta ────────────────────────────────────────────────
+        metaRow: {
+            paddingHorizontal: 16,
+            paddingVertical: 9,
+            borderTopWidth: StyleSheet.hairlineWidth,
+            borderTopColor: isDark ? 'rgba(255,255,255,0.10)' : colors.border,
+        },
+        metaText: {
+            fontSize: 11.5,
+            color: isDark ? '#636366' : colors.textSecondary,
+            letterSpacing: -0.1,
+        },
+    });
+};
 
 export default MessageContextMenu;

@@ -86,6 +86,7 @@ const MessageList: React.FC<MessageListProps> = ({
 }) => {
   const { t, locale } = useTranslation();
   const { colors, activeScheme } = useAppTheme();
+  const styles = getStyles(colors, activeScheme);
   const [messages, setMessages] = useState<Message[]>(messagesProp);
 
   // Sync with prop when it changes (e.g. from SpaceChatTab optimistic updates)
@@ -1543,9 +1544,10 @@ const MessageList: React.FC<MessageListProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, activeScheme: string) => StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.background,
   },
   listContent: {
     paddingVertical: 16,
@@ -1560,12 +1562,14 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     marginTop: 16,
+    color: colors.text,
   },
   emptySubtitle: {
     fontSize: 14,
     textAlign: 'center',
     marginTop: 8,
     paddingHorizontal: 32,
+    color: colors.textSecondary,
   },
   selectionHeader: {
     flexDirection: 'row',
@@ -1573,8 +1577,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
     justifyContent: 'space-between',
     zIndex: 10,
+    backgroundColor: colors.surface,
   },
   selectionClose: {
     padding: 4,
@@ -1584,6 +1590,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flex: 1,
     marginLeft: 16,
+    color: colors.text,
   },
   selectionActions: {
     flexDirection: 'row',
@@ -1602,6 +1609,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 16,
     padding: 16,
     maxHeight: '80%',
+    backgroundColor: colors.surface,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1612,6 +1620,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
+    color: colors.text,
   },
   forwardingState: {
     padding: 32,
@@ -1620,19 +1629,20 @@ const styles = StyleSheet.create({
   noSpacesText: {
     textAlign: 'center',
     padding: 24,
-    color: '#666',
+    color: colors.textSecondary,
   },
   spaceItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
   },
   spaceAvatarPlaceholder: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#0a7ea4',
+    backgroundColor: colors.tint,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -1645,11 +1655,13 @@ const styles = StyleSheet.create({
   spaceNameText: {
     flex: 1,
     fontSize: 16,
+    color: colors.text,
   },
   spaceItemSelected: {
+    backgroundColor: colors.muted,
   },
   modalSendBtn: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.tint,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
@@ -1658,10 +1670,10 @@ const styles = StyleSheet.create({
     ...createShadow({ width: 0, height: 4, opacity: 0.2, radius: 8, elevation: 4 }),
   },
   modalSendBtnDisabled: {
-    backgroundColor: '#C6C6C8',
+    backgroundColor: colors.muted,
   },
   modalSendBtnText: {
-    color: '#fff',
+    color: activeScheme === 'dark' ? '#000' : '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -1676,12 +1688,12 @@ const styles = StyleSheet.create({
   newMessagesDividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#25A244',
+    backgroundColor: activeScheme === 'dark' ? '#34C759' : '#25A244',
     opacity: 0.5,
   },
   newMessagesDividerText: {
     marginHorizontal: 10,
-    color: '#25A244',
+    color: activeScheme === 'dark' ? '#34C759' : '#25A244',
     fontSize: 12,
     fontWeight: '600',
     letterSpacing: 0.4,
@@ -1689,8 +1701,8 @@ const styles = StyleSheet.create({
   modalSectionHeader: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#666',
-    backgroundColor: '#f8f8f8',
+    color: colors.textSecondary,
+    backgroundColor: colors.muted,
     paddingHorizontal: 16,
     paddingVertical: 8,
     textTransform: 'uppercase',
@@ -1704,12 +1716,13 @@ const styles = StyleSheet.create({
   targetTypeText: {
     fontSize: 12,
     marginTop: 2,
+    color: colors.textSecondary,
   },
   modalFooter: {
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    backgroundColor: '#fff',
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
   },
 
   // WhatsApp-style system message
@@ -1719,7 +1732,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   systemMessageBadge: {
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    backgroundColor: activeScheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
@@ -1733,6 +1746,8 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 20,
     borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     width: Platform.OS === 'web' ? 'auto' : '94%',
     maxWidth: Platform.OS === 'web' ? 450 : '94%',
     minWidth: Platform.OS === 'web' ? 300 : '94%',
@@ -1757,7 +1772,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: 'rgba(0, 122, 255, 0.08)',
+    backgroundColor: activeScheme === 'dark' ? 'rgba(0, 122, 255, 0.15)' : 'rgba(0, 122, 255, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
@@ -1772,6 +1787,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2.5,
+    borderColor: colors.surface,
     ...createShadow({ width: 0, height: 1, opacity: 0.3, radius: 2, elevation: 2 }),
   },
   callLogTextContainer: {
@@ -1782,6 +1798,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textAlign: 'center',
     lineHeight: 16,
+    color: colors.textSecondary,
   },
   callLogText: {
     fontSize: 16,
@@ -1789,13 +1806,14 @@ const styles = StyleSheet.create({
     textAlign: 'left',
     marginBottom: 1,
     flexWrap: 'wrap',
+    color: colors.text,
   },
   missedCallText: {
     color: '#FF3B30',
   },
   callLogTimeText: {
     fontSize: 11,
-    color: '#8E8E93',
+    color: colors.textSecondary,
     fontWeight: '500',
     letterSpacing: 0.2,
   },

@@ -174,18 +174,63 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
     p.play();
   });
 
+  const mediaRef = useRef(media);
+  useEffect(() => {
+    mediaRef.current = media;
+  }, [media]);
+
   // Check video duration when media is selected
   useEffect(() => {
     if (media?.type === 'video' && media.uri) {
       getVideoDuration(media.uri);
-
-      // Auto-seek to startTime if provided (mostly for web)
-      if (media.startTime !== undefined && videoPlayer) {
-        videoPlayer.currentTime = media.startTime * 1000;
-        videoPlayer.play();
-      }
     }
-  }, [media?.uri, media?.startTime]);
+  }, [media?.uri]); // Only check duration when the file itself changes, not when metadata changes
+
+  // Manage playback, seeking, and looping for trimmed segments
+  useEffect(() => {
+    if (media?.type !== 'video' || !videoPlayer) return;
+
+    // Handle background pausing
+    if (showTrimmer) {
+      try { videoPlayer.pause(); } catch (e) { }
+      return;
+    }
+
+    // Set custom loop behavior
+    const isTrimmed = media.startTime !== undefined && media.endTime !== undefined;
+    videoPlayer.loop = !isTrimmed;
+
+    let interval: any;
+
+    if (isTrimmed) {
+      // 1. Initial sync to start time
+      const currentTime = Platform.OS === 'web' ? videoPlayer.currentTime : videoPlayer.currentTime / 1000;
+      if (currentTime < (media.startTime || 0) - 0.5 || currentTime > (media.endTime || 0) + 0.5) {
+        videoPlayer.currentTime = (media.startTime || 0) * (Platform.OS === 'web' ? 1 : 1000);
+      }
+
+      // 2. Start looping heartbeat
+      interval = setInterval(() => {
+        const pTime = Platform.OS === 'web' ? videoPlayer.currentTime : videoPlayer.currentTime / 1000;
+        if (pTime >= (media.endTime || 0) - 0.2) {
+          videoPlayer.currentTime = (media.startTime || 0) * (Platform.OS === 'web' ? 1 : 1000);
+        }
+      }, 100);
+
+      // 3. Play with safety delay to avoid AbortError on web
+      const playTimer = setTimeout(() => {
+        try { videoPlayer.play(); } catch (e) { }
+      }, 100);
+
+      return () => {
+        if (interval) clearInterval(interval);
+        clearTimeout(playTimer);
+      };
+    } else {
+      // Untrimmed video - just play normally
+      try { videoPlayer.play(); } catch (e) { }
+    }
+  }, [media?.uri, media?.startTime, media?.endTime, showTrimmer, videoPlayer]);
 
   const getVideoDuration = async (uri: string) => {
     if (Platform.OS !== 'web') return; // For native, duration is usually handled by picker or player events
@@ -196,9 +241,12 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
       video.onloadedmetadata = () => {
         const duration = video.duration;
         setVideoDuration(duration);
-        if (duration > MAX_VIDEO_DURATION) {
+        if (duration > MAX_VIDEO_DURATION && media?.startTime === undefined) {
           setNeedsTrimming(true);
           setShowTrimmer(true);
+        } else if (media?.startTime !== undefined) {
+          // If already trimmed, ensure warning is off
+          setNeedsTrimming(false);
         }
       };
     } catch (error) {
@@ -214,6 +262,18 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
       })();
     }
   }, [visible, permission?.granted, micPermission?.granted]);
+
+  // Reset trimmer state when modal closes.
+  // AddStory uses 'return null' (not unmount) so state persists between opens.
+  // Without this reset, showTrimmer=true from a previous session causes the
+  // VideoTrimmer to appear immediately on the next open.
+  useEffect(() => {
+    if (!visible) {
+      setShowTrimmer(false);
+      setNeedsTrimming(false);
+      // Don't reset media/stickers here - handleClose handles that path
+    }
+  }, [visible]);
 
   // Handle Recording Progress
   useEffect(() => {
@@ -331,7 +391,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
     const wasRecording = isRecording || shouldRecordRef.current;
     shouldRecordRef.current = false;
     setIsRecording(false);
-    
+
     if (cameraRef.current && wasRecording) {
       cameraRef.current.stopRecording();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -541,8 +601,11 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
         uri: finalUri,
         type: 'video',
         startTime: trimmedData.startTime,
-        endTime: trimmedData.endTime
+        endTime: trimmedData.endTime,
+        duration: trimmedData.duration * 1000, // Sync duration in ms like CreatePost
       });
+
+      setVideoDuration(trimmedData.duration); // Update local duration state to stop warnings
       setNeedsTrimming(false);
       setShowTrimmer(false);
     } catch (error) {
@@ -586,7 +649,7 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
       // 🚀 INSTANT UI: Close modal immediately and show optimistic feedback
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showToast(t('sharing_story'), 'info');
-      
+
       const uploadFormData = new FormData();
       const currentMedia = { ...media };
       const currentStickers = [...stickers];
@@ -615,10 +678,11 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
       if (Platform.OS === 'web') {
         const response = await fetch(currentMedia.uri);
         const blob = await response.blob();
+        // Use the blob's actual MIME type, not a hardcoded value
+        const actualMime = blob.type || (currentMedia.type === 'video' ? 'video/webm' : 'image/jpeg');
+        const ext = actualMime.split('/')[1]?.replace('jpeg', 'jpg') || (currentMedia.type === 'video' ? 'webm' : 'jpg');
         let finalFilename = filename;
-        if (!finalFilename.includes('.')) {
-          finalFilename = currentMedia.type === 'video' ? 'story.webm' : 'story.jpg';
-        }
+        if (!finalFilename.includes('.')) finalFilename = `story.${ext}`;
         uploadFormData.append('media', blob, finalFilename);
       } else {
         uploadFormData.append('media', {
@@ -629,6 +693,12 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
       }
 
       uploadFormData.append('type', currentMedia.type);
+
+      // Send trim metadata so the server (FFmpeg) trims to the correct segment
+      if (currentMedia.startTime !== undefined && currentMedia.endTime !== undefined) {
+        uploadFormData.append('trim_start', currentMedia.startTime.toString());
+        uploadFormData.append('trim_end', currentMedia.endTime.toString());
+      }
 
       const baseStickers = [...currentStickers];
       if (currentMedia.type === 'photo' && currentMedia.gradient) {
@@ -653,13 +723,13 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
         x: s.id === 'bg-metadata' ? 0 : s.x / width,
         y: s.id === 'bg-metadata' ? 0 : s.y / height,
       }));
-      
+
       uploadFormData.append('stickers', JSON.stringify(stickersData));
       if (currentLocation) uploadFormData.append('location', JSON.stringify(currentLocation));
 
       // Background API call
       const response = await createStory(uploadFormData);
-      
+
       if (response.success) {
         showToast(t('story_shared'), 'success');
         onStoryCreated();
@@ -850,11 +920,11 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                 </TouchableOpacity>
               </View>
             </View>
-          ) : !showTrimmer && (
-            // PREVIEW VIEW
-            <View style={styles.previewContainer}>
+          ) : (
+            <View style={[styles.previewContainer, showTrimmer && { display: 'none' }]}>
               {media?.type === 'video' ? (
                 <VideoView
+                  key={`${media?.uri}-${media?.startTime || 'original'}`}
                   player={videoPlayer}
                   style={styles.previewMedia}
                   contentFit="cover"

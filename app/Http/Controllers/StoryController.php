@@ -109,22 +109,35 @@ class StoryController extends Controller
     {
         try {
             $request->validate([
-                'media' => 'required|file|mimes:jpg,jpeg,png,mp4,mov,webm|max:40960', // up to 40MB
-                'caption' => 'nullable|string|max:2000',
-                'location' => 'nullable|string',
-                'stickers' => 'nullable|string',
-                'type' => 'required|string|in:photo,video',
+                'media'     => 'required|file|mimes:jpg,jpeg,png,mp4,mov,webm|max:61440', // 60MB — allows raw upload before FFmpeg trim
+                'caption'   => 'nullable|string|max:2000',
+                'location'  => 'nullable|string',
+                'stickers'  => 'nullable|string',
+                'type'      => 'required|string|in:photo,video',
+                'trim_start'=> 'sometimes|numeric',
+                'trim_end'  => 'sometimes|numeric',
             ]);
 
-            $file = $request->file('media');
+            $file      = $request->file('media');
             $extension = $file->getClientOriginalExtension() ?: ($request->type === 'video' ? 'mp4' : 'jpg');
-            
-            // Custom renaming as per Laravel 12 patterns suggested
-            $fileName = time() . '_' . Str::random(10) . '.' . $extension;
+
+            $fileName  = time() . '_' . Str::random(10) . '.' . $extension;
             $directory = 'stories/' . Auth::id();
-            
-            // Store the file using the public disk
-            $path = $file->storeAs($directory, $fileName, 'public');
+            $path      = $file->storeAs($directory, $fileName, 'public');
+
+            // Server-side FFmpeg trim (mirrors PostController)
+            $storedMimeType = $file->getMimeType();
+            if ($request->type === 'video' && $request->filled('trim_start') && $request->filled('trim_end')) {
+                $start = (float) $request->trim_start;
+                $end   = (float) $request->trim_end;
+                if ($start > 0 || $end > 0) {
+                    $newPath = $this->trimVideo($path, $start, $end);
+                    if ($newPath !== $path && str_ends_with($newPath, '.mp4')) {
+                        $storedMimeType = 'video/mp4';
+                    }
+                    $path = $newPath;
+                }
+            }
 
             $story = Story::create([
                 'user_id' => Auth::id(),
@@ -152,11 +165,61 @@ class StoryController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
-                'errors' => $e instanceof \Illuminate\Validation\ValidationException
+                'errors'  => $e instanceof \Illuminate\Validation\ValidationException
                 ? $e->errors()
                 : null
             ], 422);
         }
+    }
+
+    /**
+     * Trim a video segment using FFmpeg.
+     * Mirrors PostController::trimVideo() — webm/mkv → H264 mp4 for universal playback.
+     */
+    private function trimVideo(string $path, float $start, float $end): string
+    {
+        $fullPath = storage_path('app/public/' . $path);
+        if (!file_exists($fullPath)) return $path;
+
+        $extension       = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+        $basePath        = substr($path, 0, strrpos($path, '.'));
+        $outputExtension = in_array($extension, ['webm', 'mkv']) ? 'mp4' : $extension;
+        $trimmedPath     = $basePath . '_trimmed.' . $outputExtension;
+        $fullTrimmedPath = storage_path('app/public/' . $trimmedPath);
+
+        $ffmpeg = trim((string) shell_exec('which ffmpeg'));
+        if (!$ffmpeg) {
+            Log::warning('FFmpeg not found. Story trim skipped.', ['path' => $path]);
+            return $path;
+        }
+
+        $duration = $end - $start;
+        if ($outputExtension !== $extension) {
+            $command = sprintf(
+                'ffmpeg -y -ss %s -i %s -t %s -c:v libx264 -preset fast -crf 23 -c:a aac -movflags +faststart %s 2>&1',
+                escapeshellarg((string) $start), escapeshellarg($fullPath),
+                escapeshellarg((string) $duration), escapeshellarg($fullTrimmedPath)
+            );
+        } else {
+            $command = sprintf(
+                'ffmpeg -y -ss %s -i %s -t %s -c copy -map 0 %s 2>&1',
+                escapeshellarg((string) $start), escapeshellarg($fullPath),
+                escapeshellarg((string) $duration), escapeshellarg($fullTrimmedPath)
+            );
+        }
+
+        $output = []; $resultCode = 0;
+        exec($command, $output, $resultCode);
+
+        if ($resultCode === 0 && file_exists($fullTrimmedPath) && filesize($fullTrimmedPath) > 0) {
+            unlink($fullPath);
+            return $trimmedPath;
+        }
+
+        Log::error('Story FFmpeg trim failed', [
+            'command' => $command, 'output' => implode("\n", $output), 'result_code' => $resultCode,
+        ]);
+        return $path;
     }
 
 

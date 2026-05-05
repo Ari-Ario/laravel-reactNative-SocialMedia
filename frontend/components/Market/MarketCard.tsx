@@ -85,7 +85,7 @@ export default function MarketCard({ item, onPress, onChatPress, onProfilePress,
   // Detect link in description only
   const detectedUrl = useMemo(() => {
     if (!item.description) return null;
-    
+
     const urlRegex = /((https?:\/\/|www\.)[^\s\n\r]+)/g;
     const matches = item.description.match(urlRegex);
     if (!matches) return null;
@@ -133,7 +133,7 @@ export default function MarketCard({ item, onPress, onChatPress, onProfilePress,
   };
 
   const isOwner = currentUser?.id === item.user_id;
-  
+
 
 
   const postStyleObject = useMemo(() => ({
@@ -266,7 +266,7 @@ export default function MarketCard({ item, onPress, onChatPress, onProfilePress,
 
       if (response.bookmarked) {
         showToast(response.message, 'success');
-        
+
         // Navigate to the bookmarks settings page which acts as the official popup
         router.push({
           pathname: '/settings/bookmarks',
@@ -294,7 +294,7 @@ export default function MarketCard({ item, onPress, onChatPress, onProfilePress,
         if (response.reposted) {
           return { ...oldItem, reposts: [...reposts, response.repost] };
         } else {
-          return { ...oldItem, reposts: reposts.filter((r:any) => r.user_id !== currentUser?.id) };
+          return { ...oldItem, reposts: reposts.filter((r: any) => r.user_id !== currentUser?.id) };
         }
       });
       showToast(response.message, 'success');
@@ -330,7 +330,7 @@ export default function MarketCard({ item, onPress, onChatPress, onProfilePress,
 
   const handleDelete = React.useCallback(async () => {
     console.log('🗑️ Attempting to delete item:', item.id);
-    
+
     let confirmed = false;
     if (Platform.OS === 'web') {
       confirmed = window.confirm(t('are_you_sure_delete_item'));
@@ -426,79 +426,79 @@ export default function MarketCard({ item, onPress, onChatPress, onProfilePress,
 
   const renderMainContent = () => (
     <>
-        <View style={styles.mediaSection}>
-          {visualMedia.length > 0 ? (
-            visualMedia.length === 1 ? (
-              <TouchableOpacity
-                activeOpacity={0.9}
-                onPress={() => { setMediaViewerIndex(0); setMediaViewerVisible(true); }}
-                style={styles.imageContainer}
-              >
-                {visualMedia[0].type === 'video' ? (
-                  <React.Suspense fallback={<VideoFallback posterUrl={getPosterUrl(visualMedia[0])} style={styles.image} />}>
-                    <PostVideoPlayer
-                      uri={getMediaUrl(visualMedia[0].file_path)}
-                      style={styles.image}
-                      contentFit="cover"
-                      shouldPlay={true}
-                      isMuted={true}
-                      poster={getPosterUrl(visualMedia[0])}
-                    />
-                  </React.Suspense>
-                ) : (
-                  <ExpoImage
-                    source={{ uri: getMediaUrl(visualMedia[0].file_path) }}
+      <View style={styles.mediaSection}>
+        {visualMedia.length > 0 ? (
+          visualMedia.length === 1 ? (
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => { setMediaViewerIndex(0); setMediaViewerVisible(true); }}
+              style={styles.imageContainer}
+            >
+              {visualMedia[0].type === 'video' ? (
+                <React.Suspense fallback={<VideoFallback posterUrl={getPosterUrl(visualMedia[0])} style={styles.image} />}>
+                  <PostVideoPlayer
+                    uri={getMediaUrl(visualMedia[0].file_path)}
                     style={styles.image}
                     contentFit="cover"
-                    transition={200}
-                    cachePolicy="disk"
+                    shouldPlay={true}
+                    isMuted={true}
+                    poster={getPosterUrl(visualMedia[0])}
                   />
-                )}
-              </TouchableOpacity>
-            ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                decelerationRate="fast"
-                contentContainerStyle={styles.multiMediaScroll}
-              >
-                {visualMedia.map((media, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    activeOpacity={0.9}
-                    onPress={() => { setMediaViewerIndex(index); setMediaViewerVisible(true); }}
-                    style={styles.multiMediaItem}
-                  >
-                    {media.type === 'video' ? (
-                      <React.Suspense fallback={<VideoFallback posterUrl={getPosterUrl(media)} style={styles.multiMediaContent} />}>
-                        <PostVideoPlayer
-                          uri={getMediaUrl(media.file_path)}
-                          style={styles.multiMediaContent}
-                          contentFit="cover"
-                          shouldPlay={false}
-                          isMuted={true}
-                          poster={getPosterUrl(media)}
-                        />
-                      </React.Suspense>
-                    ) : (
-                      <ExpoImage
-                        source={{ uri: getMediaUrl(media.file_path) }}
+                </React.Suspense>
+              ) : (
+                <ExpoImage
+                  source={{ uri: getMediaUrl(visualMedia[0].file_path) }}
+                  style={styles.image}
+                  contentFit="cover"
+                  transition={200}
+                  cachePolicy="disk"
+                />
+              )}
+            </TouchableOpacity>
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              decelerationRate="fast"
+              contentContainerStyle={styles.multiMediaScroll}
+            >
+              {visualMedia.map((media, index) => (
+                <TouchableOpacity
+                  key={index}
+                  activeOpacity={0.9}
+                  onPress={() => { setMediaViewerIndex(index); setMediaViewerVisible(true); }}
+                  style={styles.multiMediaItem}
+                >
+                  {media.type === 'video' ? (
+                    <React.Suspense fallback={<VideoFallback posterUrl={getPosterUrl(media)} style={styles.multiMediaContent} />}>
+                      <PostVideoPlayer
+                        uri={getMediaUrl(media.file_path)}
                         style={styles.multiMediaContent}
                         contentFit="cover"
-                        transition={200}
-                        cachePolicy="disk"
+                        shouldPlay={false}
+                        isMuted={true}
+                        poster={getPosterUrl(media)}
                       />
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )
-          ) : (
-            <View style={[styles.imagePlaceholder, { backgroundColor: colors.border }]}>
-              <Ionicons name="image-outline" size={40} color={colors.textSecondary} />
-            </View>
-          )}
-        </View>
+                    </React.Suspense>
+                  ) : (
+                    <ExpoImage
+                      source={{ uri: getMediaUrl(media.file_path) }}
+                      style={styles.multiMediaContent}
+                      contentFit="cover"
+                      transition={200}
+                      cachePolicy="disk"
+                    />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )
+        ) : (
+          <View style={[styles.imagePlaceholder, { backgroundColor: colors.border }]}>
+            <Ionicons name="image-outline" size={40} color={colors.textSecondary} />
+          </View>
+        )}
+      </View>
     </>
   );
 
@@ -509,6 +509,12 @@ export default function MarketCard({ item, onPress, onChatPress, onProfilePress,
         delayLongPress={300}
         onPress={onPress}
       >
+        <TouchableOpacity
+          style={styles.menuButton}
+          onPress={handleMenuPress}
+        >
+          <Ionicons name="ellipsis-horizontal" size={20} color={colors.text} />
+        </TouchableOpacity>
         {item.reposts && item.reposts.length > 1 && (
           <CuratorCircle
             reposters={item.reposts.map((r: any) => ({
@@ -775,6 +781,7 @@ const getStyles = (colors: any, scheme: string) => StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     marginBottom: 16,
+    // paddingTop: 10,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
     shadowColor: '#000',
@@ -925,5 +932,14 @@ const getStyles = (colors: any, scheme: string) => StyleSheet.create({
     fontSize: 10,
     marginTop: 2,
     fontWeight: '600',
+  },
+  menuButton: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    zIndex: 100,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
 });
