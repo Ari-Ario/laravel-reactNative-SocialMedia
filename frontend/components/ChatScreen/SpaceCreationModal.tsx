@@ -311,7 +311,7 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
     const uploadSpacePhoto = async (spaceId: string, uri: string) => {
         try {
             // Compress first
-            const compressed = await MediaCompressor.prepareMediaForUpload(uri);
+            const compressed = await MediaCompressor.prepareMediaForUpload(uri, undefined, 'photo');
             const finalUri = compressed.uri;
 
             const token = await getToken();
@@ -341,7 +341,7 @@ const SpaceCreationModal: React.FC<SpaceCreationModalProps> = ({
         try {
             // Prepare for web (compression happens inside if more than 2MB)
             const uri = URL.createObjectURL(file);
-            const compressed = await MediaCompressor.prepareMediaForUpload(uri, file.name);
+            const compressed = await MediaCompressor.prepareMediaForUpload(uri, file.name, 'photo');
             
             let finalFile: any = file;
             if (compressed.uri !== uri) {

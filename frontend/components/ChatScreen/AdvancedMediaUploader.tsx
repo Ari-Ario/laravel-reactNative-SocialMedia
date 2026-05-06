@@ -666,7 +666,6 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
           startTime: trimmedData.startTime,
           endTime: trimmedData.endTime,
           durationMs: trimmedData.duration * 1000,
-          file: undefined, 
         };
       }
       return next;
@@ -728,6 +727,11 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
                 <View style={{ width: 44 }} />
 
                 <View style={styles.captureCenter}>
+                  <Text style={[styles.cameraHint, { marginBottom: 15 }]}>
+                    {cameraMode === 'video'
+                      ? isRecording ? t('recording_duration_status').replace('{duration}', Math.floor(recordingProgress * RECORDING_LIMIT_MS / 1000).toString()) : t('hold_for_video')
+                      : t('tap_for_photo')}
+                  </Text>
                   <TouchableOpacity
                     onPressIn={handleLongPress}
                     onPressOut={handlePressOut}
@@ -757,11 +761,6 @@ const AdvancedMediaUploader = forwardRef<AdvancedMediaUploaderRef, AdvancedMedia
                       </MotiView>
                     )}
                   </TouchableOpacity>
-                  <Text style={styles.cameraHint}>
-                    {cameraMode === 'video'
-                      ? isRecording ? t('recording_duration_status').replace('{duration}', Math.floor(recordingProgress * RECORDING_LIMIT_MS / 1000).toString()) : t('hold_for_video')
-                      : t('tap_for_photo')}
-                  </Text>
                 </View>
 
                 <TouchableOpacity style={styles.cameraFlipBtn} onPress={toggleFacing}>

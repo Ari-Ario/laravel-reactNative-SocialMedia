@@ -354,7 +354,8 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
           try {
             const compressed = await MediaCompressor.prepareMediaForUpload(
               asset.uri,
-              asset.fileName || undefined
+              asset.fileName || undefined,
+              asset.type === 'video' ? 'video' : 'photo'
             );
             processedAssets.push({
               ...asset,
@@ -547,7 +548,8 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
       // Compress the trimmed video
       const compressed = await MediaCompressor.prepareMediaForUpload(
         trimmedData.uri,
-        currentAsset.fileName || `video-${Date.now()}.mp4`
+        currentAsset.fileName || `video-${Date.now()}.mp4`,
+        'video'
       );
 
       // Generate new thumbnail for trimmed video
@@ -599,7 +601,8 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
         try {
           const compressed = await MediaCompressor.prepareMediaForUpload(
             photo.uri,
-            `photo-${Date.now()}.jpg`
+            `photo-${Date.now()}.jpg`,
+            'photo'
           );
 
           setMedia([...media, {
@@ -717,14 +720,18 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
         };
 
         if (Platform.OS === 'web') {
-          const response = await fetch(item.uri);
-          const blob = await response.blob();
-          // Use actual MIME from blob (browser detects this correctly for webm/mp4/etc.)
-          const actualMime = blob.type || (item.type === 'video' ? 'video/webm' : 'image/jpeg');
-          const ext = mimeExt[actualMime] || (item.type === 'video' ? 'webm' : 'jpg');
-          const fileName = item.fileName || `media-${Date.now()}.${ext}`;
-          const file = new File([blob], fileName, { type: actualMime });
-          formData.append('media[]', file);
+          if ((item as any).file) {
+            formData.append('media[]', (item as any).file);
+          } else {
+            const response = await fetch(item.uri);
+            const blob = await response.blob();
+            // Use actual MIME from blob (browser detects this correctly for webm/mp4/etc.)
+            const actualMime = blob.type || (item.type === 'video' ? 'video/webm' : 'image/jpeg');
+            const ext = mimeExt[actualMime] || (item.type === 'video' ? 'webm' : 'jpg');
+            const fileName = item.fileName || `media-${Date.now()}.${ext}`;
+            const file = new File([blob], fileName, { type: actualMime });
+            formData.append('media[]', file);
+          }
         } else {
           const fileData = {
             uri: item.uri,
@@ -818,6 +825,11 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
               </TouchableOpacity>
 
               <View style={styles.captureContainer}>
+                <Text style={[styles.modeText, { marginBottom: 15 }]}>
+                  {cameraMode === 'video'
+                    ? isRecording ? `${t('recording_label')} ${Math.floor(recordingProgress * RECORDING_LIMIT_MS / 1000)}s` : t('hold_for_video')
+                    : t('tap_for_photo')}
+                </Text>
                 <TouchableOpacity
                   onPressIn={handleLongPress}
                   onPressOut={handlePressOut}
@@ -854,11 +866,6 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
                     </MotiView>
                   )}
                 </TouchableOpacity>
-                <Text style={styles.modeText}>
-                  {cameraMode === 'video'
-                    ? isRecording ? `${t('recording_label')} ${Math.floor(recordingProgress * RECORDING_LIMIT_MS / 1000)}s` : t('hold_for_video')
-                    : t('tap_for_photo')}
-                </Text>
               </View>
 
               <TouchableOpacity style={styles.flipButton} onPress={toggleFacing}>

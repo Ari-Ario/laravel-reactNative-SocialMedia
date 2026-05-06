@@ -120,9 +120,10 @@ export class MediaCompressor {
 
     static async prepareMediaForUpload(
         uri: string,
-        fileName?: string
+        fileName?: string,
+        type?: MediaType
     ): Promise<{ uri: string; type: string; fileName: string }> {
-        const mediaType = this.getMediaTypeFromUri(uri);
+        const mediaType = type || this.getMediaTypeFromUri(uri);
 
         let finalUri = uri;
         if (mediaType === 'photo') {

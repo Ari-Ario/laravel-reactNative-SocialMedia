@@ -312,7 +312,8 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
         // Use MediaCompressor for consistent processing (matches CreatePost)
         const compressed = await MediaCompressor.prepareMediaForUpload(
           photo.uri,
-          `story-photo-${Date.now()}.jpg`
+          `story-photo-${Date.now()}.jpg`,
+          'photo'
         );
 
         setMedia({ uri: compressed.uri, type: 'photo' });
@@ -348,7 +349,8 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
           // Compress recorded video for better upload speed/size
           const compressed = await MediaCompressor.prepareMediaForUpload(
             video.uri,
-            `story-video-${Date.now()}.mp4`
+            `story-video-${Date.now()}.mp4`,
+            'video'
           );
           setMedia({ uri: compressed.uri, type: 'video' });
         }
@@ -428,7 +430,8 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
           // 2. Compress normal media immediately
           const compressed = await MediaCompressor.prepareMediaForUpload(
             asset.uri,
-            asset.fileName || (asset.type === 'video' ? `gallery-video-${Date.now()}.mp4` : `gallery-photo-${Date.now()}.jpg`)
+            asset.fileName || (asset.type === 'video' ? `gallery-video-${Date.now()}.mp4` : `gallery-photo-${Date.now()}.jpg`),
+            asset.type === 'video' ? 'video' : 'photo'
           );
 
           setMedia({
@@ -589,7 +592,8 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
       // Compress the trimmed segment (matches CreatePost flow)
       const compressed = await MediaCompressor.prepareMediaForUpload(
         trimmedData.uri,
-        `trimmed-story-${Date.now()}.mp4`
+        `trimmed-story-${Date.now()}.mp4`,
+        'video'
       );
 
       // Only add cache buster if it's not a blob URL, as blobs don't support query params
@@ -676,14 +680,18 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
       }
 
       if (Platform.OS === 'web') {
-        const response = await fetch(currentMedia.uri);
-        const blob = await response.blob();
-        // Use the blob's actual MIME type, not a hardcoded value
-        const actualMime = blob.type || (currentMedia.type === 'video' ? 'video/webm' : 'image/jpeg');
-        const ext = actualMime.split('/')[1]?.replace('jpeg', 'jpg') || (currentMedia.type === 'video' ? 'webm' : 'jpg');
-        let finalFilename = filename;
-        if (!finalFilename.includes('.')) finalFilename = `story.${ext}`;
-        uploadFormData.append('media', blob, finalFilename);
+        if ((currentMedia as any).file) {
+          uploadFormData.append('media', (currentMedia as any).file);
+        } else {
+          const response = await fetch(currentMedia.uri);
+          const blob = await response.blob();
+          // Use the blob's actual MIME type, not a hardcoded value
+          const actualMime = blob.type || (currentMedia.type === 'video' ? 'video/webm' : 'image/jpeg');
+          const ext = actualMime.split('/')[1]?.replace('jpeg', 'jpg') || (currentMedia.type === 'video' ? 'webm' : 'jpg');
+          let finalFilename = filename;
+          if (!finalFilename.includes('.')) finalFilename = `story.${ext}`;
+          uploadFormData.append('media', blob, finalFilename);
+        }
       } else {
         uploadFormData.append('media', {
           uri: currentMedia.uri,
@@ -844,6 +852,11 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                         </TouchableOpacity>
 
                         <View style={styles.captureContainer}>
+                          <Text style={[styles.modeText, { marginBottom: 15 }]}>
+                            {cameraMode === 'video'
+                              ? isRecording ? `${t('recording_label')} ${Math.floor(recordingProgress * 10)}s` : t('hold_for_video')
+                              : t('tap_for_photo')}
+                          </Text>
                           <TouchableOpacity
                             onPressIn={handleLongPress}
                             onPressOut={handlePressOut}
@@ -880,11 +893,6 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
                               </MotiView>
                             )}
                           </TouchableOpacity>
-                          <Text style={styles.modeText}>
-                            {cameraMode === 'video'
-                              ? isRecording ? `${t('recording_label')} ${Math.floor(recordingProgress * 10)}s` : t('hold_for_video')
-                              : t('tap_for_photo')}
-                          </Text>
                         </View>
 
                         <TouchableOpacity

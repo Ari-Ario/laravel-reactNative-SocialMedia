@@ -183,7 +183,7 @@ class StoryController extends Controller
 
         $extension       = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
         $basePath        = substr($path, 0, strrpos($path, '.'));
-        $outputExtension = in_array($extension, ['webm', 'mkv']) ? 'mp4' : $extension;
+        $outputExtension = $extension; // Do not force mp4 to allow fast stream copy
         $trimmedPath     = $basePath . '_trimmed.' . $outputExtension;
         $fullTrimmedPath = storage_path('app/public/' . $trimmedPath);
 
@@ -196,7 +196,7 @@ class StoryController extends Controller
         $duration = $end - $start;
         if ($outputExtension !== $extension) {
             $command = sprintf(
-                'ffmpeg -y -ss %s -i %s -t %s -c:v libx264 -preset fast -crf 23 -c:a aac -movflags +faststart %s 2>&1',
+                'ffmpeg -y -ss %s -i %s -t %s -c:v libx264 -preset ultrafast -crf 28 -c:a aac -movflags +faststart %s 2>&1',
                 escapeshellarg((string) $start), escapeshellarg($fullPath),
                 escapeshellarg((string) $duration), escapeshellarg($fullTrimmedPath)
             );

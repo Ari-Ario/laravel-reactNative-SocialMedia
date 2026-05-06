@@ -254,7 +254,8 @@ export default function CreateMarketItemModal({ visible, onClose, editItem }: Cr
             try {
               const compressed = await MediaCompressor.prepareMediaForUpload(
                 asset.uri,
-                asset.fileName || undefined
+                asset.fileName || undefined,
+                type === 'video' ? 'video' : 'photo'
               );
               processedAssets.push({
                 uri: compressed.uri,
@@ -320,7 +321,8 @@ export default function CreateMarketItemModal({ visible, onClose, editItem }: Cr
       // Compress trimmed video
       const compressed = await MediaCompressor.prepareMediaForUpload(
         trimmedData.uri,
-        currentAsset.fileName || `video-${Date.now()}.mp4`
+        currentAsset.fileName || `video-${Date.now()}.mp4`,
+        'video'
       );
 
       const thumb = await generateVideoThumbnail(compressed.uri);
@@ -429,16 +431,20 @@ export default function CreateMarketItemModal({ visible, onClose, editItem }: Cr
         }
 
         if (Platform.OS === 'web') {
-          const response = await fetch(item.uri);
-          const blob = await response.blob();
-          
-          // Use blob's actual type or fallback
-          const actualMime = blob.type || (item.type === 'video' ? 'video/webm' : 'image/jpeg');
-          const ext = actualMime.split('/')[1]?.replace('jpeg', 'jpg') || (item.type === 'video' ? 'webm' : 'jpg');
-          let finalFilename = item.fileName || `media-${Date.now()}-${i}.${ext}`;
-          if (!finalFilename.includes('.')) finalFilename += `.${ext}`;
+          if ((item as any).file) {
+            formData.append('media[]', (item as any).file);
+          } else {
+            const response = await fetch(item.uri);
+            const blob = await response.blob();
+            
+            // Use blob's actual type or fallback
+            const actualMime = blob.type || (item.type === 'video' ? 'video/webm' : 'image/jpeg');
+            const ext = actualMime.split('/')[1]?.replace('jpeg', 'jpg') || (item.type === 'video' ? 'webm' : 'jpg');
+            let finalFilename = item.fileName || `media-${Date.now()}-${i}.${ext}`;
+            if (!finalFilename.includes('.')) finalFilename += `.${ext}`;
 
-          formData.append('media[]', blob, finalFilename);
+            formData.append('media[]', blob, finalFilename);
+          }
         } else {
           // Native multipart object
           const type = item.type === 'video' ? 'video/mp4' : 'image/jpeg';
@@ -496,7 +502,7 @@ export default function CreateMarketItemModal({ visible, onClose, editItem }: Cr
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
 
-        const compressed = await MediaCompressor.prepareMediaForUpload(photo.uri, `photo-${Date.now()}.jpg`);
+        const compressed = await MediaCompressor.prepareMediaForUpload(photo.uri, `photo-${Date.now()}.jpg`, 'photo');
 
         setMedia(prev => [...prev, {
           uri: compressed.uri,
@@ -845,6 +851,11 @@ export default function CreateMarketItemModal({ visible, onClose, editItem }: Cr
                   </TouchableOpacity>
 
                   <View style={styles.captureContainer}>
+                    <Text style={[styles.modeText, { marginBottom: 15 }]}>
+                      {cameraMode === 'video'
+                        ? isRecording ? `${t('recording_label')} ${Math.floor(recordingProgress * RECORDING_LIMIT_MS / 1000)}s` : t('hold_for_video')
+                        : t('tap_for_photo')}
+                    </Text>
                     <TouchableOpacity
                       onPressIn={handleLongPress}
                       onPressOut={handlePressOut}
@@ -881,11 +892,6 @@ export default function CreateMarketItemModal({ visible, onClose, editItem }: Cr
                         </MotiView>
                       )}
                     </TouchableOpacity>
-                    <Text style={styles.modeText}>
-                      {cameraMode === 'video'
-                        ? isRecording ? `${t('recording_label')} ${Math.floor(recordingProgress * RECORDING_LIMIT_MS / 1000)}s` : t('hold_for_video')
-                        : t('tap_for_photo')}
-                    </Text>
                   </View>
 
                   <TouchableOpacity style={styles.flipButton} onPress={toggleFacing}>

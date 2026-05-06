@@ -789,7 +789,7 @@ class PostController extends Controller
 
         // webm / mkv → convert to H264 mp4 for universal browser + Safari support.
         // mp4 / mov → stream copy (fast, no quality loss).
-        $outputExtension = in_array($extension, ['webm', 'mkv']) ? 'mp4' : $extension;
+        $outputExtension = $extension; // Do not force mp4 to allow fast stream copy
         $trimmedPath     = $basePath . '_trimmed.' . $outputExtension;
         $fullTrimmedPath = storage_path('app/public/' . $trimmedPath);
 
@@ -804,7 +804,7 @@ class PostController extends Controller
         if ($outputExtension !== $extension) {
             // Transcode webm/mkv → H264 mp4 for universal playback
             $command = sprintf(
-                'ffmpeg -y -ss %s -i %s -t %s -c:v libx264 -preset fast -crf 23 -c:a aac -movflags +faststart %s 2>&1',
+                'ffmpeg -y -ss %s -i %s -t %s -c:v libx264 -preset ultrafast -crf 28 -c:a aac -movflags +faststart %s 2>&1',
                 escapeshellarg((string) $start),
                 escapeshellarg($fullPath),
                 escapeshellarg((string) $duration),

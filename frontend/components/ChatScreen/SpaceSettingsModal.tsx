@@ -894,7 +894,7 @@ const SpaceSettingsModal: React.FC<SpaceSettingsModalProps> = ({
         // We already compress in handlePickPhoto, but keeping this for safety
         setUploading(true);
         try {
-            const compressed = await MediaCompressor.prepareMediaForUpload(uri);
+            const compressed = await MediaCompressor.prepareMediaForUpload(uri, undefined, 'photo');
             const token = await getToken();
             const formData = new FormData();
             formData.append('file', {
@@ -933,7 +933,7 @@ const SpaceSettingsModal: React.FC<SpaceSettingsModalProps> = ({
         setUploading(true);
         try {
             const uri = URL.createObjectURL(file);
-            const compressed = await MediaCompressor.prepareMediaForUpload(uri, file.name);
+            const compressed = await MediaCompressor.prepareMediaForUpload(uri, file.name, 'photo');
             let finalFile: any = file;
             if (compressed.uri !== uri) {
                 const response = await fetch(compressed.uri);

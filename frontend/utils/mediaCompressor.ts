@@ -144,9 +144,10 @@ export class MediaCompressor {
 
   static async prepareMediaForUpload(
     uri: string,
-    fileName?: string
+    fileName?: string,
+    type?: MediaType
   ): Promise<{ uri: string; type: string; fileName: string }> {
-    const mediaType = this.getMediaTypeFromUri(uri);
+    const mediaType = type || this.getMediaTypeFromUri(uri);
 
     const compressed = await this.compressMedia(uri, mediaType, {
       maxWidth: 1080, // Cap at 1080p
