@@ -237,6 +237,11 @@ const AddStory: React.FC<AddStoryProps> = ({ visible, onClose, onStoryCreated })
 
     try {
       const video = document.createElement('video');
+      video.playsInline = true;
+      video.muted = true;
+      video.setAttribute('playsinline', '');
+      video.setAttribute('webkit-playsinline', '');
+      video.preload = 'metadata';
       video.src = uri;
       video.onloadedmetadata = () => {
         const duration = video.duration;

@@ -95,6 +95,10 @@ export default function CreateMarketItemModal({ visible, onClose, editItem }: Cr
       return new Promise((resolve) => {
         const video = document.createElement('video');
         video.preload = 'metadata';
+        video.playsInline = true;
+        video.muted = true;
+        video.setAttribute('playsinline', '');
+        video.setAttribute('webkit-playsinline', '');
         video.onloadedmetadata = () => resolve(video.duration * 1000);
         video.onerror = () => resolve(0);
         video.src = uri;
@@ -138,10 +142,14 @@ export default function CreateMarketItemModal({ visible, onClose, editItem }: Cr
 
       const video = document.createElement('video');
       video.src = sourceUri;
-      video.crossOrigin = 'anonymous';
+      if (!sourceUri.startsWith('blob:')) {
+        video.crossOrigin = 'anonymous';
+      }
       video.preload = 'auto';
       video.muted = true;
       video.playsInline = true;
+      video.setAttribute('playsinline', '');
+      video.setAttribute('webkit-playsinline', '');
 
       return new Promise((resolve) => {
         video.onloadeddata = () => {

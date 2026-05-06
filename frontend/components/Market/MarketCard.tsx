@@ -24,6 +24,7 @@ import { CuratorFrame } from '../CuratorFrame';
 import { CuratorCircle } from '../CuratorCircle';
 import { ContextTagSelector } from '../ContextTagSelector';
 import { LinkPreviewCard } from '../LinkPreviewCard';
+import { calculateAnchor, AnchorPosition } from '@/utils/layout';
 
 const PostVideoPlayer = React.lazy(() => import('../PostVideoPlayer').then(module => ({ default: module.PostVideoPlayer })));
 
@@ -65,7 +66,7 @@ export default function MarketCard({ item, onPress, onChatPress, onProfilePress,
   // States
   const [showComments, setShowComments] = useState(initialShowComments);
   const [menuVisible, setMenuVisible] = useState(false);
-  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const [menuPosition, setMenuPosition] = useState<AnchorPosition | undefined>(undefined);
   const [mediaViewerVisible, setMediaViewerVisible] = useState(false);
   const [mediaViewerIndex, setMediaViewerIndex] = useState(0);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
@@ -360,8 +361,10 @@ export default function MarketCard({ item, onPress, onChatPress, onProfilePress,
   }, [item.id, t, showToast]);
 
   const handleMenuPress = (e: any) => {
-    const { pageY, pageX } = e.nativeEvent;
-    setMenuPosition({ top: pageY, left: pageX });
+    const { pageX, pageY } = e.nativeEvent;
+    // Use calculateAnchor to ensure the menu stays within screen bounds (220 is the GenericMenu width)
+    const anchor = calculateAnchor(pageX, pageY, 0, 0, 220);
+    setMenuPosition(anchor);
     setMenuVisible(true);
   };
 
@@ -419,8 +422,9 @@ export default function MarketCard({ item, onPress, onChatPress, onProfilePress,
   }, [isOwner, item, t, openModal, showToast, isTranslated, handleTranslate, handleDelete]);
 
   const handleLongPress = (e: any) => {
-    const { pageY, pageX } = e.nativeEvent;
-    setMenuPosition({ top: pageY, left: pageX });
+    const { pageX, pageY } = e.nativeEvent;
+    const anchor = calculateAnchor(pageX, pageY, 0, 0, 220);
+    setMenuPosition(anchor);
     setMenuVisible(true);
   };
 

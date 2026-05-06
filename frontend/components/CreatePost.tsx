@@ -233,6 +233,10 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
       }
       const video = document.createElement('video');
       video.preload = 'metadata';
+      video.playsInline = true;
+      video.muted = true;
+      video.setAttribute('playsinline', '');
+      video.setAttribute('webkit-playsinline', '');
       video.onloadedmetadata = () => {
         resolve(video.duration * 1000); // convert to ms
       };
@@ -281,7 +285,13 @@ export default function CreatePost({ visible, onClose, onPostCreated, initialPar
 
       const video = document.createElement('video');
       video.src = sourceUri;
-      video.crossOrigin = 'anonymous';
+      // Do not use crossOrigin='anonymous' for blob: URIs, it causes errors in Safari
+      if (!sourceUri.startsWith('blob:')) {
+        video.crossOrigin = 'anonymous';
+      }
+      video.playsInline = true;
+      video.setAttribute('playsinline', '');
+      video.setAttribute('webkit-playsinline', '');
       video.currentTime = 0.5; // Seek a bit in to avoid black frames
       video.muted = true;
       video.onseeked = () => {
