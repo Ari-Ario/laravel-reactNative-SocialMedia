@@ -210,8 +210,8 @@ $FORGE_PHP artisan storage:link
 # 💾 Run new Migrations (if any)
 $FORGE_PHP artisan migrate --force
 
-# 🚚 Copy the pre-built React Native assets from the previous release to avoid rebuilding!
-if [ -d "$FORGE_SITE_PATH/current/public/assets" ]; then
+# 🚚 Copy the pre-built React Native and Vite assets from the previous release to avoid rebuilding!
+if [ -d "$FORGE_SITE_PATH/current/public/build" ]; then
     echo "Copying previous frontend assets..."
     cp -r $FORGE_SITE_PATH/current/public/* public/
 fi
