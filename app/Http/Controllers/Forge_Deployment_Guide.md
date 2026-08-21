@@ -59,6 +59,7 @@ location /api/ {
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
     proxy_cache_bypass $http_upgrade;
+    proxy_read_timeout 60m;
 }
 
 # 🏎️ 4. Laravel Web Routes - Octane (BEFORE static files)
@@ -72,6 +73,7 @@ location ~ ^/(login|register|dashboard|settings|sanctum|livewire|pulse|broadcast
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
     proxy_cache_bypass $http_upgrade;
+    proxy_read_timeout 60m;
 }
 
 # 🏎️ 5. Storage Proxy - Octane
@@ -188,4 +190,37 @@ $RESTART_QUEUES()
 
 ---
 
+## ⚡ Fast Backend-Only Deployment Script
 
+If you only change PHP logic (like config files, controllers, or AI solvers) and **did not** touch the `frontend/` React Native code, use this deployment script in Forge. It skips the slow `npm` and `expo export` steps and deploys in seconds.
+
+```bash
+$CREATE_RELEASE()
+
+cd $FORGE_RELEASE_DIRECTORY
+
+# 📦 Standard Laravel Build (Only Backend)
+$FORGE_COMPOSER install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+
+# ♻️ Clear and Cache
+$FORGE_PHP artisan config:clear
+$FORGE_PHP artisan optimize
+$FORGE_PHP artisan storage:link
+
+# 💾 Run new Migrations (if any)
+$FORGE_PHP artisan migrate --force
+
+# 🚚 Copy the pre-built React Native assets from the previous release to avoid rebuilding!
+if [ -d "$FORGE_SITE_PATH/current/public/assets" ]; then
+    echo "Copying previous frontend assets..."
+    cp -r $FORGE_SITE_PATH/current/public/* public/
+fi
+
+$ACTIVATE_RELEASE()
+
+# 🏎️ Handle Octane (Reload for Swoole to pick up config/controller changes)
+$FORGE_PHP artisan octane:status --server=swoole > /dev/null 2>&1 && $FORGE_PHP artisan octane:reload --server=swoole || echo "Octane not running."
+
+# 📦 Restart Queues
+$RESTART_QUEUES()
+```
